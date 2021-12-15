@@ -9,20 +9,48 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 win = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
 SDL_SetWindowResizable(win, SDL_TRUE)
 
+@assert win != nothing "error initializing SDL Window: $(unsafe_string(SDL_GetError()))"
 renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
 
 surface = IMG_Load(joinpath(@__DIR__, "..", "assets", "cat.png"))
 tex = SDL_CreateTextureFromSurface(renderer, surface)
+
+playerSurface = IMG_Load(joinpath(@__DIR__, "..", "assets", "SkeletonIdle.png"))
+playerTexture = SDL_CreateTextureFromSurface(renderer, playerSurface)
+
+grassTex = IMG_LoadTexture(renderer, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
+grassSurface = IMG_Load(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
+grassTexture = SDL_CreateTextureFromSurface(renderer, grassSurface)
+  
+  mutable struct Entity
+           x::Float64
+           y::Float64
+           texture
+           currentFrame
+  end         
+function render(entity)
+	src = SDL_Rect(entity.currentFrame.x.x, entity.currentFrame.x.y, entity.currentFrame.x.w, entity.currentFrame.x.h)
+	dst = SDL_Rect(	entity.x * 4, entity.y * 4,entity.currentFrame.x.w * 4, entity.currentFrame.x.h * 4)
+	SDL_RenderCopy(renderer, entity.texture, Ref(src), Ref(dst))
+end
+
 SDL_FreeSurface(surface)
+SDL_FreeSurface(playerSurface)
+SDL_FreeSurface(grassSurface)
 
 w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
 SDL_QueryTexture(tex, C_NULL, C_NULL, w_ref, h_ref)
+SDL_QueryTexture(playerTexture, C_NULL, C_NULL, w_ref, h_ref)
+SDL_QueryTexture(grassTexture, C_NULL, C_NULL, w_ref, h_ref)
 
 try
     w, h = w_ref[], h_ref[]
     x = (1000 - w) ÷ 2
     y = (1000 - h) ÷ 2
     dest_ref = Ref(SDL_Rect(x, y, w, h))
+    grass_src = Ref(SDL_Rect(x, y, w, h))
+    grass_dest = Ref(SDL_Rect(x, y, w, h))
+    dest_0 = Ref(SDL_Rect(0, 0, 32, 32))
     close = false
     speed = 300
     while !close
@@ -57,10 +85,16 @@ try
         x < 0 && (x = 0;)
         y + h > 1000 && (y = 1000 - h;)
         y < 0 && (y = 0;)
-
+        
         dest_ref[] = SDL_Rect(x, y, w, h)
+        dest_0[] = SDL_Rect(0, 0, 32, 32)
         SDL_RenderClear(renderer)
         SDL_RenderCopy(renderer, tex, C_NULL, dest_ref)
+        entity0 = Entity(100, 50, grassTex, dest_0) 
+        grass_src[] = SDL_Rect(0, 0, 32, 32);
+        grass_dest[] = SDL_Rect(0, 0, 32, 32);
+        #SDL_RenderCopy(renderer, grassTexture, grass_src, grass_dest)
+        render(entity0)
         dest = dest_ref[]
         x, y, w, h = dest.x, dest.y, dest.w, dest.h
         SDL_RenderPresent(renderer)
