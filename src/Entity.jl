@@ -23,6 +23,10 @@ function Base.getproperty(this::Entity, s::Symbol)
         function()
             return this.position
         end
+    elseif s == :setPosition
+        function(position::Vector2f)
+            this.position = position
+        end
     elseif s == :getTexture
         function()
             return this.texture
