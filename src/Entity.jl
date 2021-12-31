@@ -5,18 +5,33 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Entity
     position::Vector2f
     texture
-    currentFrame
-    
-    Entity(position::Vector2f, texture, currentFrame) = new(position,texture,currentFrame)
+    currentFrame::Ref{SDL_Rect}
 
-    function getCurrentFrame()
-        return currentFrame
-    end
-    function getPosition()
-        return position
-    end
-    function getTexture()
-        return texture
-    end
+    function Entity(position, texture)
+        this = new()
 
-end   
+        this.position = position
+        this.texture = texture
+        this.currentFrame = Ref(SDL_Rect(0, 0, 32, 32))
+
+        return this
+    end
+end
+
+function Base.getproperty(this::Entity, s::Symbol)
+    if s == :getPosition
+        function()
+            return this.position
+        end
+    elseif s == :getTexture
+        function()
+            return this.texture
+        end
+    elseif s == :getCurrentFrame
+        function()
+           return this.currentFrame.x
+        end
+    else
+        getfield(this, s)
+    end
+end

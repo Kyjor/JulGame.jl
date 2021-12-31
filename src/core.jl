@@ -23,9 +23,9 @@ playerTexture = SDL_CreateTextureFromSurface(renderer, playerSurface)
 grassTex = IMG_LoadTexture(renderer, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 grassSurface = IMG_Load(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 grassTexture = SDL_CreateTextureFromSurface(renderer, grassSurface)
-        
+
 function render(entity)
-	src = SDL_Rect(entity.currentFrame.x.x, entity.currentFrame.x.y, entity.currentFrame.x.w, entity.currentFrame.x.h)
+	src = SDL_Rect(entity.getCurrentFrame().x, entity.getCurrentFrame().y, entity.getCurrentFrame().w, entity.getCurrentFrame().h)
 	dst = SDL_Rect(	entity.position.x * 4, entity.position.y * 4,entity.currentFrame.x.w * 4, entity.currentFrame.x.h * 4)
 	SDL_RenderCopy(renderer, entity.texture, Ref(src), Ref(dst))
 end
@@ -44,22 +44,19 @@ try
     x = (1000 - w) ÷ 2
     y = (1000 - h) ÷ 2
     dest_ref = Ref(SDL_Rect(x, y, w, h))
-    grass_src = Ref(SDL_Rect(x, y, w, h))
     grass_dest = Ref(SDL_Rect(x, y, w, h))
-    dest_0 = Ref(SDL_Rect(0, 0, 32, 32))
-    dest_0[] = SDL_Rect(0, 0, 32, 32)
 
     entities = [
-        Entity(Vector2f(0, 225), grassTex, dest_0),
-        Entity(Vector2f(25, 225), grassTex, dest_0),
-        Entity(Vector2f(50, 225), grassTex, dest_0),
-        Entity(Vector2f(75, 225), grassTex, dest_0),
-        Entity(Vector2f(100, 225), grassTex, dest_0),
-        Entity(Vector2f(125, 225), grassTex, dest_0),
-        Entity(Vector2f(150, 225), grassTex, dest_0),
-        Entity(Vector2f(175, 225), grassTex, dest_0),
-        Entity(Vector2f(200, 225), grassTex, dest_0),
-        Entity(Vector2f(225, 225), grassTex, dest_0),
+        Entity(Vector2f(0, 225), grassTex),
+        Entity(Vector2f(25, 225), grassTex),
+        Entity(Vector2f(50, 225), grassTex),
+        Entity(Vector2f(75, 225), grassTex),
+        Entity(Vector2f(100, 225), grassTex),
+        Entity(Vector2f(125, 225), grassTex),
+        Entity(Vector2f(150, 225), grassTex),
+        Entity(Vector2f(175, 225), grassTex),
+        Entity(Vector2f(200, 225), grassTex),
+        Entity(Vector2f(225, 225), grassTex),
     ]
     close = false
     speed = 300
@@ -100,11 +97,6 @@ try
         SDL_RenderClear(renderer)
         SDL_RenderCopy(renderer, tex, C_NULL, dest_ref)
 
-       
-
-        grass_src[] = SDL_Rect(0, 0, 32, 32);
-        grass_dest[] = SDL_Rect(0, 0, 32, 32);
-        #SDL_RenderCopy(renderer, grassTexture, grass_src, grass_dest)
         for entity in entities
             render(entity)
         end
