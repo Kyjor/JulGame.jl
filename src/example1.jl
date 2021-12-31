@@ -1,109 +1,95 @@
-# ref: https://www.geeksforgeeks.org/sdl-library-in-c-c-with-examples/
-using SimpleDirectMediaLayer.LibSDL2
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer
 
-SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 16)
-SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
+import SimpleDirectMediaLayer.LoadBMP
 
-@assert SDL_Init(SDL_INIT_EVERYTHING) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
+SDL2.GL_SetAttribute(SDL2.GL_MULTISAMPLEBUFFERS, 16)
+SDL2.GL_SetAttribute(SDL2.GL_MULTISAMPLESAMPLES, 16)
 
-win = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
-SDL_SetWindowResizable(win, SDL_TRUE)
+SDL2.init()
 
-@assert win != nothing "error initializing SDL Window: $(unsafe_string(SDL_GetError()))"
-renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
+win = SDL2.CreateWindow("Hello World!", Int32(100), Int32(100), Int32(800), Int32(600),
+    UInt32(SDL2.WINDOW_SHOWN))
+SDL2.SetWindowResizable(win,true)
 
-surface = IMG_Load(joinpath(@__DIR__, "..", "assets", "cat.png"))
-tex = SDL_CreateTextureFromSurface(renderer, surface)
+renderer = SDL2.CreateRenderer(win, Int32(-1),
+    UInt32(SDL2.RENDERER_ACCELERATED | SDL2.RENDERER_PRESENTVSYNC))
 
-playerSurface = IMG_Load(joinpath(@__DIR__, "..", "assets", "SkeletonIdle.png"))
-playerTexture = SDL_CreateTextureFromSurface(renderer, playerSurface)
+import Base.unsafe_convert
+unsafe_convert(::Type{Ptr{SDL2.RWops}}, s::String) = SDL2.RWFromFile(s, "rb")
 
-grassTex = IMG_LoadTexture(renderer, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
-grassSurface = IMG_Load(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
-grassTexture = SDL_CreateTextureFromSurface(renderer, grassSurface)
-  
-  mutable struct Entity
-           x::Float64
-           y::Float64
-           texture
-           currentFrame
-  end         
-function render(entity)
-	src = SDL_Rect(entity.currentFrame.x.x, entity.currentFrame.x.y, entity.currentFrame.x.w, entity.currentFrame.x.h)
-	dst = SDL_Rect(	entity.x * 4, entity.y * 4,entity.currentFrame.x.w * 4, entity.currentFrame.x.h * 4)
-	SDL_RenderCopy(renderer, entity.texture, Ref(src), Ref(dst))
+LoadBMP(src::String) = SDL2.LoadBMP_RW(src,Int32(1))
+
+bkg = SDL2.Color(200, 200, 200, 255)
+
+# Create text
+font = TTF_OpenFont(joinpath(@__DIR__,"../../assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 14)
+#txt = "@BinDeps.install Dict([ (:glib, :libglib) ])"
+txt = "Hello, World!"
+text = TTF_RenderText_Blended(font, txt, SDL2.Color(20,20,20,255))
+tex = SDL2.CreateTextureFromSurface(renderer,text)
+
+fx,fy = Int[1], Int[1]
+TTF_SizeText(font, txt, pointer(fx), pointer(fy))
+fx,fy = fx[1],fy[1]
+
+#img = SDL2.LoadBMP("LB2951.jpg")
+#tex = SDL2.CreateTextureFromSurface(ren, img)
+#SDL2.FreeSurface(img)
+
+function pollEvent!()
+    #SDL2.Event() = [SDL2.Event(NTuple{56, Uint8}(zeros(56,1)))]
+    SDL_Event() = Array{UInt8}(zeros(56))
+    e = SDL_Event()
+    success = (SDL2.PollEvent(e) != 0)
+    return e,success
+end
+function getEventType(e::Array{UInt8})
+    # HAHA This is still pretty janky, but I guess that's all you can do w/ unions.
+    bitcat(UInt32, e[4:-1:1])
+end
+function getEventType(e::SDL2.Event)
+    e._Event[1]
 end
 
-SDL_FreeSurface(surface)
-SDL_FreeSurface(playerSurface)
-SDL_FreeSurface(grassSurface)
-
-w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
-SDL_QueryTexture(tex, C_NULL, C_NULL, w_ref, h_ref)
-SDL_QueryTexture(playerTexture, C_NULL, C_NULL, w_ref, h_ref)
-SDL_QueryTexture(grassTexture, C_NULL, C_NULL, w_ref, h_ref)
-
-try
-    w, h = w_ref[], h_ref[]
-    x = (1000 - w) ÷ 2
-    y = (1000 - h) ÷ 2
-    dest_ref = Ref(SDL_Rect(x, y, w, h))
-    grass_src = Ref(SDL_Rect(x, y, w, h))
-    grass_dest = Ref(SDL_Rect(x, y, w, h))
-    dest_0 = Ref(SDL_Rect(0, 0, 32, 32))
-    close = false
-    speed = 300
-    while !close
-        event_ref = Ref{SDL_Event}()
-        while Bool(SDL_PollEvent(event_ref))
-            evt = event_ref[]
-            evt_ty = evt.type
-            if evt_ty == SDL_QUIT
-                close = true
-                break
-            elseif evt_ty == SDL_KEYDOWN
-                scan_code = evt.key.keysym.scancode
-                if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
-                    y -= speed / 30
-                    break
-                elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-                    x -= speed / 30
-                    break
-                elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
-                    y += speed / 30
-                    break
-                elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-                    x += speed / 30
-                    break
-                else
-                    break
-                end
-            end
-        end
-
-        x + w > 1000 && (x = 1000 - w;)
-        x < 0 && (x = 0;)
-        y + h > 1000 && (y = 1000 - h;)
-        y < 0 && (y = 0;)
-        
-        dest_ref[] = SDL_Rect(x, y, w, h)
-        dest_0[] = SDL_Rect(0, 0, 32, 32)
-        SDL_RenderClear(renderer)
-        SDL_RenderCopy(renderer, tex, C_NULL, dest_ref)
-        entity0 = Entity(100, 50, grassTex, dest_0) 
-        grass_src[] = SDL_Rect(0, 0, 32, 32);
-        grass_dest[] = SDL_Rect(0, 0, 32, 32);
-        #SDL_RenderCopy(renderer, grassTexture, grass_src, grass_dest)
-        render(entity0)
-        dest = dest_ref[]
-        x, y, w, h = dest.x, dest.y, dest.w, dest.h
-        SDL_RenderPresent(renderer)
-
-        SDL_Delay(1000 ÷ 60)
+function bitcat(outType::Type{T}, arr)::T where T<:Number
+    out = zero(outType)
+    for x in arr
+        out = out << (sizeof(x)*8)
+        out |= convert(T, x)  # the `convert` prevents signed T from promoting to Int64.
     end
-finally
-    SDL_DestroyTexture(tex)
-    SDL_DestroyRenderer(renderer)
-    SDL_DestroyWindow(win)
-    SDL_Quit()
+    out
 end
+
+
+gameIsRunning = true
+
+while gameIsRunning
+    x,y = Int[1], Int[1]
+    SDL2.PumpEvents()
+    SDL2.GetMouseState(pointer(x), pointer(y))
+
+    # Set render color to red ( background will be rendered in this color )
+    SDL2.SetRenderDrawColor(renderer, 200, 200, 200, 255)
+    SDL2.RenderClear(renderer)
+
+    SDL2.SetRenderDrawColor(renderer, 20, 50, 105, 255)
+    SDL2.RenderDrawLine(renderer,0,0,800,600)
+
+    rect = SDL2.Rect(1,1,200,200)
+    SDL2.RenderFillRect(renderer, pointer_from_objref(rect) )
+    SDL2.RenderCopy(renderer, tex, C_NULL, pointer_from_objref(SDL2.Rect(x[1],y[1],fx,fy)))
+
+    SDL2.RenderPresent(renderer)
+    println("check")
+    e,_ = pollEvent!()
+           t = getEventType(e)
+           if t == SDL2.QUIT
+               println("quit")
+               #throw(QuitException())
+               gameIsRunning = false
+           end
+    sleep(0.01)
+
+end
+SDL2.Quit()
