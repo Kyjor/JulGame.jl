@@ -46,7 +46,8 @@ end
 
 function Base.getproperty(this::Input, s::Symbol)
     if s == :pollInput
-        function(event_ref)
+        function()
+            event_ref = Ref{SDL_Event}()
             while Bool(SDL_PollEvent(event_ref))
                 evt = event_ref[]
                 evt_ty = evt.type
@@ -62,6 +63,7 @@ function Base.getproperty(this::Input, s::Symbol)
                     break
                 end
             end
+            SDL_Delay(1000 ÷ 60)
         end
     elseif s == :method0
         function()

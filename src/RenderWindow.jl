@@ -47,7 +47,6 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
             dst = SDL_Rect(entity.getPosition().x * 4, entity.getPosition().y * 4, entity.getCurrentFrame().w * 4, entity.getCurrentFrame().h * 4)
         
             SDL_RenderCopy(this.renderer, entity.getTexture(), Ref(src), Ref(dst))
-            SDL_Delay(1000 ÷ 60)
         end
     elseif s == :display
         function()

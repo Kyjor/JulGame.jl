@@ -4,6 +4,7 @@ include("Entity.jl")
 include("Input/Input.jl")
 include("Math/Vector2f.jl")
 include("RenderWindow.jl")
+include("Utils.jl")
 
 SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 16)
 SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
@@ -30,47 +31,39 @@ entities = [
     ]
 
 playerEntity = Entity(Vector2f(0,0), catTexture)
-    w = window.width
-    h = window.height
+w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
+
 try
-    x = (1000 - w) ÷ 2
-    y = (1000 - h) ÷ 2
-    # dest_ref = Ref(SDL_Rect(x, y, w, h))
-    # grass_dest = Ref(SDL_Rect(x, y, w, h))
-    
+    w, h = w_ref[], h_ref[]
+    x = 0
+    y = 0
+
     close = false
     speed = 300
+    timeStep = 0.01
+    accumulator = 0.0
+    currentTime = hireTimeInSeconds()
     while !close
-        event_ref = Ref{SDL_Event}()
-        while Bool(SDL_PollEvent(event_ref))
-            evt = event_ref[]
-            evt_ty = evt.type
-            if evt_ty == SDL_QUIT
-                close = true
-                break
-            elseif evt_ty == SDL_KEYDOWN
-                scan_code = evt.key.keysym.scancode
-                if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
-                    y -= speed / 30
-                    break
-                elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-                    x -= speed / 30
-                    break
-                elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
-                    y += speed / 30
-                    break
-                elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-                    x += speed / 30
-                    break
-                else
-                    break
-                end
-            end
+        input.pollInput()
+        if input.quit
+            close = true
         end
+        
+        scan_code = input.scan_code
+        if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
+            y -= speed / 30
+        elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
+            x -= speed / 30
+        elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
+            y += speed / 30
+        elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
+            x += speed / 30
+        end
+        input.scan_code = nothing
 
-        x + w > 1000 && (x = 1000 - w;)
+        x + w > window.width && (x = window.width - w;)
         x < 0 && (x = 0;)
-        y + h > 1000 && (y = 1000 - h;)
+        y + h > window.height && (y = window.height - h;)
         y < 0 && (y = 0;)
         playerEntity.setPosition(Vector2f(x,y))
         window.clear()
@@ -81,14 +74,11 @@ try
         window.render(playerEntity)
 
         window.display()
-        # dest = dest_ref[]
-        # x, y, w, h = dest.x, dest.y, dest.w, dest.h
-
+        SDL_Delay(1000 ÷ 60)
+        
+        println(hireTimeInSeconds())
     end
 finally
-    # SDL_DestroyTexture(tex)
-    # SDL_DestroyRenderer(renderer)
-    # SDL_DestroyWindow(win)
     window.cleanUp()
     SDL_Quit()
 end
