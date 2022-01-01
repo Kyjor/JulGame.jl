@@ -12,7 +12,8 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 @assert SDL_Init(SDL_INIT_EVERYTHING) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 
 window = RenderWindow("GAME v1.0", 1280, 720);
-
+windowRefreshRate = window.getRefreshRate()
+println(windowRefreshRate)
 catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
@@ -44,23 +45,38 @@ try
     accumulator = 0.0
     currentTime = hireTimeInSeconds()
     while !close
-        input.pollInput()
-        if input.quit
-            close = true
+        
+        startTicks = SDL_GetTicks()
+        newTime = hireTimeInSeconds()
+        frameTime = newTime - currentTime
+        accumulator += frameTime
+        
+        while accumulator >= timeStep
+            #region ============= Input
+            input.pollInput()
+            if input.quit
+                close = true
+            end
+            
+            scan_code = input.scan_code
+            if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
+                y -= speed / 30
+            elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
+                x -= speed / 30
+            elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
+                y += speed / 30
+            elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
+                x += speed / 30
+            end
+            input.scan_code = nothing
+            #endregion ============== Input
+            
+            accumulator -= timeStep
         end
         
-        scan_code = input.scan_code
-        if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
-            y -= speed / 30
-        elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-            x -= speed / 30
-        elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
-            y += speed / 30
-        elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-            x += speed / 30
-        end
-        input.scan_code = nothing
-
+        alpha = accumulator / timeStep
+        println(alpha)
+        
         x + w > window.width && (x = window.width - w;)
         x < 0 && (x = 0;)
         y + h > window.height && (y = window.height - h;)
@@ -74,9 +90,13 @@ try
         window.render(playerEntity)
 
         window.display()
-        SDL_Delay(1000 ÷ 60)
         
-        println(hireTimeInSeconds())
+        frameTicks = SDL_GetTicks() - startTicks
+        
+        if frameTicks < 1000 / windowRefreshRate
+            delay = 1000 / windowRefreshRate - frameTicks
+            SDL_Delay(round(delay))
+        end
     end
 finally
     window.cleanUp()

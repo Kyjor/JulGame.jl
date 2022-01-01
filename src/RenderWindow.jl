@@ -52,6 +52,13 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
         function()
             SDL_RenderPresent(this.renderer)
         end
+    elseif s == :getRefreshRate
+        function()
+            displayIndex = SDL_GetWindowDisplayIndex(this.window)
+            mode = SDL_DisplayMode(0,this.width, this.height, 60, 0)
+            SDL_GetDisplayMode(displayIndex, 0, Ref(mode))
+            return mode.refresh_rate
+        end
     else
         getfield(this, s)
     end

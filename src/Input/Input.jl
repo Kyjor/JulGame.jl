@@ -63,7 +63,7 @@ function Base.getproperty(this::Input, s::Symbol)
                     break
                 end
             end
-            SDL_Delay(1000 ÷ 60)
+            #SDL_Delay(1000 ÷ 60)
         end
     elseif s == :method0
         function()
