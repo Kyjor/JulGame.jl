@@ -12,6 +12,8 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 @assert SDL_Init(SDL_INIT_EVERYTHING) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 
 window = RenderWindow("GAME v1.0", 1280, 720);
+TTF_Init()
+
 windowRefreshRate = window.getRefreshRate()
 println(windowRefreshRate)
 catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
@@ -75,7 +77,6 @@ try
         end
         
         alpha = accumulator / timeStep
-        println(alpha)
         
         x + w > window.width && (x = window.width - w;)
         x < 0 && (x = 0;)
@@ -88,7 +89,7 @@ try
             window.render(entity)
         end
         window.render(playerEntity)
-
+        window.drawText("This is our first message", 20, 30, 0, 255, 0, 24)
         window.display()
         
         frameTicks = SDL_GetTicks() - startTicks
@@ -99,6 +100,7 @@ try
         end
     end
 finally
+    TTF_Quit()
     window.cleanUp()
     SDL_Quit()
 end

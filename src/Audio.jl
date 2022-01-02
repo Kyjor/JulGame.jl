@@ -1,13 +1,13 @@
-__precompile__()
+﻿__precompile__()
 using SimpleDirectMediaLayer.LibSDL2
 
-mutable struct Input
+mutable struct Audio
     quit::Bool
     scan_code
     mouseX::Integer
     mouseY::Integer
     
-    function Input()
+    function Audio()
         this = new()
         this.quit = false
         this.scan_code = nothing
@@ -18,7 +18,7 @@ mutable struct Input
     end
 end
 
-function Base.getproperty(this::Input, s::Symbol)
+function Base.getproperty(this::Audio, s::Symbol)
     if s == :pollInput
         function()
             event_ref = Ref{SDL_Event}()

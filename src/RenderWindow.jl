@@ -59,6 +59,18 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
             SDL_GetDisplayMode(displayIndex, 0, Ref(mode))
             return mode.refresh_rate
         end
+    elseif s == :drawText
+        function(message::String, x::Integer, y::Integer, r::Integer, g::Integer, b::Integer, size::Integer)
+            font = TTF_OpenFont("VeraMono.ttf", size)
+            color = SDL_Color(r, g, b, 255)
+            surface = TTF_RenderText_Solid(font, message, color)
+            texture = SDL_CreateTextureFromSurface(this.renderer, surface)
+            surface0 = Base.unsafe_load(surface)
+            
+            SDL_FreeSurface(surface)
+            SDL_RenderCopy(this.renderer, texture, C_NULL, Ref(SDL_Rect(x, y, surface0.w, surface0.h)))
+            SDL_DestroyTexture(texture)
+        end
     else
         getfield(this, s)
     end
