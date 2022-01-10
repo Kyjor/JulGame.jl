@@ -33,19 +33,20 @@ entities = [
     Entity(Vector2f(225, 200), grassTexture),
     ]
 
-playerEntity = Entity(Vector2f(0,0), catTexture)
+playerEntity = Entity(Vector2f(100,100), catTexture)
 w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
 
 try
     w, h = w_ref[], h_ref[]
-    x = 0
-    y = 0
+    x = playerEntity.position.x
+    y = playerEntity.position.y
 
     close = false
     speed = 300
     timeStep = 0.01
     accumulator = 0.0
     currentTime = hireTimeInSeconds()
+    currentFrameTime::Float64 = hireTimeInSeconds()
     while !close
         
         startTicks = SDL_GetTicks()
@@ -89,7 +90,13 @@ try
             window.render(entity)
         end
         window.render(playerEntity)
-        window.drawText("This is our first message", 20, 30, 0, 255, 0, 24)
+        
+        cft::Float64 = round(hireTimeInSeconds() - currentFrameTime; digits=6)
+        fps::Float64 = round(1/cft; digits=4)
+
+        window.drawText("Frame time: $cft", 20, 30, 0, 255, 0, 24)
+        window.drawText("FPS: $fps", 20, 60, 0, 255, 0, 24)
+        currentFrameTime = hireTimeInSeconds()
         window.display()
         
         frameTicks = SDL_GetTicks() - startTicks

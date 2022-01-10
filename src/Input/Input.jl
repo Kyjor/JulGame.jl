@@ -25,8 +25,8 @@ function Base.getproperty(this::Input, s::Symbol)
             while Bool(SDL_PollEvent(event_ref))
                 x,y = Int[1], Int[1]
                 SDL_GetMouseState(pointer(x), pointer(y))
-                this.mouseX = x
-                this.mouseY = y
+                #this.mouseX = x
+                #   this.mouseY = y
                 
                 evt = event_ref[]
                 evt_ty = evt.type
