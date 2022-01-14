@@ -7,9 +7,15 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct RenderWindow
     renderer 
     window
-
+    
     height
     width
+
+    font
+    color
+    surface
+    texture
+    surface0
 
     function RenderWindow(title, width, height)
         this = new()
@@ -18,8 +24,15 @@ mutable struct RenderWindow
         SDL_SetWindowResizable(this.window, SDL_TRUE)
         
         this.renderer = SDL_CreateRenderer(this.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
+        this.font = TTF_OpenFont("FiraCode-Bold.ttf", 24)
         this.width = width
         this.height = height
+        this.color = SDL_Color(0, 255, 0, 255)
+        this.surface = TTF_RenderText_Solid(this.font, "message", this.color)
+        this.texture = SDL_CreateTextureFromSurface(this.renderer, this.surface)
+        this.surface0 = Base.unsafe_load(this.surface)
+        
+        println("RenderWindow created successfully")
         return this
     end
 end
@@ -27,6 +40,7 @@ end
 function Base.getproperty(this::RenderWindow, s::Symbol)
     if s == :loadTexture
         function(filePath)
+            println("Loading texture from $filePath")
             texture = IMG_LoadTexture(this.renderer, filePath)
             #TODO: check for texture load error
             @assert texture != nothing "error initializing SDL: $(unsafe_string(SDL_GetError()))"
@@ -61,15 +75,15 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
         end
     elseif s == :drawText
         function(message::String, x::Integer, y::Integer, r::Integer, g::Integer, b::Integer, size::Integer)
-            font = TTF_OpenFont("VeraMono.ttf", size)
             color = SDL_Color(r, g, b, 255)
-            surface = TTF_RenderText_Solid(font, message, color)
+            surface = TTF_RenderText_Solid(this.font, message, color)
             texture = SDL_CreateTextureFromSurface(this.renderer, surface)
             surface0 = Base.unsafe_load(surface)
-            
+
             SDL_FreeSurface(surface)
             SDL_RenderCopy(this.renderer, texture, C_NULL, Ref(SDL_Rect(x, y, surface0.w, surface0.h)))
             SDL_DestroyTexture(texture)
+            
         end
     else
         getfield(this, s)
