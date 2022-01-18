@@ -1,5 +1,6 @@
 # ref: https://www.geeksforgeeks.org/sdl-library-in-c-c-with-examples/
 using SimpleDirectMediaLayer.LibSDL2
+include("AnimatedEntity.jl")
 include("Entity.jl")
 include("Input/Input.jl")
 include("Math/Vector2f.jl")
@@ -14,15 +15,16 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 TTF_Init()
 
 window = RenderWindow("GAME v1.0", 1280, 720)
-
+renderer = window.getRenderer()
 windowRefreshRate = window.getRefreshRate()
 println(windowRefreshRate)
 catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
 animatedEntities = [
-    AnimatedEntity(Vector2f(0, 200), grassTexture),
+    AnimatedEntity(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
 	]
+
 entities = [
     Entity(Vector2f(0, 200), grassTexture),
     Entity(Vector2f(25, 200), grassTexture),
@@ -51,7 +53,7 @@ try
 	totalFrames = 0
 	
 	#animation vars
-	animatedFPS = 24.0
+	animatedFPS = 12.0
 	
 	
     while !close
@@ -95,16 +97,16 @@ try
             window.render(entity)
         end
         window.render(playerEntity)
-		for animatedEntity in animatedEntities
-			deltaTime = (currentRenderTime  - animatedEntity.lastUpdate) / 1000.01
+ 		for animatedEntity in animatedEntities
+			deltaTime = (currentRenderTime  - animatedEntity.getLastUpdate()) / 1000.0
 			framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))
 			if framesToUpdate > 0
-				animatedEntity.lastFrame += framesToUpdate
-				animatedEntity.lastFrame %= animatedEntity.numFrames
-				animatedEntity.lastUpdate = currentRenderTime
+				animatedEntity.setLastFrame(animatedEntity.getLastFrame() + framesToUpdate)
+				animatedEntity.setLastFrame(animatedEntity.getLastFrame() % animatedEntity.getFrameCount())
+				animatedEntity.setLastUpdate(currentRenderTime)
         	end
-            window.render(animatedEntity)
-		end
+			animatedEntity.draw(Ref(SDL_Rect(animatedEntity.getLastFrame() * 16,0,16,16)), Ref(SDL_Rect(64,64,64,64)))
+ 		end
 		
 		# Strings to display
         window.drawText(string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), 20, 0, 0, 255, 0, 24)

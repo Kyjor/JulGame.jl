@@ -72,6 +72,10 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
             mode = SDL_DisplayMode(0,this.width, this.height, 60, 0)
             SDL_GetDisplayMode(displayIndex, 0, Ref(mode))
             return mode.refresh_rate
+        end 
+    elseif s == :getRenderer
+        function()
+            return this.renderer
         end
     elseif s == :drawText
         function(message::String, x::Integer, y::Integer, r::Integer, g::Integer, b::Integer, size::Integer)
