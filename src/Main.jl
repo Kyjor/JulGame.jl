@@ -20,7 +20,9 @@ println(windowRefreshRate)
 catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
-
+animatedEntities = [
+    AnimatedEntity(Vector2f(0, 200), grassTexture),
+	]
 entities = [
     Entity(Vector2f(0, 200), grassTexture),
     Entity(Vector2f(25, 200), grassTexture),
@@ -100,9 +102,9 @@ try
 				animatedEntity.lastFrame += framesToUpdate
 				animatedEntity.lastFrame %= animatedEntity.numFrames
 				animatedEntity.lastUpdate = currentRenderTime
+        	end
             window.render(animatedEntity)
-        end
-		
+		end
 		
 		# Strings to display
         window.drawText(string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), 20, 0, 0, 255, 0, 24)

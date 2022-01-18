@@ -6,25 +6,29 @@ using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct AnimatedEntity
     frames
+    image
     lastFrame
     lastUpdate
     numFrames
-        
+    position
+    renderer
+    
     #frames: number of frames in an animation
     #width: width of each frame
-    function AnimatedEntity(frameCount, width)
+    function AnimatedEntity(renderer, frameCount, width)
         this = new()
         #this.frames = Array{Int64, frameCount}
         this.lastFrame = 0
         this.lastUpdate = SDL_GetTicks()
+        this.renderer = renderer
         return this
     end
 end
 
 function Base.getproperty(this::AnimatedEntity, s::Symbol)
-    if s == :method0
+    if s == :draw
         function()
-            #
+            
         end
     elseif s == :method1
         function()
