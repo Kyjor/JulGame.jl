@@ -1,10 +1,11 @@
 # ref: https://www.geeksforgeeks.org/sdl-library-in-c-c-with-examples/
 using SimpleDirectMediaLayer.LibSDL2
-include("AnimatedEntity.jl")
+include("Sprite.jl")
 include("Entity.jl")
 include("Input/Input.jl")
 include("Math/Vector2f.jl")
 include("RenderWindow.jl")
+include("Transform.jl")
 include("Utils.jl")
 
 SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 16)
@@ -22,29 +23,20 @@ catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
 animatedEntities = [
-    AnimatedEntity(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
+    Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
 	]
 
 entities = [
-    Entity(Vector2f(0, 200), grassTexture),
-    Entity(Vector2f(25, 200), grassTexture),
-    Entity(Vector2f(50, 200), grassTexture),
-    Entity(Vector2f(75, 200), grassTexture),
-    Entity(Vector2f(100, 200), grassTexture),
-    Entity(Vector2f(125, 200), grassTexture),
-    Entity(Vector2f(150, 200), grassTexture),
-    Entity(Vector2f(175, 200), grassTexture),
-    Entity(Vector2f(200, 200), grassTexture),
-    Entity(Vector2f(225, 200), grassTexture),
+    Entity(Transform(),animatedEntities[1], C_NULL, C_NULL)
     ]
 
-playerEntity = Entity(Vector2f(100,100), catTexture)
+# playerEntity = Entity(Vector2f(100,100), catTexture)
 w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
 
 try
     w, h = w_ref[], h_ref[]
-    x = playerEntity.position.x
-    y = playerEntity.position.y
+     x = entities[1].getTransform().getPosition().x
+     y = entities[1].getTransform().getPosition().y
 
     close = false
     speed = 300
@@ -87,16 +79,16 @@ try
         x < 0 && (x = 0;)
         y + h > window.height && (y = window.height - h;)
         y < 0 && (y = 0;)
-        playerEntity.setPosition(Vector2f(x,y))
-		
+        #playerEntity.setPosition(Vector2f(x,y))
+		entities[1].getTransform().setPosition(Vector2f(x,y))
 		#Rendering
 		currentRenderTime = SDL_GetTicks()
         window.clear()
 
         for entity in entities
-            window.render(entity)
+            entity.update()
         end
-        window.render(playerEntity)
+       # window.render(playerEntity)
  		for animatedEntity in animatedEntities
 			deltaTime = (currentRenderTime  - animatedEntity.getLastUpdate()) / 1000.0
 			framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))

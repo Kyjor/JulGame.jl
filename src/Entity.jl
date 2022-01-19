@@ -14,6 +14,10 @@ mutable struct Entity
 
         this.transform = transform
         this.sprite = sprite
+        if this.sprite != C_NULL
+            this.sprite.setParent(this)
+        end
+            
         this.collider = collider
         this.rigidbody = rigidbody
 
@@ -49,7 +53,7 @@ function Base.getproperty(this::Entity, s::Symbol)
            if this.collider != C_NULL
                this.collider.update()
            end
-           if this.transform != C_NULL
+           if this.rigidbody != C_NULL
                this.rigidbody.update()
            end
         end

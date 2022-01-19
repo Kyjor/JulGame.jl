@@ -53,6 +53,10 @@ function Base.getproperty(this::Transform, s::Symbol)
         function(rotation::Float64)
             this.rotation = rotation
         end
+     elseif s == :update
+        function()
+            #println(this.position)
+        end
     else
         getfield(this, s)
     end

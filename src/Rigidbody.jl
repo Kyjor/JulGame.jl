@@ -4,7 +4,7 @@ include("Entity.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
-mutable struct Sprite
+mutable struct Rigidbody
     frameCount
     image
     lastFrame
@@ -17,7 +17,7 @@ mutable struct Sprite
     
     #frames: number of frames in an animation
     #width: width of each frame
-    function Sprite(frameCount, image, renderer)
+    function Rigidbody(frameCount, image, renderer)
         this = new()
         
         this.frameCount = frameCount
@@ -32,7 +32,7 @@ mutable struct Sprite
     end
 end
 
-function Base.getproperty(this::Sprite, s::Symbol)
+function Base.getproperty(this::Rigidbody, s::Symbol)
     if s == :draw
         function(src, dest)
             SDL_RenderCopy(this.renderer, this.texture, src, Ref(SDL_Rect(this.parent.getTransform().getPosition().x,this.parent.getTransform().getPosition().y,64,64)))
