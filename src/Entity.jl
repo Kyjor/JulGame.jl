@@ -1,39 +1,57 @@
 __precompile__()
 include("Math/Vector2f.jl")
+include("Transform.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Entity
-    position::Vector2f
-    texture
-    currentFrame::Ref{SDL_Rect}
+    transform::Transform
+    sprite
+    collider
+    rigidbody
 
-    function Entity(position, texture)
+    function Entity(transform::Transform = Transform(), sprite = C_NULL, collider = C_NULL, rigidbody = C_NULL)
         this = new()
 
-        this.position = position
-        this.texture = texture
-        this.currentFrame = Ref(SDL_Rect(0, 0, 32, 32))
+        this.transform = transform
+        this.sprite = sprite
+        this.collider = collider
+        this.rigidbody = rigidbody
 
         return this
     end
 end
 
 function Base.getproperty(this::Entity, s::Symbol)
-    if s == :getPosition
+    if s == :getTransform
         function()
-            return this.position
+            return this.transform
         end
-    elseif s == :setPosition
-        function(position::Vector2f)
-            this.position = position
-        end
-    elseif s == :getTexture
+    elseif s == :getSprite
         function()
-            return this.texture
+            return this.sprite
         end
-    elseif s == :getCurrentFrame
+    elseif s == :getCollider
         function()
-           return this.currentFrame.x
+            return this.collider
+        end
+    elseif s == :getRigidbody
+        function()
+           return this.rigidbody
+        end
+    elseif s == :update
+        function()
+           if this.transform != C_NULL
+               this.transform.update()
+           end
+           if this.sprite != C_NULL
+               this.sprite.update()
+           end
+           if this.collider != C_NULL
+               this.collider.update()
+           end
+           if this.transform != C_NULL
+               this.rigidbody.update()
+           end
         end
     else
         getfield(this, s)

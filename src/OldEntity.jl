@@ -2,14 +2,12 @@ __precompile__()
 include("Math/Vector2f.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
-mutable struct Collider
-   collider
-   
-   width
-   height
-   tag
-    
-    function Dot(position, texture)
+mutable struct Entity
+    position::Vector2f
+    texture
+    currentFrame::Ref{SDL_Rect}
+
+    function Entity(position, texture)
         this = new()
 
         this.position = position
@@ -20,7 +18,7 @@ mutable struct Collider
     end
 end
 
-function Base.getproperty(this::Dot, s::Symbol)
+function Base.getproperty(this::Entity, s::Symbol)
     if s == :getPosition
         function()
             return this.position

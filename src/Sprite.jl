@@ -9,7 +9,7 @@ mutable struct AnimatedEntity
     image
     lastFrame
     lastUpdate
-    position
+    offset
     renderer
     texture
     
