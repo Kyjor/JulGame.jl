@@ -5,29 +5,19 @@ include("Entity.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Rigidbody
-    frameCount
-    image
-    lastFrame
-    lastUpdate
+    mass
     offset
     parent
-    position
-    renderer
-    texture
+    velocity::Vector2f
     
     #frames: number of frames in an animation
     #width: width of each frame
-    function Rigidbody(frameCount, image, renderer)
+    function Rigidbody(mass, offset)
         this = new()
         
-        this.frameCount = frameCount
-        this.image = IMG_Load(image)
-        this.lastFrame = 0
-        this.lastUpdate = SDL_GetTicks()
-        this.parent = parent
-        this.renderer = renderer
-        this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
-        this.position = Vector2f(0.0, 0.0)
+        this.mass = mass
+        this.offset = offset
+        this.velocity = Vector2f(0.0, 1.0)
         return this
     end
 end
@@ -61,7 +51,11 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
         function()
             #return this.frameCount
         end
-   elseif s == :setParent
+   elseif s == :getParent
+        function()
+            return this.parent
+        end
+    elseif s == :setParent
         function(parent)
             this.parent = parent
         end

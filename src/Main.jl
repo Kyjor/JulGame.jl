@@ -5,6 +5,7 @@ include("Entity.jl")
 include("Input/Input.jl")
 include("Math/Vector2f.jl")
 include("RenderWindow.jl")
+include("Rigidbody.jl")
 include("Transform.jl")
 include("Utils.jl")
 
@@ -22,13 +23,23 @@ println(windowRefreshRate)
 catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
-animatedEntities = [
+sprites = [
     Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
 	]
+rigidbodies = [
+	Rigidbody(1, 0)
+]
 
 entities = [
-    Entity(Transform(),animatedEntities[1], C_NULL, C_NULL)
+    Entity(Transform(),sprites[1], C_NULL, rigidbodies[1])
+    Entity(Transform(Vector2f(0, 650), Vector2f(), 0.0),sprites[2], C_NULL, C_NULL)
+    Entity(Transform(Vector2f(64, 650), Vector2f(), 0.0),sprites[3], C_NULL, C_NULL)
+    Entity(Transform(Vector2f(128, 650), Vector2f(), 0.0),sprites[4], C_NULL, C_NULL)
     ]
+	
 
 # playerEntity = Entity(Vector2f(100,100), catTexture)
 w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
@@ -47,6 +58,8 @@ try
 	#animation vars
 	animatedFPS = 12.0
 	
+	#physics vars
+	lastPhysicsTime = SDL_GetTicks()
 	
     while !close
         # Start frame timing
@@ -71,7 +84,15 @@ try
         end
         input.scan_code = nothing
         #endregion ============== Input
-            
+			
+		#Physics
+		currentPhysicsTime = SDL_GetTicks()
+		
+		deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
+		for rigidbody in rigidbodies
+			position = rigidbody.getParent().getTransform().getPosition()
+			rigidbody.getParent().getTransform().setPosition(Vector2f(round(position.x + rigidbody.velocity.x * deltaTime),round(position.y + rigidbody.velocity.y * deltaTime)))
+		end
         
         #alpha = accumulator / timeStep
         
@@ -79,8 +100,7 @@ try
         x < 0 && (x = 0;)
         y + h > window.height && (y = window.height - h;)
         y < 0 && (y = 0;)
-        #playerEntity.setPosition(Vector2f(x,y))
-		entities[1].getTransform().setPosition(Vector2f(x,y))
+# 		entities[1].getTransform().setPosition(Vector2f(x,y))
 		#Rendering
 		currentRenderTime = SDL_GetTicks()
         window.clear()
@@ -89,15 +109,15 @@ try
             entity.update()
         end
        # window.render(playerEntity)
- 		for animatedEntity in animatedEntities
-			deltaTime = (currentRenderTime  - animatedEntity.getLastUpdate()) / 1000.0
+ 		for sprite in sprites
+			deltaTime = (currentRenderTime  - sprite.getLastUpdate()) / 1000.0
 			framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))
 			if framesToUpdate > 0
-				animatedEntity.setLastFrame(animatedEntity.getLastFrame() + framesToUpdate)
-				animatedEntity.setLastFrame(animatedEntity.getLastFrame() % animatedEntity.getFrameCount())
-				animatedEntity.setLastUpdate(currentRenderTime)
+				sprite.setLastFrame(sprite.getLastFrame() + framesToUpdate)
+				sprite.setLastFrame(sprite.getLastFrame() % sprite.getFrameCount())
+				sprite.setLastUpdate(currentRenderTime)
         	end
-			animatedEntity.draw(Ref(SDL_Rect(animatedEntity.getLastFrame() * 16,0,16,16)), Ref(SDL_Rect(64,64,64,64)))
+			sprite.draw(Ref(SDL_Rect(sprite.getLastFrame() * 16,0,16,16)), Ref(SDL_Rect(64,64,64,64)))
  		end
 		
 		# Strings to display

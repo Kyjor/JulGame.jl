@@ -20,6 +20,10 @@ mutable struct Entity
             
         this.collider = collider
         this.rigidbody = rigidbody
+        if this.rigidbody != C_NULL
+            this.rigidbody.setParent(this)
+        end
+        
 
         return this
     end

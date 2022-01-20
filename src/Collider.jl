@@ -9,7 +9,7 @@ mutable struct Collider
    height
    tag
     
-    function Dot(position, texture)
+    function Collider(position, texture)
         this = new()
 
         this.position = position
@@ -20,7 +20,7 @@ mutable struct Collider
     end
 end
 
-function Base.getproperty(this::Dot, s::Symbol)
+function Base.getproperty(this::Collider, s::Symbol)
     if s == :getPosition
         function()
             return this.position
