@@ -82,13 +82,33 @@ try
         if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
             y -= speed / 30
         elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-            x -= speed / 30
+            x = -1
         elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
             y += speed / 30
         elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-            x += speed / 30
+            x = 1
         end
         input.scan_code = nothing
+        # SDL_PumpEvents()
+        # event_ref = Ref{Int32}()
+        # keystate = SDL_GetKeyboardState(C_NULL)
+        # test = Base.unsafe_load(keystate)
+        # println(test)
+        # #println(SDL_SCANCODE_RETURN)
+
+        # #continuous-response keys
+        # if keystate == SDL_SCANCODE_LEFT
+        #     println("left")
+        # end
+        # if keystate == SDL_SCANCODE_RIGHT
+        #     println("right")
+        # end
+        # if keystate == SDL_SCANCODE_UP
+        #     println("up")
+        # end
+        # if keystate == SDL_SCANCODE_DOWN
+        #     println("down")
+        # end
         #endregion ============== Input
 			
 		#Physics
@@ -97,14 +117,20 @@ try
         #Only check the player against other colliders
         for colliderB in colliders
             if colliders[1] != colliderB
-                if checkCollision(colliders[1], colliderB) == Bottom::CollisionDirection
-                    rigidbodies[1].setVelocity(Vector2f())
+                collision = checkCollision(colliders[1], colliderB)
+                if collision == Bottom::CollisionDirection
+                    rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
+                elseif collision == None::CollisionDirection
+                    rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 1))
                 end
             end
         end    
 
 
 		deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
+
+        rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
+
 		for rigidbody in rigidbodies
 			position = rigidbody.getParent().getTransform().getPosition()
 			rigidbody.getParent().getTransform().setPosition(Vector2f(round(position.x + rigidbody.velocity.x * deltaTime),round(position.y + rigidbody.velocity.y * deltaTime)))
@@ -143,6 +169,8 @@ try
 		endTime = SDL_GetPerformanceCounter()
 		elapsedMS = (endTime - startTime) / SDL_GetPerformanceFrequency() * 1000.0
 		targetFrameTime = 1000/windowRefreshRate
+
+        x = 0
 		if elapsedMS < targetFrameTime
 			SDL_Delay(round(targetFrameTime - elapsedMS))
 		end
