@@ -1,7 +1,9 @@
 # ref: https://www.geeksforgeeks.org/sdl-library-in-c-c-with-examples/
 using SimpleDirectMediaLayer.LibSDL2
 include("Sprite.jl")
+include("Collider.jl")
 include("Entity.jl")
+include("Enums.jl")
 include("Input/Input.jl")
 include("Math/Vector2f.jl")
 include("RenderWindow.jl")
@@ -23,6 +25,10 @@ println(windowRefreshRate)
 catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
+colliders = [
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+]
 sprites = [
     Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
     Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
@@ -34,10 +40,10 @@ rigidbodies = [
 ]
 
 entities = [
-    Entity(Transform(),sprites[1], C_NULL, rigidbodies[1])
-    Entity(Transform(Vector2f(0, 650), Vector2f(), 0.0),sprites[2], C_NULL, C_NULL)
-    Entity(Transform(Vector2f(64, 650), Vector2f(), 0.0),sprites[3], C_NULL, C_NULL)
-    Entity(Transform(Vector2f(128, 650), Vector2f(), 0.0),sprites[4], C_NULL, C_NULL)
+    Entity("player", Transform(),sprites[1], colliders[1], rigidbodies[1]) # playerEntity
+    Entity("tile0", Transform(Vector2f(0, 650), Vector2f(), 0.0),sprites[2], colliders[2], C_NULL) 
+    Entity("tile1", Transform(Vector2f(64, 650), Vector2f(), 0.0),sprites[3], C_NULL, C_NULL)
+    Entity("tile2", Transform(Vector2f(128, 650), Vector2f(), 0.0),sprites[4], C_NULL, C_NULL)
     ]
 	
 
@@ -88,6 +94,16 @@ try
 		#Physics
 		currentPhysicsTime = SDL_GetTicks()
 		
+        #Only check the player against other colliders
+        for colliderB in colliders
+            if colliders[1] != colliderB
+                if checkCollision(colliders[1], colliderB) == Bottom::CollisionDirection
+                    rigidbodies[1].setVelocity(Vector2f())
+                end
+            end
+        end    
+
+
 		deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
 		for rigidbody in rigidbodies
 			position = rigidbody.getParent().getTransform().getPosition()
@@ -108,7 +124,7 @@ try
         for entity in entities
             entity.update()
         end
-       # window.render(playerEntity)
+
  		for sprite in sprites
 			deltaTime = (currentRenderTime  - sprite.getLastUpdate()) / 1000.0
 			framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))

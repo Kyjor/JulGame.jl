@@ -8,10 +8,12 @@ mutable struct Entity
     sprite
     collider
     rigidbody
+    name
 
-    function Entity(transform::Transform = Transform(), sprite = C_NULL, collider = C_NULL, rigidbody = C_NULL)
+    function Entity(name, transform::Transform = Transform(), sprite = C_NULL, collider = C_NULL, rigidbody = C_NULL)
         this = new()
 
+        this.name = name
         this.transform = transform
         this.sprite = sprite
         if this.sprite != C_NULL
@@ -19,6 +21,9 @@ mutable struct Entity
         end
             
         this.collider = collider
+        if this.collider != C_NULL
+            this.collider.setParent(this)
+        end
         this.rigidbody = rigidbody
         if this.rigidbody != C_NULL
             this.rigidbody.setParent(this)
@@ -30,7 +35,11 @@ mutable struct Entity
 end
 
 function Base.getproperty(this::Entity, s::Symbol)
-    if s == :getTransform
+    if s == :getName
+        function()
+            return this.name
+        end
+    elseif s == :getTransform
         function()
             return this.transform
         end
