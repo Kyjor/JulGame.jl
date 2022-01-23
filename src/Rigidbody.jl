@@ -1,6 +1,5 @@
 ﻿__precompile__()
 include("Math/Vector2f.jl")
-include("Entity.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
@@ -17,7 +16,7 @@ mutable struct Rigidbody
         
         this.mass = mass
         this.offset = offset
-        this.velocity = Vector2f(0.0, 1.0)
+        this.velocity = Vector2f(0.0, 250.0)
         return this
     end
 end

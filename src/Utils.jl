@@ -36,24 +36,33 @@ function checkCollision(colliderA::Collider, colliderB::Collider)
     depthRight = 0.0
     depthLeft = 0.0
     if bottomA <= topB
-        return None::CollisionDirection
+        dist = topB - bottomA 
+        below = dist == 0.0 && rightA > leftB && leftA < rightB
+        #println(below)
+        return (below ? Below::ColliderLocation : None::CollisionDirection, dist)
     elseif bottomA > topB
         depthBottom = bottomA - topB
     end
     if topA >= bottomB
-        return None::CollisionDirection
+        dist = topA - bottomB
+        above = dist == 0.0 && rightA > leftB && leftA < rightB
+        return (above ? Above::ColliderLocation : None::CollisionDirection, dist)
     elseif topA < bottomB
         depthTop = bottomB - topA
     end
 
     if rightA <= leftB
-        return None::CollisionDirection
+        dist = leftB - rightA
+        left = dist == 0.0 && rightA > leftB && leftA < rightB
+        return (left ? LeftSide::ColliderLocation : None::CollisionDirection, dist)
     elseif rightA > leftB
         depthRight = rightA - leftB
     end
     
     if leftA >= rightB
-        return None::CollisionDirection
+        dist = leftA - rightB
+        right = dist == 0.0 && rightA > leftB && leftA < rightB
+        return (right == 0.0 ? RightSide::ColliderLocation : None::CollisionDirection, dist)
     elseif leftA < rightB
         depthLeft = rightB - leftA
     end
@@ -61,17 +70,17 @@ function checkCollision(colliderA::Collider, colliderB::Collider)
     #If none of the sides from A are outside B
     collisionSide = min(depthBottom, depthTop, depthLeft, depthRight)
     if collisionSide == depthBottom
-        println("Collision from below")
-        return Bottom::CollisionDirection
+        #println("Collision from below")
+        return (Bottom::CollisionDirection, collisionSide)
     elseif collisionSide == depthTop
-        println("Collision from above")
-        return Top::CollisionDirection
+        #println("Collision from above")
+        return (Top::CollisionDirection, collisionSide)
     elseif collisionSide == depthLeft
-        println("Collision from the left")
-        return Left::CollisionDirection
+        #println("Collision from the left")
+        return (Left::CollisionDirection, collisionSide)
     elseif collisionSide == depthRight
-        println("Collision from the right")
-        return Right::CollisionDirection
+        #println("Collision from the right")
+        return (Right::CollisionDirection, collisionSide)
     end 
     
     throw

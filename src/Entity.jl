@@ -1,5 +1,8 @@
 __precompile__()
 include("Math/Vector2f.jl")
+include("Collider.jl")
+include("Rigidbody.jl")
+include("Sprite.jl")
 include("Transform.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
@@ -8,9 +11,18 @@ mutable struct Entity
     sprite
     collider
     rigidbody
-    name
+    name::String
 
-    function Entity(name, transform::Transform = Transform(), sprite = C_NULL, collider = C_NULL, rigidbody = C_NULL)
+    function Entity(name)
+        this = new()
+
+        this.name = name
+        this.transform = Transform()
+
+        return this
+    end
+
+    function Entity(name, transform::Transform, sprite, collider, rigidbody)
         this = new()
 
         this.name = name
@@ -54,6 +66,25 @@ function Base.getproperty(this::Entity, s::Symbol)
     elseif s == :getRigidbody
         function()
            return this.rigidbody
+        end
+    elseif s == :addComponent
+        function(component)
+            println(string("Adding ", typeof(component), " to entity named " ,this.name))
+           if typeof(component) <: Transform
+            this.transform = component
+            this.transform.setParent(this)
+           elseif typeof(component) <: Sprite
+            this.sprite = component
+            this.sprite.setParent(this)
+           elseif typeof(component) <: Collider
+            this.collider = component
+            this.collider.setParent(this)
+           elseif typeof(component) <: Rigidbody
+            this.rigidbody = component
+            this.rigidbody.setParent(this)
+           else
+            println("Invalid type") 
+           end 
         end
     elseif s == :update
         function()
