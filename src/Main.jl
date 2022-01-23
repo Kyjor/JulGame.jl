@@ -28,9 +28,27 @@ input = Input()
 colliders = [
 	Collider(Vector2f(64, 64), Vector2f(), "none")
 	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(64, 64), Vector2f(), "none")
 ]
 sprites = [
     Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
     Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
     Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
     Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
@@ -40,10 +58,18 @@ rigidbodies = [
 ]
 
 entities = [
-    Entity("player", Transform(),sprites[1], colliders[1], rigidbodies[1]) # playerEntity
+    Entity("player", Transform(Vector2f(0, 100), Vector2f(), 0.0),sprites[1], colliders[1], rigidbodies[1]) # playerEntity
     Entity("tile0", Transform(Vector2f(0, 650), Vector2f(), 0.0),sprites[2], colliders[2], C_NULL) 
-    Entity("tile1", Transform(Vector2f(64, 650), Vector2f(), 0.0),sprites[3], C_NULL, C_NULL)
-    Entity("tile2", Transform(Vector2f(128, 650), Vector2f(), 0.0),sprites[4], C_NULL, C_NULL)
+    Entity("tile1", Transform(Vector2f(64, 650), Vector2f(), 0.0),sprites[3], colliders[3], C_NULL)
+    Entity("tile2", Transform(Vector2f(128, 650), Vector2f(), 0.0),sprites[4], colliders[4], C_NULL)
+    Entity("tile3", Transform(Vector2f(192, 650), Vector2f(), 0.0),sprites[5], colliders[5], C_NULL)
+    Entity("tile4", Transform(Vector2f(256, 650), Vector2f(), 0.0),sprites[6], colliders[6], C_NULL)
+    Entity("tile5", Transform(Vector2f(320, 650), Vector2f(), 0.0),sprites[7], colliders[7], C_NULL)
+    Entity("tile6", Transform(Vector2f(384, 650), Vector2f(), 0.0),sprites[8], colliders[8], C_NULL)
+    Entity("tile7", Transform(Vector2f(448, 650), Vector2f(), 0.0),sprites[9], colliders[9], C_NULL)
+    Entity("tile8", Transform(Vector2f(512, 650), Vector2f(), 0.0),sprites[10], colliders[10], C_NULL)
+    Entity("tile9", Transform(Vector2f(576, 650), Vector2f(), 0.0),sprites[11], colliders[11], C_NULL)
+    Entity("tile10", Transform(Vector2f(640, 650), Vector2f(), 0.0),sprites[12], colliders[12], C_NULL)
     ]
 	
 
@@ -56,11 +82,13 @@ try
      y = entities[1].getTransform().getPosition().y
 
     close = false
-    speed = 300
+    speed = 250
+    gravity = 500
     timeStep = 0.01
     startTime = 0.0
 	totalFrames = 0
-	
+	wasGrounded = false
+
 	#animation vars
 	animatedFPS = 12.0
 	
@@ -79,70 +107,84 @@ try
         end
         
         scan_code = input.scan_code
+
         if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
             y -= speed / 30
         elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-            x = -1
+            x = -speed
         elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
             y += speed / 30
         elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-            x = 1
+            x = speed
+            println("left")
+        elseif gravity == 500 && scan_code == SDL_SCANCODE_SPACE
+            println("space")
+            gravity = -500
+        else
+            #nothing
         end
-        input.scan_code = nothing
-        # SDL_PumpEvents()
-        # event_ref = Ref{Int32}()
-        # keystate = SDL_GetKeyboardState(C_NULL)
-        # test = Base.unsafe_load(keystate)
-        # println(test)
-        # #println(SDL_SCANCODE_RETURN)
 
-        # #continuous-response keys
-        # if keystate == SDL_SCANCODE_LEFT
-        #     println("left")
-        # end
-        # if keystate == SDL_SCANCODE_RIGHT
-        #     println("right")
-        # end
-        # if keystate == SDL_SCANCODE_UP
-        #     println("up")
-        # end
-        # if keystate == SDL_SCANCODE_DOWN
-        #     println("down")
-        # end
+        keyup = input.keyup
+        if keyup == SDL_SCANCODE_W || keyup == SDL_SCANCODE_UP
+            #y -= speed / 30
+        elseif x == -speed && (keyup == SDL_SCANCODE_A || keyup == SDL_SCANCODE_LEFT)            
+            x = 0
+        elseif keyup == SDL_SCANCODE_S || keyup == SDL_SCANCODE_DOWN
+            # y += speed / 30
+        elseif x == speed && (keyup == SDL_SCANCODE_D || keyup == SDL_SCANCODE_RIGHT)
+            x = 0
+        elseif keyup == SDL_SCANCODE_SPACE
+            gravity = 500
+        end
+
+        input.scan_code = nothing
+        input.keyup = nothing
+       
         #endregion ============== Input
 			
 		#Physics
 		currentPhysicsTime = SDL_GetTicks()
 		
+        grounded = false
+        counter = 1
         #Only check the player against other colliders
         for colliderB in colliders
             if colliders[1] != colliderB
                 collision = checkCollision(colliders[1], colliderB)
                 if collision == Bottom::CollisionDirection
-                    rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
-                elseif collision == None::CollisionDirection
-                    rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 1))
+                    #println("grounded")
+                    grounded = true
+                    break
+                elseif counter == length(colliders) && collision != Bottom::CollisionDirection # If we're on the last collider to check and we haven't collided with anything yet
+                    #println("not grounded")
+                    grounded = false
                 end
             end
+            counter += 1
         end    
 
+        println(gravity)
+        if grounded && !wasGrounded
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
+            #println("landed")
+        elseif grounded && gravity == -500
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
+        elseif !grounded
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == 500 ? gravity : rigidbodies[1].getVelocity().y))
+        end
+        
+        wasGrounded = grounded
 
 		deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
-
+        #println(deltaTime)
         rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
 
 		for rigidbody in rigidbodies
 			position = rigidbody.getParent().getTransform().getPosition()
 			rigidbody.getParent().getTransform().setPosition(Vector2f(round(position.x + rigidbody.velocity.x * deltaTime),round(position.y + rigidbody.velocity.y * deltaTime)))
 		end
-        
-        #alpha = accumulator / timeStep
-        
-        x + w > window.width && (x = window.width - w;)
-        x < 0 && (x = 0;)
-        y + h > window.height && (y = window.height - h;)
-        y < 0 && (y = 0;)
-# 		entities[1].getTransform().setPosition(Vector2f(x,y))
+                
+        lastPhysicsTime =  SDL_GetTicks()
 		#Rendering
 		currentRenderTime = SDL_GetTicks()
         window.clear()
@@ -170,7 +212,7 @@ try
 		elapsedMS = (endTime - startTime) / SDL_GetPerformanceFrequency() * 1000.0
 		targetFrameTime = 1000/windowRefreshRate
 
-        x = 0
+        #x = 0
 		if elapsedMS < targetFrameTime
 			SDL_Delay(round(targetFrameTime - elapsedMS))
 		end

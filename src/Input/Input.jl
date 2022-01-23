@@ -4,6 +4,7 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Input
     quit::Bool
     scan_code
+    keyup
     mouseX::Integer
     mouseY::Integer
     
@@ -11,6 +12,7 @@ mutable struct Input
         this = new()
         this.quit = false
         this.scan_code = nothing
+        this.keyup = nothing
         this.mouseX = 0
         this.mouseY = 0
         
@@ -33,9 +35,11 @@ function Base.getproperty(this::Input, s::Symbol)
                 if evt_ty == SDL_QUIT
                     this.quit = true
                     return -1
-                    break
                 elseif evt_ty == SDL_KEYDOWN
                     this.scan_code = evt.key.keysym.scancode
+                    break
+                elseif evt_ty == SDL_KEYUP
+                    this.keyup = evt.key.keysym.scancode
                     break
                 else
                     this.scan_code = nothing

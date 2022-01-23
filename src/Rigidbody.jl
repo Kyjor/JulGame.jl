@@ -17,7 +17,7 @@ mutable struct Rigidbody
         
         this.mass = mass
         this.offset = offset
-        this.velocity = Vector2f(0.0, 1.0)
+        this.velocity = Vector2f(0.0, 250.0)
         return this
     end
 end

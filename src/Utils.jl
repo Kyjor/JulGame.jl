@@ -61,16 +61,16 @@ function checkCollision(colliderA::Collider, colliderB::Collider)
     #If none of the sides from A are outside B
     collisionSide = min(depthBottom, depthTop, depthLeft, depthRight)
     if collisionSide == depthBottom
-        println("Collision from below")
+        #println("Collision from below")
         return Bottom::CollisionDirection
     elseif collisionSide == depthTop
-        println("Collision from above")
+        #println("Collision from above")
         return Top::CollisionDirection
     elseif collisionSide == depthLeft
-        println("Collision from the left")
+        #println("Collision from the left")
         return Left::CollisionDirection
     elseif collisionSide == depthRight
-        println("Collision from the right")
+        #println("Collision from the right")
         return Right::CollisionDirection
     end 
     
