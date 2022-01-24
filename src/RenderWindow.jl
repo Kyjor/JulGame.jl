@@ -55,13 +55,6 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
         function()
             SDL_RenderClear(this.renderer)
         end
-    elseif s == :render
-        function(entity::Entity)
-            src = SDL_Rect(entity.getCurrentFrame().x, entity.getCurrentFrame().y, entity.getCurrentFrame().w, entity.getCurrentFrame().h)
-            dst = SDL_Rect(entity.getPosition().x * 4, entity.getPosition().y * 4, entity.getCurrentFrame().w * 4, entity.getCurrentFrame().h * 4)
-        
-            SDL_RenderCopy(this.renderer, entity.getTexture(), Ref(src), Ref(dst))
-        end
     elseif s == :display
         function()
             SDL_RenderPresent(this.renderer)

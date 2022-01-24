@@ -19,7 +19,7 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 TTF_Init()
 
 
-window = Base.invokelatest(RenderWindow("GAME v1.0", 1280, 720))
+window = RenderWindow("GAME v1.0", 1280, 720)
 renderer = window.getRenderer()
 windowRefreshRate = window.getRefreshRate()
 println(windowRefreshRate)
