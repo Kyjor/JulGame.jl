@@ -1,3 +1,4 @@
+__precompile__()
 module Renderer
     include("Math/Vector2f.jl")
     include("Entity.jl")

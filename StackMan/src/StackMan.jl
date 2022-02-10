@@ -1,8 +1,7 @@
 module StackMan
 using SimpleDirectMediaLayer.LibSDL2
-    function julia_main()
-        using Renderer
-        include("Sprite.jl")
+include("RenderWindow.jl")
+include("Sprite.jl")
         include("Collider.jl")
         include("Entity.jl")
         include("Enums.jl")
@@ -11,6 +10,9 @@ using SimpleDirectMediaLayer.LibSDL2
         include("Rigidbody.jl")
         include("Transform.jl")
         include("Utils.jl")
+import Renderer
+    function julia_main()
+        
 
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 16)
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)

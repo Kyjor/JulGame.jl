@@ -22,6 +22,49 @@ mutable struct Entity
         return this
     end
 
+    function Entity(name, transform::Transform)
+        this = new()
+
+        this.name = name
+        this.transform = transform
+        this.sprite = C_NULL
+        this.collider = C_NULL
+        this.rigidbody = C_NULL
+        return this
+    end
+
+    function Entity(name, transform::Transform, sprite)
+        this = new()
+
+        this.name = name
+        this.transform = transform
+        this.sprite = sprite
+        if this.sprite != C_NULL
+            this.sprite.setParent(this)
+        end
+        this.collider = C_NULL
+        this.rigidbody = C_NULL
+
+        return this
+    end
+
+    function Entity(name, transform::Transform, sprite, collider)
+        this = new()
+
+        this.name = name
+        this.transform = transform
+        this.sprite = sprite
+        this.collider = collider
+        if this.collider != C_NULL
+            this.collider.setParent(this)
+        end
+        if this.sprite != C_NULL
+            this.sprite.setParent(this)
+        end
+        this.rigidbody = C_NULL
+        return this
+    end
+
     function Entity(name, transform::Transform, sprite, collider, rigidbody)
         this = new()
 

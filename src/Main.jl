@@ -10,6 +10,7 @@ include("RenderWindow.jl")
 include("Rigidbody.jl")
 include("Transform.jl")
 include("Utils.jl")
+include("Constants.jl")
 
 SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 16)
 SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
@@ -19,7 +20,7 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 TTF_Init()
 
 
-window = Base.invokelatest(RenderWindow("GAME v1.0", 1280, 720))
+window = RenderWindow("GAME v1.0", 1280, 720)
 renderer = window.getRenderer()
 windowRefreshRate = window.getRefreshRate()
 println(windowRefreshRate)
@@ -27,76 +28,38 @@ catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
 grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
 input = Input()
 colliders = [
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
-	Collider(Vector2f(64, 64), Vector2f(), "none")
+	Collider(Vector2f(1, 1), Vector2f(), "none")
 ]
 sprites = [
-    Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer),
-	]
+    Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer, 16)
+    ]
 rigidbodies = [
 	Rigidbody(1, 0)
 ]
 
-entities = [
-    Entity("player", Transform(Vector2f(0, 100)), sprites[1], colliders[1], rigidbodies[1]) # playerEntity
-    Entity("tile0", Transform(Vector2f(0, 650)), sprites[2], colliders[2], C_NULL) 
-    Entity("tile1", Transform(Vector2f(64, 650)), sprites[3], colliders[3], C_NULL)
-    Entity("tile2", Transform(Vector2f(128, 650)), sprites[4], colliders[4], C_NULL)
-    Entity("tile3", Transform(Vector2f(192, 650)), sprites[5], colliders[5], C_NULL)
-    Entity("tile4", Transform(Vector2f(256, 650)), sprites[6], colliders[6], C_NULL)
-    Entity("tile5", Transform(Vector2f(320, 650)), sprites[7], colliders[7], C_NULL)
-    Entity("tile6", Transform(Vector2f(384, 650)), sprites[8], colliders[8], C_NULL)
-    Entity("tile7", Transform(Vector2f(448, 650)), sprites[9], colliders[9], C_NULL)
-    Entity("tile8", Transform(Vector2f(512, 650)), sprites[10], colliders[10], C_NULL)
-    Entity("tile9", Transform(Vector2f(576, 650)), sprites[11], colliders[11], C_NULL)
-    Entity("tile10", Transform(Vector2f(640, 650)), sprites[12], colliders[12], C_NULL)
-    Entity("tile11", Transform(Vector2f(640, 586)), sprites[13], colliders[13], C_NULL)
-    Entity("tile12", Transform(Vector2f(640, 458)), sprites[14], colliders[14], C_NULL)
-    Entity("tile13", Transform(Vector2f(0, 586)), sprites[15], colliders[15], C_NULL)
-    ]
+entities = [Entity("player", Transform(Vector2f(0, 2)), sprites[1], colliders[1], rigidbodies[1])]
 
-
+for i in 1:30
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "none")
+    newSprite = Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer, 32)
+    newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), newSprite, newCollider)
+    push!(entities, newEntity)
+    push!(colliders, newCollider)
+    push!(sprites, newSprite)
+end
 	
-entities[15].addComponent(Vector2f())
 # playerEntity = Entity(Vector2f(100,100), catTexture)
 w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
 
 try
     w, h = w_ref[], h_ref[]
-    x = entities[1].getTransform().getPosition().x
+    x::Float64 = entities[1].getTransform().getPosition().x
     y = entities[1].getTransform().getPosition().y
     
     DEBUG = false
     close = false
-    speed = 250
-    gravity = 500
+    speed = 200
+    gravity = GRAVITY
     timeStep = 0.01
     startTime = 0.0
 	totalFrames = 0
@@ -130,9 +93,9 @@ try
             y += speed / 30
         elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
             x = speed
-        elseif gravity == 500 && scan_code == SDL_SCANCODE_SPACE
+        elseif gravity == GRAVITY && scan_code == SDL_SCANCODE_SPACE
             println("space")
-            gravity = -500
+            gravity = -GRAVITY
         elseif scan_code == SDL_SCANCODE_F3 
             println("debug toggled")
             DEBUG = !DEBUG
@@ -150,7 +113,7 @@ try
         elseif x == speed && (keyup == SDL_SCANCODE_D || keyup == SDL_SCANCODE_RIGHT)
             x = 0
         elseif keyup == SDL_SCANCODE_SPACE
-            gravity = 500
+            gravity = GRAVITY
         end
 
         input.scan_code = nothing
@@ -204,10 +167,10 @@ try
         if grounded && !wasGrounded
             rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
             #println("landed")
-        elseif grounded && gravity == -500
+        elseif grounded && gravity == -GRAVITY
             rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
         elseif !grounded
-            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == 500 ? gravity : rigidbodies[1].getVelocity().y))
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == GRAVITY ? gravity : rigidbodies[1].getVelocity().y))
         end
         
         wasGrounded = grounded
@@ -216,9 +179,9 @@ try
         #println(deltaTime)
         rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
 
-		for rigidbody in rigidbodies
-			position = rigidbody.getParent().getTransform().getPosition()
-			rigidbody.getParent().getTransform().setPosition(Vector2f(round(position.x + rigidbody.velocity.x * deltaTime),round(position.y + rigidbody.velocity.y * deltaTime)))
+        for rigidbody in rigidbodies
+			transform = rigidbody.getParent().getTransform()
+			transform.setPosition(Vector2f(transform.getPosition().x  + rigidbody.velocity.x / SCALE_UNITS * deltaTime, transform.getPosition().y  + rigidbody.velocity.y / SCALE_UNITS * deltaTime))
 		end
                 
         lastPhysicsTime =  SDL_GetTicks()
@@ -232,12 +195,14 @@ try
         for entity in entities
             entity.update()
             if DEBUG && entity.collider != C_NULL
+                pos = entity.getTransform().getPosition()
+                colSize = entity.getCollider().getSize()
                 SDL_RenderDrawLines(renderer, [
-                    SDL_Point(entity.getTransform().getPosition().x, entity.getTransform().getPosition().y), 
-                    SDL_Point(entity.getTransform().getPosition().x + entity.getCollider().getSize().x, entity.getTransform().getPosition().y),
-                    SDL_Point(entity.getTransform().getPosition().x + entity.getCollider().getSize().x, entity.getTransform().getPosition().y + entity.getCollider().getSize().y), 
-                    SDL_Point(entity.getTransform().getPosition().x, entity.getTransform().getPosition().y + entity.getCollider().getSize().y), 
-                    SDL_Point(entity.getTransform().getPosition().x, entity.getTransform().getPosition().y)], 5)
+                    SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS)), 
+                    SDL_Point(round(pos.x * SCALE_UNITS + colSize.x * SCALE_UNITS), round(pos.y * SCALE_UNITS)),
+                    SDL_Point(round(pos.x * SCALE_UNITS + colSize.x * SCALE_UNITS), round(pos.y * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
+                    SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
+                    SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS))], 5)
             end
         end
 
@@ -249,7 +214,7 @@ try
 				sprite.setLastFrame(sprite.getLastFrame() % sprite.getFrameCount())
 				sprite.setLastUpdate(currentRenderTime)
         	end
-			sprite.draw(Ref(SDL_Rect(sprite.getLastFrame() * 16,0,16,16)), Ref(SDL_Rect(64,64,64,64)))
+			sprite.draw(Ref(SDL_Rect(sprite.getLastFrame() * 16,0,16,16)))
  		end
 		
         if DEBUG
