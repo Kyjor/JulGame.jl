@@ -5,6 +5,7 @@ include("Constants.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Sprite
+    isFlipped
     frameCount
     image
     lastFrame
@@ -23,6 +24,7 @@ mutable struct Sprite
     function Sprite(frameCount, image, renderer, pixelsPerUnit)
         this = new()
         
+        this.isFlipped = false
         this.frameCount = frameCount
         this.image = IMG_Load(image)
         this.lastFrame = 0
@@ -34,6 +36,7 @@ mutable struct Sprite
         this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
         this.widthX = 1.0 
         this.widthY = 1.0
+        println(this.isFlipped)
 
         return this
     end
@@ -49,7 +52,13 @@ function Base.getproperty(this::Sprite, s::Symbol)
             # println("y: ", parentTransform.getPosition().y * SCALE_UNITS)
             # println("w: ", 1 * parentTransform.getScale().x * SCALE_UNITS)
             # println("h: ", 1 * parentTransform.getScale().y * SCALE_UNITS)
-            SDL_RenderCopy(this.renderer, this.texture, src, Ref(SDL_Rect(convert(Int32,round(parentTransform.getPosition().x * SCALE_UNITS)), convert(Int32,round(parentTransform.getPosition().y * SCALE_UNITS)),convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))))
+            flip = SDL_FLIP_NONE
+            # println(this.flip == false)
+            # if this.flip
+            #     flip = SDL_FLIP_HORIZONTAL
+            # end
+            
+            SDL_RenderCopyEx(this.renderer, this.texture, src, Ref(SDL_Rect(convert(Int32,round(parentTransform.getPosition().x * SCALE_UNITS)), convert(Int32,round(parentTransform.getPosition().y * SCALE_UNITS)),convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))), 0.0, C_NULL, this.isFlipped ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE)
             #SDL_RenderCopy(this.renderer, this.texture, src, Ref(SDL_Rect(this.parent.getTransform().getPosition().x,this.parent.getTransform().getPosition().y,64,64)))
         end
     elseif s == :getLastFrame
@@ -71,6 +80,10 @@ function Base.getproperty(this::Sprite, s::Symbol)
     elseif s == :getFrameCount
         function()
             return this.frameCount
+        end
+    elseif s == :flip
+        function()
+            this.isFlipped = !this.isFlipped
         end
     elseif s == :update
         function()

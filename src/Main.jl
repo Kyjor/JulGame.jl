@@ -29,15 +29,20 @@ grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_gra
 input = Input()
 colliders = [
 	Collider(Vector2f(1, 1), Vector2f(), "none")
+	Collider(Vector2f(1, 1), Vector2f(), "none")
 ]
 sprites = [
     Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), renderer, 16)
+    Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer, 32)
     ]
 rigidbodies = [
 	Rigidbody(1, 0)
 ]
 
-entities = [Entity("player", Transform(Vector2f(0, 2)), sprites[1], colliders[1], rigidbodies[1])]
+entities = [
+    Entity("player", Transform(Vector2f(0, 2)), sprites[1], colliders[1], rigidbodies[1]),
+    Entity(string("tile", 1), Transform(Vector2f(1, 9)), sprites[2], colliders[2])
+    ]
 
 for i in 1:30
     newCollider = Collider(Vector2f(1, 1), Vector2f(), "none")
@@ -50,6 +55,8 @@ end
 	
 # playerEntity = Entity(Vector2f(100,100), catTexture)
 w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
+
+@enum PlayerState Idle=1 Run=2 Jump=3
 
 try
     w, h = w_ref[], h_ref[]
@@ -65,6 +72,10 @@ try
 	totalFrames = 0
     grounded = false
     wasGrounded = false
+    isFacingRight = true
+    flipPlayer = false 
+
+    playerState = Idle::PlayerState
 
 	#animation vars
 	animatedFPS = 12.0
@@ -89,10 +100,18 @@ try
             y -= speed / 30
         elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
             x = -speed
+            if isFacingRight
+                isFacingRight = false
+                flipPlayer = true
+            end
         elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
             y += speed / 30
         elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
             x = speed
+            if !isFacingRight
+                isFacingRight = true
+                flipPlayer = true
+            end
         elseif gravity == GRAVITY && scan_code == SDL_SCANCODE_SPACE
             println("space")
             gravity = -GRAVITY
@@ -124,8 +143,31 @@ try
 		#Physics
 		currentPhysicsTime = SDL_GetTicks()
 		
+        
+        #println(gravity)
+        if grounded && !wasGrounded
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
+            #println("landed")
+        elseif grounded && gravity == -GRAVITY
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
+        elseif !grounded
+            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == GRAVITY ? gravity : rigidbodies[1].getVelocity().y))
+        end
+        
+        wasGrounded = grounded
+        
+		deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
+        #println(deltaTime)
+        rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
+        
+        for rigidbody in rigidbodies
+			transform = rigidbody.getParent().getTransform()
+			transform.setPosition(Vector2f(transform.getPosition().x  + rigidbody.velocity.x / SCALE_UNITS * deltaTime, transform.getPosition().y  + rigidbody.velocity.y / SCALE_UNITS * deltaTime))
+		end
+        
         grounded = false
         counter = 1
+
         #Only check the player against other colliders
         for colliderB in colliders
         #TODO: Skip any out of a certain range of the player. This will prevent a bunch of unnecessary collision checks
@@ -163,27 +205,6 @@ try
             counter += 1
         end    
 
-        #println(gravity)
-        if grounded && !wasGrounded
-            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
-            #println("landed")
-        elseif grounded && gravity == -GRAVITY
-            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
-        elseif !grounded
-            rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == GRAVITY ? gravity : rigidbodies[1].getVelocity().y))
-        end
-        
-        wasGrounded = grounded
-
-		deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
-        #println(deltaTime)
-        rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
-
-        for rigidbody in rigidbodies
-			transform = rigidbody.getParent().getTransform()
-			transform.setPosition(Vector2f(transform.getPosition().x  + rigidbody.velocity.x / SCALE_UNITS * deltaTime, transform.getPosition().y  + rigidbody.velocity.y / SCALE_UNITS * deltaTime))
-		end
-                
         lastPhysicsTime =  SDL_GetTicks()
 		#Rendering
 		currentRenderTime = SDL_GetTicks()
@@ -206,6 +227,10 @@ try
             end
         end
 
+        if flipPlayer
+            sprites[1].flip()
+            flipPlayer = false
+        end
  		for sprite in sprites
 			deltaTime = (currentRenderTime  - sprite.getLastUpdate()) / 1000.0
 			framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))
