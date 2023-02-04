@@ -19,12 +19,12 @@ SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
 TTF_Init()
 
 
-window = RenderWindow("GAME v1.0", 1280, 720)
-renderer = window.getRenderer()
-windowRefreshRate = window.getRefreshRate()
-println(windowRefreshRate)
-catTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "cat.png"))
-grassTexture = window.loadTexture(joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"))
+window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
+SDL_SetWindowResizable(window, SDL_TRUE)
+renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
+#windowRefreshRate = window.getRefreshRate()
+#println(windowRefreshRate)
+
 input = Input()
 colliders = [
 	Collider(Vector2f(1, 1), Vector2f(), "none")
@@ -216,7 +216,8 @@ try
 		#Rendering
 		currentRenderTime = SDL_GetTicks()
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        window.clear()
+		SDL_RenderClear(renderer)
+        #window.clear()
 
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 
@@ -255,20 +256,19 @@ try
             window.drawText(string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0)), 20, 20, 0, 255, 0, 24)
         end
         
-
-
-        window.display()
+        #window.display()
+		SDL_RenderPresent(renderer)
 		endTime = SDL_GetPerformanceCounter()
 		elapsedMS = (endTime - startTime) / SDL_GetPerformanceFrequency() * 1000.0
-		targetFrameTime = 1000/windowRefreshRate
+		#targetFrameTime = 1000/windowRefreshRate
 
         #x = 0
-		if elapsedMS < targetFrameTime
-			SDL_Delay(round(targetFrameTime - elapsedMS))
-		end
+# 		if elapsedMS < targetFrameTime
+# 			#SDL_Delay(round(targetFrameTime - elapsedMS))
+# 		end
     end
 finally
-    TTF_Quit()
-    window.cleanUp()
+    #TTF_Quit()
+    #window.cleanUp()
     SDL_Quit()
 end

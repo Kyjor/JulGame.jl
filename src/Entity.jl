@@ -12,7 +12,7 @@ mutable struct Entity
     
     function Entity(name)
         this = new()
-
+        
         this.name = name
         this.components = []
         this.addComponent(Transform())
@@ -22,7 +22,7 @@ mutable struct Entity
 
     function Entity(name, transform::Transform)
         this = new()
-
+        println("trying to add entity")
         this.name = name
         this.components = []
         this.addComponent(transform)

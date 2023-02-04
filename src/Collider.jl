@@ -15,7 +15,8 @@ mutable struct Collider
         this.size = size
         this.offset = offset
         this.tag = tag
-
+        println("get size ")
+        println(this.getSize())
         return this
     end
 end
