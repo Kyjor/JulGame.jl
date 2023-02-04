@@ -1,1 +1,0 @@
-const SCALE_UNITS = 10

@@ -1,7 +1,0 @@
-name = "StackMan"
-uuid = "ee5bca35-05a4-4de2-8b91-44595d5c09ed"
-authors = ["Kyjor <kyjordev@gmail.com>"]
-version = "0.0.1"
-
-[deps]
-SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
