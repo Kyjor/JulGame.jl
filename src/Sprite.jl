@@ -87,10 +87,11 @@ function Base.getproperty(this::Sprite, s::Symbol)
         end
     elseif s == :update
         function()
-            #return this.frameCount
+            this.draw(Ref(SDL_Rect(this.getLastFrame() * 16,0,16,16)))
         end
    elseif s == :setParent
         function(parent)
+            println("set parent")
             this.parent = parent
         end
     else

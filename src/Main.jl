@@ -1,4 +1,3 @@
-# ref: https://www.geeksforgeeks.org/sdl-library-in-c-c-with-examples/
 using SimpleDirectMediaLayer.LibSDL2
 include("Sprite.jl")
 include("Collider.jl")
@@ -47,10 +46,11 @@ entities = [
 for i in 1:30
     newCollider = Collider(Vector2f(1, 1), Vector2f(), "none")
     newSprite = Sprite(1, joinpath(@__DIR__, "..", "assets", "ground_grass_1.png"), renderer, 32)
-    newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), newSprite, newCollider)
+    newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), newCollider)
+	newEntity.addComponent(newSprite)
     push!(entities, newEntity)
     push!(colliders, newCollider)
-    push!(sprites, newSprite)
+    # push!(sprites, newSprite)
 end
 	
 # playerEntity = Entity(Vector2f(100,100), catTexture)

@@ -8,17 +8,18 @@ using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Entity
     transform::Transform
+    name::String
     sprite
     collider
     rigidbody
-    name::String
-
+    components::Array
+    
     function Entity(name)
         this = new()
 
         this.name = name
         this.transform = Transform()
-
+        this.components = []
         return this
     end
 
@@ -27,6 +28,7 @@ mutable struct Entity
 
         this.name = name
         this.transform = transform
+        this.components = []
         this.sprite = C_NULL
         this.collider = C_NULL
         this.rigidbody = C_NULL
@@ -39,6 +41,7 @@ mutable struct Entity
         this.name = name
         this.transform = transform
         this.sprite = sprite
+        this.components = []
         if this.sprite != C_NULL
             this.sprite.setParent(this)
         end
@@ -58,9 +61,25 @@ mutable struct Entity
         if this.collider != C_NULL
             this.collider.setParent(this)
         end
+        this.components = []
         if this.sprite != C_NULL
             this.sprite.setParent(this)
         end
+        this.rigidbody = C_NULL
+        return this
+    end
+    
+     function Entity(name, transform::Transform, collider)
+        this = new()
+
+        this.name = name
+        this.transform = transform
+        this.collider = collider
+        if this.collider != C_NULL
+            this.collider.setParent(this)
+        end
+        this.components = []
+        this.sprite = C_NULL
         this.rigidbody = C_NULL
         return this
     end
@@ -71,6 +90,7 @@ mutable struct Entity
         this.name = name
         this.transform = transform
         this.sprite = sprite
+        this.components = []
         if this.sprite != C_NULL
             this.sprite.setParent(this)
         end
@@ -112,7 +132,7 @@ function Base.getproperty(this::Entity, s::Symbol)
         end
     elseif s == :addComponent
         function(component)
-            println(string("Adding ", typeof(component), " to entity named " ,this.name))
+            println(string("Adding component of type: ", typeof(component), " to entity named " ,this.name))
            if typeof(component) <: Transform
             this.transform = component
             this.transform.setParent(this)
@@ -128,14 +148,21 @@ function Base.getproperty(this::Entity, s::Symbol)
            else
             println("Invalid type") 
            end 
+           component.setParent(this)
+           push!(this.components, component)
         end
     elseif s == :update
         function()
+            for component in this.components
+               if typeof(component) <: Sprite
+                   component.update()
+               end
+           end
            if this.transform != C_NULL
                this.transform.update()
            end
-           if this.sprite != C_NULL
-               this.sprite.update()
+           if this.sprite != C_NULL || isdefined(Base, this.sprite) == false
+               # this.sprite.update()
            end
            if this.collider != C_NULL
                this.collider.update()
