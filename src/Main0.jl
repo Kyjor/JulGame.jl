@@ -32,7 +32,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			
 			#initializing
 			@assert SDL_Init(SDL_INIT_EVERYTHING) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-			TTF_Init()
+			@assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(TTF_GetError()))"
+			font = TTF_OpenFont(joinpath(@__DIR__, "..","assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 150)
 
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
 			SDL_SetWindowResizable(window, SDL_TRUE)
@@ -40,8 +41,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			for sprite in this.scene.sprites
 				sprite.injectRenderer(renderer)
 			end
-			#windowRefreshRate = window.getRefreshRate()
-			#println(windowRefreshRate)
+			
+			windowRefreshRate = 60
 			colliders = this.scene.colliders
 			sprites = this.scene.sprites
 			rigidbodies = this.scene.rigidbodies
@@ -205,7 +206,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			
 					for entity in entities
 						entity.update()
-						if DEBUG && entity.collider != C_NULL
+						if DEBUG && entity.getCollider() != C_NULL
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
 							SDL_RenderDrawLines(renderer, [
@@ -234,26 +235,28 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					
 					if DEBUG
 						# Strings to display
-						window.drawText(string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), 20, 0, 0, 255, 0, 24)
-						window.drawText(string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0)), 20, 20, 0, 255, 0, 24)
+						text = TTF_RenderText_Blended( font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), SDL_Color(0,255,0,255) )
+						text1 = TTF_RenderText_Blended( font, string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL_Color(0,255,0,255) )
+						textTexture = SDL_CreateTextureFromSurface(renderer,text)
+						textTexture1 = SDL_CreateTextureFromSurface(renderer,text1)
+						SDL_RenderCopy(renderer, textTexture, C_NULL, Ref(SDL_Rect(0,0,150,50)))
+						SDL_RenderCopy(renderer, textTexture1, C_NULL, Ref(SDL_Rect(0,50,200,50)))
 					end
-					
 			
-			
-					#window.display()
 					SDL_RenderPresent(renderer)
 					endTime = SDL_GetPerformanceCounter()
 					elapsedMS = (endTime - startTime) / SDL_GetPerformanceFrequency() * 1000.0
-					#targetFrameTime = 1000/windowRefreshRate
+					targetFrameTime = 1000/windowRefreshRate
 			
-					#x = 0
-			# 		if elapsedMS < targetFrameTime
-			# 			#SDL_Delay(round(targetFrameTime - elapsedMS))
-			# 		end
+					if elapsedMS < targetFrameTime
+    					SDL_Delay(round(targetFrameTime - elapsedMS))
+					end
 				end
 			finally
+				TTF_CloseFont( font );
 				TTF_Quit()
-				window.cleanUp()
+				SDL_DestroyRenderer(renderer)
+				SDL_DestroyWindow(window)
 				SDL_Quit()
 			end
         end
