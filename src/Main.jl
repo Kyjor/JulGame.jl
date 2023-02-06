@@ -134,10 +134,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					currentPhysicsTime = SDL_GetTicks()
 					
 					
-					#println(gravity)
 					if grounded && !wasGrounded
 						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
-						#println("landed")
 					elseif grounded && gravity == -GRAVITY
 						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
 					elseif !grounded
@@ -196,13 +194,14 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					end    
 			
 					lastPhysicsTime =  SDL_GetTicks()
+
+
 					#Rendering
 					currentRenderTime = SDL_GetTicks()
-					SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE)
+					# Clear the current render target before rendering again
 					SDL_RenderClear(renderer)
-        			#window.clear()
 			
-					SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 			
 					for entity in entities
 						entity.update()
@@ -234,13 +233,17 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					end
 					
 					if DEBUG
-						# Strings to display
+						# Stats to display
 						text = TTF_RenderText_Blended( font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), SDL_Color(0,255,0,255) )
 						text1 = TTF_RenderText_Blended( font, string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL_Color(0,255,0,255) )
 						textTexture = SDL_CreateTextureFromSurface(renderer,text)
 						textTexture1 = SDL_CreateTextureFromSurface(renderer,text1)
 						SDL_RenderCopy(renderer, textTexture, C_NULL, Ref(SDL_Rect(0,0,150,50)))
 						SDL_RenderCopy(renderer, textTexture1, C_NULL, Ref(SDL_Rect(0,50,200,50)))
+						SDL_FreeSurface(text)
+						SDL_FreeSurface(text1)
+						SDL_DestroyTexture(textTexture)
+						SDL_DestroyTexture(textTexture1)
 					end
 			
 					SDL_RenderPresent(renderer)
