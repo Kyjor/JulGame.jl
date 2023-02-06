@@ -9,6 +9,7 @@ function hireTimeInSeconds()
     return t
 end
 
+# Todo: move to a separate file specific to collisions
 function checkCollision(colliderA::Collider, colliderB::Collider)
     nameA = colliderA.getParent().getName()
     nameB = colliderB.getParent().getName()
