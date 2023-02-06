@@ -10,7 +10,7 @@ mutable struct Entity
     name::String
     components::Array
     
-    function Entity(name)
+    function Entity(name::String)
         this = new()
         
         this.name = name
@@ -20,12 +20,25 @@ mutable struct Entity
         return this
     end
 
-    function Entity(name, transform::Transform)
+    function Entity(name::String, transform::Transform)
         this = new()
         println("trying to add entity")
         this.name = name
         this.components = []
         this.addComponent(transform)
+
+        return this
+    end
+
+    function Entity(name::String, transform::Transform, components::Array)
+        this = new()
+        println("trying to add entity")
+        this.name = name
+        this.components = []
+        this.addComponent(transform)
+        for component in components
+            this.addComponent(component)
+        end
 
         return this
     end
