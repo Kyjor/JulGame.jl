@@ -6,10 +6,12 @@ function level_0()
         Collider(Vector2f(1, 1), Vector2f(), "none")
         Collider(Vector2f(1, 1), Vector2f(), "none")
     ]
+
     sprites = [
         Sprite(7, joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), 16)
         Sprite(1, joinpath(@__DIR__, "..", "assets", "images", "ground_grass_1.png"), 32)
         ]
+
     rigidbodies = [
         Rigidbody(1, 0),
     ]
@@ -28,7 +30,7 @@ function level_0()
         push!(sprites, newSprite)
     end
 
-    #Initialize scene
+    #Start game
     scene = Scene(colliders, entities, rigidbodies, sprites)
     mainLoop  = MainLoop(scene)
     mainLoop.start()

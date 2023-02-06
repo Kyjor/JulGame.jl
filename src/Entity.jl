@@ -8,7 +8,7 @@ using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Entity
     name::String
-    components::Array
+    components::Array{Any}
     
     function Entity(name::String)
         this = new()

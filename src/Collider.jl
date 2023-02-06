@@ -1,22 +1,20 @@
-__precompile__()
 include("Math/Vector2f.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Collider
     
    size::Vector2f
-   offset
+   offset::Vector2f
    parent
-   tag
+   tag::String
     
-    function Collider(size::Vector2f, offset::Vector2f, tag)
+    function Collider(size::Vector2f, offset::Vector2f, tag::String)
         this = new()
 
         this.size = size
         this.offset = offset
         this.tag = tag
-        println("get size ")
-        println(this.getSize())
+
         return this
     end
 end
@@ -43,7 +41,7 @@ function Base.getproperty(this::Collider, s::Symbol)
             return this.tag
         end
     elseif s == :setTag
-        function(tag)
+        function(tag::String)
             this.tag = tag
         end
     elseif s == :getParent
