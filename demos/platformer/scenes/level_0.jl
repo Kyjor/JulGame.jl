@@ -15,23 +15,14 @@ function level_0()
     ]
 
     entities = [
-        Entity("player", Transform(Vector2f(0, 2))),
-        Entity(string("tile", 1), Transform(Vector2f(1, 9)))
+        Entity("player", Transform(Vector2f(0, 2)), [sprites[1], colliders[1], rigidbodies[1]]),
+        Entity(string("tile", 1), Transform(Vector2f(1, 9)), [sprites[2], colliders[2]])
         ]
-    test = Entity("player", Transform(Vector2f(0, 2))),
-    entities[1].addComponent(sprites[1])
-    entities[1].addComponent(colliders[1])
-    entities[1].addComponent(rigidbodies[1])
-
-    entities[2].addComponent(sprites[2])
-    entities[2].addComponent(colliders[2])
 
     for i in 1:30
         newCollider = Collider(Vector2f(1, 1), Vector2f(), "none")
         newSprite = Sprite(1, joinpath(@__DIR__, "..", "assets", "images", "ground_grass_1.png"), 32)
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)))
-        newEntity.addComponent(newSprite)
-        newEntity.addComponent(newCollider)
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [newSprite, newCollider])
         push!(entities, newEntity)
         push!(colliders, newCollider)
         push!(sprites, newSprite)
