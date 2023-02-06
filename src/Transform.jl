@@ -1,5 +1,6 @@
 __precompile__()
 include("Math/Vector2f.jl")
+include("Constants.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Transform
@@ -21,7 +22,7 @@ mutable struct Transform
         this = new()
    
         this.position = position
-        this.scale = Vector2f()
+        this.scale = Vector2f(1.0, 1.0)
         this.rotation = 0.0
    
         return this

@@ -1,4 +1,5 @@
 ﻿include("Collider.jl")
+include("Constants.jl")
 include("Enums.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
@@ -11,18 +12,18 @@ end
 function checkCollision(colliderA::Collider, colliderB::Collider)
     nameA = colliderA.getParent().getName()
     nameB = colliderB.getParent().getName()
-    posA = colliderA.getParent().getTransform().getPosition()
-    posB = colliderB.getParent().getTransform().getPosition()
+    posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS
+    posB = colliderB.getParent().getTransform().getPosition() * SCALE_UNITS
     #Calculate the sides of rect A
     leftA = posA.x
-    rightA = posA.x + colliderA.getSize().x
+    rightA = posA.x + colliderA.getSize().x * SCALE_UNITS
     topA = posA.y
-    bottomA = posA.y + colliderA.getSize().y
+    bottomA = posA.y + colliderA.getSize().y * SCALE_UNITS
     #Calculate the sides of rect B
     leftB = posB.x
-    rightB = posB.x + colliderB.getSize().x
+    rightB = posB.x + colliderB.getSize().x * SCALE_UNITS
     topB = posB.y
-    bottomB = posB.y + colliderB.getSize().y
+    bottomB = posB.y + colliderB.getSize().y * SCALE_UNITS
     
     # println("ColliderA: $nameA ColliderB: $nameB")
     # println("bottomA: $bottomA , topB: $topB" )
@@ -69,18 +70,19 @@ function checkCollision(colliderA::Collider, colliderB::Collider)
 
     #If none of the sides from A are outside B
     collisionSide = min(depthBottom, depthTop, depthLeft, depthRight)
+    
     if collisionSide == depthBottom
-        #println("Collision from below")
-        return (Bottom::CollisionDirection, collisionSide)
+        println("Collision from below ", collisionSide/SCALE_UNITS)
+        return (Bottom::CollisionDirection, collisionSide/SCALE_UNITS)
     elseif collisionSide == depthTop
-        #println("Collision from above")
-        return (Top::CollisionDirection, collisionSide)
+        println("Collision from above")
+        return (Top::CollisionDirection, collisionSide/SCALE_UNITS)
     elseif collisionSide == depthLeft
         #println("Collision from the left")
-        return (Left::CollisionDirection, collisionSide)
+        return (Left::CollisionDirection, collisionSide/SCALE_UNITS)
     elseif collisionSide == depthRight
         #println("Collision from the right")
-        return (Right::CollisionDirection, collisionSide)
+        return (Right::CollisionDirection, collisionSide/SCALE_UNITS)
     end 
     
     throw
