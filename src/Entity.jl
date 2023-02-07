@@ -1,9 +1,9 @@
-__precompile__()
-include("Math/Vector2f.jl")
+include("Animator.jl")
 include("Collider.jl")
 include("Rigidbody.jl")
 include("Sprite.jl")
 include("Transform.jl")
+include("Math/Vector2f.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Entity
@@ -70,6 +70,10 @@ function Base.getproperty(this::Entity, s::Symbol)
         function()
             return this.getComponent(Collider)
         end
+    elseif s == :getAnimator
+        function()
+            return this.getComponent(Animator)
+        end
     elseif s == :getRigidbody
         function()
            return this.getComponent(Rigidbody)
@@ -82,13 +86,18 @@ function Base.getproperty(this::Entity, s::Symbol)
                 return
             end
             component.setParent(this)
+            if typeof(component) <: Animator && this.getSprite() != C_NULL 
+                component.setSprite(this.getSprite())
+            elseif typeof(component) <: Sprite && this.getAnimator() != C_NULL
+                this.getAnimator().setSprite(component)
+            end
         end
     elseif s == :update
         function()
             for component in this.components
-               if typeof(component) <: Sprite
-                   component.update()
-               end
+                # if typeof(component) <: Sprite
+                #    component.update()
+                # end
            end
         end
     else

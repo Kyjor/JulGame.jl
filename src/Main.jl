@@ -1,4 +1,5 @@
 ﻿using SimpleDirectMediaLayer.LibSDL2
+include("Animator.jl")
 include("Collider.jl")
 include("Constants.jl")
 include("Entity.jl")
@@ -38,13 +39,14 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
 			SDL_SetWindowResizable(window, SDL_TRUE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
-			for sprite in this.scene.sprites
-				sprite.injectRenderer(renderer)
+			for entity in this.scene.entities
+				if entity.getSprite() != C_NULL
+					entity.getSprite().injectRenderer(renderer)
+				end
 			end
 			
 			windowRefreshRate = 60
 			colliders = this.scene.colliders
-			sprites = this.scene.sprites
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
 			input = Input()
@@ -66,10 +68,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				wasGrounded = false
 				isFacingRight = true
 				flipPlayer = false 
-			
-				#animation vars
-				animatedFPS = 12.0
-				
+							
 				#physics vars
 				lastPhysicsTime = SDL_GetTicks()
 				
@@ -215,22 +214,23 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
 								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS))], 5)
 						end
+						
+						entityAnimator = entity.getAnimator()
+						if entityAnimator != C_NULL
+							entityAnimator.update(currentRenderTime, deltaTime)
+						end
+						entitySprite = entity.getSprite()
+						if entitySprite != C_NULL
+							entitySprite.draw()
+						end
 					end
 			
 					if flipPlayer
-						sprites[1].flip()
+						entities[1].getSprite().flip()
 						flipPlayer = false
 					end
-					for sprite in sprites
-						deltaTime = (currentRenderTime  - sprite.getLastUpdate()) / 1000.0
-						framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))
-						if framesToUpdate > 0
-							sprite.setLastFrame(sprite.getLastFrame() + framesToUpdate)
-							sprite.setLastFrame(sprite.getLastFrame() % sprite.getFrameCount())
-							sprite.setLastUpdate(currentRenderTime)
-						end
-						sprite.draw(Ref(SDL_Rect(sprite.getLastFrame() * 16,0,16,16)))
-					end
+					
+					
 					
 					if DEBUG
 						# Stats to display

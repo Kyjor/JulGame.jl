@@ -6,15 +6,13 @@ mutable struct Scene
     colliders
     entities
     rigidbodies
-    sprites
     
-    function Scene(colliders, entities, rigidbodies, sprites)
+    function Scene(colliders, entities, rigidbodies)
         this = new()
         
         this.colliders = colliders
         this.entities = entities
         this.rigidbodies = rigidbodies
-        this.sprites = sprites
         
         return this
     end
