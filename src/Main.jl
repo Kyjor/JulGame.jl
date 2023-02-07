@@ -59,7 +59,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				
 				DEBUG = false
 				close = false
-				speed = 200
+				speed = 5
 				gravity = GRAVITY
 				timeStep = 0.01
 				startTime = 0.0
@@ -68,7 +68,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				wasGrounded = false
 				isFacingRight = true
 				flipPlayer = false 
-							
+				jump = false
+
 				#physics vars
 				lastPhysicsTime = SDL_GetTicks()
 				
@@ -101,9 +102,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 							isFacingRight = true
 							flipPlayer = true
 						end
-					elseif gravity == GRAVITY && scan_code == SDL_SCANCODE_SPACE
-						println("space")
-						gravity = -GRAVITY
 					elseif scan_code == SDL_SCANCODE_F3 
 						println("debug toggled")
 						DEBUG = !DEBUG
@@ -120,8 +118,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						# y += speed / 30
 					elseif x == speed && (keyup == SDL_SCANCODE_D || keyup == SDL_SCANCODE_RIGHT)
 						x = 0
-					elseif keyup == SDL_SCANCODE_SPACE
-						gravity = GRAVITY
 					end
 			
 					input.scan_code = nothing
@@ -135,12 +131,15 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					
 					if grounded && !wasGrounded
 						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
-					elseif grounded && gravity == -GRAVITY
-						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
-					elseif !grounded
-						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == GRAVITY ? gravity : rigidbodies[1].getVelocity().y))
+					elseif grounded && scan_code == SDL_SCANCODE_SPACE
+						println("jump")
+						jump = true
+						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, -5.0))
+					# elseif grounded && gravity == -GRAVITY
+					# 	rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
+					# elseif !grounded
+					# 	rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == GRAVITY ? gravity : rigidbodies[1].getVelocity().y))
 					end
-					
 					wasGrounded = grounded
 					
 					deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
@@ -148,10 +147,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
 					
 					for rigidbody in rigidbodies
-						transform = rigidbody.getParent().getTransform()
-						transform.setPosition(Vector2f(transform.getPosition().x  + rigidbody.velocity.x / SCALE_UNITS * deltaTime, transform.getPosition().y  + rigidbody.velocity.y / SCALE_UNITS * deltaTime))
+						rigidbody.update(deltaTime, grounded, jump)
 					end
 					
+					jump = false
 					grounded = false
 					counter = 1
 			

@@ -14,12 +14,32 @@ struct Vector2f
     
 
     #operators 
+    function Base.:+(vec::Vector2f, vec1::Vector2f)
+        return Vector2f(vec.x + vec1.x, vec.y + vec1.y)
+    end
+
+    function Base.:-(vec::Vector2f, vec1::Vector2f)
+        return Vector2f(vec.x - vec1.x, vec.y - vec1.y)
+    end
+
+    function Base.:*(vec::Vector2f, vec1::Vector2f)
+        return Vector2f(vec.x * vec1.x, vec.y * vec1.y)
+    end
+
     function Base.:*(vec::Vector2f, int::Int64)
         return Vector2f(vec.x * int, vec.y * int)
     end
     
     function Base.:*(vec::Vector2f, float::Float64)
         return Vector2f(vec.x * float, vec.y * float)
+    end
+    
+    function Base.:*(float::Float64, vec::Vector2f)
+        return Vector2f(vec.x * float, vec.y * float)
+    end
+
+    function Base.:/(vec::Vector2f, float::Float64)
+        return Vector2f(vec.x / float, vec.y / float)
     end
     
     function print()

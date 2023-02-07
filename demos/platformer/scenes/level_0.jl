@@ -13,7 +13,7 @@ function level_0()
         ]
 
     rigidbodies = [
-        Rigidbody(1, 0),
+        Rigidbody(1.0, 0),
     ]
 
     entities = [
