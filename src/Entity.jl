@@ -9,6 +9,7 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Entity
     name::String
     components::Array{Any}
+    scripts::Array{Any}
     
     function Entity(name::String)
         this = new()
@@ -16,28 +17,48 @@ mutable struct Entity
         this.name = name
         this.components = []
         this.addComponent(Transform())
+        this.scripts = []
 
         return this
     end
 
     function Entity(name::String, transform::Transform)
         this = new()
-        println("trying to add entity")
+
         this.name = name
         this.components = []
         this.addComponent(transform)
+        this.scripts = []
 
         return this
     end
 
     function Entity(name::String, transform::Transform, components::Array)
         this = new()
-        println("trying to add entity")
+
         this.name = name
         this.components = []
         this.addComponent(transform)
         for component in components
             this.addComponent(component)
+        end
+        this.scripts = []
+
+        return this
+    end
+    
+    function Entity(name::String, transform::Transform, components::Array, scripts::Array)
+        this = new()
+
+        this.name = name
+        this.components = []
+        this.addComponent(transform)
+        for component in components
+            this.addComponent(component)
+        end
+        this.scripts = []
+        for script in scripts
+            this.addScript(script)
         end
 
         return this
@@ -80,7 +101,7 @@ function Base.getproperty(this::Entity, s::Symbol)
         end
     elseif s == :addComponent
         function(component)
-            println(string("Adding component of type: ", typeof(component), " to entity named " ,this.name))
+           # println(string("Adding component of type: ", typeof(component), " to entity named " ,this.name))
             push!(this.components, component)
             if typeof(component) <: Transform
                 return
@@ -92,12 +113,17 @@ function Base.getproperty(this::Entity, s::Symbol)
                 this.getAnimator().setSprite(component)
             end
         end
+    elseif s == :addScript
+        function(script)
+            println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
+            push!(this.scripts, script)
+            script.setParent(this)
+        end
     elseif s == :update
         function()
-            for component in this.components
-                # if typeof(component) <: Sprite
-                #    component.update()
-                # end
+            for script in this.scripts
+                println("updating scrips")
+                script.update()
            end
         end
     else

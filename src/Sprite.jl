@@ -86,7 +86,6 @@ function Base.getproperty(this::Sprite, s::Symbol)
         end
    elseif s == :setParent
         function(parent)
-            println("set parent")
             this.parent = parent
         end
     else

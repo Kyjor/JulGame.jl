@@ -33,7 +33,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             end
             parent = this.parent
             transform = this.parent.getTransform()
-            println(transform.getPosition())
+
             newPosition = transform.getPosition() + this.velocity*dt + this.acceleration*(dt*dt*0.5)
             newAcceleration = this.applyForces()
             newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)

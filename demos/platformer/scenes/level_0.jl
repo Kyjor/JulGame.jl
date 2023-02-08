@@ -1,4 +1,5 @@
 ﻿include("../../../src/Main.jl")
+include("../scripts/playerMovement.jl")
 
 function level_0()
     # Prepare scene
@@ -17,7 +18,7 @@ function level_0()
     ]
 
     entities = [
-        Entity("player", Transform(Vector2f(0, 2)), [Animator(7, 12.0), sprites[1], colliders[1], rigidbodies[1]]),
+        Entity("player", Transform(Vector2f(0, 2)), [Animator(7, 12.0), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]),
         Entity(string("tile", 1), Transform(Vector2f(1, 9)), [sprites[2], colliders[2]])
         ]
 

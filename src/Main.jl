@@ -1,4 +1,4 @@
-﻿using SimpleDirectMediaLayer.LibSDL2
+using SimpleDirectMediaLayer.LibSDL2
 include("Animator.jl")
 include("Collider.jl")
 include("Constants.jl")
@@ -45,7 +45,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				end
 			end
 			
-			windowRefreshRate = 60
+			targetFrameRate = 60
 			colliders = this.scene.colliders
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
@@ -127,14 +127,15 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						
 					#Physics
 					currentPhysicsTime = SDL_GetTicks()
+					deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
 					
-					
-					if grounded && !wasGrounded
-						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
-					elseif grounded && scan_code == SDL_SCANCODE_SPACE
+					if grounded && scan_code == SDL_SCANCODE_SPACE
 						println("jump")
 						jump = true
 						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, -5.0))
+					end
+					if grounded && !wasGrounded
+						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
 					# elseif grounded && gravity == -GRAVITY
 					# 	rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
 					# elseif !grounded
@@ -142,7 +143,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					end
 					wasGrounded = grounded
 					
-					deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
 					#println(deltaTime)
 					rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
 					
@@ -248,7 +248,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					SDL_RenderPresent(renderer)
 					endTime = SDL_GetPerformanceCounter()
 					elapsedMS = (endTime - startTime) / SDL_GetPerformanceFrequency() * 1000.0
-					targetFrameTime = 1000/windowRefreshRate
+					targetFrameTime = 1000/targetFrameRate
 			
 					if elapsedMS < targetFrameTime
     					SDL_Delay(round(targetFrameTime - elapsedMS))
