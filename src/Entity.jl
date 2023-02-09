@@ -119,6 +119,10 @@ function Base.getproperty(this::Entity, s::Symbol)
             push!(this.scripts, script)
             script.setParent(this)
         end
+    elseif s == :getScripts
+        function()
+            return this.scripts
+        end
     elseif s == :update
         function()
             for script in this.scripts

@@ -47,10 +47,6 @@ function Base.getproperty(this::Input, s::Symbol)
                 end
             end
         end
-    elseif s == :method0
-        function()
-            return nothing
-        end
     else
         getfield(this, s)
     end

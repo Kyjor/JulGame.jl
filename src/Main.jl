@@ -1,4 +1,4 @@
-using SimpleDirectMediaLayer.LibSDL2
+﻿using SimpleDirectMediaLayer.LibSDL2
 include("Animator.jl")
 include("Collider.jl")
 include("Constants.jl")
@@ -39,9 +39,16 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
 			SDL_SetWindowResizable(window, SDL_TRUE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
+			input = Input()
+
 			for entity in this.scene.entities
 				if entity.getSprite() != C_NULL
 					entity.getSprite().injectRenderer(renderer)
+				end
+				if entity.getScripts() != C_NULL
+					for script in entity.getScripts()
+						script.setInput(input)
+					end
 				end
 			end
 			
@@ -49,7 +56,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			colliders = this.scene.colliders
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
-			input = Input()
 
 			w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
             try
@@ -144,7 +150,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					wasGrounded = grounded
 					
 					#println(deltaTime)
-					rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
 					
 					for rigidbody in rigidbodies
 						rigidbody.update(deltaTime, grounded, jump)
