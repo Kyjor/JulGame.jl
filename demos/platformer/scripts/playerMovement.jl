@@ -21,55 +21,35 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :update
         function()
-           # this.parent.getRigidbody().setVelocity(Vector2f())
-            scan_code = this.input.scan_code
-            if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
-                y -= speed / 30
-            elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-                x = -speed
-                if isFacingRight
-                    isFacingRight = false
-                    flipPlayer = true
-                end
-            elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
-                y += speed / 30
-            elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-                x = speed
-                if !isFacingRight
-                    isFacingRight = true
-                    flipPlayer = true
-                end
-            elseif scan_code == SDL_SCANCODE_F3 
-                println("debug toggled")
-                DEBUG = !DEBUG
-            else
-                #nothing
-            end
-    
-            keyup = input.keyup
-            if keyup == SDL_SCANCODE_W || keyup == SDL_SCANCODE_UP
-                #y -= speed / 30
-            elseif x == -speed && (keyup == SDL_SCANCODE_A || keyup == SDL_SCANCODE_LEFT)            
-                x = 0
-            elseif keyup == SDL_SCANCODE_S || keyup == SDL_SCANCODE_DOWN
-                # y += speed / 30
-            elseif x == speed && (keyup == SDL_SCANCODE_D || keyup == SDL_SCANCODE_RIGHT)
-                x = 0
-            end
-    
-            input.scan_code = nothing
-            input.keyup = nothing
-           
-            this.parent.getRigidbody().setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
+        x = 0
+        speed = 5
 
+            buttons = InputInstance.buttons
+            if Button_Left::Button in buttons
+                println("Left Pressed")
+                x = -speed
+#                 if isFacingRight
+#                     isFacingRight = false
+#                     flipPlayer = true
+#                 end
+            elseif Button_Right::Button in buttons
+                x = speed
+#                 if !isFacingRight
+#                     isFacingRight = true
+#                     flipPlayer = true
+#                 end
+            end
+            if Button_Jump::Button in buttons
+                println("Jump Pressed")
+                this.parent.getRigidbody().setVelocity(Vector2f(this.parent.getRigidbody().getVelocity().x, -5.0))
+            end
+
+            this.parent.getRigidbody().setVelocity(Vector2f(x, this.parent.getRigidbody().getVelocity().y))
+            x = 0
         end
     elseif s == :setParent
         function(parent)
             this.parent = parent
-        end
-    elseif s == :setInput
-        function(input)
-            this.input = input
         end
     else
         getfield(this, s)

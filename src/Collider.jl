@@ -1,3 +1,4 @@
+include("SceneInstance.jl")
 include("Math/Vector2f.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
@@ -52,9 +53,52 @@ function Base.getproperty(this::Collider, s::Symbol)
         function(parent)
             this.parent = parent
         end
+    elseif s == :checkCollisions
+        function()
+            colliders = SceneInstance.colliders
+            #Only check the player against other colliders
+            counter = 1
+            for colliderB in colliders
+                #TODO: Skip any out of a certain range of the player. This will prevent a bunch of unnecessary collision checks
+                if colliders[1] != colliderB
+                    collision = checkCollision(colliders[1], colliderB)
+                    transform = colliders[1].getParent().getTransform()
+                    if collision[1] == Top::CollisionDirection
+                        #Begin to overlap, correct position
+                        transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
+                    elseif collision[1] == Left::CollisionDirection
+                        #Begin to overlap, correct position
+                        transform.setPosition(Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
+                        #If player tries to move left here, stop them
+                        #x < 0 && (x = 0;)
+                    elseif collision[1] == Right::CollisionDirection
+                        #Begin to overlap, correct position
+                        transform.setPosition(Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
+                        #If player tries to move right here, stop them
+                        #x > 0 && (x = 0;)
+                    elseif collision[1] == Bottom::CollisionDirection
+                        #Begin to overlap, correct position
+                        #println("grounded")
+                        #grounded = true
+                        transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
+                        break
+                    elseif collision[1] == Below::ColliderLocation
+                        #Remain on top. Resting on collider
+                        #println("hit")
+                        #grounded = true
+                        #elseif !grounded && counter == length(colliders) && collision[1] != Bottom::CollisionDirection # If we're on the last collider to check and we haven't collided with anything yet
+                        #println("not grounded")
+                        #grounded = false
+                    end
+                end
+                counter += 1
+            end
+        end
     elseif s == :update
         function()
-            #this.parent = parent
+            if this.parent.getRigidbody() != C_NULL
+                this.checkCollisions()
+            end
         end
     else
         getfield(this, s)

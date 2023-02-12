@@ -56,7 +56,7 @@ function checkCollision(colliderA::Collider, colliderB::Collider)
     if rightA <= leftB
         dist = leftB - rightA
         left = dist == 0.0 && rightA > leftB && leftA < rightB
-        return (left ? LeftSide::ColliderLocation : None::CollisionDirection, dist)
+        return (left == 0.0 ? LeftSide::ColliderLocation : None::CollisionDirection, dist)
     elseif rightA > leftB
         depthRight = rightA - leftB
     end

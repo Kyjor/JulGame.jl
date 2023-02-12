@@ -5,7 +5,8 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Rigidbody
     acceleration
     drag
-    mass
+    grounded::Bool
+    mass::Float64
     offset
     parent
     useGravity::Bool
@@ -16,6 +17,7 @@ mutable struct Rigidbody
         
         this.acceleration = Vector2f()
         this.drag = 0.1
+        this.grounded = false
         this.mass = mass
         this.offset = offset
         this.useGravity = true
@@ -27,8 +29,8 @@ end
 
 function Base.getproperty(this::Rigidbody, s::Symbol)
     if s == :update
-        function(dt, grounded, jump)
-            if grounded && !jump
+        function(dt)
+            if this.grounded
                 this.velocity = Vector2f(this.velocity.x, 0)
             end
             parent = this.parent

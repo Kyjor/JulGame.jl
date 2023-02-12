@@ -126,7 +126,6 @@ function Base.getproperty(this::Entity, s::Symbol)
     elseif s == :update
         function()
             for script in this.scripts
-                println("updating scrips")
                 script.update()
            end
         end

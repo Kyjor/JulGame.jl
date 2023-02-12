@@ -32,7 +32,10 @@ function level_0()
     end
 
     #Start game
-    scene = Scene(colliders, entities, rigidbodies)
-    mainLoop  = MainLoop(scene)
+    SceneInstance.colliders = colliders
+    SceneInstance.entities = entities
+    SceneInstance.rigidbodies = rigidbodies
+
+    mainLoop  = MainLoop(SceneInstance)
     mainLoop.start()
 end
