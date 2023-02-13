@@ -2,12 +2,14 @@ include("../../../src/Math/Vector2f.jl")
 
 mutable struct PlayerMovement
     input
+    isFacingRight
     parent
 
     function PlayerMovement()
         this = new()
         
         this.input = C_NULL
+        this.isFacingRight = true
         this.parent = C_NULL
         this.initialize()
 
@@ -25,24 +27,26 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         speed = 5
 
             buttons = InputInstance.buttons
-            if Button_Left::Button in buttons
-                println("Left Pressed")
-                x = -speed
-#                 if isFacingRight
-#                     isFacingRight = false
-#                     flipPlayer = true
-#                 end
-            elseif Button_Right::Button in buttons
-                x = speed
-#                 if !isFacingRight
-#                     isFacingRight = true
-#                     flipPlayer = true
-#                 end
-            end
-            if Button_Jump::Button in buttons
+            if Button_Jump::Button in buttons && this.parent.getRigidbody().grounded
                 println("Jump Pressed")
+                this.parent.getRigidbody().grounded = false
                 this.parent.getRigidbody().setVelocity(Vector2f(this.parent.getRigidbody().getVelocity().x, -5.0))
             end
+            if Button_Left::Button in buttons
+                # println("Left Pressed")
+                x = -speed
+                if this.isFacingRight
+                    this.isFacingRight = false
+                    this.parent.getSprite().flip()
+                end
+            elseif Button_Right::Button in buttons
+                x = speed
+                if !this.isFacingRight
+                    this.isFacingRight = true
+                    this.parent.getSprite().flip()
+                end
+            end
+            
 
             this.parent.getRigidbody().setVelocity(Vector2f(x, this.parent.getRigidbody().getVelocity().y))
             x = 0

@@ -71,12 +71,12 @@ function Base.getproperty(this::Input, s::Symbol)
 
             for interactedButton in this.buttons
                 if interactedButton == button && ety == SDL_KEYUP
-                    println("skipping button to remove it")
-                else
+                    # println("skipping button to remove it")
+                elseif !(interactedButton in buttons)
                     push!(buttons, interactedButton)
                 end
             end
-            if ety != SDL_KEYUP
+            if ety != SDL_KEYUP && !(button in buttons)
                 push!(buttons, button)
             end
 

@@ -30,8 +30,9 @@ end
 function Base.getproperty(this::Rigidbody, s::Symbol)
     if s == :update
         function(dt)
+            velocityMultiplier = Vector2f(1.0, 1.0)
             if this.grounded
-                this.velocity = Vector2f(this.velocity.x, 0)
+                velocityMultiplier = Vector2f(1.0, 0)
             end
             parent = this.parent
             transform = this.parent.getTransform()
@@ -41,7 +42,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
             transform.setPosition(newPosition)
-            this.setVelocity(newVelocity)
+            this.setVelocity(newVelocity * velocityMultiplier)
             this.acceleration = newAcceleration
         end
     elseif s == :applyForces

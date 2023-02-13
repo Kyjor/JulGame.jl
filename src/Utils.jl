@@ -76,7 +76,7 @@ function checkCollision(colliderA::Collider, colliderB::Collider)
         #println("Collision from below ", collisionSide/SCALE_UNITS)
         return (Bottom::CollisionDirection, collisionSide/SCALE_UNITS)
     elseif collisionSide == depthTop
-        println("Collision from above")
+        #println("Collision from above")
         return (Top::CollisionDirection, collisionSide/SCALE_UNITS)
     elseif collisionSide == depthLeft
         #println("Collision from the left")

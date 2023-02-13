@@ -69,26 +69,18 @@ function Base.getproperty(this::Collider, s::Symbol)
                     elseif collision[1] == Left::CollisionDirection
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
-                        #If player tries to move left here, stop them
-                        #x < 0 && (x = 0;)
                     elseif collision[1] == Right::CollisionDirection
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
-                        #If player tries to move right here, stop them
-                        #x > 0 && (x = 0;)
                     elseif collision[1] == Bottom::CollisionDirection
                         #Begin to overlap, correct position
-                        #println("grounded")
-                        #grounded = true
                         transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
+                        this.parent.getRigidbody().grounded = true
                         break
                     elseif collision[1] == Below::ColliderLocation
-                        #Remain on top. Resting on collider
-                        #println("hit")
-                        #grounded = true
-                        #elseif !grounded && counter == length(colliders) && collision[1] != Bottom::CollisionDirection # If we're on the last collider to check and we haven't collided with anything yet
-                        #println("not grounded")
-                        #grounded = false
+                        println("hit")
+                    elseif this.parent.getRigidbody().grounded && counter == length(colliders) && collision[1] != Bottom::CollisionDirection # If we're on the last collider to check and we haven't collided with anything yet
+                        this.parent.getRigidbody().grounded = false
                     end
                 end
                 counter += 1
