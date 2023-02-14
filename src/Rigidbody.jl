@@ -1,30 +1,56 @@
-﻿__precompile__()
-include("Math/Vector2f.jl")
+﻿include("Math/Vector2f.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Rigidbody
-    mass
+    acceleration
+    drag
+    grounded::Bool
+    mass::Float64
     offset
     parent
+    useGravity::Bool
     velocity::Vector2f
     
-    #frames: number of frames in an animation
-    #width: width of each frame
-    function Rigidbody(mass, offset)
+    function Rigidbody(mass::Float64, offset)
         this = new()
         
+        this.acceleration = Vector2f()
+        this.drag = 0.1
+        this.grounded = false
         this.mass = mass
         this.offset = offset
-        this.velocity = Vector2f(0.0, 250.0)
+        this.useGravity = true
+        this.velocity = Vector2f(0.0, 0.0)
+
         return this
     end
 end
 
 function Base.getproperty(this::Rigidbody, s::Symbol)
     if s == :update
+        function(dt)
+            velocityMultiplier = Vector2f(1.0, 1.0)
+            if this.grounded
+                velocityMultiplier = Vector2f(1.0, 0)
+            end
+            parent = this.parent
+            transform = this.parent.getTransform()
+
+            newPosition = transform.getPosition() + this.velocity*dt + this.acceleration*(dt*dt*0.5)
+            newAcceleration = this.applyForces()
+            newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
+
+            transform.setPosition(newPosition)
+            this.setVelocity(newVelocity * velocityMultiplier)
+            this.acceleration = newAcceleration
+        end
+    elseif s == :applyForces
         function()
-            #return this.frameCount
+            gravityAcceleration = Vector2f(0.0, GRAVITY)
+            dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
+            dragAcceleration = dragForce / this.mass
+            return gravityAcceleration - dragAcceleration
         end
     elseif s == :getVelocity
         function()
@@ -40,6 +66,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
         end
     elseif s == :setParent
         function(parent)
+            println("setting rigidbody parent")
             this.parent = parent
         end
     else

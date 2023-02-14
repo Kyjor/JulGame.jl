@@ -1,12 +1,13 @@
 ﻿using SimpleDirectMediaLayer.LibSDL2
-include("Collider.jl")
+include("Animator.jl")
 include("Constants.jl")
 include("Entity.jl")
 include("Enums.jl")
 include("Input/Input.jl")
+include("Input/InputInstance.jl")
 include("RenderWindow.jl")
 include("Rigidbody.jl")
-include("Scene.jl")
+include("SceneInstance.jl")
 include("Sprite.jl")
 include("Transform.jl")
 include("Utils.jl")
@@ -38,38 +39,28 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
 			SDL_SetWindowResizable(window, SDL_TRUE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
-			for sprite in this.scene.sprites
-				sprite.injectRenderer(renderer)
+
+			for entity in this.scene.entities
+				if entity.getSprite() != C_NULL
+					entity.getSprite().injectRenderer(renderer)
+				end
 			end
 			
-			windowRefreshRate = 60
+			targetFrameRate = 60
 			colliders = this.scene.colliders
-			sprites = this.scene.sprites
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
-			input = Input()
 
 			w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
             try
 				w, h = w_ref[], h_ref[]
-				x::Float64 = entities[1].getTransform().getPosition().x
-				y = entities[1].getTransform().getPosition().y
-				
+
 				DEBUG = false
 				close = false
-				speed = 200
-				gravity = GRAVITY
 				timeStep = 0.01
 				startTime = 0.0
 				totalFrames = 0
-				grounded = false
-				wasGrounded = false
-				isFacingRight = true
-				flipPlayer = false 
-			
-				#animation vars
-				animatedFPS = 12.0
-				
+
 				#physics vars
 				lastPhysicsTime = SDL_GetTicks()
 				
@@ -79,130 +70,34 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					lastStartTime = startTime
 					startTime = SDL_GetPerformanceCounter()
 					#region ============= Input
-					input.pollInput()
-					if input.quit
+					InputInstance.pollInput()
+					if InputInstance.quit
 						close = true
 					end
-					
-					scan_code = input.scan_code
-			
-					if scan_code == SDL_SCANCODE_W || scan_code == SDL_SCANCODE_UP
-						y -= speed / 30
-					elseif scan_code == SDL_SCANCODE_A || scan_code == SDL_SCANCODE_LEFT
-						x = -speed
-						if isFacingRight
-							isFacingRight = false
-							flipPlayer = true
-						end
-					elseif scan_code == SDL_SCANCODE_S || scan_code == SDL_SCANCODE_DOWN
-						y += speed / 30
-					elseif scan_code == SDL_SCANCODE_D || scan_code == SDL_SCANCODE_RIGHT
-						x = speed
-						if !isFacingRight
-							isFacingRight = true
-							flipPlayer = true
-						end
-					elseif gravity == GRAVITY && scan_code == SDL_SCANCODE_SPACE
-						println("space")
-						gravity = -GRAVITY
-					elseif scan_code == SDL_SCANCODE_F3 
-						println("debug toggled")
-						DEBUG = !DEBUG
-					else
-						#nothing
-					end
-			
-					keyup = input.keyup
-					if keyup == SDL_SCANCODE_W || keyup == SDL_SCANCODE_UP
-						#y -= speed / 30
-					elseif x == -speed && (keyup == SDL_SCANCODE_A || keyup == SDL_SCANCODE_LEFT)            
-						x = 0
-					elseif keyup == SDL_SCANCODE_S || keyup == SDL_SCANCODE_DOWN
-						# y += speed / 30
-					elseif x == speed && (keyup == SDL_SCANCODE_D || keyup == SDL_SCANCODE_RIGHT)
-						x = 0
-					elseif keyup == SDL_SCANCODE_SPACE
-						gravity = GRAVITY
-					end
-			
-					input.scan_code = nothing
-					input.keyup = nothing
-				   
+# 					if scan_code == SDL_SCANCODE_F3
+# 						println("debug toggled")
+# 						DEBUG = !DEBUG
+#					end
 					#endregion ============== Input
 						
 					#Physics
 					currentPhysicsTime = SDL_GetTicks()
-					
-					
-					if grounded && !wasGrounded
-						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, 0))
-					elseif grounded && gravity == -GRAVITY
-						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity))
-					elseif !grounded
-						rigidbodies[1].setVelocity(Vector2f(rigidbodies[1].getVelocity().x, gravity == GRAVITY ? gravity : rigidbodies[1].getVelocity().y))
-					end
-					
-					wasGrounded = grounded
-					
 					deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
-					#println(deltaTime)
-					rigidbodies[1].setVelocity(Vector2f(x, rigidbodies[1].getVelocity().y))
-					
-					for rigidbody in rigidbodies
-						transform = rigidbody.getParent().getTransform()
-						transform.setPosition(Vector2f(transform.getPosition().x  + rigidbody.velocity.x / SCALE_UNITS * deltaTime, transform.getPosition().y  + rigidbody.velocity.y / SCALE_UNITS * deltaTime))
-					end
-					
-					grounded = false
-					counter = 1
-			
-					#Only check the player against other colliders
-					for colliderB in colliders
-					#TODO: Skip any out of a certain range of the player. This will prevent a bunch of unnecessary collision checks
-						if colliders[1] != colliderB
-							collision = checkCollision(colliders[1], colliderB)
-							transform = colliders[1].getParent().getTransform()
-							if collision[1] == Top::CollisionDirection
-								#Begin to overlap, correct position
-								transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
-							elseif collision[1] == Left::CollisionDirection
-								#Begin to overlap, correct position
-								transform.setPosition(Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
-								#If player tries to move left here, stop them
-								#x < 0 && (x = 0;) 
-							elseif collision[1] == Right::CollisionDirection
-								#Begin to overlap, correct position
-								transform.setPosition(Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
-								#If player tries to move right here, stop them
-								#x > 0 && (x = 0;) 
-							elseif collision[1] == Bottom::CollisionDirection
-								#Begin to overlap, correct position
-								#println("grounded")
-								grounded = true
-								transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
-								break
-							elseif collision[1] == Below::ColliderLocation
-								#Remain on top. Resting on collider
-								#println("hit")
-								grounded = true
-							elseif !grounded && counter == length(colliders) && collision[1] != Bottom::CollisionDirection # If we're on the last collider to check and we haven't collided with anything yet
-								#println("not grounded")
-								grounded = false
-							end
-						end
-						counter += 1
-					end    
-			
-					lastPhysicsTime =  SDL_GetTicks()
 
+					for rigidbody in rigidbodies
+						rigidbody.update(deltaTime)
+					end
+					for collider in colliders
+						collider.update()
+					end
+					lastPhysicsTime =  SDL_GetTicks()
 
 					#Rendering
 					currentRenderTime = SDL_GetTicks()
 					SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE)
 					# Clear the current render target before rendering again
 					SDL_RenderClear(renderer)
-			
-			
+
 					for entity in entities
 						entity.update()
 						if DEBUG && entity.getCollider() != C_NULL
@@ -215,23 +110,17 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
 								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS))], 5)
 						end
+						
+						entityAnimator = entity.getAnimator()
+						if entityAnimator != C_NULL
+							entityAnimator.update(currentRenderTime, deltaTime)
+						end
+						entitySprite = entity.getSprite()
+						if entitySprite != C_NULL
+							entitySprite.draw()
+						end
 					end
 			
-					if flipPlayer
-						sprites[1].flip()
-						flipPlayer = false
-					end
-					for sprite in sprites
-						deltaTime = (currentRenderTime  - sprite.getLastUpdate()) / 1000.0
-						framesToUpdate = floor(deltaTime / (1.0 / animatedFPS))
-						if framesToUpdate > 0
-							sprite.setLastFrame(sprite.getLastFrame() + framesToUpdate)
-							sprite.setLastFrame(sprite.getLastFrame() % sprite.getFrameCount())
-							sprite.setLastUpdate(currentRenderTime)
-						end
-						sprite.draw(Ref(SDL_Rect(sprite.getLastFrame() * 16,0,16,16)))
-					end
-					
 					if DEBUG
 						# Stats to display
 						text = TTF_RenderText_Blended( font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), SDL_Color(0,255,0,255) )
@@ -249,7 +138,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					SDL_RenderPresent(renderer)
 					endTime = SDL_GetPerformanceCounter()
 					elapsedMS = (endTime - startTime) / SDL_GetPerformanceFrequency() * 1000.0
-					targetFrameTime = 1000/windowRefreshRate
+					targetFrameTime = 1000/targetFrameRate
 			
 					if elapsedMS < targetFrameTime
     					SDL_Delay(round(targetFrameTime - elapsedMS))
@@ -267,5 +156,3 @@ function Base.getproperty(this::MainLoop, s::Symbol)
         getfield(this, s)
     end
 end
-
-

@@ -5,7 +5,5 @@ include("../scenes/level_0.jl")
         level_0()
     end
 
-    function julia_main()
-        run()
-    end
+    julia_main() = run()
 end
