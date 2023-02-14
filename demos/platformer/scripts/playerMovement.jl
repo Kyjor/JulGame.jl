@@ -27,10 +27,11 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         speed = 5
 
             buttons = InputInstance.buttons
+            y = this.parent.getRigidbody().getVelocity().y
             if Button_Jump::Button in buttons && this.parent.getRigidbody().grounded
                 println("Jump Pressed")
                 this.parent.getRigidbody().grounded = false
-                this.parent.getRigidbody().setVelocity(Vector2f(this.parent.getRigidbody().getVelocity().x, -5.0))
+                y = -5.0
             end
             if Button_Left::Button in buttons
                 # println("Left Pressed")
@@ -48,7 +49,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             end
             
 
-            this.parent.getRigidbody().setVelocity(Vector2f(x, this.parent.getRigidbody().getVelocity().y))
+            this.parent.getRigidbody().setVelocity(Vector2f(x, y))
             x = 0
         end
     elseif s == :setParent
