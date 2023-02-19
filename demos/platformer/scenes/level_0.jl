@@ -5,7 +5,7 @@ function level_0()
     # Prepare scene
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "none")
-        Collider(Vector2f(1, 1), Vector2f(), "none")
+        Collider(Vector2f(1, 1), Vector2f(), "ground")
     ]
 
     sprites = [
@@ -23,12 +23,10 @@ function level_0()
         ]
 
     for i in 1:30
-        newCollider = Collider(Vector2f(1, 1), Vector2f(), "none")
-        newSprite = Sprite(joinpath(@__DIR__, "..", "assets", "images", "ground_grass_1.png"), 32)
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [newSprite, newCollider])
-        push!(entities, newEntity)
+        newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [Sprite(joinpath(@__DIR__, "..", "assets", "images", "ground_grass_1.png"), 32), newCollider])
         push!(colliders, newCollider)
-        push!(sprites, newSprite)
+        push!(entities, newEntity)
     end
 
     #Start game

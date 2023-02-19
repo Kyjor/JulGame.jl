@@ -47,7 +47,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			targetFrameRate = 60
-			colliders = this.scene.colliders
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
 
@@ -86,9 +85,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 
 					for rigidbody in rigidbodies
 						rigidbody.update(deltaTime)
-					end
-					for collider in colliders
-						collider.update()
 					end
 					lastPhysicsTime =  SDL_GetTicks()
 
