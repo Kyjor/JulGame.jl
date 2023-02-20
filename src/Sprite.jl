@@ -1,6 +1,6 @@
-﻿__precompile__()
+﻿include("Constants.jl")
+include("SceneInstance.jl")
 include("Math/Vector2f.jl")
-include("Constants.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
@@ -56,15 +56,14 @@ function Base.getproperty(this::Sprite, s::Symbol)
         function()
             parentTransform = this.parent.getTransform()
             parentTransform.setPosition(Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
-            
             flip = SDL_FLIP_NONE
             
             SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 
                 Ref(SDL_Rect(this.frameToDraw * 16,0,16,16)), 
-                Ref(SDL_Rect(convert(Int32,round(parentTransform.getPosition().x * SCALE_UNITS)), 
-                convert(Int32,round(parentTransform.getPosition().y * SCALE_UNITS)),
+                Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x - SceneInstance.camera.position.x) * SCALE_UNITS)), 
+                convert(Int32,round((parentTransform.getPosition().y - SceneInstance.camera.position.y) * SCALE_UNITS)),
                 convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
                 convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))), 
                 0.0, 

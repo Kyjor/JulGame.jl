@@ -1,5 +1,6 @@
 ﻿using SimpleDirectMediaLayer.LibSDL2
 include("Animator.jl")
+include("Camera.jl")
 include("Constants.jl")
 include("Entity.jl")
 include("Enums.jl")
@@ -36,7 +37,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			@assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(TTF_GetError()))"
 			font = TTF_OpenFont(joinpath(@__DIR__, "..","assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 150)
 
-			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 1000, SDL_WINDOW_SHOWN)
+			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_SHOWN)
 			SDL_SetWindowResizable(window, SDL_TRUE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
 
@@ -94,6 +95,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					# Clear the current render target before rendering again
 					SDL_RenderClear(renderer)
 
+					SceneInstance.camera.update()
+					
 					for entity in entities
 						entity.update()
 						if DEBUG && entity.getCollider() != C_NULL

@@ -55,7 +55,6 @@ function Base.getproperty(this::Collider, s::Symbol)
         end
     elseif s == :checkCollisions
         function()
-            println("check collisions")
             colliders = SceneInstance.colliders
             #Only check the player against other colliders
             counter = 1

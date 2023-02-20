@@ -1,10 +1,16 @@
 mutable struct Camera
-    parent
+    dimensions
+    offset
+    position
+    target
 
-    function Camera()
+    function Camera(dimensions::Vector2f, initialPosition::Vector2f, offset::Vector2f,target)
         this = new()
         
-        this.parent = C_NULL
+        this.dimensions = dimensions
+        this.position = initialPosition
+        this.offset = Vector2f(offset.x, offset.y)
+        this.target = target
         this.initialize()
 
         return this
@@ -17,10 +23,14 @@ function Base.getproperty(this::Camera, s::Symbol)
         end
     elseif s == :update
         function()
+            if this.target != C_NULL
+                targetPos = this.target.getPosition()
+                this.position = Vector2f(targetPos.x - (this.dimensions.x/SCALE_UNITS/2) + this.offset.x, targetPos.y - (this.dimensions.y/SCALE_UNITS/2) + this.offset.y)
+            end
         end
-    elseif s == :setParent
-        function(parent)
-            this.parent = parent
+    elseif s == :setTarget
+        function(target)
+            this.target = target
         end
     else
         getfield(this, s)

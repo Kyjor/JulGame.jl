@@ -4,7 +4,7 @@ include("../scripts/playerMovement.jl")
 function level_0()
     # Prepare scene
     colliders = [
-        Collider(Vector2f(1, 1), Vector2f(), "none")
+        Collider(Vector2f(1, 1), Vector2f(), "player")
         Collider(Vector2f(1, 1), Vector2f(), "ground")
     ]
 
@@ -19,7 +19,7 @@ function level_0()
 
     entities = [
         Entity("player", Transform(Vector2f(0, 2)), [Animator(7, 12.0), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]),
-        Entity(string("tile", 1), Transform(Vector2f(1, 9)), [sprites[2], colliders[2]])
+        Entity(string("tile", 1), Transform(Vector2f(1, 9)), [sprites[2], colliders[2]]),
         ]
 
     for i in 1:30
@@ -29,10 +29,12 @@ function level_0()
         push!(entities, newEntity)
     end
 
+    camera = Camera(Vector2f(1000, 1000), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
     #Start game
     SceneInstance.colliders = colliders
     SceneInstance.entities = entities
     SceneInstance.rigidbodies = rigidbodies
+    SceneInstance.camera = camera
 
     mainLoop  = MainLoop(SceneInstance)
     mainLoop.start()
