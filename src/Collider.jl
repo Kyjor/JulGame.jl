@@ -88,9 +88,7 @@ function Base.getproperty(this::Collider, s::Symbol)
         end
     elseif s == :update
         function()
-            if this.parent.getRigidbody() != C_NULL
-                this.checkCollisions()
-            end
+            
         end
     else
         getfield(this, s)

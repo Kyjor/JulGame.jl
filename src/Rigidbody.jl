@@ -44,6 +44,10 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             transform.setPosition(newPosition)
             this.setVelocity(newVelocity * velocityMultiplier)
             this.acceleration = newAcceleration
+
+            if this.parent.getCollider() != C_NULL
+                this.parent.getCollider().checkCollisions()
+            end
         end
     elseif s == :applyForces
         function()

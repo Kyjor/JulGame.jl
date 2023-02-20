@@ -3,16 +3,12 @@ using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Input
     quit::Bool
-    mouseX::Integer
-    mouseY::Integer
     buttons::Array{Button}
 
     function Input()
         this = new()
 
         this.quit = false
-        this.mouseX = 0
-        this.mouseY = 0
         this.buttons = []
 
         return this
@@ -81,7 +77,6 @@ function Base.getproperty(this::Input, s::Symbol)
                 end
             end
 
-            print(buttons)
             this.buttons = buttons
         end
     else

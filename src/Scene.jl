@@ -3,6 +3,7 @@
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Scene
+    camera
     colliders
     entities
     rigidbodies
@@ -10,6 +11,7 @@ mutable struct Scene
     function Scene()
         this = new()
 
+        this.camera = C_NULL
         this.colliders = C_NULL
         this.entities = C_NULL
         this.rigidbodies = C_NULL
