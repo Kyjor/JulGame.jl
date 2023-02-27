@@ -7,6 +7,7 @@ mutable struct Scene
     colliders
     entities
     rigidbodies
+    screenButtons
 
     function Scene()
         this = new()
@@ -15,6 +16,7 @@ mutable struct Scene
         this.colliders = C_NULL
         this.entities = C_NULL
         this.rigidbodies = C_NULL
+        this.screenButtons = C_NULL
 
         return this
     end

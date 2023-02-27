@@ -1,5 +1,6 @@
 ﻿using SimpleDirectMediaLayer.LibSDL2
 include("Animator.jl")
+include("UI/ScreenButton.jl")
 include("Camera.jl")
 include("Constants.jl")
 include("Entity.jl")
@@ -50,14 +51,12 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			targetFrameRate = 60
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
+			screenButtons = this.scene.screenButtons
 
-			w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
             try
-				w, h = w_ref[], h_ref[]
 
 				DEBUG = false
 				close = false
-				timeStep = 0.01
 				startTime = 0.0
 				totalFrames = 0
 
@@ -71,6 +70,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					startTime = SDL_GetPerformanceCounter()
 					#region ============= Input
 					InputInstance.pollInput()
+					
 					if InputInstance.quit
 						close = true
 					end
@@ -94,6 +94,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE)
 					# Clear the current render target before rendering again
 					SDL_RenderClear(renderer)
+					
+					
 
 					SceneInstance.camera.update()
 					
