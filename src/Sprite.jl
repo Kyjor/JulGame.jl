@@ -31,8 +31,6 @@ mutable struct Sprite
         this.widthX = 1.0 
         this.widthY = 1.0
         
-        this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
-
         return this
     end
     

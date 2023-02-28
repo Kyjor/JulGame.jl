@@ -48,6 +48,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				end
 			end
 			
+			for screenButton in this.scene.screenButtons
+				screenButton.injectRenderer(renderer)
+			end
+			
 			targetFrameRate = 60
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
@@ -118,8 +122,11 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						end
 						entitySprite = entity.getSprite()
 						if entitySprite != C_NULL
-							entitySprite.draw()
+							#entitySprite.draw()
 						end
+					end
+					for screenButton in screenButtons
+						screenButton.render()
 					end
 			
 					if DEBUG

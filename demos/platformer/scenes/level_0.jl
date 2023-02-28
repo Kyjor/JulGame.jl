@@ -4,7 +4,7 @@ include("../scripts/playerMovement.jl")
 function level_0()
     # Prepare scene
     screenButtons = [
-        ScreenButton(Vector2f(300.0, 300.0), Vector2f(), C_NULL)
+        ScreenButton(Vector2f(256.0, 64.0), Vector2f(), C_NULL)
     ]
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")

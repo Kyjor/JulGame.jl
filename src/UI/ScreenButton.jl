@@ -8,6 +8,8 @@ mutable struct ScreenButton
     image
     mouseOverSprite
     position
+    renderer
+    texture
 
     function ScreenButton(dimensions::Vector2f, position::Vector2f, image)
         this = new()
@@ -17,7 +19,7 @@ mutable struct ScreenButton
         if image != C_NULL
             this.image = IMG_Load(image)
         else
-            this.image = IMG_Load("../../assets/images/buttons.png")
+            this.image = IMG_Load(joinpath(@__DIR__, "..", "..", "assets", "images", "buttons.png"))
         end
 
         return this
@@ -27,30 +29,32 @@ end
 function Base.getproperty(this::ScreenButton, s::Symbol)
     if s == :render
         function()
-
-            SDL_RenderCopyEx(
+            println(this.dimensions)
+            @assert SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 
-                Ref(SDL_Rect(this.frameToDraw * 16,0,16,16)), 
-                Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x - SceneInstance.camera.position.x) * SCALE_UNITS)), 
-                convert(Int32,round((parentTransform.getPosition().y - SceneInstance.camera.position.y) * SCALE_UNITS)),
-                convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
-                convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))), 
+                Ref(SDL_Rect(this.position.x,this.position.y,256,64)), 
+                Ref(SDL_Rect(convert(Int32,round((this.position.x))), 
+                convert(Int32,round((this.position.y))),
+                convert(Int32,round(1 * this.dimensions.x)), 
+                convert(Int32,round(1 * this.dimensions.y)))), 
                 0.0, 
                 C_NULL, 
-                this.isFlipped ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE)
+                SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL_GetError()))"
+        end
+    elseif s == :injectRenderer
+        function(renderer)
+            this.renderer = renderer
+            this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
         end
     elseif s == :setPosition
         function(position::Vector2f)
         end
     elseif s == :handleEvent
         function(evt, x, y)
-          
             if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
                 #println("mouse event")
             end 
-
-            
         end
     elseif s == :setParent
         function(parent)
