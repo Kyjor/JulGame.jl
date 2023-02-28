@@ -91,6 +91,10 @@ function Base.getproperty(this::Collider, s::Symbol)
             
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

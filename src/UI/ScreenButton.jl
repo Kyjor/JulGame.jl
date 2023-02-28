@@ -57,6 +57,10 @@ function Base.getproperty(this::ScreenButton, s::Symbol)
             this.parent = parent
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

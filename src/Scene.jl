@@ -42,6 +42,10 @@ function Base.getproperty(this::Scene, s::Symbol)
             # search for colliders in colliders that could possibly touch origin collider and return as array
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

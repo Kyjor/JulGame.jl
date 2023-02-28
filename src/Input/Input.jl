@@ -111,6 +111,10 @@ function Base.getproperty(this::Input, s::Symbol)
             this.buttons = buttons
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

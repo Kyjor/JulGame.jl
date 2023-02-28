@@ -101,6 +101,8 @@ function Base.getproperty(this::Entity, s::Symbol)
         end
     elseif s == :addComponent
         function(component)
+            println(this.poop)
+
            # println(string("Adding component of type: ", typeof(component), " to entity named " ,this.name))
             push!(this.components, component)
             if typeof(component) <: Transform
@@ -130,6 +132,10 @@ function Base.getproperty(this::Entity, s::Symbol)
            end
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

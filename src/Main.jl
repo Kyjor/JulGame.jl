@@ -154,6 +154,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

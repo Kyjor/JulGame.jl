@@ -83,6 +83,10 @@ function Base.getproperty(this::RenderWindow, s::Symbol)
             
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

@@ -33,6 +33,10 @@ function Base.getproperty(this::Camera, s::Symbol)
             this.target = target
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end
