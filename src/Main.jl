@@ -51,7 +51,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			for screenButton in this.scene.screenButtons
-				screenButton.injectRenderer(renderer)
+				screenButton.injectRenderer(renderer, font)
 			end
 			
 			targetFrameRate = 60

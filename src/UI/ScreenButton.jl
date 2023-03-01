@@ -12,8 +12,10 @@ mutable struct ScreenButton
     mouseOverSprite
     position
     renderer
+    text
+    textTexture
 
-    function ScreenButton(dimensions::Vector2, position::Vector2, buttonUpSprite, buttonDownSprite)
+    function ScreenButton(dimensions::Vector2, position::Vector2, buttonUpSprite, buttonDownSprite, text)
         this = new()
         
         this.buttonDownSprite = buttonDownSprite == C_NULL ? IMG_Load(joinpath(@__DIR__, "..", "..", "assets", "images", "ButtonDown.png")) : IMG_Load(buttonDownSprite)
@@ -22,6 +24,7 @@ mutable struct ScreenButton
         this.dimensions = dimensions
         this.mouseOverSprite = false
         this.position = position
+        this.text = text
 
         return this
     end
@@ -41,13 +44,18 @@ function Base.getproperty(this::ScreenButton, s::Symbol)
                 0.0, 
                 C_NULL, 
                 SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL_GetError()))"
+
+            @assert SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL_GetError()))"
         end
     elseif s == :injectRenderer
-        function(renderer)
+        function(renderer, font)
             this.renderer = renderer
             this.buttonDownTexture = SDL_CreateTextureFromSurface(this.renderer, this.buttonDownSprite)
             this.buttonUpTexture = SDL_CreateTextureFromSurface(this.renderer, this.buttonUpSprite)
             this.currentTexture = this.buttonUpTexture
+            text = TTF_RenderText_Blended(font, this.text, SDL_Color(255,255,255,255) )
+            this.textTexture = SDL_CreateTextureFromSurface(this.renderer, text)
+
         end
     elseif s == :setPosition
         function(position::Vector2)
