@@ -4,14 +4,16 @@ include("../SceneInstance.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Input
-    quit::Bool
     buttons::Array{Button}
+    debug::Bool
+    quit::Bool
 
     function Input()
         this = new()
 
-        this.quit = false
+        this.debug = false
         this.buttons = []
+        this.quit = false
 
         return this
     end
@@ -58,6 +60,9 @@ function Base.getproperty(this::Input, s::Symbol)
                 if evt.type == SDL_QUIT
                     this.quit = true
                     return -1
+                end
+                if evt.type == SDL_KEYDOWN && evt.key.keysym.scancode == SDL_SCANCODE_F3
+                    this.debug = !this.debug
                 end
             end
 

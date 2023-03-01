@@ -80,10 +80,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					if InputInstance.quit
 						close = true
 					end
-# 					if scan_code == SDL_SCANCODE_F3
-# 						println("debug toggled")
-# 						DEBUG = !DEBUG
-#					end
+					DEBUG = InputInstance.debug
+					
 					#endregion ============== Input
 						
 					#Physics
