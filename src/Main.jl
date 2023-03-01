@@ -122,7 +122,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						end
 						entitySprite = entity.getSprite()
 						if entitySprite != C_NULL
-							#entitySprite.draw()
+							entitySprite.draw()
 						end
 					end
 					for screenButton in screenButtons
