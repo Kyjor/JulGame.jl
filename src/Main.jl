@@ -14,6 +14,7 @@ include("SceneInstance.jl")
 include("Sprite.jl")
 include("Transform.jl")
 include("Utils.jl")
+include("Math/Vector2.jl")
 include("Math/Vector2f.jl")
 
 mutable struct MainLoop

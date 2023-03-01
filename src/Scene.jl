@@ -1,6 +1,4 @@
-﻿__precompile__()
-
-using SimpleDirectMediaLayer.LibSDL2
+﻿using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Scene
     camera

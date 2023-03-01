@@ -44,6 +44,7 @@ function Base.getproperty(this::Input, s::Symbol)
                                 eventWasInsideThisButton = false
                             end
 
+                            screenButton.mouseOverSprite = eventWasInsideThisButton
                             if !eventWasInsideThisButton
                                 continue
                             end

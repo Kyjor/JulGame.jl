@@ -4,7 +4,7 @@ include("../scripts/playerMovement.jl")
 function level_0()
     # Prepare scene
     screenButtons = [
-        ScreenButton(Vector2f(256.0, 64.0), Vector2f(), C_NULL)
+        ScreenButton(Vector2(256, 64), Vector2(), C_NULL, C_NULL)
         ]
     SceneInstance.screenButtons = screenButtons
     

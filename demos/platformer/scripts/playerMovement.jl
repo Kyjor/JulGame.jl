@@ -55,7 +55,6 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 end
             end
             
-            println(this.y)
             this.parent.getRigidbody().setVelocity(Vector2f(x, y))
             x = 0
             this.isJump = false
