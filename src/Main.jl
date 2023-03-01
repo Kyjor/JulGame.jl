@@ -41,6 +41,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			font = TTF_OpenFont(joinpath(@__DIR__, "..","assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 150)
 
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_SHOWN)
+			windowHasMouseFocus = true
 			SDL_SetWindowResizable(window, SDL_TRUE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
 
@@ -80,16 +81,17 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					if InputInstance.quit
 						close = true
 					end
-# 					if scan_code == SDL_SCANCODE_F3
-# 						println("debug toggled")
-# 						DEBUG = !DEBUG
-#					end
+					DEBUG = InputInstance.debug
+					
 					#endregion ============== Input
 						
 					#Physics
 					currentPhysicsTime = SDL_GetTicks()
 					deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
-
+					# if deltaTime > .25
+					# 	lastPhysicsTime =  SDL_GetTicks()
+					# 	continue
+					# end
 					for rigidbody in rigidbodies
 						rigidbody.update(deltaTime)
 					end

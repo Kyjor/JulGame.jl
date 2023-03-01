@@ -4,14 +4,16 @@ include("../SceneInstance.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Input
-    quit::Bool
     buttons::Array{Button}
+    debug::Bool
+    quit::Bool
 
     function Input()
         this = new()
 
-        this.quit = false
+        this.debug = false
         this.buttons = []
+        this.quit = false
 
         return this
     end
@@ -24,7 +26,7 @@ function Base.getproperty(this::Input, s::Symbol)
             event_ref = Ref{SDL_Event}()
             while Bool(SDL_PollEvent(event_ref))
                 evt = event_ref[]
-
+                this.handleWindowEvents(evt)
                 if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
                     if SceneInstance.screenButtons != C_NULL
                         x,y = Int[1], Int[1]
@@ -59,6 +61,9 @@ function Base.getproperty(this::Input, s::Symbol)
                     this.quit = true
                     return -1
                 end
+                if evt.type == SDL_KEYDOWN && evt.key.keysym.scancode == SDL_SCANCODE_F3
+                    this.debug = !this.debug
+                end
             end
 
             keyboardState = unsafe_wrap(Array, SDL_GetKeyboardState(C_NULL), 290; own = false)
@@ -73,6 +78,55 @@ function Base.getproperty(this::Input, s::Symbol)
             end
             return false
         end    
+    elseif s == :handleWindowEvents
+        function (event)
+            if event.type != SDL_WINDOWEVENT
+                return
+            end
+            windowEvent = event.window.event
+            
+            if windowEvent == SDL_WINDOWEVENT_SHOWN
+                println(string("Window %d shown", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_HIDDEN
+                println(string("Window %d hidden", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_EXPOSED
+                println(string("Window %d exposed", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_MOVED
+                println(string("Window %d moved to %d,%d",
+                        event.window.windowID, event.window.data1,
+                        event.window.data2))
+            elseif windowEvent == SDL_WINDOWEVENT_RESIZED
+                println(string("Window %d resized to %dx%d",
+                        event.window.windowID, event.window.data1,
+                        event.window.data2))
+            elseif windowEvent == SDL_WINDOWEVENT_SIZE_CHANGED
+                println(string("Window %d size changed to %dx%d",
+                        event.window.windowID, event.window.data1,
+                        event.window.data2))
+            elseif windowEvent == SDL_WINDOWEVENT_MINIMIZED
+                println(string("Window %d minimized", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_MAXIMIZED
+                println(string("Window %d maximized", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_RESTORED
+                println(string("Window %d restored", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_ENTER
+                println(string("Mouse entered window %d", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_LEAVE
+                println(string("Mouse left window %d", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_FOCUS_GAINED
+                println(string("Window %d gained keyboard focus", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_FOCUS_LOST
+                println(string("Window %d lost keyboard focus", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_CLOSE
+                println(string("Window %d closed", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_TAKE_FOCUS
+                println(string("Window %d is offered a focus", event.window.windowID))
+            elseif windowEvent == SDL_WINDOWEVENT_HIT_TEST
+                println(string("Window %d has a special hit test", event.window.windowID))
+            else
+                println(string("Window %d got unknown event %d", event.window.windowID, event.window.event))   
+            end    
+        end
     elseif s == :handleKeyEvent
         function(keyboardState)
             buttons = []
