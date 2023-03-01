@@ -68,6 +68,10 @@ function Base.getproperty(this::Transform, s::Symbol)
             #println(this.position)
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

@@ -31,8 +31,6 @@ mutable struct Sprite
         this.widthX = 1.0 
         this.widthY = 1.0
         
-        this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
-
         return this
     end
     
@@ -88,6 +86,10 @@ function Base.getproperty(this::Sprite, s::Symbol)
             this.parent = parent
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

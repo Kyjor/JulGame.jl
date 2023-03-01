@@ -3,6 +3,11 @@ include("../scripts/playerMovement.jl")
 
 function level_0()
     # Prepare scene
+    screenButtons = [
+        ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
+        ]
+    SceneInstance.screenButtons = screenButtons
+    
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")
         Collider(Vector2f(1, 1), Vector2f(), "ground")
@@ -30,12 +35,13 @@ function level_0()
     end
 
     camera = Camera(Vector2f(1000, 1000), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
+
     #Start game
     SceneInstance.colliders = colliders
     SceneInstance.entities = entities
     SceneInstance.rigidbodies = rigidbodies
     SceneInstance.camera = camera
 
-    mainLoop  = MainLoop(SceneInstance)
+    mainLoop = MainLoop(SceneInstance)
     mainLoop.start()
 end

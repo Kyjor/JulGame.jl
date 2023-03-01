@@ -14,6 +14,10 @@ function Base.getproperty(this::Audio, s::Symbol)
         function()
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

@@ -1,17 +1,20 @@
 ﻿using SimpleDirectMediaLayer.LibSDL2
 include("Animator.jl")
+include("UI/ScreenButton.jl")
 include("Camera.jl")
 include("Constants.jl")
 include("Entity.jl")
 include("Enums.jl")
 include("Input/Input.jl")
 include("Input/InputInstance.jl")
+include("Macros.jl")
 include("RenderWindow.jl")
 include("Rigidbody.jl")
 include("SceneInstance.jl")
 include("Sprite.jl")
 include("Transform.jl")
 include("Utils.jl")
+include("Math/Vector2.jl")
 include("Math/Vector2f.jl")
 
 mutable struct MainLoop
@@ -47,17 +50,19 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				end
 			end
 			
+			for screenButton in this.scene.screenButtons
+				screenButton.injectRenderer(renderer, font)
+			end
+			
 			targetFrameRate = 60
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
+			screenButtons = this.scene.screenButtons
 
-			w_ref, h_ref = Ref{Cint}(0), Ref{Cint}(0)
             try
-				w, h = w_ref[], h_ref[]
 
 				DEBUG = false
 				close = false
-				timeStep = 0.01
 				startTime = 0.0
 				totalFrames = 0
 
@@ -71,6 +76,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					startTime = SDL_GetPerformanceCounter()
 					#region ============= Input
 					InputInstance.pollInput()
+					
 					if InputInstance.quit
 						close = true
 					end
@@ -119,6 +125,9 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 							entitySprite.draw()
 						end
 					end
+					for screenButton in screenButtons
+						screenButton.render()
+					end
 			
 					if DEBUG
 						# Stats to display
@@ -152,6 +161,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end

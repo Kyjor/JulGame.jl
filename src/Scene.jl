@@ -1,12 +1,11 @@
-﻿__precompile__()
-
-using SimpleDirectMediaLayer.LibSDL2
+﻿using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Scene
     camera
     colliders
     entities
     rigidbodies
+    screenButtons
 
     function Scene()
         this = new()
@@ -15,6 +14,7 @@ mutable struct Scene
         this.colliders = C_NULL
         this.entities = C_NULL
         this.rigidbodies = C_NULL
+        this.screenButtons = C_NULL
 
         return this
     end
@@ -40,6 +40,10 @@ function Base.getproperty(this::Scene, s::Symbol)
             # search for colliders in colliders that could possibly touch origin collider and return as array
         end
     else
-        getfield(this, s)
+        try
+            getfield(this, s)
+        catch e
+            println(e)
+        end
     end
 end
