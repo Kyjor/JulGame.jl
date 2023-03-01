@@ -1,6 +1,7 @@
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct ScreenButton
+    clickEvents
     currentSprite
     buttonDownSprite
     buttonUpSprite
@@ -14,6 +15,7 @@ mutable struct ScreenButton
     function ScreenButton(dimensions::Vector2f, position::Vector2f, image)
         this = new()
         
+        this.clickEvents = []
         this.dimensions = dimensions
         this.position = position
         if image != C_NULL
@@ -29,7 +31,6 @@ end
 function Base.getproperty(this::ScreenButton, s::Symbol)
     if s == :render
         function()
-            println(this.dimensions)
             @assert SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 
@@ -50,8 +51,18 @@ function Base.getproperty(this::ScreenButton, s::Symbol)
     elseif s == :setPosition
         function(position::Vector2f)
         end
+    elseif s == :addClickEvent
+        function(event)
+            push!(this.clickEvents, event)
+        end
     elseif s == :handleEvent
         function(evt, x, y)
+            if evt.type == evt.type == SDL_MOUSEBUTTONDOWN
+                for eventToCall in this.clickEvents
+                    # Todo: Change sprite
+                    eventToCall()
+                end
+            end
             if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
                 #println("mouse event")
             end 

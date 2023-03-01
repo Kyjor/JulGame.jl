@@ -5,7 +5,9 @@ function level_0()
     # Prepare scene
     screenButtons = [
         ScreenButton(Vector2f(256.0, 64.0), Vector2f(), C_NULL)
-    ]
+        ]
+    SceneInstance.screenButtons = screenButtons
+    
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")
         Collider(Vector2f(1, 1), Vector2f(), "ground")
@@ -39,7 +41,6 @@ function level_0()
     SceneInstance.entities = entities
     SceneInstance.rigidbodies = rigidbodies
     SceneInstance.camera = camera
-    SceneInstance.screenButtons = screenButtons
 
     mainLoop = MainLoop(SceneInstance)
     mainLoop.start()

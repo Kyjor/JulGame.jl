@@ -7,6 +7,7 @@ include("Entity.jl")
 include("Enums.jl")
 include("Input/Input.jl")
 include("Input/InputInstance.jl")
+include("Macros.jl")
 include("RenderWindow.jl")
 include("Rigidbody.jl")
 include("SceneInstance.jl")
@@ -98,8 +99,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE)
 					# Clear the current render target before rendering again
 					SDL_RenderClear(renderer)
-					
-					
 
 					SceneInstance.camera.update()
 					
