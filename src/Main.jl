@@ -11,6 +11,7 @@ include("Macros.jl")
 include("RenderWindow.jl")
 include("Rigidbody.jl")
 include("SceneInstance.jl")
+include("SoundSource.jl")
 include("Sprite.jl")
 include("Transform.jl")
 include("Utils.jl")
@@ -37,8 +38,9 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			
 			#initializing
 			@assert SDL_Init(SDL_INIT_EVERYTHING) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-			@assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(TTF_GetError()))"
+			@assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 			font = TTF_OpenFont(joinpath(@__DIR__, "..","assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 150)
+			@assert Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_SHOWN)
 			windowHasMouseFocus = true
@@ -155,6 +157,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					end
 				end
 			finally
+				Mix_Quit()
 				TTF_CloseFont( font );
 				TTF_Quit()
 				SDL_DestroyRenderer(renderer)
