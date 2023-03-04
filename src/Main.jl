@@ -1,5 +1,4 @@
-﻿using SimpleDirectMediaLayer.LibSDL2
-include("Animator.jl")
+﻿include("Animator.jl")
 include("UI/ScreenButton.jl")
 include("Camera.jl")
 include("Constants.jl")
@@ -11,11 +10,15 @@ include("Macros.jl")
 include("RenderWindow.jl")
 include("Rigidbody.jl")
 include("SceneInstance.jl")
+include("SoundSource.jl")
 include("Sprite.jl")
 include("Transform.jl")
 include("Utils.jl")
 include("Math/Vector2.jl")
 include("Math/Vector2f.jl")
+
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer 
 
 mutable struct MainLoop
     scene::Scene
@@ -23,7 +26,16 @@ mutable struct MainLoop
     function MainLoop(scene)
         this = new()
 		
+		SDL2.init()
 		this.scene = scene
+		
+        return this
+    end
+
+	function MainLoop()
+        this = new()
+		
+		SDL2.init()
 		
         return this
     end
@@ -32,13 +44,10 @@ end
 function Base.getproperty(this::MainLoop, s::Symbol)
     if s == :start 
         function()
-			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 16)
-			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16)
-			
-			#initializing
-			@assert SDL_Init(SDL_INIT_EVERYTHING) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-			@assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(TTF_GetError()))"
+			#@assert SDL_Init(SDL_INIT_AUDIO) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
+			# @assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 			font = TTF_OpenFont(joinpath(@__DIR__, "..","assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 150)
+			# @assert Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_SHOWN)
 			windowHasMouseFocus = true
@@ -155,13 +164,14 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					end
 				end
 			finally
-				TTF_CloseFont( font );
-				TTF_Quit()
-				SDL_DestroyRenderer(renderer)
-				SDL_DestroyWindow(window)
-				SDL_Quit()
+				SDL2.Mix_Quit()
+				SDL2.SDL_Quit()
 			end
         end
+	elseif s == :loadScene
+		function (scene)
+			this.scene = scene
+		end
     else
         try
             getfield(this, s)
