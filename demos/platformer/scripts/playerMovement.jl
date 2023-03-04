@@ -66,7 +66,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
     elseif s == :jump
         function()
             this.isJump = true
-            SceneInstance.sounds[1].playSoundOnce()
+            SceneInstance.sounds[1].toggleSound()
         end
     else
         try

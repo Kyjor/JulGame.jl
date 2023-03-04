@@ -1,7 +1,12 @@
 ﻿include("../../../src/Main.jl")
 include("../scripts/playerMovement.jl")
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer
+
 
 function level_0()
+    mainLoop = MainLoop()
+
     # Prepare scene
     screenButtons = [
         ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
@@ -37,7 +42,7 @@ function level_0()
 
     camera = Camera(Vector2f(1000, 1000), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
     sounds = [
-        SoundSource(joinpath(@__DIR__, "..", "assets", "sounds", "8bitmelody.wav"))
+        SoundSource(joinpath(@__DIR__, "..", "assets", "sounds", "click1.wav"), false)
         #SoundSource("file")
     ]
 
@@ -48,6 +53,6 @@ function level_0()
     SceneInstance.camera = camera
     SceneInstance.sounds = sounds
 
-    mainLoop = MainLoop(SceneInstance)
+    mainLoop.loadScene(SceneInstance)
     mainLoop.start()
 end
