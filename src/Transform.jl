@@ -1,4 +1,3 @@
-__precompile__()
 include("Math/Vector2f.jl")
 include("Constants.jl")
 using SimpleDirectMediaLayer.LibSDL2

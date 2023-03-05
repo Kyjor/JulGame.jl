@@ -1,8 +1,11 @@
 ﻿include("../../../src/Main.jl")
 include("../scripts/playerMovement.jl")
+
+using RelocatableFolders
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
 
+const ASSETS = @path joinpath(@__DIR__, "..", "assets")
 
 function level_0()
     mainLoop = MainLoop()
@@ -19,9 +22,11 @@ function level_0()
         Collider(Vector2f(1, 1), Vector2f(), "ground")
     ]
 
+    skeletonWalk = @path joinpath(ASSETS, "images", "SkeletonWalk.png")
+    grass = @path joinpath(ASSETS, "images", "ground_grass_1.png")
     sprites = [
-        Sprite(joinpath(@__DIR__, "..", "assets", "images", "SkeletonWalk.png"), 16)
-        Sprite(joinpath(@__DIR__, "..", "assets", "images", "ground_grass_1.png"), 32)
+        Sprite(skeletonWalk, 16),
+        Sprite(grass, 32)
     ]
 
     rigidbodies = [
@@ -35,15 +40,15 @@ function level_0()
 
     for i in 1:30
         newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [Sprite(joinpath(@__DIR__, "..", "assets", "images", "ground_grass_1.png"), 32), newCollider])
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [Sprite(grass, 32), newCollider])
         push!(colliders, newCollider)
         push!(entities, newEntity)
     end
 
     camera = Camera(Vector2f(1000, 1000), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
+    click = @path joinpath(ASSETS, "sounds", "click1.wav")
     sounds = [
-        SoundSource(joinpath(@__DIR__, "..", "assets", "sounds", "click1.wav"), false)
-        #SoundSource("file")
+        SoundSource(click, false),
     ]
 
     #Start game

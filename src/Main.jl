@@ -46,7 +46,8 @@ function Base.getproperty(this::MainLoop, s::Symbol)
         function()
 			#@assert SDL_Init(SDL_INIT_AUDIO) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 			# @assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-			font = TTF_OpenFont(joinpath(@__DIR__, "..","assets/fonts/FiraCode/ttf/FiraCode-Regular.ttf"), 150)
+			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+			font = TTF_OpenFont(fontPath, 150)
 			# @assert Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
 
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_SHOWN)
