@@ -1,5 +1,9 @@
-﻿using SimpleDirectMediaLayer
+﻿include("Constants.jl")
+
+using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
+
+const ENGINE_ASSETS = @path joinpath(@__DIR__, "kryogen_assets")
 
 mutable struct SoundSource
     isMusic
@@ -11,7 +15,7 @@ mutable struct SoundSource
         this.sound = isMusic ? SDL2.Mix_LoadMUS(path) : SDL2.Mix_LoadWAV(path)
 
         if (this.sound == C_NULL)
-            error("$(path) not found.")
+            error("$(path) not found. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
         end
 
         this.isMusic = isMusic

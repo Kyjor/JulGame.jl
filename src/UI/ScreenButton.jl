@@ -1,4 +1,6 @@
+include("../Constants.jl")
 include("../Math/Vector2.jl")
+
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct ScreenButton
@@ -18,8 +20,10 @@ mutable struct ScreenButton
     function ScreenButton(dimensions::Vector2, position::Vector2, buttonUpSprite, buttonDownSprite, text)
         this = new()
         
-        this.buttonDownSprite = buttonDownSprite == C_NULL ? IMG_Load(joinpath(@__DIR__, "..", "..", "assets", "images", "ButtonDown.png")) : IMG_Load(buttonDownSprite)
-        this.buttonUpSprite = buttonUpSprite == C_NULL ? IMG_Load(joinpath(@__DIR__, "..", "..", "assets", "images", "ButtonUp.png")) : IMG_Load(buttonUpSprite)
+        engine_buttonDownSprite = @path joinpath(ENGINE_ASSETS, "images", "ButtonDown.png")
+        engine_buttonUpSprite = @path joinpath(ENGINE_ASSETS, "images", "ButtonUp.png")
+        this.buttonDownSprite = buttonDownSprite == C_NULL ? IMG_Load(engine_buttonDownSprite) : IMG_Load(buttonDownSprite)
+        this.buttonUpSprite = buttonUpSprite == C_NULL ? IMG_Load(engine_buttonUpSprite) : IMG_Load(buttonUpSprite)
         this.clickEvents = []
         this.dimensions = dimensions
         this.mouseOverSprite = false
