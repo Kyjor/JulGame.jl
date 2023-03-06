@@ -98,10 +98,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					#Physics
 					currentPhysicsTime = SDL_GetTicks()
 					deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
-					# if deltaTime > .25
-					# 	lastPhysicsTime =  SDL_GetTicks()
-					# 	continue
-					# end
+					if deltaTime > .25
+						lastPhysicsTime =  SDL_GetTicks()
+						continue
+					end
 					for rigidbody in rigidbodies
 						rigidbody.update(deltaTime)
 					end
