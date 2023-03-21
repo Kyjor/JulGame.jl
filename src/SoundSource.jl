@@ -9,7 +9,7 @@ mutable struct SoundSource
     isMusic
     sound
 
-    function SoundSource(path, isMusic)
+    function SoundSource(path, isMusic, volume)
         this = new()
 
         this.sound = isMusic ? SDL2.Mix_LoadMUS(path) : SDL2.Mix_LoadWAV(path)
@@ -19,6 +19,7 @@ mutable struct SoundSource
         end
 
         this.isMusic = isMusic
+        SDL2.Mix_Volume(Int32(0), Int32(volume))
 
         return this
     end
@@ -41,7 +42,7 @@ function Base.getproperty(this::SoundSource, s::Symbol)
                     end
                 end
             else
-                SDL2.Mix_PlayChannel( Int32(-1), this.sound, Int32(0) )
+                SDL2.Mix_PlayChannel( Int32(0), this.sound, Int32(0) )
             end
         end
     elseif s == :stopMusic

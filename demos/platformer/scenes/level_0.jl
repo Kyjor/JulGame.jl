@@ -3,7 +3,6 @@ include("../scripts/playerMovement.jl")
 
 using RelocatableFolders
 using SimpleDirectMediaLayer
-const SDL2 = SimpleDirectMediaLayer
 
 const ASSETS = @path joinpath(@__DIR__, "..", "assets")
 
@@ -12,13 +11,13 @@ function level_0()
 
     # Prepare scene
     screenButtons = [
-        ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
+        #ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
     ]
 
     SceneInstance.screenButtons = screenButtons
 
     textBoxes = [
-        TextBox(Vector2(1280, 800), Vector2(100, 100), Vector2(0, 0), "Test\nTxxt"),
+        TextBox(Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message to test out the font size", true),
     ]
 
     SceneInstance.textBoxes = textBoxes
@@ -52,9 +51,9 @@ function level_0()
     end
 
     camera = Camera(Vector2f(1000, 1000), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
-    click = @path joinpath(ASSETS, "sounds", "click1.wav")
+    jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     sounds = [
-        SoundSource(click, false),
+        SoundSource(jump, false, 2),
     ]
 
     #Start game

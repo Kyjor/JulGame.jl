@@ -58,7 +58,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			heightMultiplier = windowInfo.h/referenceHeight
 			widthMultiplier = windowInfo.w/referenceWidth
 			scaleMultiplier = currentScale/referenceScale
-			targetFontSize = 350
+			targetFontSize = 50
 			adjustedFontSize = round(targetFontSize*scaleMultiplier)
 			println("adjustedFontSize: $(adjustedFontSize)")
 			SDL_RenderSetScale(renderer, widthMultiplier, heightMultiplier)
@@ -76,7 +76,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			for textBox in this.scene.textBoxes
-				textBox.injectRenderer(renderer, font)
+				textBox.initialize(renderer, font, windowInfo)
 			end
 			
 			targetFrameRate = 60

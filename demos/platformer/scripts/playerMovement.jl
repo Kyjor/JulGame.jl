@@ -27,7 +27,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             event = @event begin
                 this.jump()
             end
-            SceneInstance.screenButtons[1].addClickEvent(event)
+            #SceneInstance.screenButtons[1].addClickEvent(event)
         end
     elseif s == :update
         function()
@@ -39,6 +39,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             if (Button_Jump::Button in buttons || this.isJump) && this.parent.getRigidbody().grounded
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
+                SceneInstance.sounds[1].toggleSound()
             end
             if Button_Left::Button in buttons
                 # println("Left Pressed")
