@@ -1,5 +1,4 @@
 ﻿include("Animator.jl")
-include("UI/ScreenButton.jl")
 include("Camera.jl")
 include("Constants.jl")
 include("Entity.jl")
@@ -10,8 +9,10 @@ include("Macros.jl")
 include("RenderWindow.jl")
 include("Rigidbody.jl")
 include("SceneInstance.jl")
+include("UI/ScreenButton.jl")
 include("SoundSource.jl")
 include("Sprite.jl")
+include("UI/TextBox.jl")
 include("Transform.jl")
 include("Utils.jl")
 include("Math/Vector2.jl")
@@ -44,16 +45,25 @@ end
 function Base.getproperty(this::MainLoop, s::Symbol)
     if s == :start 
         function()
-			#@assert SDL_Init(SDL_INIT_AUDIO) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-			# @assert TTF_Init() == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
-			font = TTF_OpenFont(fontPath, 150)
-			# @assert Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) == 0 "error initializing SDL: $(unsafe_string(SDL_GetError()))"
-
+			
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_MAXIMIZED)
-			windowHasMouseFocus = true
-			SDL_SetWindowResizable(window, SDL_TRUE)
+			SDL_SetWindowResizable(window, SDL_FALSE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
+			windowInfo = unsafe_wrap(Array, SDL_GetWindowSurface(window), 1; own = false)[1]
+
+			referenceHeight = 1080
+			referenceWidth = 1920
+			referenceScale = referenceHeight*referenceWidth
+			currentScale = windowInfo.w*windowInfo.h
+			heightMultiplier = windowInfo.h/referenceHeight
+			widthMultiplier = windowInfo.w/referenceWidth
+			scaleMultiplier = currentScale/referenceScale
+			targetFontSize = 350
+			adjustedFontSize = round(targetFontSize*scaleMultiplier)
+			println("adjustedFontSize: $(adjustedFontSize)")
+			SDL_RenderSetScale(renderer, widthMultiplier, heightMultiplier)
+			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+			font = TTF_OpenFont(fontPath, targetFontSize)
 
 			for entity in this.scene.entities
 				if entity.getSprite() != C_NULL
@@ -65,10 +75,15 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				screenButton.injectRenderer(renderer, font)
 			end
 			
+			for textBox in this.scene.textBoxes
+				textBox.injectRenderer(renderer, font)
+			end
+			
 			targetFrameRate = 60
 			rigidbodies = this.scene.rigidbodies
 			entities = this.scene.entities
 			screenButtons = this.scene.screenButtons
+			textBoxes = this.scene.textBoxes
 
             try
 
@@ -115,17 +130,18 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 
 					SceneInstance.camera.update()
 					
+					SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 					for entity in entities
 						entity.update()
 						if DEBUG && entity.getCollider() != C_NULL
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
 							SDL_RenderDrawLines(renderer, [
-								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS)), 
-								SDL_Point(round(pos.x * SCALE_UNITS + colSize.x * SCALE_UNITS), round(pos.y * SCALE_UNITS)),
-								SDL_Point(round(pos.x * SCALE_UNITS + colSize.x * SCALE_UNITS), round(pos.y * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-								SDL_Point(round(pos.x * SCALE_UNITS), round(pos.y * SCALE_UNITS))], 5)
+								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS)), 
+								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS)),
+								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
+								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
+								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS))], 5)
 						end
 						
 						entityAnimator = entity.getAnimator()
@@ -139,6 +155,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					end
 					for screenButton in screenButtons
 						screenButton.render()
+					end
+
+					for textBox in textBoxes
+						textBox.render(DEBUG)
 					end
 			
 					if DEBUG

@@ -16,6 +16,12 @@ function level_0()
     ]
 
     SceneInstance.screenButtons = screenButtons
+
+    textBoxes = [
+        TextBox(Vector2(1280, 800), Vector2(100, 100), Vector2(0, 0), "Test\nTxxt"),
+    ]
+
+    SceneInstance.textBoxes = textBoxes
     
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")

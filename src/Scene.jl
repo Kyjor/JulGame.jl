@@ -7,6 +7,7 @@ mutable struct Scene
     rigidbodies
     screenButtons
     sounds
+    textBoxes
 
     function Scene()
         this = new()
@@ -17,6 +18,7 @@ mutable struct Scene
         this.rigidbodies = C_NULL
         this.screenButtons = C_NULL
         this.sounds = C_NULL
+        this.textBoxes = C_NULL
 
         return this
     end
