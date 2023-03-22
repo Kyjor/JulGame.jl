@@ -17,7 +17,7 @@ function level_0()
     SceneInstance.screenButtons = screenButtons
 
     textBoxes = [
-        TextBox(Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message to test out the font size", true),
+        TextBox(Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message to test how long a message can be12341", true),
     ]
 
     SceneInstance.textBoxes = textBoxes

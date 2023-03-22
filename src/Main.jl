@@ -59,8 +59,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			widthMultiplier = windowInfo.w/referenceWidth
 			scaleMultiplier = currentScale/referenceScale
 			targetFontSize = 50
-			adjustedFontSize = round(targetFontSize*scaleMultiplier)
-			println("adjustedFontSize: $(adjustedFontSize)")
+			
 			SDL_RenderSetScale(renderer, widthMultiplier, heightMultiplier)
 			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 			font = TTF_OpenFont(fontPath, targetFontSize)
