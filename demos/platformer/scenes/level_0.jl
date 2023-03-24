@@ -17,7 +17,7 @@ function level_0()
     SceneInstance.screenButtons = screenButtons
 
     textBoxes = [
-        TextBox(Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message to test how long a message can be12341", true),
+        #TextBox(Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message to test how long a message can be12341", true),
     ]
 
     SceneInstance.textBoxes = textBoxes
@@ -27,11 +27,12 @@ function level_0()
         Collider(Vector2f(1, 1), Vector2f(), "ground")
     ]
 
+    bg = @path joinpath(ASSETS, "images", "parallax-mountain-bg.png")
     skeletonWalk = @path joinpath(ASSETS, "images", "SkeletonWalk.png")
     grass = @path joinpath(ASSETS, "images", "ground_grass_1.png")
     sprites = [
-        Sprite(skeletonWalk, 16),
-        Sprite(grass, 32)
+        Sprite(skeletonWalk, Vector2(16,16)),
+        Sprite(grass, Vector2(32,32))
     ]
 
     rigidbodies = [
@@ -39,18 +40,19 @@ function level_0()
     ]
 
     entities = [
+        Entity("bg", Transform(Vector2f(-10, -10), Vector2f(54, 32)), [Sprite(bg)]),
         Entity("player", Transform(Vector2f(0, 2)), [Animator(7, 12.0), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]),
         Entity(string("tile", 1), Transform(Vector2f(1, 9)), [sprites[2], colliders[2]]),
     ]
 
     for i in 1:30
         newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [Sprite(grass, 32), newCollider])
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [Sprite(grass, Vector2(32,32)), newCollider])
         push!(colliders, newCollider)
         push!(entities, newEntity)
     end
 
-    camera = Camera(Vector2f(1000, 1000), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
+    camera = Camera(Vector2f(1500, 1500), Vector2f(),Vector2f(0.64, 0.64), entities[2].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     sounds = [
         SoundSource(jump, false, 2),

@@ -26,6 +26,15 @@ mutable struct Transform
    
         return this
     end
+    function Transform(position::Vector2f, scale::Vector2f)
+        this = new()
+   
+        this.position = position
+        this.scale = scale
+        this.rotation = 0.0
+   
+        return this
+   end
     function Transform(position::Vector2f, scale::Vector2f, rotation = 0.0)
          this = new()
     
