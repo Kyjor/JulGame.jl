@@ -17,6 +17,7 @@ include("Transform.jl")
 include("Utils.jl")
 include("Math/Vector2.jl")
 include("Math/Vector2f.jl")
+include("Math/Vector4.jl")
 
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
@@ -45,7 +46,6 @@ end
 function Base.getproperty(this::MainLoop, s::Symbol)
     if s == :start 
         function()
-			
 			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_MAXIMIZED)
 			SDL_SetWindowResizable(window, SDL_FALSE)
 			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
@@ -58,10 +58,9 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			heightMultiplier = windowInfo.h/referenceHeight
 			widthMultiplier = windowInfo.w/referenceWidth
 			scaleMultiplier = currentScale/referenceScale
-			targetFontSize = 350
-			adjustedFontSize = round(targetFontSize*scaleMultiplier)
-			println("adjustedFontSize: $(adjustedFontSize)")
-			SDL_RenderSetScale(renderer, widthMultiplier, heightMultiplier)
+			targetFontSize = 50
+			
+			SDL_RenderSetScale(renderer, widthMultiplier*2, heightMultiplier*2)
 			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 			font = TTF_OpenFont(fontPath, targetFontSize)
 
@@ -76,7 +75,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			for textBox in this.scene.textBoxes
-				textBox.injectRenderer(renderer, font)
+				textBox.initialize(renderer, font, windowInfo)
 			end
 			
 			targetFrameRate = 60

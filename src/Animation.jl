@@ -1,43 +1,37 @@
-﻿include("Animation.jl")
+include("Math/Vector2f.jl")
+include("Math/Vector4.jl")
 include("Constants.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
-mutable struct Animator
-    animations::Array{Animation}
-    currentAnimation::Animation
-    lastFrame::Int64
+mutable struct Animation
+    animatedFPS::Int64
+    currentFrame
+    frames::Array{Vector4}
+    lastFrame
     lastUpdate
     parent
     sprite
 
-    function Animator(animations)
+    function Animation(frames, animatedFPS)
         this = new()
         
-        this.animations = animations
-        this.currentAnimation = this.animations[1]
-        #this.frameCount = frameCount
-        this.lastFrame = 1
+        this.animatedFPS = animatedFPS
+        this.frames = frames
+        this.lastFrame = 0
         this.lastUpdate = SDL_GetTicks()
-        #this.animatedFPS = animatedFPS
 
         return this
     end
 end
 
-function Base.getproperty(this::Animator, s::Symbol)
+function Base.getproperty(this::Animation, s::Symbol)
     if s == :getLastFrame
         function()
             return this.lastFrame
         end
     elseif s == :setLastFrame
         function(value)
-            if value == 0 
-                value = 1
-            elseif value > length(this.currentAnimation.frames)
-                value = length(this.currentAnimation.frames)
-            end
-
             this.lastFrame = value
         end
     elseif s == :getLastUpdate
@@ -50,17 +44,18 @@ function Base.getproperty(this::Animator, s::Symbol)
         end
     elseif s == :getFrameCount
         function()
-            return length(this.currentAnimation.frames)
+            return this.frameCount
         end
     elseif s == :update
         function(currentRenderTime, deltaTime)
-            deltaTime = (currentRenderTime - this.getLastUpdate()) / 1000.0
-            framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
+            deltaTime = (currentRenderTime  - this.getLastUpdate()) / 1000.0
+            framesToUpdate = floor(deltaTime / (1.0 / this.animatedFPS))
             if framesToUpdate > 0
-                this.lastFrame = this.lastFrame + framesToUpdate
+                this.setLastFrame(this.getLastFrame() + framesToUpdate)
+                this.setLastFrame(this.getLastFrame() % this.getFrameCount())
                 this.setLastUpdate(currentRenderTime)
             end
-            this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
+            this.sprite.frameToDraw = this.getLastFrame()
         end
    elseif s == :setSprite
         function(sprite)

@@ -1,49 +1,42 @@
 ﻿include("Constants.jl")
 include("SceneInstance.jl")
+include("Math/Vector2.jl")
 include("Math/Vector2f.jl")
+include("Math/Vector4.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Sprite
-    isFlipped
+    crop
+    isFlipped::Bool
     image
-    frameToDraw
+    frameToDraw::Vector4
     offset
     parent
-    pixelsPerUnit
     position
     renderer
     texture
-    widthX
-    widthY
     
-    #frames: number of frames in an animation
-    #width: width of each frame
-    function Sprite(image, renderer, pixelsPerUnit)
+    function Sprite(image, crop::Vector4)
         this = new()
         
         this.isFlipped = false
         this.image = IMG_Load(image)
-        this.frameToDraw = 0
-        this.renderer = renderer
-        this.pixelsPerUnit = pixelsPerUnit
+        #this.frameToDraw = 0
+        this.crop = crop
         this.position = Vector2f(0.0, 0.0)
-        this.widthX = 1.0 
-        this.widthY = 1.0
-        
+
         return this
     end
-    
-    function Sprite(image, pixelsPerUnit)
+
+    function Sprite(image)
         this = new()
         
         this.isFlipped = false
         this.image = IMG_Load(image)
-        this.frameToDraw = 0
-        this.pixelsPerUnit = pixelsPerUnit
+        #this.frameToDraw = 0
+        this.crop = C_NULL
         this.position = Vector2f(0.0, 0.0)
-        this.widthX = 1.0 
-        this.widthY = 1.0
 
         return this
     end
@@ -56,10 +49,11 @@ function Base.getproperty(this::Sprite, s::Symbol)
             parentTransform.setPosition(Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
             flip = SDL_FLIP_NONE
             
+            srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.crop.x,0,this.crop.w,this.crop.h))
             SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 
-                Ref(SDL_Rect(this.frameToDraw * 16,0,16,16)), 
+                srcRect, 
                 Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x - SceneInstance.camera.position.x) * SCALE_UNITS)), 
                 convert(Int32,round((parentTransform.getPosition().y - SceneInstance.camera.position.y) * SCALE_UNITS)),
                 convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
@@ -76,10 +70,6 @@ function Base.getproperty(this::Sprite, s::Symbol)
     elseif s == :flip
         function()
             this.isFlipped = !this.isFlipped
-        end
-    elseif s == :update
-        function()
-            this.draw(Ref(SDL_Rect(this.frameToDraw * 16,0,16,16)))
         end
    elseif s == :setParent
         function(parent)

@@ -2,10 +2,10 @@ struct Vector2
     x::Int64
     y::Int64
     #default constructor
-    #default constructor
     Vector2() = new(0, 0)
     
     Vector2(x::Int64, y::Int64) = new(x,y)
+    Vector2(x::Int32, y::Int32) = new(convert(Int64, x), convert(Int64, y))
 
     #convert if float
     Vector2(x::Float64, y::Float64) = new(convert(Int64,round(x)),convert(Int64,round(y)));
