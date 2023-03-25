@@ -2,32 +2,29 @@
 include("SceneInstance.jl")
 include("Math/Vector2.jl")
 include("Math/Vector2f.jl")
+include("Math/Vector4.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Sprite
     crop
-    isFlipped
+    isFlipped::Bool
     image
-    frameToDraw
+    frameToDraw::Vector4
     offset
     parent
     position
     renderer
     texture
-    widthX
-    widthY
     
-    function Sprite(image, crop::Vector2)
+    function Sprite(image, crop::Vector4)
         this = new()
         
         this.isFlipped = false
         this.image = IMG_Load(image)
-        this.frameToDraw = 0
+        #this.frameToDraw = 0
         this.crop = crop
         this.position = Vector2f(0.0, 0.0)
-        this.widthX = 1.0 
-        this.widthY = 1.0
 
         return this
     end
@@ -37,11 +34,9 @@ mutable struct Sprite
         
         this.isFlipped = false
         this.image = IMG_Load(image)
-        this.frameToDraw = 0
+        #this.frameToDraw = 0
         this.crop = C_NULL
         this.position = Vector2f(0.0, 0.0)
-        this.widthX = 1.0 
-        this.widthY = 1.0
 
         return this
     end
@@ -53,7 +48,8 @@ function Base.getproperty(this::Sprite, s::Symbol)
             parentTransform = this.parent.getTransform()
             parentTransform.setPosition(Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
             flip = SDL_FLIP_NONE
-            srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.frameToDraw * this.crop.x,0,this.crop.x,this.crop.y))
+            
+            srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.crop.x,0,this.crop.w,this.crop.h))
             SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 
@@ -74,10 +70,6 @@ function Base.getproperty(this::Sprite, s::Symbol)
     elseif s == :flip
         function()
             this.isFlipped = !this.isFlipped
-        end
-    elseif s == :update
-        function()
-            this.draw(Ref(SDL_Rect(this.frameToDraw * 16,0,16,16)))
         end
    elseif s == :setParent
         function(parent)

@@ -40,6 +40,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
                 SceneInstance.sounds[1].toggleSound()
+                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[3]
             end
             if Button_Left::Button in buttons
                 # println("Left Pressed")
@@ -48,12 +49,21 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     this.isFacingRight = false
                     this.parent.getSprite().flip()
                 end
+                if this.parent.getRigidbody().grounded
+                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[2]
+                end
             elseif Button_Right::Button in buttons
                 x = speed
                 if !this.isFacingRight
                     this.isFacingRight = true
                     this.parent.getSprite().flip()
                 end
+                if this.parent.getRigidbody().grounded
+                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[2]
+                end
+            elseif this.parent.getRigidbody().grounded
+                #set idle
+                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[1]
             end
             
             this.parent.getRigidbody().setVelocity(Vector2f(x, y))
