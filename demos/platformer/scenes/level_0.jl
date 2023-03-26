@@ -7,7 +7,7 @@ using SimpleDirectMediaLayer
 const ASSETS = @path joinpath(@__DIR__, "..", "assets")
 
 function level_0()
-    mainLoop = MainLoop()
+    mainLoop = MainLoop(2.0)
 
     # Prepare scene
     screenButtons = [
@@ -16,23 +16,25 @@ function level_0()
 
     SceneInstance.screenButtons = screenButtons
 
+    fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
-        #TextBox(Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message to test how long a message can be12341", true),
+        TextBox(fontPath, 50, Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message", true),
     ]
 
     SceneInstance.textBoxes = textBoxes
     
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")
-        Collider(Vector2f(1, 1), Vector2f(), "ground")
     ]
 
     bg = @path joinpath(ASSETS, "images", "parallax-mountain-bg.png")
+    curtain = @path joinpath(ASSETS, "images", "curtain.png")
+    curtainTop = @path joinpath(ASSETS, "images", "curtaintop.png")
     skeletonWalk = @path joinpath(ASSETS, "images", "Player.png")
-    grass = @path joinpath(ASSETS, "images", "ground_grass_1.png")
+    floor = @path joinpath(ASSETS, "images", "Floor.png")
     sprites = [
         Sprite(skeletonWalk),
-        Sprite(grass)
+        Sprite(floor),
     ]
 
     idleFrames = []
@@ -59,20 +61,30 @@ function level_0()
         Rigidbody(1.0, 0),
     ]
 
-    entities = [
-        #Entity("bg", Transform(Vector2f(-10, -10), Vector2f(54, 32)), [Sprite(bg)]),
-        Entity("player", Transform(Vector2f(0, 2)),  [Animator(animations), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]),
-        Entity(string("tile", 1), Transform(Vector2f(1, 9)), [sprites[2], colliders[2]]),
-    ]
+    curtLCol = Collider(Vector2f(0.5, 8), Vector2f(), "curtLCol")
+    curtRCol = Collider(Vector2f(0.5, 8), Vector2f(), "curtRCol")
+    push!(colliders, curtLCol)
+    push!(colliders, curtRCol)
+
+    entities = []
 
     for i in 1:30
         newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i-1, 10)), [Sprite(grass), newCollider])
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i-10, 10)), [Sprite(floor), newCollider])
         push!(colliders, newCollider)
         push!(entities, newEntity)
     end
 
-    camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[1].getTransform())
+        #Entity("bg", Transform(Vector2f(-10, -10), Vector2f(54, 32)), [Sprite(bg)]),
+    push!(entities, Entity("player", Transform(Vector2f(0, 9)),  [Animator(animations), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]))
+    push!(entities, Entity("camera target", Transform(Vector2f(0, 8))))
+    push!(entities, Entity("curtain left", Transform(Vector2f(-7, 2), Vector2f(2, 8)),  [Sprite(curtain), curtLCol]))
+    push!(entities, Entity("curtain right", Transform(Vector2f(6, 2), Vector2f(2, 8)),  [Sprite(curtain, true)]))
+    push!(entities, Entity("curtain right col", Transform(Vector2f(7.5, 2), Vector2f(1, 8)),  [curtRCol]))
+    push!(entities, Entity("curtain top", Transform(Vector2f(-5, 1.75), Vector2f(11, 2)),  [Sprite(curtainTop)]))
+
+
+    camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[31].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     sounds = [
         SoundSource(jump, false, 2),

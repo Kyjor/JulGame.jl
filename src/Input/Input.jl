@@ -6,13 +6,15 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Input
     buttons::Array{Button}
     debug::Bool
+    mousePosition
     quit::Bool
 
     function Input()
         this = new()
 
-        this.debug = false
         this.buttons = []
+        this.debug = false
+        this.mousePosition = C_NULL
         this.quit = false
 
         return this
@@ -32,6 +34,7 @@ function Base.getproperty(this::Input, s::Symbol)
                         x,y = Int[1], Int[1]
                         SDL_GetMouseState(pointer(x), pointer(y))
 
+                        this.mousePosition = Vector2(x[1], y[1])
                         for screenButton in SceneInstance.screenButtons
                             # Check position of button to see which we are interacting with
                             eventWasInsideThisButton = true

@@ -24,12 +24,22 @@ const SDL2 = SimpleDirectMediaLayer
 
 mutable struct MainLoop
     scene::Scene
-    
+    zoom::Float64
+
     function MainLoop(scene)
         this = new()
 		
 		SDL2.init()
 		this.scene = scene
+		
+        return this
+    end
+
+	function MainLoop(zoom::Float64)
+        this = new()
+		
+		SDL2.init()
+		this.zoom = zoom
 		
         return this
     end
@@ -58,11 +68,11 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			heightMultiplier = windowInfo.h/referenceHeight
 			widthMultiplier = windowInfo.w/referenceWidth
 			scaleMultiplier = currentScale/referenceScale
-			targetFontSize = 50
+			fontSize = 50
 			
-			SDL_RenderSetScale(renderer, widthMultiplier*2, heightMultiplier*2)
+			SDL_RenderSetScale(renderer, widthMultiplier * this.zoom, heightMultiplier * this.zoom)
 			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
-			font = TTF_OpenFont(fontPath, targetFontSize)
+			font = TTF_OpenFont(fontPath, fontSize)
 
 			for entity in this.scene.entities
 				if entity.getSprite() != C_NULL
@@ -75,7 +85,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			for textBox in this.scene.textBoxes
-				textBox.initialize(renderer, font, windowInfo)
+				textBox.initialize(renderer)
 			end
 			
 			targetFrameRate = 60
@@ -164,14 +174,24 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						# Stats to display
 						text = TTF_RenderText_Blended( font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), SDL_Color(0,255,0,255) )
 						text1 = TTF_RenderText_Blended( font, string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL_Color(0,255,0,255) )
+						mousePositionText = TTF_RenderText_Blended( font, "Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
+						mousePositionWorldText = TTF_RenderText_Blended( font, "Mouse pos world: $(round((InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * widthMultiplier * this.zoom)) / SCALE_UNITS / widthMultiplier / this.zoom; digits=2)),$(round((InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * heightMultiplier * this.zoom)) / SCALE_UNITS / heightMultiplier / this.zoom; digits=2))", SDL_Color(0,255,0,255) )
 						textTexture = SDL_CreateTextureFromSurface(renderer,text)
 						textTexture1 = SDL_CreateTextureFromSurface(renderer,text1)
+						mousePositionTextTexture = SDL_CreateTextureFromSurface(renderer,mousePositionText)
+						mousePositionWorldTextTexture = SDL_CreateTextureFromSurface(renderer,mousePositionWorldText)
 						SDL_RenderCopy(renderer, textTexture, C_NULL, Ref(SDL_Rect(0,0,150,50)))
 						SDL_RenderCopy(renderer, textTexture1, C_NULL, Ref(SDL_Rect(0,50,200,50)))
+						SDL_RenderCopy(renderer, mousePositionTextTexture, C_NULL, Ref(SDL_Rect(0,100,200,50)))
+						SDL_RenderCopy(renderer, mousePositionWorldTextTexture, C_NULL, Ref(SDL_Rect(0,150,200,50)))
 						SDL_FreeSurface(text)
 						SDL_FreeSurface(text1)
+						SDL_FreeSurface(mousePositionText)
+						SDL_FreeSurface(mousePositionWorldText)
 						SDL_DestroyTexture(textTexture)
 						SDL_DestroyTexture(textTexture1)
+						SDL_DestroyTexture(mousePositionTextTexture)
+						SDL_DestroyTexture(mousePositionWorldTextTexture)
 					end
 			
 					SDL_RenderPresent(renderer)
