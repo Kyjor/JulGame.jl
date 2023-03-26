@@ -3,23 +3,32 @@ include("../../../src/SceneInstance.jl")
 include("../../../src/Math/Vector2f.jl")
 
 mutable struct Dialogue
+    charTimer::Float64
     currentMessage::String
+    currentMessageIndex::Int64
     currentPositionInMessage::Int64
     isReadingMessage::Bool
+    isQueueingNextMessage::Bool
     messages::Array{String}
+    messageTimer::Float64
     parent
     timeBetweenCharacters::Float64
-    timer::Float64
+    timeBetweenMessages::Float64
 
 
-    function Dialogue(messages::Array{String}, timeBetweenCharacters::Float64)
+    function Dialogue(messages::Array{String}, timeBetweenCharacters::Float64, timeBetweenMessages::Float64)
         this = new()
         
+        this.charTimer = 0.0
         this.currentMessage = messages[1]
+        this.currentMessageIndex = 1
         this.currentPositionInMessage = 1
-        this.isReadingMessage = true
+        this.isReadingMessage = false
+        this.isQueueingNextMessage = true
+        this.messages = messages
+        this.messageTimer = 0.0
         this.timeBetweenCharacters = timeBetweenCharacters
-        this.timer = 0.0
+        this.timeBetweenMessages = timeBetweenMessages
 
         return this
     end
@@ -31,22 +40,39 @@ function Base.getproperty(this::Dialogue, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-            this.timer = this.timer + deltaTime
-            if !this.isReadingMessage || this.timer < this.timeBetweenCharacters
+
+            if this.messageTimer > this.timeBetweenMessages
+                this.isQueueingNextMessage = false
+                this.isReadingMessage = true
+                this.messageTimer = 0.0
+                SceneInstance.textBoxes[1].updateText(" ")
+            end
+            if this.isQueueingNextMessage == true
+                this.messageTimer = this.messageTimer + deltaTime
+                return
+            end
+
+            this.charTimer = this.charTimer + deltaTime
+            if !this.isReadingMessage || this.charTimer < this.timeBetweenCharacters
                 return
             end
             #if at end, set isReadingMessage to false
-            if this.currentPositionInMessage == length(this.currentMessage)
+            if this.currentPositionInMessage == length(this.currentMessage)+1
                 this.isReadingMessage = false
+                this.isQueueingNextMessage = true
+                this.currentPositionInMessage = 1
+                this.currentMessageIndex = this.currentMessageIndex + 1
+                this.currentMessage = this.messages[this.currentMessageIndex]
+                this.charTimer = 0.0
                 return
             end
-            # add next character to text box 
             SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text == " " ? "" : SceneInstance.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))
+            # add next character to text box 
             # play a sound 
             SceneInstance.sounds[2].toggleSound()
 
             this.currentPositionInMessage = this.currentPositionInMessage + 1
-            this.timer = 0.0
+            this.charTimer = 0.0
         end
     elseif s == :setParent
         function(parent)

@@ -1,6 +1,7 @@
 ﻿include("../../../src/Main.jl")
 
 include("../scripts/playerMovement.jl")
+include("../scripts/fullGameDialogue.jl")
 include("../scripts/dialogue.jl")
 
 using RelocatableFolders
@@ -11,12 +12,7 @@ const ASSETS = @path joinpath(@__DIR__, "..", "assets")
 function level_0()
     mainLoop = MainLoop(2.0)
 
-    messages = [
-        "Do you know why you're here??",
-        "I'm your guide, and I'm here to help you get out."
-    ]
-
-    gameDialogue = Dialogue(messages, 0.05)
+    gameDialogue = Dialogue(narratorScript, 0.05, 1.5)
 
 
     # Prepare scene
