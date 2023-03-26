@@ -18,7 +18,7 @@ function level_0()
 
     fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
-        TextBox(fontPath, 50, Vector2(1230, 800), Vector2(1000, 100), Vector2(0, 0), "This is a test message", true),
+        TextBox(fontPath, 50, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "This is a test message", true),
     ]
 
     SceneInstance.textBoxes = textBoxes
@@ -77,14 +77,14 @@ function level_0()
 
         #Entity("bg", Transform(Vector2f(-10, -10), Vector2f(54, 32)), [Sprite(bg)]),
     push!(entities, Entity("player", Transform(Vector2f(0, 9)),  [Animator(animations), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]))
-    push!(entities, Entity("camera target", Transform(Vector2f(0, 8))))
+    push!(entities, Entity("camera target", Transform(Vector2f(0, 7.75))))
     push!(entities, Entity("curtain left", Transform(Vector2f(-7, 2), Vector2f(2, 8)),  [Sprite(curtain), curtLCol]))
     push!(entities, Entity("curtain right", Transform(Vector2f(6, 2), Vector2f(2, 8)),  [Sprite(curtain, true)]))
     push!(entities, Entity("curtain right col", Transform(Vector2f(7.5, 2), Vector2f(1, 8)),  [curtRCol]))
     push!(entities, Entity("curtain top", Transform(Vector2f(-5, 1.75), Vector2f(11, 2)),  [Sprite(curtainTop)]))
 
 
-    camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[31].getTransform())
+    camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     sounds = [
         SoundSource(jump, false, 2),

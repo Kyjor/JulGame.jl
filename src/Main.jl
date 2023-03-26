@@ -85,7 +85,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			for textBox in this.scene.textBoxes
-				textBox.initialize(renderer)
+				textBox.initialize(renderer, this.zoom)
 			end
 			
 			targetFrameRate = 60
@@ -174,23 +174,28 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						# Stats to display
 						text = TTF_RenderText_Blended( font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), SDL_Color(0,255,0,255) )
 						text1 = TTF_RenderText_Blended( font, string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL_Color(0,255,0,255) )
-						mousePositionText = TTF_RenderText_Blended( font, "Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
+						mousePositionText = TTF_RenderText_Blended( font, "Raw Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
+						scaledMousePositionText = TTF_RenderText_Blended( font, "Scaled Mouse pos: $(round(InputInstance.mousePosition.x/widthMultiplier)),$(round(InputInstance.mousePosition.y/heightMultiplier))", SDL_Color(0,255,0,255) )
 						mousePositionWorldText = TTF_RenderText_Blended( font, "Mouse pos world: $(round((InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * widthMultiplier * this.zoom)) / SCALE_UNITS / widthMultiplier / this.zoom; digits=2)),$(round((InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * heightMultiplier * this.zoom)) / SCALE_UNITS / heightMultiplier / this.zoom; digits=2))", SDL_Color(0,255,0,255) )
 						textTexture = SDL_CreateTextureFromSurface(renderer,text)
 						textTexture1 = SDL_CreateTextureFromSurface(renderer,text1)
 						mousePositionTextTexture = SDL_CreateTextureFromSurface(renderer,mousePositionText)
+						scaledMousePositionTextTexture = SDL_CreateTextureFromSurface(renderer,scaledMousePositionText)
 						mousePositionWorldTextTexture = SDL_CreateTextureFromSurface(renderer,mousePositionWorldText)
 						SDL_RenderCopy(renderer, textTexture, C_NULL, Ref(SDL_Rect(0,0,150,50)))
 						SDL_RenderCopy(renderer, textTexture1, C_NULL, Ref(SDL_Rect(0,50,200,50)))
 						SDL_RenderCopy(renderer, mousePositionTextTexture, C_NULL, Ref(SDL_Rect(0,100,200,50)))
-						SDL_RenderCopy(renderer, mousePositionWorldTextTexture, C_NULL, Ref(SDL_Rect(0,150,200,50)))
+						SDL_RenderCopy(renderer, scaledMousePositionTextTexture, C_NULL, Ref(SDL_Rect(0,150,200,50)))
+						SDL_RenderCopy(renderer, mousePositionWorldTextTexture, C_NULL, Ref(SDL_Rect(0,200,200,50)))
 						SDL_FreeSurface(text)
 						SDL_FreeSurface(text1)
 						SDL_FreeSurface(mousePositionText)
 						SDL_FreeSurface(mousePositionWorldText)
+						SDL_FreeSurface(scaledMousePositionText)
 						SDL_DestroyTexture(textTexture)
 						SDL_DestroyTexture(textTexture1)
 						SDL_DestroyTexture(mousePositionTextTexture)
+						SDL_DestroyTexture(scaledMousePositionTextTexture)
 						SDL_DestroyTexture(mousePositionWorldTextTexture)
 					end
 			

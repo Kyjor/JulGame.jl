@@ -10,10 +10,12 @@ mutable struct TextBox
     isCentered    
     position
     renderer
+    renderText
     size
     sizePercentage
     text
     textTexture
+    zoom
 
     function TextBox(fontPath, fontSize, position::Vector2, size::Vector2, sizePercentage::Vector2, text::String, isCentered::Bool) # TODO: replace bool with enum { left, center, right, etc }
         this = new()
@@ -29,6 +31,7 @@ mutable struct TextBox
         this.size = size
         this.sizePercentage = sizePercentage
         this.text = text
+        this.zoom = 1.0
 
         return this
     end
@@ -50,19 +53,20 @@ function Base.getproperty(this::TextBox, s::Symbol)
             @assert SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL_GetError()))"
         end
     elseif s == :initialize
-        function(renderer)
+        function(renderer, zoom)
+            this.zoom = zoom
             this.renderer = renderer
             font = TTF_OpenFont(this.fontPath, this.fontSize)
             println(unsafe_string(SDL_GetError()))
             this.font = font
-            text = TTF_RenderText_Blended_Wrapped(this.font, this.text, SDL_Color(255,255,255,255), 1900)
-            this.textTexture = SDL_CreateTextureFromSurface(this.renderer, text)
+            this.renderText = TTF_RenderText_Blended(this.font, this.text, SDL_Color(255,255,255,255))
+            this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
             w,h = Int32[1], Int32[1]
             TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
             this.size = Vector2(w[1], h[1])
             
             if this.isCentered 
-                this.position = Vector2(max((1920 - this.size.x)/2, 0), this.position.y)
+                this.position = Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y/this.zoom)
             end
             println(this.position)
         end
@@ -75,7 +79,20 @@ function Base.getproperty(this::TextBox, s::Symbol)
         end
     elseif s == :updateText
         function(newText)
+            this.text = newText
+            SDL_FreeSurface(this.renderText)
+            SDL_DestroyTexture(this.textTexture)
+            this.renderText = TTF_RenderText_Blended( this.font, this.text, SDL_Color(255,255,255,255))
+			this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
+
+            w,h = Int32[1], Int32[1]
+            TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
+            this.size = Vector2(w[1], h[1])
             
+            if this.isCentered 
+                this.position = Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y)
+            end
+            println(this.position)
         end
     else
         try
