@@ -132,6 +132,15 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 					for entity in entities
 						entity.update()
+						entityAnimator = entity.getAnimator()
+						if entityAnimator != C_NULL
+							entityAnimator.update(currentRenderTime, deltaTime)
+						end
+						entitySprite = entity.getSprite()
+						if entitySprite != C_NULL
+							entitySprite.draw()
+						end
+
 						if DEBUG && entity.getCollider() != C_NULL
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
@@ -141,15 +150,6 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
 								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
 								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS))], 5)
-						end
-						
-						entityAnimator = entity.getAnimator()
-						if entityAnimator != C_NULL
-							entityAnimator.update(currentRenderTime, deltaTime)
-						end
-						entitySprite = entity.getSprite()
-						if entitySprite != C_NULL
-							entitySprite.draw()
 						end
 					end
 					for screenButton in screenButtons

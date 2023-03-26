@@ -29,6 +29,18 @@ mutable struct Sprite
         return this
     end
 
+    function Sprite(image, isFlipped)
+        this = new()
+        
+        this.isFlipped = isFlipped
+        this.image = IMG_Load(image)
+        #this.frameToDraw = 0
+        this.crop = C_NULL
+        this.position = Vector2f(0.0, 0.0)
+
+        return this
+    end
+
     function Sprite(image)
         this = new()
         
