@@ -60,6 +60,9 @@ function Base.getproperty(this::Collider, s::Symbol)
             counter = 1
             for colliderB in colliders
                 #TODO: Skip any out of a certain range of the player. This will prevent a bunch of unnecessary collision checks
+                if !colliderB.getParent().isActive
+                    continue
+                end
                 if colliders[1] != colliderB
                     collision = checkCollision(colliders[1], colliderB)
                     transform = colliders[1].getParent().getTransform()

@@ -24,7 +24,7 @@ function level_0()
 
     fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
-        TextBox(fontPath, 50, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), " ", true),
+        TextBox(fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), " ", true),
     ]
 
     SceneInstance.textBoxes = textBoxes
@@ -91,7 +91,31 @@ function level_0()
     push!(entities, Entity("dialogue", Transform(Vector2f())))
     entities[37].addScript(gameDialogue)
 
-
+    platforms = []
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
+    platform = Entity(string("tile"), Transform(Vector2f(2, 9)), [Sprite(floor), newCollider])
+    push!(entities, platform)
+    push!(platforms, platform)
+    push!(colliders, newCollider)
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
+    platform = Entity(string("tile"), Transform(Vector2f(0, 6)), [Sprite(floor), newCollider])
+    push!(entities, platform)
+    push!(platforms, platform)
+    push!(colliders, newCollider)
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
+    platform = Entity(string("tile"), Transform(Vector2f(4, 8)), [Sprite(floor), newCollider])
+    push!(entities, platform)
+    push!(platforms, platform)
+    push!(colliders, newCollider)
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
+    platform = Entity(string("tile"), Transform(Vector2f(5, 7)), [Sprite(floor), newCollider])
+    push!(entities, platform)
+    push!(platforms, platform)
+    push!(colliders, newCollider)
+    for plat in platforms
+        plat.isActive = false
+    end
+    
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     speech = @path joinpath(ASSETS, "sounds", "speech.wav")

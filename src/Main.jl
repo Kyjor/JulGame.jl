@@ -141,6 +141,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					
 					SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 					for entity in entities
+						if !entity.isActive
+							continue
+						end
+
 						entity.update(deltaTime)
 						entityAnimator = entity.getAnimator()
 						if entityAnimator != C_NULL
@@ -176,7 +180,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						text1 = TTF_RenderText_Blended( font, string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL_Color(0,255,0,255) )
 						mousePositionText = TTF_RenderText_Blended( font, "Raw Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
 						scaledMousePositionText = TTF_RenderText_Blended( font, "Scaled Mouse pos: $(round(InputInstance.mousePosition.x/widthMultiplier)),$(round(InputInstance.mousePosition.y/heightMultiplier))", SDL_Color(0,255,0,255) )
-						mousePositionWorldText = TTF_RenderText_Blended( font, "Mouse pos world: $(round((InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * widthMultiplier * this.zoom)) / SCALE_UNITS / widthMultiplier / this.zoom; digits=2)),$(round((InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * heightMultiplier * this.zoom)) / SCALE_UNITS / heightMultiplier / this.zoom; digits=2))", SDL_Color(0,255,0,255) )
+						mousePositionWorldText = TTF_RenderText_Blended( font, "Mouse pos world: $(floor(Int,(InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * widthMultiplier * this.zoom)) / SCALE_UNITS / widthMultiplier / this.zoom)),$(floor(Int,( InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * heightMultiplier * this.zoom)) / SCALE_UNITS / heightMultiplier / this.zoom))", SDL_Color(0,255,0,255) )
 						textTexture = SDL_CreateTextureFromSurface(renderer,text)
 						textTexture1 = SDL_CreateTextureFromSurface(renderer,text1)
 						mousePositionTextTexture = SDL_CreateTextureFromSurface(renderer,mousePositionText)
