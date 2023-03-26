@@ -30,7 +30,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             #SceneInstance.screenButtons[1].addClickEvent(event)
         end
     elseif s == :update
-        function()
+        function(deltaTime)
             x = 0
             speed = 5
             #println(this.parent.getComponent(Transform).position)
@@ -41,7 +41,6 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 y = -5.0
                 SceneInstance.sounds[1].toggleSound()
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[3]
-                SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text, "."))
             end
             if Button_Left::Button in buttons
                 # println("Left Pressed")

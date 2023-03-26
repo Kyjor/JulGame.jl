@@ -124,9 +124,9 @@ function Base.getproperty(this::Entity, s::Symbol)
             return this.scripts
         end
     elseif s == :update
-        function()
+        function(deltaTime)
             for script in this.scripts
-                script.update()
+                script.update(deltaTime)
            end
         end
     else

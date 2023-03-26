@@ -1,5 +1,7 @@
 ﻿include("../../../src/Main.jl")
+
 include("../scripts/playerMovement.jl")
+include("../scripts/dialogue.jl")
 
 using RelocatableFolders
 using SimpleDirectMediaLayer
@@ -8,6 +10,14 @@ const ASSETS = @path joinpath(@__DIR__, "..", "assets")
 
 function level_0()
     mainLoop = MainLoop(2.0)
+
+    messages = [
+        "Do you know why you're here??",
+        "I'm your guide, and I'm here to help you get out."
+    ]
+
+    gameDialogue = Dialogue(messages, 0.05)
+
 
     # Prepare scene
     screenButtons = [
@@ -18,7 +28,7 @@ function level_0()
 
     fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
-        TextBox(fontPath, 50, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "This is a test message", true),
+        TextBox(fontPath, 50, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), " ", true),
     ]
 
     SceneInstance.textBoxes = textBoxes
@@ -82,12 +92,16 @@ function level_0()
     push!(entities, Entity("curtain right", Transform(Vector2f(6, 2), Vector2f(2, 8)),  [Sprite(curtain, true)]))
     push!(entities, Entity("curtain right col", Transform(Vector2f(7.5, 2), Vector2f(1, 8)),  [curtRCol]))
     push!(entities, Entity("curtain top", Transform(Vector2f(-5, 1.75), Vector2f(11, 2)),  [Sprite(curtainTop)]))
+    push!(entities, Entity("dialogue", Transform(Vector2f())))
+    entities[37].addScript(gameDialogue)
 
 
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
+    speech = @path joinpath(ASSETS, "sounds", "speech.wav")
     sounds = [
         SoundSource(jump, false, 2),
+        SoundSource(speech, false, 2),
     ]
 
     #Start game

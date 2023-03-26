@@ -141,7 +141,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					
 					SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 					for entity in entities
-						entity.update()
+						entity.update(deltaTime)
 						entityAnimator = entity.getAnimator()
 						if entityAnimator != C_NULL
 							entityAnimator.update(currentRenderTime, deltaTime)
