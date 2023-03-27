@@ -7,6 +7,7 @@ mutable struct Dialogue
     currentMessage::String
     currentMessageIndex::Int64
     currentPositionInMessage::Int64
+    isPaused::Bool
     isReadingMessage::Bool
     isQueueingNextMessage::Bool
     messages::Array{String}
@@ -23,6 +24,7 @@ mutable struct Dialogue
         this.currentMessage = messages[1]
         this.currentMessageIndex = 1
         this.currentPositionInMessage = 1
+        this.isPaused = false
         this.isReadingMessage = false
         this.isQueueingNextMessage = true
         this.messages = messages
@@ -40,7 +42,9 @@ function Base.getproperty(this::Dialogue, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-
+            if this.isPaused
+                return
+            end
             if this.messageTimer > this.timeBetweenMessages
                 this.isQueueingNextMessage = false
                 this.isReadingMessage = true
@@ -64,6 +68,9 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.currentMessageIndex = this.currentMessageIndex + 1
                 this.currentMessage = this.messages[this.currentMessageIndex]
                 this.charTimer = 0.0
+                if this.currentMessageIndex == 13 
+                    this.isPaused = true
+                end
                 return
             end
             SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text == " " ? "" : SceneInstance.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))

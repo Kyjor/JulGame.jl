@@ -1,8 +1,9 @@
 ﻿include("../../../src/Main.jl")
 
-include("../scripts/playerMovement.jl")
-include("../scripts/fullGameDialogue.jl")
 include("../scripts/dialogue.jl")
+include("../scripts/fullGameDialogue.jl")
+include("../scripts/gameManager.jl")
+include("../scripts/playerMovement.jl")
 
 using RelocatableFolders
 using SimpleDirectMediaLayer
@@ -11,6 +12,8 @@ const ASSETS = @path joinpath(@__DIR__, "..", "assets")
 
 function level_0()
     mainLoop = MainLoop(2.0)
+
+    gameManager = GameManager()
 
     gameDialogue = Dialogue(narratorScript, 0.05, 1.5)
 
@@ -115,7 +118,7 @@ function level_0()
     for plat in platforms
         plat.isActive = false
     end
-    
+
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     speech = @path joinpath(ASSETS, "sounds", "speech.wav")

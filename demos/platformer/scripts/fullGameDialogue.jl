@@ -11,7 +11,8 @@ narratorScript =
         "~Skedaddle~",
         "Skeedaddle.",
         "Okay. I'm done. ",
-        "Follow the money",
+        "Follow the money.",
+
         "Well, I thought you'd do better there.",
         "I like you. So I'll give you another chance.",
         "Let's try another game.",
