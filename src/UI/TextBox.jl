@@ -68,7 +68,6 @@ function Base.getproperty(this::TextBox, s::Symbol)
             if this.isCentered 
                 this.position = Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y/this.zoom)
             end
-            println(this.position)
         end
     elseif s == :setPosition
         function(position::Vector2)
@@ -92,7 +91,6 @@ function Base.getproperty(this::TextBox, s::Symbol)
             if this.isCentered 
                 this.position = Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y)
             end
-            println(this.position)
         end
     else
         try

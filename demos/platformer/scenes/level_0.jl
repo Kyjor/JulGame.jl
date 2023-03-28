@@ -15,9 +15,10 @@ function level_0()
 
     gameManager = GameManager()
 
-    gameDialogue = Dialogue(narratorScript, 0.05, 1.5)
-
-
+    playerMovement = PlayerMovement(false)
+    gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
+    gameManager.playerMovement = playerMovement
+    
     # Prepare scene
     screenButtons = [
         #ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
@@ -36,7 +37,8 @@ function level_0()
         Collider(Vector2f(1, 1), Vector2f(), "player")
     ]
 
-    bg = @path joinpath(ASSETS, "images", "parallax-mountain-bg.png")
+    blockImage = @path joinpath(ASSETS, "images", "MoneyBlocks.png")
+    goldPot = @path joinpath(ASSETS, "images", "Gold.png")
     curtain = @path joinpath(ASSETS, "images", "curtain.png")
     curtainTop = @path joinpath(ASSETS, "images", "curtaintop.png")
     skeletonWalk = @path joinpath(ASSETS, "images", "Player.png")
@@ -60,7 +62,7 @@ function level_0()
     jumpFrames = []
     push!(jumpFrames, Vector4(6 * 8, 8, 8, 8))
 
-    animations = [
+    playerAnimations = [
         Animation(idleFrames, 3.0),
         Animation(walkFrames, 4.0),
         Animation(jumpFrames, 0.0)
@@ -75,6 +77,7 @@ function level_0()
     push!(colliders, curtLCol)
     push!(colliders, curtRCol)
 
+    #Player and scene
     entities = []
 
     for i in 1:30
@@ -84,8 +87,7 @@ function level_0()
         push!(entities, newEntity)
     end
 
-        #Entity("bg", Transform(Vector2f(-10, -10), Vector2f(54, 32)), [Sprite(bg)]),
-    push!(entities, Entity("player", Transform(Vector2f(0, 9)),  [Animator(animations), sprites[1], colliders[1], rigidbodies[1]], [PlayerMovement()]))
+    push!(entities, Entity("player", Transform(Vector2f(0, 9)),  [Animator(playerAnimations), sprites[1], colliders[1], rigidbodies[1]], [playerMovement]))
     push!(entities, Entity("camera target", Transform(Vector2f(0, 7.75))))
     push!(entities, Entity("curtain left", Transform(Vector2f(-7, 2), Vector2f(2, 8)),  [Sprite(curtain), curtLCol]))
     push!(entities, Entity("curtain right", Transform(Vector2f(6, 2), Vector2f(2, 8)),  [Sprite(curtain, true)]))
@@ -94,6 +96,7 @@ function level_0()
     push!(entities, Entity("dialogue", Transform(Vector2f())))
     entities[37].addScript(gameDialogue)
 
+    #Platforms 
     platforms = []
     newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
     platform = Entity(string("tile"), Transform(Vector2f(2, 9)), [Sprite(floor), newCollider])
@@ -119,6 +122,51 @@ function level_0()
         plat.isActive = false
     end
 
+      #Gold Pot
+      newCollider = Collider(Vector2f(1, 1), Vector2f(), "gold")
+      gold = Entity(string("tile"), Transform(Vector2f(2, 6)), [Sprite(goldPot), newCollider])
+      push!(entities, gold)
+      push!(colliders, newCollider)
+      gameManager.goldPot = gold
+      gold.isActive = false
+  
+    #Money Blocks
+    block1Frames = []
+    block2Frames = []
+    block3Frames = []
+    for i in 1:4
+        push!(block1Frames, Vector4((i - 1) * 8, 8, 8, 8))
+        push!(block2Frames, Vector4((i + 3) * 8, 8, 8, 8))
+        push!(block3Frames, Vector4((i + 7) * 8, 8, 8, 8))
+    end
+
+    blockAnims = [
+        Animation(block1Frames, 2.0),
+        Animation(block2Frames, 2.0),
+        Animation(block3Frames, 2.0),
+    ]
+
+    moneyBlocks = []
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "block")
+    block = Entity(string("tile"), Transform(Vector2f(-2, 7)), [Animator([blockAnims[2]]), Sprite(blockImage), newCollider])
+    push!(entities, block)
+    push!(moneyBlocks, block)
+    push!(colliders, newCollider)
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "block")
+    block = Entity(string("tile"), Transform(Vector2f(0, 7)), [Animator([blockAnims[1]]), Sprite(blockImage), newCollider])
+    push!(entities, block)
+    push!(moneyBlocks, block)
+    push!(colliders, newCollider)
+    newCollider = Collider(Vector2f(1, 1), Vector2f(), "block")
+    block = Entity(string("tile"), Transform(Vector2f(2, 7)), [Animator([blockAnims[3]]), Sprite(blockImage), newCollider])
+    push!(entities, block)
+    push!(moneyBlocks, block)
+    push!(colliders, newCollider)
+    for moneyBlock in moneyBlocks
+        moneyBlock.isActive = false
+    end
+    gameManager.moneyBlocks = moneyBlocks
+
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
     speech = @path joinpath(ASSETS, "sounds", "speech.wav")
@@ -126,6 +174,9 @@ function level_0()
         SoundSource(jump, false, 2),
         SoundSource(speech, false, 2),
     ]
+
+    push!(entities, Entity("game manager", Transform(), [], [gameManager]))
+
 
     #Start game
     SceneInstance.colliders = colliders

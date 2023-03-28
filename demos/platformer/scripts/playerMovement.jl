@@ -3,14 +3,16 @@ include("../../../src/Macros.jl")
 include("../../../src/Math/Vector2f.jl")
 
 mutable struct PlayerMovement
+    canMove
     input
     isFacingRight
     isJump 
     parent
 
-    function PlayerMovement()
+    function PlayerMovement(canMove)
         this = new()
         
+        this.canMove = canMove
         this.input = C_NULL
         this.isFacingRight = true
         this.isJump = false
@@ -36,13 +38,13 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             #println(this.parent.getComponent(Transform).position)
             buttons = InputInstance.buttons
             y = this.parent.getRigidbody().getVelocity().y
-            if (Button_Jump::Button in buttons || this.isJump) && this.parent.getRigidbody().grounded
+            if (Button_Jump::Button in buttons || this.isJump) && this.parent.getRigidbody().grounded && this.canMove
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
                 SceneInstance.sounds[1].toggleSound()
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[3]
             end
-            if Button_Left::Button in buttons
+            if Button_Left::Button in buttons && this.canMove
                 # println("Left Pressed")
                 x = -speed
                 if this.isFacingRight
@@ -52,7 +54,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 if this.parent.getRigidbody().grounded
                     this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[2]
                 end
-            elseif Button_Right::Button in buttons
+            elseif Button_Right::Button in buttons && this.canMove
                 x = speed
                 if !this.isFacingRight
                     this.isFacingRight = true

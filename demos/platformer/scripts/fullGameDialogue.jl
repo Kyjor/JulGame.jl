@@ -18,6 +18,7 @@ narratorScript =
         "Let's try another game.",
         "This time, get to the money at the top.",
         "If you can, you'll be a millionaire. I promise.",
+        
         "You should have paid better attention.",
         "I was clearly talking about the other stuff.",
         "But you put in a lot of effort for that. ",

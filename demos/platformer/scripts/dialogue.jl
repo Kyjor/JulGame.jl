@@ -7,28 +7,32 @@ mutable struct Dialogue
     currentMessage::String
     currentMessageIndex::Int64
     currentPositionInMessage::Int64
+    gameManager
     isPaused::Bool
     isReadingMessage::Bool
     isQueueingNextMessage::Bool
     messages::Array{String}
     messageTimer::Float64
     parent
+    playerMovement
     timeBetweenCharacters::Float64
     timeBetweenMessages::Float64
 
 
-    function Dialogue(messages::Array{String}, timeBetweenCharacters::Float64, timeBetweenMessages::Float64)
+    function Dialogue(messages::Array{String}, timeBetweenCharacters::Float64, timeBetweenMessages::Float64, gameManager, playerMovement)
         this = new()
         
         this.charTimer = 0.0
         this.currentMessage = messages[1]
         this.currentMessageIndex = 1
         this.currentPositionInMessage = 1
+        this.gameManager = gameManager
         this.isPaused = false
         this.isReadingMessage = false
         this.isQueueingNextMessage = true
         this.messages = messages
         this.messageTimer = 0.0
+        this.playerMovement = playerMovement
         this.timeBetweenCharacters = timeBetweenCharacters
         this.timeBetweenMessages = timeBetweenMessages
 
@@ -70,6 +74,12 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.charTimer = 0.0
                 if this.currentMessageIndex == 13 
                     this.isPaused = true
+                    #set up money blocks
+                    for moneyBlock in this.gameManager.moneyBlocks
+                        moneyBlock.isActive = true
+                    end
+                    this.gameManager.goldPot.isActive = true
+
                 end
                 return
             end
