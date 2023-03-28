@@ -3,7 +3,7 @@ narratorScript =
         "Do you know why you're here?",
         "No?",
         "You won a sweepstakes! Congrats!",
-        "You have the chance to win 1 million!",
+        "You have the chance to win 1 million golda!",
         "All you have to do is follow the money.",
         "One rule. Do not exit stage left to Skedaddle.",
         "Hmm. That's a weird word. ",
@@ -31,11 +31,11 @@ narratorScript =
         "Okay, you can move. ",
         "Just don't go into the hole. Please.",
         "bwahahah! I told you. You'll never get out.",
-        "You'll be here forever",
+        "You'll be here forever.",
         "This is the end for you. ",
         "There was never a sweepstakes.",
         "You will be our jester, forever.",
-        "There is no way to Skedaddle. ",
+        "There is no way to ~Skedaddle~.",
     ]
     
 dontMoveLoop =    
@@ -55,6 +55,6 @@ secretManScript =
         "Our last Jester d... left us.",
         "The boss said we needed a new one so we got you. ",
         "You can leave. But please send someone to us.",
-        "Goodbye.",
-        "Good luck...",
+        "Just exit to my left.",
+        "Goodbye. Good luck...",
     ]

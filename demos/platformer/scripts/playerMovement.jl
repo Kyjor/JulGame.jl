@@ -35,7 +35,10 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-            if this.parent.getTransform().position.y > 10 
+            if this.parent.getTransform().position.x < -7 
+                SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
+                this.gameManager.dialogue.isPaused = false
+            elseif this.parent.getTransform().position.y > 10 
                 this.parent.getTransform().position = Vector2f(0.0, -1.0)
                 SceneInstance.entities[15].isActive = true
                 SceneInstance.entities[16].isActive = true

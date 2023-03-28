@@ -70,6 +70,10 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.isQueueingNextMessage = true
                 this.currentPositionInMessage = 1
                 this.currentMessageIndex = this.currentMessageIndex + 1
+                if this.currentMessageIndex > length(this.messages)
+                    return
+                end
+                
                 this.currentMessage = this.messages[this.currentMessageIndex]
                 this.charTimer = 0.0
                 if this.currentMessageIndex == 13 
@@ -90,6 +94,9 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 elseif this.currentMessageIndex == 28 
                     this.playerMovement.canMove = true
                     this.isPaused = true
+                elseif this.currentMessageIndex == length(this.messages) 
+                    this.isPaused = true
+                    deleteat!(SceneInstance.colliders, 2)
                 end
                 return
             end

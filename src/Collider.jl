@@ -5,6 +5,7 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Collider
     collisionEvents
     currentCollisions
+    enabled
     offset::Vector2f
     parent
     size::Vector2f
@@ -15,6 +16,7 @@ mutable struct Collider
 
         this.collisionEvents = []
         this.currentCollisions = []
+        this.enabled = true
         this.offset = offset
         this.size = size
         this.tag = tag
