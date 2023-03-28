@@ -79,7 +79,17 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                         moneyBlock.isActive = true
                     end
                     this.gameManager.goldPot.isActive = true
-
+                elseif this.currentMessageIndex == 18 
+                    this.isPaused = true
+                    for platform in this.gameManager.platforms
+                        platform.isActive = true
+                    end    
+                elseif this.currentMessageIndex == 25
+                    SceneInstance.entities[15].isActive = false
+                    SceneInstance.entities[16].isActive = false
+                elseif this.currentMessageIndex == 28 
+                    this.playerMovement.canMove = true
+                    this.isPaused = true
                 end
                 return
             end

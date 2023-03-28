@@ -3,17 +3,20 @@ include("Math/Vector2f.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Collider
-    
-   size::Vector2f
-   offset::Vector2f
-   parent
-   tag::String
+    collisionEvents
+    currentCollisions
+    offset::Vector2f
+    parent
+    size::Vector2f
+    tag::String
     
     function Collider(size::Vector2f, offset::Vector2f, tag::String)
         this = new()
 
-        this.size = size
+        this.collisionEvents = []
+        this.currentCollisions = []
         this.offset = offset
+        this.size = size
         this.tag = tag
 
         return this
@@ -57,41 +60,67 @@ function Base.getproperty(this::Collider, s::Symbol)
         function()
             colliders = SceneInstance.colliders
             #Only check the player against other colliders
-            counter = 1
-            for colliderB in colliders
+            counter = 0
+            for i in 1:length(colliders)
                 #TODO: Skip any out of a certain range of the player. This will prevent a bunch of unnecessary collision checks
-                if !colliderB.getParent().isActive
+                if !colliders[i].getParent().isActive
+                    if this.parent.getRigidbody().grounded && i == length(colliders)
+                        this.parent.getRigidbody().grounded = false
+                    end
                     continue
                 end
-                if colliders[1] != colliderB
-                    collision = checkCollision(colliders[1], colliderB)
-                    transform = colliders[1].getParent().getTransform()
+                if this != colliders[i]
+                    collision = checkCollision(this, colliders[i])
+                    transform = this.getParent().getTransform()
                     if collision[1] == Top::CollisionDirection
+                        push!(this.currentCollisions, colliders[i])
+                        for eventToCall in this.collisionEvents
+                            eventToCall()
+                        end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
                     elseif collision[1] == Left::CollisionDirection
+                        push!(this.currentCollisions, colliders[i])
+                        for eventToCall in this.collisionEvents
+                            eventToCall()
+                        end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
                     elseif collision[1] == Right::CollisionDirection
+                        push!(this.currentCollisions, colliders[i])
+                        for eventToCall in this.collisionEvents
+                            eventToCall()
+                        end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
                     elseif collision[1] == Bottom::CollisionDirection
+                        push!(this.currentCollisions, colliders[i])
+                        for eventToCall in this.collisionEvents
+                            eventToCall()
+                        end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
                         this.parent.getRigidbody().grounded = true
                         break
                     elseif collision[1] == Below::ColliderLocation
-                        println("hit")
-                    elseif this.parent.getRigidbody().grounded && counter == length(colliders) && collision[1] != Bottom::CollisionDirection # If we're on the last collider to check and we haven't collided with anything yet
+                        push!(this.currentCollisions, colliders[i])
+                        for eventToCall in this.collisionEvents
+                            eventToCall()
+                        end
+                    elseif this.parent.getRigidbody().grounded && i == length(colliders) # If we're on the last collider to check and we haven't collided with anything yet
                         this.parent.getRigidbody().grounded = false
                     end
                 end
-                counter += 1
             end
+            this.currentCollisions = []
         end
     elseif s == :update
         function()
             
+        end
+    elseif s == :addCollisionEvent
+        function(event)
+            push!(this.collisionEvents, event)
         end
     else
         try

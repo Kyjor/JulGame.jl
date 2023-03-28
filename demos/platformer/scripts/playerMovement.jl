@@ -4,6 +4,7 @@ include("../../../src/Math/Vector2f.jl")
 
 mutable struct PlayerMovement
     canMove
+    gameManager
     input
     isFacingRight
     isJump 
@@ -13,6 +14,7 @@ mutable struct PlayerMovement
         this = new()
         
         this.canMove = canMove
+        this.gameManager = C_NULL
         this.input = C_NULL
         this.isFacingRight = true
         this.isJump = false
@@ -26,13 +28,19 @@ end
 function Base.getproperty(this::PlayerMovement, s::Symbol)
     if s == :initialize
         function()
-            event = @event begin
-                this.jump()
-            end
+            # event = @event begin
+            #     this.jump()
+            # end
             #SceneInstance.screenButtons[1].addClickEvent(event)
         end
     elseif s == :update
         function(deltaTime)
+            if this.parent.getTransform().position.y > 10 
+                this.parent.getTransform().position = Vector2f(0.0, -1.0)
+                SceneInstance.entities[15].isActive = true
+                SceneInstance.entities[16].isActive = true
+                this.gameManager.dialogue.isPaused = false
+            end
             x = 0
             speed = 5
             #println(this.parent.getComponent(Transform).position)
@@ -75,11 +83,42 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
     elseif s == :setParent
         function(parent)
             this.parent = parent
+            collisionEvent = @event begin
+                this.handleCollisions()
+            end
+            this.parent.getComponent(Collider).addCollisionEvent(collisionEvent)
         end
-    elseif s == :jump
+    elseif s == :handleCollisions
         function()
-            this.isJump = true
-            SceneInstance.sounds[1].toggleSound()
+            gm = this.gameManager
+            collider = this.parent.getComponent(Collider)
+            for collision in collider.currentCollisions
+                if collision.tag == "block"
+                    # remove all blocks, reveal money
+                    for moneyBlock in gm.moneyBlocks
+                        moneyBlock.isActive = false
+                    end
+                    hit = collision.parent.getComponent(Transform)
+
+                    pot = gm.goldPot.getComponent(Transform)
+                    if hit.position.x == -2.0
+                        pot.position = Vector2f(0.0, 7.0)
+                    elseif hit.position.x == 0.0
+                        pot.position = Vector2f(2.0, 7.0)
+                    elseif hit.position.x == 2.0
+                        pot.position = Vector2f(-2.0, 7.0)
+                    end
+                    gm.goldPot.isActive = true
+                    this.canMove = false
+                elseif collision.tag == "gold"
+                    gm.goldPot.isActive = false
+                    gm.dialogue.isPaused = false
+                    for platform in gm.platforms
+                        platform.isActive = false
+                    end
+                    this.canMove = false
+                end
+            end
         end
     else
         try

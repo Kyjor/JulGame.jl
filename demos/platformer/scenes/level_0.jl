@@ -18,7 +18,9 @@ function level_0()
     playerMovement = PlayerMovement(false)
     gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
     gameManager.playerMovement = playerMovement
-    
+    playerMovement.gameManager = gameManager
+    gameManager.dialogue = gameDialogue
+
     # Prepare scene
     screenButtons = [
         #ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
@@ -119,8 +121,9 @@ function level_0()
     push!(platforms, platform)
     push!(colliders, newCollider)
     for plat in platforms
-        plat.isActive = false
+       plat.isActive = false
     end
+    gameManager.platforms = platforms
 
       #Gold Pot
       newCollider = Collider(Vector2f(1, 1), Vector2f(), "gold")
