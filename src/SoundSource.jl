@@ -3,7 +3,7 @@
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
 
-const ENGINE_ASSETS = @path joinpath(@__DIR__, "kryogen_assets")
+const ENGINE_ASSETS = @path joinpath(@__DIR__, "julgame_assets")
 
 mutable struct SoundSource
     isMusic
