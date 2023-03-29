@@ -64,8 +64,8 @@ function Base.getproperty(this::Collider, s::Symbol)
             #Only check the player against other colliders
             counter = 0
             for i in 1:length(colliders)
-                #TODO: Skip any out of a certain range of the player. This will prevent a bunch of unnecessary collision checks
-                if !colliders[i].getParent().isActive
+                #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
+                if !colliders[i].getParent().isActive || !colliders[i].enabled
                     if this.parent.getRigidbody().grounded && i == length(colliders)
                         this.parent.getRigidbody().grounded = false
                     end

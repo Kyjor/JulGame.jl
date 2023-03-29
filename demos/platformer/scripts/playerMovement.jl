@@ -36,16 +36,23 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
     elseif s == :update
         function(deltaTime)
             if this.parent.getTransform().position.x < -7 
+                dialogue = this.gameManager.dialogue
                 SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
                 if this.parent.getTransform().position.y > 10
                     # Reset game
-                    this.gameManager.dialogue.currentMessageIndex = 1
-                    this.gameManager.dialogue.currentPositionInMessage = 1
-                    this.gameManager.dialogue.isPaused = false
-                    this.gameManager.dialogue.isReadingMessage = false
-                    this.gameManager.dialogue.isQueueingNextMessage = true
+                    dialogue.currentMessageIndex = 1
+                    dialogue.currentPositionInMessage = 1
+                    dialogue.currentMessage = dialogue.messages[1]
+                    dialogue.isPaused = false
+                    dialogue.isReadingMessage = false
+                    dialogue.isQueueingNextMessage = true
                     SceneInstance.camera.target = Transform(Vector2f(0, 7.75))
+                    this.canMove = false
                     this.parent.getTransform().position = Vector2f(0.0, -1.0)
+                    this.gameManager.potGoingDown = true
+                    this.gameManager.goldPot.getTransform().position = Vector2f(2,6)
+                    this.gameManager.currentAct = 1
+                    SceneInstance.colliders[2].enabled = true
                 end
             elseif this.parent.getTransform().position.y > 10 
                 this.parent.getTransform().position = Vector2f(0.0, -1.0)

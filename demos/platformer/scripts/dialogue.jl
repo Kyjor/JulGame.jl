@@ -67,7 +67,7 @@ function Base.getproperty(this::Dialogue, s::Symbol)
             #if at end, set isReadingMessage to false
             if this.currentPositionInMessage == length(this.currentMessage)+1
                 if this.currentMessageIndex == length(this.messages)
-                    deleteat!(SceneInstance.colliders, 2)
+                    SceneInstance.colliders[2].enabled = false
                     this.isPaused = true
                     return
                 end
@@ -89,6 +89,7 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                         platform.isActive = true
                     end    
                 elseif this.currentMessageIndex == 24
+                    this.playerMovement.parent.getTransform().position = Vector2f(0.0, 9.0)
                     SceneInstance.entities[15].isActive = false
                     SceneInstance.entities[16].isActive = false
                 elseif this.currentMessageIndex == 27

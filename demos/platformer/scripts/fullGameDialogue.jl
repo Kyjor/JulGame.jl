@@ -3,7 +3,7 @@ narratorScript =
         "Do you know why you're here?",
         "No?",
         "You won a sweepstakes! Congrats!",
-        "You have the chance to win 1 million golda!",
+        "You have the chance to win 1 million gold!",
         "All you have to do is follow the money.",
         "One rule. Do not exit stage left to Skedaddle.",
         "Hmm. That's a weird word. ",

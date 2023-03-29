@@ -14,6 +14,7 @@ mutable struct GameManager
     potGoingDown
     potTimeToMove
     timerPot
+
     function GameManager()
         this = new()
         
@@ -32,7 +33,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-            potTransform = this.goldPot.getComponent(Transform)
+            potTransform = this.goldPot.getTransform()
             if this.currentAct == 1 && this.goldPot.isActive && this.potGoingDown
                 this.timerPot = this.timerPot + deltaTime
                 potTransform.position = Vector2f(potTransform.position.x, Lerp(6,7, this.timerPot/this.potTimeToMove))
