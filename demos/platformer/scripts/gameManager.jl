@@ -13,6 +13,7 @@ mutable struct GameManager
     playerMovement
     potGoingDown
     potTimeToMove
+    secretDialogue
     timerPot
 
     function GameManager()

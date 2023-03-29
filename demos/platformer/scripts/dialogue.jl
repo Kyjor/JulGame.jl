@@ -8,6 +8,7 @@ mutable struct Dialogue
     currentMessageIndex::Int64
     currentPositionInMessage::Int64
     gameManager
+    isNormalDialogue::Bool
     isPaused::Bool
     isReadingMessage::Bool
     isQueueingNextMessage::Bool
@@ -27,6 +28,7 @@ mutable struct Dialogue
         this.currentMessageIndex = 1
         this.currentPositionInMessage = 1
         this.gameManager = gameManager
+        this.isNormalDialogue = true
         this.isPaused = false
         this.isReadingMessage = false
         this.isQueueingNextMessage = true
@@ -53,7 +55,7 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.isQueueingNextMessage = false
                 this.isReadingMessage = true
                 this.messageTimer = 0.0
-                SceneInstance.textBoxes[1].updateText(" ")
+                this.isNormalDialogue ? SceneInstance.textBoxes[1].updateText(" ") : SceneInstance.textBoxes[2].updateText(" ")
             end
             if this.isQueueingNextMessage == true
                 this.messageTimer = this.messageTimer + deltaTime
@@ -66,8 +68,12 @@ function Base.getproperty(this::Dialogue, s::Symbol)
             end
             #if at end, set isReadingMessage to false
             if this.currentPositionInMessage == length(this.currentMessage)+1
-                if this.currentMessageIndex == length(this.messages)
-                    SceneInstance.colliders[2].enabled = false
+                if this.currentMessageIndex == length(this.messages) 
+                    if this.isNormalDialogue
+                        SceneInstance.colliders[2].enabled = false
+                    else
+                        SceneInstance.textBoxes[1].text = " "
+                    end
                     this.isPaused = true
                     return
                 end
@@ -76,32 +82,38 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.currentPositionInMessage = 1
                 
                 this.charTimer = 0.0
-                if this.currentMessageIndex == 12 
-                    this.isPaused = true
-                    #set up money blocks
-                    for moneyBlock in this.gameManager.moneyBlocks
-                        moneyBlock.isActive = true
+                if this.isNormalDialogue
+                    if this.currentMessageIndex == 12
+                        this.isPaused = true
+                        #set up money blocks
+                        for moneyBlock in this.gameManager.moneyBlocks
+                            moneyBlock.isActive = true
+                        end
+                        this.gameManager.goldPot.isActive = true
+                    elseif this.currentMessageIndex == 17 
+                        this.isPaused = true
+                        for platform in this.gameManager.platforms
+                            platform.isActive = true
+                        end    
+                    elseif this.currentMessageIndex == 23
+                        this.playerMovement.parent.getTransform().position = Vector2f(0.0, 9.0)
+                        SceneInstance.entities[15].isActive = false
+                        SceneInstance.entities[16].isActive = false
+                    elseif this.currentMessageIndex == 26
+                        this.playerMovement.canMove = true
+                        this.isPaused = true
                     end
-                    this.gameManager.goldPot.isActive = true
-                elseif this.currentMessageIndex == 17 
-                    this.isPaused = true
-                    for platform in this.gameManager.platforms
-                        platform.isActive = true
-                    end    
-                elseif this.currentMessageIndex == 24
-                    this.playerMovement.parent.getTransform().position = Vector2f(0.0, 9.0)
-                    SceneInstance.entities[15].isActive = false
-                    SceneInstance.entities[16].isActive = false
-                elseif this.currentMessageIndex == 27
-                    this.playerMovement.canMove = true
-                    this.isPaused = true
                 end
                 this.currentMessageIndex = this.currentMessageIndex + 1
                 this.currentMessage = this.messages[this.currentMessageIndex]
 
                 return
             end
-            SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text == " " ? "" : SceneInstance.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))
+            if this.isNormalDialogue
+                SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text == " " ? "" : SceneInstance.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))
+            else
+                SceneInstance.textBoxes[2].updateText(string(SceneInstance.textBoxes[2].text == " " ? "" : SceneInstance.textBoxes[2].text, this.currentMessage[this.currentPositionInMessage]))
+            end
             # add next character to text box 
             # play a sound 
             SceneInstance.sounds[2].toggleSound()

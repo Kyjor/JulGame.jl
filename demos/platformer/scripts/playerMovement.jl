@@ -37,7 +37,10 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         function(deltaTime)
             if this.parent.getTransform().position.x < -7 
                 dialogue = this.gameManager.dialogue
+                secretDialogue = this.gameManager.secretDialogue
                 SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
+                secretDialogue.isPaused = false
+                SceneInstance.textBoxes[1].updateText(" ")
                 if this.parent.getTransform().position.y > 10
                     # Reset game
                     dialogue.currentMessageIndex = 1
@@ -46,6 +49,15 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     dialogue.isPaused = false
                     dialogue.isReadingMessage = false
                     dialogue.isQueueingNextMessage = true
+
+                    secretDialogue.currentMessageIndex = 1
+                    secretDialogue.currentPositionInMessage = 1
+                    secretDialogue.currentMessage = secretDialogue.messages[1]
+                    secretDialogue.isPaused = true
+                    secretDialogue.isReadingMessage = false
+                    secretDialogue.isQueueingNextMessage = true
+                    SceneInstance.textBoxes[2].updateText(" ")
+
                     SceneInstance.camera.target = Transform(Vector2f(0, 7.75))
                     this.canMove = false
                     this.parent.getTransform().position = Vector2f(0.0, -1.0)

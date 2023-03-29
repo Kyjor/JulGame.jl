@@ -17,9 +17,14 @@ function level_0()
 
     playerMovement = PlayerMovement(false)
     gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
+    secretDialogue = Dialogue(secretManScript, 0.05, 1.5, gameManager, playerMovement)
+    secretDialogue.isNormalDialogue = false
+    secretDialogue.isPaused = true
+
     gameManager.playerMovement = playerMovement
     playerMovement.gameManager = gameManager
     gameManager.dialogue = gameDialogue
+    gameManager.secretDialogue = secretDialogue
 
     # Prepare scene
     screenButtons = [
@@ -31,6 +36,7 @@ function level_0()
     fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
         TextBox(fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), " ", true),
+        TextBox(fontPath, 20, Vector2(75, 375), Vector2(1000, 100), Vector2(0, 0), " ", false),
     ]
 
     SceneInstance.textBoxes = textBoxes
@@ -43,10 +49,11 @@ function level_0()
     goldPot = @path joinpath(ASSETS, "images", "Gold.png")
     curtain = @path joinpath(ASSETS, "images", "curtain.png")
     curtainTop = @path joinpath(ASSETS, "images", "curtaintop.png")
-    skeletonWalk = @path joinpath(ASSETS, "images", "Player.png")
+    playerImage = @path joinpath(ASSETS, "images", "Player.png")
+    speakerImage = @path joinpath(ASSETS, "images", "Speaker.png")
     floor = @path joinpath(ASSETS, "images", "Floor.png")
     sprites = [
-        Sprite(skeletonWalk),
+        Sprite(playerImage),
         Sprite(floor),
     ]
 
@@ -186,6 +193,11 @@ function level_0()
         push!(colliders, newCollider)
         push!(entities, newEntity)
     end
+
+    speaker = Entity(string("speaker"), Transform(Vector2f(-14, 9), Vector2f(2,1)), [Sprite(speakerImage)])
+    push!(entities, speaker)
+    push!(entities, Entity("dialogue", Transform(Vector2f())))
+    entities[length(entities)].addScript(secretDialogue)
 
     #Start game
     SceneInstance.colliders = colliders
