@@ -37,7 +37,16 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         function(deltaTime)
             if this.parent.getTransform().position.x < -7 
                 SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
-                this.gameManager.dialogue.isPaused = false
+                if this.parent.getTransform().position.y > 10
+                    # Reset game
+                    this.gameManager.dialogue.currentMessageIndex = 1
+                    this.gameManager.dialogue.currentPositionInMessage = 1
+                    this.gameManager.dialogue.isPaused = false
+                    this.gameManager.dialogue.isReadingMessage = false
+                    this.gameManager.dialogue.isQueueingNextMessage = true
+                    SceneInstance.camera.target = Transform(Vector2f(0, 7.75))
+                    this.parent.getTransform().position = Vector2f(0.0, -1.0)
+                end
             elseif this.parent.getTransform().position.y > 10 
                 this.parent.getTransform().position = Vector2f(0.0, -1.0)
                 SceneInstance.entities[15].isActive = true

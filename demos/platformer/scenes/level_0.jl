@@ -179,7 +179,13 @@ function level_0()
     ]
 
     push!(entities, Entity("game manager", Transform(), [], [gameManager]))
-
+    for i in -15:-10
+        println(i)
+        newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i, 10)), [Sprite(floor), newCollider])
+        push!(colliders, newCollider)
+        push!(entities, newEntity)
+    end
 
     #Start game
     SceneInstance.colliders = colliders

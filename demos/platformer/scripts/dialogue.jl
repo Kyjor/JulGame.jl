@@ -66,38 +66,38 @@ function Base.getproperty(this::Dialogue, s::Symbol)
             end
             #if at end, set isReadingMessage to false
             if this.currentPositionInMessage == length(this.currentMessage)+1
+                if this.currentMessageIndex == length(this.messages)
+                    deleteat!(SceneInstance.colliders, 2)
+                    this.isPaused = true
+                    return
+                end
                 this.isReadingMessage = false
                 this.isQueueingNextMessage = true
                 this.currentPositionInMessage = 1
-                this.currentMessageIndex = this.currentMessageIndex + 1
-                if this.currentMessageIndex > length(this.messages)
-                    return
-                end
                 
-                this.currentMessage = this.messages[this.currentMessageIndex]
                 this.charTimer = 0.0
-                if this.currentMessageIndex == 13 
+                if this.currentMessageIndex == 12 
                     this.isPaused = true
                     #set up money blocks
                     for moneyBlock in this.gameManager.moneyBlocks
                         moneyBlock.isActive = true
                     end
                     this.gameManager.goldPot.isActive = true
-                elseif this.currentMessageIndex == 18 
+                elseif this.currentMessageIndex == 17 
                     this.isPaused = true
                     for platform in this.gameManager.platforms
                         platform.isActive = true
                     end    
-                elseif this.currentMessageIndex == 25
+                elseif this.currentMessageIndex == 24
                     SceneInstance.entities[15].isActive = false
                     SceneInstance.entities[16].isActive = false
-                elseif this.currentMessageIndex == 28 
+                elseif this.currentMessageIndex == 27
                     this.playerMovement.canMove = true
                     this.isPaused = true
-                elseif this.currentMessageIndex == length(this.messages) 
-                    this.isPaused = true
-                    deleteat!(SceneInstance.colliders, 2)
                 end
+                this.currentMessageIndex = this.currentMessageIndex + 1
+                this.currentMessage = this.messages[this.currentMessageIndex]
+
                 return
             end
             SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text == " " ? "" : SceneInstance.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))
