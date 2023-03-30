@@ -29,6 +29,18 @@ mutable struct Sprite
         return this
     end
 
+    function Sprite(image, isFlipped)
+        this = new()
+        
+        this.isFlipped = isFlipped
+        this.image = IMG_Load(image)
+        #this.frameToDraw = 0
+        this.crop = C_NULL
+        this.position = Vector2f(0.0, 0.0)
+
+        return this
+    end
+
     function Sprite(image)
         this = new()
         
@@ -49,7 +61,7 @@ function Base.getproperty(this::Sprite, s::Symbol)
             parentTransform.setPosition(Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
             flip = SDL_FLIP_NONE
             
-            srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.crop.x,0,this.crop.w,this.crop.h))
+            srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
             SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 

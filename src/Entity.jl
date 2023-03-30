@@ -7,15 +7,17 @@ include("Math/Vector2f.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Entity
-    name::String
     components::Array{Any}
+    isActive::Bool
+    name::String
     scripts::Array{Any}
     
     function Entity(name::String)
         this = new()
         
-        this.name = name
         this.components = []
+        this.isActive = true
+        this.name = name
         this.addComponent(Transform())
         this.scripts = []
 
@@ -25,8 +27,9 @@ mutable struct Entity
     function Entity(name::String, transform::Transform)
         this = new()
 
-        this.name = name
         this.components = []
+        this.isActive = true
+        this.name = name
         this.addComponent(transform)
         this.scripts = []
 
@@ -36,8 +39,9 @@ mutable struct Entity
     function Entity(name::String, transform::Transform, components::Array)
         this = new()
 
-        this.name = name
         this.components = []
+        this.isActive = true
+        this.name = name
         this.addComponent(transform)
         for component in components
             this.addComponent(component)
@@ -52,6 +56,7 @@ mutable struct Entity
 
         this.name = name
         this.components = []
+        this.isActive = true
         this.addComponent(transform)
         for component in components
             this.addComponent(component)
@@ -101,7 +106,6 @@ function Base.getproperty(this::Entity, s::Symbol)
         end
     elseif s == :addComponent
         function(component)
-           # println(string("Adding component of type: ", typeof(component), " to entity named " ,this.name))
             push!(this.components, component)
             if typeof(component) <: Transform
                 return
@@ -124,9 +128,9 @@ function Base.getproperty(this::Entity, s::Symbol)
             return this.scripts
         end
     elseif s == :update
-        function()
+        function(deltaTime)
             for script in this.scripts
-                script.update()
+                script.update(deltaTime)
            end
         end
     else

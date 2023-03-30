@@ -64,7 +64,6 @@ function Base.getproperty(this::Animator, s::Symbol)
         end
    elseif s == :setSprite
         function(sprite)
-            println("set sprite")
             this.sprite = sprite
         end
     elseif s == :setParent

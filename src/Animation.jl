@@ -48,6 +48,9 @@ function Base.getproperty(this::Animation, s::Symbol)
         end
     elseif s == :update
         function(currentRenderTime, deltaTime)
+            if length(this.frames) == 1
+                return
+            end
             deltaTime = (currentRenderTime  - this.getLastUpdate()) / 1000.0
             framesToUpdate = floor(deltaTime / (1.0 / this.animatedFPS))
             if framesToUpdate > 0

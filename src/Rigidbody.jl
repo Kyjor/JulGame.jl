@@ -70,7 +70,6 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
         end
     elseif s == :setParent
         function(parent)
-            println("setting rigidbody parent")
             this.parent = parent
         end
     else
