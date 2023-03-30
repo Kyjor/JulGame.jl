@@ -17,6 +17,7 @@ function level_0()
 
     playerMovement = PlayerMovement(false)
     gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
+    gameDialogue.isPaused = true
     secretDialogue = Dialogue(secretManScript, 0.05, 1.5, gameManager, playerMovement)
     secretDialogue.isNormalDialogue = false
     secretDialogue.isPaused = true
@@ -35,9 +36,11 @@ function level_0()
 
     fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
-        TextBox(fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), " ", true),
+        TextBox(fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "Press space to begin...", true),
         TextBox(fontPath, 20, Vector2(75, 375), Vector2(1000, 100), Vector2(0, 0), " ", false),
     ]
+
+    gameManager.textBox = textBoxes[1]
 
     SceneInstance.textBoxes = textBoxes
     
@@ -58,23 +61,44 @@ function level_0()
     ]
 
     idleFrames = []
-    for i in 1:2
-        push!(idleFrames, Vector4((i) * 8, 8, 8, 8))
-        println("hi")
+    for x in 1:4
+        frames = []
+        for i in 1:2
+            push!(frames, Vector4((i) * 8, x * 8, 8, 8))
+        end
+        push!(idleFrames, frames)
     end
 
     walkFrames = []
-    for i in 1:4
-        push!(walkFrames, Vector4((i + 1) * 8, 8, 8, 8))
+    for x in 1:4
+        frames = []
+        for i in 1:4
+            push!(frames, Vector4((i + 1) * 8, x * 8, 8, 8))
+        end
+        push!(walkFrames, frames)
     end
 
-    jumpFrames = []
-    push!(jumpFrames, Vector4(6 * 8, 8, 8, 8))
-
     playerAnimations = [
-        Animation(idleFrames, 3.0),
-        Animation(walkFrames, 4.0),
-        Animation(jumpFrames, 0.0)
+        # form 0
+        Animation(idleFrames[1], 3.0),
+        Animation(walkFrames[1], 4.0),
+        Animation([Vector4(6 * 8, 8, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 8, 8, 8)], 0.0),
+        # form 1
+        Animation(idleFrames[2], 3.0),
+        Animation(walkFrames[2], 4.0),
+        Animation([Vector4(6 * 8, 2 * 8, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 2 * 8, 8, 8)], 0.0),
+        # form 2
+        Animation(idleFrames[3], 3.0),
+        Animation(walkFrames[3], 4.0),
+        Animation([Vector4(6 * 8, 3 * 8, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 3 * 8, 8, 8)], 0.0),
+        # form 3
+        Animation(idleFrames[4], 3.0),
+        Animation(walkFrames[4], 4.0),
+        Animation([Vector4(6 * 8, 4 * 8, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 4 * 8, 8, 8)], 0.0),
     ]
 
     rigidbodies = [
@@ -96,7 +120,7 @@ function level_0()
         push!(entities, newEntity)
     end
 
-    push!(entities, Entity("player", Transform(Vector2f(0, 9)),  [Animator(playerAnimations), sprites[1], colliders[1], rigidbodies[1]], [playerMovement]))
+    push!(entities, Entity("player", Transform(Vector2f(10, 9)),  [Animator(playerAnimations), sprites[1], colliders[1], rigidbodies[1]], [playerMovement]))
     push!(entities, Entity("camera target", Transform(Vector2f(0, 7.75))))
     push!(entities, Entity("curtain left", Transform(Vector2f(-7, 2), Vector2f(2, 8)),  [Sprite(curtain), curtLCol]))
     push!(entities, Entity("curtain right", Transform(Vector2f(6, 2), Vector2f(2, 8)),  [Sprite(curtain, true)]))
@@ -178,12 +202,32 @@ function level_0()
     gameManager.moneyBlocks = moneyBlocks
 
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
+    aww = @path joinpath(ASSETS, "sounds", "aww.wav")
+    boo = @path joinpath(ASSETS, "sounds", "boo.wav")
+    crowd = @path joinpath(ASSETS, "sounds", "crowd.mp3")
+    falling = @path joinpath(ASSETS, "sounds", "falling.mp3")
+    gasp = @path joinpath(ASSETS, "sounds", "gasp.wav")
+    hittingground = @path joinpath(ASSETS, "sounds", "hittingground.mp3")
     jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
+    laughing = @path joinpath(ASSETS, "sounds", "laughing.wav")
+    poof = @path joinpath(ASSETS, "sounds", "poof.mp3")
     speech = @path joinpath(ASSETS, "sounds", "speech.wav")
+    smallApplause = @path joinpath(ASSETS, "sounds", "small-applause.mp3")
     sounds = [
-        SoundSource(jump, false, 2),
-        SoundSource(speech, false, 2),
+        SoundSource(jump, 0, 10),
+        SoundSource(speech, 1, 2),
+        SoundSource(poof, 2, 20),
+        SoundSource(smallApplause, 3, 10),
+        SoundSource(laughing, 3, 10),
+        SoundSource(aww, 3, 10),
+        SoundSource(gasp, 3, 10),
+        SoundSource(boo, 4, 10),
+        SoundSource(falling, 3, 10),
+        SoundSource(hittingground, 3, 10),
     ]
+
+    crowdSound = SoundSource(crowd, 8)
+    crowdSound.toggleSound()
 
     push!(entities, Entity("game manager", Transform(), [], [gameManager]))
     for i in -15:-10

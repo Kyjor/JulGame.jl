@@ -4,6 +4,7 @@ include("../Math/Vector2.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct TextBox
+    alpha
     font
     fontPath
     fontSize
@@ -24,6 +25,7 @@ mutable struct TextBox
             println("text length is higher than what is currently supported.")
         end
 
+        this.alpha = 255
         this.fontPath = fontPath
         this.fontSize = fontSize
         this.isCentered = isCentered
@@ -59,7 +61,7 @@ function Base.getproperty(this::TextBox, s::Symbol)
             font = TTF_OpenFont(this.fontPath, this.fontSize)
             println(unsafe_string(SDL_GetError()))
             this.font = font
-            this.renderText = TTF_RenderText_Blended(this.font, this.text, SDL_Color(255,255,255,255))
+            this.renderText = TTF_RenderText_Blended(this.font, this.text, SDL_Color(255,255,255,this.alpha))
             this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
             w,h = Int32[1], Int32[1]
             TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
@@ -81,7 +83,7 @@ function Base.getproperty(this::TextBox, s::Symbol)
             this.text = newText
             SDL_FreeSurface(this.renderText)
             SDL_DestroyTexture(this.textTexture)
-            this.renderText = TTF_RenderText_Blended( this.font, this.text, SDL_Color(255,255,255,255))
+            this.renderText = TTF_RenderText_Blended( this.font, this.text, SDL_Color(255,255,255,this.alpha))
 			this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
 
             w,h = Int32[1], Int32[1]

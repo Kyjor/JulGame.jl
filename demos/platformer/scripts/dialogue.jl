@@ -71,6 +71,7 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 if this.currentMessageIndex == length(this.messages) 
                     if this.isNormalDialogue
                         SceneInstance.colliders[2].enabled = false
+                        this.playerMovement.canMove = true
                     else
                         SceneInstance.textBoxes[1].text = " "
                     end
@@ -83,25 +84,38 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 
                 this.charTimer = 0.0
                 if this.isNormalDialogue
-                    if this.currentMessageIndex == 12
+                    if this.currentMessageIndex == 3 
+                    SceneInstance.sounds[4].toggleSound()
+                    elseif this.currentMessageIndex == 12
+                        SceneInstance.sounds[3].toggleSound()
                         this.isPaused = true
                         #set up money blocks
                         for moneyBlock in this.gameManager.moneyBlocks
                             moneyBlock.isActive = true
                         end
                         this.gameManager.goldPot.isActive = true
+                    elseif this.currentMessageIndex == 13
+                        SceneInstance.sounds[5].toggleSound()
                     elseif this.currentMessageIndex == 17 
+                        SceneInstance.sounds[3].toggleSound()
                         this.isPaused = true
                         for platform in this.gameManager.platforms
                             platform.isActive = true
                         end    
+                    elseif this.currentMessageIndex == 19
+                        SceneInstance.sounds[6].toggleSound()
                     elseif this.currentMessageIndex == 23
+                        SceneInstance.sounds[3].toggleSound()
                         this.playerMovement.parent.getTransform().position = Vector2f(0.0, 9.0)
                         SceneInstance.entities[15].isActive = false
                         SceneInstance.entities[16].isActive = false
                     elseif this.currentMessageIndex == 26
                         this.playerMovement.canMove = true
                         this.isPaused = true
+                    elseif this.currentMessageIndex == 27
+                        SceneInstance.sounds[5].toggleSound()
+                    elseif this.currentMessageIndex == 29
+                        SceneInstance.sounds[7].toggleSound()
                     end
                 end
                 this.currentMessageIndex = this.currentMessageIndex + 1

@@ -4,9 +4,11 @@ include("../../../src/Math/Vector2f.jl")
 
 mutable struct PlayerMovement
     canMove
+    form
     gameManager
     input
     isFacingRight
+    isFalling
     isJump 
     parent
 
@@ -14,8 +16,10 @@ mutable struct PlayerMovement
         this = new()
         
         this.canMove = canMove
+        this.form = 1
         this.gameManager = C_NULL
         this.input = C_NULL
+        this.isFalling = false
         this.isFacingRight = true
         this.isJump = false
         this.parent = C_NULL
@@ -39,6 +43,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 dialogue = this.gameManager.dialogue
                 secretDialogue = this.gameManager.secretDialogue
                 SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
+                #SceneInstance.sounds[8].toggleSound()
                 secretDialogue.isPaused = false
                 SceneInstance.textBoxes[1].updateText(" ")
                 if this.parent.getTransform().position.y > 10
@@ -60,14 +65,19 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
 
                     SceneInstance.camera.target = Transform(Vector2f(0, 7.75))
                     this.canMove = false
-                    this.parent.getTransform().position = Vector2f(0.0, -1.0)
                     this.gameManager.potGoingDown = true
                     this.gameManager.goldPot.getTransform().position = Vector2f(2,6)
-                    this.gameManager.currentAct = 1
                     SceneInstance.colliders[2].enabled = true
+                    this.gameManager.resetPlayer()
                 end
             elseif this.parent.getTransform().position.y > 10 
+                SceneInstance.sounds[3].toggleSound()
+                SceneInstance.sounds[9].toggleSound()
                 this.parent.getTransform().position = Vector2f(0.0, -1.0)
+                this.isFalling = true
+                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 4]
+                this.canMove = false
+                this.form = 3
                 SceneInstance.entities[15].isActive = true
                 SceneInstance.entities[16].isActive = true
                 this.gameManager.dialogue.isPaused = false
@@ -81,7 +91,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
                 SceneInstance.sounds[1].toggleSound()
-                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[3]
+                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 3]
             end
             if Button_Left::Button in buttons && this.canMove
                 # println("Left Pressed")
@@ -91,7 +101,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     this.parent.getSprite().flip()
                 end
                 if this.parent.getRigidbody().grounded
-                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[2]
+                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
                 end
             elseif Button_Right::Button in buttons && this.canMove
                 x = speed
@@ -100,11 +110,11 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     this.parent.getSprite().flip()
                 end
                 if this.parent.getRigidbody().grounded
-                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[2]
+                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
                 end
             elseif this.parent.getRigidbody().grounded
                 #set idle
-                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[1]
+                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 1]
             end
             
             this.parent.getRigidbody().setVelocity(Vector2f(x, y))
@@ -125,6 +135,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             collider = this.parent.getComponent(Collider)
             for collision in collider.currentCollisions
                 if collision.tag == "block"
+                    SceneInstance.sounds[3].toggleSound()
                     # remove all blocks, reveal money
                     for moneyBlock in gm.moneyBlocks
                         moneyBlock.isActive = false
@@ -141,13 +152,22 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     end
                     gm.goldPot.isActive = true
                     this.canMove = false
+                    this.form = 1
                 elseif collision.tag == "gold"
+                    SceneInstance.sounds[3].toggleSound()
                     gm.goldPot.isActive = false
                     gm.dialogue.isPaused = false
                     for platform in gm.platforms
                         platform.isActive = false
                     end
                     this.canMove = false
+                    this.form = 2
+                elseif collision.tag == "ground" && this.isFalling
+                    this.isFalling = false
+                    gm.dialogue.isPaused = false
+                    SceneInstance.sounds[10].toggleSound()
+                    this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
+                    println("fell from sky")
                 end
             end
         end

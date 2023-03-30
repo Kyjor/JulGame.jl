@@ -6,6 +6,7 @@ include("../../../src/Math/Vector2f.jl")
 mutable struct GameManager
     currentAct
     dialogue
+    fadeOut
     goldPot
     moneyBlocks
     parent
@@ -14,12 +15,14 @@ mutable struct GameManager
     potGoingDown
     potTimeToMove
     secretDialogue
+    textBox
     timerPot
 
     function GameManager()
         this = new()
         
-        this.currentAct = 1
+        this.currentAct = 0
+        this.fadeOut = true
         this.potGoingDown = true
         this.potTimeToMove = 1.0
         this.timerPot = 0.0
@@ -34,6 +37,26 @@ function Base.getproperty(this::GameManager, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
+            if this.currentAct == 0
+                if this.fadeOut 
+                    println(this.textBox.alpha)
+                    this.textBox.alpha -= 1
+                    this.textBox.updateText(this.textBox.text)
+                    if this.textBox.alpha <= 25
+                        this.fadeOut = false
+                    end
+                else
+                    this.textBox.alpha += 1
+                    this.textBox.updateText(this.textBox.text)
+                    if this.textBox.alpha >= 250
+                        this.fadeOut = true
+                    end
+                end
+                if Button_Jump::Button in InputInstance.buttons
+                    this.resetPlayer()
+                    # play falling sound
+                end
+            end
             potTransform = this.goldPot.getTransform()
             if this.currentAct == 1 && this.goldPot.isActive && this.potGoingDown
                 this.timerPot = this.timerPot + deltaTime
@@ -68,6 +91,17 @@ function Base.getproperty(this::GameManager, s::Symbol)
                 end
             end
 
+        end
+    elseif s == :resetPlayer
+        function()
+            this.currentAct = 1
+            this.textBox.alpha = 255
+            this.textBox.updateText(" ")
+            this.playerMovement.parent.getTransform().position = Vector2f(0,-1)
+            this.playerMovement.form = 0
+            this.playerMovement.isFalling = true
+            SceneInstance.sounds[9].toggleSound()
+            this.playerMovement.parent.getComponent(Animator).currentAnimation = this.playerMovement.parent.getComponent(Animator).animations[(this.playerMovement.form * 4) + 4]
         end
     elseif s == :setParent
         function(parent)

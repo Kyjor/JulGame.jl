@@ -13,14 +13,14 @@ narratorScript =
         "Okay. I'm done. ",
         "Follow the money.",
 
-        "Well, you must be blind.",
+        "Well, you must be blind.", # Laugh
         "I like you. So I'll give you another chance.",
         "Let's try another game.",
         "This time, get to the money at the top.",
         "If you can, you'll be a millionaire. I promise.",
 
         "There's been a mistake.",
-        "I think that the gold was for someone else.",
+        "I think that the gold was for someone else.", # Awww
         "We'll have to confiscate it.",
         "I'm truly sorry for the trouble.",
         "But you put in a lot of effort for that.",
@@ -32,7 +32,7 @@ narratorScript =
         "bwahahah! I told you. You'll never get out.",
         "You'll be here forever.",
         "This is the end for you. ",
-        "There was never a sweepstakes.",
+        "There was never a sweepstakes.", # Gasp
         "You will be our jester, forever.",
         "There is no way to ~Skedaddle~.",
     ]
