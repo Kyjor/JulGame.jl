@@ -64,7 +64,7 @@ function level_0()
     for x in 1:4
         frames = []
         for i in 1:2
-            push!(frames, Vector4((i) * 8, x * 8, 8, 8))
+            push!(frames, Vector4((i) * 8, (x - 1) * 9, 8, 8))
         end
         push!(idleFrames, frames)
     end
@@ -73,7 +73,7 @@ function level_0()
     for x in 1:4
         frames = []
         for i in 1:4
-            push!(frames, Vector4((i + 1) * 8, x * 8, 8, 8))
+            push!(frames, Vector4((i + 1) * 8, (x - 1) * 9, 8, 8))
         end
         push!(walkFrames, frames)
     end
@@ -82,23 +82,23 @@ function level_0()
         # form 0
         Animation(idleFrames[1], 3.0),
         Animation(walkFrames[1], 4.0),
-        Animation([Vector4(6 * 8, 8, 8, 8)], 0.0),
-        Animation([Vector4(7 * 8, 8, 8, 8)], 0.0),
+        Animation([Vector4(6 * 8, 0, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 0, 8, 8)], 0.0),
         # form 1
         Animation(idleFrames[2], 3.0),
         Animation(walkFrames[2], 4.0),
-        Animation([Vector4(6 * 8, 2 * 8, 8, 8)], 0.0),
-        Animation([Vector4(7 * 8, 2 * 8, 8, 8)], 0.0),
+        Animation([Vector4(6 * 8, 9, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 9, 8, 8)], 0.0),
         # form 2
         Animation(idleFrames[3], 3.0),
         Animation(walkFrames[3], 4.0),
-        Animation([Vector4(6 * 8, 3 * 8, 8, 8)], 0.0),
-        Animation([Vector4(7 * 8, 3 * 8, 8, 8)], 0.0),
+        Animation([Vector4(6 * 8, 2 * 9, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 2 * 9, 8, 8)], 0.0),
         # form 3
         Animation(idleFrames[4], 3.0),
         Animation(walkFrames[4], 4.0),
-        Animation([Vector4(6 * 8, 4 * 8, 8, 8)], 0.0),
-        Animation([Vector4(7 * 8, 4 * 8, 8, 8)], 0.0),
+        Animation([Vector4(6 * 8, 3 * 9, 8, 8)], 0.0),
+        Animation([Vector4(7 * 8, 3 * 9, 8, 8)], 0.0),
     ]
 
     rigidbodies = [
@@ -169,9 +169,9 @@ function level_0()
     block2Frames = []
     block3Frames = []
     for i in 1:4
-        push!(block1Frames, Vector4((i - 1) * 8, 8, 8, 8))
-        push!(block2Frames, Vector4((i + 3) * 8, 8, 8, 8))
-        push!(block3Frames, Vector4((i + 7) * 8, 8, 8, 8))
+        push!(block1Frames, Vector4((i - 1) * 8, 0, 8, 8))
+        push!(block2Frames, Vector4((i + 3) * 8, 0, 8, 8))
+        push!(block3Frames, Vector4((i + 7) * 8, 0, 8, 8))
     end
 
     blockAnims = [
@@ -214,16 +214,16 @@ function level_0()
     speech = @path joinpath(ASSETS, "sounds", "speech.wav")
     smallApplause = @path joinpath(ASSETS, "sounds", "small-applause.mp3")
     sounds = [
-        SoundSource(jump, 0, 10),
+        SoundSource(jump, 0, 7),
         SoundSource(speech, 1, 2),
         SoundSource(poof, 2, 20),
         SoundSource(smallApplause, 3, 10),
         SoundSource(laughing, 3, 10),
         SoundSource(aww, 3, 10),
         SoundSource(gasp, 3, 10),
-        SoundSource(boo, 4, 10),
-        SoundSource(falling, 3, 10),
-        SoundSource(hittingground, 3, 10),
+        SoundSource(boo, 3, 10),
+        SoundSource(falling, 4, 10),
+        SoundSource(hittingground, 4, 10),
     ]
 
     crowdSound = SoundSource(crowd, 8)
@@ -231,7 +231,6 @@ function level_0()
 
     push!(entities, Entity("game manager", Transform(), [], [gameManager]))
     for i in -15:-10
-        println(i)
         newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
         newEntity = Entity(string("tile", i), Transform(Vector2f(i, 10)), [Sprite(floor), newCollider])
         push!(colliders, newCollider)

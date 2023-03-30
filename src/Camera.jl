@@ -26,7 +26,6 @@ function Base.getproperty(this::Camera, s::Symbol)
             if this.target != C_NULL
                 targetPos = this.target.getPosition()
                 this.position = Vector2f(targetPos.x - (this.dimensions.x/SCALE_UNITS/2) + this.offset.x, targetPos.y - (this.dimensions.y/SCALE_UNITS/2) + this.offset.y)
-                #println(this.position)
             end
         end
     elseif s == :setTarget

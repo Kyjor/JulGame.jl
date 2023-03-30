@@ -63,6 +63,7 @@ function Base.getproperty(this::Collider, s::Symbol)
             colliders = SceneInstance.colliders
             #Only check the player against other colliders
             counter = 0
+            onGround = false
             for i in 1:length(colliders)
                 #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                 if !colliders[i].getParent().isActive || !colliders[i].enabled
@@ -81,39 +82,41 @@ function Base.getproperty(this::Collider, s::Symbol)
                         end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
-                    elseif collision[1] == Left::CollisionDirection
+                    end
+                    if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, colliders[i])
                         for eventToCall in this.collisionEvents
                             eventToCall()
                         end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
-                    elseif collision[1] == Right::CollisionDirection
+                    end
+                    if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, colliders[i])
                         for eventToCall in this.collisionEvents
                             eventToCall()
                         end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
-                    elseif collision[1] == Bottom::CollisionDirection
+                    end
+                    if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, colliders[i])
                         for eventToCall in this.collisionEvents
                             eventToCall()
                         end
                         #Begin to overlap, correct position
                         transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
-                        this.parent.getRigidbody().grounded = true
-                        break
-                    elseif collision[1] == Below::ColliderLocation
+                        onGround = true
+                    end
+                    if collision[1] == Below::ColliderLocation
                         push!(this.currentCollisions, colliders[i])
                         for eventToCall in this.collisionEvents
                             eventToCall()
                         end
-                    elseif this.parent.getRigidbody().grounded && i == length(colliders) # If we're on the last collider to check and we haven't collided with anything yet
-                        this.parent.getRigidbody().grounded = false
                     end
                 end
             end
+            this.parent.getRigidbody().grounded = onGround
             this.currentCollisions = []
         end
     elseif s == :update

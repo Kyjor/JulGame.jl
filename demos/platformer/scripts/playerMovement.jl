@@ -39,7 +39,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-            if this.parent.getTransform().position.x < -7 
+            if this.parent.getTransform().position.x < -7  && !this.gameManager.isEnd
                 dialogue = this.gameManager.dialogue
                 secretDialogue = this.gameManager.secretDialogue
                 SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
@@ -69,8 +69,9 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     this.gameManager.goldPot.getTransform().position = Vector2f(2,6)
                     SceneInstance.colliders[2].enabled = true
                     this.gameManager.resetPlayer()
+                    SceneInstance.colliders[3].enabled = false
                 end
-            elseif this.parent.getTransform().position.y > 10 
+            elseif this.parent.getTransform().position.y > 10 && !this.gameManager.isEnd
                 SceneInstance.sounds[3].toggleSound()
                 SceneInstance.sounds[9].toggleSound()
                 this.parent.getTransform().position = Vector2f(0.0, -1.0)
@@ -81,10 +82,21 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 SceneInstance.entities[15].isActive = true
                 SceneInstance.entities[16].isActive = true
                 this.gameManager.dialogue.isPaused = false
+            elseif this.parent.getTransform().position.x > 7 && this.gameManager.currentAct != 0 && !this.gameManager.isEnd
+                this.gameManager.isEnd = true
+                SceneInstance.camera.target = Transform(Vector2f(15, 7.75))
+                dialogue = this.gameManager.dialogue
+                winMessages = ["Congrats, you escaped :)", "Goodbye."]
+                dialogue.messages = winMessages
+                dialogue.currentMessageIndex = 1
+                dialogue.currentPositionInMessage = 1
+                dialogue.currentMessage = winMessages[1]
+                dialogue.isPaused = false
+                dialogue.isReadingMessage = false
+                dialogue.isQueueingNextMessage = true
             end
             x = 0
             speed = 5
-            #println(this.parent.getComponent(Transform).position)
             buttons = InputInstance.buttons
             y = this.parent.getRigidbody().getVelocity().y
             if (Button_Jump::Button in buttons || this.isJump) && this.parent.getRigidbody().grounded && this.canMove
@@ -94,7 +106,6 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 3]
             end
             if Button_Left::Button in buttons && this.canMove
-                # println("Left Pressed")
                 x = -speed
                 if this.isFacingRight
                     this.isFacingRight = false
@@ -132,6 +143,9 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
     elseif s == :handleCollisions
         function()
             gm = this.gameManager
+            if gm.isEnd 
+                return
+            end
             collider = this.parent.getComponent(Collider)
             for collision in collider.currentCollisions
                 if collision.tag == "block"
@@ -167,7 +181,6 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     gm.dialogue.isPaused = false
                     SceneInstance.sounds[10].toggleSound()
                     this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
-                    println("fell from sky")
                 end
             end
         end

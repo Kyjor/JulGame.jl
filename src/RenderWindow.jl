@@ -31,7 +31,6 @@ mutable struct RenderWindow
         this.texture = SDL_CreateTextureFromSurface(this.renderer, this.surface)
         this.surface0 = Base.unsafe_load(this.surface)
         
-        println("RenderWindow created successfully")
         return this
     end
 end

@@ -20,10 +20,6 @@ mutable struct TextBox
 
     function TextBox(fontPath, fontSize, position::Vector2, size::Vector2, sizePercentage::Vector2, text::String, isCentered::Bool) # TODO: replace bool with enum { left, center, right, etc }
         this = new()
-        
-        if length(text) > 60
-            println("text length is higher than what is currently supported.")
-        end
 
         this.alpha = 255
         this.fontPath = fontPath

@@ -114,7 +114,7 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                         this.isPaused = true
                     elseif this.currentMessageIndex == 27
                         SceneInstance.sounds[5].toggleSound()
-                    elseif this.currentMessageIndex == 29
+                    elseif this.currentMessageIndex == 30
                         SceneInstance.sounds[7].toggleSound()
                     end
                 end

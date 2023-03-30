@@ -8,6 +8,7 @@ mutable struct GameManager
     dialogue
     fadeOut
     goldPot
+    isEnd
     moneyBlocks
     parent
     platforms
@@ -23,6 +24,7 @@ mutable struct GameManager
         
         this.currentAct = 0
         this.fadeOut = true
+        this.isEnd = false
         this.potGoingDown = true
         this.potTimeToMove = 1.0
         this.timerPot = 0.0
@@ -37,9 +39,12 @@ function Base.getproperty(this::GameManager, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
+            if this.isEnd
+                return
+            end
+
             if this.currentAct == 0
                 if this.fadeOut 
-                    println(this.textBox.alpha)
                     this.textBox.alpha -= 1
                     this.textBox.updateText(this.textBox.text)
                     if this.textBox.alpha <= 25
@@ -54,7 +59,6 @@ function Base.getproperty(this::GameManager, s::Symbol)
                 end
                 if Button_Jump::Button in InputInstance.buttons
                     this.resetPlayer()
-                    # play falling sound
                 end
             end
             potTransform = this.goldPot.getTransform()
@@ -63,7 +67,6 @@ function Base.getproperty(this::GameManager, s::Symbol)
                 potTransform.position = Vector2f(potTransform.position.x, Lerp(6,7, this.timerPot/this.potTimeToMove))
                 if this.timerPot >= this.potTimeToMove 
                     this.goldPot.isActive = false
-                    #call player move
                     this.playerMovement.canMove = true
                     this.potGoingDown = false
                     this.timerPot = 0.0

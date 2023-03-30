@@ -49,14 +49,11 @@ function Base.getproperty(this::SoundSource, s::Symbol)
         function(loops = 0)
             if this.isMusic
                 if SDL2.Mix_PlayingMusic() == 0
-                    println("play music")
                     SDL2.Mix_PlayMusic( this.sound, Int32(-1) )
                 else
                     if SDL2.Mix_PausedMusic() == 1 
-                        println("resume music")
                         SDL2.Mix_ResumeMusic()
                     else
-                        println("pause music")
                         SDL2.Mix_PauseMusic()
                     end
                 end
