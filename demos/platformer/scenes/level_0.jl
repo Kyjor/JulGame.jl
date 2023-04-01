@@ -5,12 +5,11 @@ include("../scripts/fullGameDialogue.jl")
 include("../scripts/gameManager.jl")
 include("../scripts/playerMovement.jl")
 
-using RelocatableFolders
 using SimpleDirectMediaLayer
 
-const ASSETS = @path joinpath(@__DIR__, "..", "assets")
-
 function level_0()
+    ASSETS = joinpath(pwd(), "..", "assets")
+
     mainLoop = MainLoop(2.0)
 
     gameManager = GameManager()
@@ -34,7 +33,7 @@ function level_0()
 
     SceneInstance.screenButtons = screenButtons
 
-    fontPath = @path joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
+    fontPath = joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
         TextBox(fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "Press space to begin...", true),
         TextBox(fontPath, 20, Vector2(75, 375), Vector2(1000, 100), Vector2(0, 0), " ", false),
@@ -48,13 +47,13 @@ function level_0()
         Collider(Vector2f(1, 1), Vector2f(), "player")
     ]
 
-    blockImage = @path joinpath(ASSETS, "images", "MoneyBlocks.png")
-    goldPot = @path joinpath(ASSETS, "images", "Gold.png")
-    curtain = @path joinpath(ASSETS, "images", "curtain.png")
-    curtainTop = @path joinpath(ASSETS, "images", "curtaintop.png")
-    playerImage = @path joinpath(ASSETS, "images", "Player.png")
-    speakerImage = @path joinpath(ASSETS, "images", "Speaker.png")
-    floor = @path joinpath(ASSETS, "images", "Floor.png")
+    blockImage = joinpath(ASSETS, "images", "MoneyBlocks.png")
+    goldPot = joinpath(ASSETS, "images", "Gold.png")
+    curtain = joinpath(ASSETS, "images", "curtain.png")
+    curtainTop = joinpath(ASSETS, "images", "curtaintop.png")
+    playerImage = joinpath(ASSETS, "images", "Player.png")
+    speakerImage = joinpath(ASSETS, "images", "Speaker.png")
+    floor = joinpath(ASSETS, "images", "Floor.png")
     sprites = [
         Sprite(playerImage),
         Sprite(floor),
@@ -202,17 +201,17 @@ function level_0()
     gameManager.moneyBlocks = moneyBlocks
 
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
-    aww = @path joinpath(ASSETS, "sounds", "aww.wav")
-    boo = @path joinpath(ASSETS, "sounds", "boo.wav")
-    crowd = @path joinpath(ASSETS, "sounds", "crowd.mp3")
-    falling = @path joinpath(ASSETS, "sounds", "falling.mp3")
-    gasp = @path joinpath(ASSETS, "sounds", "gasp.wav")
-    hittingground = @path joinpath(ASSETS, "sounds", "hittingground.mp3")
-    jump = @path joinpath(ASSETS, "sounds", "Jump.wav")
-    laughing = @path joinpath(ASSETS, "sounds", "laughing.wav")
-    poof = @path joinpath(ASSETS, "sounds", "poof.mp3")
-    speech = @path joinpath(ASSETS, "sounds", "speech.wav")
-    smallApplause = @path joinpath(ASSETS, "sounds", "small-applause.mp3")
+    aww = joinpath(ASSETS, "sounds", "aww.wav")
+    boo = joinpath(ASSETS, "sounds", "boo.wav")
+    crowd = joinpath(ASSETS, "sounds", "crowd.mp3")
+    falling = joinpath(ASSETS, "sounds", "falling.mp3")
+    gasp = joinpath(ASSETS, "sounds", "gasp.wav")
+    hittingground = joinpath(ASSETS, "sounds", "hittingground.mp3")
+    jump = joinpath(ASSETS, "sounds", "Jump.wav")
+    laughing = joinpath(ASSETS, "sounds", "laughing.wav")
+    poof = joinpath(ASSETS, "sounds", "poof.mp3")
+    speech = joinpath(ASSETS, "sounds", "speech.wav")
+    smallApplause = joinpath(ASSETS, "sounds", "small-applause.mp3")
     sounds = [
         SoundSource(jump, 0, 7),
         SoundSource(speech, 1, 2),
@@ -249,6 +248,7 @@ function level_0()
     SceneInstance.camera = camera
     SceneInstance.sounds = sounds
 
+    mainLoop.assets = ASSETS
     mainLoop.loadScene(SceneInstance)
     mainLoop.start()
 end

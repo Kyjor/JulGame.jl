@@ -40,8 +40,4 @@ struct Vector2f
     function Base.:/(vec::Vector2f, float::Float64)
         return Vector2f(vec.x / float, vec.y / float)
     end
-    
-    function print()
-        println(x + ", " + y)
-    end
 end   

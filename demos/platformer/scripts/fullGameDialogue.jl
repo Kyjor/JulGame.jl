@@ -34,7 +34,7 @@ narratorScript =
         "This is the end for you. ",
         "There was never a sweepstakes.", # Gasp
         "You will be our jester, forever.",
-        "There is no way to ~Skedaddle~.",
+        "There is no way to ~Skedaddle~.", 
     ]
     
 dontMoveLoop =    
@@ -44,7 +44,7 @@ dontMoveLoop =
         "I don't think you can hold out much longer.",
         "Just a bit more.",
         "Keep Going.",
-        "Come on.",
+        "Come on.", 
     ]
     
 secretManScript =
@@ -54,6 +54,7 @@ secretManScript =
         "Our last Jester d... left us.",
         "The boss said we needed a new one so we got you.",
         "You can leave. But please send someone to us.",
+        "Maybe they'll skedaddle to stage right next time.",
         "Just exit to my left.",
         "Goodbye. Good luck...",
     ]

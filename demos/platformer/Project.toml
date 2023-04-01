@@ -4,5 +4,4 @@ authors = ["Kyjor <kyjordev@gmail.com>"]
 version = "0.0.1"
 
 [deps]
-RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
