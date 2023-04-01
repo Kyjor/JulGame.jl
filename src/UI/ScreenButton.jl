@@ -20,10 +20,8 @@ mutable struct ScreenButton
     function ScreenButton(dimensions::Vector2, position::Vector2, buttonUpSprite, buttonDownSprite, text)
         this = new()
         
-        engine_buttonDownSprite = @path joinpath(ENGINE_ASSETS, "images", "ButtonDown.png")
-        engine_buttonUpSprite = @path joinpath(ENGINE_ASSETS, "images", "ButtonUp.png")
-        this.buttonDownSprite = buttonDownSprite == C_NULL ? IMG_Load(engine_buttonDownSprite) : IMG_Load(buttonDownSprite)
-        this.buttonUpSprite = buttonUpSprite == C_NULL ? IMG_Load(engine_buttonUpSprite) : IMG_Load(buttonUpSprite)
+        this.buttonDownSprite = IMG_Load(buttonDownSprite)
+        this.buttonUpSprite = IMG_Load(buttonUpSprite)
         this.clickEvents = []
         this.dimensions = dimensions
         this.mouseOverSprite = false

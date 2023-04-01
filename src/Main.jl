@@ -23,6 +23,7 @@ using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
 
 mutable struct MainLoop
+	assets
     scene::Scene
     zoom::Float64
 
@@ -71,7 +72,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			fontSize = 50
 			
 			SDL_RenderSetScale(renderer, widthMultiplier * this.zoom, heightMultiplier * this.zoom)
-			fontPath = @path joinpath(ENGINE_ASSETS, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+			fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 			font = TTF_OpenFont(fontPath, fontSize)
 
 			for entity in this.scene.entities
