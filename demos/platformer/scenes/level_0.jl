@@ -8,52 +8,63 @@ include("../scripts/playerMovement.jl")
 using SimpleDirectMediaLayer
 
 function level_0()
+    #file loading
     ASSETS = joinpath(pwd(), "..", "assets")
 
+    fontPath = joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
+
+    #images
+    blockImage = joinpath(ASSETS, "images", "MoneyBlocks.png")
+    goldPot = joinpath(ASSETS, "images", "Gold.png")
+    curtain = joinpath(ASSETS, "images", "curtain.png")
+    curtainTop = joinpath(ASSETS, "images", "curtaintop.png")
+    floor = joinpath(ASSETS, "images", "Floor.png")
+    playerImage = joinpath(ASSETS, "images", "Player.png")
+    speakerImage = joinpath(ASSETS, "images", "Speaker.png")
+    #audio
+    aww = joinpath(ASSETS, "sounds", "aww.wav")
+    boo = joinpath(ASSETS, "sounds", "boo.wav")
+    crowd = joinpath(ASSETS, "sounds", "crowd.mp3")
+    falling = joinpath(ASSETS, "sounds", "falling.mp3")
+    gasp = joinpath(ASSETS, "sounds", "gasp.wav")
+    hittingground = joinpath(ASSETS, "sounds", "hittingground.mp3")
+    jump = joinpath(ASSETS, "sounds", "Jump.wav")
+    laughing = joinpath(ASSETS, "sounds", "laughing.wav")
+    poof = joinpath(ASSETS, "sounds", "poof.mp3")
+    speech = joinpath(ASSETS, "sounds", "speech.wav")
+    smallApplause = joinpath(ASSETS, "sounds", "small-applause.mp3")
+
+    
     mainLoop = MainLoop(2.0)
 
     gameManager = GameManager()
 
     playerMovement = PlayerMovement(false)
+    playerMovement.gameManager = gameManager
+    
     gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
     gameDialogue.isPaused = true
+    
     secretDialogue = Dialogue(secretManScript, 0.05, 1.5, gameManager, playerMovement)
     secretDialogue.isNormalDialogue = false
     secretDialogue.isPaused = true
 
     gameManager.playerMovement = playerMovement
-    playerMovement.gameManager = gameManager
     gameManager.dialogue = gameDialogue
     gameManager.secretDialogue = secretDialogue
 
-    # Prepare scene
-    screenButtons = [
-        #ScreenButton(Vector2(256, 64), Vector2(500, 800), C_NULL, C_NULL, "Button"),
-    ]
-
-    SceneInstance.screenButtons = screenButtons
-
-    fontPath = joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
     textBoxes = [
         TextBox(fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "Press space to begin...", true),
         TextBox(fontPath, 20, Vector2(75, 375), Vector2(1000, 100), Vector2(0, 0), " ", false),
     ]
 
     gameManager.textBox = textBoxes[1]
-
     SceneInstance.textBoxes = textBoxes
     
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")
     ]
 
-    blockImage = joinpath(ASSETS, "images", "MoneyBlocks.png")
-    goldPot = joinpath(ASSETS, "images", "Gold.png")
-    curtain = joinpath(ASSETS, "images", "curtain.png")
-    curtainTop = joinpath(ASSETS, "images", "curtaintop.png")
-    playerImage = joinpath(ASSETS, "images", "Player.png")
-    speakerImage = joinpath(ASSETS, "images", "Speaker.png")
-    floor = joinpath(ASSETS, "images", "Floor.png")
     sprites = [
         Sprite(playerImage),
         Sprite(floor),
@@ -113,9 +124,8 @@ function level_0()
     entities = []
 
     for i in 1:30
-        newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i-10, 10)), [Sprite(floor), newCollider])
-        push!(colliders, newCollider)
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i-10, 10)), [Sprite(floor), Collider(Vector2f(1, 1), Vector2f(), "ground")])
+        push!(colliders, newEntity.getCollider())
         push!(entities, newEntity)
     end
 
@@ -129,39 +139,27 @@ function level_0()
     entities[37].addScript(gameDialogue)
 
     #Platforms 
-    platforms = []
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-    platform = Entity(string("tile"), Transform(Vector2f(2, 9)), [Sprite(floor), newCollider])
-    push!(entities, platform)
-    push!(platforms, platform)
-    push!(colliders, newCollider)
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-    platform = Entity(string("tile"), Transform(Vector2f(0, 6)), [Sprite(floor), newCollider])
-    push!(entities, platform)
-    push!(platforms, platform)
-    push!(colliders, newCollider)
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-    platform = Entity(string("tile"), Transform(Vector2f(4, 8)), [Sprite(floor), newCollider])
-    push!(entities, platform)
-    push!(platforms, platform)
-    push!(colliders, newCollider)
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-    platform = Entity(string("tile"), Transform(Vector2f(5, 7)), [Sprite(floor), newCollider])
-    push!(entities, platform)
-    push!(platforms, platform)
-    push!(colliders, newCollider)
-    for plat in platforms
-       plat.isActive = false
+    platforms = [
+        Entity(string("tile"), Transform(Vector2f(2, 9)), [Sprite(floor), Collider(Vector2f(1, 1), Vector2f(), "ground")]),
+        Entity(string("tile"), Transform(Vector2f(0, 6)), [Sprite(floor), Collider(Vector2f(1, 1), Vector2f(), "ground")]),
+        Entity(string("tile"), Transform(Vector2f(4, 8)), [Sprite(floor), Collider(Vector2f(1, 1), Vector2f(), "ground")]),
+        Entity(string("tile"), Transform(Vector2f(5, 7)), [Sprite(floor), Collider(Vector2f(1, 1), Vector2f(), "ground")]),
+    ]
+
+    for platform in platforms
+        push!(entities, platform)
+        push!(colliders, platform.getCollider())
+        platform.isActive = false
     end
+
     gameManager.platforms = platforms
 
-      #Gold Pot
-      newCollider = Collider(Vector2f(1, 1), Vector2f(), "gold")
-      gold = Entity(string("tile"), Transform(Vector2f(2, 6)), [Sprite(goldPot), newCollider])
-      push!(entities, gold)
-      push!(colliders, newCollider)
-      gameManager.goldPot = gold
-      gold.isActive = false
+    #Gold Pot
+    gold = Entity(string("tile"), Transform(Vector2f(2, 6)), [Sprite(goldPot), Collider(Vector2f(1, 1), Vector2f(), "gold")])
+    push!(entities, gold)
+    push!(colliders, gold.getCollider())
+    gameManager.goldPot = gold
+    gold.isActive = false
   
     #Money Blocks
     block1Frames = []
@@ -179,39 +177,22 @@ function level_0()
         Animation(block3Frames, 2.0),
     ]
 
-    moneyBlocks = []
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "block")
-    block = Entity(string("tile"), Transform(Vector2f(-2, 7)), [Animator([blockAnims[2]]), Sprite(blockImage), newCollider])
-    push!(entities, block)
-    push!(moneyBlocks, block)
-    push!(colliders, newCollider)
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "block")
-    block = Entity(string("tile"), Transform(Vector2f(0, 7)), [Animator([blockAnims[1]]), Sprite(blockImage), newCollider])
-    push!(entities, block)
-    push!(moneyBlocks, block)
-    push!(colliders, newCollider)
-    newCollider = Collider(Vector2f(1, 1), Vector2f(), "block")
-    block = Entity(string("tile"), Transform(Vector2f(2, 7)), [Animator([blockAnims[3]]), Sprite(blockImage), newCollider])
-    push!(entities, block)
-    push!(moneyBlocks, block)
-    push!(colliders, newCollider)
+    moneyBlocks = [
+        Entity(string("tile"), Transform(Vector2f(-2, 7)), [Animator([blockAnims[2]]), Sprite(blockImage), Collider(Vector2f(1, 1), Vector2f(), "block")]),
+        Entity(string("tile"), Transform(Vector2f(0, 7)), [Animator([blockAnims[1]]), Sprite(blockImage), Collider(Vector2f(1, 1), Vector2f(), "block")]),
+        Entity(string("tile"), Transform(Vector2f(2, 7)), [Animator([blockAnims[3]]), Sprite(blockImage), Collider(Vector2f(1, 1), Vector2f(), "block")]),
+    ]
+
     for moneyBlock in moneyBlocks
+        push!(entities, moneyBlock)
+        push!(colliders, moneyBlock.getCollider())
+
         moneyBlock.isActive = false
     end
     gameManager.moneyBlocks = moneyBlocks
 
     camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), entities[32].getTransform())
-    aww = joinpath(ASSETS, "sounds", "aww.wav")
-    boo = joinpath(ASSETS, "sounds", "boo.wav")
-    crowd = joinpath(ASSETS, "sounds", "crowd.mp3")
-    falling = joinpath(ASSETS, "sounds", "falling.mp3")
-    gasp = joinpath(ASSETS, "sounds", "gasp.wav")
-    hittingground = joinpath(ASSETS, "sounds", "hittingground.mp3")
-    jump = joinpath(ASSETS, "sounds", "Jump.wav")
-    laughing = joinpath(ASSETS, "sounds", "laughing.wav")
-    poof = joinpath(ASSETS, "sounds", "poof.mp3")
-    speech = joinpath(ASSETS, "sounds", "speech.wav")
-    smallApplause = joinpath(ASSETS, "sounds", "small-applause.mp3")
+
     sounds = [
         SoundSource(jump, 0, 7),
         SoundSource(speech, 1, 2),
@@ -230,9 +211,8 @@ function level_0()
 
     push!(entities, Entity("game manager", Transform(), [], [gameManager]))
     for i in -15:-10
-        newCollider = Collider(Vector2f(1, 1), Vector2f(), "ground")
-        newEntity = Entity(string("tile", i), Transform(Vector2f(i, 10)), [Sprite(floor), newCollider])
-        push!(colliders, newCollider)
+        newEntity = Entity(string("tile", i), Transform(Vector2f(i, 10)), [Sprite(floor), Collider(Vector2f(1, 1), Vector2f(), "ground")])
+        push!(colliders, newEntity.getCollider())
         push!(entities, newEntity)
     end
 
@@ -242,10 +222,11 @@ function level_0()
     entities[length(entities)].addScript(secretDialogue)
 
     #Start game
+    SceneInstance.camera = camera
     SceneInstance.colliders = colliders
     SceneInstance.entities = entities
     SceneInstance.rigidbodies = rigidbodies
-    SceneInstance.camera = camera
+    SceneInstance.screenButtons = []
     SceneInstance.sounds = sounds
 
     mainLoop.assets = ASSETS
