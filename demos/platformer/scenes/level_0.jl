@@ -7,9 +7,9 @@ include("../scripts/playerMovement.jl")
 
 using SimpleDirectMediaLayer
 
-function level_0()
+function level_0(isUsingEditor = false)
     #file loading
-    ASSETS = joinpath(pwd(), "..", "assets")
+    ASSETS = joinpath(@__DIR__, "..", "assets")
 
     fontPath = joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
 
@@ -206,8 +206,8 @@ function level_0()
         SoundSource(hittingground, 4, 10),
     ]
 
-    crowdSound = SoundSource(crowd, 8)
-    crowdSound.toggleSound()
+    # crowdSound = SoundSource(crowd, 8)
+    # crowdSound.toggleSound()
 
     push!(entities, Entity("game manager", Transform(), [], [gameManager]))
     for i in -15:-10
@@ -231,5 +231,6 @@ function level_0()
 
     mainLoop.assets = ASSETS
     mainLoop.loadScene(SceneInstance)
-    mainLoop.start()
+    mainLoop.init(isUsingEditor)
+    return mainLoop
 end

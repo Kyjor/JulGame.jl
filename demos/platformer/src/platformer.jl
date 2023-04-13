@@ -2,7 +2,11 @@ module platformer
 include("../scenes/level_0.jl")
 
     function run()
-        level_0()
+        return level_0()
+    end
+
+    function runEditor()
+        return level_0(true)
     end
 
     julia_main() = run()

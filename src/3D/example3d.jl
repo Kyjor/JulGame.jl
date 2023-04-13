@@ -6,30 +6,6 @@ const SDL = SimpleDirectMediaLayer
 
 include("../UI/TextBox.jl")
 
-function run()
-    # Create a window and its OpenGL context
-    window = GLFW.CreateWindow(800, 600, "GLFW.jl")
-    
-    # Make the window's context current
-    GLFW.MakeContextCurrent(window)
-    
-    glViewport(0, 0, 800, 600)
-    # Loop until the user closes the window
-    while !GLFW.WindowShouldClose(window)
-    
-        # Render here
-        #
-    
-        processInput(window)
-        # Swap front and back buffers
-        GLFW.SwapBuffers(window)
-    
-        # Poll for and process events
-        GLFW.PollEvents()
-    end
-    GLFW.DestroyWindow(window)
-end
-
 function init()
     success = true
     SDL.init()
