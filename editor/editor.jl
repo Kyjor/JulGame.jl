@@ -6,6 +6,9 @@ using ImGuiOpenGLBackend #CImGui.OpenGLBackend
 using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
 using ImGuiOpenGLBackend.ModernGL
 using Printf
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer
+
 include("../demos/platformer/src/platformer.jl")
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
@@ -30,7 +33,7 @@ end
 
 # create window
 game = platformer.runEditor()
-window = glfwCreateWindow(1280, 720, "Demo", C_NULL, C_NULL)
+window = glfwCreateWindow(800, 1400, "Demo", C_NULL, C_NULL)
 @assert window != C_NULL
 glfwMakeContextCurrent(window)
 glfwSwapInterval(1)  # enable vsync
@@ -52,10 +55,6 @@ CImGui.StyleColorsDark()
 fonts_dir = joinpath(@__DIR__, "..", "fonts")
 fonts = unsafe_load(CImGui.GetIO().Fonts)
 # default_font = CImGui.AddFontDefault(fonts)
-# CImGui.AddFontFromFileTTF(fonts, joinpath(fonts_dir, "Cousine-Regular.ttf"), 15)
-# CImGui.AddFontFromFileTTF(fonts, joinpath(fonts_dir, "DroidSans.ttf"), 16)
-# CImGui.AddFontFromFileTTF(fonts, joinpath(fonts_dir, "Karla-Regular.ttf"), 10)
-# CImGui.AddFontFromFileTTF(fonts, joinpath(fonts_dir, "ProggyTiny.ttf"), 10)
 CImGui.AddFontFromFileTTF(fonts, joinpath(fonts_dir, "Roboto-Medium.ttf"), 16)
 # @assert default_font != C_NULL
 
@@ -66,10 +65,17 @@ opengl_ctx = ImGuiOpenGLBackend.create_context(glsl_version)
 ImGuiOpenGLBackend.init(opengl_ctx)
 try
     entities = []
+    gameInfo = []
+    mousePosition = C_NULL
     show_demo_window = true
     show_another_window = false
-    clear_color = Cfloat[0.45, 0.55, 0.60, 1.00]
+    clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
     while glfwWindowShouldClose(window) == 0
+        update = []
+        if (length(gameInfo) > 0)
+            entities = gameInfo[1]
+            mousePosition = gameInfo[2]
+        end 
         glfwPollEvents()
         # start the Dear ImGui frame
         ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
@@ -77,27 +83,32 @@ try
         CImGui.NewFrame()
 
         # show the big demo window
-        show_demo_window && @c CImGui.ShowDemoWindow(&show_demo_window)
+        #show_demo_window && @c CImGui.ShowDemoWindow(&show_demo_window)
         testText = "This is some useful text."
+        mousePositionText = "0,0"
         if length(entities) > 0
             testText = entities[1].name
         end
+        if mousePosition != C_NULL
+            mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
+        end
         # show a simple window that we create ourselves.
         # we use a Begin/End pair to created a named window.
-        @cstatic f=Cfloat(0.0) counter=Cint(0) begin
+        @cstatic f=Cfloat(0.0) counter=Cint(0) i0=Cint(0) begin
             CImGui.Begin("Hello, world!")  # create a window called "Hello, world!" and append into it.
             CImGui.Text(testText)  # display some text
-            @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
-            @c CImGui.Checkbox("Another Window", &show_another_window)
+            # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
+            # @c CImGui.Checkbox("Another Window", &show_another_window)
 
-            @c CImGui.SliderFloat("float", &f, 0, 1)  # edit 1 float using a slider from 0 to 1
-            CImGui.ColorEdit3("clear color", clear_color)  # edit 3 floats representing a color
-            CImGui.Button("Button") && (counter += 1)
-
-            CImGui.SameLine()
-            CImGui.Text("counter = $counter")
+            # @c CImGui.SliderFloat("float", &f, 0, 1)  # edit 1 float using a slider from 0 to 1
+            # CImGui.ColorEdit3("clear color", clear_color)  # edit 3 floats representing a color
+            # CImGui.Button("Button") && (counter += 1)
+            # CImGui.SameLine()
+            # CImGui.Text("counter = $counter")
+            @c CImGui.InputInt("input int", &i0)
             CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
-
+            CImGui.Text(mousePositionText)
+            push!(update, i0)
             CImGui.End()
         end
 
@@ -125,7 +136,7 @@ try
 
         glfwMakeContextCurrent(window)
         glfwSwapBuffers(window)
-        entities = game.editorLoop()
+        gameInfo = game.editorLoop(update)
     end
 catch e
     @error "Error in renderloop!" exception=e
@@ -135,4 +146,6 @@ finally
     ImGuiGLFWBackend.shutdown(glfw_ctx) #ImGui_ImplGlfw_Shutdown()
     CImGui.DestroyContext(ctx)
     glfwDestroyWindow(window)
+    SDL2.Mix_Quit()
+    SDL2.SDL_Quit()
 end

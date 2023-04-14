@@ -66,7 +66,12 @@ end
 function Base.getproperty(this::MainLoop, s::Symbol)
     if s == :init 
         function(isUsingEditor = false)
-			window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_MAXIMIZED)
+			if isUsingEditor
+				window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE)
+			else
+				window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU)
+			end
+
 			SDL_SetWindowResizable(window, SDL_FALSE)
 			this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
 			windowInfo = unsafe_wrap(Array, SDL_GetWindowSurface(window), 1; own = false)[1]
@@ -239,7 +244,9 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 		end
 	elseif s == :editorLoop
-		function ()
+		function (update)
+			
+			this.entities[20].getTransform().position = Vector2f(0, convert(Int64,update[1]))
 			DEBUG = false
 			close = false
 
@@ -291,10 +298,11 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				textBox.render(DEBUG)
 			end
 	
+			mousePositionWorld = Vector2(floor(Int,(InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 			if DEBUG
 				mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
 				scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(InputInstance.mousePosition.x/this.widthMultiplier)),$(round(InputInstance.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )
-				mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(floor(Int,(InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,( InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))", SDL_Color(0,255,0,255) )
+				mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(mousePositionWorld.x),$(mousePositionWorld.y)", SDL_Color(0,255,0,255) )
 				mousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
 				scaledMousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,scaledMousePositionText)
 				mousePositionWorldTextTexture = SDL_CreateTextureFromSurface(this.renderer,mousePositionWorldText)
@@ -310,7 +318,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			SDL_RenderPresent(this.renderer)
-			return this.entities
+			return [this.entities, mousePositionWorld]
 		end
     else
         try

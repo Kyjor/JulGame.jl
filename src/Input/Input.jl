@@ -14,7 +14,7 @@ mutable struct Input
 
         this.buttons = []
         this.debug = false
-        this.mousePosition = C_NULL
+        this.mousePosition = Vector2(0,0)
         this.quit = false
 
         return this
