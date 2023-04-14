@@ -34,6 +34,7 @@ mutable struct MainLoop
 	targetFrameRate
 	textBoxes
 	widthMultiplier
+	window
     zoom::Float64
 
     function MainLoop(scene)
@@ -67,14 +68,14 @@ function Base.getproperty(this::MainLoop, s::Symbol)
     if s == :init 
         function(isUsingEditor = false)
 			if isUsingEditor
-				window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE)
+				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE)
 			else
-				window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU)
+				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU)
 			end
 
-			SDL_SetWindowResizable(window, SDL_FALSE)
-			this.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
-			windowInfo = unsafe_wrap(Array, SDL_GetWindowSurface(window), 1; own = false)[1]
+			SDL_SetWindowResizable(this.window, SDL_FALSE)
+			this.renderer = SDL_CreateRenderer(this.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)
+			windowInfo = unsafe_wrap(Array, SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 			referenceHeight = 1080
 			referenceWidth = 1920
@@ -245,7 +246,12 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 		end
 	elseif s == :editorLoop
 		function (update)
-			
+			x,y = Int[1], Int[1]
+        	SDL_GetWindowPosition(this.window, pointer(x), pointer(y))
+
+			if update[2] != x[1] || update[3] != y[1]
+				SDL_SetWindowPosition(this.window, update[2], update[3])
+			end
 			this.entities[20].getTransform().position = Vector2f(0, convert(Int64,update[1]))
 			DEBUG = false
 			close = false

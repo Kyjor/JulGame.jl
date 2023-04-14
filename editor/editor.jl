@@ -33,7 +33,7 @@ end
 
 # create window
 game = platformer.runEditor()
-window = glfwCreateWindow(800, 1400, "Demo", C_NULL, C_NULL)
+window = glfwCreateWindow(1920, 1080, "Demo", C_NULL, C_NULL)
 @assert window != C_NULL
 glfwMakeContextCurrent(window)
 glfwSwapInterval(1)  # enable vsync
@@ -110,8 +110,28 @@ try
             CImGui.Text(mousePositionText)
             push!(update, i0)
             CImGui.End()
+            #println(CImGui.GetWindowSize())
         end
 
+        @cstatic f=Cfloat(0.0) counter=Cint(0) i0=Cint(0) begin
+            CImGui.Begin("Hello, world!")  # create a window called "Hello, world!" and append into it.
+            CImGui.Text(testText)  # display some text
+            # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
+            # @c CImGui.Checkbox("Another Window", &show_another_window)
+
+            # @c CImGui.SliderFloat("float", &f, 0, 1)  # edit 1 float using a slider from 0 to 1
+            # CImGui.ColorEdit3("clear color", clear_color)  # edit 3 floats representing a color
+            # CImGui.Button("Button") && (counter += 1)
+            # CImGui.SameLine()
+            # CImGui.Text("counter = $counter")
+            @c CImGui.InputInt("input int", &i0)
+            CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
+            CImGui.Text(mousePositionText)
+            push!(update, i0)
+            CImGui.End()
+            #println(CImGui.GetWindowSize())
+        end
+        
         # show another simple window.
         if show_another_window
             @c CImGui.Begin("Another Window", &show_another_window)  # pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
@@ -119,7 +139,10 @@ try
             CImGui.Button("Close Me") && (show_another_window = false;)
             CImGui.End()
         end
-
+        x,y = Int[1], Int[1]
+        glfwGetWindowPos(window, pointer(x), pointer(y))
+        push!(update, x[1])
+        push!(update, y[1])
         # rendering
         CImGui.Render()
         glfwMakeContextCurrent(window)
