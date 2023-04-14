@@ -64,6 +64,8 @@ ImGuiGLFWBackend.init(glfw_ctx)
 opengl_ctx = ImGuiOpenGLBackend.create_context(glsl_version)
 ImGuiOpenGLBackend.init(opengl_ctx)
 try
+    cameraPositionX = 0
+    cameraPositionY = 0 
     editorWindowSizeX = 0
     editorWindowSizeY = 0
     entities = []
@@ -75,10 +77,13 @@ try
     show_another_window = false
     clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
     while glfwWindowShouldClose(window) == 0
+        resetCamera = false
         update = []
         if (length(gameInfo) > 0)
             entities = gameInfo[1]
             mousePosition = gameInfo[2]
+            cameraPositionX = gameInfo[3].x
+            cameraPositionY = gameInfo[3].y
         end 
         glfwPollEvents()
         # start the Dear ImGui frame
@@ -120,7 +125,9 @@ try
         @cstatic begin
             CImGui.Begin("Scene")  # create a window called "Hello, world!" and append into it.
             #CImGui.Begin("Scene (x:$(editorWindowSizeX),y:$(editorWindowSizeY))")  # create a window called "Hello, world!" and append into it.
-            CImGui.Text("Window Size: x:$editorWindowSizeX, y:$editorWindowSizeY")
+            CImGui.Text("Window Size: x:$editorWindowSizeX, y:$editorWindowSizeY Camera Position: x:$cameraPositionX, y:$cameraPositionY")
+            CImGui.SameLine()
+            CImGui.Button("ResetCamera") && (resetCamera = true)
             relativeX = CImGui.GetWindowPos().x + 3
             relativeY = CImGui.GetWindowPos().y + 45
             editorWindowSizeX = CImGui.GetWindowSize().x - 6
@@ -141,6 +148,7 @@ try
         push!(update, y[1] + relativeY)
         push!(update, editorWindowSizeX)
         push!(update, editorWindowSizeY)
+        push!(update, resetCamera)
         # rendering
         CImGui.Render()
         glfwMakeContextCurrent(window)

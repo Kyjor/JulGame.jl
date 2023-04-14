@@ -27,6 +27,9 @@ mutable struct MainLoop
 	entities
 	font
 	heightMultiplier
+	lastMousePosition
+	panCounter
+	panThreshold
 	renderer
 	rigidbodies
 	scene::Scene
@@ -109,6 +112,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			this.rigidbodies = this.scene.rigidbodies
 			this.screenButtons = this.scene.screenButtons
 			this.textBoxes = this.scene.textBoxes
+
+			this.lastMousePosition = Vector2(0, 0)
+			this.panCounter = Vector2(0, 0)
+			this.panThreshold = 10
 
 			if !isUsingEditor
 				this.runMainLoop()
@@ -266,6 +273,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			DEBUG = false
 			close = false
 
+			this.lastMousePosition = InputInstance.mousePosition
 			#region ============= Input
 			InputInstance.pollInput()
 			
@@ -282,7 +290,30 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			# Clear the current render target before rendering again
 			SDL_RenderClear(this.renderer)
 
-			SceneInstance.camera.update()
+			cameraPosition = SceneInstance.camera.position
+			if SDL_BUTTON_MIDDLE in InputInstance.mouseButtons
+				xDiff = this.lastMousePosition.x - InputInstance.mousePosition.x
+				xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 1 : -1)
+				yDiff = this.lastMousePosition.y - InputInstance.mousePosition.y
+				yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 1 : -1)
+
+				this.panCounter = Vector2(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+
+				if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
+					diff = this.panCounter.x > this.panThreshold ? 1 : -1
+					cameraPosition = Vector2(cameraPosition.x + diff, cameraPosition.y)
+					this.panCounter = Vector2(0, this.panCounter.y)
+				end
+				if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
+					diff = this.panCounter.y > this.panThreshold ? 1 : -1
+					cameraPosition = Vector2(cameraPosition.x, cameraPosition.y + diff)
+					this.panCounter = Vector2(this.panCounter.x, 0)
+				end
+			end
+			if update[6] 
+				cameraPosition = Vector2()
+			end
+			SceneInstance.camera.update(cameraPosition)
 			
 			SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 			for entity in this.entities
@@ -334,7 +365,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			end
 			
 			SDL_RenderPresent(this.renderer)
-			return [this.entities, mousePositionWorld]
+			return [this.entities, mousePositionWorld, cameraPosition]
 		end
     else
         try

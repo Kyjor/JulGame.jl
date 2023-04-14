@@ -6,6 +6,7 @@ using SimpleDirectMediaLayer.LibSDL2
 mutable struct Input
     buttons::Array{Button}
     debug::Bool
+    mouseButtons::Array
     mousePosition
     quit::Bool
 
@@ -14,6 +15,7 @@ mutable struct Input
 
         this.buttons = []
         this.debug = false
+        this.mouseButtons = []
         this.mousePosition = Vector2(0,0)
         this.quit = false
 
@@ -33,7 +35,7 @@ function Base.getproperty(this::Input, s::Symbol)
                     if SceneInstance.screenButtons != C_NULL
                         x,y = Int[1], Int[1]
                         SDL_GetMouseState(pointer(x), pointer(y))
-
+                        
                         this.mousePosition = Vector2(x[1], y[1])
                         for screenButton in SceneInstance.screenButtons
                             # Check position of button to see which we are interacting with
@@ -58,6 +60,8 @@ function Base.getproperty(this::Input, s::Symbol)
                             #screenButton.render()
                         end
                     end
+
+                    this.handleMouseEvent(evt)
                 end 
 
                 if evt.type == SDL_QUIT
@@ -161,6 +165,32 @@ function Base.getproperty(this::Input, s::Symbol)
             end
 
             this.buttons = buttons
+        end
+    elseif s == :handleMouseEvent
+        function(event)
+            mouseButtons = []
+            mouseButton = C_NULL
+
+            if event.button.button == SDL_BUTTON_LEFT
+                mouseButton = SDL_BUTTON_LEFT
+                if !(mouseButton in mouseButtons)
+                    push!(mouseButtons, mouseButton)
+                end
+            end
+            if event.button.button == SDL_BUTTON_MIDDLE
+                mouseButton = SDL_BUTTON_MIDDLE
+                if !(mouseButton in mouseButtons)
+                    push!(mouseButtons, mouseButton)
+                end
+            end
+            if event.button.button == SDL_BUTTON_RIGHT
+                mouseButton = SDL_BUTTON_RIGHT
+                if !(mouseButton in mouseButtons)
+                    push!(mouseButtons, mouseButton)
+                end
+            end
+
+            this.mouseButtons = mouseButtons
         end
     else
         try
