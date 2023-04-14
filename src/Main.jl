@@ -246,11 +246,21 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 		end
 	elseif s == :editorLoop
 		function (update)
-			x,y = Int[1], Int[1]
+			x,y,w,h = Int[1], Int[1], Int[1], Int[1]
         	SDL_GetWindowPosition(this.window, pointer(x), pointer(y))
+        	SDL_GetWindowSize(this.window, pointer(w), pointer(h))
 
 			if update[2] != x[1] || update[3] != y[1]
 				SDL_SetWindowPosition(this.window, update[2], update[3])
+			end
+			if update[4] != w[1] || update[5] != h[1]
+				SDL_SetWindowSize(this.window, update[4], update[5])
+				referenceHeight = 1080
+				referenceWidth = 1920
+				this.widthMultiplier = update[4]/referenceWidth
+				this.heightMultiplier = update[5]/referenceHeight
+			
+				SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 			end
 			this.entities[20].getTransform().position = Vector2f(0, convert(Int64,update[1]))
 			DEBUG = false

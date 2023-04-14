@@ -64,9 +64,13 @@ ImGuiGLFWBackend.init(glfw_ctx)
 opengl_ctx = ImGuiOpenGLBackend.create_context(glsl_version)
 ImGuiOpenGLBackend.init(opengl_ctx)
 try
+    editorWindowSizeX = 0
+    editorWindowSizeY = 0
     entities = []
     gameInfo = []
     mousePosition = C_NULL
+    relativeX = 0
+    relativeY = 0
     show_demo_window = true
     show_another_window = false
     clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
@@ -95,7 +99,7 @@ try
         # show a simple window that we create ourselves.
         # we use a Begin/End pair to created a named window.
         @cstatic f=Cfloat(0.0) counter=Cint(0) i0=Cint(0) begin
-            CImGui.Begin("Hello, world!")  # create a window called "Hello, world!" and append into it.
+            CImGui.Begin("Item")  # create a window called "Hello, world!" and append into it.
             CImGui.Text(testText)  # display some text
             # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
             # @c CImGui.Checkbox("Another Window", &show_another_window)
@@ -113,25 +117,17 @@ try
             #println(CImGui.GetWindowSize())
         end
 
-        @cstatic f=Cfloat(0.0) counter=Cint(0) i0=Cint(0) begin
-            CImGui.Begin("Hello, world!")  # create a window called "Hello, world!" and append into it.
-            CImGui.Text(testText)  # display some text
-            # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
-            # @c CImGui.Checkbox("Another Window", &show_another_window)
-
-            # @c CImGui.SliderFloat("float", &f, 0, 1)  # edit 1 float using a slider from 0 to 1
-            # CImGui.ColorEdit3("clear color", clear_color)  # edit 3 floats representing a color
-            # CImGui.Button("Button") && (counter += 1)
-            # CImGui.SameLine()
-            # CImGui.Text("counter = $counter")
-            @c CImGui.InputInt("input int", &i0)
-            CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
-            CImGui.Text(mousePositionText)
-            push!(update, i0)
+        @cstatic begin
+            CImGui.Begin("Scene")  # create a window called "Hello, world!" and append into it.
+            #CImGui.Begin("Scene (x:$(editorWindowSizeX),y:$(editorWindowSizeY))")  # create a window called "Hello, world!" and append into it.
+            CImGui.Text("Window Size: x:$editorWindowSizeX, y:$editorWindowSizeY")
+            relativeX = CImGui.GetWindowPos().x + 3
+            relativeY = CImGui.GetWindowPos().y + 45
+            editorWindowSizeX = CImGui.GetWindowSize().x - 6
+            editorWindowSizeY = CImGui.GetWindowSize().y - 50
             CImGui.End()
-            #println(CImGui.GetWindowSize())
         end
-        
+
         # show another simple window.
         if show_another_window
             @c CImGui.Begin("Another Window", &show_another_window)  # pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
@@ -141,8 +137,10 @@ try
         end
         x,y = Int[1], Int[1]
         glfwGetWindowPos(window, pointer(x), pointer(y))
-        push!(update, x[1])
-        push!(update, y[1])
+        push!(update, x[1] + relativeX)
+        push!(update, y[1] + relativeY)
+        push!(update, editorWindowSizeX)
+        push!(update, editorWindowSizeY)
         # rendering
         CImGui.Render()
         glfwMakeContextCurrent(window)
