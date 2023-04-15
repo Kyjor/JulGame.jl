@@ -128,14 +128,17 @@ try
                     elseif typeof(Value) == String
                         buf = "$(Value)"*"\0"^(64)
                         CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
-                        if length(Value) < 64 && Int(buf[length(Value) + 1]) != 0 
-                            setfield!(currentEntitySelected,FieldsInStruct[i], String(SubString(buf, 1, length(Value) + 1)))
+                        currentTextInTextBox = ""
+                        for characterIndex = 1:length(buf)
+                            if Int(buf[characterIndex]) == 0 
+                                if characterIndex != 1
+                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                end
+                                break
+                            end
                         end
-                        println(SubString(buf, 1, length(Value) + 1))
-
+                        setfield!(currentEntitySelected,FieldsInStruct[i], currentTextInTextBox)
                     end
-                    #Value=Value.+1;
-                    #setfield!(currentEntitySelected,FieldsInStruct[i],Value)
                 end
             end
 
