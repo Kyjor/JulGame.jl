@@ -1,6 +1,7 @@
 using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
+using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64
 using ImGuiGLFWBackend #CImGui.GLFWBackend
 using ImGuiOpenGLBackend #CImGui.OpenGLBackend
 using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
@@ -66,6 +67,8 @@ ImGuiOpenGLBackend.init(opengl_ctx)
 try
     cameraPositionX = 0
     cameraPositionY = 0 
+    currentEntitySelected = C_NULL
+    currentEntityUpdated = false
     editorWindowSizeX = 0
     editorWindowSizeY = 0
     entities = []
@@ -93,10 +96,10 @@ try
 
         # show the big demo window
         #show_demo_window && @c CImGui.ShowDemoWindow(&show_demo_window)
-        testText = "This is some useful text."
+        testText = ""
         mousePositionText = "0,0"
-        if length(entities) > 0
-            testText = entities[1].name
+        if length(entities) > 0 && currentEntitySelected != C_NULL
+            testText = currentEntitySelected.name
         end
         if mousePosition != C_NULL
             mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
@@ -114,10 +117,14 @@ try
             # CImGui.Button("Button") && (counter += 1)
             # CImGui.SameLine()
             # CImGui.Text("counter = $counter")
-            @c CImGui.InputInt("input int", &i0)
+            if currentEntityUpdated 
+                i0 = Cint(currentEntitySelected.getTransform().position.y)
+                currentEntityUpdated = false
+            end
+            @c CImGui.InputInt("y", &i0)
             CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
             CImGui.Text(mousePositionText)
-            push!(update, i0)
+            push!(update, [currentEntitySelected, i0])
             CImGui.End()
             #println(CImGui.GetWindowSize())
         end
@@ -132,6 +139,53 @@ try
             relativeY = CImGui.GetWindowPos().y + 45
             editorWindowSizeX = CImGui.GetWindowSize().x - 6
             editorWindowSizeY = CImGui.GetWindowSize().y - 50
+            CImGui.End()
+        end
+        @cstatic begin
+            CImGui.Begin("Hierarchy")  # create a window called "Hello, world!" and append into it.
+            if CImGui.TreeNode("Level_0")
+                #ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
+                align_label_with_current_x_position= @cstatic align_label_with_current_x_position=false begin
+                    #@c CImGui.Checkbox("Align label with current X position)", &align_label_with_current_x_position)
+                    align_label_with_current_x_position && CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
+                end
+    
+                @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
+                    node_clicked = -1  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
+                    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
+                    for i = 0:5
+                        continue
+                        # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+                        node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                        if i < 3
+                            # Node
+                            node_open = CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Node $i")
+                            CImGui.IsItemClicked() && (node_clicked = i;)
+                            node_open && (CImGui.Text("Blah blah\nBlah Blah"); CImGui.TreePop();)
+                        else
+                            # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
+                            node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
+                            CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Leaf $i")
+                            CImGui.IsItemClicked() && (node_clicked = i;)
+                        end
+                    end
+                    for i in 1:length(entities)
+                        # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+                        node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                        # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
+                        node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
+                        CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(entities[i].name)")
+                        CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelected = entities[i]; currentEntityUpdated = true;)
+                    end
+                    if node_clicked != -1
+                        selection_mask = 1 << node_clicked            # Click to single-select
+                    end
+                    CImGui.PopStyleVar()
+                end # @cstatic
+                align_label_with_current_x_position && CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
+                CImGui.TreePop()
+            end
+            CImGui.TreePop()
             CImGui.End()
         end
 
