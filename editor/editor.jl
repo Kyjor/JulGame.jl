@@ -11,6 +11,8 @@ using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
 
 include("../demos/platformer/src/platformer.jl")
+include("../src/Entity.jl")
+
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
     const glsl_version = 150
@@ -110,28 +112,41 @@ try
             CImGui.Begin("Item")  # create a window called "Hello, world!" and append into it.
             CImGui.Text(testText)  # display some text
             # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
-            # @c CImGui.Checkbox("Another Window", &show_another_window)
-
-            # @c CImGui.SliderFloat("float", &f, 0, 1)  # edit 1 float using a slider from 0 to 1
-            # CImGui.ColorEdit3("clear color", clear_color)  # edit 3 floats representing a color
-            # CImGui.Button("Button") && (counter += 1)
-            # CImGui.SameLine()
-            # CImGui.Text("counter = $counter")
+            
             if currentEntityUpdated 
                 i0 = Cint(currentEntitySelected.getTransform().position.y)
                 currentEntityUpdated = false
             end
+            if currentEntitySelected != C_NULL
+                FieldsInStruct=fieldnames(Entity);
+                for i = 1:length(FieldsInStruct)
+                    #Check field i
+                    Value=getfield(currentEntitySelected, FieldsInStruct[i])
+                    if typeof(Value) == Bool
+                        @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
+                        setfield!(currentEntitySelected,FieldsInStruct[i],Value)
+                    elseif typeof(Value) == String
+                        buf = "$(Value)"*"\0"^(64)
+                        CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
+                        if length(Value) < 64 && Int(buf[length(Value) + 1]) != 0 
+                            setfield!(currentEntitySelected,FieldsInStruct[i], String(SubString(buf, 1, length(Value) + 1)))
+                        end
+                        println(SubString(buf, 1, length(Value) + 1))
+
+                    end
+                    #Value=Value.+1;
+                    #setfield!(currentEntitySelected,FieldsInStruct[i],Value)
+                end
+            end
+
             @c CImGui.InputInt("y", &i0)
             CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
             CImGui.Text(mousePositionText)
             push!(update, [currentEntitySelected, i0])
             CImGui.End()
-            #println(CImGui.GetWindowSize())
         end
-
         @cstatic begin
-            CImGui.Begin("Scene")  # create a window called "Hello, world!" and append into it.
-            #CImGui.Begin("Scene (x:$(editorWindowSizeX),y:$(editorWindowSizeY))")  # create a window called "Hello, world!" and append into it.
+            CImGui.Begin("Scene")  # create a window called "Scene"
             CImGui.Text("Window Size: x:$editorWindowSizeX, y:$editorWindowSizeY Camera Position: x:$cameraPositionX, y:$cameraPositionY")
             CImGui.SameLine()
             CImGui.Button("ResetCamera") && (resetCamera = true)
