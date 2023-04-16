@@ -157,13 +157,13 @@ try
                                     componentFieldType = "$(typeof(componentFieldValue).name.wrapper)"
                                     componentFieldType = String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
 
-                                    if componentFieldType == "Vector2f" && fieldsInComponent[j] == :position
+                                    if componentFieldType == "Vector2f" # && fieldsInComponent[j] == :scale
                                         CImGui.Text(fieldsInComponent[j])
                                         x = Cfloat(componentFieldValue.x)
                                         y = Cfloat(componentFieldValue.y)
-                                        @c CImGui.InputFloat("x", &x)
+                                        @c CImGui.InputFloat("$(fieldsInComponent[j])x", &x)
                                         CImGui.SameLine()
-                                        @c CImGui.InputFloat("y", &y)
+                                        @c CImGui.InputFloat("$(fieldsInComponent[j])y", &y)
                                         #println(fieldsInComponent[j])
                                         setfield!(currentEntitySelected.getTransform(),fieldsInComponent[j],eval(typeof(currentEntitySelected.getTransform().position))(x,y))
                                     end
