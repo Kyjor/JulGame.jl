@@ -73,6 +73,7 @@ try
     cameraPositionX = 0
     cameraPositionY = 0 
     currentEntitySelected = C_NULL
+    currentEntitySelectedIndex = -1
     currentEntityUpdated = false
     editorWindowSizeX = 0
     editorWindowSizeY = 0
@@ -119,6 +120,9 @@ try
             if currentEntityUpdated 
                 currentEntityUpdated = false
             end
+            if currentEntitySelectedIndex != -1
+                CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelected = C_NULL; currentEntitySelectedIndex = -1;)
+            end
             if currentEntitySelected != C_NULL
                 FieldsInStruct=fieldnames(Entity);
                 for i = 1:length(FieldsInStruct)
@@ -162,21 +166,12 @@ try
                                         x = Cfloat(componentFieldValue.x)
                                         y = Cfloat(componentFieldValue.y)
                                         @c CImGui.InputFloat("$(fieldsInComponent[j])x", &x)
-                                        CImGui.SameLine()
                                         @c CImGui.InputFloat("$(fieldsInComponent[j])y", &y)
                                         #println(fieldsInComponent[j])
                                         setfield!(currentEntitySelected.getTransform(),fieldsInComponent[j],eval(typeof(currentEntitySelected.getTransform().position))(x,y))
                                     end
                                 end
                             end
-                            # if componentType == "Transform"
-
-                            #     CImGui.Text(mousePositionText)
-                            #     @c CImGui.InputFloat4("x", &i0)
-                            #     CImGui.SameLine()
-                            #     @c CImGui.InputFloat4("y", &i0)
-
-                            # end
                         end
                     end
                 end
@@ -233,7 +228,7 @@ try
                         # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
                         node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
                         CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(entities[i].name)")
-                        CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelected = entities[i]; currentEntityUpdated = true;)
+                        CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelected = entities[i]; currentEntitySelectedIndex = i; currentEntityUpdated = true;)
                     end
                     if node_clicked != -1
                         selection_mask = 1 << node_clicked            # Click to single-select
