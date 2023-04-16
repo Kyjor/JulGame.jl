@@ -10,6 +10,7 @@ struct Vector2f
     Vector2f(x::Int64, y::Int64) = new(convert(Float64,round(x)),convert(Float64,round(y)));
     Vector2f(x::Float64, y::Int64) = new(x,convert(Float64,round(y)));
     Vector2f(x::Int64, y::Float64) = new(convert(Float64,round(x)),y);
+    Vector2f(x::Number, y::Number) = new(convert(Float64,round(x)),convert(Float64,round(y)));
     
 
     #operators 

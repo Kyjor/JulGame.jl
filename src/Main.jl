@@ -269,9 +269,9 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			
 				SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 			end
-			if update[1][1] != C_NULL
-				update[1][1].getTransform().position = Vector2f(update[1][1].getTransform().position.x, convert(Int64,update[1][2]))
-			end
+			# if update[1][1] != C_NULL
+			# 	update[1][1].getTransform().position = Vector2f(update[1][1].getTransform().position.x, convert(Int64,update[1][2]))
+			# end
 
 			DEBUG = false
 			close = false

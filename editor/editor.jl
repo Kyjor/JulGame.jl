@@ -12,6 +12,9 @@ const SDL2 = SimpleDirectMediaLayer
 
 include("../demos/platformer/src/platformer.jl")
 include("../src/Entity.jl")
+include("../src/Macros.jl")
+include("../src/Transform.jl")
+include("../src/Math/Vector2f.jl")
 
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
@@ -108,13 +111,12 @@ try
         end
         # show a simple window that we create ourselves.
         # we use a Begin/End pair to created a named window.
-        @cstatic f=Cfloat(0.0) counter=Cint(0) i0=Cint(0) begin
+        @cstatic f=Cfloat(0.0) counter=Cint(0) begin
             CImGui.Begin("Item")  # create a window called "Hello, world!" and append into it.
             CImGui.Text(testText)  # display some text
             # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
             
             if currentEntityUpdated 
-                i0 = Cint(currentEntitySelected.getTransform().position.y)
                 currentEntityUpdated = false
             end
             if currentEntitySelected != C_NULL
@@ -122,6 +124,7 @@ try
                 for i = 1:length(FieldsInStruct)
                     #Check field i
                     Value=getfield(currentEntitySelected, FieldsInStruct[i])
+                    
                     if typeof(Value) == Bool
                         @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
                         setfield!(currentEntitySelected,FieldsInStruct[i],Value)
@@ -138,14 +141,51 @@ try
                             end
                         end
                         setfield!(currentEntitySelected,FieldsInStruct[i], currentTextInTextBox)
+                    elseif FieldsInStruct[i] == :components
+                        for component in Value
+                            componentType = "$(typeof(component).name.wrapper)"
+                            componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
+
+                            CImGui.Text(componentType)
+                            fieldsInComponent=fieldnames(eval(Symbol(componentType)));
+                            #println(fieldsInComponent)
+
+                            if componentType == "Transform"
+                                for j = 1:length(fieldsInComponent)
+                                    #Check field i
+                                    componentFieldValue = getfield(component, fieldsInComponent[j])
+                                    componentFieldType = "$(typeof(componentFieldValue).name.wrapper)"
+                                    componentFieldType = String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
+
+                                    if componentFieldType == "Vector2f" && fieldsInComponent[j] == :position
+                                        CImGui.Text(fieldsInComponent[j])
+                                        x = Cfloat(componentFieldValue.x)
+                                        y = Cfloat(componentFieldValue.y)
+                                        @c CImGui.InputFloat("x", &x)
+                                        CImGui.SameLine()
+                                        @c CImGui.InputFloat("y", &y)
+                                        #println(fieldsInComponent[j])
+                                        setfield!(currentEntitySelected.getTransform(),fieldsInComponent[j],eval(typeof(currentEntitySelected.getTransform().position))(x,y))
+                                    end
+                                end
+                            end
+                            # if componentType == "Transform"
+
+                            #     CImGui.Text(mousePositionText)
+                            #     @c CImGui.InputFloat4("x", &i0)
+                            #     CImGui.SameLine()
+                            #     @c CImGui.InputFloat4("y", &i0)
+
+                            # end
+                        end
                     end
                 end
             end
 
-            @c CImGui.InputInt("y", &i0)
+#            @c CImGui.InputInt("y", &i0)
             CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
             CImGui.Text(mousePositionText)
-            push!(update, [currentEntitySelected, i0])
+            push!(update, [currentEntitySelected, 0])
             CImGui.End()
         end
         @cstatic begin
