@@ -1,0 +1,23 @@
+{
+    "Entities":[
+        {
+            "name": "tile1",
+            "isActive": true,
+            "components":[
+                {
+                    "type": "Transform",
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "scale": {
+                        "x": 0,
+                        "y": 0
+                    }
+                }
+            ],
+            "scripts":[]
+        }
+    ]
+}
