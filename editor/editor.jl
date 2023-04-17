@@ -47,6 +47,9 @@ glfwSwapInterval(1)  # enable vsync
 # setup Dear ImGui context
 ctx = CImGui.CreateContext()
 
+io = CImGui.GetIO()
+io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
+
 # setup Dear ImGui style
 CImGui.StyleColorsDark()
 # CImGui.StyleColorsClassic()
