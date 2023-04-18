@@ -18,6 +18,25 @@
                 }
             ],
             "scripts":[]
+        },
+        {
+            "name": "tile2",
+            "isActive": true,
+            "components":[
+                {
+                    "type": "Transform",
+                    "rotation": 0,
+                    "position": {
+                        "x": 10,
+                        "y": 50
+                    },
+                    "scale": {
+                        "x": 0,
+                        "y": 0
+                    }
+                }
+            ],
+            "scripts":[]
         }
     ]
 }

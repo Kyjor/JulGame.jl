@@ -4,18 +4,10 @@ include("../src/sceneReader.jl")
 function level_1(isUsingEditor = false)
     #file loading
     ASSETS = joinpath(@__DIR__, "..", "assets")
-
-
     mainLoop = MainLoop(2.0)
 
-    SceneInstance.entities = getEntities("ExampleScene.json")
-    #Start game
-    SceneInstance.camera = camera
-    SceneInstance.colliders = colliders
-    SceneInstance.entities = entities
-    SceneInstance.rigidbodies = rigidbodies
-    SceneInstance.screenButtons = []
-    SceneInstance.sounds = sounds
+    SceneInstance.entities = getEntities(joinpath(@__DIR__, "ExampleScene.json"))
+    SceneInstance.camera =Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), Transform())
 
     mainLoop.assets = ASSETS
     mainLoop.loadScene(SceneInstance)

@@ -80,6 +80,15 @@ function Base.getproperty(this::Entity, s::Symbol)
             end
             return C_NULL
         end
+    elseif s == :removeComponent #Retrieves the first component of specified type from the list of components attached to the entity
+        function(componentType)
+            for i = 1:length(this.components)
+               if typeof(this.components[i]) <: componentType
+                   deleteat!(this.components, i)
+               end
+            end
+            return C_NULL
+        end
     elseif s == :getName
         function()
             return this.name
