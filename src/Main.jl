@@ -310,6 +310,25 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					this.panCounter = Vector2(this.panCounter.x, 0)
 				end
 			end
+
+			if Button_Jump::Button in InputInstance.buttons
+				if Button_Left::Button in InputInstance.buttons
+					this.zoom -= .01
+					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+				elseif Button_Right::Button in InputInstance.buttons
+					this.zoom += .01
+					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+				end
+			elseif Button_Left::Button in InputInstance.buttons
+				cameraPosition = Vector2(cameraPosition.x - 1, cameraPosition.y)
+			elseif Button_Right::Button in InputInstance.buttons
+				cameraPosition = Vector2(cameraPosition.x + 1, cameraPosition.y)
+			elseif Button_Down::Button in InputInstance.buttons
+				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y + 1)
+			elseif Button_Up::Button in InputInstance.buttons
+				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y - 1)
+			end
+	
 			if update[6] 
 				cameraPosition = Vector2()
 			end
