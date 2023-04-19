@@ -1,4 +1,3 @@
-include("../../../src/Input/Button.jl")
 using .julgame.MainLoop
 
 mutable struct GameManager
@@ -55,7 +54,9 @@ function Base.getproperty(this::GameManager, s::Symbol)
                         this.fadeOut = true
                     end
                 end
-                if Button_Jump::Button in MAIN.input.buttons
+                
+                if "Button_Jump" in MAIN.input.buttons
+                    println("hit")
                     this.resetPlayer()
                 end
             end
@@ -101,7 +102,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
             this.playerMovement.parent.getTransform().position = Vector2f(0,-1)
             this.playerMovement.form = 0
             this.playerMovement.isFalling = true
-            SceneInstance.sounds[9].toggleSound()
+            MAIN.scene.sounds[9].toggleSound()
             this.playerMovement.parent.getComponent(Animator).currentAnimation = this.playerMovement.parent.getComponent(Animator).animations[(this.playerMovement.form * 4) + 4]
         end
     elseif s == :setParent

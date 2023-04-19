@@ -1,5 +1,5 @@
 module Component
-    using ..engine: Math
+    using ..engine
     abstract type EntityComponent end
     include("Collider.jl")
     

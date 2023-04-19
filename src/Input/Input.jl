@@ -1,12 +1,12 @@
 include("Button.jl")
-
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Input
-    buttons::Array{Button}
+    buttons::Array{String}
     debug::Bool
     mouseButtons::Array
     mousePosition
+    scene
     quit::Bool
 
     function Input()
@@ -31,12 +31,12 @@ function Base.getproperty(this::Input, s::Symbol)
                 evt = event_ref[]
                 this.handleWindowEvents(evt)
                 if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
-                    if MainLoop.MAIN.scene.screenButtons != C_NULL
+                    if this.scene.screenButtons != C_NULL
                         x,y = Int[1], Int[1]
                         SDL_GetMouseState(pointer(x), pointer(y))
                         
-                        this.mousePosition = Vector2(x[1], y[1])
-                        for screenButton in MainLoop.MAIN.scene.screenButtons
+                        this.mousePosition = Math.Vector2(x[1], y[1])
+                        for screenButton in this.scene.screenButtons
                             # Check position of button to see which we are interacting with
                             eventWasInsideThisButton = true
 
@@ -56,7 +56,6 @@ function Base.getproperty(this::Input, s::Symbol)
                             end
 
                             screenButton.handleEvent(evt, x, y)
-                            #screenButton.render()
                         end
                     end
 
@@ -130,34 +129,34 @@ function Base.getproperty(this::Input, s::Symbol)
     elseif s == :handleKeyEvent
         function(keyboardState)
             buttons = []
-            button = Button_None::Button
+            button = "Button_None"
 
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_W, SDL_SCANCODE_UP])
-                button = Button_Up::Button
+                button = "Button_Up"
                 if !(button in buttons)
                     push!(buttons, button)
                 end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_A, SDL_SCANCODE_LEFT])
-                button = Button_Left::Button
+                button = "Button_Left"
                 if !(button in buttons)
                     push!(buttons, button)
                 end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_S, SDL_SCANCODE_DOWN])
-                button = Button_Down::Button
+                button = "Button_Down"
                 if !(button in buttons)
                     push!(buttons, button)
                 end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_D, SDL_SCANCODE_RIGHT])
-                button = Button_Right::Button
+                button = "Button_Right"
                 if !(button in buttons)
                     push!(buttons, button)
                 end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_SPACE])
-                button = Button_Jump::Button
+                button = "Button_Jump"
                 if !(button in buttons)
                     push!(buttons, button)
                 end

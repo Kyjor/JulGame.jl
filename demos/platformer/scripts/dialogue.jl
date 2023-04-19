@@ -1,3 +1,5 @@
+using .julgame.MainLoop
+
 mutable struct Dialogue
     charTimer::Float64
     currentMessage::String
@@ -51,7 +53,7 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.isQueueingNextMessage = false
                 this.isReadingMessage = true
                 this.messageTimer = 0.0
-                this.isNormalDialogue ? SceneInstance.textBoxes[1].updateText(" ") : SceneInstance.textBoxes[2].updateText(" ")
+                this.isNormalDialogue ? MAIN.scene.textBoxes[1].updateText(" ") : MAIN.scene.textBoxes[2].updateText(" ")
             end
             if this.isQueueingNextMessage == true
                 this.messageTimer = this.messageTimer + deltaTime
@@ -66,10 +68,10 @@ function Base.getproperty(this::Dialogue, s::Symbol)
             if this.currentPositionInMessage == length(this.currentMessage)+1
                 if this.currentMessageIndex == length(this.messages) 
                     if this.isNormalDialogue
-                        SceneInstance.colliders[2].enabled = false
+                        MAIN.scene.colliders[2].enabled = false
                         this.playerMovement.canMove = true
                     else
-                        SceneInstance.textBoxes[1].text = " "
+                        MAIN.scene.textBoxes[1].text = " "
                     end
                     this.isPaused = true
                     return
@@ -81,9 +83,9 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 this.charTimer = 0.0
                 if this.isNormalDialogue
                     if this.currentMessageIndex == 3 
-                    SceneInstance.sounds[4].toggleSound()
+                    MAIN.scene.sounds[4].toggleSound()
                     elseif this.currentMessageIndex == 12
-                        SceneInstance.sounds[3].toggleSound()
+                        MAIN.scene.sounds[3].toggleSound()
                         this.isPaused = true
                         #set up money blocks
                         for moneyBlock in this.gameManager.moneyBlocks
@@ -91,27 +93,27 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                         end
                         this.gameManager.goldPot.isActive = true
                     elseif this.currentMessageIndex == 13
-                        SceneInstance.sounds[5].toggleSound()
+                        MAIN.scene.sounds[5].toggleSound()
                     elseif this.currentMessageIndex == 17 
-                        SceneInstance.sounds[3].toggleSound()
+                        MAIN.scene.sounds[3].toggleSound()
                         this.isPaused = true
                         for platform in this.gameManager.platforms
                             platform.isActive = true
                         end    
                     elseif this.currentMessageIndex == 19
-                        SceneInstance.sounds[6].toggleSound()
+                        MAIN.scene.sounds[6].toggleSound()
                     elseif this.currentMessageIndex == 23
-                        SceneInstance.sounds[3].toggleSound()
+                        MAIN.scene.sounds[3].toggleSound()
                         this.playerMovement.parent.getTransform().position = Vector2f(0.0, 9.0)
-                        SceneInstance.entities[15].isActive = false
-                        SceneInstance.entities[16].isActive = false
+                        MAIN.scene.entities[15].isActive = false
+                        MAIN.scene.entities[16].isActive = false
                     elseif this.currentMessageIndex == 26
                         this.playerMovement.canMove = true
                         this.isPaused = true
                     elseif this.currentMessageIndex == 27
-                        SceneInstance.sounds[5].toggleSound()
+                        MAIN.scene.sounds[5].toggleSound()
                     elseif this.currentMessageIndex == 30
-                        SceneInstance.sounds[7].toggleSound()
+                        MAIN.scene.sounds[7].toggleSound()
                     end
                 end
                 this.currentMessageIndex = this.currentMessageIndex + 1
@@ -120,13 +122,13 @@ function Base.getproperty(this::Dialogue, s::Symbol)
                 return
             end
             if this.isNormalDialogue
-                SceneInstance.textBoxes[1].updateText(string(SceneInstance.textBoxes[1].text == " " ? "" : SceneInstance.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))
+                MAIN.scene.textBoxes[1].updateText(string(MAIN.scene.textBoxes[1].text == " " ? "" : MAIN.scene.textBoxes[1].text, this.currentMessage[this.currentPositionInMessage]))
             else
-                SceneInstance.textBoxes[2].updateText(string(SceneInstance.textBoxes[2].text == " " ? "" : SceneInstance.textBoxes[2].text, this.currentMessage[this.currentPositionInMessage]))
+                MAIN.scene.textBoxes[2].updateText(string(MAIN.scene.textBoxes[2].text == " " ? "" : MAIN.scene.textBoxes[2].text, this.currentMessage[this.currentPositionInMessage]))
             end
             # add next character to text box 
             # play a sound 
-            SceneInstance.sounds[2].toggleSound()
+            MAIN.scene.sounds[2].toggleSound()
 
             this.currentPositionInMessage = this.currentPositionInMessage + 1
             this.charTimer = 0.0

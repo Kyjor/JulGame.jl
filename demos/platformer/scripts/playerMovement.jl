@@ -35,18 +35,17 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             # event = @event begin
             #     this.jump()
             # end
-            #SceneInstance.screenButtons[1].addClickEvent(event)
+            #MAIN.scene.screenButtons[1].addClickEvent(event)
         end
     elseif s == :update
         function(deltaTime)
-            println(Vector2())
             if this.parent.getTransform().position.x < -7  && !this.gameManager.isEnd
                 dialogue = this.gameManager.dialogue
                 secretDialogue = this.gameManager.secretDialogue
                 MAIN.scene.camera.target = Transform(Vector2f(-8, 7.75))
-                #SceneInstance.sounds[8].toggleSound()
+                #MAIN.scene.sounds[8].toggleSound()
                 secretDialogue.isPaused = false
-                SceneInstance.textBoxes[1].updateText(" ")
+                MAIN.scene.textBoxes[1].updateText(" ")
                 if this.parent.getTransform().position.y > 10
                     # Reset game
                     dialogue.currentMessageIndex = 1
@@ -100,13 +99,13 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             speed = 5
             buttons = MAIN.input.buttons
             y = this.parent.getRigidbody().getVelocity().y
-            if (Button_Jump::Button in buttons || this.isJump) && this.parent.getRigidbody().grounded && this.canMove
+            if ("Button_Jump" in buttons || this.isJump) && this.parent.getRigidbody().grounded && this.canMove
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
                 MAIN.scene.sounds[1].toggleSound()
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 3]
             end
-            if Button_Left::Button in buttons && this.canMove
+            if "Button_Left" in buttons && this.canMove
                 x = -speed
                 if this.isFacingRight
                     this.isFacingRight = false
@@ -115,7 +114,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 if this.parent.getRigidbody().grounded
                     this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
                 end
-            elseif Button_Right::Button in buttons && this.canMove
+            elseif "Button_Right" in buttons && this.canMove
                 x = speed
                 if !this.isFacingRight
                     this.isFacingRight = true
@@ -150,7 +149,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             collider = this.parent.getComponent(Collider)
             for collision in collider.currentCollisions
                 if collision.tag == "block"
-                    SceneInstance.sounds[3].toggleSound()
+                    MAIN.scene.sounds[3].toggleSound()
                     # remove all blocks, reveal money
                     for moneyBlock in gm.moneyBlocks
                         moneyBlock.isActive = false
@@ -169,7 +168,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     this.canMove = false
                     this.form = 1
                 elseif collision.tag == "gold"
-                    SceneInstance.sounds[3].toggleSound()
+                    MAIN.scene.sounds[3].toggleSound()
                     gm.goldPot.isActive = false
                     gm.dialogue.isPaused = false
                     for platform in gm.platforms
@@ -180,7 +179,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 elseif collision.tag == "ground" && this.isFalling
                     this.isFalling = false
                     gm.dialogue.isPaused = false
-                    SceneInstance.sounds[10].toggleSound()
+                    MAIN.scene.sounds[10].toggleSound()
                     this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
                 end
             end

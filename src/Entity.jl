@@ -1,5 +1,4 @@
 include("./Component/Animator.jl")
-#include("./Component/Collider.jl")
 include("./Component/Rigidbody.jl")
 include("./Component/Sprite.jl")
 include("./Component/Transform.jl")

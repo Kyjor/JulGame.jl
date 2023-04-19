@@ -7,16 +7,17 @@ module engine
     using .InputInstance: Input
     export Input
 
+    include("Main.jl") 
+    using .MainLoop: Main   
+    const MAIN = Main(2.0)
+    #export MainLoop
+    export MAIN
+
     export component
     include("Component/Component.jl")
     using .Component: Collider
     export Collider
 
-    include("Main.jl") 
-    using .MainLoop: Main   
-    const MAIN = Main(2.0)
-    export MainLoop
-    export MAIN
 end
 
 global const julgame = engine

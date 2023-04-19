@@ -2,7 +2,6 @@
 using ..engine: Math
 
 include("Enums.jl")
-#include("Utils.jl")
 
 include("Input/Input.jl")
 include("Constants.jl")
@@ -36,9 +35,10 @@ mutable struct Main
         this = new()
 		
 		SDL2.init()
-		this.input = Input()
 		this.zoom = zoom
 		this.scene = scene
+		this.input = Input()
+		this.input.scene = this.scene
 		
         return this
     end
@@ -47,9 +47,10 @@ mutable struct Main
         this = new()
 		
 		SDL2.init()
-		this.input = Input()
 		this.scene = Scene()
 		this.zoom = zoom
+		this.input = Input()
+		this.input.scene = this.scene
 		
         return this
     end
@@ -58,9 +59,10 @@ mutable struct Main
         this = new()
 		
 		SDL2.init()
-		this.input = Input()
 		this.scene = Scene()
 		this.zoom = zoom
+		this.input = Input()
+		this.input.scene = this.scene
 		
         return this
     end
@@ -310,21 +312,21 @@ function Base.getproperty(this::Main, s::Symbol)
 				end
 			end
 
-			if Button_Jump::Button in this.input.buttons
-				if Button_Left::Button in this.input.buttons
+			if "Button_Jump" in this.input.buttons
+				if "Button_Left" in this.input.buttons
 					this.zoom -= .01
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
-				elseif Button_Right::Button in this.input.buttons
+				elseif Button_Right in this.input.buttons
 					this.zoom += .01
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				end
-			elseif Button_Left::Button in this.input.buttons
+			elseif "Button_Left" in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x - 1, cameraPosition.y)
-			elseif Button_Right::Button in this.input.buttons
+			elseif "Button_Right" in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x + 1, cameraPosition.y)
-			elseif Button_Down::Button in this.input.buttons
+			elseif "Button_Down" in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y + 1)
-			elseif Button_Up::Button in this.input.buttons
+			elseif "Button_Up" in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y - 1)
 			end
 	

@@ -45,7 +45,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             this.acceleration = newAcceleration
 
             if this.parent.getCollider() != C_NULL
-                #this.parent.getCollider().checkCollisions()
+                this.parent.getCollider().checkCollisions()
             end
         end
     elseif s == :applyForces
