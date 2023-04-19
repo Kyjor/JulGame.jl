@@ -1,11 +1,21 @@
-﻿include("../../../src/Main.jl")
+﻿using .julgame
+include("../../../src/UI/TextBox.jl")
+include("../../../src/Component/Animation.jl")
+include("../../../src/Entity.jl")
+include("../../../src/Camera.jl")
+include("../../../src/Component/Animator.jl")
+include("../../../src/Component/Rigidbody.jl")
+include("../../../src/Component/SoundSource.jl")
+include("../../../src/Component/Sprite.jl")
+include("../../../src/Component/Transform.jl")
+include("../../../src/Input/Input.jl")
+
+include("../../../src/Main.jl")
 
 include("../scripts/dialogue.jl")
 include("../scripts/fullGameDialogue.jl")
 include("../scripts/gameManager.jl")
 include("../scripts/playerMovement.jl")
-
-using SimpleDirectMediaLayer
 
 function level_0(isUsingEditor = false)
     #file loading
@@ -35,7 +45,7 @@ function level_0(isUsingEditor = false)
     smallApplause = joinpath(ASSETS, "sounds", "small-applause.mp3")
 
     
-    mainLoop = MainLoop(2.0)
+    main = MAIN
 
     gameManager = GameManager()
 
@@ -59,7 +69,8 @@ function level_0(isUsingEditor = false)
     ]
 
     gameManager.textBox = textBoxes[1]
-    SceneInstance.textBoxes = textBoxes
+
+    main.scene.textBoxes = textBoxes
     
     colliders = [
         Collider(Vector2f(1, 1), Vector2f(), "player")
@@ -222,15 +233,15 @@ function level_0(isUsingEditor = false)
     entities[length(entities)].addScript(secretDialogue)
 
     #Start game
-    SceneInstance.camera = camera
-    SceneInstance.colliders = colliders
-    SceneInstance.entities = entities
-    SceneInstance.rigidbodies = rigidbodies
-    SceneInstance.screenButtons = []
-    SceneInstance.sounds = sounds
+    main.scene.camera = camera
+    main.scene.colliders = colliders
+    main.scene.entities = entities
+    main.scene.rigidbodies = rigidbodies
+    main.scene.screenButtons = []
+    main.scene.sounds = sounds
 
-    mainLoop.assets = ASSETS
-    mainLoop.loadScene(SceneInstance)
-    mainLoop.init(isUsingEditor)
-    return mainLoop
+    main.assets = ASSETS
+    main.loadScene(main.scene)
+    main.init(isUsingEditor)
+    return main
 end

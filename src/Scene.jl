@@ -1,6 +1,4 @@
-﻿using SimpleDirectMediaLayer.LibSDL2
-
-mutable struct Scene
+﻿mutable struct Scene
     camera
     colliders
     entities

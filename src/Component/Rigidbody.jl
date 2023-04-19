@@ -1,8 +1,7 @@
-﻿include("Math/Vector2f.jl")
+﻿global const SCALE_UNITS = Ref{Float64}(64.0)[]
+global const GRAVITY = Ref{Float64}(9.81)[]
 
-using SimpleDirectMediaLayer.LibSDL2
-
-mutable struct Rigidbody
+mutable struct Rigidbody 
     acceleration
     drag
     grounded::Bool
@@ -46,7 +45,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             this.acceleration = newAcceleration
 
             if this.parent.getCollider() != C_NULL
-                this.parent.getCollider().checkCollisions()
+                #this.parent.getCollider().checkCollisions()
             end
         end
     elseif s == :applyForces

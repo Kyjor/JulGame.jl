@@ -1,32 +1,24 @@
-﻿include("Animator.jl")
-include("Camera.jl")
-include("Constants.jl")
-include("Entity.jl")
+﻿module MainLoop
+using ..engine: Math
+
 include("Enums.jl")
+#include("Utils.jl")
+
 include("Input/Input.jl")
-include("Input/InputInstance.jl")
-include("Macros.jl")
-include("RenderWindow.jl")
-include("Rigidbody.jl")
-include("SceneInstance.jl")
-include("UI/ScreenButton.jl")
-include("SoundSource.jl")
-include("Sprite.jl")
-include("UI/TextBox.jl")
-include("Transform.jl")
-include("Utils.jl")
-include("Math/Vector2.jl")
-include("Math/Vector2f.jl")
-include("Math/Vector4.jl")
+include("Constants.jl")
+include("Scene.jl")
+
 
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
 
-mutable struct MainLoop
+export Main
+mutable struct Main
 	assets
 	entities
 	font
 	heightMultiplier
+	input
 	lastMousePosition
 	panCounter
 	panThreshold
@@ -40,40 +32,47 @@ mutable struct MainLoop
 	window
     zoom::Float64
 
-    function MainLoop(scene)
+    function Main(scene)
         this = new()
 		
 		SDL2.init()
+		this.input = Input()
+		this.zoom = zoom
 		this.scene = scene
 		
         return this
     end
 
-	function MainLoop(zoom::Float64)
+	function Main(zoom::Float64)
         this = new()
 		
 		SDL2.init()
+		this.input = Input()
+		this.scene = Scene()
 		this.zoom = zoom
 		
         return this
     end
 
-	function MainLoop()
+	function Main()
         this = new()
 		
 		SDL2.init()
+		this.input = Input()
+		this.scene = Scene()
+		this.zoom = zoom
 		
         return this
     end
 end
 
-function Base.getproperty(this::MainLoop, s::Symbol)
+function Base.getproperty(this::Main, s::Symbol)
     if s == :init 
         function(isUsingEditor = false)
 			if isUsingEditor
-				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE)
+				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE)
 			else
-				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SceneInstance.camera.dimensions.x, SceneInstance.camera.dimensions.y, SDL_WINDOW_POPUP_MENU)
+				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL_WINDOW_POPUP_MENU)
 			end
 
 			SDL_SetWindowResizable(this.window, SDL_FALSE)
@@ -113,12 +112,12 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			this.screenButtons = this.scene.screenButtons
 			this.textBoxes = this.scene.textBoxes
 
-			this.lastMousePosition = Vector2(0, 0)
-			this.panCounter = Vector2(0, 0)
+			this.lastMousePosition = Math.Vector2(0, 0)
+			this.panCounter = Math.Vector2(0, 0)
 			this.panThreshold = 10
 
 			if !isUsingEditor
-				this.runMainLoop()
+				this.run()
 				return
 			end
         end
@@ -126,7 +125,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 		function (scene)
 			this.scene = scene
 		end
-	elseif s == :runMainLoop
+	elseif s == :run
 		function ()
 			try
 
@@ -144,12 +143,12 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					lastStartTime = startTime
 					startTime = SDL_GetPerformanceCounter()
 					#region ============= Input
-					InputInstance.pollInput()
+					this.input.pollInput()
 					
-					if InputInstance.quit
+					if this.input.quit
 						close = true
 					end
-					DEBUG = InputInstance.debug
+					DEBUG = this.input.debug
 					
 					#endregion ============== Input
 						
@@ -171,7 +170,7 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					# Clear the current render target before rendering again
 					SDL_RenderClear(this.renderer)
 
-					SceneInstance.camera.update()
+					this.scene.camera.update()
 					
 					SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 					for entity in this.entities
@@ -193,11 +192,11 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
 							SDL_RenderDrawLines(this.renderer, [
-								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS)), 
-								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS)),
-								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-								SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS))], 5)
+								SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
+								SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
+								SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
+								SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
+								SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
 						end
 					end
 					for screenButton in this.screenButtons
@@ -212,9 +211,9 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 						# Stats to display
 						text = TTF_RenderText_Blended( this.font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0))), SDL_Color(0,255,0,255) )
 						text1 = TTF_RenderText_Blended( this.font, string("Frame time: ", round((startTime - lastStartTime) / SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL_Color(0,255,0,255) )
-						mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
-						scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(InputInstance.mousePosition.x/this.widthMultiplier)),$(round(InputInstance.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )
-						mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(floor(Int,(InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,( InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))", SDL_Color(0,255,0,255) )
+						mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL_Color(0,255,0,255) )
+						scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )
+						mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))", SDL_Color(0,255,0,255) )
 						textTexture = SDL_CreateTextureFromSurface(this.renderer,text)
 						textTexture1 = SDL_CreateTextureFromSurface(this.renderer,text1)
 						mousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
@@ -273,14 +272,14 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			DEBUG = false
 			close = false
 
-			this.lastMousePosition = InputInstance.mousePosition
+			this.lastMousePosition = this.input.mousePosition
 			#region ============= Input
-			InputInstance.pollInput()
+			this.input.pollInput()
 			
-			if InputInstance.quit
+			if this.input.quit
 				close = true
 			end
-			DEBUG = InputInstance.debug
+			DEBUG = this.input.debug
 			
 			#endregion ============== Input
 				
@@ -290,11 +289,11 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 			# Clear the current render target before rendering again
 			SDL_RenderClear(this.renderer)
 
-			cameraPosition = SceneInstance.camera.position
-			if SDL_BUTTON_MIDDLE in InputInstance.mouseButtons
-				xDiff = this.lastMousePosition.x - InputInstance.mousePosition.x
+			cameraPosition = this.scene.camera.position
+			if SDL_BUTTON_MIDDLE in this.input.mouseButtons
+				xDiff = this.lastMousePosition.x - this.input.mousePosition.x
 				xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 1 : -1)
-				yDiff = this.lastMousePosition.y - InputInstance.mousePosition.y
+				yDiff = this.lastMousePosition.y - this.input.mousePosition.y
 				yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 1 : -1)
 
 				this.panCounter = Vector2(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
@@ -311,28 +310,28 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				end
 			end
 
-			if Button_Jump::Button in InputInstance.buttons
-				if Button_Left::Button in InputInstance.buttons
+			if Button_Jump::Button in this.input.buttons
+				if Button_Left::Button in this.input.buttons
 					this.zoom -= .01
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
-				elseif Button_Right::Button in InputInstance.buttons
+				elseif Button_Right::Button in this.input.buttons
 					this.zoom += .01
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				end
-			elseif Button_Left::Button in InputInstance.buttons
+			elseif Button_Left::Button in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x - 1, cameraPosition.y)
-			elseif Button_Right::Button in InputInstance.buttons
+			elseif Button_Right::Button in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x + 1, cameraPosition.y)
-			elseif Button_Down::Button in InputInstance.buttons
+			elseif Button_Down::Button in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y + 1)
-			elseif Button_Up::Button in InputInstance.buttons
+			elseif Button_Up::Button in this.input.buttons
 				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y - 1)
 			end
 	
 			if update[6] 
 				cameraPosition = Vector2()
 			end
-			SceneInstance.camera.update(cameraPosition)
+			this.scene.camera.update(cameraPosition)
 			
 			SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL_ALPHA_OPAQUE)
 			for entity in this.entities
@@ -349,11 +348,11 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 					pos = entity.getTransform().getPosition()
 					colSize = entity.getCollider().getSize()
 					SDL_RenderDrawLines(this.renderer, [
-						SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS)), 
-						SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS)),
-						SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-						SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-						SDL_Point(round((pos.x - SceneInstance.camera.position.x) * SCALE_UNITS), round((pos.y - SceneInstance.camera.position.y) * SCALE_UNITS))], 5)
+						SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
+						SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
+						SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
+						SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
+						SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
 				end
 			end
 			for screenButton in this.screenButtons
@@ -364,10 +363,10 @@ function Base.getproperty(this::MainLoop, s::Symbol)
 				textBox.render(DEBUG)
 			end
 	
-			mousePositionWorld = Vector2(floor(Int,(InputInstance.mousePosition.x + (SceneInstance.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( InputInstance.mousePosition.y + (SceneInstance.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
+			mousePositionWorld = Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 			if DEBUG
-				mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(InputInstance.mousePosition.x),$(InputInstance.mousePosition.y)", SDL_Color(0,255,0,255) )
-				scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(InputInstance.mousePosition.x/this.widthMultiplier)),$(round(InputInstance.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )
+				mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL_Color(0,255,0,255) )
+				scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )
 				mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(mousePositionWorld.x),$(mousePositionWorld.y)", SDL_Color(0,255,0,255) )
 				mousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
 				scaledMousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,scaledMousePositionText)
@@ -393,4 +392,5 @@ function Base.getproperty(this::MainLoop, s::Symbol)
             println(e)
         end
     end
+end
 end

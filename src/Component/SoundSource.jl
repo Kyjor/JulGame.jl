@@ -1,6 +1,4 @@
-﻿include("Constants.jl")
-
-using SimpleDirectMediaLayer
+﻿using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
 
 mutable struct SoundSource

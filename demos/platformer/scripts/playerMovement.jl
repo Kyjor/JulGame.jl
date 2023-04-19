@@ -1,6 +1,6 @@
-include("../../../src/SceneInstance.jl")
 include("../../../src/Macros.jl")
-include("../../../src/Math/Vector2f.jl")
+include("../../../src/Input/Button.jl")
+using .julgame.MainLoop
 
 mutable struct PlayerMovement
     canMove
@@ -39,10 +39,11 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
+            println(Vector2())
             if this.parent.getTransform().position.x < -7  && !this.gameManager.isEnd
                 dialogue = this.gameManager.dialogue
                 secretDialogue = this.gameManager.secretDialogue
-                SceneInstance.camera.target = Transform(Vector2f(-8, 7.75))
+                MAIN.scene.camera.target = Transform(Vector2f(-8, 7.75))
                 #SceneInstance.sounds[8].toggleSound()
                 secretDialogue.isPaused = false
                 SceneInstance.textBoxes[1].updateText(" ")
@@ -61,30 +62,30 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     secretDialogue.isPaused = true
                     secretDialogue.isReadingMessage = false
                     secretDialogue.isQueueingNextMessage = true
-                    SceneInstance.textBoxes[2].updateText(" ")
+                    MAIN.scene.textBoxes[2].updateText(" ")
 
-                    SceneInstance.camera.target = Transform(Vector2f(0, 7.75))
+                    MAIN.scene.camera.target = Transform(Vector2f(0, 7.75))
                     this.canMove = false
                     this.gameManager.potGoingDown = true
                     this.gameManager.goldPot.getTransform().position = Vector2f(2,6)
-                    SceneInstance.colliders[2].enabled = true
+                    MAIN.scene.colliders[2].enabled = true
                     this.gameManager.resetPlayer()
-                    SceneInstance.colliders[3].enabled = false
+                    MAIN.scene.colliders[3].enabled = false
                 end
             elseif this.parent.getTransform().position.y > 10 && !this.gameManager.isEnd
-                SceneInstance.sounds[3].toggleSound()
-                SceneInstance.sounds[9].toggleSound()
+                MAIN.scene.sounds[3].toggleSound()
+                MAIN.scene.sounds[9].toggleSound()
                 this.parent.getTransform().position = Vector2f(0.0, -1.0)
                 this.isFalling = true
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 4]
                 this.canMove = false
                 this.form = 3
-                SceneInstance.entities[15].isActive = true
-                SceneInstance.entities[16].isActive = true
+                MAIN.scene.entities[15].isActive = true
+                MAIN.scene.entities[16].isActive = true
                 this.gameManager.dialogue.isPaused = false
             elseif this.parent.getTransform().position.x > 7 && this.gameManager.currentAct != 0 && !this.gameManager.isEnd
                 this.gameManager.isEnd = true
-                SceneInstance.camera.target = Transform(Vector2f(15, 7.75))
+                MAIN.scene.camera.target = Transform(Vector2f(15, 7.75))
                 dialogue = this.gameManager.dialogue
                 winMessages = ["Congrats, you escaped :)", "Goodbye."]
                 dialogue.messages = winMessages
@@ -97,12 +98,12 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             end
             x = 0
             speed = 5
-            buttons = InputInstance.buttons
+            buttons = MAIN.input.buttons
             y = this.parent.getRigidbody().getVelocity().y
             if (Button_Jump::Button in buttons || this.isJump) && this.parent.getRigidbody().grounded && this.canMove
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
-                SceneInstance.sounds[1].toggleSound()
+                MAIN.scene.sounds[1].toggleSound()
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 3]
             end
             if Button_Left::Button in buttons && this.canMove

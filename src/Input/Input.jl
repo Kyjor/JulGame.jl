@@ -1,5 +1,4 @@
 include("Button.jl")
-include("../SceneInstance.jl")
 
 using SimpleDirectMediaLayer.LibSDL2
 
@@ -16,7 +15,7 @@ mutable struct Input
         this.buttons = []
         this.debug = false
         this.mouseButtons = []
-        this.mousePosition = Vector2(0,0)
+        this.mousePosition = Math.Vector2(0,0)
         this.quit = false
 
         return this
@@ -32,12 +31,12 @@ function Base.getproperty(this::Input, s::Symbol)
                 evt = event_ref[]
                 this.handleWindowEvents(evt)
                 if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
-                    if SceneInstance.screenButtons != C_NULL
+                    if MainLoop.MAIN.scene.screenButtons != C_NULL
                         x,y = Int[1], Int[1]
                         SDL_GetMouseState(pointer(x), pointer(y))
                         
                         this.mousePosition = Vector2(x[1], y[1])
-                        for screenButton in SceneInstance.screenButtons
+                        for screenButton in MainLoop.MAIN.scene.screenButtons
                             # Check position of button to see which we are interacting with
                             eventWasInsideThisButton = true
 

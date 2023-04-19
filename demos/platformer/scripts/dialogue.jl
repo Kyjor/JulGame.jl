@@ -1,7 +1,3 @@
-include("../../../src/Macros.jl")
-include("../../../src/SceneInstance.jl")
-include("../../../src/Math/Vector2f.jl")
-
 mutable struct Dialogue
     charTimer::Float64
     currentMessage::String

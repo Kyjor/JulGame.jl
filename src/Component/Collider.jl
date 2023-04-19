@@ -1,17 +1,13 @@
-include("SceneInstance.jl")
-include("Math/Vector2f.jl")
-using SimpleDirectMediaLayer.LibSDL2
-
 mutable struct Collider
     collisionEvents
     currentCollisions
     enabled
-    offset::Vector2f
+    offset::Math.Vector2f
     parent
-    size::Vector2f
+    size::Math.Vector2f
     tag::String
     
-    function Collider(size::Vector2f, offset::Vector2f, tag::String)
+    function Collider(size::Math.Vector2f, offset::Math.Vector2f, tag::String)
         this = new()
 
         this.collisionEvents = []
@@ -31,7 +27,7 @@ function Base.getproperty(this::Collider, s::Symbol)
             return this.size
         end
     elseif s == :setSize
-        function(size::Vector2f)
+        function(size::Math.Vector2f)
             this.size = size
         end
     elseif s == :getOffset
@@ -39,7 +35,7 @@ function Base.getproperty(this::Collider, s::Symbol)
             return this.offset
         end
     elseif s == :setOffset
-        function(offset::Vector2f)
+        function(offset::Math.Vector2f)
             this.offset = offset
         end
     elseif s == :getTag
@@ -81,7 +77,7 @@ function Base.getproperty(this::Collider, s::Symbol)
                             eventToCall()
                         end
                         #Begin to overlap, correct position
-                        transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
+                        transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
                     end
                     if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, colliders[i])
@@ -89,7 +85,7 @@ function Base.getproperty(this::Collider, s::Symbol)
                             eventToCall()
                         end
                         #Begin to overlap, correct position
-                        transform.setPosition(Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
+                        transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
                     end
                     if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, colliders[i])
@@ -97,7 +93,7 @@ function Base.getproperty(this::Collider, s::Symbol)
                             eventToCall()
                         end
                         #Begin to overlap, correct position
-                        transform.setPosition(Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
+                        transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
                     end
                     if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, colliders[i])
@@ -105,7 +101,7 @@ function Base.getproperty(this::Collider, s::Symbol)
                             eventToCall()
                         end
                         #Begin to overlap, correct position
-                        transform.setPosition(Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
+                        transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
                         onGround = true
                     end
                     if collision[1] == Below::ColliderLocation

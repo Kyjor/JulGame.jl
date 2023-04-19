@@ -1,9 +1,5 @@
-﻿include("Constants.jl")
-include("SceneInstance.jl")
-include("Math/Vector2.jl")
-include("Math/Vector2f.jl")
-include("Math/Vector4.jl")
-
+﻿using .julgame.Math
+using .julgame.MainLoop
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Sprite
@@ -66,8 +62,8 @@ function Base.getproperty(this::Sprite, s::Symbol)
                 this.renderer, 
                 this.texture, 
                 srcRect, 
-                Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x - SceneInstance.camera.position.x) * SCALE_UNITS)), 
-                convert(Int32,round((parentTransform.getPosition().y - SceneInstance.camera.position.y) * SCALE_UNITS)),
+                Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x - MAIN.scene.camera.position.x) * SCALE_UNITS)), 
+                convert(Int32,round((parentTransform.getPosition().y - MAIN.scene.camera.position.y) * SCALE_UNITS)),
                 convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
                 convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))), 
                 0.0, 

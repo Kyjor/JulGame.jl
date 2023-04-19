@@ -1,6 +1,4 @@
-include("../Constants.jl")
-include("../Math/Vector2.jl")
-
+using .julgame.Math
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct TextBox

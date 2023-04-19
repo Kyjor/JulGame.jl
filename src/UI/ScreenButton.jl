@@ -1,6 +1,3 @@
-include("../Constants.jl")
-include("../Math/Vector2.jl")
-
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct ScreenButton

@@ -1,7 +1,4 @@
 ﻿include("Animation.jl")
-include("Constants.jl")
-
-using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Animator
     animations::Array{Animation}

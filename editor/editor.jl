@@ -7,14 +7,9 @@ using ImGuiOpenGLBackend #CImGui.OpenGLBackend
 using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
 using ImGuiOpenGLBackend.ModernGL
 using Printf
-using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
 
 include("../demos/platformer/src/platformer.jl")
-include("../src/Entity.jl")
-include("../src/Macros.jl")
-include("../src/Transform.jl")
-include("../src/Math/Vector2f.jl")
 
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150

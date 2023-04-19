@@ -1,8 +1,5 @@
-include("Math/Vector2f.jl")
-include("Math/Vector4.jl")
-include("Constants.jl")
-
 using SimpleDirectMediaLayer.LibSDL2
+using .julgame.Math
 
 mutable struct Animation
     animatedFPS::Int64

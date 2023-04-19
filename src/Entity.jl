@@ -1,10 +1,8 @@
-include("Animator.jl")
-include("Collider.jl")
-include("Rigidbody.jl")
-include("Sprite.jl")
-include("Transform.jl")
-include("Math/Vector2f.jl")
-using SimpleDirectMediaLayer.LibSDL2
+include("./Component/Animator.jl")
+#include("./Component/Collider.jl")
+include("./Component/Rigidbody.jl")
+include("./Component/Sprite.jl")
+include("./Component/Transform.jl")
 
 mutable struct Entity
     components::Array{Any}
@@ -12,13 +10,19 @@ mutable struct Entity
     name::String
     scripts::Array{Any}
     
+    function Entity()
+        this = new()
+
+        return this
+    end
+
     function Entity(name::String)
         this = new()
         
         this.components = []
         this.isActive = true
         this.name = name
-        this.addComponent(Transform())
+        this.transform
         this.scripts = []
 
         return this

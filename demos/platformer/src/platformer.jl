@@ -1,6 +1,7 @@
 module platformer
+include("../../../src/julgame.jl")
 include("../scenes/level_0.jl")
-include("../scenes/level_1.jl")
+#include("../scenes/level_1.jl")
 
     function run()
         return level_0()

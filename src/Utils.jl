@@ -1,13 +1,5 @@
-﻿include("Collider.jl")
-include("Constants.jl")
+﻿#include("./Component/Collider.jl")
 include("Enums.jl")
-using SimpleDirectMediaLayer.LibSDL2
-
-function hireTimeInSeconds()
-    t = SDL_GetTicks()
-    t *= 0.001
-    return t
-end
 
 # Todo: move to a separate file specific to collisions
 function checkCollision(colliderA::Collider, colliderB::Collider)

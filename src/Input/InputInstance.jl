@@ -1,3 +1,7 @@
-include("Input.jl")
 
-const InputInstance = Input()
+module InputInstance
+    using ..engine
+    include("Input.jl")
+    
+    export Input
+end

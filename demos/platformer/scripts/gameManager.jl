@@ -1,7 +1,5 @@
-include("../../../src/Macros.jl")
-include("../../../src/SceneInstance.jl")
-include("../../../src/Math/Lerp.jl")
-include("../../../src/Math/Vector2f.jl")
+include("../../../src/Input/Button.jl")
+using .julgame.MainLoop
 
 mutable struct GameManager
     currentAct
@@ -57,7 +55,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
                         this.fadeOut = true
                     end
                 end
-                if Button_Jump::Button in InputInstance.buttons
+                if Button_Jump::Button in MAIN.input.buttons
                     this.resetPlayer()
                 end
             end

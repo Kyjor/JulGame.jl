@@ -1,3 +1,3 @@
 include("Scene.jl")
 
-const SceneInstance = Scene()
+#global const SceneInstance = Ref{Scene}(Scene())[]
