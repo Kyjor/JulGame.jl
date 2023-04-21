@@ -8,7 +8,6 @@ include("../../../src/Component/Rigidbody.jl")
 include("../../../src/Component/SoundSource.jl")
 include("../../../src/Component/Sprite.jl")
 include("../../../src/Component/Transform.jl")
-
 include("../../../src/Main.jl")
 
 include("../scripts/dialogue.jl")

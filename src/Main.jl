@@ -298,17 +298,17 @@ function Base.getproperty(this::Main, s::Symbol)
 				yDiff = this.lastMousePosition.y - this.input.mousePosition.y
 				yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 1 : -1)
 
-				this.panCounter = Vector2(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+				this.panCounter = Math.Vector2(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
 
 				if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
 					diff = this.panCounter.x > this.panThreshold ? 1 : -1
-					cameraPosition = Vector2(cameraPosition.x + diff, cameraPosition.y)
-					this.panCounter = Vector2(0, this.panCounter.y)
+					cameraPosition = Math.Vector2(cameraPosition.x + diff, cameraPosition.y)
+					this.panCounter = Math.Vector2(0, this.panCounter.y)
 				end
 				if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
 					diff = this.panCounter.y > this.panThreshold ? 1 : -1
-					cameraPosition = Vector2(cameraPosition.x, cameraPosition.y + diff)
-					this.panCounter = Vector2(this.panCounter.x, 0)
+					cameraPosition = Math.Vector2(cameraPosition.x, cameraPosition.y + diff)
+					this.panCounter = Math.Vector2(this.panCounter.x, 0)
 				end
 			end
 
@@ -321,17 +321,17 @@ function Base.getproperty(this::Main, s::Symbol)
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				end
 			elseif "Button_Left" in this.input.buttons
-				cameraPosition = Vector2(cameraPosition.x - 1, cameraPosition.y)
+				cameraPosition = Math.Vector2(cameraPosition.x - 1, cameraPosition.y)
 			elseif "Button_Right" in this.input.buttons
-				cameraPosition = Vector2(cameraPosition.x + 1, cameraPosition.y)
+				cameraPosition = Math.Vector2(cameraPosition.x + 1, cameraPosition.y)
 			elseif "Button_Down" in this.input.buttons
-				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y + 1)
+				cameraPosition = Math.Vector2(cameraPosition.x, cameraPosition.y + 1)
 			elseif "Button_Up" in this.input.buttons
-				cameraPosition = Vector2(cameraPosition.x, cameraPosition.y - 1)
+				cameraPosition = Math.Vector2(cameraPosition.x, cameraPosition.y - 1)
 			end
 	
 			if update[6] 
-				cameraPosition = Vector2()
+				cameraPosition = Math.Vector2()
 			end
 			this.scene.camera.update(cameraPosition)
 			
@@ -365,7 +365,7 @@ function Base.getproperty(this::Main, s::Symbol)
 				textBox.render(DEBUG)
 			end
 	
-			mousePositionWorld = Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
+			mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 			if DEBUG
 				mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL_Color(0,255,0,255) )
 				scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )

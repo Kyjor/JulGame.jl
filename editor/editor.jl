@@ -7,10 +7,14 @@ using ImGuiOpenGLBackend #CImGui.OpenGLBackend
 using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
 using ImGuiOpenGLBackend.ModernGL
 using Printf
+using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
 
 include("../demos/platformer/src/platformer.jl")
 
+include("../src/julgame.jl")
+using .julgame
+include("../src/Entity.jl")
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
     const glsl_version = 150

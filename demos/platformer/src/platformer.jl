@@ -8,7 +8,7 @@ include("../scenes/level_0.jl")
     end
 
     function runEditor()
-        return level_1(true)
+        return level_0(true)
     end
 
     julia_main() = run()
