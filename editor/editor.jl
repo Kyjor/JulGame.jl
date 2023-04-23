@@ -15,6 +15,9 @@ include("../demos/platformer/src/platformer.jl")
 include("../src/julgame.jl")
 using .julgame
 include("../src/Entity.jl")
+include("../src/Macros.jl")
+include("./MainMenuBar.jl")
+
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
     const glsl_version = 150
@@ -102,7 +105,13 @@ try
         ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
         CImGui.NewFrame()
 
+        event = @event begin
+           println("Save") 
+        end
+        events = [event]
         # show the big demo window
+        @c ShowMainMenuBar(Ref{Bool}(true), events)
+
         #show_demo_window && @c CImGui.ShowDemoWindow(&show_demo_window)
         testText = ""
         mousePositionText = "0,0"
@@ -112,6 +121,7 @@ try
         if mousePosition != C_NULL
             mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
         end
+
         # show a simple window that we create ourselves.
         # we use a Begin/End pair to created a named window.
         @cstatic f=Cfloat(0.0) counter=Cint(0) begin

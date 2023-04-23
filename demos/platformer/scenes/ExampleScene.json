@@ -6,15 +6,18 @@
             "components":[
                 {
                     "type": "Transform",
-                    "rotation": 0,
                     "position": {
                         "x": 0,
                         "y": 0
                     },
                     "scale": {
-                        "x": 0,
-                        "y": 0
-                    }
+                        "x": 1,
+                        "y": 1
+                    },
+                    "rotation": 0
+                },
+                {
+                    "type": "Sprite"
                 }
             ],
             "scripts":[]
@@ -25,15 +28,15 @@
             "components":[
                 {
                     "type": "Transform",
-                    "rotation": 0,
                     "position": {
                         "x": 10,
                         "y": 50
                     },
                     "scale": {
-                        "x": 0,
-                        "y": 0
-                    }
+                        "x": 1,
+                        "y": 1
+                    },
+                    "rotation": 0
                 }
             ],
             "scripts":[]

@@ -20,4 +20,4 @@ module engine
 
 end
 
-global const julgame = engine
+global julgame = engine

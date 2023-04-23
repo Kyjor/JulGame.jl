@@ -385,7 +385,11 @@ function Base.getproperty(this::Main, s::Symbol)
 			end
 			
 			SDL_RenderPresent(this.renderer)
-			return [this.entities, mousePositionWorld, cameraPosition]
+			return [this.entities, mousePositionWorld, cameraPosition]	
+		end
+	elseif s == :saveScene
+		function ()
+			
 		end
     else
         try

@@ -40,6 +40,16 @@ mutable struct Transform
     
          return this
     end
+
+    function Transform(rotation::Float64, position::Vector2f, scale::Vector2f)
+        this = new()
+   
+        this.position = position
+        this.scale = scale
+        this.rotation = rotation
+   
+        return this
+   end
 end
 
 function Base.getproperty(this::Transform, s::Symbol)
