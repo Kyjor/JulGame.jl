@@ -1,28 +1,31 @@
+module TransformModule
+using ..Component.engine   
+export Transform
 mutable struct Transform
    
    rotation::Float64
-   position::Vector2f
-   scale::Vector2f
+   position::Math.Vector2f
+   scale::Math.Vector2f
     
     function Transform()
         this = new()
 
-        this.position = Vector2f(0.0, 0.0)
-        this.scale = Vector2f(1.0, 1.0)
+        this.position = Math.Vector2f(0.0, 0.0)
+        this.scale = Math.Vector2f(1.0, 1.0)
         this.rotation = 0.0
 
         return this
     end
-    function Transform(position::Vector2f)
+    function Transform(position::Math.Vector2f)
         this = new()
    
         this.position = position
-        this.scale = Vector2f(1.0, 1.0)
+        this.scale = Math.Vector2f(1.0, 1.0)
         this.rotation = 0.0
    
         return this
     end
-    function Transform(position::Vector2f, scale::Vector2f)
+    function Transform(position::Math.Vector2f, scale::Math.Vector2f)
         this = new()
    
         this.position = position
@@ -31,7 +34,7 @@ mutable struct Transform
    
         return this
    end
-    function Transform(position::Vector2f, scale::Vector2f, rotation = 0.0)
+    function Transform(position::Math.Vector2f, scale::Math.Vector2f, rotation = 0.0)
          this = new()
     
          this.position = position
@@ -41,7 +44,7 @@ mutable struct Transform
          return this
     end
 
-    function Transform(rotation::Float64, position::Vector2f, scale::Vector2f)
+    function Transform(rotation::Float64, position::Math.Vector2f, scale::Math.Vector2f)
         this = new()
    
         this.position = position
@@ -58,7 +61,7 @@ function Base.getproperty(this::Transform, s::Symbol)
             return this.position
         end
     elseif s == :setPosition
-        function(position::Vector2f)
+        function(position::Math.Vector2f)
             this.position = position
         end
     elseif s == :getScale
@@ -66,7 +69,7 @@ function Base.getproperty(this::Transform, s::Symbol)
             return this.scale
         end
     elseif s == :setScale
-        function(scale::Vector2f)
+        function(scale::Math.Vector2f)
             this.scale = scale
         end
     elseif s == :getRotation
@@ -88,4 +91,5 @@ function Base.getproperty(this::Transform, s::Symbol)
             println(e)
         end
     end
+end
 end

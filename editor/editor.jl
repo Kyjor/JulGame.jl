@@ -9,14 +9,22 @@ using ImGuiOpenGLBackend.ModernGL
 using Printf
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
+include("../src/julgame.jl")
+using .julgame
+using .julgame.AnimationModule
+using .julgame.AnimatorModule
+using .julgame.ColliderModule
+using .julgame.EntityModule
+using .julgame.ColliderModule
+using .julgame.RigidbodyModule
+using .julgame.SpriteModule
+using .julgame.TransformModule
 
 include("../demos/platformer/src/platformer.jl")
 
-include("../src/julgame.jl")
-using .julgame
-include("../src/Entity.jl")
 include("../src/Macros.jl")
 include("./MainMenuBar.jl")
+#include("../demos/platformer/src/sceneWriter.jl")
 
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
@@ -105,12 +113,13 @@ try
         ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
         CImGui.NewFrame()
 
-        event = @event begin
-           println("Save") 
-        end
-        events = [event]
-        # show the big demo window
-        @c ShowMainMenuBar(Ref{Bool}(true), events)
+        # event = @event begin
+        #    println("Save") 
+        #    serializeEntities(entities)
+        # end
+        # events = [event]
+        # # show the big demo window
+        # @c ShowMainMenuBar(Ref{Bool}(true), events)
 
         #show_demo_window && @c CImGui.ShowDemoWindow(&show_demo_window)
         testText = ""

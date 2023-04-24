@@ -1,13 +1,15 @@
 ﻿using .julgame
+using .julgame.AnimationModule
+using .julgame.AnimatorModule
+using .julgame.ColliderModule
+using .julgame.EntityModule
+using .julgame.ColliderModule
+using .julgame.RigidbodyModule
+using .julgame.SpriteModule
+using .julgame.TransformModule
 include("../../../src/UI/TextBox.jl")
-include("../../../src/Component/Animation.jl")
-include("../../../src/Entity.jl")
 include("../../../src/Camera.jl")
-include("../../../src/Component/Animator.jl")
-include("../../../src/Component/Rigidbody.jl")
 include("../../../src/Component/SoundSource.jl")
-include("../../../src/Component/Sprite.jl")
-include("../../../src/Component/Transform.jl")
 include("../../../src/Main.jl")
 
 include("../scripts/dialogue.jl")

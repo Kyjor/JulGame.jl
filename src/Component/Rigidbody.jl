@@ -1,6 +1,9 @@
-﻿global const SCALE_UNITS = Ref{Float64}(64.0)[]
-global const GRAVITY = Ref{Float64}(9.81)[]
+﻿module RigidbodyModule
+using ..Component.engine
+const SCALE_UNITS = Ref{Float64}(64.0)[]
+const GRAVITY = Ref{Float64}(9.81)[]
 
+export Rigidbody
 mutable struct Rigidbody 
     acceleration
     drag
@@ -9,18 +12,18 @@ mutable struct Rigidbody
     offset
     parent
     useGravity::Bool
-    velocity::Vector2f
+    velocity::Math.Vector2f
     
     function Rigidbody(mass::Float64, offset)
         this = new()
         
-        this.acceleration = Vector2f()
+        this.acceleration = Math.Vector2f()
         this.drag = 0.1
         this.grounded = false
         this.mass = mass
         this.offset = offset
         this.useGravity = true
-        this.velocity = Vector2f(0.0, 0.0)
+        this.velocity = Math.Vector2f(0.0, 0.0)
 
         return this
     end
@@ -29,9 +32,9 @@ end
 function Base.getproperty(this::Rigidbody, s::Symbol)
     if s == :update
         function(dt)
-            velocityMultiplier = Vector2f(1.0, 1.0)
+            velocityMultiplier = Math.Vector2f(1.0, 1.0)
             if this.grounded
-                velocityMultiplier = Vector2f(1.0, 0)
+                velocityMultiplier = Math.Vector2f(1.0, 0)
             end
             parent = this.parent
             transform = this.parent.getTransform()
@@ -50,7 +53,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
         end
     elseif s == :applyForces
         function()
-            gravityAcceleration = Vector2f(0.0, GRAVITY)
+            gravityAcceleration = Math.Vector2f(0.0, GRAVITY)
             dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
             dragAcceleration = dragForce / this.mass
             return gravityAcceleration - dragAcceleration
@@ -60,7 +63,7 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             return this.velocity
         end
     elseif s == :setVelocity
-        function(velocity::Vector2f)
+        function(velocity::Math.Vector2f)
             this.velocity = velocity
         end
     elseif s == :getParent
@@ -78,4 +81,5 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             println(e)
         end
     end
+end
 end

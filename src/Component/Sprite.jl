@@ -1,50 +1,56 @@
-﻿using .julgame.Math
-using .julgame.MainLoop
+﻿module SpriteModule
+using ..Component.engine
 using SimpleDirectMediaLayer.LibSDL2
+const SCALE_UNITS = Ref{Float64}(64.0)[]
 
+export Sprite
 mutable struct Sprite
     crop
     isFlipped::Bool
     image
-    frameToDraw::Vector4
+    imagePath
+    frameToDraw::Math.Vector4
     offset
     parent
     position
     renderer
     texture
     
-    function Sprite(image, crop::Vector4)
+    function Sprite(imagePath, crop::Math.Vector4)
         this = new()
         
         this.isFlipped = false
-        this.image = IMG_Load(image)
+        this.imagePath = imagePath
+        this.image = IMG_Load(this.imagePath)
         #this.frameToDraw = 0
         this.crop = crop
-        this.position = Vector2f(0.0, 0.0)
+        this.position = Math.Vector2f(0.0, 0.0)
 
         return this
     end
 
-    function Sprite(image, isFlipped)
+    function Sprite(imagePath, isFlipped)
         this = new()
         
         this.isFlipped = isFlipped
-        this.image = IMG_Load(image)
+        this.imagePath = imagePath
+        this.image = IMG_Load(this.imagePath)
         #this.frameToDraw = 0
         this.crop = C_NULL
-        this.position = Vector2f(0.0, 0.0)
+        this.position = Math.Vector2f(0.0, 0.0)
 
         return this
     end
 
-    function Sprite(image)
+    function Sprite(imagePath)
         this = new()
         
         this.isFlipped = false
-        this.image = IMG_Load(image)
+        this.imagePath = imagePath
+        this.image = IMG_Load(this.imagePath)
         #this.frameToDraw = 0
         this.crop = C_NULL
-        this.position = Vector2f(0.0, 0.0)
+        this.position = Math.Vector2f(0.0, 0.0)
 
         return this
     end
@@ -54,7 +60,7 @@ function Base.getproperty(this::Sprite, s::Symbol)
     if s == :draw
         function()
             parentTransform = this.parent.getTransform()
-            parentTransform.setPosition(Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
+            parentTransform.setPosition(Math.Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
             flip = SDL_FLIP_NONE
             
             srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
@@ -90,4 +96,5 @@ function Base.getproperty(this::Sprite, s::Symbol)
             println(e)
         end
     end
+end
 end

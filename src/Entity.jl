@@ -1,8 +1,14 @@
-include("./Component/Animator.jl")
-include("./Component/Rigidbody.jl")
-include("./Component/Sprite.jl")
-include("./Component/Transform.jl")
+module EntityModule
+using ..engine.AnimationModule
+using ..engine.AnimatorModule
+using ..engine.ColliderModule
+using ..engine.EntityModule
+using ..engine.ColliderModule
+using ..engine.RigidbodyModule
+using ..engine.SpriteModule
+using ..engine.TransformModule
 
+export Entity
 mutable struct Entity
     components::Array{Any}
     isActive::Bool
@@ -152,4 +158,5 @@ function Base.getproperty(this::Entity, s::Symbol)
             println(e)
         end
     end
+end
 end

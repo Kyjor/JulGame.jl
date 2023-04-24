@@ -1,8 +1,8 @@
 using JSON3
 using StructTypes
+using Serialization
+
 include("../../../src/Entity.jl")
-include("../../../src/Component/Sprite.jl")
-include("../../../src/Component/Transform.jl")
 
 # StructTypes.StructType(::Type{Entities}) = StructTypes.ArrayType()
 # StructTypes.StructType(::Type{Entity}) = StructTypes.CustomStruct()
@@ -22,6 +22,19 @@ include("../../../src/Component/Transform.jl")
 # StructTypes.subtypekey(::Type{Component}) = :type
 # StructTypes.subtypes(::Type{Component}) = (animation=Animation, animator=Animator, collider=Collider, rigidbody=Rigidbody, soundSource=SoundSource, sprite=Sprite, transform=Transform)
 
+function getEntities()
+    file = open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "r")
+    data = read(file)
+    fileEntities = IOBuffer(data)
+    entities = []
+    for fileEntity in fileEntities
+        newEntity = Entity(fileEntity.name)
+        newEntity.isActive = fileEntity.isActive
+        #deserializeComponents(Ref{Entity}(newEntity)[1])
+        push!(entities, newEntity)
+    end
+    return entities
+end
 
 function deserializeEntities(filePath)
     entitiesJson = read(filePath, String)

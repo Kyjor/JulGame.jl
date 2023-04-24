@@ -1,11 +1,9 @@
 using JSON3
 using StructTypes
-include("../../../src/Entity.jl")
-include("../../../src/Component/Sprite.jl")
-include("../../../src/Component/Transform.jl")
+using Serialization
 
 # StructTypes.StructType(::Type{Entities}) = StructTypes.ArrayType()
-# StructTypes.StructType(::Type{Entity}) = StructTypes.CustomStruct()
+#StructTypes.StructType(::Type{Entity}) = StructTypes.CustomStruct()
 # StructTypes.lower(x::Entity) = x.isActive
 # StructTypes.lowertype(::Type{Entity}) = Bool
 
@@ -23,50 +21,22 @@ include("../../../src/Component/Transform.jl")
 # StructTypes.subtypes(::Type{Component}) = (animation=Animation, animator=Animator, collider=Collider, rigidbody=Rigidbody, soundSource=SoundSource, sprite=Sprite, transform=Transform)
 
 
-function deserializeEntities(filePath)
-    entitiesJson = read(filePath, String)
-
-    entities = JSON3.read(entitiesJson)
-    res = []
-    #println(entities.Entities)
-    for entity in entities.Entities
-        components = []
-
-        for component in entity.components
-            push!(components, deserializeComponent(component))
-        end
-        
-        newEntity = Entity(entity.name)
-        newEntity.removeComponent(Transform)
-        newEntity.isActive = entity.isActive
-        for component in components
-            newEntity.addComponent(component)
-        end
-        
-        push!(res, newEntity)
-    end
-
-    return res
-end
-
-function deserializeComponent(component)
+function serializeEntities(entities::Array)
+    println(entities[1].getSprite())
+    
     ASSETS = joinpath(@__DIR__, "..", "assets")
-    if component.type == "Transform"
-        component = StructTypes.constructfrom(Transform, component)
-        return component
-    elseif component.type == "Animation"
-        #return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Animator"
-        #return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Collider"
-        return Collider(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Rigidbody"
-        return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "SoundSource"
-        #return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Sprite"
-        return Sprite(joinpath(ASSETS, "images", "Floor.png"))
+    io = IOBuffer();
+    joinpath(@__DIR__, "..", "assets")
+    entity = serialize(io, entities)
+    s = take!(io)
+
+    
+    open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "w") do file
+        write(file, s)
     end
+    file = open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "r")
+    data = read(file)
+    #println(deserialize(IOBuffer(data)))
 end
 
 function serializeComponent(component)

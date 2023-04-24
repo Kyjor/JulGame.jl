@@ -15,8 +15,12 @@ module engine
 
     export component
     include("Component/Component.jl")
-    using .Component: Collider
-    export Collider
+    using .Component
+    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SpriteModule, TransformModule
+
+    include("Entity.jl") 
+    using .EntityModule: Entity   
+    export Entity
 
 end
 

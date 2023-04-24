@@ -6,7 +6,7 @@ include("Enums.jl")
 include("Input/Input.jl")
 include("Constants.jl")
 include("Scene.jl")
-
+#include("../demos/platformer/src/sceneWriter.jl")
 
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 

@@ -1,13 +1,18 @@
 module Component
     using ..engine
     abstract type EntityComponent end
-    # include("Animation.jl")
-    # include("Animator.jl")
+      include("Animation.jl")
+      include("Animator.jl")
       include("Collider.jl")
-    # include("Rigidbody.jl")
-    # include("SoundSource.jl")
-    # include("Sprite.jl")
-    # include("Transform.jl")
+      include("Rigidbody.jl")
+      #include("SoundSource.jl")
+      include("Sprite.jl")
+      include("Transform.jl")
     
-    export Collider
+    export AnimationModule
+    export AnimatorModule
+    export ColliderModule
+    export RigidbodyModule
+    export SpriteModule
+    export TransformModule
 end

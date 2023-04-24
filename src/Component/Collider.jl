@@ -1,7 +1,10 @@
+module ColliderModule
 include("../Enums.jl")
+using ..Component.engine
 global const SCALE_UNITS = Ref{Float64}(64.0)[]
 global const GRAVITY = Ref{Float64}(9.81)[]
 
+export Collider
 mutable struct Collider
     collisionEvents
     currentCollisions
@@ -213,4 +216,5 @@ function Base.getproperty(this::Collider, s::Symbol)
             println(e)
         end
     end
+end
 end

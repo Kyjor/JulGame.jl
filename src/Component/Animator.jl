@@ -1,5 +1,8 @@
-﻿include("Animation.jl")
+﻿module AnimatorModule
+using ..Component.AnimationModule
+using SimpleDirectMediaLayer.LibSDL2
 
+export Animator
 mutable struct Animator
     animations::Array{Animation}
     currentAnimation::Animation
@@ -74,4 +77,5 @@ function Base.getproperty(this::Animator, s::Symbol)
             println(e)
         end
     end
+end
 end

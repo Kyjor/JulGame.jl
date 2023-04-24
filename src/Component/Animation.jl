@@ -1,10 +1,12 @@
+module AnimationModule 
 using SimpleDirectMediaLayer.LibSDL2
-using .julgame.Math
+using ..Component.engine
 
+export Animation
 mutable struct Animation
     animatedFPS::Int64
     currentFrame
-    frames::Array{Vector4}
+    frames::Array{Math.Vector4}
     lastFrame
     lastUpdate
     parent
@@ -73,4 +75,5 @@ function Base.getproperty(this::Animation, s::Symbol)
             println(e)
         end
     end
+end
 end
