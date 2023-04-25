@@ -186,8 +186,8 @@ try
                                         CImGui.Text(fieldsInComponent[j])
                                         x = Cfloat(componentFieldValue.x)
                                         y = Cfloat(componentFieldValue.y)
-                                        @c CImGui.InputFloat("$(fieldsInComponent[j])x", &x)
-                                        @c CImGui.InputFloat("$(fieldsInComponent[j])y", &y)
+                                        @c CImGui.InputFloat("$(fieldsInComponent[j])x", &x, 1)
+                                        @c CImGui.InputFloat("$(fieldsInComponent[j])y", &y, 1)
                                         #println(fieldsInComponent[j])
                                         setfield!(currentEntitySelected.getTransform(),fieldsInComponent[j],eval(typeof(currentEntitySelected.getTransform().position))(x,y))
                                     end
