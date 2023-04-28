@@ -9,7 +9,6 @@ mutable struct Sprite
     isFlipped::Bool
     image
     imagePath
-    frameToDraw::Math.Vector4
     offset
     parent
     position
@@ -22,7 +21,6 @@ mutable struct Sprite
         this.isFlipped = false
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
-        #this.frameToDraw = 0
         this.crop = crop
         this.position = Math.Vector2f(0.0, 0.0)
 
@@ -35,7 +33,6 @@ mutable struct Sprite
         this.isFlipped = isFlipped
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
-        #this.frameToDraw = 0
         this.crop = C_NULL
         this.position = Math.Vector2f(0.0, 0.0)
 
@@ -48,7 +45,6 @@ mutable struct Sprite
         this.isFlipped = false
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
-        #this.frameToDraw = 0
         this.crop = C_NULL
         this.position = Math.Vector2f(0.0, 0.0)
 

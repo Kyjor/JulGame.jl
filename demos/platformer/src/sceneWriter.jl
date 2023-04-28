@@ -34,6 +34,14 @@ function serializeEntityComponents(components)
     elseif componentType == "Rigidbody"
     elseif componentType == "SoundSource"
     elseif componentType == "Sprite"
+        println(component)
+        serializedComponent = Dict(
+            "type" => componentType, 
+            "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "w" => component.crop.w, "h" => component.crop.h), 
+            "isFlipped" => component.isFlipped, 
+            "imagePath" => component.imagePath
+            )
+        push!(componentsDict, serializedComponent)
     end
     end
     return componentsDict
