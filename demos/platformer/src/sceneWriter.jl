@@ -1,60 +1,63 @@
 using JSON3
-using StructTypes
-using Serialization
-
-# StructTypes.StructType(::Type{Entities}) = StructTypes.ArrayType()
-#StructTypes.StructType(::Type{Entity}) = StructTypes.CustomStruct()
-# StructTypes.lower(x::Entity) = x.isActive
-# StructTypes.lowertype(::Type{Entity}) = Bool
-
-# StructTypes.StructType(::Type{Component}) = StructTypes.AbstractType()
-
-# StructTypes.StructType(::Type{Animation}) = StructTypes.Struct()
-# StructTypes.StructType(::Type{Animator}) = StructTypes.Struct()
-# StructTypes.StructType(::Type{Collider}) = StructTypes.Struct()
-# StructTypes.StructType(::Type{Rigidbody}) = StructTypes.Struct()
-# StructTypes.StructType(::Type{SoundSource}) = StructTypes.Struct()
-# StructTypes.StructType(::Type{Sprite}) = StructTypes.Struct()
-# StructTypes.StructType(::Type{Transform}) = StructTypes.Struct()
-
-# StructTypes.subtypekey(::Type{Component}) = :type
-# StructTypes.subtypes(::Type{Component}) = (animation=Animation, animator=Animator, collider=Collider, rigidbody=Rigidbody, soundSource=SoundSource, sprite=Sprite, transform=Transform)
-
 
 function serializeEntities(entities::Array)
-    println(entities[1].getSprite())
-    
-    ASSETS = joinpath(@__DIR__, "..", "assets")
-    io = IOBuffer();
-    joinpath(@__DIR__, "..", "assets")
-    entity = serialize(io, entities)
-    s = take!(io)
+   
+    entitiesDict = []
 
-    
-    open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "w") do file
-        write(file, s)
+    count = 1
+    for entity in entities
+       push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents(entity.components), "scripts" => serializeEntityScripts(entity.scripts)))
+       count += 1
     end
-    file = open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "r")
-    data = read(file)
-    #println(deserialize(IOBuffer(data)))
+    hello_world = Dict( "Entities" => entitiesDict)
+
+open(joinpath(@__DIR__, "..", "scenes", "scene.json"), "w") do io
+    JSON3.pretty(io, hello_world)
+end
+    # return
+    # ASSETS = joinpath(@__DIR__, "..", "assets")
+    # io = IOBuffer();
+    # joinpath(@__DIR__, "..", "assets")
+    # entity = serialize(io, entities)
+    # s = take!(io)
+
+    # #open(f -> serialize(f,M), "x.jls", "w");
+    # #serialize(joinpath(@__DIR__, "..", "scenes", "scene.jls"), s)
+    # open(joinpath(@__DIR__, "..", "scenes", "scene.jls"), "w") do file
+    #     write(file, s)
+    # end
+    # file = open(joinpath(@__DIR__, "..", "scenes", "scene.jls"), "r")
+    # data = read(file)
+    # println(deserialize(IOBuffer(data)))
 end
 
-function serializeComponent(component)
+function serializeEntityComponents(components)
+
+    componentsDict = []
+    for component in components
+    componentType = "$(typeof(component).name.wrapper)"
+    componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
+    println(componentType)
+    #Dict("b" => 1, "c" => 2)
     ASSETS = joinpath(@__DIR__, "..", "assets")
-    if component.type == "Transform"
-        component = StructTypes.constructfrom(Transform, component)
-        return component
-    elseif component.type == "Animation"
-        #return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Animator"
-        #return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Collider"
-        return Collider(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Rigidbody"
-        return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "SoundSource"
-        #return Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-    elseif component.type == "Sprite"
-        return Sprite(joinpath(ASSETS, "images", "Floor.png"))
+    if componentType == "Transform"
+        serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
+        push!(componentsDict, serializedComponent)
+    elseif componentType == "Animation"
+    elseif componentType == "Animator"
+    elseif componentType == "Collider"
+    elseif componentType == "Rigidbody"
+    elseif componentType == "SoundSource"
+    elseif componentType == "Sprite"
     end
+    end
+    return componentsDict
+end
+
+function serializeEntityScripts(scripts)
+
+    scriptsDict = []
+
+    #Dict("b" => 1, "c" => 2)
+    return scriptsDict
 end

@@ -19,7 +19,7 @@ module engine
     export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SpriteModule, TransformModule
 
     include("Entity.jl") 
-    using .EntityModule: Entity   
+    using .EntityModule   
     export Entity
 
 end

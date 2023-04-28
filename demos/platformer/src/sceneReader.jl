@@ -1,9 +1,8 @@
 using JSON3
 using StructTypes
 using Serialization
-
-include("../../../src/Entity.jl")
-
+using .julgame.TransformModule
+using .julgame.SpriteModule
 # StructTypes.StructType(::Type{Entities}) = StructTypes.ArrayType()
 # StructTypes.StructType(::Type{Entity}) = StructTypes.CustomStruct()
 # StructTypes.lower(x::Entity) = x.isActive
@@ -25,7 +24,16 @@ include("../../../src/Entity.jl")
 function getEntities()
     file = open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "r")
     data = read(file)
-    fileEntities = IOBuffer(data)
+    M = open(deserialize, joinpath(@__DIR__, "..", "scenes", "scene.jls"));
+    io = IOBuffer()
+    io.writable = true
+    io.data = M
+    println(deserialize(io))
+    return C_NULL
+    return deserialize(IOBuffer(M))
+    file = open(joinpath(@__DIR__, "..", "scenes", "scene.jg"), "r")
+    data = read(file)
+    fileEntities = deserialize(IOBuffer(data))
     entities = []
     for fileEntity in fileEntities
         newEntity = Entity(fileEntity.name)
@@ -41,7 +49,7 @@ function deserializeEntities(filePath)
 
     entities = JSON3.read(entitiesJson)
     res = []
-    #println(entities.Entities)
+
     for entity in entities.Entities
         components = []
 
@@ -50,11 +58,15 @@ function deserializeEntities(filePath)
         end
         
         newEntity = Entity(entity.name)
+        newEntity.id = entity.id
         newEntity.removeComponent(Transform)
         newEntity.isActive = entity.isActive
         for component in components
             newEntity.addComponent(component)
         end
+        ASSETS = joinpath(@__DIR__, "..", "assets")
+
+        newEntity.addComponent(Sprite(joinpath(ASSETS, "images", "Floor.png")))
         
         push!(res, newEntity)
     end

@@ -2,14 +2,13 @@ module EntityModule
 using ..engine.AnimationModule
 using ..engine.AnimatorModule
 using ..engine.ColliderModule
-using ..engine.EntityModule
-using ..engine.ColliderModule
 using ..engine.RigidbodyModule
 using ..engine.SpriteModule
 using ..engine.TransformModule
 
 export Entity
 mutable struct Entity
+    id::Integer
     components::Array{Any}
     isActive::Bool
     name::String
@@ -24,10 +23,10 @@ mutable struct Entity
     function Entity(name::String)
         this = new()
         
+        this.id = 1
         this.components = []
         this.isActive = true
         this.name = name
-        this.transform
         this.scripts = []
 
         return this
@@ -36,6 +35,7 @@ mutable struct Entity
     function Entity(name::String, transform::Transform)
         this = new()
 
+        this.id = 1
         this.components = []
         this.isActive = true
         this.name = name
@@ -48,6 +48,7 @@ mutable struct Entity
     function Entity(name::String, transform::Transform, components::Array)
         this = new()
 
+        this.id = 1
         this.components = []
         this.isActive = true
         this.name = name
@@ -63,6 +64,7 @@ mutable struct Entity
     function Entity(name::String, transform::Transform, components::Array, scripts::Array)
         this = new()
 
+        this.id = 1
         this.name = name
         this.components = []
         this.isActive = true

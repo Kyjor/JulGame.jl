@@ -24,7 +24,7 @@ include("../demos/platformer/src/platformer.jl")
 
 include("../src/Macros.jl")
 include("./MainMenuBar.jl")
-#include("../demos/platformer/src/sceneWriter.jl")
+include("../demos/platformer/src/sceneWriter.jl")
 
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
@@ -113,15 +113,15 @@ try
         ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
         CImGui.NewFrame()
 
-        # event = @event begin
-        #    println("Save") 
-        #    serializeEntities(entities)
-        # end
-        # events = [event]
-        # # show the big demo window
-        # @c ShowMainMenuBar(Ref{Bool}(true), events)
+        event = @event begin
+           println("Save") 
+           serializeEntities(entities)
+        end
+        events = [event]
+        # show the big demo window
+        @c ShowMainMenuBar(Ref{Bool}(true), events)
 
-        #show_demo_window && @c CImGui.ShowDemoWindow(&show_demo_window)
+        @c CImGui.ShowDemoWindow(Ref{Bool}(true))
         testText = ""
         mousePositionText = "0,0"
         if length(entities) > 0 && currentEntitySelected != C_NULL
@@ -145,7 +145,7 @@ try
                 CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelected = C_NULL; currentEntitySelectedIndex = -1;)
             end
             if currentEntitySelected != C_NULL
-                FieldsInStruct=fieldnames(Entity);
+                FieldsInStruct=fieldnames(julgame.EntityModule.Entity);
                 for i = 1:length(FieldsInStruct)
                     #Check field i
                     Value=getfield(currentEntitySelected, FieldsInStruct[i])
@@ -172,10 +172,9 @@ try
                             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
 
                             CImGui.Text(componentType)
-                            fieldsInComponent=fieldnames(eval(Symbol(componentType)));
-                            #println(fieldsInComponent)
-
+                            
                             if componentType == "Transform"
+                                fieldsInComponent=fieldnames(julgame.TransformModule.Transform);
                                 for j = 1:length(fieldsInComponent)
                                     #Check field i
                                     componentFieldValue = getfield(component, fieldsInComponent[j])
