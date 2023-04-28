@@ -22,19 +22,52 @@ function serializeEntityComponents(components)
     for component in components
     componentType = "$(typeof(component).name.wrapper)"
     componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
-    println(componentType)
     #Dict("b" => 1, "c" => 2)
     ASSETS = joinpath(@__DIR__, "..", "assets")
     if componentType == "Transform"
         serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
         push!(componentsDict, serializedComponent)
     elseif componentType == "Animation"
+        serializedComponent = Dict(
+            "type" => componentType, 
+            "frames" => component.frames, 
+            "animatedFPS" => component.animatedFPS            
+            )
+        push!(componentsDict, serializedComponent)
     elseif componentType == "Animator"
+        serializedComponent = []
+        for animation in component.animations
+            serializedAnimation = Dict(
+                "frames" => animation.frames, 
+                "animatedFPS" => animation.animatedFPS            
+                )
+           push!(serializedComponent, serializedAnimation)
+        end
+        push!(componentsDict, serializedComponent)
     elseif componentType == "Collider"
+        serializedComponent = Dict(
+            "type" => componentType, 
+            "size" => Dict("x" => component.size.x, "y" => component.size.y), 
+            "tag" => component.tag, 
+            )
+        push!(componentsDict, serializedComponent)
     elseif componentType == "Rigidbody"
+        serializedComponent = Dict(
+            "type" => componentType, 
+            "mass" => component.mass, 
+            )
+        push!(componentsDict, serializedComponent)
     elseif componentType == "SoundSource"
+        serializedComponent = Dict(
+            "type" => componentType, 
+            "channel" => component.channel, 
+            "isMusic" => component.isMusic, 
+            "path" => component.path, 
+            "sound" => component.sound, 
+            "volume" => component.volume, 
+            )
+        push!(componentsDict, serializedComponent)
     elseif componentType == "Sprite"
-        println(component)
         serializedComponent = Dict(
             "type" => componentType, 
             "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "w" => component.crop.w, "h" => component.crop.h), 

@@ -4,14 +4,19 @@ const SDL2 = SimpleDirectMediaLayer
 mutable struct SoundSource
     channel
     isMusic
+    path
     sound
+    volume
 
     # Music
     function SoundSource(path, volume::Integer)
         this = new()
 
+        this.channel = C_NULL
         this.isMusic = true
+        this.path = path
         this.sound = SDL2.Mix_LoadMUS(path)
+        this.volume = volume
 
         if (this.sound == C_NULL)
             error("$(path) not found. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
@@ -27,7 +32,9 @@ mutable struct SoundSource
         this = new()
 
         this.isMusic = false
+        this.path = path
         this.sound = SDL2.Mix_LoadWAV(path)
+        this.volume = volume
 
         if (this.sound == C_NULL)
             error("$(path) not found. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")

@@ -27,6 +27,20 @@ mutable struct Rigidbody
 
         return this
     end
+
+    function Rigidbody(mass::Float64)
+        this = new()
+        
+        this.acceleration = Math.Vector2f()
+        this.drag = 0.1
+        this.grounded = false
+        this.mass = mass
+        this.offset = Math.Vector2f()
+        this.useGravity = true
+        this.velocity = Math.Vector2f(0.0, 0.0)
+
+        return this
+    end
 end
 
 function Base.getproperty(this::Rigidbody, s::Symbol)

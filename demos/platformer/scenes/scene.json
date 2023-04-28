@@ -25,6 +25,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -53,6 +61,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -81,6 +97,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -109,6 +133,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -137,6 +169,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -165,6 +205,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -193,6 +241,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -221,6 +277,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -249,6 +313,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -277,6 +349,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -305,6 +385,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -333,6 +421,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -361,6 +457,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -389,6 +493,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -417,6 +529,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -445,6 +565,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -473,6 +601,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -501,6 +637,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -529,6 +673,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -557,6 +709,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -585,6 +745,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -613,6 +781,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -641,6 +817,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -669,6 +853,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -697,6 +889,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -725,6 +925,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -753,6 +961,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -781,6 +997,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -809,6 +1033,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -837,6 +1069,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -859,12 +1099,298 @@
                         "y": 1
                     }
                 },
+                [
+                    {
+                        "animatedFPS": 3,
+                        "frames": [
+                            {
+                                "x": 8,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 16,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 4,
+                        "frames": [
+                            {
+                                "x": 16,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 24,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 32,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 40,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 48,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 56,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 3,
+                        "frames": [
+                            {
+                                "x": 8,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 16,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 4,
+                        "frames": [
+                            {
+                                "x": 16,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 24,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 32,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 40,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 48,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 56,
+                                "y": 9,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 3,
+                        "frames": [
+                            {
+                                "x": 8,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 16,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 4,
+                        "frames": [
+                            {
+                                "x": 16,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 24,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 32,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 40,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 48,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 56,
+                                "y": 18,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 3,
+                        "frames": [
+                            {
+                                "x": 8,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 16,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 4,
+                        "frames": [
+                            {
+                                "x": 16,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 24,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 32,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 40,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 48,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    },
+                    {
+                        "animatedFPS": 0,
+                        "frames": [
+                            {
+                                "x": 56,
+                                "y": 27,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    }
+                ],
                 {
                     "crop": {
                     },
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Player.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "player",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                },
+                {
+                    "mass": 1,
+                    "type": "Rigidbody"
                 }
             ]
         },
@@ -914,6 +1440,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\curtain.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "curtLCol",
+                    "size": {
+                        "x": 0.5,
+                        "y": 8
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -963,6 +1497,14 @@
                         "x": 1,
                         "y": 8
                     }
+                },
+                {
+                    "tag": "curtRCol",
+                    "size": {
+                        "x": 0.5,
+                        "y": 8
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1040,6 +1582,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1068,6 +1618,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1096,6 +1654,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1124,6 +1690,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1152,6 +1726,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Gold.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "gold",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1174,12 +1756,51 @@
                         "y": 1
                     }
                 },
+                [
+                    {
+                        "animatedFPS": 2,
+                        "frames": [
+                            {
+                                "x": 32,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 40,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 48,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 56,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    }
+                ],
                 {
                     "crop": {
                     },
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\MoneyBlocks.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "block",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1202,12 +1823,51 @@
                         "y": 1
                     }
                 },
+                [
+                    {
+                        "animatedFPS": 2,
+                        "frames": [
+                            {
+                                "x": 0,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 8,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 16,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 24,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    }
+                ],
                 {
                     "crop": {
                     },
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\MoneyBlocks.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "block",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1230,12 +1890,51 @@
                         "y": 1
                     }
                 },
+                [
+                    {
+                        "animatedFPS": 2,
+                        "frames": [
+                            {
+                                "x": 64,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 72,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 80,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            },
+                            {
+                                "x": 88,
+                                "y": 0,
+                                "w": 8,
+                                "h": 8
+                            }
+                        ]
+                    }
+                ],
                 {
                     "crop": {
                     },
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\MoneyBlocks.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "block",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1285,6 +1984,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1313,6 +2020,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1341,6 +2056,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1369,6 +2092,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1397,6 +2128,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },
@@ -1425,6 +2164,14 @@
                     "type": "Sprite",
                     "imagePath": "F:\\Projects\\Julia\\julia-game\\demos\\platformer\\scenes\\..\\assets\\images\\Floor.png",
                     "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         },

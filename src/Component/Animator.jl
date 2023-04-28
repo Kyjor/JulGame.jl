@@ -16,10 +16,8 @@ mutable struct Animator
         
         this.animations = animations
         this.currentAnimation = this.animations[1]
-        #this.frameCount = frameCount
         this.lastFrame = 1
         this.lastUpdate = SDL_GetTicks()
-        #this.animatedFPS = animatedFPS
 
         return this
     end

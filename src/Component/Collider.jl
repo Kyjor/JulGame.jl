@@ -26,6 +26,19 @@ mutable struct Collider
 
         return this
     end
+
+    function Collider(size::Math.Vector2f, tag::String)
+        this = new()
+
+        this.collisionEvents = []
+        this.currentCollisions = []
+        this.enabled = true
+        this.offset = Math.Vector2f()
+        this.size = size
+        this.tag = tag
+
+        return this
+    end
 end
 
 function Base.getproperty(this::Collider, s::Symbol)
