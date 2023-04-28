@@ -14,21 +14,6 @@ function serializeEntities(entities::Array)
 open(joinpath(@__DIR__, "..", "scenes", "scene.json"), "w") do io
     JSON3.pretty(io, hello_world)
 end
-    # return
-    # ASSETS = joinpath(@__DIR__, "..", "assets")
-    # io = IOBuffer();
-    # joinpath(@__DIR__, "..", "assets")
-    # entity = serialize(io, entities)
-    # s = take!(io)
-
-    # #open(f -> serialize(f,M), "x.jls", "w");
-    # #serialize(joinpath(@__DIR__, "..", "scenes", "scene.jls"), s)
-    # open(joinpath(@__DIR__, "..", "scenes", "scene.jls"), "w") do file
-    #     write(file, s)
-    # end
-    # file = open(joinpath(@__DIR__, "..", "scenes", "scene.jls"), "r")
-    # data = read(file)
-    # println(deserialize(IOBuffer(data)))
 end
 
 function serializeEntityComponents(components)
