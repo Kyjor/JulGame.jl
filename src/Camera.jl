@@ -1,3 +1,5 @@
+global const SCALE_UNITS = Ref{Float64}(64.0)[]
+
 mutable struct Camera
     dimensions
     offset

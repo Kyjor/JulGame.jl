@@ -13,7 +13,7 @@ function level_1(isUsingEditor = false)
     # main.scene.entities = getEntities()
     # println(main.scene.entities[1].getSprite())
     main.scene.entities = deserializeEntities(joinpath(@__DIR__, "scene.json"))
-    main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), Transform())
+    main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), main.scene.entities[31].getTransform())
 
     main.assets = ASSETS
     main.loadScene(main.scene)

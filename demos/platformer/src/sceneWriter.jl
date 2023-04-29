@@ -35,15 +35,15 @@ function serializeEntityComponents(components)
             )
         push!(componentsDict, serializedComponent)
     elseif componentType == "Animator"
-        serializedComponent = []
+        serializedAnimations = []
         for animation in component.animations
             serializedAnimation = Dict(
                 "frames" => animation.frames, 
                 "animatedFPS" => animation.animatedFPS            
                 )
-           push!(serializedComponent, serializedAnimation)
+           push!(serializedAnimations, serializedAnimation)
         end
-        push!(componentsDict, serializedComponent)
+        push!(componentsDict, Dict("type" => componentType, "animations" => serializedAnimations))
     elseif componentType == "Collider"
         serializedComponent = Dict(
             "type" => componentType, 
