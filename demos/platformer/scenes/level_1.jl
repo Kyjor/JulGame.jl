@@ -5,10 +5,8 @@ include("../../../src/Camera.jl")
 include("../../../src/Main.jl")
 include("../src/sceneReader.jl")
 
-include("../scripts/dialogue.jl")
-include("../scripts/fullGameDialogue.jl")
-include("../scripts/gameManager.jl")
-include("../scripts/playerMovement.jl")
+include.(filter(contains(r".jl$"), readdir("../scripts/"; join=true)))
+
 
 function level_1(isUsingEditor = false)
     #file loading
