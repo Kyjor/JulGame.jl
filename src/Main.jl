@@ -1,4 +1,4 @@
-﻿module MainLoop
+module MainLoop
 using ..engine: Math
 
 include("Enums.jl")

@@ -84,6 +84,10 @@ function Base.getproperty(this::Transform, s::Symbol)
         function()
             #println(this.position)
         end
+     elseif s == :setValue
+        function(field, x, y)
+            println(field)
+        end
     else
         try
             getfield(this, s)

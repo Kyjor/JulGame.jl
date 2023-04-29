@@ -2,6 +2,7 @@ module EntityModule
 using ..engine.AnimationModule
 using ..engine.AnimatorModule
 using ..engine.ColliderModule
+using ..engine.Math
 using ..engine.RigidbodyModule
 using ..engine.SpriteModule
 using ..engine.TransformModule
@@ -84,6 +85,9 @@ end
 function Base.getproperty(this::Entity, s::Symbol)
     if s == :getComponent #Retrieves the first component of specified type from the list of components attached to the entity
         function(componentType)
+            if typeof(componentType) == String
+                componentType = eval(Symbol(componentType))
+            end
             for component in this.components
                if typeof(component) <: componentType
                    return component

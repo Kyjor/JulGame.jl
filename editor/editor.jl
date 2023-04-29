@@ -15,7 +15,6 @@ using .julgame.AnimationModule
 using .julgame.AnimatorModule
 using .julgame.ColliderModule
 using .julgame.EntityModule
-using .julgame.ColliderModule
 using .julgame.RigidbodyModule
 using .julgame.SpriteModule
 using .julgame.TransformModule
@@ -24,6 +23,7 @@ include("../demos/platformer/src/platformer.jl")
 
 include("../src/Macros.jl")
 include("./MainMenuBar.jl")
+include("./ComponentInputs.jl")
 include("../demos/platformer/src/sceneWriter.jl")
 
 @static if Sys.isapple()
@@ -171,27 +171,8 @@ try
                             componentType = "$(typeof(component).name.wrapper)"
                             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
 
-                            CImGui.Text(componentType)
-                            
-                            if componentType == "Transform"
-                                fieldsInComponent=fieldnames(julgame.TransformModule.Transform);
-                                for j = 1:length(fieldsInComponent)
-                                    #Check field i
-                                    componentFieldValue = getfield(component, fieldsInComponent[j])
-                                    componentFieldType = "$(typeof(componentFieldValue).name.wrapper)"
-                                    componentFieldType = String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
-
-                                    if componentFieldType == "Vector2f" # && fieldsInComponent[j] == :scale
-                                        CImGui.Text(fieldsInComponent[j])
-                                        x = Cfloat(componentFieldValue.x)
-                                        y = Cfloat(componentFieldValue.y)
-                                        @c CImGui.InputFloat("$(fieldsInComponent[j])x", &x, 1)
-                                        @c CImGui.InputFloat("$(fieldsInComponent[j])y", &y, 1)
-                                        #println(fieldsInComponent[j])
-                                        setfield!(currentEntitySelected.getTransform(),fieldsInComponent[j],eval(typeof(currentEntitySelected.getTransform().position))(x,y))
-                                    end
-                                end
-                            end
+                            CImGui.Text(componentType)                            
+                            ShowComponentProperties(currentEntitySelected, component, componentType)
                         end
                     end
                 end
