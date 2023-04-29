@@ -39,73 +39,74 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-            if this.parent.getTransform().position.x < -7  && !this.gameManager.isEnd
-                dialogue = this.gameManager.dialogue
-                secretDialogue = this.gameManager.secretDialogue
-                MAIN.scene.camera.target = Transform(Vector2f(-8, 7.75))
-                #MAIN.scene.sounds[8].toggleSound()
-                secretDialogue.isPaused = false
-                MAIN.scene.textBoxes[1].updateText(" ")
-                if this.parent.getTransform().position.y > 10
-                    # Reset game
-                    dialogue.currentMessageIndex = 1
-                    dialogue.currentPositionInMessage = 1
-                    dialogue.currentMessage = dialogue.messages[1]
-                    dialogue.isPaused = false
-                    dialogue.isReadingMessage = false
-                    dialogue.isQueueingNextMessage = true
+            # if this.parent.getTransform().position.x < -7  && !this.gameManager.isEnd
+            #     dialogue = this.gameManager.dialogue
+            #     secretDialogue = this.gameManager.secretDialogue
+            #     MAIN.scene.camera.target = Transform(Vector2f(-8, 7.75))
+            #     #MAIN.scene.sounds[8].toggleSound()
+            #     secretDialogue.isPaused = false
+            #     MAIN.scene.textBoxes[1].updateText(" ")
+            #     if this.parent.getTransform().position.y > 10
+            #         # Reset game
+            #         dialogue.currentMessageIndex = 1
+            #         dialogue.currentPositionInMessage = 1
+            #         dialogue.currentMessage = dialogue.messages[1]
+            #         dialogue.isPaused = false
+            #         dialogue.isReadingMessage = false
+            #         dialogue.isQueueingNextMessage = true
 
-                    secretDialogue.currentMessageIndex = 1
-                    secretDialogue.currentPositionInMessage = 1
-                    secretDialogue.currentMessage = secretDialogue.messages[1]
-                    secretDialogue.isPaused = true
-                    secretDialogue.isReadingMessage = false
-                    secretDialogue.isQueueingNextMessage = true
-                    MAIN.scene.textBoxes[2].updateText(" ")
+            #         secretDialogue.currentMessageIndex = 1
+            #         secretDialogue.currentPositionInMessage = 1
+            #         secretDialogue.currentMessage = secretDialogue.messages[1]
+            #         secretDialogue.isPaused = true
+            #         secretDialogue.isReadingMessage = false
+            #         secretDialogue.isQueueingNextMessage = true
+            #         MAIN.scene.textBoxes[2].updateText(" ")
 
-                    MAIN.scene.camera.target = Transform(Vector2f(0, 7.75))
-                    this.canMove = false
-                    this.gameManager.potGoingDown = true
-                    this.gameManager.goldPot.getTransform().position = Vector2f(2,6)
-                    MAIN.scene.colliders[2].enabled = true
-                    this.gameManager.resetPlayer()
-                    MAIN.scene.colliders[3].enabled = false
-                end
-            elseif this.parent.getTransform().position.y > 10 && !this.gameManager.isEnd
-                MAIN.scene.sounds[3].toggleSound()
-                MAIN.scene.sounds[9].toggleSound()
-                this.parent.getTransform().position = Vector2f(0.0, -1.0)
-                this.isFalling = true
-                this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 4]
-                this.canMove = false
-                this.form = 3
-                MAIN.scene.entities[15].isActive = true
-                MAIN.scene.entities[16].isActive = true
-                this.gameManager.dialogue.isPaused = false
-            elseif this.parent.getTransform().position.x > 7 && this.gameManager.currentAct != 0 && !this.gameManager.isEnd
-                this.gameManager.isEnd = true
-                MAIN.scene.camera.target = Transform(Vector2f(15, 7.75))
-                dialogue = this.gameManager.dialogue
-                winMessages = ["Congrats, you escaped :)", "Goodbye."]
-                dialogue.messages = winMessages
-                dialogue.currentMessageIndex = 1
-                dialogue.currentPositionInMessage = 1
-                dialogue.currentMessage = winMessages[1]
-                dialogue.isPaused = false
-                dialogue.isReadingMessage = false
-                dialogue.isQueueingNextMessage = true
-            end
+            #         MAIN.scene.camera.target = Transform(Vector2f(0, 7.75))
+            #         this.canMove = false
+            #         this.gameManager.potGoingDown = true
+            #         this.gameManager.goldPot.getTransform().position = Vector2f(2,6)
+            #         MAIN.scene.colliders[2].enabled = true
+            #         this.gameManager.resetPlayer()
+            #         MAIN.scene.colliders[3].enabled = false
+            #     end
+            # elseif this.parent.getTransform().position.y > 10 && !this.gameManager.isEnd
+            #     MAIN.scene.sounds[3].toggleSound()
+            #     MAIN.scene.sounds[9].toggleSound()
+            #     this.parent.getTransform().position = Vector2f(0.0, -1.0)
+            #     this.isFalling = true
+            #     this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 4]
+            #     this.canMove = false
+            #     this.form = 3
+            #     MAIN.scene.entities[15].isActive = true
+            #     MAIN.scene.entities[16].isActive = true
+            #     this.gameManager.dialogue.isPaused = false
+            # elseif this.parent.getTransform().position.x > 7 && this.gameManager.currentAct != 0 && !this.gameManager.isEnd
+            #     this.gameManager.isEnd = true
+            #     MAIN.scene.camera.target = Transform(Vector2f(15, 7.75))
+            #     dialogue = this.gameManager.dialogue
+            #     winMessages = ["Congrats, you escaped :)", "Goodbye."]
+            #     dialogue.messages = winMessages
+            #     dialogue.currentMessageIndex = 1
+            #     dialogue.currentPositionInMessage = 1
+            #     dialogue.currentMessage = winMessages[1]
+            #     dialogue.isPaused = false
+            #     dialogue.isReadingMessage = false
+            #     dialogue.isQueueingNextMessage = true
+            # end
             x = 0
             speed = 5
             buttons = MAIN.input.buttons
             y = this.parent.getRigidbody().getVelocity().y
-            if ("Button_Jump" in buttons || this.isJump) && this.parent.getRigidbody().grounded && this.canMove
+            println(buttons)
+            if ("Button_Jump" in buttons || this.isJump) #&& this.parent.getRigidbody().grounded && this.canMove
                 this.parent.getRigidbody().grounded = false
                 y = -5.0
-                MAIN.scene.sounds[1].toggleSound()
+                #MAIN.scene.sounds[1].toggleSound()
                 this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 3]
             end
-            if "Button_Left" in buttons && this.canMove
+            if "Button_Left" in buttons #&& this.canMove
                 x = -speed
                 if this.isFacingRight
                     this.isFacingRight = false
@@ -114,7 +115,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 if this.parent.getRigidbody().grounded
                     this.parent.getComponent(Animator).currentAnimation = this.parent.getComponent(Animator).animations[(this.form * 4) + 2]
                 end
-            elseif "Button_Right" in buttons && this.canMove
+            elseif "Button_Right" in buttons #&& this.canMove
                 x = speed
                 if !this.isFacingRight
                     this.isFacingRight = true
@@ -142,31 +143,32 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :handleCollisions
         function()
-            gm = this.gameManager
-            if gm.isEnd 
-                return
-            end
+            # gm = this.gameManager
+            # if gm.isEnd 
+            #     return
+            # end
+            return
             collider = this.parent.getComponent(Collider)
             for collision in collider.currentCollisions
                 if collision.tag == "block"
-                    MAIN.scene.sounds[3].toggleSound()
+                    #MAIN.scene.sounds[3].toggleSound()
                     # remove all blocks, reveal money
-                    for moneyBlock in gm.moneyBlocks
-                        moneyBlock.isActive = false
-                    end
-                    hit = collision.parent.getComponent(Transform)
+                    # for moneyBlock in gm.moneyBlocks
+                    #     moneyBlock.isActive = false
+                    # end
+                    # hit = collision.parent.getComponent(Transform)
 
-                    pot = gm.goldPot.getComponent(Transform)
-                    if hit.position.x == -2.0
-                        pot.position = Vector2f(0.0, 7.0)
-                    elseif hit.position.x == 0.0
-                        pot.position = Vector2f(2.0, 7.0)
-                    elseif hit.position.x == 2.0
-                        pot.position = Vector2f(-2.0, 7.0)
-                    end
-                    gm.goldPot.isActive = true
-                    this.canMove = false
-                    this.form = 1
+                    #pot = gm.goldPot.getComponent(Transform)
+                    # if hit.position.x == -2.0
+                    #     pot.position = Vector2f(0.0, 7.0)
+                    # elseif hit.position.x == 0.0
+                    #     pot.position = Vector2f(2.0, 7.0)
+                    # elseif hit.position.x == 2.0
+                    #     pot.position = Vector2f(-2.0, 7.0)
+                    # end
+                    # gm.goldPot.isActive = true
+                    # this.canMove = false
+                    # this.form = 1
                 elseif collision.tag == "gold"
                     MAIN.scene.sounds[3].toggleSound()
                     gm.goldPot.isActive = false
