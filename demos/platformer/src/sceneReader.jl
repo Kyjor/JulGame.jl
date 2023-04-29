@@ -17,15 +17,21 @@ function deserializeEntities(filePath)
 
     for entity in entities.Entities
         components = []
+        scripts = []
 
         for component in entity.components
             push!(components, deserializeComponent(component))
+        end
+        
+        for script in entity.scripts
+            push!(scripts, script.name)
         end
         
         newEntity = Entity(entity.name)
         newEntity.id = entity.id
         newEntity.removeComponent(Transform)
         newEntity.isActive = entity.isActive
+        newEntity.scripts = scripts
         for component in components
             newEntity.addComponent(component)
         end

@@ -12,10 +12,10 @@ mutable struct PlayerMovement
     isJump 
     parent
 
-    function PlayerMovement(canMove)
+    function PlayerMovement()
         this = new()
         
-        this.canMove = canMove
+        this.canMove = true
         this.form = 1
         this.gameManager = C_NULL
         this.input = C_NULL
@@ -99,7 +99,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             speed = 5
             buttons = MAIN.input.buttons
             y = this.parent.getRigidbody().getVelocity().y
-            println(buttons)
+
             if ("Button_Jump" in buttons || this.isJump) #&& this.parent.getRigidbody().grounded && this.canMove
                 this.parent.getRigidbody().grounded = false
                 y = -5.0

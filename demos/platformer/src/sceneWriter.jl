@@ -81,9 +81,12 @@ function serializeEntityComponents(components)
 end
 
 function serializeEntityScripts(scripts)
-
     scriptsDict = []
-    
-    #Dict("b" => 1, "c" => 2)
+
+    for script in scripts
+        scriptName = String(split("$(typeof(script))", '.')[length(split("$(typeof(script))", '.'))])
+        push!(scriptsDict, Dict("name" => scriptName))
+    end
+
     return scriptsDict
 end

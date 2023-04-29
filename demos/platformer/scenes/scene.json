@@ -1084,6 +1084,9 @@
             "isActive": true,
             "name": "player",
             "scripts": [
+                {
+                    "name": "PlayerMovement"
+                }
             ],
             "id": 31,
             "components": [

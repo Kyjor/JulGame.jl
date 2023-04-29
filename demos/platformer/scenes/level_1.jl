@@ -5,7 +5,7 @@ include("../../../src/Camera.jl")
 include("../../../src/Main.jl")
 include("../src/sceneReader.jl")
 
-include.(filter(contains(r".jl$"), readdir("../scripts/"; join=true)))
+include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "..", "scripts"); join=true)))
 
 
 function level_1(isUsingEditor = false)
@@ -14,7 +14,7 @@ function level_1(isUsingEditor = false)
     main = MAIN
     #gameManager = GameManager()
 
-    playerMovement = PlayerMovement(true)
+    #playerMovement = PlayerMovement()
     # playerMovement.gameManager = gameManager
     
     # gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
@@ -35,7 +35,7 @@ function level_1(isUsingEditor = false)
     # println(main.scene.entities[1].getSprite())
     main.scene.entities = deserializeEntities(joinpath(@__DIR__, "scene.json"))
     main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), main.scene.entities[31].getTransform())
-    main.scene.entities[31].addScript(playerMovement)
+    #main.scene.entities[31].addScript(playerMovement)
     main.scene.rigidbodies = []
     main.scene.colliders = []
     for entity in main.scene.entities
@@ -46,6 +46,14 @@ function level_1(isUsingEditor = false)
                 push!(main.scene.colliders, component)
             end
         end
+        scriptCounter = 1
+        for script in entity.scripts
+            newScript = eval(Symbol(script))()
+            entity.scripts[scriptCounter] = newScript
+            newScript.setParent(entity)
+            scriptCounter += 1
+        end
+
     end
     #push!(main.scene.entities, Entity("game manager", Transform(), [], [gameManager]))
 
