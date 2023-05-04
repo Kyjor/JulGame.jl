@@ -171,8 +171,10 @@ try
                             componentType = "$(typeof(component).name.wrapper)"
                             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
 
-                            CImGui.Text(componentType)                            
-                            ShowComponentProperties(currentEntitySelected, component, componentType)
+                            if CImGui.TreeNode(componentType)
+                                ShowComponentProperties(currentEntitySelected, component, componentType)
+                                CImGui.TreePop()
+                            end
                         end
                     end
                 end
