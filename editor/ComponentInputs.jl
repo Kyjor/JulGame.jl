@@ -26,6 +26,11 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, fieldsInComponent[i])
         end
+    elseif componentType == "Rigidbody"
+        fieldsInComponent=fieldnames(julgame.RigidbodyModule.Rigidbody);
+        for i = 1:length(fieldsInComponent)
+            ShowComponentPropertyInput(currentEntitySelected, component, fieldsInComponent[i])
+        end
     end
 
 end
@@ -41,8 +46,8 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentF
         CImGui.Text(componentField)
         x = Cfloat(componentFieldValue.x)
         y = Cfloat(componentFieldValue.y)
-        @c CImGui.InputFloat("$(componentField)x", &x, 1)
-        @c CImGui.InputFloat("$(componentField)y", &y, 1)
+        @c CImGui.InputFloat("$(componentField) x", &x, 1)
+        @c CImGui.InputFloat("$(componentField) y", &y, 1)
         currentEntitySelected.getComponent(componentTypeString).setVector2fValue(componentField,convert(Float64, x),convert(Float64, y))
 
     elseif componentFieldType == "Bool" 
@@ -61,6 +66,11 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentF
                 break
             end
         end
+        setfield!(currentEntitySelected.getComponent(componentTypeString),componentField,componentFieldValue)
+    elseif componentFieldType == "Float64"
+        CImGui.Text(componentField)
+        x = Cfloat(componentFieldValue)
+        @c CImGui.InputFloat("$(componentField)", &x, 1)
         setfield!(currentEntitySelected.getComponent(componentTypeString),componentField,componentFieldValue)
 
     end

@@ -8,7 +8,7 @@ export Collider
 mutable struct Collider
     collisionEvents
     currentCollisions
-    enabled
+    enabled::Bool
     offset::Math.Vector2f
     parent
     size::Math.Vector2f

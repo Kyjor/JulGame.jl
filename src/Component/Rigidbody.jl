@@ -6,7 +6,7 @@ const GRAVITY = Ref{Float64}(9.81)[]
 export Rigidbody
 mutable struct Rigidbody 
     acceleration
-    drag
+    drag::Float64
     grounded::Bool
     mass::Float64
     offset
@@ -87,6 +87,10 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
     elseif s == :setParent
         function(parent)
             this.parent = parent
+        end
+    elseif s == :setVector2fValue
+        function(field, x, y)
+            setfield!(this, field, Math.Vector2f(x,y))
         end
     else
         try
