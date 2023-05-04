@@ -31,6 +31,11 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
+    elseif componentType == "Animator"
+        fieldsInComponent=fieldnames(julgame.AnimatorModule.Animator);
+        for i = 1:length(fieldsInComponent)
+            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
+        end
     end
 
 end
@@ -69,6 +74,12 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         CImGui.Text(componentField)
         x = Cfloat(componentFieldValue)
         @c CImGui.InputFloat("$(componentField)", &x, 1)
+        setfield!(currentEntitySelected.getComponent(componentType),componentField,componentFieldValue)
+    
+    elseif componentFieldType == "Int64"
+        CImGui.Text(componentField)
+        x = Cint(componentFieldValue)
+        @c CImGui.InputInt("$(componentField)", &x, 1)
         setfield!(currentEntitySelected.getComponent(componentType),componentField,componentFieldValue)
 
     end
