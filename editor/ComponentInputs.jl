@@ -11,8 +11,8 @@ using .julgame.SpriteModule
 using .julgame.TransformModule
 
 """
-ShowComponentProperties(p_open::Ref{Bool})
-Create an input based on the component type and populating it.
+ShowComponentProperties(currentEntitySelected, component, componentType)
+Creates inputs based on the component type and populates them.
 """
 function ShowComponentProperties(currentEntitySelected, component, componentType)
 
@@ -43,11 +43,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentF
         y = Cfloat(componentFieldValue.y)
         @c CImGui.InputFloat("$(componentField)x", &x, 1)
         @c CImGui.InputFloat("$(componentField)y", &y, 1)
-        #println(componentField)
         currentEntitySelected.getComponent(componentTypeString).setVector2fValue(componentField,convert(Float64, x),convert(Float64, y))
-        # setProperties(currentEntitySelected.getComponent(componentTypeString), convert(Float64, x))
-        # currentEntitySelected.getComponent(componentFieldType).y = convert(Float64, y)
-
     end
 
 end

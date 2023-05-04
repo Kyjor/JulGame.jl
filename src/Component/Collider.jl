@@ -222,6 +222,10 @@ function Base.getproperty(this::Collider, s::Symbol)
             
             throw
         end
+    elseif s == :setVector2fValue
+        function(field, x, y)
+            setfield!(this, field, Math.Vector2f(x,y))
+        end
     else
         try
             getfield(this, s)

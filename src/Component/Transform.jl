@@ -84,9 +84,9 @@ function Base.getproperty(this::Transform, s::Symbol)
         function()
             #println(this.position)
         end
-     elseif s == :setValue
+     elseif s == :setVector2fValue
         function(field, x, y)
-            println(field)
+            setfield!(this, field, Math.Vector2f(x,y))
         end
     else
         try
