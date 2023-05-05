@@ -83,8 +83,8 @@ ImGuiGLFWBackend.init(glfw_ctx)
 opengl_ctx = ImGuiOpenGLBackend.create_context(glsl_version)
 ImGuiOpenGLBackend.init(opengl_ctx)
 try
-    cameraPositionX = 0
-    cameraPositionY = 0 
+    cameraPositionX = 0.0
+    cameraPositionY = 0.0
     currentEntitySelected = C_NULL
     currentEntitySelectedIndex = -1
     currentEntityUpdated = false

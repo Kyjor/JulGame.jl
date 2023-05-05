@@ -70,6 +70,19 @@ function Base.getproperty(this::Animation, s::Symbol)
         function(parent)
             this.parent = parent
         end
+    elseif s == :updateArrayValue
+        function(value, field, index)
+            fieldToUpdate = getfield(this, field)
+            if this.getType(value) == "Vector4"
+                fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.w, value.h)
+            end
+
+        end
+    elseif s == :getType
+        function(item)
+            componentFieldType = "$(typeof(item).name.wrapper)"
+            return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
+        end
     else
         try
             getfield(this, s)

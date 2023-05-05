@@ -191,7 +191,7 @@
                     "rotation": 0,
                     "position": {
                         "x": -4,
-                        "y": 10
+                        "y": 11
                     },
                     "type": "Transform",
                     "scale": {
@@ -299,7 +299,7 @@
                     "rotation": 0,
                     "position": {
                         "x": -1,
-                        "y": 10
+                        "y": 11
                     },
                     "type": "Transform",
                     "scale": {

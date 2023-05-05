@@ -115,8 +115,8 @@ function Base.getproperty(this::Main, s::Symbol)
 			this.textBoxes = this.scene.textBoxes
 
 			this.lastMousePosition = Math.Vector2(0, 0)
-			this.panCounter = Math.Vector2(0, 0)
-			this.panThreshold = 10
+			this.panCounter = Math.Vector2f(0, 0)
+			this.panThreshold = .1
 
 			if !isUsingEditor
 				this.run()
@@ -294,21 +294,21 @@ function Base.getproperty(this::Main, s::Symbol)
 			cameraPosition = this.scene.camera.position
 			if SDL_BUTTON_MIDDLE in this.input.mouseButtons
 				xDiff = this.lastMousePosition.x - this.input.mousePosition.x
-				xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 1 : -1)
+				xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 0.1 : -0.1)
 				yDiff = this.lastMousePosition.y - this.input.mousePosition.y
-				yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 1 : -1)
+				yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 0.1 : -0.1)
 
-				this.panCounter = Math.Vector2(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+				this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
 
 				if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
-					diff = this.panCounter.x > this.panThreshold ? 1 : -1
-					cameraPosition = Math.Vector2(cameraPosition.x + diff, cameraPosition.y)
-					this.panCounter = Math.Vector2(0, this.panCounter.y)
+					diff = this.panCounter.x > this.panThreshold ? 0.2 : -0.2
+					cameraPosition = Math.Vector2f(cameraPosition.x + diff, cameraPosition.y)
+					this.panCounter = Math.Vector2f(0, this.panCounter.y)
 				end
 				if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
-					diff = this.panCounter.y > this.panThreshold ? 1 : -1
-					cameraPosition = Math.Vector2(cameraPosition.x, cameraPosition.y + diff)
-					this.panCounter = Math.Vector2(this.panCounter.x, 0)
+					diff = this.panCounter.y > this.panThreshold ? 0.2 : -0.2
+					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + diff)
+					this.panCounter = Math.Vector2f(this.panCounter.x, 0)
 				end
 			end
 
@@ -316,22 +316,22 @@ function Base.getproperty(this::Main, s::Symbol)
 				if "Button_Left" in this.input.buttons
 					this.zoom -= .01
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
-				elseif Button_Right in this.input.buttons
+				elseif "Button_Right" in this.input.buttons
 					this.zoom += .01
 					SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				end
 			elseif "Button_Left" in this.input.buttons
-				cameraPosition = Math.Vector2(cameraPosition.x - 1, cameraPosition.y)
+				cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
 			elseif "Button_Right" in this.input.buttons
-				cameraPosition = Math.Vector2(cameraPosition.x + 1, cameraPosition.y)
+				cameraPosition = Math.Vector2f(cameraPosition.x + 0.25, cameraPosition.y)
 			elseif "Button_Down" in this.input.buttons
-				cameraPosition = Math.Vector2(cameraPosition.x, cameraPosition.y + 1)
+				cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.25)
 			elseif "Button_Up" in this.input.buttons
-				cameraPosition = Math.Vector2(cameraPosition.x, cameraPosition.y - 1)
+				cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.25)
 			end
 	
 			if update[6] 
-				cameraPosition = Math.Vector2()
+				cameraPosition = Math.Vector2f()
 			end
 			this.scene.camera.update(cameraPosition)
 			

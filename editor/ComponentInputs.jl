@@ -10,7 +10,7 @@ using .julgame.RigidbodyModule
 using .julgame.SpriteModule
 using .julgame.TransformModule
 
-const julgameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation"]
+const julgameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
 """
 ShowComponentProperties(currentEntitySelected, component, componentType)
 Creates inputs based on the component type and populates them.
@@ -110,9 +110,11 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 if nestedFieldType in julgameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
                 else
-                    println(nestedFieldType)
-                    fieldsInComponent=fieldnames(typeof(componentFieldValue));
-                    ShowArrayPropertyInput(componentFieldValue[i])
+                    try
+                        currentEntitySelected.updateArrayValue(ShowArrayPropertyInput(componentFieldValue, i), componentField, i)
+                    catch e
+                        println(e)
+                    end
                 end
                 CImGui.TreePop()
             end
@@ -122,12 +124,14 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
 
 end
 
-function ShowArrayPropertyInput(vec) 
-    type = getType(vec)
-    println(type)
+function ShowArrayPropertyInput(arr, index) 
+    
+    type = getType(arr[index])
     if type == "Vector4"
+        vec = arr[index]
         vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
         @c CImGui.InputInt4("input int4", vec4i)
+        return julgame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
     end
 end
 

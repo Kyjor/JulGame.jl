@@ -3,7 +3,7 @@ global const SCALE_UNITS = Ref{Float64}(64.0)[]
 mutable struct Camera
     dimensions
     offset
-    position
+    position::Vector2f
     target
 
     function Camera(dimensions::Vector2f, initialPosition::Vector2f, offset::Vector2f,target)
