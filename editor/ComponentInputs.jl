@@ -10,6 +10,7 @@ using .julgame.RigidbodyModule
 using .julgame.SpriteModule
 using .julgame.TransformModule
 
+const julgameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation"]
 """
 ShowComponentProperties(currentEntitySelected, component, componentType)
 Creates inputs based on the component type and populates them.
@@ -36,14 +37,28 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
+    elseif componentType == "Animation"
+        fieldsInComponent=fieldnames(julgame.AnimationModule.Animation);
+        for i = 1:length(fieldsInComponent)
+            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
+        end
     end
 
 end
 
 function ShowComponentPropertyInput(currentEntitySelected, component, componentType, componentField)
+    if currentEntitySelected === nothing 
+        return
+    end
+    itemToUpdateType = getType(currentEntitySelected)
+    if itemToUpdateType == "Entity"
+        itemToUpdate = currentEntitySelected.getComponent(componentType)
+    else
+        itemToUpdate = currentEntitySelected
+    end
+
     componentFieldValue = getfield(component, componentField)
-    componentFieldType = "$(typeof(componentFieldValue).name.wrapper)"
-    componentFieldType = String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
+    componentFieldType = getType(componentFieldValue)
 
     if componentFieldType == "Vector2f"
         CImGui.Text(componentField)
@@ -51,11 +66,11 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         y = Cfloat(componentFieldValue.y)
         @c CImGui.InputFloat("$(componentField) x", &x, 1)
         @c CImGui.InputFloat("$(componentField) y", &y, 1)
-        currentEntitySelected.getComponent(componentType).setVector2fValue(componentField,convert(Float64, x),convert(Float64, y))
+        itemToUpdate.setVector2fValue(componentField,convert(Float64, x),convert(Float64, y))
 
     elseif componentFieldType == "Bool" 
         @c CImGui.Checkbox("$(componentField)", &componentFieldValue)
-        setfield!(currentEntitySelected.getComponent(componentType),componentField,componentFieldValue)
+        setfield!(itemToUpdate,componentField,componentFieldValue)
 
     elseif componentFieldType == "String"
         buf = "$(componentFieldValue)"*"\0"^(64)
@@ -69,20 +84,54 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 break
             end
         end
-        setfield!(currentEntitySelected.getComponent(componentType),componentField,componentFieldValue)
+        setfield!(itemToUpdate,componentField,componentFieldValue)
+
     elseif componentFieldType == "Float64"
         CImGui.Text(componentField)
         x = Cfloat(componentFieldValue)
         @c CImGui.InputFloat("$(componentField)", &x, 1)
-        setfield!(currentEntitySelected.getComponent(componentType),componentField,componentFieldValue)
+        setfield!(itemToUpdate,componentField,componentFieldValue)
     
     elseif componentFieldType == "Int64"
         CImGui.Text(componentField)
         x = Cint(componentFieldValue)
         @c CImGui.InputInt("$(componentField)", &x, 1)
-        setfield!(currentEntitySelected.getComponent(componentType),componentField,componentFieldValue)
+        setfield!(itemToUpdate,componentField,componentFieldValue)
+
+    elseif componentFieldType == "Vector4"
+        vec4i = Cint[componentFieldValue.x, componentFieldValue.y, componentFieldValue.w, componentFieldValue.h]
+        @c CImGui.InputInt4("input int4", vec4i)
+        
+    elseif componentFieldType == "Array" # Then we need to unpack the nested items
+        for i = 1:length(componentFieldValue) 
+            nestedType = "$(typeof(componentFieldValue[i]).name.wrapper)"
+            nestedFieldType = String(split(nestedType, '.')[length(split(nestedType, '.'))])
+            if CImGui.TreeNode("$(nestedFieldType) $(i)")
+                if nestedFieldType in julgameComponents
+                    ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
+                else
+                    println(nestedFieldType)
+                    fieldsInComponent=fieldnames(typeof(componentFieldValue));
+                    ShowArrayPropertyInput(componentFieldValue[i])
+                end
+                CImGui.TreePop()
+            end
+        end
 
     end
 
 end
 
+function ShowArrayPropertyInput(vec) 
+    type = getType(vec)
+    println(type)
+    if type == "Vector4"
+        vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+        @c CImGui.InputInt4("input int4", vec4i)
+    end
+end
+
+function getType(item)
+    componentFieldType = "$(typeof(item).name.wrapper)"
+    return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
+end

@@ -5,7 +5,7 @@ using ..Component.engine
 export Animation
 mutable struct Animation
     animatedFPS::Int64
-    currentFrame
+    #currentFrame
     frames::Array{Math.Vector4}
     lastFrame
     lastUpdate
@@ -19,6 +19,8 @@ mutable struct Animation
         this.frames = frames
         this.lastFrame = 0
         this.lastUpdate = SDL_GetTicks()
+        this.parent = C_NULL
+        this.sprite = C_NULL
 
         return this
     end
