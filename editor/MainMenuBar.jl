@@ -4,7 +4,7 @@ using CImGui.CSyntax.CStatic
 
 """
     ShowAppMainMenuBar(p_open::Ref{Bool})
-Create a fullscreen menu bar and populating it.
+Create a fullscreen menu bar and populate it.
 """
 function ShowMainMenuBar(p_open::Ref{Bool}, events)
     if CImGui.BeginMainMenuBar()

@@ -23,6 +23,7 @@ include("../demos/platformer/src/platformer.jl")
 
 include("../src/Macros.jl")
 include("./MainMenuBar.jl")
+include("./EntityContextMenu.jl")
 include("./ComponentInputs.jl")
 include("../demos/platformer/src/sceneWriter.jl")
 
@@ -143,7 +144,7 @@ try
             # would open it. This is because once a menu is active, we allow to switch to a sibling menu by just hovering on it, which is the desired behavior for regular menus.
             CImGui.PushID("foo")
             if CImGui.BeginMenu("Menu inside a regular window")
-                #ShowExampleMenuFile()
+                ShowEntityContextMenu()
                 CImGui.EndMenu()
             end
             CImGui.PopID()
