@@ -2,13 +2,13 @@ using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 using .julgame
-using .julgame.AnimationModule
-using .julgame.AnimatorModule
-using .julgame.ColliderModule
-using .julgame.EntityModule
-using .julgame.RigidbodyModule
-using .julgame.SpriteModule
-using .julgame.TransformModule
+# using .julgame.AnimationModule
+# using .julgame.AnimatorModule
+# using .julgame.ColliderModule
+# using .julgame.EntityModule
+# using .julgame.RigidbodyModule
+# using .julgame.SpriteModule
+# using .julgame.TransformModule
 
 const julgameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
 """
@@ -107,6 +107,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
             nestedType = "$(typeof(componentFieldValue[i]).name.wrapper)"
             nestedFieldType = String(split(nestedType, '.')[length(split(nestedType, '.'))])
             if CImGui.TreeNode("$(nestedFieldType) $(i)")
+                CImGui.Button("Delete") && (deleteat!(componentFieldValue, i); break;)
                 if nestedFieldType in julgameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
                 else

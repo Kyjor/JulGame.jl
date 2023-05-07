@@ -6,7 +6,6 @@ include("Enums.jl")
 include("Input/Input.jl")
 include("Constants.jl")
 include("Scene.jl")
-#include("../demos/platformer/src/sceneWriter.jl")
 
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
@@ -15,10 +14,12 @@ export Main
 mutable struct Main
 	assets
 	entities
+	events
 	font
 	heightMultiplier
 	input
 	lastMousePosition
+	level
 	panCounter
 	panThreshold
 	renderer
@@ -39,6 +40,7 @@ mutable struct Main
 		this.scene = scene
 		this.input = Input()
 		this.input.scene = this.scene
+		this.events = []
 		
         return this
     end
@@ -51,6 +53,7 @@ mutable struct Main
 		this.zoom = zoom
 		this.input = Input()
 		this.input.scene = this.scene
+		this.events = []
 		
         return this
     end
@@ -63,7 +66,8 @@ mutable struct Main
 		this.zoom = zoom
 		this.input = Input()
 		this.input.scene = this.scene
-		
+		this.events = []
+
         return this
     end
 end
@@ -387,9 +391,9 @@ function Base.getproperty(this::Main, s::Symbol)
 			SDL_RenderPresent(this.renderer)
 			return [this.entities, mousePositionWorld, cameraPosition]	
 		end
-	elseif s == :saveScene
+	elseif s == :createNewEntity
 		function ()
-			
+			this.level.createNewEntity()
 		end
     else
         try

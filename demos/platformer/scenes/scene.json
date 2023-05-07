@@ -2238,6 +2238,27 @@
                     }
                 }
             ]
+        },
+        {
+            "isActive": true,
+            "name": "New entity",
+            "scripts": [
+            ],
+            "id": 55,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ]
         }
     ]
 }

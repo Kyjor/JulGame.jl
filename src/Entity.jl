@@ -33,14 +33,14 @@ mutable struct Entity
         return this
     end
 
-    function Entity(name::String, transform::Transform)
+    function Entity(name::String, transform)
         this = new()
 
         this.id = 1
         this.components = []
         this.isActive = true
         this.name = name
-        this.addComponent(transform)
+        this.addComponent(transform == C_NULL ? Transform() : transform)
         this.scripts = []
 
         return this

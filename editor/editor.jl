@@ -134,8 +134,24 @@ try
         # show a simple window that we create ourselves.
         # we use a Begin/End pair to created a named window.
         @cstatic f=Cfloat(0.0) counter=Cint(0) begin
-            CImGui.Begin("Item")  # create a window called "Hello, world!" and append into it.
+            CImGui.Begin("Item")  # create a window called "Item" and append into it.
+
+            CImGui.TextWrapped("Below we are testing adding menu items to a regular window. It's rather unusual but should work!")
+            CImGui.Separator()
+            # NB: As a quirk in this very specific example, we want to differentiate the parent of this menu from the parent of the various popup menus above.
+            # To do so we are encloding the items in a PushID()/PopID() block to make them two different menusets. If we don't, opening any popup above and hovering our menu here
+            # would open it. This is because once a menu is active, we allow to switch to a sibling menu by just hovering on it, which is the desired behavior for regular menus.
+            CImGui.PushID("foo")
+            if CImGui.BeginMenu("Menu inside a regular window")
+                #ShowExampleMenuFile()
+                CImGui.EndMenu()
+            end
+            CImGui.PopID()
+            CImGui.Separator()
+
+
             CImGui.Text(testText)  # display some text
+           
             # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
             
             if currentEntityUpdated 
@@ -167,11 +183,13 @@ try
                         end
                         setfield!(currentEntitySelected,FieldsInStruct[i], currentTextInTextBox)
                     elseif FieldsInStruct[i] == :components
-                        for component in Value
+                        for i = 1:length(Value)
+                            component = Value[i]
                             componentType = "$(typeof(component).name.wrapper)"
                             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
 
                             if CImGui.TreeNode(componentType)
+                                CImGui.Button("Delete") && (deleteat!(Value, i); break;)
                                 ShowComponentProperties(currentEntitySelected, component, componentType)
                                 CImGui.TreePop()
                             end
@@ -198,7 +216,9 @@ try
             CImGui.End()
         end
         @cstatic begin
-            CImGui.Begin("Hierarchy")  # create a window called "Hello, world!" and append into it.
+            CImGui.Begin("Hierarchy")  
+            CImGui.Button("New entity") && (game.createNewEntity())
+
             if CImGui.TreeNode("Level_0")
                 #ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
                 align_label_with_current_x_position= @cstatic align_label_with_current_x_position=false begin
