@@ -21,6 +21,16 @@ mutable struct Animator
 
         return this
     end
+
+    function Animator()
+        this = new()
+        
+        this.animations = []
+        this.lastFrame = 1
+        this.lastUpdate = SDL_GetTicks()
+
+        return this
+    end
 end
 
 function Base.getproperty(this::Animator, s::Symbol)

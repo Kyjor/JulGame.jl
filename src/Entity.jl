@@ -157,6 +157,13 @@ function Base.getproperty(this::Entity, s::Symbol)
                 script.update(deltaTime)
            end
         end
+    elseif s == :addCollider
+        function()
+            if this.getComponent(Collider) != C_NULL
+                return
+            end
+            this.addComponent(Collider(Vector2f(this.getTransform().scale.x, this.getTransform().scale.y), "Test"))
+        end
     else
         try
             getfield(this, s)

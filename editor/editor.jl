@@ -137,20 +137,6 @@ try
         @cstatic f=Cfloat(0.0) counter=Cint(0) begin
             CImGui.Begin("Item")  # create a window called "Item" and append into it.
 
-            CImGui.TextWrapped("Below we are testing adding menu items to a regular window. It's rather unusual but should work!")
-            CImGui.Separator()
-            # NB: As a quirk in this very specific example, we want to differentiate the parent of this menu from the parent of the various popup menus above.
-            # To do so we are encloding the items in a PushID()/PopID() block to make them two different menusets. If we don't, opening any popup above and hovering our menu here
-            # would open it. This is because once a menu is active, we allow to switch to a sibling menu by just hovering on it, which is the desired behavior for regular menus.
-            CImGui.PushID("foo")
-            if CImGui.BeginMenu("Menu inside a regular window")
-                ShowEntityContextMenu()
-                CImGui.EndMenu()
-            end
-            CImGui.PopID()
-            CImGui.Separator()
-
-
             CImGui.Text(testText)  # display some text
            
             # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
@@ -162,6 +148,14 @@ try
                 CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelected = C_NULL; currentEntitySelectedIndex = -1;)
             end
             if currentEntitySelected != C_NULL
+                CImGui.PushID("foo")
+                if CImGui.BeginMenu("Add Component")
+                    ShowEntityContextMenu(currentEntitySelected)
+                    CImGui.EndMenu()
+                end
+                CImGui.PopID()
+                CImGui.Separator()
+                
                 FieldsInStruct=fieldnames(julgame.EntityModule.Entity);
                 for i = 1:length(FieldsInStruct)
                     #Check field i
