@@ -28,3 +28,5 @@ Manifest.toml
 StackManBuild/
 
 editor/imgui.ini
+
+imgui.ini
