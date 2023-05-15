@@ -46,7 +46,11 @@ function Base.getproperty(this::TextBox, s::Symbol)
                     SDL_Point(this.position.x, this.position.y)], 5)
             end
 
-            @assert SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL_GetError()))"
+            # @assert 
+            SDL_RenderCopy(
+                this.renderer, this.textTexture, C_NULL, Ref(SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))
+            ) 
+            # == 0 "error rendering textbox text: $(unsafe_string(SDL_GetError()))"
         end
     elseif s == :initialize
         function(renderer, zoom)

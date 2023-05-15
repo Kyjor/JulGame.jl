@@ -7,6 +7,8 @@ using .julgame.ColliderModule
 using .julgame.RigidbodyModule
 using .julgame.SpriteModule
 using .julgame.TransformModule
+using SimpleDirectMediaLayer
+
 include("../../../src/UI/TextBox.jl")
 include("../../../src/Camera.jl")
 include("../../../src/Component/SoundSource.jl")
@@ -18,8 +20,18 @@ include("../scripts/gameManager.jl")
 include("../scripts/playerMovement.jl")
 
 function level_0(isUsingEditor = false)
+    # if Sys.islinux() && !haskey(ENV, "ALSA_CONFIG_PATH")
+            # 	ENV["ALSA_CONFIG_PATH"] = "/usr/share/alsa/alsa.conf"
+            # end
+    Mix_OpenAudio(Int32(22050), UInt16(MIX_DEFAULT_FORMAT), Int32(2), Int32(1024) )
+
+	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 4)
+	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4)
+	SDL_Init(UInt32(SDL_INIT_VIDEO))
+	TTF_Init()
+
     #file loading
-    ASSETS = joinpath(@__DIR__, "..", "assets")
+    ASSETS = joinpath(pwd(), "..", "assets")
 
     fontPath = joinpath(ASSETS, "fonts", "VT323", "VT323-Regular.ttf")
 
@@ -49,7 +61,7 @@ function level_0(isUsingEditor = false)
 
     gameManager = GameManager()
 
-    playerMovement = PlayerMovement(false)
+    playerMovement = PlayerMovement()
     playerMovement.gameManager = gameManager
     
     gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
@@ -217,8 +229,8 @@ function level_0(isUsingEditor = false)
         SoundSource(hittingground, 4, 10),
     ]
 
-    # crowdSound = SoundSource(crowd, 8)
-    # crowdSound.toggleSound()
+    crowdSound = SoundSource(crowd, 8)
+    crowdSound.toggleSound()
 
     push!(entities, Entity("game manager", Transform(), [], [gameManager]))
     for i in -15:-10

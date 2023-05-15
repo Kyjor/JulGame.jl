@@ -1,4 +1,4 @@
-﻿using SimpleDirectMediaLayer
+using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer 
 
 mutable struct SoundSource
@@ -37,7 +37,7 @@ mutable struct SoundSource
         this.volume = volume
 
         if (this.sound == C_NULL)
-            error("$(path) not found. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
+            error("$(path). SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
         end
 
         SDL2.Mix_Volume(Int32(channel), Int32(volume))

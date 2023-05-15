@@ -32,53 +32,29 @@ mutable struct Main
 	window
     zoom::Float64
 
-    function Main(scene)
-        this = new()
-		
-		SDL2.init()
-		this.zoom = zoom
-		this.scene = scene
-		this.input = Input()
-		this.input.scene = this.scene
-		this.events = []
-		
-        return this
-    end
-
 	function Main(zoom::Float64)
         this = new()
 		
-		SDL2.init()
-		this.scene = Scene()
 		this.zoom = zoom
-		this.input = Input()
-		this.input.scene = this.scene
-		this.events = []
-		
-        return this
-    end
-
-	function Main()
-        this = new()
-		
-		SDL2.init()
 		this.scene = Scene()
-		this.zoom = zoom
 		this.input = Input()
+		
 		this.input.scene = this.scene
 		this.events = []
 
-        return this
+		return this
     end
 end
 
 function Base.getproperty(this::Main, s::Symbol)
     if s == :init 
         function(isUsingEditor = false)
+			
+
 			if isUsingEditor
 				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL_WINDOW_POPUP_MENU | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE)
 			else
-				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL_WINDOW_POPUP_MENU)
+				this.window = SDL_CreateWindow("Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL_RENDERER_ACCELERATED)
 			end
 
 			SDL_SetWindowResizable(this.window, SDL_FALSE)
