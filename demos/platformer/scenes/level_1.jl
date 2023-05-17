@@ -61,10 +61,10 @@ mutable struct level_1
                     end
                     scriptCounter = 1
                     for script in entity.scripts
-                        newScript = eval(Symbol(script))()
-                        entity.scripts[scriptCounter] = newScript
-                        newScript.setParent(entity)
-                        scriptCounter += 1
+                        # newScript = eval(Symbol(script))()
+                        # entity.scripts[scriptCounter] = newScript
+                        # newScript.setParent(entity)
+                        # scriptCounter += 1
                     end
 
                 end

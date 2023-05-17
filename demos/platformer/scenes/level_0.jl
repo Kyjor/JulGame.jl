@@ -23,12 +23,7 @@ function level_0(isUsingEditor = false)
     # if Sys.islinux() && !haskey(ENV, "ALSA_CONFIG_PATH")
             # 	ENV["ALSA_CONFIG_PATH"] = "/usr/share/alsa/alsa.conf"
             # end
-    Mix_OpenAudio(Int32(22050), UInt16(MIX_DEFAULT_FORMAT), Int32(2), Int32(1024) )
 
-	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 4)
-	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4)
-	SDL_Init(UInt32(SDL_INIT_VIDEO))
-	TTF_Init()
 
     #file loading
     ASSETS = joinpath(pwd(), "..", "assets")
@@ -254,6 +249,6 @@ function level_0(isUsingEditor = false)
 
     main.assets = ASSETS
     main.loadScene(main.scene)
-    main.init(isUsingEditor)
+    #main.init(isUsingEditor)
     return main
 end
