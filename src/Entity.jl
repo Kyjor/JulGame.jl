@@ -154,8 +154,15 @@ function Base.getproperty(this::Entity, s::Symbol)
     elseif s == :update
         function(deltaTime)
             for script in this.scripts
-                script.update(deltaTime)
+#                script.update(deltaTime)
            end
+        end
+    elseif s == :addAnimator
+        function()
+            if this.getComponent(Animator) != C_NULL
+                return
+            end
+            this.addComponent(Animator([Animation([Vector4(0,0,0,0)], 60)]))
         end
     elseif s == :addCollider
         function()
@@ -163,6 +170,13 @@ function Base.getproperty(this::Entity, s::Symbol)
                 return
             end
             this.addComponent(Collider(Vector2f(this.getTransform().scale.x, this.getTransform().scale.y), "Test"))
+        end
+    elseif s == :addRigidbody
+        function()
+            if this.getComponent(Rigidbody) != C_NULL
+                return
+            end
+            this.addComponent(Rigidbody(1.0))
         end
     else
         try

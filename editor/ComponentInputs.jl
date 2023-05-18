@@ -46,7 +46,7 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
 
 end
 
-function ShowComponentPropertyInput(currentEntitySelected, component, componentType, componentField)
+function ShowComponentPropertyInput(currentEntitySelected, component, componentType, componentField, name = C_NULL)
     if currentEntitySelected === nothing 
         return
     end
@@ -108,6 +108,11 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
             nestedFieldType = String(split(nestedType, '.')[length(split(nestedType, '.'))])
             if CImGui.TreeNode("$(nestedFieldType) $(i)")
                 CImGui.Button("Delete") && (deleteat!(componentFieldValue, i); break;)
+                try
+                    CImGui.Button("Add") && componentFieldValue[i].appendArray()
+                catch e
+                    println(e)
+                end
                 if nestedFieldType in julgameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
                 else

@@ -18,7 +18,9 @@ mutable struct Animator
         this.currentAnimation = this.animations[1]
         this.lastFrame = 1
         this.lastUpdate = SDL_GetTicks()
-
+        this.parent = C_NULL
+        this.sprite = C_NULL
+        
         return this
     end
 
@@ -34,31 +36,13 @@ mutable struct Animator
 end
 
 function Base.getproperty(this::Animator, s::Symbol)
-    if s == :getLastFrame
-        function()
-            return this.lastFrame
-        end
-    elseif s == :setLastFrame
-        function(value)
-            if value == 0 
-                value = 1
-            elseif value > length(this.currentAnimation.frames)
-                value = length(this.currentAnimation.frames)
-            end
-
-            this.lastFrame = value
-        end
-    elseif s == :getLastUpdate
+    if s == :getLastUpdate
         function()
             return this.lastUpdate
         end
     elseif s == :setLastUpdate
         function(value)
             this.lastUpdate = value
-        end
-    elseif s == :getFrameCount
-        function()
-            return length(this.currentAnimation.frames)
         end
     elseif s == :update
         function(currentRenderTime, deltaTime)

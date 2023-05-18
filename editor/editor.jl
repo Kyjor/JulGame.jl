@@ -149,7 +149,7 @@ try
             end
             if currentEntitySelected != C_NULL
                 CImGui.PushID("foo")
-                if CImGui.BeginMenu("Add Component")
+                if CImGui.BeginMenu("Entity Menu")
                     ShowEntityContextMenu(currentEntitySelected)
                     CImGui.EndMenu()
                 end

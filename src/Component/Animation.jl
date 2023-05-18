@@ -5,10 +5,7 @@ using ..Component.engine
 export Animation
 mutable struct Animation
     animatedFPS::Int64
-    #currentFrame
     frames::Array{Math.Vector4}
-    lastFrame
-    lastUpdate
     parent
     sprite
 
@@ -17,8 +14,6 @@ mutable struct Animation
         
         this.animatedFPS = animatedFPS
         this.frames = frames
-        this.lastFrame = 0
-        this.lastUpdate = SDL_GetTicks()
         this.parent = C_NULL
         this.sprite = C_NULL
 
@@ -27,46 +22,7 @@ mutable struct Animation
 end
 
 function Base.getproperty(this::Animation, s::Symbol)
-    if s == :getLastFrame
-        function()
-            return this.lastFrame
-        end
-    elseif s == :setLastFrame
-        function(value)
-            this.lastFrame = value
-        end
-    elseif s == :getLastUpdate
-        function()
-            return this.lastUpdate
-        end
-    elseif s == :setLastUpdate
-        function(value)
-            this.lastUpdate = value
-        end
-    elseif s == :getFrameCount
-        function()
-            return this.frameCount
-        end
-    elseif s == :update
-        function(currentRenderTime, deltaTime)
-            if length(this.frames) == 1
-                return
-            end
-            deltaTime = (currentRenderTime  - this.getLastUpdate()) / 1000.0
-            framesToUpdate = floor(deltaTime / (1.0 / this.animatedFPS))
-            if framesToUpdate > 0
-                this.setLastFrame(this.getLastFrame() + framesToUpdate)
-                this.setLastFrame(this.getLastFrame() % this.getFrameCount())
-                this.setLastUpdate(currentRenderTime)
-            end
-            this.sprite.frameToDraw = this.getLastFrame()
-        end
-   elseif s == :setSprite
-        function(sprite)
-            println("set sprite")
-            this.sprite = sprite
-        end
-    elseif s == :setParent
+    if s == :setParent
         function(parent)
             this.parent = parent
         end
@@ -76,6 +32,12 @@ function Base.getproperty(this::Animation, s::Symbol)
             if this.getType(value) == "Vector4"
                 fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.w, value.h)
             end
+
+        end
+    elseif s == :appendArray
+        function()
+            push!(this.frames, Math.Vector4(0,0,0,0))
+          
 
         end
     elseif s == :getType
