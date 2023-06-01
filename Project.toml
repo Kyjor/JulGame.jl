@@ -1,0 +1,7 @@
+name = "julGame"
+uuid = "4850f9bb-d191-4a1e-9f97-ee64062927c3"
+repo = "https://github.com/Kyjor/julGame.jl.git"
+version = "0.0.1"
+
+[deps]
+SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
