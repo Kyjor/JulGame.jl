@@ -1,4 +1,4 @@
-module engine
+module julGame
     include("Math/Math.jl")
     using .Math: Math
     export Math
@@ -21,7 +21,4 @@ module engine
     include("Entity.jl") 
     using .EntityModule   
     export Entity
-
 end
-
-global julgame = engine

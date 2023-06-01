@@ -1,16 +1,16 @@
 using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
-using .julgame
-# using .julgame.AnimationModule
-# using .julgame.AnimatorModule
-# using .julgame.ColliderModule
-# using .julgame.EntityModule
-# using .julgame.RigidbodyModule
-# using .julgame.SpriteModule
-# using .julgame.TransformModule
+using julGame
+# using julGame.AnimationModule
+# using julGame.AnimatorModule
+# using julGame.ColliderModule
+# using julGame.EntityModule
+# using julGame.RigidbodyModule
+# using julGame.SpriteModule
+# using julGame.TransformModule
 
-const julgameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
+const julGameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
 """
 ShowComponentProperties(currentEntitySelected, component, componentType)
 Creates inputs based on the component type and populates them.
@@ -18,27 +18,27 @@ Creates inputs based on the component type and populates them.
 function ShowComponentProperties(currentEntitySelected, component, componentType)
 
     if componentType == "Transform"
-        fieldsInComponent=fieldnames(julgame.TransformModule.Transform);
+        fieldsInComponent=fieldnames(julGame.TransformModule.Transform);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Collider"
-        fieldsInComponent=fieldnames(julgame.ColliderModule.Collider);
+        fieldsInComponent=fieldnames(julGame.ColliderModule.Collider);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Rigidbody"
-        fieldsInComponent=fieldnames(julgame.RigidbodyModule.Rigidbody);
+        fieldsInComponent=fieldnames(julGame.RigidbodyModule.Rigidbody);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Animator"
-        fieldsInComponent=fieldnames(julgame.AnimatorModule.Animator);
+        fieldsInComponent=fieldnames(julGame.AnimatorModule.Animator);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Animation"
-        fieldsInComponent=fieldnames(julgame.AnimationModule.Animation);
+        fieldsInComponent=fieldnames(julGame.AnimationModule.Animation);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
@@ -113,7 +113,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 catch e
                     println(e)
                 end
-                if nestedFieldType in julgameComponents
+                if nestedFieldType in julGameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
                 else
                     try
@@ -137,7 +137,7 @@ function ShowArrayPropertyInput(arr, index)
         vec = arr[index]
         vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
         @c CImGui.InputInt4("input int4", vec4i)
-        return julgame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+        return julGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
     end
 end
 

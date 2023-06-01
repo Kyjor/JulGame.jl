@@ -1,6 +1,6 @@
 
 module InputInstance
-    using ..engine
+    using .julGame
     include("Input.jl")
     
     export Input

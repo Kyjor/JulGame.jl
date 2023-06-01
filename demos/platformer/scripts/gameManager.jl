@@ -1,4 +1,4 @@
-using .julgame.MainLoop
+using julGame.MainLoop
 
 mutable struct GameManager
     currentAct

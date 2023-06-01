@@ -1,11 +1,11 @@
 module EntityModule
-using ..engine.AnimationModule
-using ..engine.AnimatorModule
-using ..engine.ColliderModule
-using ..engine.Math
-using ..engine.RigidbodyModule
-using ..engine.SpriteModule
-using ..engine.TransformModule
+using .julGame.AnimationModule
+using .julGame.AnimatorModule
+using .julGame.ColliderModule
+using .julGame.Math
+using .julGame.RigidbodyModule
+using .julGame.SpriteModule
+using .julGame.TransformModule
 
 export Entity
 mutable struct Entity

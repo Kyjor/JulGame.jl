@@ -1,4 +1,4 @@
-using .julgame.Math
+using julGame.Math
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct TextBox

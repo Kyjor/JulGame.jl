@@ -1,6 +1,6 @@
 include("../../../src/Macros.jl")
 include("../../../src/Input/Button.jl")
-using .julgame.MainLoop
+using julGame.MainLoop
 
 mutable struct PlayerMovement
     canMove

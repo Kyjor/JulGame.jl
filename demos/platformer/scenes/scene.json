@@ -1085,7 +1085,7 @@
             "name": "player",
             "scripts": [
                 {
-                    "name": "PlayerMovement"
+                    "name": "String"
                 }
             ],
             "id": 31,
@@ -2257,6 +2257,35 @@
                         "x": 1,
                         "y": 1
                     }
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "Test",
+            "scripts": [
+            ],
+            "id": 56,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 8
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "tag": "Test",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
                 }
             ]
         }

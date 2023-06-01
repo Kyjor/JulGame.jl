@@ -9,15 +9,15 @@ using ImGuiOpenGLBackend.ModernGL
 using Printf
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
-include("../src/julgame.jl")
-using .julgame
-using .julgame.AnimationModule
-using .julgame.AnimatorModule
-using .julgame.ColliderModule
-using .julgame.EntityModule
-using .julgame.RigidbodyModule
-using .julgame.SpriteModule
-using .julgame.TransformModule
+include("../src/julGame.jl")
+using julGame
+using julGame.AnimationModule
+using julGame.AnimatorModule
+using julGame.ColliderModule
+using julGame.EntityModule
+using julGame.RigidbodyModule
+using julGame.SpriteModule
+using julGame.TransformModule
 
 include("../demos/platformer/src/platformer.jl")
 
@@ -156,7 +156,7 @@ try
                 CImGui.PopID()
                 CImGui.Separator()
                 
-                FieldsInStruct=fieldnames(julgame.EntityModule.Entity);
+                FieldsInStruct=fieldnames(julGame.EntityModule.Entity);
                 for i = 1:length(FieldsInStruct)
                     #Check field i
                     Value=getfield(currentEntitySelected, FieldsInStruct[i])

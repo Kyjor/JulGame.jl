@@ -1,12 +1,12 @@
 using JSON3
 using StructTypes
-using .julgame.AnimatorModule
-using .julgame.AnimationModule
-using .julgame.Math
-using .julgame.ColliderModule
-using .julgame.RigidbodyModule
-using .julgame.TransformModule
-using .julgame.SpriteModule
+using julGame.AnimatorModule
+using julGame.AnimationModule
+using julGame.Math
+using julGame.ColliderModule
+using julGame.RigidbodyModule
+using julGame.TransformModule
+using julGame.SpriteModule
 
 function deserializeEntities(filePath)
     entitiesJson = read(filePath, String)

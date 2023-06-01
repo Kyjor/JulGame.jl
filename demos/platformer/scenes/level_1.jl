@@ -1,5 +1,5 @@
-using .julgame
-using .julgame.Math
+using julGame
+using julGame.Math
 
 
 include("../../../src/Macros.jl")

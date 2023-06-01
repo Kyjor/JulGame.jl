@@ -1,11 +1,10 @@
-﻿using julGame
+using julGame
 using julGame.AnimationModule
 using julGame.AnimatorModule
 using julGame.ColliderModule
 using julGame.EntityModule
 using julGame.ColliderModule
 using julGame.RigidbodyModule
-using julGame.SoundSourceModule
 using julGame.SpriteModule
 using julGame.TransformModule
 using SimpleDirectMediaLayer
