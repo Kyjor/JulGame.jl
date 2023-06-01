@@ -2,8 +2,9 @@ module SceneReaderModule
     using JSON3
     using ..SceneManagement.julGame.AnimatorModule
     using ..SceneManagement.julGame.AnimationModule
-    using ..SceneManagement.julGame.Math
     using ..SceneManagement.julGame.ColliderModule
+    using ..SceneManagement.julGame.EntityModule
+    using ..SceneManagement.julGame.Math
     using ..SceneManagement.julGame.RigidbodyModule
     using ..SceneManagement.julGame.TransformModule
     using ..SceneManagement.julGame.SpriteModule
