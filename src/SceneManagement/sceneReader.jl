@@ -1,6 +1,5 @@
 module SceneReaderModule
     using JSON3
-    using StructTypes
     using ..SceneManagement.julGame.AnimatorModule
     using ..SceneManagement.julGame.AnimationModule
     using ..SceneManagement.julGame.Math
@@ -46,7 +45,7 @@ module SceneReaderModule
     function deserializeComponent(component)
         ASSETS = joinpath(@__DIR__, "..", "assets")
         if component.type == "Transform"
-            newComponent = StructTypes.constructfrom(Transform, component)
+            newComponent = Transform(component.position, component.scale, component.rotation)
         elseif component.type == "Animation"
             newComponent = Animation(component.frames, component.animatedFPS)
         elseif component.type == "Animator"
