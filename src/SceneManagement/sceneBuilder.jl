@@ -23,7 +23,7 @@ module SceneBuilderModule
             return this
         end
 
-        function Base.getproperty(this::level_1, s::Symbol)
+        function Base.getproperty(this::scene, s::Symbol)
             if s == :init 
                 function(isUsingEditor = false)
                     #file loading
