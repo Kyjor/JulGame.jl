@@ -1,5 +1,5 @@
 module TransformModule
-using ..ComponentjulGame   
+using ..Component.julGame   
 export Transform
 mutable struct Transform
    

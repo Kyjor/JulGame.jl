@@ -1,5 +1,5 @@
 ﻿module RigidbodyModule
-using ..ComponentjulGame
+using ..Component.julGame
 const SCALE_UNITS = Ref{Float64}(64.0)[]
 const GRAVITY = Ref{Float64}(9.81)[]
 
