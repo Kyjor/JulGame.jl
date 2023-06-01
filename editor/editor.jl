@@ -7,7 +7,7 @@ module Editor
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
-    using Printf
+    #using Printf
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
     using ..julGame
@@ -194,7 +194,7 @@ module Editor
                 end
 
     #            @c CImGui.InputInt("y", &i0)
-                CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
+                #CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
                 CImGui.Text(mousePositionText)
                 push!(update, [currentEntitySelected, 0])
                 CImGui.End()
