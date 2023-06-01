@@ -16,7 +16,7 @@ module engine
     export component
     include("Component/Component.jl")
     using .Component
-    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SpriteModule, TransformModule
+    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SoundSourceModule, SpriteModule, TransformModule
 
     include("Entity.jl") 
     using .EntityModule   

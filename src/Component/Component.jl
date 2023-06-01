@@ -5,7 +5,7 @@ module Component
       include("Animator.jl")
       include("Collider.jl")
       include("Rigidbody.jl")
-      #include("SoundSource.jl")
+      include("SoundSource.jl")
       include("Sprite.jl")
       include("Transform.jl")
     
@@ -13,6 +13,7 @@ module Component
     export AnimatorModule
     export ColliderModule
     export RigidbodyModule
+    export SoundSourceModule
     export SpriteModule
     export TransformModule
 end

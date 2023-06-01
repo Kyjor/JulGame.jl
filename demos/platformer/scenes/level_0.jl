@@ -11,7 +11,6 @@ using SimpleDirectMediaLayer
 
 include("../../../src/UI/TextBox.jl")
 include("../../../src/Camera.jl")
-include("../../../src/Component/SoundSource.jl")
 include("../../../src/Main.jl")
 
 include("../scripts/dialogue.jl")
