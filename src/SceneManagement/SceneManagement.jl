@@ -1,10 +1,10 @@
 module SceneManagement
     using ..julGame
-    include("SceneBuilder.jl")
     include("SceneReader.jl")
     include("SceneWriter.jl")
+    include("SceneBuilder.jl")
     
-    export SceneBuilderModule
     export SceneReaderModule
     export SceneWriterModule
+    export SceneBuilderModule
 end
