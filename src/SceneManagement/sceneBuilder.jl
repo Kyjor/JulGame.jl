@@ -8,13 +8,13 @@ module SceneBuilderModule
     include("../Main.jl")
 
     #include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "..", "scripts"); join=true)))
-
-    mutable struct scene
+    export Scene
+    mutable struct Scene
         main
         scene
         srcPath
 
-        function scene(srcPath, scene)
+        function Scene(srcPath, scene)
             this = new()    
 
             this.scene = scene
@@ -23,7 +23,7 @@ module SceneBuilderModule
             return this
         end
 
-        function Base.getproperty(this::scene, s::Symbol)
+        function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
                 function(isUsingEditor = false)
                     #file loading
