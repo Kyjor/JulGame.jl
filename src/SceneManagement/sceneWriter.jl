@@ -1,6 +1,7 @@
 module SceneWriterModule
     using JSON3
 
+    export serializeEntities
     function serializeEntities(entities::Array)
     
         entitiesDict = []
@@ -17,6 +18,7 @@ module SceneWriterModule
         end
     end
 
+    export serializeEntityComponents
     function serializeEntityComponents(components)
 
         componentsDict = []
@@ -81,6 +83,7 @@ module SceneWriterModule
         return componentsDict
     end
 
+    export serializeEntityScripts
     function serializeEntityScripts(scripts)
         scriptsDict = []
 

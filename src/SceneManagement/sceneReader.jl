@@ -8,6 +8,7 @@ module SceneReaderModule
     using ..SceneManagement.julGame.TransformModule
     using ..SceneManagement.julGame.SpriteModule
 
+    export deserializeEntities
     function deserializeEntities(filePath)
         entitiesJson = read(filePath, String)
 
@@ -42,6 +43,7 @@ module SceneReaderModule
         return res
     end
 
+    export deserializeComponent
     function deserializeComponent(component)
         ASSETS = joinpath(@__DIR__, "..", "assets")
         if component.type == "Transform"

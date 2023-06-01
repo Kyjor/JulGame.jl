@@ -7,7 +7,7 @@ module platformer
     function run(isUsingEditor = false)
         SDL2.init()
         scene = Scene(pwd(), "scene.json")
-        return Scene.init(isUsingEditor)
+        return scene.init(isUsingEditor)
     end
 
     julia_main() = run()
