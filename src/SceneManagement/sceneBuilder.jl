@@ -1,7 +1,7 @@
 module SceneBuilderModule
     using ..SceneManagement.julGame
     using ..SceneManagement.julGame.Math
-    using ..SceneManagement.julGame.SceneReaderModule
+    using ..SceneManagement.SceneReaderModule
 
     include("../Macros.jl")
     include("../Camera.jl")
