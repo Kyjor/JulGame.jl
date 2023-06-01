@@ -1,6 +1,9 @@
 module SceneBuilderModule
     using ..SceneManagement.julGame
     using ..SceneManagement.julGame.Math
+    using ..SceneManagement.julGame.ColliderModule
+    using ..SceneManagement.julGame.EntityModule
+    using ..SceneManagement.julGame.RigidbodyModule
     using ..SceneManagement.SceneReaderModule
 
     include("../Macros.jl")
