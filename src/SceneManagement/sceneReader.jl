@@ -47,7 +47,7 @@ module SceneReaderModule
     function deserializeComponent(component)
         ASSETS = joinpath(@__DIR__, "..", "assets")
         if component.type == "Transform"
-            newComponent = Transform(component.position, component.scale, component.rotation)
+            newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
         elseif component.type == "Animation"
             newComponent = Animation(component.frames, component.animatedFPS)
         elseif component.type == "Animator"
