@@ -102,7 +102,7 @@ module Editor
             while glfwWindowShouldClose(window) == 0
                 resetCamera = false
                 update = []
-                if (length(gameInfo) > 0)
+                if (gameInfo !== nothing && length(gameInfo) > 0)
                     entities = gameInfo[1]
                     mousePosition = gameInfo[2]
                     cameraPositionX = gameInfo[3].x
