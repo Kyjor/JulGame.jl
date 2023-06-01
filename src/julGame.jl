@@ -13,7 +13,7 @@ module julGame
     #export MainLoop
     export MAIN
 
-    export component
+    export Component
     include("Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SoundSourceModule, SpriteModule, TransformModule
@@ -21,4 +21,9 @@ module julGame
     include("Entity.jl") 
     using .EntityModule   
     export Entity
+
+    export SceneManagement
+    include("SceneManagement/SceneManagement.jl")
+    using .SceneManagement
+    export SceneBuilderModule, SceneReaderModule, SceneWriterModule 
 end

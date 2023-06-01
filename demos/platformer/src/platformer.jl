@@ -1,13 +1,13 @@
 module platformer
-    include("../scenes/level_0.jl")
+    using julGame.SceneBuilder
     #include("../scenes/level_1.jl")
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
 
-    function run(isEditor = false)
+    function run(isUsingEditor = false)
         SDL2.init()
-        level = level_0()
-        return level.init(isEditor)
+        scene = scene(pwd(), "scene.json")
+        return scene.init(isUsingEditor)
     end
 
     julia_main() = run()

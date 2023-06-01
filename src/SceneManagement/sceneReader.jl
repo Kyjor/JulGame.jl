@@ -1,73 +1,75 @@
-using JSON3
-using StructTypes
-using julGame.AnimatorModule
-using julGame.AnimationModule
-using julGame.Math
-using julGame.ColliderModule
-using julGame.RigidbodyModule
-using julGame.TransformModule
-using julGame.SpriteModule
+module SceneReaderModule
+    using JSON3
+    using StructTypes
+    using ..SceneManagement.julGame.AnimatorModule
+    using ..SceneManagement.julGame.AnimationModule
+    using ..SceneManagement.julGame.Math
+    using ..SceneManagement.julGame.ColliderModule
+    using ..SceneManagement.julGame.RigidbodyModule
+    using ..SceneManagement.julGame.TransformModule
+    using ..SceneManagement.julGame.SpriteModule
 
-function deserializeEntities(filePath)
-    entitiesJson = read(filePath, String)
+    function deserializeEntities(filePath)
+        entitiesJson = read(filePath, String)
 
-    entities = JSON3.read(entitiesJson)
-    res = []
+        entities = JSON3.read(entitiesJson)
+        res = []
 
-    for entity in entities.Entities
-        components = []
-        scripts = []
+        for entity in entities.Entities
+            components = []
+            scripts = []
 
-        for component in entity.components
-            push!(components, deserializeComponent(component))
+            for component in entity.components
+                push!(components, deserializeComponent(component))
+            end
+            
+            for script in entity.scripts
+                push!(scripts, script.name)
+            end
+            
+            newEntity = Entity(entity.name)
+            newEntity.id = entity.id
+            newEntity.removeComponent(Transform)
+            newEntity.isActive = entity.isActive
+            newEntity.scripts = scripts
+            for component in components
+                newEntity.addComponent(component)
+            end
+            ASSETS = joinpath(@__DIR__, "..", "assets")
+            
+            push!(res, newEntity)
         end
-        
-        for script in entity.scripts
-            push!(scripts, script.name)
-        end
-        
-        newEntity = Entity(entity.name)
-        newEntity.id = entity.id
-        newEntity.removeComponent(Transform)
-        newEntity.isActive = entity.isActive
-        newEntity.scripts = scripts
-        for component in components
-            newEntity.addComponent(component)
-        end
+
+        return res
+    end
+
+    function deserializeComponent(component)
         ASSETS = joinpath(@__DIR__, "..", "assets")
-        
-        push!(res, newEntity)
-    end
-
-    return res
-end
-
-function deserializeComponent(component)
-    ASSETS = joinpath(@__DIR__, "..", "assets")
-    if component.type == "Transform"
-        newComponent = StructTypes.constructfrom(Transform, component)
-    elseif component.type == "Animation"
-        newComponent = Animation(component.frames, component.animatedFPS)
-    elseif component.type == "Animator"
-        newAnimations = []
-        for animation in component.animations
-           newAnimationFrames = []
-           for animationFrame in animation.frames
-              push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.w, animationFrame.h))
-           end
-           push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+        if component.type == "Transform"
+            newComponent = StructTypes.constructfrom(Transform, component)
+        elseif component.type == "Animation"
+            newComponent = Animation(component.frames, component.animatedFPS)
+        elseif component.type == "Animator"
+            newAnimations = []
+            for animation in component.animations
+            newAnimationFrames = []
+            for animationFrame in animation.frames
+                push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.w, animationFrame.h))
+            end
+            push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+            end
+            newComponent = Animator(newAnimations)
+        elseif component.type == "Collider"
+            newComponent = Collider(Vector2f(component.size.x, component.size.y), component.tag)
+        elseif component.type == "Rigidbody"
+            newComponent = Rigidbody(convert(Float64, component.mass))
+        elseif component.type == "SoundSource"
+            newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
+        elseif component.type == "Sprite"
+            crop = isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.z)
+            newComponent = Sprite(component.imagePath, crop)
+            newComponent.isFlipped = component.isFlipped
         end
-        newComponent = Animator(newAnimations)
-    elseif component.type == "Collider"
-        newComponent = Collider(Vector2f(component.size.x, component.size.y), component.tag)
-    elseif component.type == "Rigidbody"
-        newComponent = Rigidbody(convert(Float64, component.mass))
-    elseif component.type == "SoundSource"
-        newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
-    elseif component.type == "Sprite"
-        crop = isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.z)
-        newComponent = Sprite(component.imagePath, crop)
-        newComponent.isFlipped = component.isFlipped
+        return newComponent
     end
-    return newComponent
 end

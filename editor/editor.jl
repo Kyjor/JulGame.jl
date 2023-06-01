@@ -9,13 +9,13 @@ using ImGuiOpenGLBackend.ModernGL
 using Printf
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
-include("../src/julGame.jl")
 using julGame
 using julGame.AnimationModule
 using julGame.AnimatorModule
 using julGame.ColliderModule
 using julGame.EntityModule
 using julGame.RigidbodyModule
+using julGame.SceneWriterModule
 using julGame.SpriteModule
 using julGame.TransformModule
 
@@ -25,7 +25,6 @@ include("../src/Macros.jl")
 include("./MainMenuBar.jl")
 include("./EntityContextMenu.jl")
 include("./ComponentInputs.jl")
-include("../demos/platformer/src/sceneWriter.jl")
 
 @static if Sys.isapple()
     # OpenGL 3.2 + GLSL 150
