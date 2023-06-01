@@ -6,7 +6,12 @@ module platformer
 
     function run(isUsingEditor = false)
         SDL2.init()
-        scene = Scene(@__DIR__, "scene.json")
+        if isUsingEditor
+            dir = @__DIR__
+        else
+            dir = pwd()
+        end
+        scene = Scene(dir, "scene.json")
         return scene.init(isUsingEditor)
     end
 
