@@ -1,26 +1,13 @@
 module platformer
-include("../../../src/julGame.jl")
-include("../scenes/level_0.jl")
-#include("../scenes/level_1.jl")
-using SimpleDirectMediaLayer
-const SDL2 = SimpleDirectMediaLayer 
+    include("../scenes/level_0.jl")
+    #include("../scenes/level_1.jl")
+    using SimpleDirectMediaLayer
+    const SDL2 = SimpleDirectMediaLayer 
 
-
-    function run()
-        level = level_0()
-        initSDL()
-        return level.init(false)
-    end
-
-    function runEditor()
+    function run(isEditor = false)
         SDL2.init()
         level = level_0()
-
-        return level.init(true)
-    end
-
-    function initSDL()
-        SDL2.init()
+        return level.init(isEditor)
     end
 
     julia_main() = run()

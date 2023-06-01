@@ -8,7 +8,6 @@ using julGame.RigidbodyModule
 using julGame.SoundSourceModule
 using julGame.SpriteModule
 using julGame.TransformModule
-using SimpleDirectMediaLayer
 
 include("../../../src/UI/TextBox.jl")
 include("../../../src/Camera.jl")

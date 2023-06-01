@@ -49,7 +49,7 @@ end
 #? GLFW.SetErrorCallback(error_callback)
 
 # create window
-game = platformer.runEditor()
+game = platformer.run(true)
 window = glfwCreateWindow(1920, 1080, "Demo", C_NULL, C_NULL)
 @assert window != C_NULL
 glfwMakeContextCurrent(window)
