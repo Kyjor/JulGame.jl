@@ -1,5 +1,5 @@
 module MainLoop
-	using .julGame: Math
+	using ..julGame: Math
 
 	include("Enums.jl")
 
