@@ -18,11 +18,11 @@ mutable struct Sprite
     
     function Sprite(basePath, imagePath, crop::Math.Vector4)
         this = new()
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         
         this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
@@ -37,7 +37,8 @@ mutable struct Sprite
 
     function Sprite(imagePath, isFlipped)
         this = new()
-        
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+
         this.isFlipped = isFlipped
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
@@ -53,7 +54,8 @@ mutable struct Sprite
 
     function Sprite(imagePath)
         this = new()
-        
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+
         this.isFlipped = false
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
