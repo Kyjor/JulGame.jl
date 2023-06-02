@@ -10,7 +10,6 @@ module SceneBuilderModule
     include("../Camera.jl")
     include("../Main.jl")
 
-    #include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "..", "scripts"); join=true)))
     export Scene
     mutable struct Scene
         main
@@ -56,7 +55,7 @@ module SceneBuilderModule
                     # println(main.scene.entities[1].getSprite())
 
                     main.level = this
-                    main.scene.entities = deserializeEntities(joinpath(this.srcPath, "..", "scenes", this.scene))
+                    main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "..", "scenes", this.scene))
                     main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), main.scene.entities[31].getTransform())
                     #main.scene.entities[31].addScript(playerMovement)
                     main.scene.rigidbodies = []

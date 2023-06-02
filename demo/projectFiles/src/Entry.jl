@@ -4,14 +4,14 @@ module Entry
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
 
-    function run(isUsingEditor = false)
+    function run(isUsingEditor = false, scene)
         SDL2.init()
         if isUsingEditor
             dir = @__DIR__
         else
             dir = pwd()
         end
-        main = Scene(dir, "scene.json")
+        main = Scene(dir, scene)
         return main.init(isUsingEditor)
     end
 

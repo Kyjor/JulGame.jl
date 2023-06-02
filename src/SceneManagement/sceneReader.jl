@@ -10,7 +10,7 @@ module SceneReaderModule
     using ..SceneManagement.julGame.SpriteModule
 
     export deserializeEntities
-    function deserializeEntities(filePath)
+    function deserializeEntities(basePath, filePath)
         entitiesJson = read(filePath, String)
 
         entities = JSON3.read(entitiesJson)
@@ -21,7 +21,7 @@ module SceneReaderModule
             scripts = []
 
             for component in entity.components
-                push!(components, deserializeComponent(component))
+                push!(components, deserializeComponent(basePath, component))
             end
             
             for script in entity.scripts
@@ -36,7 +36,6 @@ module SceneReaderModule
             for component in components
                 newEntity.addComponent(component)
             end
-            ASSETS = joinpath(@__DIR__, "..", "assets")
             
             push!(res, newEntity)
         end
@@ -45,8 +44,7 @@ module SceneReaderModule
     end
 
     export deserializeComponent
-    function deserializeComponent(component)
-        ASSETS = joinpath(@__DIR__, "..", "assets")
+    function deserializeComponent(basePath, component)
         if component.type == "Transform"
             newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
         elseif component.type == "Animation"
@@ -66,10 +64,10 @@ module SceneReaderModule
         elseif component.type == "Rigidbody"
             newComponent = Rigidbody(convert(Float64, component.mass))
         elseif component.type == "SoundSource"
-            newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
+            newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
         elseif component.type == "Sprite"
             crop = isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.z)
-            newComponent = Sprite(component.imagePath, crop)
+            newComponent = Sprite(basePath, component.imagePath, crop)
             newComponent.isFlipped = component.isFlipped
         end
         return newComponent

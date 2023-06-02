@@ -5,6 +5,7 @@ const SCALE_UNITS = Ref{Float64}(64.0)[]
 
 export Sprite
 mutable struct Sprite
+    basePath
     crop
     isFlipped::Bool
     image
@@ -15,12 +16,13 @@ mutable struct Sprite
     renderer
     texture
     
-    function Sprite(imagePath, crop::Math.Vector4)
+    function Sprite(basePath, imagePath, crop::Math.Vector4)
         this = new()
         
+        this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
-        this.image = IMG_Load(this.imagePath)
+        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             println(string("Couldn't open image! SDL Error: ", error))

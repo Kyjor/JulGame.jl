@@ -4,6 +4,7 @@ module SoundSourceModule
 
     export SoundSource
     mutable struct SoundSource
+        basePath
         channel
         isMusic
         path
@@ -11,13 +12,14 @@ module SoundSourceModule
         volume
 
         # Music
-        function SoundSource(path, volume::Integer)
+        function SoundSource(basePath, path, volume::Integer)
             this = new()
 
+            this.basePath = basePath
             this.channel = C_NULL
             this.isMusic = true
             this.path = path
-            this.sound = SDL2.Mix_LoadMUS(path)
+            this.sound = SDL2.Mix_LoadMUS(joinpath(basePath, "projectFiles", "assets", "sounds", path))
             this.volume = volume
 
             if (this.sound == C_NULL)
