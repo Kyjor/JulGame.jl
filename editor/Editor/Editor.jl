@@ -11,6 +11,7 @@ module Editor
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
     using ..julGame.EntityModule
+    using ..julGame.SceneWriterModule
 
     include("../../src/Macros.jl")
     include("./MainMenuBar.jl")
@@ -20,7 +21,7 @@ module Editor
     function setProjectPath(projectPath)
         game = C_NULL
         try
-            include(projectPath); 
+            include(joinpath(projectPath, "projectFiles", "src", "Entry.jl")); 
             game = Base.@invokelatest Entry.run(true);
         catch e
             println(e)
@@ -119,8 +120,7 @@ module Editor
                 CImGui.NewFrame()
     
                 event = @event begin
-                println("Save") 
-                serializeEntities(entities)
+                    serializeEntities(entities, projectPath, "scene")
                 end
                 events = [event]
                 # show the big demo window

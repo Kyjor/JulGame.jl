@@ -2,8 +2,8 @@ module SceneWriterModule
     using JSON3
 
     export serializeEntities
-    function serializeEntities(entities::Array)
-    
+    function serializeEntities(entities::Array, projectPath, sceneName)
+        
         entitiesDict = []
 
         count = 1
@@ -12,9 +12,12 @@ module SceneWriterModule
         count += 1
         end
         entitiesJson = Dict( "Entities" => entitiesDict)
-
-        open(joinpath(@__DIR__, "..", "scenes", "scene.json"), "w") do io
-            JSON3.pretty(io, entitiesJson)
+        try
+            open(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName).json"), "w") do io
+                JSON3.pretty(io, entitiesJson)
+            end
+        catch e
+            println(e)
         end
     end
 
