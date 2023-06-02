@@ -22,6 +22,7 @@ mutable struct Sprite
         this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)

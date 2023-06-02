@@ -33,7 +33,6 @@ module SceneBuilderModule
                     ASSETS = joinpath(this.srcPath, "..", "assets")
                     main = MAIN
                     #gameManager = GameManager()
-                    println("hi")
                     #playerMovement = PlayerMovement()
                     # playerMovement.gameManager = gameManager
                     

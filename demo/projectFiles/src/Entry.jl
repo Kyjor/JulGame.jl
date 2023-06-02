@@ -11,7 +11,7 @@ module Entry
         else
             dir = pwd()
         end
-        main = Scene(dir, scene)
+        main = Scene(joinpath(dir, "..", ".."), scene)
         return main.init(isUsingEditor)
     end
 
