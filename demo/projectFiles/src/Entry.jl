@@ -4,7 +4,7 @@ module Entry
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
 
-    function run(isUsingEditor = false, scene)
+    function run(scene, isUsingEditor = false)
         SDL2.init()
         if isUsingEditor
             dir = @__DIR__

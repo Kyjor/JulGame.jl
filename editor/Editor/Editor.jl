@@ -22,7 +22,7 @@ module Editor
         game = C_NULL
         try
             include(joinpath(projectPath, "projectFiles", "src", "Entry.jl")); 
-            game = Base.@invokelatest Entry.run(true, "scene.json");
+            game = Base.@invokelatest Entry.run("scene.json", true);
         catch e
             println(e)
         end
