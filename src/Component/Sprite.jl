@@ -16,7 +16,7 @@ mutable struct Sprite
     renderer
     texture
     
-    function Sprite(basePath, imagePath, crop::Math.Vector4)
+    function Sprite(basePath, imagePath, crop)
         this = new()
         println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         
