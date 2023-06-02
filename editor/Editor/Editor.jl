@@ -7,17 +7,27 @@ module Editor
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
-    using GLFW
     #using Printf
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
     using ..julGame.EntityModule
 
-    include("../../demo/projectFiles/src/Entry.jl")
     include("../../src/Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
+
+    function setProjectPath(projectPath)
+        game = C_NULL
+        try
+            include(projectPath); 
+            game = Base.@invokelatest Entry.run(true);
+        catch e
+            println(e)
+        end
+
+        return game
+    end
 
     function run()
         @static if Sys.isapple()
@@ -28,21 +38,21 @@ module Editor
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # required on Mac
         else
-            #OpenGL 3.0 + GLSL 130
+            # OpenGL 3.0 + GLSL 130
             glsl_version = 130
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0)
     
-            #glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # 3.0+ only
-       end
+            # glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
+            # glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # 3.0+ only
+        end
     
         # setup GLFW error callback
-        error_callback(err::GLFW.GLFWError) = @error "GLFW ERROR: code $(err.code) msg: $(err.description)"
-        GLFW.SetErrorCallback(error_callback)
+        #? error_callback(err::GLFW.GLFWError) = @error "GLFW ERROR: code $(err.code) msg: $(err.description)"
+        #? GLFW.SetErrorCallback(error_callback)
     
         # create window
-        game = Entry.run(true)
+        game = C_NULL #Entry.run(true)
         window = glfwCreateWindow(1920, 1080, "Demo", C_NULL, C_NULL)
         @assert window != C_NULL
         glfwMakeContextCurrent(window)
@@ -55,8 +65,8 @@ module Editor
         io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
     
         # setup Dear ImGui style
-        # CImGui.StyleColorsDark()
-        CImGui.StyleColorsClassic()
+        CImGui.StyleColorsDark()
+        # CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
     
         # load Fonts
@@ -87,6 +97,7 @@ module Editor
             entities = []
             gameInfo = []
             mousePosition = C_NULL
+            projectPath = ""
             relativeX = 0
             relativeY = 0
             show_demo_window = true
@@ -149,7 +160,7 @@ module Editor
                         CImGui.PopID()
                         CImGui.Separator()
                         
-                        FieldsInStruct=fieldnames(julGame.EntityModule.Entity);
+                        FieldsInStruct=fieldnames(julGame.Entity);
                         for i = 1:length(FieldsInStruct)
                             #Check field i
                             Value=getfield(currentEntitySelected, FieldsInStruct[i])
@@ -204,8 +215,27 @@ module Editor
                     CImGui.End()
                 end
                 @cstatic begin
+                    CImGui.Begin("Project Location")  # create a window called "Project Location"
+                    CImGui.Text("Enter full path to project Entry.jl file")
+                    buf = "$(projectPath)"*"\0"^(128)
+                    CImGui.InputText("", buf, length(buf))
+                    currentTextInTextBox = ""
+                    for characterIndex = 1:length(buf)
+                        if Int(buf[characterIndex]) == 0 
+                            if characterIndex != 1
+                                currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                            end
+                            break
+                        end
+                    end
+                    projectPath = currentTextInTextBox
+                    CImGui.Button("Open Project") && (game = setProjectPath(projectPath))
+                    CImGui.End()
+                end
+
+                @cstatic begin
                     CImGui.Begin("Hierarchy")  
-                    CImGui.Button("New entity") && (game.createNewEntity())
+                    #CImGui.Button("New entity") && (game.createNewEntity())
     
                     if CImGui.TreeNode("Level_0")
                         #ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
@@ -283,7 +313,7 @@ module Editor
     
                 glfwMakeContextCurrent(window)
                 glfwSwapBuffers(window)
-                gameInfo = game.editorLoop(update)
+                gameInfo = game == C_NULL ? [] : game.editorLoop(update)
             end
         catch e
             @error "Error in renderloop!" exception=e

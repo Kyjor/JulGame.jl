@@ -1,0 +1,2293 @@
+{
+    "Entities": [
+        {
+            "isActive": true,
+            "name": "tile1",
+            "scripts": [
+            ],
+            "id": 1,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -9,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile2",
+            "scripts": [
+            ],
+            "id": 2,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -8,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile3",
+            "scripts": [
+            ],
+            "id": 3,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -7,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile4",
+            "scripts": [
+            ],
+            "id": 4,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -6,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile5",
+            "scripts": [
+            ],
+            "id": 5,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -5,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile6",
+            "scripts": [
+            ],
+            "id": 6,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -4,
+                        "y": 11
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile7",
+            "scripts": [
+            ],
+            "id": 7,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -3,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile8",
+            "scripts": [
+            ],
+            "id": 8,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -2,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile9",
+            "scripts": [
+            ],
+            "id": 9,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -1,
+                        "y": 11
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile10",
+            "scripts": [
+            ],
+            "id": 10,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile11",
+            "scripts": [
+            ],
+            "id": 11,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 1,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile12",
+            "scripts": [
+            ],
+            "id": 12,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 2,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile13",
+            "scripts": [
+            ],
+            "id": 13,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 3,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile14",
+            "scripts": [
+            ],
+            "id": 14,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 4,
+                        "y": 9
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile15",
+            "scripts": [
+            ],
+            "id": 15,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 5,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile16",
+            "scripts": [
+            ],
+            "id": 16,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 6,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile17",
+            "scripts": [
+            ],
+            "id": 17,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 7,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile18",
+            "scripts": [
+            ],
+            "id": 18,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 8,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile19",
+            "scripts": [
+            ],
+            "id": 19,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 9,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile20",
+            "scripts": [
+            ],
+            "id": 20,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 10,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile21",
+            "scripts": [
+            ],
+            "id": 21,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 11,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile22",
+            "scripts": [
+            ],
+            "id": 22,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 12,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile23",
+            "scripts": [
+            ],
+            "id": 23,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 13,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile24",
+            "scripts": [
+            ],
+            "id": 24,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 14,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile25",
+            "scripts": [
+            ],
+            "id": 25,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 15,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile26",
+            "scripts": [
+            ],
+            "id": 26,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 16,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile27",
+            "scripts": [
+            ],
+            "id": 27,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 17,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile28",
+            "scripts": [
+            ],
+            "id": 28,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 18,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile29",
+            "scripts": [
+            ],
+            "id": 29,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 19,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile30",
+            "scripts": [
+            ],
+            "id": 30,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 20,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "player",
+            "scripts": [
+                {
+                    "name": "String"
+                }
+            ],
+            "id": 31,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -1,
+                        "y": 9
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "animations": [
+                        {
+                            "animatedFPS": 3,
+                            "frames": [
+                                {
+                                    "x": 8,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 16,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 4,
+                            "frames": [
+                                {
+                                    "x": 16,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 24,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 32,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 40,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 48,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 56,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 3,
+                            "frames": [
+                                {
+                                    "x": 8,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 16,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 4,
+                            "frames": [
+                                {
+                                    "x": 16,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 24,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 32,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 40,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 48,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 56,
+                                    "y": 9,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 3,
+                            "frames": [
+                                {
+                                    "x": 8,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 16,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 4,
+                            "frames": [
+                                {
+                                    "x": 16,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 24,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 32,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 40,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 48,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 56,
+                                    "y": 18,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 3,
+                            "frames": [
+                                {
+                                    "x": 8,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 16,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 4,
+                            "frames": [
+                                {
+                                    "x": 16,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 24,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 32,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 40,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 48,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        },
+                        {
+                            "animatedFPS": 0,
+                            "frames": [
+                                {
+                                    "x": 56,
+                                    "y": 27,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        }
+                    ],
+                    "type": "Animator"
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Player.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "player",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                },
+                {
+                    "mass": 1,
+                    "type": "Rigidbody"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "camera target",
+            "scripts": [
+            ],
+            "id": 32,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 7.75
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "curtain left",
+            "scripts": [
+            ],
+            "id": 33,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -7,
+                        "y": 2
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\curtain.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "curtLCol",
+                    "size": {
+                        "x": 0.5,
+                        "y": 8
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "curtain right",
+            "scripts": [
+            ],
+            "id": 34,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 6,
+                        "y": 2
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 2,
+                        "y": 8
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\curtain.png",
+                    "isFlipped": true
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "curtain right col",
+            "scripts": [
+            ],
+            "id": 35,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 7.5,
+                        "y": 2
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 8
+                    }
+                },
+                {
+                    "tag": "curtRCol",
+                    "size": {
+                        "x": 0.5,
+                        "y": 8
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "curtain top",
+            "scripts": [
+            ],
+            "id": 36,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -5,
+                        "y": 1.75
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 11,
+                        "y": 2
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\curtaintop.png",
+                    "isFlipped": false
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "dialogue",
+            "scripts": [
+            ],
+            "id": 37,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 38,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 2,
+                        "y": 9
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 39,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 6
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 40,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 4,
+                        "y": 8
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 41,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 5,
+                        "y": 7
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 42,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 2,
+                        "y": 6
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Gold.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "gold",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 43,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -2,
+                        "y": 7
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "animations": [
+                        {
+                            "animatedFPS": 2,
+                            "frames": [
+                                {
+                                    "x": 32,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 40,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 48,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 56,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        }
+                    ],
+                    "type": "Animator"
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\MoneyBlocks.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "block",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 44,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 7
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "animations": [
+                        {
+                            "animatedFPS": 2,
+                            "frames": [
+                                {
+                                    "x": 0,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 8,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 16,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 24,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        }
+                    ],
+                    "type": "Animator"
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\MoneyBlocks.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "block",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": false,
+            "name": "tile",
+            "scripts": [
+            ],
+            "id": 45,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 2,
+                        "y": 7
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "animations": [
+                        {
+                            "animatedFPS": 2,
+                            "frames": [
+                                {
+                                    "x": 64,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 72,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 80,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                },
+                                {
+                                    "x": 88,
+                                    "y": 0,
+                                    "w": 8,
+                                    "h": 8
+                                }
+                            ]
+                        }
+                    ],
+                    "type": "Animator"
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\MoneyBlocks.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "block",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "game manager",
+            "scripts": [
+            ],
+            "id": 46,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile-15",
+            "scripts": [
+            ],
+            "id": 47,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -15,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile-14",
+            "scripts": [
+            ],
+            "id": 48,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -14,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile-13",
+            "scripts": [
+            ],
+            "id": 49,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -13,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile-12",
+            "scripts": [
+            ],
+            "id": 50,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -12,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile-11",
+            "scripts": [
+            ],
+            "id": 51,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -11,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "tile-10",
+            "scripts": [
+            ],
+            "id": 52,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -10,
+                        "y": 10
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Floor.png",
+                    "isFlipped": false
+                },
+                {
+                    "tag": "ground",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "speaker",
+            "scripts": [
+            ],
+            "id": 53,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": -14,
+                        "y": 9
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 2,
+                        "y": 1
+                    }
+                },
+                {
+                    "crop": {
+                    },
+                    "type": "Sprite",
+                    "imagePath": "F:\\Projects\\Julia\\julGame\\demo\\projectFiles\\scenes\\..\\assets\\images\\Speaker.png",
+                    "isFlipped": false
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "dialogue",
+            "scripts": [
+            ],
+            "id": 54,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "New entity",
+            "scripts": [
+            ],
+            "id": 55,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ]
+        },
+        {
+            "isActive": true,
+            "name": "Test",
+            "scripts": [
+            ],
+            "id": 56,
+            "components": [
+                {
+                    "rotation": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 8
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "tag": "Test",
+                    "size": {
+                        "x": 1,
+                        "y": 1
+                    },
+                    "type": "Collider"
+                }
+            ]
+        }
+    ]
+}
