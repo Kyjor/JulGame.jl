@@ -27,7 +27,7 @@ module julGame
     using .SceneManagement
     export SceneBuilderModule, SceneReaderModule, SceneWriterModule 
 
-    include("../Editor/editor.jl")
+    include("../editor/Editor/Editor.jl")
     using .Editor
     export Editor 
 end

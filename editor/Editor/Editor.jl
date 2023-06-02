@@ -10,22 +10,14 @@ module Editor
     #using Printf
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
-    using ..julGame
-    using ..julGame.AnimationModule
-    using ..julGame.AnimatorModule
-    using ..julGame.ColliderModule
     using ..julGame.EntityModule
-    using ..julGame.RigidbodyModule
-    using ..julGame.SceneWriterModule
-    using ..julGame.SpriteModule
-    using ..julGame.TransformModule
 
-    include("../demos/platformer/src/platformer.jl")
-
-    include("../src/Macros.jl")
+    include("../../demo/projectFiles/src/Entry.jl")
+    include("../../src/Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
+
     function run()
         @static if Sys.isapple()
             # OpenGL 3.2 + GLSL 150
@@ -49,7 +41,7 @@ module Editor
         #? GLFW.SetErrorCallback(error_callback)
     
         # create window
-        game = platformer.run(true)
+        game = Entry.run(true)
         window = glfwCreateWindow(1920, 1080, "Demo", C_NULL, C_NULL)
         @assert window != C_NULL
         glfwMakeContextCurrent(window)
@@ -304,4 +296,6 @@ module Editor
             SDL2.SDL_Quit()
         end
     end
+
+    julia_main() = run()
 end

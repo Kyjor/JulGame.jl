@@ -1,3 +1,3 @@
-using platformer
+using Entry
 
-platformer.julia_main()
+Entry.julia_main()

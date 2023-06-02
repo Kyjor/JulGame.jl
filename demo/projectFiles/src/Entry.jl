@@ -1,4 +1,4 @@
-module platformer
+module Entry
     using julGame.SceneBuilderModule
     #include("../scenes/level_1.jl")
     using SimpleDirectMediaLayer

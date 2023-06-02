@@ -32,3 +32,5 @@ editor/imgui.ini
 imgui.ini
 
 editor/julGame/
+
+editor/Editor/imgui_log.txt
