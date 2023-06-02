@@ -11,8 +11,8 @@ module Entry
         else
             dir = pwd()
         end
-        scene = Scene(dir, "scene.json")
-        return scene.init(isUsingEditor)
+        main = Scene(dir, "scene.json")
+        return main.init(isUsingEditor)
     end
 
     julia_main() = run()

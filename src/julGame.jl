@@ -10,7 +10,6 @@ module julGame
     include("Main.jl") 
     using .MainLoop: Main   
     const MAIN = Main(2.0)
-    #export MainLoop
     export MAIN
 
     export Component

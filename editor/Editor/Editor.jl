@@ -7,6 +7,7 @@ module Editor
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
+    using GLFW
     #using Printf
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
@@ -27,18 +28,18 @@ module Editor
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # required on Mac
         else
-            # OpenGL 3.0 + GLSL 130
+            #OpenGL 3.0 + GLSL 130
             glsl_version = 130
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0)
     
-            # glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
-            # glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # 3.0+ only
-        end
+            #glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # 3.0+ only
+       end
     
         # setup GLFW error callback
-        #? error_callback(err::GLFW.GLFWError) = @error "GLFW ERROR: code $(err.code) msg: $(err.description)"
-        #? GLFW.SetErrorCallback(error_callback)
+        error_callback(err::GLFW.GLFWError) = @error "GLFW ERROR: code $(err.code) msg: $(err.description)"
+        GLFW.SetErrorCallback(error_callback)
     
         # create window
         game = Entry.run(true)
@@ -54,8 +55,8 @@ module Editor
         io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
     
         # setup Dear ImGui style
-        CImGui.StyleColorsDark()
-        # CImGui.StyleColorsClassic()
+        # CImGui.StyleColorsDark()
+        CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
     
         # load Fonts

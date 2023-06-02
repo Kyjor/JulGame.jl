@@ -21,6 +21,11 @@ mutable struct Sprite
         this.isFlipped = false
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
+        error = unsafe_string(SDL_GetError())
+        if !isempty(error)
+            println(string("Couldn't open image! SDL Error: ", error))
+        end
+
         this.crop = crop
         this.position = Math.Vector2f(0.0, 0.0)
 
@@ -33,6 +38,10 @@ mutable struct Sprite
         this.isFlipped = isFlipped
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
+        error = unsafe_string(SDL_GetError())
+        if !isempty(error)
+            println(string("Couldn't open image! SDL Error: ", error))
+        end
         this.crop = C_NULL
         this.position = Math.Vector2f(0.0, 0.0)
 
@@ -45,6 +54,10 @@ mutable struct Sprite
         this.isFlipped = false
         this.imagePath = imagePath
         this.image = IMG_Load(this.imagePath)
+        error = unsafe_string(SDL_GetError())
+        if !isempty(error)
+            println(string("Couldn't open image! SDL Error: ", error))
+        end
         this.crop = C_NULL
         this.position = Math.Vector2f(0.0, 0.0)
 

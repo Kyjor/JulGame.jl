@@ -1,5 +1,5 @@
 module Editor
-    include("../../../src/julGame.jl")
+    using julGame
 
     function run()
        julGame.Editor.run()
