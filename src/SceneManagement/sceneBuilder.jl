@@ -29,8 +29,8 @@ module SceneBuilderModule
             if s == :init 
                 function(isUsingEditor = false)
                     #file loading
-                    include.(filter(contains(r".jl$"), readdir(joinpath(this.srcPath, "..", "scripts"); join=true)))
-                    ASSETS = joinpath(this.srcPath, "..", "assets")
+                    include.(filter(contains(r".jl$"), readdir(joinpath(this.srcPath, "projectFiles", "scripts"); join=true)))
+                    ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
                     #gameManager = GameManager()
                     #playerMovement = PlayerMovement()
