@@ -220,8 +220,8 @@ module Editor
                     CImGui.Text("Enter full path to project Entry.jl file")
                     buf = "$(projectPath)"*"\0"^(128)
                     buf1 = "$(sceneFileName)"*"\0"^(128)
-                    CImGui.InputText("", buf, length(buf))
-                    CImGui.InputText("", buf1, length(buf1))
+                    CImGui.InputText("Project Path", buf, length(buf))
+                    CImGui.InputText("Scene File Name", buf1, length(buf1))
                     currentTextInTextBox = ""
                     currentTextInTextBox1 = ""
                     for characterIndex = 1:length(buf)
