@@ -12,17 +12,17 @@ module Editor
     const SDL2 = SimpleDirectMediaLayer
     using ..julGame.EntityModule
     using ..julGame.SceneWriterModule
+    using ..julGame.SceneLoaderModule
 
     include("../../src/Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
 
-    function setProjectPath(projectPath)
+    function loadScene(projectPath, sceneFileName)
         game = C_NULL
         try
-            include(joinpath(projectPath, "projectFiles", "src", "Entry.jl")); 
-            game = Base.@invokelatest Entry.run(projectPath, "scene.json", true);
+            game = SceneLoaderModule.loadScene(projectPath, sceneFileName, true);
         catch e
             println(e)
         end
@@ -99,6 +99,7 @@ module Editor
             gameInfo = []
             mousePosition = C_NULL
             projectPath = ""
+            sceneFileName = ""
             relativeX = 0
             relativeY = 0
             show_demo_window = true
@@ -120,7 +121,7 @@ module Editor
                 CImGui.NewFrame()
     
                 event = @event begin
-                    serializeEntities(entities, projectPath, "scene")
+                    serializeEntities(entities, projectPath, sceneFileName)
                 end
                 events = [event]
                 # show the big demo window
@@ -218,8 +219,11 @@ module Editor
                     CImGui.Begin("Project Location")  # create a window called "Project Location"
                     CImGui.Text("Enter full path to project Entry.jl file")
                     buf = "$(projectPath)"*"\0"^(128)
+                    buf1 = "$(sceneFileName)"*"\0"^(128)
                     CImGui.InputText("", buf, length(buf))
+                    CImGui.InputText("", buf1, length(buf1))
                     currentTextInTextBox = ""
+                    currentTextInTextBox1 = ""
                     for characterIndex = 1:length(buf)
                         if Int(buf[characterIndex]) == 0 
                             if characterIndex != 1
@@ -228,8 +232,17 @@ module Editor
                             break
                         end
                     end
+                    for characterIndex = 1:length(buf1)
+                        if Int(buf1[characterIndex]) == 0 
+                            if characterIndex != 1
+                                currentTextInTextBox1 = String(SubString(buf1, 1, characterIndex-1))
+                            end
+                            break
+                        end
+                    end
                     projectPath = currentTextInTextBox
-                    CImGui.Button("Open Project") && (game = setProjectPath(projectPath))
+                    sceneFileName = currentTextInTextBox1
+                    CImGui.Button("Open Project") && (game = loadScene(projectPath, sceneFileName))
                     CImGui.End()
                 end
 
