@@ -1,5 +1,5 @@
 module SceneLoaderModule
-    using ..SceneManagement.SceneSceneBuilderModule
+    using ..SceneManagement.SceneBuilderModule
     #include("../scenes/level_1.jl")
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
