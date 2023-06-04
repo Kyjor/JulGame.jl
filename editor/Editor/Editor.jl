@@ -217,7 +217,7 @@ module Editor
                 end
                 @cstatic begin
                     CImGui.Begin("Project Location")  # create a window called "Project Location"
-                    CImGui.Text("Enter full path to project Entry.jl file")
+                    CImGui.Text("Enter full path to project")
                     buf = "$(projectPath)"*"\0"^(128)
                     buf1 = "$(sceneFileName)"*"\0"^(128)
                     CImGui.InputText("Project Path", buf, length(buf))
