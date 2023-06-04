@@ -13,7 +13,8 @@ module SceneWriterModule
         end
         entitiesJson = Dict( "Entities" => entitiesDict)
         try
-            open(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName).json"), "w") do io
+            println("writing to $(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName)"))")
+            open(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName)"), "w") do io
                 JSON3.pretty(io, entitiesJson)
             end
         catch e

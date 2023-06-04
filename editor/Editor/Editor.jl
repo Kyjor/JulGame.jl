@@ -217,10 +217,10 @@ module Editor
                 end
                 @cstatic begin
                     CImGui.Begin("Project Location")  # create a window called "Project Location"
-                    CImGui.Text("Enter full path to project")
+                    CImGui.Text("Enter full path to root project folder and the name of scene file to load.")
                     buf = "$(projectPath)"*"\0"^(128)
                     buf1 = "$(sceneFileName)"*"\0"^(128)
-                    CImGui.InputText("Project Path", buf, length(buf))
+                    CImGui.InputText("Project Root Folder", buf, length(buf))
                     CImGui.InputText("Scene File Name", buf1, length(buf1))
                     currentTextInTextBox = ""
                     currentTextInTextBox1 = ""
@@ -242,7 +242,7 @@ module Editor
                     end
                     projectPath = currentTextInTextBox
                     sceneFileName = currentTextInTextBox1
-                    CImGui.Button("Open Project") && (game = loadScene(projectPath, sceneFileName))
+                    CImGui.Button("Load Scene") && (game = loadScene(projectPath, sceneFileName))
                     CImGui.End()
                 end
 
