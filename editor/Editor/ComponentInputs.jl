@@ -42,6 +42,14 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
+    elseif componentType == "Sprite"
+        fieldsInComponent=fieldnames(julGame.SpriteModule.Sprite);
+        ShowSpriteProperties(fieldsInComponent, currentEntitySelected)
+    elseif componentType == "SoundSource"
+        fieldsInComponent=fieldnames(julGame.SoundSourceModule.SoundSource);
+        for i = 1:length(fieldsInComponent)
+            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
+        end
     end
 
 end
@@ -144,4 +152,27 @@ end
 function getType(item)
     componentFieldType = "$(typeof(item).name.wrapper)"
     return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
+end
+
+function ShowSpriteProperties(spriteFields, currentEntitySelected)
+    for field in spriteFields
+        fieldString = "$(field)"
+
+        if fieldString == "imagePath"
+            CImGui.Text("imagePath")
+            buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
+            CImGui.InputText("imagePath", buf, length(buf))
+            currentTextInTextBox = ""
+            for characterIndex = 1:length(buf)
+                if Int(buf[characterIndex]) == 0 
+                    if characterIndex != 1
+                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                    end
+                    break
+                end
+            end
+            currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
+            CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
+        end  
+    end
 end

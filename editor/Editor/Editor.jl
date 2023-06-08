@@ -155,7 +155,7 @@ module Editor
                     if currentEntitySelected != C_NULL
                         CImGui.PushID("foo")
                         if CImGui.BeginMenu("Entity Menu")
-                            ShowEntityContextMenu(currentEntitySelected)
+                            ShowEntityContextMenu(projectPath, currentEntitySelected, game)
                             CImGui.EndMenu()
                         end
                         CImGui.PopID()
@@ -248,7 +248,7 @@ module Editor
 
                 @cstatic begin
                     CImGui.Begin("Hierarchy")  
-                    #CImGui.Button("New entity") && (game.createNewEntity())
+                    CImGui.Button("New entity") && (game.createNewEntity())
     
                     if CImGui.TreeNode("Level_0")
                         #ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")

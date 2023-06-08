@@ -32,12 +32,13 @@ module SoundSourceModule
         end
 
         # Sound effect
-        function SoundSource(path, channel::Integer, volume::Integer)
+        function SoundSource(basePath, path, channel::Integer, volume::Integer)
             this = new()
 
             this.isMusic = false
+            this.basePath = basePath
             this.path = path
-            this.sound = SDL2.Mix_LoadWAV(path)
+            this.sound = SDL2.Mix_LoadWAV(joinpath(basePath, "projectFiles", "assets", "sounds", path))
             this.volume = volume
 
             if (this.sound == C_NULL)
@@ -49,8 +50,34 @@ module SoundSourceModule
 
             return this
         end
-    end
 
+        # Music creation for editor
+        function SoundSource(basePath, path, volume::Integer)
+            this = new()
+
+            this.basePath = basePath
+            this.channel = C_NULL
+            this.isMusic = true
+            this.path = path
+            this.volume = volume
+            
+            return this
+        end
+        
+        # Sound effect creation for editor
+        function SoundSource(basePath, channel::Integer, volume::Integer)
+            this = new()
+            
+            this.basePath = basePath
+            this.channel = channel
+            this.isMusic = false
+            this.path = path
+            this.volume = volume
+            
+            return this
+        end
+    end
+    
     function Base.getproperty(this::SoundSource, s::Symbol)
         if s == :toggleSound
             function(loops = 0)

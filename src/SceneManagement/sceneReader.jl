@@ -68,7 +68,7 @@ module SceneReaderModule
         elseif component.type == "Sprite"
             crop = isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.z)
 
-            newComponent = Sprite(basePath, component.imagePath, crop)
+            newComponent = Sprite(basePath, component.imagePath, crop, false)
             newComponent.isFlipped = component.isFlipped
         end
         return newComponent

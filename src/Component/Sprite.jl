@@ -16,55 +16,77 @@ mutable struct Sprite
     renderer
     texture
     
-    function Sprite(basePath, imagePath, crop)
+    function Sprite(basePath, imagePath, crop, isCreatedInEditor)
         this = new()
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         
         this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
+        this.crop = crop
+        this.position = Math.Vector2f(0.0, 0.0)
+        this.image = C_NULL
+        
+        if isCreatedInEditor
+            return this
+        end
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+
         this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
+            SDL_ClearError()
             println(string("Couldn't open image! SDL Error: ", error))
         end
-
-        this.crop = crop
-        this.position = Math.Vector2f(0.0, 0.0)
 
         return this
     end
 
-    function Sprite(imagePath, isFlipped)
+    function Sprite(basePath, imagePath, isFlipped, isCreatedInEditor)
         this = new()
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
-
+        
+        this.basePath = basePath
         this.isFlipped = isFlipped
         this.imagePath = imagePath
-        this.image = IMG_Load(this.imagePath)
-        error = unsafe_string(SDL_GetError())
-        if !isempty(error)
-            println(string("Couldn't open image! SDL Error: ", error))
-        end
         this.crop = C_NULL
         this.position = Math.Vector2f(0.0, 0.0)
+        this.image = C_NULL
+        
+        if isCreatedInEditor
+            return this
+        end
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+
+        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        error = unsafe_string(SDL_GetError())
+        if !isempty(error)
+            SDL_ClearError()
+            println(string("Couldn't open image! SDL Error: ", error))
+        end
 
         return this
     end
 
-    function Sprite(imagePath)
+    function Sprite(basePath, imagePath, isCreatedInEditor)
         this = new()
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
-
+        
+        this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
-        this.image = IMG_Load(this.imagePath)
-        error = unsafe_string(SDL_GetError())
-        if !isempty(error)
-            println(string("Couldn't open image! SDL Error: ", error))
-        end
         this.crop = C_NULL
         this.position = Math.Vector2f(0.0, 0.0)
+        this.image = C_NULL
+        
+        if isCreatedInEditor
+            return this
+        end
+        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+
+        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        error = unsafe_string(SDL_GetError())
+        if !isempty(error)
+            SDL_ClearError()
+            println(string("Couldn't open image! SDL Error: ", error))
+        end
 
         return this
     end
@@ -73,6 +95,10 @@ end
 function Base.getproperty(this::Sprite, s::Symbol)
     if s == :draw
         function()
+            if this.image == C_NULL
+                return
+            end
+
             parentTransform = this.parent.getTransform()
             parentTransform.setPosition(Math.Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
             flip = SDL_FLIP_NONE
@@ -93,6 +119,10 @@ function Base.getproperty(this::Sprite, s::Symbol)
     elseif s == :injectRenderer
         function(renderer)
             this.renderer = renderer
+            if this.image == C_NULL
+                return
+            end
+
             this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
         end
     elseif s == :flip
@@ -102,6 +132,20 @@ function Base.getproperty(this::Sprite, s::Symbol)
    elseif s == :setParent
         function(parent)
             this.parent = parent
+        end
+    elseif s == :loadImage
+        function(imagePath)
+            this.image = IMG_Load(joinpath(this.basePath, "projectFiles", "assets", "images", imagePath))
+            error = unsafe_string(SDL_GetError())
+            if !isempty(error)
+                println(string("Couldn't open image! SDL Error: ", error))
+                SDL_ClearError()
+                this.image = C_NULL
+                return
+            end
+            
+            this.imagePath = imagePath
+            this.texture = SDL_CreateTextureFromSurface(this.renderer, this.image)
         end
     else
         try
