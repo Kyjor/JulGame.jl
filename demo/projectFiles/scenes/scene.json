@@ -1085,7 +1085,7 @@
             "name": "player",
             "scripts": [
                 {
-                    "name": "String"
+                    "name": "PlayerMovement"
                 }
             ],
             "id": 31,

@@ -1,4 +1,8 @@
 module julGame
+    include("Macros.jl")
+    using .Macros: @event
+    export @event
+
     include("Math/Math.jl")
     using .Math: Math
     export Math

@@ -68,7 +68,7 @@ module SceneReaderModule
             if isEditor
                 newComponent = SoundSource(basePath, component.path, component.channel, component.volume, component.isMusic)
             else
-                newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
+                newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(basePath, component.path, component.channel, component.volume)
             end
         elseif component.type == "Sprite"
             crop = isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.z)

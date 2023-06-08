@@ -5,8 +5,11 @@ module SceneBuilderModule
     using ..SceneManagement.julGame.EntityModule
     using ..SceneManagement.julGame.RigidbodyModule
     using ..SceneManagement.SceneReaderModule
-
-    include("../Macros.jl")
+    if isdir(joinpath(pwd(), "..", "scripts"))
+        println("Loading scripts...")
+        include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
+    end
+        
     include("../Camera.jl")
     include("../Main.jl")
 
@@ -29,9 +32,6 @@ module SceneBuilderModule
             if s == :init 
                 function(isUsingEditor = false)
                     #file loading
-                    if !isUsingEditor
-                        include.(filter(contains(r".jl$"), readdir(joinpath(this.srcPath, "projectFiles", "scripts"); join=true)))
-                    end
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
                     #gameManager = GameManager()
@@ -58,7 +58,6 @@ module SceneBuilderModule
                     main.level = this
                     main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
                     main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), main.scene.entities[31].getTransform())
-                    #main.scene.entities[31].addScript(playerMovement)
                     main.scene.rigidbodies = []
                     main.scene.colliders = []
                     for entity in main.scene.entities
@@ -69,13 +68,17 @@ module SceneBuilderModule
                                 push!(main.scene.colliders, component)
                             end
                         end
+
+                    if !isUsingEditor
                         scriptCounter = 1
                         for script in entity.scripts
                             # newScript = eval(Symbol(script))()
-                            # entity.scripts[scriptCounter] = newScript
-                            # newScript.setParent(entity)
-                            # scriptCounter += 1
+                            newScript = eval(Symbol(script))()
+                            entity.scripts[scriptCounter] = newScript
+                            newScript.setParent(entity)
+                            scriptCounter += 1
                         end
+                    end
 
                     end
                     #push!(main.scene.entities, Entity("game manager", Transform(), [], [gameManager]))

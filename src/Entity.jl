@@ -155,8 +155,8 @@ module EntityModule
         elseif s == :update
             function(deltaTime)
                 for script in this.scripts
-    #                script.update(deltaTime)
-            end
+                    script.update(deltaTime)
+                end
             end
         elseif s == :addAnimator
             function()
