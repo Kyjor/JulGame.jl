@@ -47,9 +47,7 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         ShowSpriteProperties(fieldsInComponent, currentEntitySelected)
     elseif componentType == "SoundSource"
         fieldsInComponent=fieldnames(julGame.SoundSourceModule.SoundSource);
-        for i = 1:length(fieldsInComponent)
-            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        end
+        ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
     end
 
 end
@@ -161,7 +159,7 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
         if fieldString == "imagePath"
             CImGui.Text("imagePath")
             buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
-            CImGui.InputText("imagePath", buf, length(buf))
+            CImGui.InputText("Image Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
                 if Int(buf[characterIndex]) == 0 
@@ -173,6 +171,30 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             end
             currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
             CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
+        end  
+    end
+end
+
+function ShowSoundSourceProperties(soundFields, currentEntitySelected)
+    for field in soundFields
+        fieldString = "$(field)"
+
+        if fieldString == "path"
+            CImGui.Text("Sound Path")
+            buf = "$(currentEntitySelected.getComponent("SoundSource").path)"*"\0"^(64)
+            CImGui.InputText("Sound Path Input", buf, length(buf))
+            currentTextInTextBox = ""
+            for characterIndex = 1:length(buf)
+                if Int(buf[characterIndex]) == 0 
+                    if characterIndex != 1
+                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                    end
+                    break
+                end
+            end
+            currentEntitySelected.getComponent("SoundSource").path = currentTextInTextBox
+            CImGui.Button("Load Sound") && (currentEntitySelected.getComponent("SoundSource").loadSound(currentTextInTextBox, false))
+            CImGui.Button("Load Music") && (currentEntitySelected.getComponent("SoundSource").loadSound(currentTextInTextBox, true))
         end  
     end
 end

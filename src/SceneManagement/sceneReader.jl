@@ -6,11 +6,12 @@ module SceneReaderModule
     using ..SceneManagement.julGame.EntityModule
     using ..SceneManagement.julGame.Math
     using ..SceneManagement.julGame.RigidbodyModule
-    using ..SceneManagement.julGame.TransformModule
+    using ..SceneManagement.julGame.SoundSourceModule
     using ..SceneManagement.julGame.SpriteModule
+    using ..SceneManagement.julGame.TransformModule
 
     export deserializeEntities
-    function deserializeEntities(basePath, filePath)
+    function deserializeEntities(basePath, filePath, isEditor)
         entitiesJson = read(filePath, String)
 
         entities = JSON3.read(entitiesJson)
@@ -21,7 +22,7 @@ module SceneReaderModule
             scripts = []
 
             for component in entity.components
-                push!(components, deserializeComponent(basePath, component))
+                push!(components, deserializeComponent(basePath, component, isEditor))
             end
             
             for script in entity.scripts
@@ -44,7 +45,7 @@ module SceneReaderModule
     end
 
     export deserializeComponent
-    function deserializeComponent(basePath, component)
+    function deserializeComponent(basePath, component, isEditor)
         if component.type == "Transform"
             newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
         elseif component.type == "Animation"
@@ -64,7 +65,11 @@ module SceneReaderModule
         elseif component.type == "Rigidbody"
             newComponent = Rigidbody(convert(Float64, component.mass))
         elseif component.type == "SoundSource"
-            newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
+            if isEditor
+                newComponent = SoundSource(basePath, component.path, component.channel, component.volume, component.isMusic)
+            else
+                newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
+            end
         elseif component.type == "Sprite"
             crop = isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.z)
 

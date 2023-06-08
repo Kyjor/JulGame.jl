@@ -7,6 +7,7 @@ module SoundSourceModule
         basePath
         channel
         isMusic
+        parent
         path
         sound
         volume
@@ -18,6 +19,7 @@ module SoundSourceModule
             this.basePath = basePath
             this.channel = C_NULL
             this.isMusic = true
+            this.parent = C_NULL
             this.path = path
             this.sound = SDL2.Mix_LoadMUS(joinpath(basePath, "projectFiles", "assets", "sounds", path))
             this.volume = volume
@@ -37,6 +39,7 @@ module SoundSourceModule
 
             this.isMusic = false
             this.basePath = basePath
+            this.parent = C_NULL
             this.path = path
             this.sound = SDL2.Mix_LoadWAV(joinpath(basePath, "projectFiles", "assets", "sounds", path))
             this.volume = volume
@@ -51,28 +54,30 @@ module SoundSourceModule
             return this
         end
 
-        # Music creation for editor
-        function SoundSource(basePath, path, volume::Integer)
+        # Sound creation for editor
+        function SoundSource(basePath, path, channel, volume, isMusic)
             this = new()
-
+            
             this.basePath = basePath
-            this.channel = C_NULL
-            this.isMusic = true
+            this.channel = channel
+            this.isMusic = isMusic
+            this.parent = C_NULL
             this.path = path
             this.volume = volume
             
             return this
         end
-        
-        # Sound effect creation for editor
-        function SoundSource(basePath, channel::Integer, volume::Integer)
+
+        # Sound creation for editor
+        function SoundSource(basePath)
             this = new()
             
             this.basePath = basePath
-            this.channel = channel
+            this.channel = -1
             this.isMusic = false
-            this.path = path
-            this.volume = volume
+            this.parent = C_NULL
+            this.path = ""
+            this.volume = 100
             
             return this
         end
@@ -98,6 +103,23 @@ module SoundSourceModule
         elseif s == :stopMusic
             function()
                 SDL2.Mix_HaltMusic()
+            end
+        elseif s == :loadSound
+            function(soundPath, isMusic)
+                this.isMusic = isMusic
+                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(this.basePath, "projectFiles", "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(this.basePath, "projectFiles", "assets", "sounds", soundPath))
+                error = unsafe_string(SDL2.SDL_GetError())
+                if !isempty(error)
+                    println(string("Couldn't open sound! SDL Error: ", error))
+                    SDL2.SDL_ClearError()
+                    this.sound = C_NULL
+                    return
+                end
+                this.path = soundPath
+            end
+        elseif s == :setParent
+            function(parent)
+                this.parent = parent
             end
         else
             try

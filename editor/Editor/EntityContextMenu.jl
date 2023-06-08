@@ -19,7 +19,7 @@ function ShowEntityContextMenu(basePath, currentEntitySelected, game)
             currentEntitySelected.addRigidbody()
         end
         if CImGui.MenuItem("SoundSource")
-            currentEntitySelected.addSoundSource()
+            currentEntitySelected.addSoundSource(basePath)
         end
         if CImGui.MenuItem("Sprite")
             currentEntitySelected.addSprite(basePath, game)

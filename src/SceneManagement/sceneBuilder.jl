@@ -56,7 +56,7 @@ module SceneBuilderModule
                     # println(main.scene.entities[1].getSprite())
 
                     main.level = this
-                    main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene))
+                    main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
                     main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), main.scene.entities[31].getTransform())
                     #main.scene.entities[31].addScript(playerMovement)
                     main.scene.rigidbodies = []

@@ -4,6 +4,7 @@ module EntityModule
     using ..julGame.ColliderModule
     using ..julGame.Math
     using ..julGame.RigidbodyModule
+    using ..julGame.SoundSourceModule
     using ..julGame.SpriteModule
     using ..julGame.TransformModule
 
@@ -183,7 +184,7 @@ module EntityModule
                 if this.getComponent(SoundSource) != C_NULL
                     return
                 end
-                this.addComponent(SoundSource(basePath, 1, 100))
+                this.addComponent(SoundSource(basePath))
             end
         elseif s == :addSprite
             function(basePath, game)
