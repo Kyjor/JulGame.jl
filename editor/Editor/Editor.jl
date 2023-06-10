@@ -194,6 +194,27 @@ module Editor
                                         CImGui.TreePop()
                                     end
                                 end
+                            elseif FieldsInStruct[i] == :scripts
+                                if CImGui.TreeNode("Scripts")
+                                    CImGui.Button("Add") && (push!(currentEntitySelected.scripts, ""); break;)
+                                    for i = 1:length(Value)
+                                        component = Value[i]
+                                        buf = "$(Value[i])"*"\0"^(64)
+                                        CImGui.InputText("Script Name", buf, length(buf))
+                                        CImGui.Button("Delete") && (deleteat!(currentEntitySelected.scripts, i); break;)
+                                        currentTextInTextBox = ""
+                                        for characterIndex = 1:length(buf)
+                                            if Int(buf[characterIndex]) == 0 
+                                                if characterIndex != 1
+                                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                                end
+                                                break
+                                            end
+                                        end
+                                        currentEntitySelected.scripts[i] = currentTextInTextBox
+                                    end
+                                    CImGui.TreePop()
+                                end
                             end
                         end
                     end
@@ -281,7 +302,7 @@ module Editor
                                 node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
                                 # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
                                 node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(entities[i].name)")
+                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(entities[i].name)")
                                 CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelected = entities[i]; currentEntitySelectedIndex = i; currentEntityUpdated = true;)
                             end
                             if node_clicked != -1
