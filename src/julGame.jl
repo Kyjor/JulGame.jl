@@ -1,3 +1,4 @@
+__precompile__(false)
 module julGame
     include("Macros.jl")
     using .Macros: @event

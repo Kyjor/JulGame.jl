@@ -92,8 +92,8 @@ module SceneWriterModule
         scriptsDict = []
 
         for script in scripts
-            scriptName = String(split("$(typeof(script))", '.')[length(split("$(typeof(script))", '.'))])
-            push!(scriptsDict, Dict("name" => scriptName))
+            # scriptName = "$(split("$(typeof(script))", '.')[length(split("$(typeof(script))", '.'))])"
+            push!(scriptsDict, Dict("name" => script))
         end
 
         return scriptsDict
