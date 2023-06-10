@@ -198,7 +198,6 @@ module Editor
                                 if CImGui.TreeNode("Scripts")
                                     CImGui.Button("Add") && (push!(currentEntitySelected.scripts, ""); break;)
                                     for i = 1:length(Value)
-                                        component = Value[i]
                                         buf = "$(Value[i])"*"\0"^(64)
                                         CImGui.InputText("Script Name", buf, length(buf))
                                         CImGui.Button("Delete") && (deleteat!(currentEntitySelected.scripts, i); break;)
@@ -331,6 +330,7 @@ module Editor
                 push!(update, editorWindowSizeX)
                 push!(update, editorWindowSizeY)
                 push!(update, resetCamera)
+                push!(update, currentEntitySelectedIndex)
                 # rendering
                 CImGui.Render()
                 glfwMakeContextCurrent(window)

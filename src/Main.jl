@@ -293,6 +293,10 @@ module MainLoop
 						end
 					end
 
+					if SDL_BUTTON_LEFT in this.input.mouseButtons
+
+					end
+
 					if "Button_Jump" in this.input.buttons
 						if "Button_Left" in this.input.buttons
 							this.zoom -= .01
@@ -346,6 +350,19 @@ module MainLoop
 						textBox.render(DEBUG)
 					end
 			
+					SDL_SetRenderDrawColor(this.renderer, 255, 0, 0, SDL_ALPHA_OPAQUE)
+					selectedEntity = update[7] > 0 ? this.scene.entities[update[7]] : C_NULL
+					if selectedEntity != C_NULL
+						pos = selectedEntity.getTransform().getPosition()
+						size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
+						SDL_RenderDrawLines(this.renderer, [
+							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
+							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + size.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
+							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + size.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + size.y * SCALE_UNITS)), 
+							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + size.y * SCALE_UNITS)), 
+							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+					end
+
 					mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 					if DEBUG
 						mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL_Color(0,255,0,255) )
