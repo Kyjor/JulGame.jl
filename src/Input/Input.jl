@@ -25,12 +25,13 @@ end
 function Base.getproperty(this::Input, s::Symbol)
     if s == :pollInput
         function()
-            
+            didMouseEventOccur = false
             event_ref = Ref{SDL_Event}()
             while Bool(SDL_PollEvent(event_ref))
                 evt = event_ref[]
                 this.handleWindowEvents(evt)
                 if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
+                    didMouseEventOccur = true
                     if this.scene.screenButtons != C_NULL
                         x,y = Int[1], Int[1]
                         SDL_GetMouseState(pointer(x), pointer(y))
@@ -54,7 +55,7 @@ function Base.getproperty(this::Input, s::Symbol)
                             if !eventWasInsideThisButton
                                 continue
                             end
-
+                            
                             screenButton.handleEvent(evt, x, y)
                         end
                     end
@@ -70,7 +71,9 @@ function Base.getproperty(this::Input, s::Symbol)
                     this.debug = !this.debug
                 end
             end
-
+            if !didMouseEventOccur
+                this.mouseButtons = []
+            end
             keyboardState = unsafe_wrap(Array, SDL_GetKeyboardState(C_NULL), 290; own = false)
             this.handleKeyEvent(keyboardState)
         end

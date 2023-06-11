@@ -90,7 +90,6 @@ module Editor
         try
             cameraPositionX = 0.0
             cameraPositionY = 0.0
-            currentEntitySelected = C_NULL
             currentEntitySelectedIndex = -1
             currentEntityUpdated = false
             editorWindowSizeX = 0
@@ -113,7 +112,9 @@ module Editor
                     mousePosition = gameInfo[2]
                     cameraPositionX = gameInfo[3].x
                     cameraPositionY = gameInfo[3].y
+                    currentEntitySelectedIndex = gameInfo[4]
                 end 
+                
                 glfwPollEvents()
                 # start the Dear ImGui frame
                 ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
@@ -130,8 +131,8 @@ module Editor
                 @c CImGui.ShowDemoWindow(Ref{Bool}(true))
                 testText = ""
                 mousePositionText = "0,0"
-                if length(entities) > 0 && currentEntitySelected != C_NULL
-                    testText = currentEntitySelected.name
+                if length(entities) > 0 && currentEntitySelectedIndex != -1
+                    testText = entities[currentEntitySelectedIndex].name
                 end
                 if mousePosition != C_NULL
                     mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
@@ -150,12 +151,12 @@ module Editor
                         currentEntityUpdated = false
                     end
                     if currentEntitySelectedIndex != -1
-                        CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelected = C_NULL; currentEntitySelectedIndex = -1;)
+                        CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelectedIndex = -1;)
                     end
-                    if currentEntitySelected != C_NULL
+                    if currentEntitySelectedIndex != -1
                         CImGui.PushID("foo")
                         if CImGui.BeginMenu("Entity Menu")
-                            ShowEntityContextMenu(projectPath, currentEntitySelected, game)
+                            ShowEntityContextMenu(projectPath, entities[currentEntitySelectedIndex], game)
                             CImGui.EndMenu()
                         end
                         CImGui.PopID()
@@ -164,11 +165,11 @@ module Editor
                         FieldsInStruct=fieldnames(julGame.Entity);
                         for i = 1:length(FieldsInStruct)
                             #Check field i
-                            Value=getfield(currentEntitySelected, FieldsInStruct[i])
+                            Value=getfield(entities[currentEntitySelectedIndex], FieldsInStruct[i])
                             
                             if typeof(Value) == Bool
                                 @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
-                                setfield!(currentEntitySelected,FieldsInStruct[i],Value)
+                                setfield!(entities[currentEntitySelectedIndex],FieldsInStruct[i],Value)
                             elseif typeof(Value) == String
                                 buf = "$(Value)"*"\0"^(64)
                                 CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
@@ -181,7 +182,7 @@ module Editor
                                         break
                                     end
                                 end
-                                setfield!(currentEntitySelected,FieldsInStruct[i], currentTextInTextBox)
+                                setfield!(entities[currentEntitySelectedIndex],FieldsInStruct[i], currentTextInTextBox)
                             elseif FieldsInStruct[i] == :components
                                 for i = 1:length(Value)
                                     component = Value[i]
@@ -190,17 +191,17 @@ module Editor
     
                                     if CImGui.TreeNode(componentType)
                                         CImGui.Button("Delete") && (deleteat!(Value, i); break;)
-                                        ShowComponentProperties(currentEntitySelected, component, componentType)
+                                        ShowComponentProperties(entities[currentEntitySelectedIndex], component, componentType)
                                         CImGui.TreePop()
                                     end
                                 end
                             elseif FieldsInStruct[i] == :scripts
                                 if CImGui.TreeNode("Scripts")
-                                    CImGui.Button("Add") && (push!(currentEntitySelected.scripts, ""); break;)
+                                    CImGui.Button("Add") && (push!(entities[currentEntitySelectedIndex].scripts, ""); break;)
                                     for i = 1:length(Value)
                                         buf = "$(Value[i])"*"\0"^(64)
                                         CImGui.InputText("Script Name", buf, length(buf))
-                                        CImGui.Button("Delete") && (deleteat!(currentEntitySelected.scripts, i); break;)
+                                        CImGui.Button("Delete") && (deleteat!(entities[currentEntitySelectedIndex].scripts, i); break;)
                                         currentTextInTextBox = ""
                                         for characterIndex = 1:length(buf)
                                             if Int(buf[characterIndex]) == 0 
@@ -210,7 +211,7 @@ module Editor
                                                 break
                                             end
                                         end
-                                        currentEntitySelected.scripts[i] = currentTextInTextBox
+                                        entities[currentEntitySelectedIndex].scripts[i] = currentTextInTextBox
                                     end
                                     CImGui.TreePop()
                                 end
@@ -221,7 +222,11 @@ module Editor
         #            @c CImGui.InputInt("y", &i0)
                     #CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
                     CImGui.Text(mousePositionText)
-                    push!(update, [currentEntitySelected, 0])
+                    entityToPush = C_NULL
+                    if currentEntitySelectedIndex != -1
+                        entityToPush = entities[currentEntitySelectedIndex]
+                    end
+                    push!(update, [entityToPush, 0])
                     CImGui.End()
                 end
                 @cstatic begin
@@ -302,7 +307,7 @@ module Editor
                                 # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
                                 node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
                                 CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(entities[i].name)")
-                                CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelected = entities[i]; currentEntitySelectedIndex = i; currentEntityUpdated = true;)
+                                CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelectedIndex = i; currentEntityUpdated = true;)
                             end
                             if node_clicked != -1
                                 selection_mask = 1 << node_clicked            # Click to single-select

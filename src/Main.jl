@@ -20,12 +20,15 @@ module MainLoop
 		input
 		lastMousePosition
 		level
+		mousePositionWorld
 		panCounter
 		panThreshold
 		renderer
 		rigidbodies
 		scene::Scene
 		screenButtons
+		selectedEntityIndex
+		selectedEntityUpdated
 		targetFrameRate
 		textBoxes
 		widthMultiplier
@@ -41,6 +44,9 @@ module MainLoop
 			
 			this.input.scene = this.scene
 			this.events = []
+			this.mousePositionWorld = Math.Vector2f()
+			this.selectedEntityIndex = -1
+			this.selectedEntityUpdated = false
 
 			return this
 		end
@@ -294,7 +300,9 @@ module MainLoop
 					end
 
 					if SDL_BUTTON_LEFT in this.input.mouseButtons
-
+						println("Left mouse button pressed")
+						# function that selects an entity if we click on it	
+						this.selectEntityWithClick()
 					end
 
 					if "Button_Jump" in this.input.buttons
@@ -363,11 +371,11 @@ module MainLoop
 							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
 					end
 
-					mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
+					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 					if DEBUG
 						mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL_Color(0,255,0,255) )
 						scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL_Color(0,255,0,255) )
-						mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(mousePositionWorld.x),$(mousePositionWorld.y)", SDL_Color(0,255,0,255) )
+						mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)", SDL_Color(0,255,0,255) )
 						mousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
 						scaledMousePositionTextTexture = SDL_CreateTextureFromSurface(this.renderer,scaledMousePositionText)
 						mousePositionWorldTextTexture = SDL_CreateTextureFromSurface(this.renderer,mousePositionWorldText)
@@ -383,15 +391,31 @@ module MainLoop
 					end
 					
 					SDL_RenderPresent(this.renderer)
-					return [this.entities, mousePositionWorld, cameraPosition]	
-				
+					returnData = [this.entities, this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex]	
+					this.selectedEntityUpdated = false
+					return returnData
 				catch e
 					@error "$(e)"
+					Base.show_backtrace(stderr, catch_backtrace())
 				end
 			end
 		elseif s == :createNewEntity
 			function ()
 				this.level.createNewEntity()
+			end
+		elseif s == :selectEntityWithClick
+			function ()
+				entityIndex = 1
+				for entity in this.entities
+					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
+					if this.mousePositionWorld.x >= entity.getTransform().getPosition().x && this.mousePositionWorld.x <= entity.getTransform().getPosition().x + size.x - 1.0 && this.mousePositionWorld.y >= entity.getTransform().getPosition().y && this.mousePositionWorld.y <= entity.getTransform().getPosition().y + size.y
+						this.selectedEntityIndex = entityIndex
+						this.selectedEntityUpdated = true
+						return
+					end
+					entityIndex += 1
+				end
+				this.selectedEntityIndex = -1
 			end
 		else
 			try
