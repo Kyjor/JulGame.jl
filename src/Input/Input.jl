@@ -2,21 +2,36 @@ include("Button.jl")
 using SimpleDirectMediaLayer.LibSDL2
 
 mutable struct Input
-    buttons::Array{String}
+    buttonsPressedDown::Array{String}
+    buttonsHeldDown::Array{String}
+    buttonsReleased::Array{String}
     debug::Bool
-    mouseButtons::Array
+    mouseButtonsPressedDown::Array
+    mouseButtonsHeldDown::Array
+    mouseButtonsReleased::Array
     mousePosition
+    scanCodes::Array{String}
     scene
     quit::Bool
 
     function Input()
         this = new()
 
-        this.buttons = []
+        this.buttonsPressedDown = []
+        this.buttonsHeldDown = []
+        this.buttonsReleased = []
         this.debug = false
-        this.mouseButtons = []
+        this.mouseButtonsPressedDown = []
+        this.mouseButtonsHeldDown = []
+        this.mouseButtonsReleased = []
         this.mousePosition = Math.Vector2(0,0)
         this.quit = false
+        this.scanCodes = []
+        for m in instances(SDL_Scancode)
+            code = "$(m)"
+            #println(SubString(code, 14, length(code)))
+            push!(this.scanCodes, SubString(code, 14, length(code)))
+        end
 
         return this
     end
@@ -72,7 +87,8 @@ function Base.getproperty(this::Input, s::Symbol)
                 end
             end
             if !didMouseEventOccur
-                this.mouseButtons = []
+                this.mouseButtonsPressedDown = []
+                this.mouseButtonsReleased = []
             end
             keyboardState = unsafe_wrap(Array, SDL_GetKeyboardState(C_NULL), 290; own = false)
             this.handleKeyEvent(keyboardState)
@@ -139,11 +155,21 @@ function Base.getproperty(this::Input, s::Symbol)
                 if !(button in buttons)
                     push!(buttons, button)
                 end
+            else
+                button = "Button_Up"
+                if button in this.buttonsHeldDown
+                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
+                end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_A, SDL_SCANCODE_LEFT])
                 button = "Button_Left"
                 if !(button in buttons)
                     push!(buttons, button)
+                end
+            else
+                button = "Button_Left"
+                if button in this.buttonsHeldDown
+                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
                 end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_S, SDL_SCANCODE_DOWN])
@@ -151,11 +177,21 @@ function Base.getproperty(this::Input, s::Symbol)
                 if !(button in buttons)
                     push!(buttons, button)
                 end
+            else
+                button = "Button_Down"
+                if button in this.buttonsHeldDown
+                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
+                end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_D, SDL_SCANCODE_RIGHT])
                 button = "Button_Right"
                 if !(button in buttons)
                     push!(buttons, button)
+                end
+            else 
+                button = "Button_Right"
+                if button in this.buttonsHeldDown
+                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
                 end
             end
             if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_SPACE])
@@ -163,35 +199,93 @@ function Base.getproperty(this::Input, s::Symbol)
                 if !(button in buttons)
                     push!(buttons, button)
                 end
+            else
+                button = "Button_Jump"
+                if button in this.buttonsHeldDown
+                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
+                end
             end
 
-            this.buttons = buttons
+            for button in buttons
+                if !(button in this.buttonsHeldDown)
+                    push!(this.buttonsHeldDown, button)
+                end
+            end
+            this.buttonsPressedDown = buttons
         end
     elseif s == :handleMouseEvent
         function(event)
             mouseButtons = []
+            mouseButtonsUp = []
             mouseButton = C_NULL
+            mouseButtonUp = C_NULL
 
-            if event.button.button == SDL_BUTTON_LEFT
-                mouseButton = SDL_BUTTON_LEFT
+            if event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_MIDDLE || event.button.button == SDL_BUTTON_RIGHT
                 if !(mouseButton in mouseButtons)
-                    push!(mouseButtons, mouseButton)
-                end
-            end
-            if event.button.button == SDL_BUTTON_MIDDLE
-                mouseButton = SDL_BUTTON_MIDDLE
-                if !(mouseButton in mouseButtons)
-                    push!(mouseButtons, mouseButton)
-                end
-            end
-            if event.button.button == SDL_BUTTON_RIGHT
-                mouseButton = SDL_BUTTON_RIGHT
-                if !(mouseButton in mouseButtons)
-                    push!(mouseButtons, mouseButton)
+                    if event.type == SDL_MOUSEBUTTONDOWN
+                        mouseButton = event.button.button
+                        push!(mouseButtons, mouseButton)
+                    elseif event.type == SDL_MOUSEBUTTONUP
+                        mouseButtonUp = event.button.button
+                        push!(mouseButtonsUp, mouseButtonUp)
+                    end
                 end
             end
 
-            this.mouseButtons = mouseButtons
+            this.mouseButtonsPressedDown = mouseButtons
+            for mouseButton in mouseButtons
+                if !(mouseButton in this.mouseButtonsHeldDown)
+                    push!(this.mouseButtonsHeldDown, mouseButton)
+                end
+            end
+            for mouseButton in mouseButtonsUp
+                if mouseButton in this.mouseButtonsHeldDown
+                    deleteat!(this.mouseButtonsHeldDown, findfirst(x -> x == mouseButton, this.mouseButtonsHeldDown))
+                end
+            end
+            this.mouseButtonsReleased = mouseButtonsUp
+        end
+    elseif s == :getButtonHeldDown
+        function(button)
+            if button in this.buttonsHeldDown
+                return true
+            end
+            return false
+        end
+    elseif s == :getButtonPressed
+        function(button)
+            if button in this.buttonsPressedDown
+                return true
+            end
+            return false
+        end
+    elseif s == :getButtonReleased
+        function(button)
+            if button in this.buttonsReleased
+                return true
+            end
+            return false
+        end
+    elseif s == :getMouseButton
+        function(button)
+            if button in this.mouseButtonsHeldDown
+                return true
+            end
+            return false
+        end
+    elseif s == :getMouseButtonPressed
+        function(button)
+            if button in this.mouseButtonsPressedDown
+                return true
+            end
+            return false
+        end
+    elseif s == :getMouseButtonReleased
+        function(button)
+            if button in this.mouseButtonsReleased
+                return true
+            end
+            return false
         end
     else
         try

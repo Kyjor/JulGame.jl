@@ -18,7 +18,9 @@ module MainLoop
 		font
 		heightMultiplier
 		input
+		isDraggingEntity
 		lastMousePosition
+		lastMousePositionWorld
 		level
 		mousePositionWorld
 		panCounter
@@ -45,6 +47,7 @@ module MainLoop
 			this.input.scene = this.scene
 			this.events = []
 			this.mousePositionWorld = Math.Vector2f()
+			this.lastMousePositionWorld = Math.Vector2f()
 			this.selectedEntityIndex = -1
 			this.selectedEntityUpdated = false
 
@@ -279,7 +282,7 @@ module MainLoop
 					SDL_RenderClear(this.renderer)
 
 					cameraPosition = this.scene.camera.position
-					if SDL_BUTTON_MIDDLE in this.input.mouseButtons
+					if SDL_BUTTON_MIDDLE in this.input.mouseButtonsHeldDown
 						xDiff = this.lastMousePosition.x - this.input.mousePosition.x
 						xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 0.1 : -0.1)
 						yDiff = this.lastMousePosition.y - this.input.mousePosition.y
@@ -297,29 +300,50 @@ module MainLoop
 							cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + diff)
 							this.panCounter = Math.Vector2f(this.panCounter.x, 0)
 						end
-					end
-
-					if SDL_BUTTON_LEFT in this.input.mouseButtons
+					elseif this.input.getMouseButtonPressed(SDL_BUTTON_LEFT)
 						println("Left mouse button pressed")
 						# function that selects an entity if we click on it	
 						this.selectEntityWithClick()
+					elseif this.input.getMouseButton(SDL_BUTTON_LEFT) && this.selectedEntityIndex != -1
+						snapping = false
+						if this.input.getButtonHeldDown("Button_LCTRL")
+							snapping = true
+						end
+						xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
+						yDiff = this.lastMousePositionWorld.y - this.mousePositionWorld.y
+
+						this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+
+						entityToMoveTransform = this.entities[this.selectedEntityIndex].getTransform()
+						if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
+							diff = this.panCounter.x > this.panThreshold ? -1 : 1
+							entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
+							this.panCounter = Math.Vector2f(0, this.panCounter.y)
+						end
+						if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
+							diff = this.panCounter.y > this.panThreshold ? -1 : 1
+							entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
+							this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+						end
+					elseif SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
+						println("Left mouse button released")
 					end
 
-					if "Button_Jump" in this.input.buttons
-						if "Button_Left" in this.input.buttons
+					if "Button_Jump" in this.input.buttonsHeldDown
+						if "Button_Left" in this.input.buttonsHeldDown
 							this.zoom -= .01
 							SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
-						elseif "Button_Right" in this.input.buttons
+						elseif "Button_Right" in this.input.buttonsHeldDown
 							this.zoom += .01
 							SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 						end
-					elseif "Button_Left" in this.input.buttons
+					elseif this.input.getButtonHeldDown("Button_Left")
 						cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
-					elseif "Button_Right" in this.input.buttons
+					elseif this.input.getButtonHeldDown("Button_Right")
 						cameraPosition = Math.Vector2f(cameraPosition.x + 0.25, cameraPosition.y)
-					elseif "Button_Down" in this.input.buttons
+					elseif this.input.getButtonHeldDown("Button_Down")
 						cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.25)
-					elseif "Button_Up" in this.input.buttons
+					elseif this.input.getButtonHeldDown("Button_Up")
 						cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.25)
 					end
 			
@@ -371,6 +395,7 @@ module MainLoop
 							SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
 					end
 
+					this.lastMousePositionWorld = this.mousePositionWorld
 					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 					if DEBUG
 						mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL_Color(0,255,0,255) )
