@@ -93,7 +93,7 @@ module SceneWriterModule
 
         for script in scripts
             # scriptName = "$(split("$(typeof(script))", '.')[length(split("$(typeof(script))", '.'))])"
-            push!(scriptsDict, Dict("name" => script))
+            push!(scriptsDict, Dict("name" => script.name, "parameters" => script.parameters))
         end
 
         return scriptsDict

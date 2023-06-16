@@ -10,6 +10,11 @@ module SceneReaderModule
     using ..SceneManagement.julGame.SpriteModule
     using ..SceneManagement.julGame.TransformModule
 
+
+    function scriptObj(name::String, parameters::Array)
+        () -> (name; parameters)
+    end
+
     export deserializeEntities
     function deserializeEntities(basePath, filePath, isEditor)
         entitiesJson = read(filePath, String)
@@ -26,7 +31,12 @@ module SceneReaderModule
             end
             
             for script in entity.scripts
-                push!(scripts, script.name)
+                scriptParameters = []
+                for scriptParameter in script.parameters
+                    push!(scriptParameters, scriptParameter)
+                end
+                scriptObject = scriptObj(script.name, scriptParameters)
+                push!(scripts, scriptObject)
             end
             
             newEntity = Entity(entity.name)

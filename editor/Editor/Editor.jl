@@ -19,6 +19,21 @@ module Editor
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
 
+    # function createAnonymousObject(args...)
+    #     for (i, arg) in enumerate(args)
+    #         println("Arg #$i = $(arg[1])")
+    #         var"$(arg[1])" = arg[2]
+    #     end
+
+    #     () -> (begin
+    #         var"$(arg[1])";
+    #     end for (i, arg) in enumerate(args))
+    # end
+
+    function scriptObj(name::String, parameters::Array)
+        () -> (name; parameters)
+    end
+
     function loadScene(projectPath, sceneFileName)
         game = C_NULL
         try
@@ -197,21 +212,48 @@ module Editor
                                 end
                             elseif FieldsInStruct[i] == :scripts
                                 if CImGui.TreeNode("Scripts")
-                                    CImGui.Button("Add") && (push!(entities[currentEntitySelectedIndex].scripts, ""); break;)
+                                    CImGui.Button("Add Script") && (push!(entities[currentEntitySelectedIndex].scripts, scriptObj("",[])); break;)
                                     for i = 1:length(Value)
-                                        buf = "$(Value[i])"*"\0"^(64)
-                                        CImGui.InputText("Script Name", buf, length(buf))
-                                        CImGui.Button("Delete") && (deleteat!(entities[currentEntitySelectedIndex].scripts, i); break;)
-                                        currentTextInTextBox = ""
-                                        for characterIndex = 1:length(buf)
-                                            if Int(buf[characterIndex]) == 0 
-                                                if characterIndex != 1
-                                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                        if CImGui.TreeNode("Script $(i)")
+                                            buf = "$(Value[i].name)"*"\0"^(64)
+                                            CImGui.Button("Delete $(i)") && (deleteat!(entities[currentEntitySelectedIndex].scripts, i); break;)
+                                            CImGui.InputText("Script $(i)", buf, length(buf))
+                                            currentTextInTextBox = ""
+                                            for characterIndex = 1:length(buf)
+                                                if Int(buf[characterIndex]) == 0 
+                                                    if characterIndex != 1
+                                                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                                    end
+                                                    break
                                                 end
-                                                break
                                             end
+                                            
+                                            entities[currentEntitySelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, entities[currentEntitySelectedIndex].scripts[i].parameters)
+                                            if CImGui.TreeNode("Script $(i) parameters")
+                                                params = entities[currentEntitySelectedIndex].scripts[i].parameters
+                                                CImGui.Button("Add New Script Parameter") && (push!(params, ""); entities[currentEntitySelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+
+                                                for j = 1:length(entities[currentEntitySelectedIndex].scripts[i].parameters)
+                                                    buf = "$(entities[currentEntitySelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
+                                                    CImGui.Button("pDelete $(j)") && (deleteat!(params, j); entities[currentEntitySelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                                                    CImGui.InputText("Parameter $(j)", buf, length(buf))
+                                                    currentTextInTextBox = ""
+                                                    for characterIndex = 1:length(buf)
+                                                        if Int(buf[characterIndex]) == 0 
+                                                            if characterIndex != 1
+                                                                currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                                            end
+                                                            break
+                                                        end
+                                                    end
+                                                    params[j] = currentTextInTextBox
+                                                    entities[currentEntitySelectedIndex].scripts[i] = scriptObj(entities[currentEntitySelectedIndex].scripts[i].name, params)
+
+                                                end
+                                                CImGui.TreePop()
+                                            end
+                                            CImGui.TreePop()
                                         end
-                                        entities[currentEntitySelectedIndex].scripts[i] = currentTextInTextBox
                                     end
                                     CImGui.TreePop()
                                 end
@@ -275,7 +317,7 @@ module Editor
                     CImGui.Begin("Hierarchy")  
                     CImGui.Button("New entity") && (game.createNewEntity())
     
-                    if CImGui.TreeNode("Level_0")
+                    if CImGui.TreeNode("Scene")
                         #ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
                         align_label_with_current_x_position= @cstatic align_label_with_current_x_position=false begin
                             #@c CImGui.Checkbox("Align label with current X position)", &align_label_with_current_x_position)
