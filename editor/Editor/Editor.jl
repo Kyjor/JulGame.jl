@@ -140,10 +140,10 @@ module Editor
                     serializeEntities(entities, projectPath, sceneFileName)
                 end
                 events = [event]
-                # show the big demo window
                 @c ShowMainMenuBar(Ref{Bool}(true), events)
     
-                @c CImGui.ShowDemoWindow(Ref{Bool}(true))
+                # Uncomment to see widgets that can be used.
+                # @c CImGui.ShowDemoWindow(Ref{Bool}(true)) 
                 testText = ""
                 mousePositionText = "0,0"
                 if length(entities) > 0 && currentEntitySelectedIndex != -1
@@ -159,7 +159,7 @@ module Editor
                     CImGui.Begin("Item")  # create a window called "Item" and append into it.
     
                     CImGui.Text(testText)  # display some text
-                
+                    
                     # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
                     
                     if currentEntityUpdated 
@@ -167,8 +167,12 @@ module Editor
                     end
                     if currentEntitySelectedIndex != -1
                         CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelectedIndex = -1;)
-                    end
-                    if currentEntitySelectedIndex != -1
+                        CImGui.NewLine()
+                        CImGui.NewLine()
+                        tempEntity = entities[currentEntitySelectedIndex]
+                        CImGui.Button("Move Up") && currentEntitySelectedIndex > 1 && (entities[currentEntitySelectedIndex] = entities[currentEntitySelectedIndex - 1]; entities[currentEntitySelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= 1;)
+                        CImGui.Button("Move Down") && currentEntitySelectedIndex < length(entities) && (entities[currentEntitySelectedIndex] = entities[currentEntitySelectedIndex + 1]; entities[currentEntitySelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += 1;)
+
                         CImGui.PushID("foo")
                         if CImGui.BeginMenu("Entity Menu")
                             ShowEntityContextMenu(projectPath, entities[currentEntitySelectedIndex], game)
@@ -325,7 +329,7 @@ module Editor
                         end
             
                         @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
-                            node_clicked = -1  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
+                            node_clicked = currentEntitySelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
                             CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
                             for i = 0:5
                                 continue
