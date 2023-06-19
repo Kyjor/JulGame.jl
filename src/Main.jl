@@ -113,13 +113,15 @@ module MainLoop
 				this.panCounter = Math.Vector2f(0, 0)
 				this.panThreshold = .1
 
-				for script in scripts
-					if script.initialize != C_NULL
-						try
-							script.initialize()
-						catch e
-							println("Error initializing script: ", script.name)
-							Base.show_backtrace(stdout, catch_backtrace())
+				if !isUsingEditor
+					for script in scripts
+						if script.initialize != C_NULL
+							try
+								script.initialize()
+							catch e
+								println("Error initializing script: ", script.name)
+								Base.show_backtrace(stdout, catch_backtrace())
+							end
 						end
 					end
 				end
