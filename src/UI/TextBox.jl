@@ -6,10 +6,12 @@ module TextBoxModule
     export TextBox      
     mutable struct TextBox
         alpha
+        autoSizeText
         font
         fontPath
         fontSize
         isCentered    
+        isTextUpdated
         name
         position
         renderer
@@ -18,7 +20,6 @@ module TextBoxModule
         sizePercentage
         text
         textTexture
-        updatedText
         zoom
 
         function TextBox(name, fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool) # TODO: replace bool with enum { left, center, right, etc }
@@ -27,13 +28,14 @@ module TextBoxModule
             this.alpha = 255
             this.fontPath = fontPath
             this.fontSize = fontSize
+            this.autoSizeText = false
             this.isCentered = isCentered
+            this.isTextUpdated = false
             this.name = name
             this.position = position
             this.size = size
             this.sizePercentage = sizePercentage
             this.text = text
-            this.updatedText = text
             this.zoom = 1.0
 
             return this
@@ -52,8 +54,9 @@ module TextBoxModule
                         SDL_Point(this.position.x, this.position.y)], 5)
                 end
 
-                if this.updatedText != this.text
-                    this.updateText(this.updatedText)
+                if this.isTextUpdated
+                    this.updateText(this.text)
+                    this.isTextUpdated = false
                 end
                 # @assert 
                 SDL_RenderCopy(
@@ -93,13 +96,19 @@ module TextBoxModule
                 this.renderText = TTF_RenderText_Blended( this.font, this.text, SDL_Color(255,255,255,this.alpha))
                 this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
 
-                w,h = Int32[1], Int32[1]
-                TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
-                this.size = Math.Vector2(w[1], h[1])
-                
+                if this.autoSizeText
+                    w,h = Int32[1], Int32[1]
+                    TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
+                    this.size = Math.Vector2(w[1], h[1])
+                end
                 if this.isCentered 
                     this.position = Math.Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y)
                 end
+            end
+        elseif s == :setVector2Value
+            function(field, x, y)
+                setfield!(this, field, Math.Vector2(x,y))
+                println("set $(field) to $(getfield(this, field))")
             end
         else
             try

@@ -31,6 +31,7 @@ module MainLoop
 		screenButtons
 		selectedEntityIndex
 		selectedEntityUpdated
+		selectedTextBoxIndex
 		targetFrameRate
 		textBoxes
 		widthMultiplier
@@ -49,6 +50,7 @@ module MainLoop
 			this.mousePositionWorld = Math.Vector2f()
 			this.lastMousePositionWorld = Math.Vector2f()
 			this.selectedEntityIndex = -1
+			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
 
 			return this
@@ -304,7 +306,8 @@ module MainLoop
 						println("Left mouse button pressed")
 						# function that selects an entity if we click on it	
 						this.selectEntityWithClick()
-					elseif this.input.getMouseButton(SDL_BUTTON_LEFT) && this.selectedEntityIndex != -1
+					elseif this.input.getMouseButton(SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
+						# TODO: Make this work for textboxes
 						snapping = false
 						if this.input.getButtonHeldDown("Button_LCTRL")
 							snapping = true
@@ -439,10 +442,21 @@ module MainLoop
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorld.x >= entity.getTransform().getPosition().x && this.mousePositionWorld.x <= entity.getTransform().getPosition().x + size.x - 1.0 && this.mousePositionWorld.y >= entity.getTransform().getPosition().y && this.mousePositionWorld.y <= entity.getTransform().getPosition().y + size.y
 						this.selectedEntityIndex = entityIndex
+						this.selectedTextBoxIndex = -1
 						this.selectedEntityUpdated = true
 						return
 					end
 					entityIndex += 1
+				end
+				textBoxIndex = 1
+				for textBox in this.textBoxes
+					if this.mousePositionWorld.x >= textBox.position.x && this.mousePositionWorld.x <= textBox.position.x + textBox.size.x && this.mousePositionWorld.y >= textBox.position.y && this.mousePositionWorld.y <= textBox.position.y + textBox.size.y
+						this.selectedTextBoxIndex = textBoxIndex
+						this.selectedEntityIndex = -1
+
+						return
+					end
+					textBoxIndex += 1
 				end
 				this.selectedEntityIndex = -1
 			end

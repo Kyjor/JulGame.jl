@@ -36,12 +36,9 @@ module SceneBuilderModule
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
                     
-                    # gameManager.textBox = textBoxes[1]
-                    # main.scene.textBoxes = textBoxes
-
                     main.level = this
                     main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
-                    main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), main.scene.entities[31].getTransform())
+                    main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), C_NULL)
                     main.scene.rigidbodies = []
                     main.scene.colliders = []
                     for entity in main.scene.entities
