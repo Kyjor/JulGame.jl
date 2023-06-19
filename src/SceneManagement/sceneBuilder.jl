@@ -37,7 +37,9 @@ module SceneBuilderModule
                     main = MAIN
                     
                     main.level = this
-                    main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
+                    scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
+                    main.scene.entities = scene[1]
+                    main.scene.textBoxes = scene[2]
                     main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), C_NULL)
                     main.scene.rigidbodies = []
                     main.scene.colliders = []
@@ -90,8 +92,8 @@ module SceneBuilderModule
                     push!(this.main.entities, Entity("New entity", C_NULL))
                 end
             elseif s == :createNewTextBox
-                function ()
-                    textBox = TextBox("TextBox", joinpath(@__DIR__, "..", "Fonts", "VT323", "VT323-Regular.ttf"), 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true)
+                function (fontPath)
+                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true, true)
                     textBox.initialize(this.main.renderer, this.main.zoom)
                     push!(this.main.textBoxes, textBox)
                 end

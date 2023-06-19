@@ -8,6 +8,7 @@ module SceneReaderModule
     using ..SceneManagement.julGame.RigidbodyModule
     using ..SceneManagement.julGame.SoundSourceModule
     using ..SceneManagement.julGame.SpriteModule
+    using ..SceneManagement.julGame.UI.TextBoxModule
     using ..SceneManagement.julGame.TransformModule
 
 
@@ -15,14 +16,16 @@ module SceneReaderModule
         () -> (name; parameters)
     end
 
-    export deserializeEntities
-    function deserializeEntities(basePath, filePath, isEditor)
+    export deserializeScene
+    function deserializeScene(basePath, filePath, isEditor)
         entitiesJson = read(filePath, String)
 
-        entities = JSON3.read(entitiesJson)
+        json = JSON3.read(entitiesJson)
+        entities =[]
+        textBoxes = []
         res = []
 
-        for entity in entities.Entities
+        for entity in json.Entities
             components = []
             scripts = []
 
@@ -48,7 +51,26 @@ module SceneReaderModule
                 newEntity.addComponent(component)
             end
             
-            push!(res, newEntity)
+            push!(entities, newEntity)
+        end
+        textBoxes = deserializeTextBoxes(basePath, json.TextBoxes)
+
+        push!(res, entities)
+        push!(res, textBoxes)
+        return res
+    end
+
+    function deserializeTextBoxes(basePath, jsonTextBoxes)
+        res = []
+
+        for textBox in jsonTextBoxes
+            try
+                newTextBox = TextBox(textBox.name, basePath, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), Vector2(textBox.size.x, textBox.size.y), Vector2(textBox.sizePercentage.x, textBox.sizePercentage.y), textBox.text, textBox.isCentered, textBox.isDefaultFont)        
+                push!(res, newTextBox)
+            catch e 
+                println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
+            end
         end
 
         return res

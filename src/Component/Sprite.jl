@@ -29,7 +29,6 @@ mutable struct Sprite
         if isCreatedInEditor
             return this
         end
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
 
         this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
@@ -54,7 +53,6 @@ mutable struct Sprite
         if isCreatedInEditor
             return this
         end
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
 
         this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
@@ -79,7 +77,6 @@ mutable struct Sprite
         if isCreatedInEditor
             return this
         end
-        println(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
 
         this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())

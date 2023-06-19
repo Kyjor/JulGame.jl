@@ -155,7 +155,12 @@ module EntityModule
         elseif s == :update
             function(deltaTime)
                 for script in this.scripts
-                    script.update(deltaTime)
+                    try
+                        script.update(deltaTime)
+                    catch e
+                        println(e)
+                        Base.show_backtrace(stdout, catch_backtrace())
+                    end
                 end
             end
         elseif s == :addAnimator

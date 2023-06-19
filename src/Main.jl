@@ -84,10 +84,14 @@ module MainLoop
 				SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 				this.font = TTF_OpenFont(fontPath, fontSize)
-
+				
+				scripts = []
 				for entity in this.scene.entities
 					if entity.getSprite() != C_NULL
 						entity.getSprite().injectRenderer(this.renderer)
+					end
+					for script in entity.scripts
+						push!(scripts, script)
 					end
 				end
 				
@@ -108,6 +112,17 @@ module MainLoop
 				this.lastMousePosition = Math.Vector2(0, 0)
 				this.panCounter = Math.Vector2f(0, 0)
 				this.panThreshold = .1
+
+				for script in scripts
+					if script.initialize != C_NULL
+						try
+							script.initialize()
+						catch e
+							println("Error initializing script: ", script.name)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
+					end
+				end
 
 				if !isUsingEditor
 					this.run()
@@ -432,8 +447,8 @@ module MainLoop
 				this.level.createNewEntity()
 			end
 		elseif s == :createNewTextBox
-			function ()
-				this.level.createNewTextBox()
+			function (fontPath)
+				this.level.createNewTextBox(fontPath)
 			end
 		elseif s == :selectEntityWithClick
 			function ()

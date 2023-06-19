@@ -2,16 +2,40 @@ module SceneWriterModule
     using JSON3
 
     export serializeEntities
-    function serializeEntities(entities::Array, projectPath, sceneName)
+    function serializeEntities(entities::Array, textBoxes::Array, projectPath, sceneName)
         
         entitiesDict = []
+        textBoxesDict = []
 
         count = 1
         for entity in entities
         push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents(entity.components), "scripts" => serializeEntityScripts(entity.scripts)))
         count += 1
         end
-        entitiesJson = Dict( "Entities" => entitiesDict)
+        count = 1
+        for textBox in textBoxes
+        push!(textBoxesDict, Dict(
+            "id" => count, 
+            "alpha" => textBox.alpha, 
+            "autoSizeText" => textBox.autoSizeText, 
+            "fontPath" => textBox.fontPath, 
+            "fontSize" => textBox.fontSize, 
+            "isCentered" => textBox.isCentered,
+            "isDefaultFont" => textBox.isDefaultFont,
+            "isTextUpdated" => textBox.isTextUpdated,
+            "name" => textBox.name,
+            "position" => Dict("x" => textBox.position.x, "y" => textBox.position.y),
+            "size" => Dict("x" => textBox.size.x, "y" => textBox.size.y),
+            "sizePercentage" => Dict("x" => textBox.sizePercentage.x, "y" => textBox.sizePercentage.y),
+            "text" => textBox.text,
+            "zoom" => textBox.zoom
+            ))
+        count += 1
+        end
+        entitiesJson = Dict( 
+            "Entities" => entitiesDict,
+            "TextBoxes" => textBoxesDict
+            )
         try
             println("writing to $(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName)"))")
             open(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName)"), "w") do io

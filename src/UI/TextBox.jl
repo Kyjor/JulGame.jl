@@ -7,10 +7,13 @@ module TextBoxModule
     mutable struct TextBox
         alpha
         autoSizeText
+        basePath
         font
         fontPath
         fontSize
+        id
         isCentered    
+        isDefaultFont
         isTextUpdated
         name
         position
@@ -22,14 +25,17 @@ module TextBoxModule
         textTexture
         zoom
 
-        function TextBox(name, fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name, basePath, fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool, isDefaultFont = false) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
+            this.basePath = isDefaultFont ? joinpath(@__DIR__, "..", "Fonts") : basePath
             this.fontPath = fontPath
             this.fontSize = fontSize
             this.autoSizeText = false
+            this.id = 0
             this.isCentered = isCentered
+            this.isDefaultFont = isDefaultFont
             this.isTextUpdated = false
             this.name = name
             this.position = position
@@ -68,7 +74,8 @@ module TextBoxModule
             function(renderer, zoom)
                 this.zoom = zoom
                 this.renderer = renderer
-                font = TTF_OpenFont(this.fontPath, this.fontSize)
+                path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "projectFiles", "assets", "fonts", this.fontPath)
+                font = TTF_OpenFont(path, this.fontSize)
                 println(unsafe_string(SDL_GetError()))
                 this.font = font
                 this.renderText = TTF_RenderText_Blended(this.font, this.text, SDL_Color(255,255,255,this.alpha))

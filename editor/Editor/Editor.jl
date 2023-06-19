@@ -145,7 +145,7 @@ module Editor
                 CImGui.NewFrame()
     
                 event = @event begin
-                    serializeEntities(entities, projectPath, sceneFileName)
+                    serializeEntities(entities, textBoxes, projectPath, sceneFileName)
                 end
                 events = [event]
                 @c ShowMainMenuBar(Ref{Bool}(true), events)
@@ -329,7 +329,7 @@ module Editor
 
                     CImGui.Begin("Hierarchy")  
                     CImGui.Button("New entity") && (game.createNewEntity())
-                    CImGui.Button("New textbox") && (game.createNewTextBox())
+                    CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("VT323", "VT323-Regular.ttf")))
                     # TODO: CImGui.Button("New button") && (game.createNewEntity())
     
                 ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
