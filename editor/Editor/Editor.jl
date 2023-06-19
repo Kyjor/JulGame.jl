@@ -13,11 +13,13 @@ module Editor
     using ..julGame.EntityModule
     using ..julGame.SceneWriterModule
     using ..julGame.SceneLoaderModule
+    using ..julGame.TextBoxModule
 
     include("../../src/Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
+    include("./TextBoxFields.jl")
     include("./Utils.jl")
 
     # function createObject(args...)
@@ -108,6 +110,8 @@ module Editor
             cameraPositionY = 0.0
             currentEntitySelectedIndex = -1
             currentEntityUpdated = false
+            currentTextBoxSelectedIndex = -1
+            currentTextBoxUpdated = false
             editorWindowSizeX = 0
             editorWindowSizeY = 0
             entities = []
@@ -119,8 +123,7 @@ module Editor
             sceneFileName = ""
             relativeX = 0
             relativeY = 0
-            show_demo_window = true
-            show_another_window = false
+
             clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
             while glfwWindowShouldClose(window) == 0
                 resetCamera = false
@@ -162,39 +165,40 @@ module Editor
                 # we use a Begin/End pair to created a named window.
                 @cstatic f=Cfloat(0.0) counter=Cint(0) begin
                     CImGui.Begin("Item")  # create a window called "Item" and append into it.
-
-                    CImGui.Text(testText)  # display some text
-                    
-                    # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
+                    CImGui.Text(testText)
                     
                     if currentEntityUpdated 
                         currentEntityUpdated = false
                     end
-                    if currentEntitySelectedIndex != -1
-                        CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelectedIndex = -1;)
+                    if ((currentEntitySelectedIndex != -1 || currentTextBoxSelectedIndex != -1) && currentEntitySelectedIndex != currentTextBoxSelectedIndex)
+                        currentSelectedIndex = currentEntitySelectedIndex != -1 ? currentEntitySelectedIndex : currentTextBoxSelectedIndex
+                        structToUpdate = currentEntitySelectedIndex != -1 ? entities : textBoxes
+                        CImGui.Button("Delete") && (deleteat!(structToUpdate, currentSelectedIndex); currentEntitySelectedIndex = -1; currentTextBoxSelectedIndex = -1;)
                         CImGui.NewLine()
                         CImGui.NewLine()
-                        CImGui.Button("Duplicate") && (push!(entities, deepcopy(entities[currentEntitySelectedIndex])); currentEntitySelectedIndex = length(entities);)
-                        tempEntity = entities[currentEntitySelectedIndex]
-                        CImGui.Button("Move Up") && currentEntitySelectedIndex > 1 && (entities[currentEntitySelectedIndex] = entities[currentEntitySelectedIndex - 1]; entities[currentEntitySelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= 1;)
-                        CImGui.Button("Move Down") && currentEntitySelectedIndex < length(entities) && (entities[currentEntitySelectedIndex] = entities[currentEntitySelectedIndex + 1]; entities[currentEntitySelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += 1;)
+                        CImGui.Button("Duplicate") && (push!(structToUpdate, deepcopy(structToUpdate[currentSelectedIndex])); currentEntitySelectedIndex = currentEntitySelectedIndex != -1 ? length(entities) : -1; currentTextBoxSelectedIndex != -1 ? length(textBoxes) : -1;)
+                        tempEntity = structToUpdate[currentSelectedIndex]
+                        CImGui.Button("Move Up") && currentSelectedIndex > 1 && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex - 1]; structToUpdate[currentSelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex -= currentTextBoxSelectedIndex != -1 ? 1 : 0;)
+                        CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
 
                         CImGui.PushID("foo")
                         if CImGui.BeginMenu("Entity Menu")
-                            ShowEntityContextMenu(projectPath, entities[currentEntitySelectedIndex], game)
+                            ShowEntityContextMenu(projectPath, structToUpdate[currentSelectedIndex], game)
                             CImGui.EndMenu()
                         end
                         CImGui.PopID()
                         CImGui.Separator()
                         
-                        FieldsInStruct=fieldnames(julGame.Entity);
+                        FieldsInStruct=fieldnames(currentEntitySelectedIndex != -1 ? julGame.Entity : TextBoxModule.TextBox);
                         for i = 1:length(FieldsInStruct)
                             #Check field i
-                            Value=getfield(entities[currentEntitySelectedIndex], FieldsInStruct[i])
+                            Value=getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
                             
-                            if typeof(Value) == Bool
+                            if currentTextBoxSelectedIndex > 0
+                                ShowTextBoxField(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
+                            elseif typeof(Value) == Bool
                                 @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
-                                setfield!(entities[currentEntitySelectedIndex],FieldsInStruct[i],Value)
+                                setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i],Value)
                             elseif typeof(Value) == String
                                 buf = "$(Value)"*"\0"^(64)
                                 CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
@@ -207,7 +211,7 @@ module Editor
                                         break
                                     end
                                 end
-                                setfield!(entities[currentEntitySelectedIndex],FieldsInStruct[i], currentTextInTextBox)
+                                setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i], currentTextInTextBox)
                             elseif FieldsInStruct[i] == :components
                                 for i = 1:length(Value)
                                     component = Value[i]
@@ -216,17 +220,17 @@ module Editor
     
                                     if CImGui.TreeNode(componentType)
                                         CImGui.Button("Delete") && (deleteat!(Value, i); break;)
-                                        ShowComponentProperties(entities[currentEntitySelectedIndex], component, componentType)
+                                        ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
                                         CImGui.TreePop()
                                     end
                                 end
                             elseif FieldsInStruct[i] == :scripts
                                 if CImGui.TreeNode("Scripts")
-                                    CImGui.Button("Add Script") && (push!(entities[currentEntitySelectedIndex].scripts, scriptObj("",[])); break;)
+                                    CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
                                     for i = 1:length(Value)
                                         if CImGui.TreeNode("Script $(i)")
                                             buf = "$(Value[i].name)"*"\0"^(64)
-                                            CImGui.Button("Delete $(i)") && (deleteat!(entities[currentEntitySelectedIndex].scripts, i); break;)
+                                            CImGui.Button("Delete $(i)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, i); break;)
                                             CImGui.InputText("Script $(i)", buf, length(buf))
                                             currentTextInTextBox = ""
                                             for characterIndex = 1:length(buf)
@@ -238,14 +242,14 @@ module Editor
                                                 end
                                             end
                                             
-                                            entities[currentEntitySelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, entities[currentEntitySelectedIndex].scripts[i].parameters)
+                                            structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, structToUpdate[currentSelectedIndex].scripts[i].parameters)
                                             if CImGui.TreeNode("Script $(i) parameters")
-                                                params = entities[currentEntitySelectedIndex].scripts[i].parameters
-                                                CImGui.Button("Add New Script Parameter") && (push!(params, ""); entities[currentEntitySelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                                                params = structToUpdate[currentSelectedIndex].scripts[i].parameters
+                                                CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
 
-                                                for j = 1:length(entities[currentEntitySelectedIndex].scripts[i].parameters)
-                                                    buf = "$(entities[currentEntitySelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
-                                                    CImGui.Button("pDelete $(j)") && (deleteat!(params, j); entities[currentEntitySelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                                                for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
+                                                    buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
+                                                    CImGui.Button("pDelete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
                                                     CImGui.InputText("Parameter $(j)", buf, length(buf))
                                                     currentTextInTextBox = ""
                                                     for characterIndex = 1:length(buf)
@@ -257,7 +261,7 @@ module Editor
                                                         end
                                                     end
                                                     params[j] = currentTextInTextBox
-                                                    entities[currentEntitySelectedIndex].scripts[i] = scriptObj(entities[currentEntitySelectedIndex].scripts[i].name, params)
+                                                    structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(structToUpdate[currentSelectedIndex].scripts[i].name, params)
 
                                                 end
                                                 CImGui.TreePop()
@@ -328,56 +332,88 @@ module Editor
                     CImGui.Button("New textbox") && (game.createNewTextBox())
                     # TODO: CImGui.Button("New button") && (game.createNewEntity())
     
-                    ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
-                    CImGui.SameLine()
-                    if CImGui.TreeNode("Entities")
-                        CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-            
-                        @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
-                            node_clicked = currentEntitySelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
-                            CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
-                            for i = 0:5
-                                continue
-                                # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
-                                node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
-                                if i < 3
-                                    # Node
-                                    node_open = CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Node $i")
-                                    CImGui.IsItemClicked() && (node_clicked = i;)
-                                    node_open && (CImGui.Text("Blah blah\nBlah Blah"); CImGui.TreePop();)
-                                else
-                                    # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
-                                    node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                    CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Leaf $i")
-                                    CImGui.IsItemClicked() && (node_clicked = i;)
-                                end
-                            end
-                            for i in 1:length(entities)
-                                # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
-                                node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
+                CImGui.SameLine()
+                if CImGui.TreeNode("Entities")
+                    CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
+        
+                    @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
+                        node_clicked = currentEntitySelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
+                        CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
+                        for i = 0:5
+                            continue
+                            # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+                            node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                            if i < 3
+                                # Node
+                                node_open = CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Node $i")
+                                CImGui.IsItemClicked() && (node_clicked = i;)
+                                node_open && (CImGui.Text("Blah blah\nBlah Blah"); CImGui.TreePop();)
+                            else
                                 # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
                                 node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(entities[i].name)")
-                                CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelectedIndex = i; currentEntityUpdated = true;)
+                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Leaf $i")
+                                CImGui.IsItemClicked() && (node_clicked = i;)
                             end
-                            if node_clicked != -1
-                                selection_mask = 1 << node_clicked            # Click to single-select
-                            end
-                            CImGui.PopStyleVar()
-                        end # @cstatic
-                        CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
-                        CImGui.TreePop()
-                    end
+                        end
+                        for i in 1:length(entities)
+                            # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+                            node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                            # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
+                            node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
+                            CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(entities[i].name)")
+                            CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelectedIndex = i; currentEntityUpdated = true; currentTextBoxSelectedIndex = -1)
+                        end
+                        if node_clicked != -1
+                            selection_mask = 1 << node_clicked            # Click to single-select
+                        end
+                        CImGui.PopStyleVar()
+                    end # @cstatic
+                    CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                     CImGui.TreePop()
-                    CImGui.End()
-    
-                # show another simple window.
-                if show_another_window
-                    @c CImGui.Begin("Another Window", &show_another_window)  # pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-                    CImGui.Text("Hello from another window!")
-                    CImGui.Button("Close Me") && (show_another_window = false;)
-                    CImGui.End()
                 end
+                ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
+                CImGui.SameLine()
+                if CImGui.TreeNode("Textbox")
+                    CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
+        
+                    @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
+                        node_clicked = currentTextBoxSelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
+                        CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
+                        for i = 0:5
+                            continue
+                            # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+                            node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                            if i < 3
+                                # Node
+                                node_open = CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Node $i")
+                                CImGui.IsItemClicked() && (node_clicked = i;)
+                                node_open && (CImGui.Text("Blah blah\nBlah Blah"); CImGui.TreePop();)
+                            else
+                                # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
+                                node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
+                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Leaf $i")
+                                CImGui.IsItemClicked() && (node_clicked = i;)
+                            end
+                        end
+                        for i in 1:length(textBoxes)
+                            # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
+                            node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
+                            # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
+                            node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
+                            CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(textBoxes[i].name)")
+                            CImGui.IsItemClicked() && (node_clicked = i; currentTextBoxSelectedIndex = i; currentTextBoxUpdated = true; currentEntitySelectedIndex = -1)
+                        end
+                        if node_clicked != -1
+                            selection_mask = 1 << node_clicked            # Click to single-select
+                        end
+                        CImGui.PopStyleVar()
+                    end # @cstatic
+                    CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
+                    CImGui.TreePop()
+                end
+                CImGui.End()
+    
                 x,y = Int[1], Int[1]
                 glfwGetWindowPos(window, pointer(x), pointer(y))
                 push!(update, x[1] + relativeX)

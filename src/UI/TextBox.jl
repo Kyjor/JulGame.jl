@@ -10,6 +10,7 @@ module TextBoxModule
         fontPath
         fontSize
         isCentered    
+        name
         position
         renderer
         renderText
@@ -17,19 +18,22 @@ module TextBoxModule
         sizePercentage
         text
         textTexture
+        updatedText
         zoom
 
-        function TextBox(fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name, fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
             this.fontPath = fontPath
             this.fontSize = fontSize
             this.isCentered = isCentered
+            this.name = name
             this.position = position
             this.size = size
             this.sizePercentage = sizePercentage
             this.text = text
+            this.updatedText = text
             this.zoom = 1.0
 
             return this
@@ -48,6 +52,9 @@ module TextBoxModule
                         SDL_Point(this.position.x, this.position.y)], 5)
                 end
 
+                if this.updatedText != this.text
+                    this.updateText(this.updatedText)
+                end
                 # @assert 
                 SDL_RenderCopy(
                     this.renderer, this.textTexture, C_NULL, Ref(SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))

@@ -31,7 +31,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, includedScripts = [])
+                function(isUsingEditor = false)
                     #file loading
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
@@ -94,7 +94,7 @@ module SceneBuilderModule
                 end
             elseif s == :createNewTextBox
                 function ()
-                    textBox = TextBox(joinpath(@__DIR__, "..", "Fonts", "VT323", "VT323-Regular.ttf"), 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true)
+                    textBox = TextBox("TextBox", joinpath(@__DIR__, "..", "Fonts", "VT323", "VT323-Regular.ttf"), 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true)
                     textBox.initialize(this.main.renderer, this.main.zoom)
                     push!(this.main.textBoxes, textBox)
                 end
