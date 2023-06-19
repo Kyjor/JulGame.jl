@@ -416,7 +416,7 @@ module MainLoop
 					end
 					
 					SDL_RenderPresent(this.renderer)
-					returnData = [this.entities, this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex]	
+					returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex]	
 					this.selectedEntityUpdated = false
 					return returnData
 				catch e
@@ -427,6 +427,10 @@ module MainLoop
 		elseif s == :createNewEntity
 			function ()
 				this.level.createNewEntity()
+			end
+		elseif s == :createNewTextBox
+			function ()
+				this.level.createNewTextBox()
 			end
 		elseif s == :selectEntityWithClick
 			function ()

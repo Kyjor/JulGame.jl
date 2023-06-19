@@ -17,6 +17,10 @@ module julGame
     const MAIN = Main(2.0)
     export MAIN
 
+    include("UI/UI.jl")
+    using .UI
+    export ScreenButtonModule, TextBoxModule
+
     export Component
     include("Component/Component.jl")
     using .Component

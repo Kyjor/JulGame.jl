@@ -4,6 +4,7 @@ module SceneBuilderModule
     using ..SceneManagement.julGame.ColliderModule
     using ..SceneManagement.julGame.EntityModule
     using ..SceneManagement.julGame.RigidbodyModule
+    using ..SceneManagement.julGame.TextBoxModule
     using ..SceneManagement.SceneReaderModule
     if isdir(joinpath(pwd(), "..", "scripts"))
         println("Loading scripts...")
@@ -30,30 +31,13 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false)
+                function(isUsingEditor = false, includedScripts = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
-                    #gameManager = GameManager()
-                    #playerMovement = PlayerMovement()
-                    # playerMovement.gameManager = gameManager
                     
-                    # gameDialogue = Dialogue(narratorScript, 0.05, 1.5, gameManager, playerMovement)
-                    # gameDialogue.isPaused = true
-                    
-                    # secretDialogue = Dialogue(secretManScript, 0.05, 1.5, gameManager, playerMovement)
-                    # secretDialogue.isNormalDialogue = false
-                    # secretDialogue.isPaused = true
-
-                    # gameManager.playerMovement = playerMovement
-                    # gameManager.dialogue = gameDialogue
-                    # gameManager.secretDialogue = secretDialogue
-
                     # gameManager.textBox = textBoxes[1]
-
                     # main.scene.textBoxes = textBoxes
-                    # main.scene.entities = getEntities()
-                    # println(main.scene.entities[1].getSprite())
 
                     main.level = this
                     main.scene.entities = deserializeEntities(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
@@ -72,8 +56,23 @@ module SceneBuilderModule
                     if !isUsingEditor
                         scriptCounter = 1
                         for script in entity.scripts
-                            # newScript = eval(Symbol(script))()
-                            newScript = eval(Symbol(script))()
+                            params = []
+                            for param in script.parameters
+                                if lowercase(param) == "true"
+                                    param = true
+                                elseif lowercase(param) == "false"
+                                    param = false
+                                else 
+                                    try
+                                        newParam = parse(Float64, param)
+                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Int64, param)
+                                    catch 
+                                    end
+                                end
+                                push!(params, param)
+                            end
+                            newScript = eval(Symbol(script.name))(params...)
+
                             entity.scripts[scriptCounter] = newScript
                             newScript.setParent(entity)
                             scriptCounter += 1
@@ -81,7 +80,6 @@ module SceneBuilderModule
                     end
 
                     end
-                    #push!(main.scene.entities, Entity("game manager", Transform(), [], [gameManager]))
 
                     main.assets = ASSETS
                     main.loadScene(main.scene)
@@ -93,6 +91,12 @@ module SceneBuilderModule
             elseif s == :createNewEntity
                 function ()
                     push!(this.main.entities, Entity("New entity", C_NULL))
+                end
+            elseif s == :createNewTextBox
+                function ()
+                    textBox = TextBox(joinpath(@__DIR__, "..", "Fonts", "VT323", "VT323-Regular.ttf"), 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true)
+                    textBox.initialize(this.main.renderer, this.main.zoom)
+                    push!(this.main.textBoxes, textBox)
                 end
             else
                 try

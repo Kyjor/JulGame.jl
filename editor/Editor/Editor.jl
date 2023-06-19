@@ -18,8 +18,9 @@ module Editor
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
+    include("./Utils.jl")
 
-    # function createAnonymousObject(args...)
+    # function createObject(args...)
     #     for (i, arg) in enumerate(args)
     #         println("Arg #$i = $(arg[1])")
     #         var"$(arg[1])" = arg[2]
@@ -110,6 +111,8 @@ module Editor
             editorWindowSizeX = 0
             editorWindowSizeY = 0
             entities = []
+            textBoxes = []
+            screenButtons = []
             gameInfo = []
             mousePosition = C_NULL
             projectPath = ""
@@ -123,7 +126,9 @@ module Editor
                 resetCamera = false
                 update = []
                 if (gameInfo !== nothing && length(gameInfo) > 0)
-                    entities = gameInfo[1]
+                    entities = gameInfo[1][1]
+                    textBoxes = gameInfo[1][2]
+                    screenButtons = gameInfo[1][3]
                     mousePosition = gameInfo[2]
                     cameraPositionX = gameInfo[3].x
                     cameraPositionY = gameInfo[3].y
@@ -141,7 +146,7 @@ module Editor
                 end
                 events = [event]
                 @c ShowMainMenuBar(Ref{Bool}(true), events)
-    
+                
                 # Uncomment to see widgets that can be used.
                 # @c CImGui.ShowDemoWindow(Ref{Bool}(true)) 
                 testText = ""
@@ -157,7 +162,7 @@ module Editor
                 # we use a Begin/End pair to created a named window.
                 @cstatic f=Cfloat(0.0) counter=Cint(0) begin
                     CImGui.Begin("Item")  # create a window called "Item" and append into it.
-    
+
                     CImGui.Text(testText)  # display some text
                     
                     # @c CImGui.Checkbox("Demo Window", &show_demo_window)  # edit bools storing our window open/close state
@@ -169,6 +174,7 @@ module Editor
                         CImGui.Button("Delete") && (deleteat!(entities, currentEntitySelectedIndex); currentEntitySelectedIndex = -1;)
                         CImGui.NewLine()
                         CImGui.NewLine()
+                        CImGui.Button("Duplicate") && (push!(entities, deepcopy(entities[currentEntitySelectedIndex])); currentEntitySelectedIndex = length(entities);)
                         tempEntity = entities[currentEntitySelectedIndex]
                         CImGui.Button("Move Up") && currentEntitySelectedIndex > 1 && (entities[currentEntitySelectedIndex] = entities[currentEntitySelectedIndex - 1]; entities[currentEntitySelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= 1;)
                         CImGui.Button("Move Down") && currentEntitySelectedIndex < length(entities) && (entities[currentEntitySelectedIndex] = entities[currentEntitySelectedIndex + 1]; entities[currentEntitySelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += 1;)
@@ -282,8 +288,8 @@ module Editor
                     CImGui.Button("ResetCamera") && (resetCamera = true)
                     relativeX = CImGui.GetWindowPos().x + 3
                     relativeY = CImGui.GetWindowPos().y + 45
-                    editorWindowSizeX = CImGui.GetWindowSize().x - 6
-                    editorWindowSizeY = CImGui.GetWindowSize().y - 50
+                    editorWindowSizeX = CImGui.GetWindowSize().x - 50
+                    editorWindowSizeY = CImGui.GetWindowSize().y - 75
                     CImGui.End()
                 end
                 @cstatic begin
@@ -317,16 +323,15 @@ module Editor
                     CImGui.End()
                 end
 
-                @cstatic begin
                     CImGui.Begin("Hierarchy")  
                     CImGui.Button("New entity") && (game.createNewEntity())
+                    CImGui.Button("New textbox") && (game.createNewTextBox())
+                    # TODO: CImGui.Button("New button") && (game.createNewEntity())
     
-                    if CImGui.TreeNode("Scene")
-                        #ShowHelpMarker("This is a more standard looking tree with selectable nodes.\nClick to select, CTRL+Click to toggle, click on arrows or double-click to open.")
-                        align_label_with_current_x_position= @cstatic align_label_with_current_x_position=false begin
-                            #@c CImGui.Checkbox("Align label with current X position)", &align_label_with_current_x_position)
-                            align_label_with_current_x_position && CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-                        end
+                    ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
+                    CImGui.SameLine()
+                    if CImGui.TreeNode("Entities")
+                        CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
             
                         @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
                             node_clicked = currentEntitySelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
@@ -360,12 +365,11 @@ module Editor
                             end
                             CImGui.PopStyleVar()
                         end # @cstatic
-                        align_label_with_current_x_position && CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
+                        CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                         CImGui.TreePop()
                     end
                     CImGui.TreePop()
                     CImGui.End()
-                end
     
                 # show another simple window.
                 if show_another_window
