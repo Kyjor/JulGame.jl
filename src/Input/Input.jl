@@ -10,7 +10,8 @@ mutable struct Input
     mouseButtonsHeldDown::Array
     mouseButtonsReleased::Array
     mousePosition
-    scanCodes::Array{String}
+    scanCodeStrings::Array{String}
+    scanCodes::Array
     scene
     quit::Bool
 
@@ -27,10 +28,14 @@ mutable struct Input
         this.mousePosition = Math.Vector2(0,0)
         this.quit = false
         this.scanCodes = []
+        this.scanCodeStrings = []
         for m in instances(SDL_Scancode)
-            code = "$(m)"
-            #println(SubString(code, 14, length(code)))
-            push!(this.scanCodes, SubString(code, 14, length(code)))
+            codeString = "$(m)"
+            code::SDL_Scancode = m
+            if codeString == "SDL_NUM_SCANCODES"
+                continue
+            end
+            push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
         end
 
         return this
@@ -40,6 +45,7 @@ end
 function Base.getproperty(this::Input, s::Symbol)
     if s == :pollInput
         function()
+            this.buttonsPressedDown = []
             didMouseEventOccur = false
             event_ref = Ref{SDL_Event}()
             while Bool(SDL_PollEvent(event_ref))
@@ -147,71 +153,22 @@ function Base.getproperty(this::Input, s::Symbol)
         end
     elseif s == :handleKeyEvent
         function(keyboardState)
-            buttons = []
-            button = "Button_None"
+            buttonsPressedDown = this.buttonsPressedDown
 
-            if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_W, SDL_SCANCODE_UP])
-                button = "Button_Up"
-                if !(button in buttons)
-                    push!(buttons, button)
-                end
-            else
-                button = "Button_Up"
-                if button in this.buttonsHeldDown
-                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
-                end
-            end
-            if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_A, SDL_SCANCODE_LEFT])
-                button = "Button_Left"
-                if !(button in buttons)
-                    push!(buttons, button)
-                end
-            else
-                button = "Button_Left"
-                if button in this.buttonsHeldDown
-                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
-                end
-            end
-            if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_S, SDL_SCANCODE_DOWN])
-                button = "Button_Down"
-                if !(button in buttons)
-                    push!(buttons, button)
-                end
-            else
-                button = "Button_Down"
-                if button in this.buttonsHeldDown
-                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
-                end
-            end
-            if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_D, SDL_SCANCODE_RIGHT])
-                button = "Button_Right"
-                if !(button in buttons)
-                    push!(buttons, button)
-                end
-            else 
-                button = "Button_Right"
-                if button in this.buttonsHeldDown
-                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
-                end
-            end
-            if this.checkScanCode(keyboardState, 1, [SDL_SCANCODE_SPACE])
-                button = "Button_Jump"
-                if !(button in buttons)
-                    push!(buttons, button)
-                end
-            else
-                button = "Button_Jump"
-                if button in this.buttonsHeldDown
-                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
-                end
-            end
-
-            for button in buttons
-                if !(button in this.buttonsHeldDown)
+            count = 1
+            for scanCode in this.scanCodes
+                button = scanCode[2]
+                if this.checkScanCode(keyboardState, 1, [scanCode[1]]) && !(button in this.buttonsHeldDown)
+                    push!(buttonsPressedDown, button)
                     push!(this.buttonsHeldDown, button)
+                elseif this.checkScanCode(keyboardState, 0, [scanCode[1]])
+                    if button in this.buttonsHeldDown
+                        deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
+                    end
                 end
             end
-            this.buttonsPressedDown = buttons
+            
+            this.buttonsPressedDown = buttonsPressedDown
         end
     elseif s == :handleMouseEvent
         function(event)
