@@ -1,4 +1,4 @@
-![png-01](https://github.com/Kyjor/julGame.jl/assets/13784123/04d1993d-c10f-49d9-89de-3c8522e6d1be)
+![julGame-Logo-2023](https://github.com/Kyjor/julGame.jl/assets/13784123/6a3b2ef3-1c8d-4e21-bc0a-9a7b4bbed0a5)
 
 julGame is an open-source game engine meant for creating 2D games using the Julia programming language. https://julialang.org/
 # Why are you making this?
