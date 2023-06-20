@@ -1,8 +1,8 @@
-# What is julgame?
-julgame is a game engine based on the julia programming language with the help of SDL2. Users are able to build their projects out to windows .exe files at the moment.
+![png-01](https://github.com/Kyjor/julGame.jl/assets/13784123/04d1993d-c10f-49d9-89de-3c8522e6d1be)
 
+julGame is an open-source game engine meant for creating 2D games using the Julia programming language. https://julialang.org/
 # Why are you making this?
-Honestly, only because I find Julia interesting. I would like to see a game dev scene around it as there isn't much of one now. I am not a Julia programmer, so I am sure there is a lot I am doing wrong. If you see anything that I can fix, please just let me know with a discussion or an issue.
+Because I find Julia interesting and I've always wanted to create a game engine. I would like to see a game dev scene around it as there isn't much of one now. I am not a Julia programmer (nor an experienced game engine creator), so I am sure there is a lot I am doing wrong. If you see anything that I can fix, please just let me know with a discussion or an issue.
 
 # How to build the platformer project
 
