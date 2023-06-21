@@ -320,7 +320,6 @@ module MainLoop
 							this.panCounter = Math.Vector2f(this.panCounter.x, 0)
 						end
 					elseif this.input.getMouseButtonPressed(SDL_BUTTON_LEFT)
-						println("Left mouse button pressed")
 						# function that selects an entity if we click on it	
 						this.selectEntityWithClick()
 					elseif this.input.getMouseButton(SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
@@ -346,24 +345,23 @@ module MainLoop
 							this.panCounter = Math.Vector2f(this.panCounter.x, 0)
 						end
 					elseif SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
-						println("Left mouse button released")
 					end
 
-					if "Button_Jump" in this.input.buttonsHeldDown
-						if "Button_Left" in this.input.buttonsHeldDown
+					if "SPACE" in this.input.buttonsHeldDown
+						if "LEFT" in this.input.buttonsHeldDown
 							this.zoom -= .01
 							SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
-						elseif "Button_Right" in this.input.buttonsHeldDown
+						elseif "RIGHT" in this.input.buttonsHeldDown
 							this.zoom += .01
 							SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 						end
-					elseif this.input.getButtonHeldDown("Button_Left")
+					elseif this.input.getButtonHeldDown("LEFT")
 						cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
-					elseif this.input.getButtonHeldDown("Button_Right")
+					elseif this.input.getButtonHeldDown("RIGHT")
 						cameraPosition = Math.Vector2f(cameraPosition.x + 0.25, cameraPosition.y)
-					elseif this.input.getButtonHeldDown("Button_Down")
+					elseif this.input.getButtonHeldDown("DOWN")
 						cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.25)
-					elseif this.input.getButtonHeldDown("Button_Up")
+					elseif this.input.getButtonHeldDown("UP")
 						cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.25)
 					end
 			

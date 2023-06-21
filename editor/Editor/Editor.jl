@@ -154,8 +154,11 @@ module Editor
                 # @c CImGui.ShowDemoWindow(Ref{Bool}(true)) 
                 testText = ""
                 mousePositionText = "0,0"
-                if length(entities) > 0 && currentEntitySelectedIndex != -1
-                    testText = entities[currentEntitySelectedIndex].name
+                if currentEntitySelectedIndex != -1
+                    currentEntitySelectedIndex = min(max(0, currentEntitySelectedIndex), length(entities))
+                    if length(entities) > 0
+                        testText = entities[currentEntitySelectedIndex].name
+                    end
                 end
                 if mousePosition != C_NULL
                     mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
@@ -173,7 +176,7 @@ module Editor
                     if ((currentEntitySelectedIndex != -1 || currentTextBoxSelectedIndex != -1) && currentEntitySelectedIndex != currentTextBoxSelectedIndex)
                         currentSelectedIndex = currentEntitySelectedIndex != -1 ? currentEntitySelectedIndex : currentTextBoxSelectedIndex
                         structToUpdate = currentEntitySelectedIndex != -1 ? entities : textBoxes
-                        CImGui.Button("Delete") && (deleteat!(structToUpdate, currentSelectedIndex); currentEntitySelectedIndex = -1; currentTextBoxSelectedIndex = -1;)
+                        CImGui.Button("Delete") && (deleteat!(structToUpdate, currentSelectedIndex); currentEntitySelectedIndex = -1; currentTextBoxSelectedIndex = -1; continue;)
                         CImGui.NewLine()
                         CImGui.NewLine()
                         CImGui.Button("Duplicate") && (push!(structToUpdate, deepcopy(structToUpdate[currentSelectedIndex])); currentEntitySelectedIndex = currentEntitySelectedIndex != -1 ? length(entities) : -1; currentTextBoxSelectedIndex != -1 ? length(textBoxes) : -1;)
@@ -192,85 +195,90 @@ module Editor
                         FieldsInStruct=fieldnames(currentEntitySelectedIndex != -1 ? julGame.Entity : TextBoxModule.TextBox);
                         for i = 1:length(FieldsInStruct)
                             #Check field i
-                            Value=getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
-                            
-                            if currentTextBoxSelectedIndex > 0
-                                ShowTextBoxField(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
-                            elseif typeof(Value) == Bool
-                                @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
-                                setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i],Value)
-                            elseif typeof(Value) == String
-                                buf = "$(Value)"*"\0"^(64)
-                                CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
-                                currentTextInTextBox = ""
-                                for characterIndex = 1:length(buf)
-                                    if Int(buf[characterIndex]) == 0 
-                                        if characterIndex != 1
-                                            currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                            try
+                                Value=getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
+                                
+                                if currentTextBoxSelectedIndex > 0
+                                    ShowTextBoxField(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
+                                elseif typeof(Value) == Bool
+                                    @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
+                                    setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i],Value)
+                                elseif typeof(Value) == String
+                                    buf = "$(Value)"*"\0"^(64)
+                                    CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
+                                    currentTextInTextBox = ""
+                                    for characterIndex = 1:length(buf)
+                                        if Int(buf[characterIndex]) == 0 
+                                            if characterIndex != 1
+                                                currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                            end
+                                            break
                                         end
-                                        break
                                     end
-                                end
-                                setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i], currentTextInTextBox)
-                            elseif FieldsInStruct[i] == :components
-                                for i = 1:length(Value)
-                                    component = Value[i]
-                                    componentType = "$(typeof(component).name.wrapper)"
-                                    componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
-    
-                                    if CImGui.TreeNode(componentType)
-                                        CImGui.Button("Delete") && (deleteat!(Value, i); break;)
-                                        ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
-                                        CImGui.TreePop()
-                                    end
-                                end
-                            elseif FieldsInStruct[i] == :scripts
-                                if CImGui.TreeNode("Scripts")
-                                    CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
+                                    setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i], currentTextInTextBox)
+                                elseif FieldsInStruct[i] == :components
                                     for i = 1:length(Value)
-                                        if CImGui.TreeNode("Script $(i)")
-                                            buf = "$(Value[i].name)"*"\0"^(64)
-                                            CImGui.Button("Delete $(i)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, i); break;)
-                                            CImGui.InputText("Script $(i)", buf, length(buf))
-                                            currentTextInTextBox = ""
-                                            for characterIndex = 1:length(buf)
-                                                if Int(buf[characterIndex]) == 0 
-                                                    if characterIndex != 1
-                                                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                                    end
-                                                    break
-                                                end
-                                            end
-                                            
-                                            structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, structToUpdate[currentSelectedIndex].scripts[i].parameters)
-                                            if CImGui.TreeNode("Script $(i) parameters")
-                                                params = structToUpdate[currentSelectedIndex].scripts[i].parameters
-                                                CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
-
-                                                for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
-                                                    buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
-                                                    CImGui.Button("pDelete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
-                                                    CImGui.InputText("Parameter $(j)", buf, length(buf))
-                                                    currentTextInTextBox = ""
-                                                    for characterIndex = 1:length(buf)
-                                                        if Int(buf[characterIndex]) == 0 
-                                                            if characterIndex != 1
-                                                                currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                                            end
-                                                            break
-                                                        end
-                                                    end
-                                                    params[j] = currentTextInTextBox
-                                                    structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(structToUpdate[currentSelectedIndex].scripts[i].name, params)
-
-                                                end
-                                                CImGui.TreePop()
-                                            end
+                                        component = Value[i]
+                                        componentType = "$(typeof(component).name.wrapper)"
+                                        componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
+        
+                                        if CImGui.TreeNode(componentType)
+                                            CImGui.Button("Delete") && (deleteat!(Value, i); break;)
+                                            ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
                                             CImGui.TreePop()
                                         end
                                     end
-                                    CImGui.TreePop()
+                                elseif FieldsInStruct[i] == :scripts
+                                    if CImGui.TreeNode("Scripts")
+                                        CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
+                                        for i = 1:length(Value)
+                                            if CImGui.TreeNode("Script $(i)")
+                                                buf = "$(Value[i].name)"*"\0"^(64)
+                                                CImGui.Button("Delete $(i)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, i); break;)
+                                                CImGui.InputText("Script $(i)", buf, length(buf))
+                                                currentTextInTextBox = ""
+                                                for characterIndex = 1:length(buf)
+                                                    if Int(buf[characterIndex]) == 0 
+                                                        if characterIndex != 1
+                                                            currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                                        end
+                                                        break
+                                                    end
+                                                end
+                                                
+                                                structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, structToUpdate[currentSelectedIndex].scripts[i].parameters)
+                                                if CImGui.TreeNode("Script $(i) parameters")
+                                                    params = structToUpdate[currentSelectedIndex].scripts[i].parameters
+                                                    CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+
+                                                    for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
+                                                        buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
+                                                        CImGui.Button("pDelete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                                                        CImGui.InputText("Parameter $(j)", buf, length(buf))
+                                                        currentTextInTextBox = ""
+                                                        for characterIndex = 1:length(buf)
+                                                            if Int(buf[characterIndex]) == 0 
+                                                                if characterIndex != 1
+                                                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                                                end
+                                                                break
+                                                            end
+                                                        end
+                                                        params[j] = currentTextInTextBox
+                                                        structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(structToUpdate[currentSelectedIndex].scripts[i].name, params)
+
+                                                    end
+                                                    CImGui.TreePop()
+                                                end
+                                                CImGui.TreePop()
+                                            end
+                                        end
+                                        CImGui.TreePop()
+                                    end
                                 end
+                            catch e
+                                println(e)
+                                Base.show_backtrace(stdout, catch_backtrace())
                             end
                         end
                     end
