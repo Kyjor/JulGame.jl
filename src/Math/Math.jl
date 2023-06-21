@@ -1,0 +1,11 @@
+module Math
+    include("Lerp.jl")
+    include("Vector2.jl")
+    include("Vector2f.jl")
+    include("Vector4.jl")
+    
+    export Lerp
+    export Vector2
+    export Vector2f
+    export Vector4
+end

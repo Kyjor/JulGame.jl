@@ -1,6 +1,4 @@
-﻿using SimpleDirectMediaLayer.LibSDL2
-
-mutable struct Scene
+﻿mutable struct Scene
     camera
     colliders
     entities
@@ -13,12 +11,12 @@ mutable struct Scene
         this = new()
 
         this.camera = C_NULL
-        this.colliders = C_NULL
-        this.entities = C_NULL
-        this.rigidbodies = C_NULL
-        this.screenButtons = C_NULL
-        this.sounds = C_NULL
-        this.textBoxes = C_NULL
+        this.colliders = []
+        this.entities = []
+        this.rigidbodies = []
+        this.screenButtons = []
+        this.sounds = []
+        this.textBoxes = []
 
         return this
     end

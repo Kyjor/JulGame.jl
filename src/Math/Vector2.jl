@@ -11,7 +11,6 @@ struct Vector2
     Vector2(x::Float64, y::Float64) = new(convert(Int64,round(x)),convert(Int64,round(y)));
     Vector2(x::Int64, y::Float64) = new(x,convert(Int64,round(y)));
     Vector2(x::Float64, y::Int64) = new(convert(Int64,round(x)),y);
-    
 
     #operators 
     function Base.:+(vec::Vector2, vec1::Vector2)
