@@ -1,5 +1,5 @@
 module MainLoop
-	using ..julGame: Input, Math
+	using ..JulGame: Input, Math
 	using SimpleDirectMediaLayer
 	const SDL2 = SimpleDirectMediaLayer 
 

@@ -1,5 +1,5 @@
 module SceneManagement
-    using ..julGame
+    using ..JulGame
     include("SceneReader.jl")
     include("SceneWriter.jl")
     include("SceneBuilder.jl")

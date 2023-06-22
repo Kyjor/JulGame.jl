@@ -1,16 +1,16 @@
 using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
-using julGame
-# using julGame.AnimationModule
-# using julGame.AnimatorModule
-# using julGame.ColliderModule
-# using julGame.EntityModule
-# using julGame.RigidbodyModule
-# using julGame.SpriteModule
-# using julGame.TransformModule
+using JulGame
+# using JulGame.AnimationModule
+# using JulGame.AnimatorModule
+# using JulGame.ColliderModule
+# using JulGame.EntityModule
+# using JulGame.RigidbodyModule
+# using JulGame.SpriteModule
+# using JulGame.TransformModule
 
-const julGameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
+const JulGameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
 """
 ShowComponentProperties(currentEntitySelected, component, componentType)
 Creates inputs based on the component type and populates them.
@@ -18,35 +18,35 @@ Creates inputs based on the component type and populates them.
 function ShowComponentProperties(currentEntitySelected, component, componentType)
 
     if componentType == "Transform"
-        fieldsInComponent=fieldnames(julGame.TransformModule.Transform);
+        fieldsInComponent=fieldnames(JulGame.TransformModule.Transform);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Collider"
-        fieldsInComponent=fieldnames(julGame.ColliderModule.Collider);
+        fieldsInComponent=fieldnames(JulGame.ColliderModule.Collider);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Rigidbody"
-        fieldsInComponent=fieldnames(julGame.RigidbodyModule.Rigidbody);
+        fieldsInComponent=fieldnames(JulGame.RigidbodyModule.Rigidbody);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Animator"
-        fieldsInComponent=fieldnames(julGame.AnimatorModule.Animator);
+        fieldsInComponent=fieldnames(JulGame.AnimatorModule.Animator);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Animation"
-        fieldsInComponent=fieldnames(julGame.AnimationModule.Animation);
+        fieldsInComponent=fieldnames(JulGame.AnimationModule.Animation);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
     elseif componentType == "Sprite"
-        fieldsInComponent=fieldnames(julGame.SpriteModule.Sprite);
+        fieldsInComponent=fieldnames(JulGame.SpriteModule.Sprite);
         ShowSpriteProperties(fieldsInComponent, currentEntitySelected)
     elseif componentType == "SoundSource"
-        fieldsInComponent=fieldnames(julGame.SoundSourceModule.SoundSource);
+        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.SoundSource);
         ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
     end
 
@@ -119,7 +119,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 catch e
                     println(e)
                 end
-                if nestedFieldType in julGameComponents
+                if nestedFieldType in JulGameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
                 else
                     try
@@ -143,7 +143,7 @@ function ShowArrayPropertyInput(arr, index)
         vec = arr[index]
         vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
         @c CImGui.InputInt4("input int4", vec4i)
-        return julGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+        return JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
     end
 end
 

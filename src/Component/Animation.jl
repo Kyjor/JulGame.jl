@@ -1,6 +1,6 @@
 module AnimationModule 
 using SimpleDirectMediaLayer.LibSDL2
-using ..Component.julGame
+using ..Component.JulGame
 
 export Animation
 mutable struct Animation

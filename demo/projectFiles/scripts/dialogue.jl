@@ -1,4 +1,4 @@
-using julGame.MainLoop
+using JulGame.MainLoop
 
 mutable struct Dialogue
     charTimer::Float64

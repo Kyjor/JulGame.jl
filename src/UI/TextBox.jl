@@ -1,6 +1,6 @@
 module TextBoxModule
-    using ..UI.julGame
-    using ..UI.julGame.Math
+    using ..UI.JulGame
+    using ..UI.JulGame.Math
     using SimpleDirectMediaLayer.LibSDL2
 
     export TextBox      

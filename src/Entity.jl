@@ -1,12 +1,12 @@
 module EntityModule
-    using ..julGame.AnimationModule
-    using ..julGame.AnimatorModule
-    using ..julGame.ColliderModule
-    using ..julGame.Math
-    using ..julGame.RigidbodyModule
-    using ..julGame.SoundSourceModule
-    using ..julGame.SpriteModule
-    using ..julGame.TransformModule
+    using ..JulGame.AnimationModule
+    using ..JulGame.AnimatorModule
+    using ..JulGame.ColliderModule
+    using ..JulGame.Math
+    using ..JulGame.RigidbodyModule
+    using ..JulGame.SoundSourceModule
+    using ..JulGame.SpriteModule
+    using ..JulGame.TransformModule
 
     export Entity
     mutable struct Entity
