@@ -1,5 +1,6 @@
 include("Button.jl")
-using SimpleDirectMediaLayer.LibSDL2
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer 
 
 mutable struct Input
     buttonsPressedDown::Array{String}
@@ -29,9 +30,9 @@ mutable struct Input
         this.quit = false
         this.scanCodes = []
         this.scanCodeStrings = []
-        for m in instances(SDL_Scancode)
+        for m in instances(SDL2.SDL_Scancode)
             codeString = "$(m)"
-            code::SDL_Scancode = m
+            code::SDL2.SDL_Scancode = m
             if codeString == "SDL_NUM_SCANCODES"
                 continue
             end
@@ -47,15 +48,15 @@ function Base.getproperty(this::Input, s::Symbol)
         function()
             this.buttonsPressedDown = []
             didMouseEventOccur = false
-            event_ref = Ref{SDL_Event}()
-            while Bool(SDL_PollEvent(event_ref))
+            event_ref = Ref{SDL2.SDL_Event}()
+            while Bool(SDL2.SDL_PollEvent(event_ref))
                 evt = event_ref[]
                 this.handleWindowEvents(evt)
-                if evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEBUTTONDOWN || evt.type == SDL_MOUSEBUTTONUP
+                if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                     didMouseEventOccur = true
                     if this.scene.screenButtons != C_NULL
                         x,y = Int[1], Int[1]
-                        SDL_GetMouseState(pointer(x), pointer(y))
+                        SDL2.SDL_GetMouseState(pointer(x), pointer(y))
                         
                         this.mousePosition = Math.Vector2(x[1], y[1])
                         for screenButton in this.scene.screenButtons
@@ -84,11 +85,11 @@ function Base.getproperty(this::Input, s::Symbol)
                     this.handleMouseEvent(evt)
                 end 
 
-                if evt.type == SDL_QUIT
+                if evt.type == SDL2.SDL_QUIT
                     this.quit = true
                     return -1
                 end
-                if evt.type == SDL_KEYDOWN && evt.key.keysym.scancode == SDL_SCANCODE_F3
+                if evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3
                     this.debug = !this.debug
                 end
             end
@@ -96,7 +97,7 @@ function Base.getproperty(this::Input, s::Symbol)
                 this.mouseButtonsPressedDown = []
                 this.mouseButtonsReleased = []
             end
-            keyboardState = unsafe_wrap(Array, SDL_GetKeyboardState(C_NULL), 290; own = false)
+            keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 290; own = false)
             this.handleKeyEvent(keyboardState)
         end
     elseif s == :checkScanCode
@@ -110,42 +111,42 @@ function Base.getproperty(this::Input, s::Symbol)
         end    
     elseif s == :handleWindowEvents
         function (event)
-            if event.type != SDL_WINDOWEVENT
+            if event.type != SDL2.SDL_WINDOWEVENT
                 return
             end
             windowEvent = event.window.event
             
-            # if windowEvent == SDL_WINDOWEVENT_SHOWN
+            # if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
             #     println(string("Window $(event.window.windowID) shown", ))
-            # elseif windowEvent == SDL_WINDOWEVENT_HIDDEN
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
             #     println(string("Window $(event.window.windowID) hidden"))
-            # elseif windowEvent == SDL_WINDOWEVENT_EXPOSED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
             #     println(string("Window $(event.window.windowID) exposed"))
-            # elseif windowEvent == SDL_WINDOWEVENT_MOVED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
             #     println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
-            # elseif windowEvent == SDL_WINDOWEVENT_RESIZED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
             #     println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-            # elseif windowEvent == SDL_WINDOWEVENT_SIZE_CHANGED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
             #     println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
-            # elseif windowEvent == SDL_WINDOWEVENT_MINIMIZED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
             #     println(string("Window $(event.window.windowID) minimized"))
-            # elseif windowEvent == SDL_WINDOWEVENT_MAXIMIZED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
             #     println(string("Window $(event.window.windowID) maximized"))
-            # elseif windowEvent == SDL_WINDOWEVENT_RESTORED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
             #     println(string("Window $(event.window.windowID) restored"))
-            # elseif windowEvent == SDL_WINDOWEVENT_ENTER
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
             #     println(string("Mouse entered window $(event.window.windowID)"))
-            # elseif windowEvent == SDL_WINDOWEVENT_LEAVE
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
             #     println(string("Mouse left window $(event.window.windowID)"))
-            # elseif windowEvent == SDL_WINDOWEVENT_FOCUS_GAINED
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
             #     println(string("Window $(event.window.windowID) gained keyboard focus"))
-            # elseif windowEvent == SDL_WINDOWEVENT_FOCUS_LOST
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
             #     println(string("Window $(event.window.windowID) lost keyboard focus"))
-            # elseif windowEvent == SDL_WINDOWEVENT_CLOSE
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
             #     println(string("Window $(event.window.windowID) closed"))
-            # elseif windowEvent == SDL_WINDOWEVENT_TAKE_FOCUS
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
             #     println(string("Window $(event.window.windowID) is offered a focus"))
-            # elseif windowEvent == SDL_WINDOWEVENT_HIT_TEST
+            # elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
             #     println(string("Window $(event.window.windowID) has a special hit test"))
             # else
             #     println(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
@@ -177,12 +178,12 @@ function Base.getproperty(this::Input, s::Symbol)
             mouseButton = C_NULL
             mouseButtonUp = C_NULL
 
-            if event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_MIDDLE || event.button.button == SDL_BUTTON_RIGHT
+            if event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT
                 if !(mouseButton in mouseButtons)
-                    if event.type == SDL_MOUSEBUTTONDOWN
+                    if event.type == SDL2.SDL_MOUSEBUTTONDOWN
                         mouseButton = event.button.button
                         push!(mouseButtons, mouseButton)
-                    elseif event.type == SDL_MOUSEBUTTONUP
+                    elseif event.type == SDL2.SDL_MOUSEBUTTONUP
                         mouseButtonUp = event.button.button
                         push!(mouseButtonsUp, mouseButtonUp)
                     end
