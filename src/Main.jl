@@ -1,11 +1,10 @@
 module MainLoop
-	using ..julGame: Math
+	using ..julGame: Input, Math
 	using SimpleDirectMediaLayer
 	const SDL2 = SimpleDirectMediaLayer 
 
 	include("Enums.jl")
 
-	include("Input/Input.jl")
 	include("Constants.jl")
 	include("Scene.jl")
 
