@@ -1,5 +1,5 @@
 module UI
-    using ..julGame
+    using ..JulGame
     include("ScreenButton.jl")
     include("TextBox.jl")
     

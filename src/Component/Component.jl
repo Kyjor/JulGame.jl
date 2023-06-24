@@ -1,5 +1,5 @@
 module Component
-    using ..julGame
+    using ..JulGame
     abstract type EntityComponent end
       include("Animation.jl")
       include("Animator.jl")

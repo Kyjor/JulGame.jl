@@ -1,7 +1,7 @@
 using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
-using julGame
+using JulGame
 
 function ShowTextBoxField(selectedTextBox, textBoxField)
     fieldName = getFieldName(textBoxField)

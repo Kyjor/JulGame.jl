@@ -1,10 +1,10 @@
 module SceneBuilderModule
-    using ..SceneManagement.julGame
-    using ..SceneManagement.julGame.Math
-    using ..SceneManagement.julGame.ColliderModule
-    using ..SceneManagement.julGame.EntityModule
-    using ..SceneManagement.julGame.RigidbodyModule
-    using ..SceneManagement.julGame.TextBoxModule
+    using ..SceneManagement.JulGame
+    using ..SceneManagement.JulGame.Math
+    using ..SceneManagement.JulGame.ColliderModule
+    using ..SceneManagement.JulGame.EntityModule
+    using ..SceneManagement.JulGame.RigidbodyModule
+    using ..SceneManagement.JulGame.TextBoxModule
     using ..SceneManagement.SceneReaderModule
     if isdir(joinpath(pwd(), "..", "scripts"))
         println("Loading scripts...")

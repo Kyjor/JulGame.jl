@@ -1,5 +1,5 @@
 ﻿module SpriteModule
-using ..Component.julGame
+using ..Component.JulGame
 using SimpleDirectMediaLayer.LibSDL2
 const SCALE_UNITS = Ref{Float64}(64.0)[]
 

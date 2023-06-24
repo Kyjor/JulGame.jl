@@ -1,8 +1,8 @@
 module Editor
-    using julGame
+    using JulGame
 
     function run()
-       julGame.Editor.run()
+       JulGame.Editor.run()
     end
 
     julia_main() = run()

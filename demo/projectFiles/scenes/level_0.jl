@@ -1,13 +1,13 @@
-﻿using julGame
-using julGame.AnimationModule
-using julGame.AnimatorModule
-using julGame.ColliderModule
-using julGame.EntityModule
-using julGame.ColliderModule
-using julGame.RigidbodyModule
-using julGame.SoundSourceModule
-using julGame.SpriteModule
-using julGame.TransformModule
+﻿using JulGame
+using JulGame.AnimationModule
+using JulGame.AnimatorModule
+using JulGame.ColliderModule
+using JulGame.EntityModule
+using JulGame.ColliderModule
+using JulGame.RigidbodyModule
+using JulGame.SoundSourceModule
+using JulGame.SpriteModule
+using JulGame.TransformModule
 
 include("../../../src/UI/TextBox.jl")
 include("../../../src/Camera.jl")

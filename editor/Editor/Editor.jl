@@ -10,10 +10,10 @@ module Editor
     #using Printf
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
-    using ..julGame.EntityModule
-    using ..julGame.SceneWriterModule
-    using ..julGame.SceneLoaderModule
-    using ..julGame.TextBoxModule
+    using ..JulGame.EntityModule
+    using ..JulGame.SceneWriterModule
+    using ..JulGame.SceneLoaderModule
+    using ..JulGame.TextBoxModule
 
     include("../../src/Macros.jl")
     include("./MainMenuBar.jl")
@@ -192,7 +192,7 @@ module Editor
                         CImGui.PopID()
                         CImGui.Separator()
                         
-                        FieldsInStruct=fieldnames(currentEntitySelectedIndex != -1 ? julGame.Entity : TextBoxModule.TextBox);
+                        FieldsInStruct=fieldnames(currentEntitySelectedIndex != -1 ? JulGame.Entity : TextBoxModule.TextBox);
                         for i = 1:length(FieldsInStruct)
                             #Check field i
                             try

@@ -1,5 +1,5 @@
 __precompile__(false)
-module julGame
+module JulGame
     include("Macros.jl")
     using .Macros: @event
     export @event
