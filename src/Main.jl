@@ -21,6 +21,7 @@ module MainLoop
 		lastMousePositionWorld
 		level
 		mousePositionWorld
+		mousePositionWorldRaw
 		panCounter
 		panThreshold
 		renderer
@@ -47,6 +48,7 @@ module MainLoop
 			this.events = []
 			this.input.scene = this.scene
 			this.mousePositionWorld = Math.Vector2f()
+			this.mousePositionWorldRaw = Math.Vector2f()
 			this.lastMousePositionWorld = Math.Vector2f()
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
@@ -413,6 +415,7 @@ module MainLoop
 					end
 
 					this.lastMousePositionWorld = this.mousePositionWorld
+					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom)
 					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 					if DEBUG
 						mousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL2.SDL_Color(0,255,0,255) )
@@ -454,7 +457,16 @@ module MainLoop
 				entityIndex = 1
 				for entity in this.entities
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
-					if this.mousePositionWorld.x >= entity.getTransform().getPosition().x && this.mousePositionWorld.x <= entity.getTransform().getPosition().x + size.x - 1.0 && this.mousePositionWorld.y >= entity.getTransform().getPosition().y && this.mousePositionWorld.y <= entity.getTransform().getPosition().y + size.y
+					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
+						
+						# println("pos x: $(entity.getTransform().getPosition().x)")
+						# println("mouse pos raw x: $(this.mousePositionWorldRaw.x)")
+						# println("mouse pos x: $(this.mousePositionWorld.x)")
+						# println("size x: $(size.x)")
+						# println("pos y: $(entity.getTransform().getPosition().y)")
+						# println("mouse pos raw y: $(this.mousePositionWorldRaw.y)")
+						# println("mouse pos y: $(this.mousePositionWorld.y)")
+						# println("size y: $(size.y)")
 						this.selectedEntityIndex = entityIndex
 						this.selectedTextBoxIndex = -1
 						this.selectedEntityUpdated = true
