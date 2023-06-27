@@ -1,6 +1,6 @@
 module InputModule
-    using ..julGame
-    using ..julGame.Math
+    using ..JulGame
+    using ..JulGame.Math
     
     export Input
     mutable struct Input
