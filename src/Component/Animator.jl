@@ -1,5 +1,7 @@
 ﻿module AnimatorModule
 using ..Component.AnimationModule
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer
 
 export Animator
 mutable struct Animator
@@ -16,7 +18,7 @@ mutable struct Animator
         this.animations = animations
         this.currentAnimation = this.animations[1]
         this.lastFrame = 1
-        this.lastUpdate = SDL_GetTicks()
+        this.lastUpdate = SDL2.SDL_GetTicks()
         this.parent = C_NULL
         this.sprite = C_NULL
         
@@ -28,7 +30,7 @@ mutable struct Animator
         
         this.animations = []
         this.lastFrame = 1
-        this.lastUpdate = SDL_GetTicks()
+        this.lastUpdate = SDL2.SDL_GetTicks()
 
         return this
     end
