@@ -305,6 +305,18 @@ module Editor
                     CImGui.End()
                 end
                 @cstatic begin
+                    CImGui.Begin("Play & Build") 
+                    cmd = "julia"
+                    entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
+                    entryFile = "Entry.jl"
+                    try
+                        CImGui.Button("Play") && (cd(entryPath); Base.run(`$cmd $entryFile`))
+                    catch e
+                        println(e)
+                    end
+                    CImGui.End()
+                end
+                @cstatic begin
                     CImGui.Begin("Project Location")  # create a window called "Project Location"
                     CImGui.Text("Enter full path to root project folder and the name of scene file to load.")
                     buf = "$(projectPath)"*"\0"^(128)
