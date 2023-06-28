@@ -326,7 +326,7 @@ module MainLoop
 					elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
 						# TODO: Make this work for textboxes
 						snapping = false
-						if this.input.getButtonHeldDown("Button_LCTRL")
+						if this.input.getButtonHeldDown("LCTRL")
 							snapping = true
 						end
 						xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
@@ -344,6 +344,11 @@ module MainLoop
 							diff = this.panCounter.y > this.panThreshold ? -1 : 1
 							entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
 							this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+						end
+					elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1)
+						if this.input.getButtonHeldDown("LCTRL") && this.input.getButtonPressed("D")
+							push!(this.entities, deepcopy(this.entities[this.selectedEntityIndex]))
+							this.selectedEntityIndex = length(this.entities)
 						end
 					elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
 					end

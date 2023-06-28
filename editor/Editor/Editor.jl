@@ -182,7 +182,7 @@ module Editor
                         CImGui.Button("Duplicate") && (push!(structToUpdate, deepcopy(structToUpdate[currentSelectedIndex])); currentEntitySelectedIndex = currentEntitySelectedIndex != -1 ? length(entities) : -1; currentTextBoxSelectedIndex != -1 ? length(textBoxes) : -1;)
                         tempEntity = structToUpdate[currentSelectedIndex]
                         CImGui.Button("Move Up") && currentSelectedIndex > 1 && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex - 1]; structToUpdate[currentSelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex -= currentTextBoxSelectedIndex != -1 ? 1 : 0;)
-                        CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
+                        CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; structToUpdate[currentSelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
 
                         CImGui.PushID("foo")
                         if CImGui.BeginMenu("Entity Menu")
