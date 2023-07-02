@@ -1,6 +1,7 @@
 ﻿module AnimatorModule
 using ..Component.AnimationModule
-using SimpleDirectMediaLayer.LibSDL2
+using SimpleDirectMediaLayer
+const SDL2 = SimpleDirectMediaLayer
 
 export Animator
 mutable struct Animator
@@ -17,7 +18,7 @@ mutable struct Animator
         this.animations = animations
         this.currentAnimation = this.animations[1]
         this.lastFrame = 1
-        this.lastUpdate = SDL_GetTicks()
+        this.lastUpdate = SDL2.SDL_GetTicks()
         this.parent = C_NULL
         this.sprite = C_NULL
         
@@ -29,7 +30,7 @@ mutable struct Animator
         
         this.animations = []
         this.lastFrame = 1
-        this.lastUpdate = SDL_GetTicks()
+        this.lastUpdate = SDL2.SDL_GetTicks()
 
         return this
     end
@@ -46,6 +47,9 @@ function Base.getproperty(this::Animator, s::Symbol)
         end
     elseif s == :update
         function(currentRenderTime, deltaTime)
+            if this.currentAnimation.animatedFPS < 1
+                return
+            end
             deltaTime = (currentRenderTime - this.getLastUpdate()) / 1000.0
             framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
             if framesToUpdate > 0
@@ -53,6 +57,10 @@ function Base.getproperty(this::Animator, s::Symbol)
                 this.setLastUpdate(currentRenderTime)
             end
             this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
+        end
+    elseif s == :forceSpriteUpdate
+        function(frameIndex)
+            this.sprite.crop = this.currentAnimation.frames[frameIndex]
         end
    elseif s == :setSprite
         function(sprite)

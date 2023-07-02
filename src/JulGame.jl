@@ -1,5 +1,9 @@
 __precompile__(false)
 module JulGame
+    using SimpleDirectMediaLayer
+    const SDL2 = SimpleDirectMediaLayer 
+    export SDL2
+    
     include("Macros.jl")
     using .Macros: @event
     export @event
@@ -8,8 +12,8 @@ module JulGame
     using .Math: Math
     export Math
 
-    include("Input/InputInstance.jl")
-    using .InputInstance: Input
+    include("Input/Input.jl")
+    using .InputModule: Input
     export Input
 
     include("Main.jl") 

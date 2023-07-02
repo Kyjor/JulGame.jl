@@ -1,19 +1,16 @@
 module MainLoop
+	using ..JulGame
 	using ..JulGame: Input, Math
-	using SimpleDirectMediaLayer
-	const SDL2 = SimpleDirectMediaLayer 
 
 	include("Enums.jl")
 
 	include("Constants.jl")
 	include("Scene.jl")
 
-	using SimpleDirectMediaLayer
-	const SDL2 = SimpleDirectMediaLayer 
-
 	export Main
 	mutable struct Main
 		assets
+		cameraBackgroundColor
 		entities
 		events
 		font
@@ -24,6 +21,7 @@ module MainLoop
 		lastMousePositionWorld
 		level
 		mousePositionWorld
+		mousePositionWorldRaw
 		panCounter
 		panThreshold
 		renderer
@@ -46,9 +44,11 @@ module MainLoop
 			this.scene = Scene()
 			this.input = Input()
 			
-			this.input.scene = this.scene
+			this.cameraBackgroundColor = [0,0,0]
 			this.events = []
+			this.input.scene = this.scene
 			this.mousePositionWorld = Math.Vector2f()
+			this.mousePositionWorldRaw = Math.Vector2f()
 			this.lastMousePositionWorld = Math.Vector2f()
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
@@ -84,7 +84,7 @@ module MainLoop
 				
 				SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
-				this.font = TTF_OpenFont(fontPath, fontSize)
+				this.font = SDL2.TTF_OpenFont(fontPath, fontSize)
 				
 				scripts = []
 				for entity in this.scene.entities
@@ -120,7 +120,7 @@ module MainLoop
 							try
 								script.initialize()
 							catch e
-								println("Error initializing script: ", script.name)
+								println("Error initializing script")
 								Base.show_backtrace(stdout, catch_backtrace())
 							end
 						end
@@ -177,7 +177,7 @@ module MainLoop
 
 						#Rendering
 						currentRenderTime = SDL2.SDL_GetTicks()
-						SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+						SDL2.SDL_SetRenderDrawColor(this.renderer, this.cameraBackgroundColor[1], this.cameraBackgroundColor[2], this.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE)
 						# Clear the current render target before rendering again
 						SDL2.SDL_RenderClear(this.renderer)
 
@@ -220,11 +220,11 @@ module MainLoop
 				
 						if DEBUG
 							# Stats to display
-							text = TTF_RenderText_Blended( this.font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0))), SDL2.SDL_Color(0,255,0,255) )
-							text1 = TTF_RenderText_Blended( this.font, string("Frame time: ", round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL2.SDL_Color(0,255,0,255) )
-							mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL2.SDL_Color(0,255,0,255) )
-							scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL2.SDL_Color(0,255,0,255) )
-							mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))", SDL2.SDL_Color(0,255,0,255) )
+							text = SDL2.TTF_RenderText_Blended( this.font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0))), SDL2.SDL_Color(0,255,0,255) )
+							text1 = SDL2.TTF_RenderText_Blended( this.font, string("Frame time: ", round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL2.SDL_Color(0,255,0,255) )
+							mousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL2.SDL_Color(0,255,0,255) )
+							scaledMousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL2.SDL_Color(0,255,0,255) )
+							mousePositionWorldText = SDL2.TTF_RenderText_Blended( this.font, "Mouse pos world: $(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))", SDL2.SDL_Color(0,255,0,255) )
 							textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,text)
 							textTexture1 = SDL2.SDL_CreateTextureFromSurface(this.renderer,text1)
 							mousePositionTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
@@ -326,7 +326,7 @@ module MainLoop
 					elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
 						# TODO: Make this work for textboxes
 						snapping = false
-						if this.input.getButtonHeldDown("Button_LCTRL")
+						if this.input.getButtonHeldDown("LCTRL")
 							snapping = true
 						end
 						xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
@@ -344,6 +344,11 @@ module MainLoop
 							diff = this.panCounter.y > this.panThreshold ? -1 : 1
 							entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
 							this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+						end
+					elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1)
+						if this.input.getButtonHeldDown("LCTRL") && this.input.getButtonPressed("D")
+							push!(this.entities, deepcopy(this.entities[this.selectedEntityIndex]))
+							this.selectedEntityIndex = length(this.entities)
 						end
 					elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
 					end
@@ -415,11 +420,12 @@ module MainLoop
 					end
 
 					this.lastMousePositionWorld = this.mousePositionWorld
+					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom)
 					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
 					if DEBUG
-						mousePositionText = TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL2.SDL_Color(0,255,0,255) )
-						scaledMousePositionText = TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL2.SDL_Color(0,255,0,255) )
-						mousePositionWorldText = TTF_RenderText_Blended( this.font, "Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)", SDL2.SDL_Color(0,255,0,255) )
+						mousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL2.SDL_Color(0,255,0,255) )
+						scaledMousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL2.SDL_Color(0,255,0,255) )
+						mousePositionWorldText = SDL2.TTF_RenderText_Blended( this.font, "Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)", SDL2.SDL_Color(0,255,0,255) )
 						mousePositionTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
 						scaledMousePositionTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,scaledMousePositionText)
 						mousePositionWorldTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,mousePositionWorldText)
@@ -456,7 +462,16 @@ module MainLoop
 				entityIndex = 1
 				for entity in this.entities
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
-					if this.mousePositionWorld.x >= entity.getTransform().getPosition().x && this.mousePositionWorld.x <= entity.getTransform().getPosition().x + size.x - 1.0 && this.mousePositionWorld.y >= entity.getTransform().getPosition().y && this.mousePositionWorld.y <= entity.getTransform().getPosition().y + size.y
+					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
+						
+						# println("pos x: $(entity.getTransform().getPosition().x)")
+						# println("mouse pos raw x: $(this.mousePositionWorldRaw.x)")
+						# println("mouse pos x: $(this.mousePositionWorld.x)")
+						# println("size x: $(size.x)")
+						# println("pos y: $(entity.getTransform().getPosition().y)")
+						# println("mouse pos raw y: $(this.mousePositionWorldRaw.y)")
+						# println("mouse pos y: $(this.mousePositionWorld.y)")
+						# println("size y: $(size.y)")
 						this.selectedEntityIndex = entityIndex
 						this.selectedTextBoxIndex = -1
 						this.selectedEntityUpdated = true

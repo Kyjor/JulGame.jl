@@ -1,6 +1,4 @@
 module SoundSourceModule
-    using SimpleDirectMediaLayer
-    const SDL2 = SimpleDirectMediaLayer 
 
     export SoundSource
     mutable struct SoundSource

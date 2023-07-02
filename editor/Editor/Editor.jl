@@ -182,7 +182,7 @@ module Editor
                         CImGui.Button("Duplicate") && (push!(structToUpdate, deepcopy(structToUpdate[currentSelectedIndex])); currentEntitySelectedIndex = currentEntitySelectedIndex != -1 ? length(entities) : -1; currentTextBoxSelectedIndex != -1 ? length(textBoxes) : -1;)
                         tempEntity = structToUpdate[currentSelectedIndex]
                         CImGui.Button("Move Up") && currentSelectedIndex > 1 && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex - 1]; structToUpdate[currentSelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex -= currentTextBoxSelectedIndex != -1 ? 1 : 0;)
-                        CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
+                        CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; structToUpdate[currentSelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
 
                         CImGui.PushID("foo")
                         if CImGui.BeginMenu("Entity Menu")
@@ -302,6 +302,18 @@ module Editor
                     relativeY = CImGui.GetWindowPos().y + 45
                     editorWindowSizeX = CImGui.GetWindowSize().x - 50
                     editorWindowSizeY = CImGui.GetWindowSize().y - 75
+                    CImGui.End()
+                end
+                @cstatic begin
+                    CImGui.Begin("Play & Build") 
+                    cmd = "julia"
+                    entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
+                    entryFile = "Entry.jl"
+                    try
+                        CImGui.Button("Play") && (cd(entryPath); Base.run(`$cmd $entryFile`))
+                    catch e
+                        println(e)
+                    end
                     CImGui.End()
                 end
                 @cstatic begin
