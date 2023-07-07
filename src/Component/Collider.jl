@@ -9,6 +9,7 @@ mutable struct Collider
     collisionEvents
     currentCollisions
     enabled::Bool
+    isTrigger::Bool
     offset::Math.Vector2f
     parent
     size::Math.Vector2f
@@ -20,6 +21,7 @@ mutable struct Collider
         this.collisionEvents = []
         this.currentCollisions = []
         this.enabled = true
+        this.isTrigger = false
         this.offset = offset
         this.size = size
         this.tag = tag
@@ -33,6 +35,7 @@ mutable struct Collider
         this.collisionEvents = []
         this.currentCollisions = []
         this.enabled = true
+        this.isTrigger = false
         this.offset = Math.Vector2f()
         this.size = size
         this.tag = tag

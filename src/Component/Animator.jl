@@ -21,7 +21,7 @@ mutable struct Animator
         this.lastUpdate = SDL2.SDL_GetTicks()
         this.parent = C_NULL
         this.sprite = C_NULL
-        
+
         return this
     end
 
@@ -69,6 +69,10 @@ function Base.getproperty(this::Animator, s::Symbol)
     elseif s == :setParent
         function(parent)
             this.parent = parent
+        end
+    elseif s == :appendArray
+        function()
+            push!(this.animations, Animation([Vector4(0,0,0,0)], 60))
         end
     else
         try
