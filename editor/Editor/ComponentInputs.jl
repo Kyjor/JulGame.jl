@@ -154,7 +154,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                 animationFields=fieldnames(JulGame.AnimationModule.Animation);
                 animations = currentEntitySelected.getAnimator().animations
 
-                CImGui.Button("Add Animation") && field.appendArray()
+                CImGui.Button("Add Animation") && currentEntitySelected.getAnimator().appendArray()
                 for i = 1:length(animations) 
                     if CImGui.TreeNode("animation $(i)")
                         for j = 1:length(animationFields)

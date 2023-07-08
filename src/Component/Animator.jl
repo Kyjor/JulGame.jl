@@ -1,5 +1,6 @@
 ﻿module AnimatorModule
 using ..Component.AnimationModule
+using ..Component.JulGame.Math
 using SimpleDirectMediaLayer
 const SDL2 = SimpleDirectMediaLayer
 
@@ -72,7 +73,7 @@ function Base.getproperty(this::Animator, s::Symbol)
         end
     elseif s == :appendArray
         function()
-            push!(this.animations, Animation([Vector4(0,0,0,0)], 60))
+            push!(this.animations, Animation([Math.Vector4(0,0,0,0)], 60))
         end
     else
         try
