@@ -37,8 +37,6 @@ function Base.getproperty(this::Animation, s::Symbol)
     elseif s == :appendArray
         function()
             push!(this.frames, Math.Vector4(0,0,0,0))
-          
-
         end
     elseif s == :getType
         function(item)

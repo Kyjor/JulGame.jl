@@ -2,13 +2,6 @@ using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 using JulGame
-# using JulGame.AnimationModule
-# using JulGame.AnimatorModule
-# using JulGame.ColliderModule
-# using JulGame.EntityModule
-# using JulGame.RigidbodyModule
-# using JulGame.SpriteModule
-# using JulGame.TransformModule
 
 const JulGameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
 """
@@ -34,9 +27,10 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         end
     elseif componentType == "Animator"
         fieldsInComponent=fieldnames(JulGame.AnimatorModule.Animator);
-        for i = 1:length(fieldsInComponent)
-            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        end
+        ShowAnimatorProperties(fieldsInComponent, currentEntitySelected)
+        # for i = 1:length(fieldsInComponent)
+        #     ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
+        # end
     elseif componentType == "Animation"
         fieldsInComponent=fieldnames(JulGame.AnimationModule.Animation);
         for i = 1:length(fieldsInComponent)
@@ -137,7 +131,6 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
 end
 
 function ShowArrayPropertyInput(arr, index) 
-    
     type = getType(arr[index])
     if type == "Vector4"
         vec = arr[index]
@@ -152,12 +145,60 @@ function getType(item)
     return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
 end
 
+function ShowAnimatorProperties(animatorFields, currentEntitySelected)
+    try
+        for field in animatorFields
+            fieldString = "$(field)"
+            
+            if fieldString == "animations"
+                animationFields=fieldnames(JulGame.AnimationModule.Animation);
+                animations = currentEntitySelected.getAnimator().animations
+
+                CImGui.Button("Add Animation") && currentEntitySelected.getAnimator().appendArray()
+                for i = 1:length(animations) 
+                    if CImGui.TreeNode("animation $(i)")
+                        for j = 1:length(animationFields)
+                            animationFieldString = "$(animationFields[j])"
+                            if animationFieldString == "animatedFPS"
+                                x = Cint(animations[i].animatedFPS)
+                                @c CImGui.InputInt("$(animationFieldString) $(j)", &x, 1)
+                                currentEntitySelected.getAnimator().animations[i].animatedFPS = x
+                            elseif animationFieldString == "frames"
+                                try
+                                    CImGui.Button("Add Frame") && animations[i].appendArray()
+                                    CImGui.Button("Delete") && (deleteat!(animations, i); break;)
+                                    for k = 1:length(animations[i].frames)
+                                        if CImGui.TreeNode("frame $(k)")
+                                            vec = animations[i].frames[k]
+                                            vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+                                            @c CImGui.InputInt4("frame input $(k)", vec4i)
+                                            currentEntitySelected.getAnimator().animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
+                                            CImGui.TreePop()
+                                        end
+                                    end
+                                catch e
+                                    println(e)
+                                    Base.show_backtrace(stdout, catch_backtrace())
+                                end
+                            end
+                        end
+                        CImGui.TreePop()
+                    end
+                end
+            elseif fieldString == "currentAnimation"
+            end  
+        end
+    catch e
+        println(e)
+        Base.show_backtrace(stdout, catch_backtrace())
+    end
+end
+
 function ShowSpriteProperties(spriteFields, currentEntitySelected)
     for field in spriteFields
         fieldString = "$(field)"
 
         if fieldString == "imagePath"
-            CImGui.Text("imagePath")
             buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
             CImGui.InputText("Image Path Input", buf, length(buf))
             currentTextInTextBox = ""
@@ -171,6 +212,36 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             end
             currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
             CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
+        elseif fieldString == "isFlipped"
+            isFlipped = currentEntitySelected.getComponent("Sprite").isFlipped
+            @c CImGui.Checkbox("isFlipped", &isFlipped)
+            currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
+        end  
+    end
+end
+
+function ShowSpriteProperties(spriteFields, currentEntitySelected)
+    for field in spriteFields
+        fieldString = "$(field)"
+
+        if fieldString == "imagePath"
+            buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
+            CImGui.InputText("Image Path Input", buf, length(buf))
+            currentTextInTextBox = ""
+            for characterIndex = 1:length(buf)
+                if Int(buf[characterIndex]) == 0 
+                    if characterIndex != 1
+                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                    end
+                    break
+                end
+            end
+            currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
+            CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
+        elseif fieldString == "isFlipped"
+            isFlipped = currentEntitySelected.getComponent("Sprite").isFlipped
+            @c CImGui.Checkbox("isFlipped", &isFlipped)
+            currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
         end  
     end
 end
