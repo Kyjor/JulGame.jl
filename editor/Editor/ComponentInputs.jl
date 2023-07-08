@@ -172,7 +172,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                                             vec = animations[i].frames[k]
                                             vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
-                                            currentEntitySelected.getAnimator().animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), "frames", k)
+                                            currentEntitySelected.getAnimator().animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
                                             CImGui.TreePop()
                                         end
                                     end
