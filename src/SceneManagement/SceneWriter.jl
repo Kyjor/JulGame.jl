@@ -81,6 +81,7 @@ module SceneWriterModule
                     "size" => Dict("x" => component.size.x, "y" => component.size.y), 
                     "tag" => component.tag, 
                     "isTrigger" => component.isTrigger, 
+                    "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
                     )
                 push!(componentsDict, serializedComponent)
             elseif componentType == "Rigidbody"

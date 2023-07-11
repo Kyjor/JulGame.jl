@@ -95,6 +95,7 @@ module SceneReaderModule
         elseif component.type == "Collider"
             newComponent = Collider(Vector2f(component.size.x, component.size.y), component.tag)
             newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
+            newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
         elseif component.type == "Rigidbody"
             newComponent = Rigidbody(convert(Float64, component.mass))
         elseif component.type == "SoundSource"

@@ -202,12 +202,13 @@ module MainLoop
 							if DEBUG && entity.getCollider() != C_NULL
 								pos = entity.getTransform().getPosition()
 								colSize = entity.getCollider().getSize()
+								colOffset = entity.getCollider().offset
 								SDL2.SDL_RenderDrawLines(this.renderer, [
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)), 
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
 							end
 						end
 						for screenButton in this.screenButtons
@@ -390,12 +391,13 @@ module MainLoop
 						if DEBUG && entity.getCollider() != C_NULL
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
+							colOffset = entity.getCollider().offset
 							SDL2.SDL_RenderDrawLines(this.renderer, [
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
 						end
 					end
 					for screenButton in this.screenButtons

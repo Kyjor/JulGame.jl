@@ -152,23 +152,26 @@ function Base.getproperty(this::Collider, s::Symbol)
             nameB = colliderB.getParent().getName()
             posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS
             posB = colliderB.getParent().getTransform().getPosition() * SCALE_UNITS
+            offsetAX = colliderA.offset.x * SCALE_UNITS
+            offsetAY = colliderA.offset.y * SCALE_UNITS
+            offsetBX = colliderB.offset.x * SCALE_UNITS
+            offsetBY = colliderB.offset.y * SCALE_UNITS
+            colliderAXSize = colliderA.getSize().x * SCALE_UNITS
+            colliderAYSize = colliderA.getSize().y * SCALE_UNITS
+            colliderBXSize = colliderB.getSize().x * SCALE_UNITS
+            colliderBYSize = colliderB.getSize().y * SCALE_UNITS
+
             #Calculate the sides of rect A
-            leftA = posA.x
-            rightA = posA.x + colliderA.getSize().x * SCALE_UNITS
-            topA = posA.y
-            bottomA = posA.y + colliderA.getSize().y * SCALE_UNITS
+            leftA = posA.x + offsetAX
+            rightA = posA.x + colliderAXSize + offsetAX
+            topA = posA.y + offsetAY
+            bottomA = posA.y + colliderAYSize + offsetAY
             #Calculate the sides of rect B
-            leftB = posB.x
-            rightB = posB.x + colliderB.getSize().x * SCALE_UNITS
-            topB = posB.y
-            bottomB = posB.y + colliderB.getSize().y * SCALE_UNITS
+            leftB = posB.x + offsetBX
+            rightB = posB.x + colliderBXSize + offsetBX
+            topB = posB.y + offsetBY
+            bottomB = posB.y + colliderBYSize + offsetBY
             
-            # println("ColliderA: $nameA ColliderB: $nameB")
-            # println("bottomA: $bottomA , topB: $topB" )
-            # println("topA: $topA , bottomB: $bottomB" )
-            # println("rightA: $rightA , leftB: $leftB" )
-            # println("leftA: $leftA , rightB: $rightB" )
-        
              #If any of the sides from A are outside of B
             depthBottom = 0.0
             depthTop = 0.0
