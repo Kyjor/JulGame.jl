@@ -8,6 +8,7 @@ module InputModule
         buttonsHeldDown::Array{String}
         buttonsReleased::Array{String}
         debug::Bool
+        isWindowFocused::Bool
         mouseButtonsPressedDown::Array
         mouseButtonsHeldDown::Array
         mouseButtonsReleased::Array
@@ -24,6 +25,7 @@ module InputModule
             this.buttonsHeldDown = []
             this.buttonsReleased = []
             this.debug = false
+            this.isWindowFocused = true
             this.mouseButtonsPressedDown = []
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
@@ -117,41 +119,45 @@ module InputModule
                 end
                 windowEvent = event.window.event
                 
-                # if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
-                #     println(string("Window $(event.window.windowID) shown", ))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
-                #     println(string("Window $(event.window.windowID) hidden"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
-                #     println(string("Window $(event.window.windowID) exposed"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
-                #     println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
-                #     println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
-                #     println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
-                #     println(string("Window $(event.window.windowID) minimized"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
-                #     println(string("Window $(event.window.windowID) maximized"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
-                #     println(string("Window $(event.window.windowID) restored"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
-                #     println(string("Mouse entered window $(event.window.windowID)"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
-                #     println(string("Mouse left window $(event.window.windowID)"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
-                #     println(string("Window $(event.window.windowID) gained keyboard focus"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
-                #     println(string("Window $(event.window.windowID) lost keyboard focus"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
-                #     println(string("Window $(event.window.windowID) closed"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
-                #     println(string("Window $(event.window.windowID) is offered a focus"))
-                # elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
-                #     println(string("Window $(event.window.windowID) has a special hit test"))
-                # else
-                #     println(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
-                # end    
+                # Uncomment to debug window events
+                if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
+                    #println(string("Window $(event.window.windowID) shown", ))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
+                    #println(string("Window $(event.window.windowID) hidden"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
+                    #println(string("Window $(event.window.windowID) exposed"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
+                    #println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
+                    #println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
+                    #println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
+                    #println(string("Window $(event.window.windowID) minimized"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
+                    #println(string("Window $(event.window.windowID) maximized"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
+                    #println(string("Window $(event.window.windowID) restored"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
+                    #println(string("Mouse entered window $(event.window.windowID)"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
+                    #println(string("Mouse left window $(event.window.windowID)"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
+                    println(string("Window $(event.window.windowID) gained keyboard focus"))
+                    this.isWindowFocused = true
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
+                    println(string("Window $(event.window.windowID) lost keyboard focus"))
+                    this.isWindowFocused = false
+
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
+                    #println(string("Window $(event.window.windowID) closed"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
+                    #println(string("Window $(event.window.windowID) is offered a focus"))
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
+                    #println(string("Window $(event.window.windowID) has a special hit test"))
+                else
+                    #println(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
+                end    
             end
         elseif s == :handleKeyEvent
             function(keyboardState)

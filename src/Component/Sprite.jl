@@ -40,7 +40,7 @@ mutable struct Sprite
         return this
     end
 
-    function Sprite(basePath, imagePath, isFlipped, isCreatedInEditor)
+    function Sprite(basePath, imagePath, isFlipped::Bool, isCreatedInEditor)
         this = new()
         
         this.basePath = basePath

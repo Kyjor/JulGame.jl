@@ -443,7 +443,7 @@ module MainLoop
 					end
 					
 					SDL2.SDL_RenderPresent(this.renderer)
-					returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex]	
+					returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]	
 					this.selectedEntityUpdated = false
 					return returnData
 				catch e
@@ -492,6 +492,14 @@ module MainLoop
 					textBoxIndex += 1
 				end
 				this.selectedEntityIndex = -1
+			end
+		elseif s == :minimizeWindow
+			function ()
+				SDL2.SDL_MinimizeWindow(this.window)
+			end
+		elseif s == :restoreWindow
+			function ()
+				SDL2.SDL_RestoreWindow(this.window)
 			end
 		else
 			try

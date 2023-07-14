@@ -28,9 +28,6 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
     elseif componentType == "Animator"
         fieldsInComponent=fieldnames(JulGame.AnimatorModule.Animator);
         ShowAnimatorProperties(fieldsInComponent, currentEntitySelected)
-        # for i = 1:length(fieldsInComponent)
-        #     ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        # end
     elseif componentType == "Animation"
         fieldsInComponent=fieldnames(JulGame.AnimationModule.Animation);
         for i = 1:length(fieldsInComponent)
@@ -216,32 +213,11 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             isFlipped = currentEntitySelected.getComponent("Sprite").isFlipped
             @c CImGui.Checkbox("isFlipped", &isFlipped)
             currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
-        end  
-    end
-end
-
-function ShowSpriteProperties(spriteFields, currentEntitySelected)
-    for field in spriteFields
-        fieldString = "$(field)"
-
-        if fieldString == "imagePath"
-            buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
-            CImGui.InputText("Image Path Input", buf, length(buf))
-            currentTextInTextBox = ""
-            for characterIndex = 1:length(buf)
-                if Int(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
-            CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
-        elseif fieldString == "isFlipped"
-            isFlipped = currentEntitySelected.getComponent("Sprite").isFlipped
-            @c CImGui.Checkbox("isFlipped", &isFlipped)
-            currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
+        elseif fieldString == "crop"
+            vec = currentEntitySelected.getComponent("Sprite").crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.getComponent("Sprite").crop
+            vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+            @c CImGui.InputInt4("input int4", vec4i)
+            currentEntitySelected.getComponent("Sprite").crop = (vec.x == 0 && vec.y == 0 && vec.h == 0 && vec.w == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
         end  
     end
 end
