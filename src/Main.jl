@@ -461,8 +461,9 @@ module MainLoop
 			end
 		elseif s == :selectEntityWithClick
 			function ()
-				entityIndex = 1
+				entityIndex = 0
 				for entity in this.entities
+					entityIndex += 1
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
 						
@@ -474,12 +475,14 @@ module MainLoop
 						# println("mouse pos raw y: $(this.mousePositionWorldRaw.y)")
 						# println("mouse pos y: $(this.mousePositionWorld.y)")
 						# println("size y: $(size.y)")
+						if this.selectedEntityIndex == entityIndex
+							continue
+						end
 						this.selectedEntityIndex = entityIndex
 						this.selectedTextBoxIndex = -1
 						this.selectedEntityUpdated = true
 						return
 					end
-					entityIndex += 1
 				end
 				textBoxIndex = 1
 				for textBox in this.textBoxes

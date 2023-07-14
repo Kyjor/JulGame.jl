@@ -382,9 +382,17 @@ module Editor
                     CImGui.End()
                 end
 
-                    CImGui.Begin("Hierarchy")  
-                    CImGui.Button("New entity") && (game.createNewEntity())
-                    CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("VT323", "VT323-Regular.ttf")))
+                CImGui.Begin("Hierarchy") 
+                if length(gameInfo) > 0 
+                    try
+                        CImGui.Button("New entity") && (game.createNewEntity())
+                        CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("VT323", "VT323-Regular.ttf")))                    
+                    catch e
+                        println(e)
+                    end
+                else
+                    CImGui.Text("Load a project in the 'Project Location' window to add entities and textboxes.")
+                end 
     
                 ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
                 CImGui.SameLine()
