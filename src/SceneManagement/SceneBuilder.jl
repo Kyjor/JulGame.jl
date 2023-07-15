@@ -31,7 +31,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false)
+                function(isUsingEditor = false, dimensions = C_NULL)
                     #file loading
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
@@ -82,7 +82,7 @@ module SceneBuilderModule
 
                     main.assets = ASSETS
                     main.loadScene(main.scene)
-                    main.init(isUsingEditor)
+                    main.init(isUsingEditor, dimensions)
 
                     this.main = main
                     return main

@@ -3,7 +3,6 @@ module MainLoop
 	using ..JulGame: Input, Math
 
 	include("Enums.jl")
-
 	include("Constants.jl")
 	include("Scene.jl")
 
@@ -31,6 +30,7 @@ module MainLoop
 		selectedEntityIndex
 		selectedEntityUpdated
 		selectedTextBoxIndex
+		screenDimensions
 		targetFrameRate
 		textBoxes
 		widthMultiplier
@@ -53,33 +53,30 @@ module MainLoop
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
+			this.screenDimensions = C_NULL
 
 			return this
 		end
 	end
 
 	function Base.getproperty(this::Main, s::Symbol)
-		if s == :init 
-			function(isUsingEditor = false)
+		if s == :init 											
+			function(isUsingEditor = false, dimensions = C_NULL)
 				
-
+				this.screenDimensions = dimensions
 				if isUsingEditor
 					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS | SDL2.SDL_WINDOW_RESIZABLE)
 				else
-					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED)
+					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions != C_NULL ? this.screenDimensions.x : this.scene.camera.dimensions.x, this.screenDimensions != C_NULL ? this.screenDimensions.y : this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
 				end
 
-				SDL2.SDL_SetWindowResizable(this.window, SDL2.SDL_FALSE)
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_RENDERER_PRESENTVSYNC)
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				referenceHeight = 1080
 				referenceWidth = 1920
-				referenceScale = referenceHeight*referenceWidth
-				currentScale = windowInfo.w*windowInfo.h
 				this.heightMultiplier = windowInfo.h/referenceHeight
 				this.widthMultiplier = windowInfo.w/referenceWidth
-				scaleMultiplier = currentScale/referenceScale
 				fontSize = 50
 				
 				SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)

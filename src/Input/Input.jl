@@ -143,10 +143,10 @@ module InputModule
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
                     #println(string("Mouse left window $(event.window.windowID)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
-                    println(string("Window $(event.window.windowID) gained keyboard focus"))
+                    #println(string("Window $(event.window.windowID) gained keyboard focus"))
                     this.isWindowFocused = true
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
-                    println(string("Window $(event.window.windowID) lost keyboard focus"))
+                    #println(string("Window $(event.window.windowID) lost keyboard focus"))
                     this.isWindowFocused = false
 
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
