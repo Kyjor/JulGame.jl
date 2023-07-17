@@ -344,8 +344,10 @@ module Editor
                     cmd = "julia"
                     entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
                     entryFile = "Entry.jl"
+                    scriptPath = "$(joinpath(@__DIR__, "..", "Scripts", "RunScene.bat"))"
+
                     try
-                        CImGui.Button("Play") && (cd(entryPath); Base.run(`$cmd $entryFile`))
+                        CImGui.Button("Play") && Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`)
                     catch e
                         println(e)
                     end
