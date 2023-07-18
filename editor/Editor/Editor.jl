@@ -1,3 +1,4 @@
+
 module Editor
     using CImGui
     using CImGui.CSyntax
@@ -341,13 +342,11 @@ module Editor
                 end
                 @cstatic begin
                     CImGui.Begin("Play & Build") 
-                    cmd = "julia"
                     entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
-                    entryFile = "Entry.jl"
-                    scriptPath = "$(joinpath(@__DIR__, "..", "Scripts", "RunScene.bat"))"
+                    scriptPath = "$(joinpath(pwd(), "..", "Scripts", "RunScene.bat"))"
 
                     try
-                        CImGui.Button("Play") && Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`)
+                        CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`);)
                     catch e
                         println(e)
                     end

@@ -54,7 +54,6 @@ module SceneWriterModule
             componentType = "$(typeof(component).name.wrapper)"
             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
             #Dict("b" => 1, "c" => 2)
-            ASSETS = joinpath(@__DIR__, "..", "assets")
             if componentType == "Transform"
                 serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
                 push!(componentsDict, serializedComponent)
