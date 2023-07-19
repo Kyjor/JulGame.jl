@@ -73,7 +73,7 @@ module Editor
     
         # create window
         game = C_NULL #Entry.run(true)
-        window = glfwCreateWindow(1920, 1080, "Demo", C_NULL, C_NULL)
+        window = glfwCreateWindow(1920, 1080, "JulGame v0.0.2", C_NULL, C_NULL)
         @assert window != C_NULL
         glfwMakeContextCurrent(window)
         glfwSwapInterval(1)  # enable vsync
@@ -343,10 +343,10 @@ module Editor
                 @cstatic begin
                     CImGui.Begin("Play & Build") 
                     entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
-                    scriptPath = "$(joinpath(pwd(), "..", "Scripts", "RunScene.bat"))"
+                    scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
 
                     try
-                        CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`);)
+                        CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath"))
                     catch e
                         println(e)
                     end
