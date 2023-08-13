@@ -1,5 +1,6 @@
 module SoundSourceModule
-
+    using ..JulGame
+    
     export SoundSource
     mutable struct SoundSource
         basePath

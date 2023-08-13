@@ -9,8 +9,7 @@ module Editor
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
     #using Printf
-    using SimpleDirectMediaLayer
-    const SDL2 = SimpleDirectMediaLayer
+    using ..JulGame
     using ..JulGame.EntityModule
     using ..JulGame.SceneWriterModule
     using ..JulGame.SceneLoaderModule

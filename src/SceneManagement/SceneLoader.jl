@@ -1,8 +1,6 @@
 module SceneLoaderModule
+    using ..SceneManagement.JulGame
     using ..SceneManagement.SceneBuilderModule
-    #include("../scenes/level_1.jl")
-    using SimpleDirectMediaLayer
-    const SDL2 = SimpleDirectMediaLayer 
 
     export loadScene
     function loadScene(projectPath, sceneFileName, isUsingEditor = false)
