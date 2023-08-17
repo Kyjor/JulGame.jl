@@ -13,6 +13,7 @@ module MainLoop
 		entities
 		events
 		font
+		globals
 		heightMultiplier
 		input
 		isDraggingEntity
@@ -54,7 +55,8 @@ module MainLoop
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
 			this.screenDimensions = C_NULL
-
+			this.globals = []
+			
 			return this
 		end
 	end

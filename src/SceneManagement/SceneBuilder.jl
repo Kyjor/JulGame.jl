@@ -31,11 +31,12 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, dimensions = C_NULL)
+                function(isUsingEditor = false, dimensions = C_NULL, zoom = C_NULL, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN
-                    
+                    main.zoom = zoom
+                    main.globals = globals
                     main.level = this
                     scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
