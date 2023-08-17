@@ -113,14 +113,13 @@ module MainLoop
 
 				if !isUsingEditor
 					for script in scripts
-						if script.initialize != C_NULL
-							try
-								script.initialize()
-							catch e
-								println("Error initializing script")
-								Base.show_backtrace(stdout, catch_backtrace())
-							end
-						end
+						try
+							script.initialize()
+						catch e
+							println("Error initializing script")
+							println(e)
+							#Base.show_backtrace(stdout, catch_backtrace())
+						end	
 					end
 				end
 
@@ -255,6 +254,17 @@ module MainLoop
 						end
 					end
 				finally
+					for entity in this.scene.entities
+						for script in entity.scripts
+							try
+								script.onShutDown()
+							catch e
+								println("Error initializing script")
+								println(e)
+								#Base.show_backtrace(stdout, catch_backtrace())
+							end	
+						end
+					end
 					SDL2.Mix_Quit()
 					SDL2.SDL_Quit()
 				end
