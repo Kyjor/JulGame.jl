@@ -5,6 +5,7 @@ module Math
     include("Vector4.jl")
     
     export Lerp
+    export SmoothLerp
     export Vector2
     export Vector2f
     export Vector4
