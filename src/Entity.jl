@@ -144,9 +144,14 @@ module EntityModule
             end
         elseif s == :addScript
             function(script)
-                println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
+                #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
                 push!(this.scripts, script)
                 script.setParent(this)
+                try
+                    script.initialize()
+                catch e
+                    println(e)
+                end
             end
         elseif s == :getScripts
             function()
