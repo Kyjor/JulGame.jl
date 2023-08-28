@@ -78,10 +78,14 @@ mutable struct Sprite
             return this
         end
 
-        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        SDL_ClearError()
+        fullPath = joinpath(basePath, "projectFiles", "assets", "images", imagePath)
+        this.image = IMG_Load(fullPath)
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             SDL_ClearError()
+
+            println(fullPath)
             println(string("Couldn't open image! SDL Error: ", error))
         end
 
