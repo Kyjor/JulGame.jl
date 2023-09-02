@@ -129,6 +129,10 @@ module EntityModule
             function()
             return this.getComponent(Rigidbody)
             end
+        elseif s == :getSoundSource
+            function()
+            return this.getComponent(SoundSource)
+            end
         elseif s == :addComponent
             function(component)
                 push!(this.components, component)
