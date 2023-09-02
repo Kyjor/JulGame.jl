@@ -18,46 +18,51 @@ module SceneReaderModule
 
     export deserializeScene
     function deserializeScene(basePath, filePath, isEditor)
-        entitiesJson = read(filePath, String)
-
-        json = JSON3.read(entitiesJson)
-        entities =[]
-        textBoxes = []
-        res = []
-
-        for entity in json.Entities
-            components = []
-            scripts = []
-
-            for component in entity.components
-                push!(components, deserializeComponent(basePath, component, isEditor))
-            end
-            
-            for script in entity.scripts
-                scriptParameters = []
-                for scriptParameter in script.parameters
-                    push!(scriptParameters, scriptParameter)
+        try
+            entitiesJson = read(filePath, String)
+    
+            json = JSON3.read(entitiesJson)
+            entities =[]
+            textBoxes = []
+            res = []
+    
+            for entity in json.Entities
+                components = []
+                scripts = []
+    
+                for component in entity.components
+                    push!(components, deserializeComponent(basePath, component, isEditor))
                 end
-                scriptObject = scriptObj(script.name, scriptParameters)
-                push!(scripts, scriptObject)
+                
+                for script in entity.scripts
+                    scriptParameters = []
+                    for scriptParameter in script.parameters
+                        push!(scriptParameters, scriptParameter)
+                    end
+                    scriptObject = scriptObj(script.name, scriptParameters)
+                    push!(scripts, scriptObject)
+                end
+                
+                newEntity = Entity(entity.name)
+                newEntity.id = entity.id
+                newEntity.removeComponent(Transform)
+                newEntity.isActive = entity.isActive
+                newEntity.scripts = scripts
+                for component in components
+                    newEntity.addComponent(component)
+                end
+                
+                push!(entities, newEntity)
             end
-            
-            newEntity = Entity(entity.name)
-            newEntity.id = entity.id
-            newEntity.removeComponent(Transform)
-            newEntity.isActive = entity.isActive
-            newEntity.scripts = scripts
-            for component in components
-                newEntity.addComponent(component)
-            end
-            
-            push!(entities, newEntity)
+            textBoxes = deserializeTextBoxes(basePath, json.TextBoxes)
+    
+            push!(res, entities)
+            push!(res, textBoxes)
+            return res
+        catch e 
+            println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
-        textBoxes = deserializeTextBoxes(basePath, json.TextBoxes)
-
-        push!(res, entities)
-        push!(res, textBoxes)
-        return res
     end
 
     function deserializeTextBoxes(basePath, jsonTextBoxes)
@@ -78,44 +83,43 @@ module SceneReaderModule
 
     export deserializeComponent
     function deserializeComponent(basePath, component, isEditor)
-        if component.type == "Transform"
-            newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
-        elseif component.type == "Animation"
-            newComponent = Animation(component.frames, component.animatedFPS)
-        elseif component.type == "Animator"
-            newAnimations = []
-            for animation in component.animations
-            newAnimationFrames = []
-            for animationFrame in animation.frames
-                push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.w, animationFrame.h))
+        try
+            if component.type == "Transform"
+                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
+            elseif component.type == "Animation"
+                newComponent = Animation(component.frames, component.animatedFPS)
+            elseif component.type == "Animator"
+                newAnimations = []
+                for animation in component.animations
+                newAnimationFrames = []
+                for animationFrame in animation.frames
+                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.w, animationFrame.h))
+                end
+                push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+                end
+                newComponent = Animator(newAnimations)
+            elseif component.type == "Collider"
+                newComponent = Collider(Vector2f(component.size.x, component.size.y), component.tag)
+                newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
+                newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+            elseif component.type == "Rigidbody"
+                newComponent = Rigidbody(convert(Float64, component.mass))
+            elseif component.type == "SoundSource"
+                if isEditor
+                    newComponent = SoundSource(basePath, component.path, component.channel, component.volume, component.isMusic)
+                else
+                    newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(basePath, component.path, component.channel, component.volume)
+                end
+            elseif component.type == "Sprite"
+                    crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
+                    newComponent = Sprite(basePath, component.imagePath, crop, false)
+                    newComponent.isFlipped = component.isFlipped
             end
-            push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
-            end
-            newComponent = Animator(newAnimations)
-        elseif component.type == "Collider"
-            newComponent = Collider(Vector2f(component.size.x, component.size.y), component.tag)
-            newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
-            newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
-        elseif component.type == "Rigidbody"
-            newComponent = Rigidbody(convert(Float64, component.mass))
-        elseif component.type == "SoundSource"
-            if isEditor
-                newComponent = SoundSource(basePath, component.path, component.channel, component.volume, component.isMusic)
-            else
-                newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(basePath, component.path, component.channel, component.volume)
-            end
-        elseif component.type == "Sprite"
-            try
-                
-                crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
-                newComponent = Sprite(basePath, component.imagePath, crop, false)
-                newComponent.isFlipped = component.isFlipped
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-
+            
+            return newComponent
+        catch e
+            println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
-        return newComponent
     end
 end

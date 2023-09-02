@@ -31,7 +31,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, dimensions = C_NULL, zoom = C_NULL, globals = [])
+                function(isUsingEditor = false, dimensions = Vector2f(800, 800), zoom = 1.0, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
                     main = MAIN

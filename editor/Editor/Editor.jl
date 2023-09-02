@@ -41,8 +41,9 @@ module Editor
         game = C_NULL
         try
             game = SceneLoaderModule.loadScene(projectPath, sceneFileName, true);
-        catch e
+        catch e 
             println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
 
         return game
