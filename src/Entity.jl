@@ -90,9 +90,9 @@ module EntityModule
                     componentType = eval(Symbol(componentType))
                 end
                 for component in this.components
-                if typeof(component) <: componentType
-                    return component
-                end
+                    if typeof(component) <: componentType
+                        return component
+                    end
                 end
                 return C_NULL
             end
@@ -155,6 +155,7 @@ module EntityModule
                     script.initialize()
                 catch e
                     println(e)
+                    Base.show_backtrace(stdout, catch_backtrace())
                 end
             end
         elseif s == :getScripts

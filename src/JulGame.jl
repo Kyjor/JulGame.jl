@@ -2,10 +2,8 @@ __precompile__(false)
 module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
-
-    SDL2.init()
     export SDL2
-    
+
     include("Macros.jl")
     using .Macros: @event
     export @event

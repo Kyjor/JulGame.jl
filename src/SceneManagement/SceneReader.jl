@@ -20,7 +20,7 @@ module SceneReaderModule
     function deserializeScene(basePath, filePath, isEditor)
         try
             entitiesJson = read(filePath, String)
-    
+
             json = JSON3.read(entitiesJson)
             entities =[]
             textBoxes = []

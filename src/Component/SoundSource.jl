@@ -23,8 +23,11 @@ module SoundSourceModule
             this.sound = SDL2.Mix_LoadMUS(joinpath(basePath, "projectFiles", "assets", "sounds", path))
             this.volume = volume
 
+            fullPath = joinpath(basePath, "projectFiles", "assets", "sounds", path)
             if (this.sound == C_NULL)
-                error("$(path) not found. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
+                println(fullPath)
+
+                error("error loading file at $(path) SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
             end
 
             SDL2.Mix_VolumeMusic(Int32(volume))
@@ -43,7 +46,9 @@ module SoundSourceModule
             this.sound = SDL2.Mix_LoadWAV(joinpath(basePath, "projectFiles", "assets", "sounds", path))
             this.volume = volume
 
+            fullPath = joinpath(basePath, "projectFiles", "assets", "sounds", path)
             if (this.sound == C_NULL)
+                println(fullPath)
                 error("$(path). SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
             end
 

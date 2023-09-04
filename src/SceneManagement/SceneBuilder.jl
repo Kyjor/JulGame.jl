@@ -6,14 +6,19 @@ module SceneBuilderModule
     using ..SceneManagement.JulGame.RigidbodyModule
     using ..SceneManagement.JulGame.TextBoxModule
     using ..SceneManagement.SceneReaderModule
-    if isdir(joinpath(pwd(), "..", "scripts"))
+
+    if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
         println("Loading scripts...")
         include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
+    elseif isdir(joinpath(pwd(), "platformer", "scripts"))
+        println("Loading scripts...")
+        include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "platformer", "scripts"); join=true)))
     end
+
         
     include("../Camera.jl")
     include("../Main.jl")
-
+    
     export Scene
     mutable struct Scene
         main
@@ -71,7 +76,14 @@ module SceneBuilderModule
                                 end
                                 push!(params, param)
                             end
-                            newScript = eval(Symbol(script.name))(params...)
+
+                            newScript = C_NULL
+                            try
+                                newScript = eval(Symbol(script.name))(params...)
+                            catch e
+                                println(e)
+                                Base.show_backtrace(stdout, catch_backtrace())
+                            end
 
                             entity.scripts[scriptCounter] = newScript
                             newScript.setParent(entity)
