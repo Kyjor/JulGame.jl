@@ -504,7 +504,7 @@ module Editor
                 gameInfo = game == C_NULL ? [] : game.editorLoop(update)
             end
         catch e
-            @error "Error in renderloop!" exception=e
+            @warn "Error in renderloop!" exception=e
             Base.show_backtrace(stderr, catch_backtrace())
         finally
             ImGuiOpenGLBackend.shutdown(opengl_ctx) #ImGui_ImplOpenGL3_Shutdown()
