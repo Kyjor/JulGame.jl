@@ -58,17 +58,6 @@ module SoundSourceModule
     end
     
     function Base.getproperty(this::SoundSource, s::Symbol)
-          # Check the call stack
-          stack = stacktrace()
-        
-          # Get information about the caller
-          caller_info = stack[2]  # Index 2 corresponds to the caller of my_function
-          
-          # Extract caller information
-          caller_file = caller_info.file
-          caller_line = caller_info.line
-          
-          println("my_function was called from $caller_file at line $caller_line.")
         if s == :toggleSound
             function(loops = 0)
                 if this.isMusic
