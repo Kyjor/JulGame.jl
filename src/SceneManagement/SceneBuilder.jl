@@ -10,9 +10,22 @@ module SceneBuilderModule
     if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
         println("Loading scripts...")
         include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
-    elseif isdir(joinpath(pwd(), "platformer", "scripts"))
-        println("Loading scripts...")
-        include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "platformer", "scripts"); join=true)))
+    else
+        script_folder_name = "scripts"
+        current_dir = pwd()
+
+        # Find all folders in the current directory
+        folders = filter(isdir, readdir(current_dir))
+
+        # Check each folder for the "scripts" subfolder
+        for folder in folders
+            scripts_path = joinpath(current_dir, folder, script_folder_name)
+            if isdir(scripts_path)
+                println("Loading scripts in $scripts_path...")
+                include.(filter(contains(r".jl$"), readdir(scripts_path; join=true)))
+                break  # Exit loop if "scripts" folder is found in any parent folder
+            end
+        end
     end
 
         
@@ -38,12 +51,12 @@ module SceneBuilderModule
             if s == :init 
                 function(isUsingEditor = false, dimensions = Vector2f(800, 800), zoom = 1.0, globals = [])
                     #file loading
-                    ASSETS = joinpath(this.srcPath, "projectFiles", "assets")
+                    ASSETS = joinpath(this.srcPath, "assets")
                     main = MAIN
                     main.zoom = zoom
                     main.globals = globals
                     main.level = this
-                    scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "projectFiles", "scenes", this.scene), isUsingEditor)
+                    scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
                     main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), C_NULL)

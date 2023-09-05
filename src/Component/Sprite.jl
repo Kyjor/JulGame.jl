@@ -31,7 +31,7 @@ mutable struct Sprite
             return this
         end
 
-        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        this.image = IMG_Load(joinpath(basePath, "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             SDL_ClearError()
@@ -56,7 +56,7 @@ mutable struct Sprite
             return this
         end
 
-        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        this.image = IMG_Load(joinpath(basePath, "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             SDL_ClearError()
@@ -82,7 +82,7 @@ mutable struct Sprite
         end
 
         SDL_ClearError()
-        fullPath = joinpath(basePath, "projectFiles", "assets", "images", imagePath)
+        fullPath = joinpath(basePath, "assets", "images", imagePath)
         this.image = IMG_Load(fullPath)
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
@@ -141,7 +141,7 @@ function Base.getproperty(this::Sprite, s::Symbol)
         end
     elseif s == :loadImage
         function(imagePath)
-            this.image = IMG_Load(joinpath(this.basePath, "projectFiles", "assets", "images", imagePath))
+            this.image = IMG_Load(joinpath(this.basePath, "assets", "images", imagePath))
             error = unsafe_string(SDL_GetError())
             if !isempty(error)
                 println(string("Couldn't open image! SDL Error: ", error))

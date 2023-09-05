@@ -37,8 +37,8 @@ module SceneWriterModule
             "TextBoxes" => textBoxesDict
             )
         try
-            println("writing to $(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName)"))")
-            open(joinpath(projectPath, "projectFiles", "scenes", "$(sceneName)"), "w") do io
+            println("writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))")
+            open(joinpath(projectPath, "scenes", "$(sceneName)"), "w") do io
                 JSON3.pretty(io, entitiesJson)
             end
         catch e

@@ -342,7 +342,7 @@ module Editor
                 end
                 @cstatic begin
                     CImGui.Begin("Play & Build") 
-                    entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
+                    entryPath = "$(joinpath(projectPath, "src"))"
                     scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
 
                     try
