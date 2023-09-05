@@ -1,15 +1,15 @@
+
 module Editor
     using CImGui
     using CImGui.CSyntax
     using CImGui.CSyntax.CStatic
-    using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64
+    using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using ImGuiGLFWBackend #CImGui.GLFWBackend
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
     #using Printf
-    using SimpleDirectMediaLayer
-    const SDL2 = SimpleDirectMediaLayer
+    using ..JulGame
     using ..JulGame.EntityModule
     using ..JulGame.SceneWriterModule
     using ..JulGame.SceneLoaderModule
@@ -41,8 +41,9 @@ module Editor
         game = C_NULL
         try
             game = SceneLoaderModule.loadScene(projectPath, sceneFileName, true);
-        catch e
+        catch e 
             println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
 
         return game
@@ -72,7 +73,7 @@ module Editor
     
         # create window
         game = C_NULL #Entry.run(true)
-        window = glfwCreateWindow(1920, 1080, "Demo", C_NULL, C_NULL)
+        window = glfwCreateWindow(1920, 1080, "JulGame v0.0.2", C_NULL, C_NULL)
         @assert window != C_NULL
         glfwMakeContextCurrent(window)
         glfwSwapInterval(1)  # enable vsync
@@ -123,6 +124,11 @@ module Editor
             sceneFileName = ""
             relativeX = 0
             relativeY = 0
+            isEditorWindowFocused = false
+            isSceneWindowFocused = false
+            isSceneWindowRestored = true
+            autoMinimize = false
+            isMinimized = false
 
             clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
             while glfwWindowShouldClose(window) == 0
@@ -136,6 +142,7 @@ module Editor
                     cameraPositionX = gameInfo[3].x
                     cameraPositionY = gameInfo[3].y
                     currentEntitySelectedIndex = gameInfo[4]
+                    isSceneWindowFocused = gameInfo[5]
                 end 
                 
                 glfwPollEvents()
@@ -151,7 +158,7 @@ module Editor
                 @c ShowMainMenuBar(Ref{Bool}(true), events)
                 
                 # Uncomment to see widgets that can be used.
-                # @c CImGui.ShowDemoWindow(Ref{Bool}(true)) 
+                #@c CImGui.ShowDemoWindow(Ref{Bool}(true)) 
                 testText = ""
                 mousePositionText = "0,0"
                 if currentEntitySelectedIndex != -1
@@ -164,10 +171,30 @@ module Editor
                     mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
                 end
     
-                # show a simple window that we create ourselves.
+
+                LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
+
                 # we use a Begin/End pair to created a named window.
                 @cstatic f=Cfloat(0.0) counter=Cint(0) begin
                     CImGui.Begin("Item")  # create a window called "Item" and append into it.
+
+                    if glfwGetWindowAttrib(window, GLFW_FOCUSED) != 0 && glfwGetWindowAttrib(window, GLFW_HOVERED) != 0
+                        isEditorWindowFocused = true
+                    elseif glfwGetWindowAttrib(window, GLFW_FOCUSED) == 0
+                        isEditorWindowFocused = false
+                    end
+                    if isEditorWindowFocused && !isSceneWindowFocused && length(gameInfo) > 0 && !isSceneWindowRestored
+                        #println("Editor Window Focused")
+                        isSceneWindowRestored = true
+                        game.restoreWindow()
+                    elseif isSceneWindowFocused && !isEditorWindowFocused
+                        #println("Scene Window Focused")
+                    elseif !isEditorWindowFocused && !isSceneWindowFocused && isSceneWindowRestored && length(gameInfo) > 0 && autoMinimize
+                        isSceneWindowRestored = false
+                        #println("Both Windows Not Focused")
+                        game.minimizeWindow()
+                    end
+
                     CImGui.Text(testText)
                     
                     if currentEntityUpdated 
@@ -185,7 +212,7 @@ module Editor
                         CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; structToUpdate[currentSelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
 
                         CImGui.PushID("foo")
-                        if CImGui.BeginMenu("Entity Menu")
+                        if CImGui.BeginMenu("Add")
                             ShowEntityContextMenu(projectPath, structToUpdate[currentSelectedIndex], game)
                             CImGui.EndMenu()
                         end
@@ -283,8 +310,6 @@ module Editor
                         end
                     end
     
-        #            @c CImGui.InputInt("y", &i0)
-                    #CImGui.Text(@sprintf("Application average %.3f ms/frame (%.1f FPS)", 1000 / unsafe_load(CImGui.GetIO().Framerate), unsafe_load(CImGui.GetIO().Framerate)))
                     CImGui.Text(mousePositionText)
                     entityToPush = C_NULL
                     if currentEntitySelectedIndex != -1
@@ -293,24 +318,35 @@ module Editor
                     push!(update, [entityToPush, 0])
                     CImGui.End()
                 end
+
+                @cstatic begin
+                    CImGui.Begin("Debug")
+                    CImGui.Text("To be implemented")
+                    CImGui.End()
+                end
+
                 @cstatic begin
                     CImGui.Begin("Scene")  # create a window called "Scene"
                     CImGui.Text("Window Size: x:$editorWindowSizeX, y:$editorWindowSizeY Camera Position: x:$cameraPositionX, y:$cameraPositionY")
                     CImGui.SameLine()
                     CImGui.Button("ResetCamera") && (resetCamera = true)
+                    CImGui.SameLine()
+                    @c CImGui.Checkbox("Auto Minimize When Losing Focus", &autoMinimize)
+                    CImGui.SameLine()
+                    CImGui.Button("Minimize/Restore") && length(gameInfo) > 0 && (!isMinimized ? game.minimizeWindow() : game.restoreWindow(); isMinimized = !isMinimized)
                     relativeX = CImGui.GetWindowPos().x + 3
                     relativeY = CImGui.GetWindowPos().y + 45
-                    editorWindowSizeX = CImGui.GetWindowSize().x - 50
-                    editorWindowSizeY = CImGui.GetWindowSize().y - 75
+                    editorWindowSizeX = CImGui.GetWindowSize().x - 100
+                    editorWindowSizeY = CImGui.GetWindowSize().y - 100
                     CImGui.End()
                 end
                 @cstatic begin
                     CImGui.Begin("Play & Build") 
-                    cmd = "julia"
-                    entryPath = "$(joinpath(projectPath, "projectFiles", "src"))"
-                    entryFile = "Entry.jl"
+                    entryPath = "$(joinpath(projectPath, "src"))"
+                    scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
+
                     try
-                        CImGui.Button("Play") && (cd(entryPath); Base.run(`$cmd $entryFile`))
+                        CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath"))
                     catch e
                         println(e)
                     end
@@ -347,10 +383,17 @@ module Editor
                     CImGui.End()
                 end
 
-                    CImGui.Begin("Hierarchy")  
-                    CImGui.Button("New entity") && (game.createNewEntity())
-                    CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("VT323", "VT323-Regular.ttf")))
-                    # TODO: CImGui.Button("New button") && (game.createNewEntity())
+                CImGui.Begin("Hierarchy") 
+                if length(gameInfo) > 0 
+                    try
+                        CImGui.Button("New entity") && (game.createNewEntity())
+                        CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("VT323", "VT323-Regular.ttf")))                    
+                    catch e
+                        println(e)
+                    end
+                else
+                    CImGui.Text("Load a project in the 'Project Location' window to add entities and textboxes.")
+                end 
     
                 ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
                 CImGui.SameLine()
@@ -461,7 +504,7 @@ module Editor
                 gameInfo = game == C_NULL ? [] : game.editorLoop(update)
             end
         catch e
-            @error "Error in renderloop!" exception=e
+            @warn "Error in renderloop!" exception=e
             Base.show_backtrace(stderr, catch_backtrace())
         finally
             ImGuiOpenGLBackend.shutdown(opengl_ctx) #ImGui_ImplOpenGL3_Shutdown()

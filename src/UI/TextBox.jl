@@ -29,7 +29,7 @@ module TextBoxModule
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? joinpath(@__DIR__, "..", "Fonts") : basePath
+            this.basePath = isDefaultFont ? joinpath(pwd(), "..", "fonts") : basePath
             this.fontPath = fontPath
             this.fontSize = fontSize
             this.autoSizeText = false
@@ -74,7 +74,7 @@ module TextBoxModule
             function(renderer, zoom)
                 this.zoom = zoom
                 this.renderer = renderer
-                path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "projectFiles", "assets", "fonts", this.fontPath)
+                path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
                 font = TTF_OpenFont(path, this.fontSize)
                 println(unsafe_string(SDL_GetError()))
                 this.font = font

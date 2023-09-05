@@ -1,5 +1,6 @@
 module SoundSourceModule
-
+    using ..JulGame
+    
     export SoundSource
     mutable struct SoundSource
         basePath
@@ -11,77 +12,63 @@ module SoundSourceModule
         volume
 
         # Music
-        function SoundSource(basePath, path, volume::Integer)
+        function CreateSoundSource(basePath, path, channel, volume::Integer, isMusic::Bool)
             this = new()
 
-            this.basePath = basePath
-            this.channel = C_NULL
-            this.isMusic = true
-            this.parent = C_NULL
-            this.path = path
-            this.sound = SDL2.Mix_LoadMUS(joinpath(basePath, "projectFiles", "assets", "sounds", path))
-            this.volume = volume
-
-            if (this.sound == C_NULL)
-                error("$(path) not found. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
-            end
-
-            SDL2.Mix_VolumeMusic(Int32(volume))
-
-            return this
-        end
-
-        # Sound effect
-        function SoundSource(basePath, path, channel::Integer, volume::Integer)
-            this = new()
-
-            this.isMusic = false
-            this.basePath = basePath
-            this.parent = C_NULL
-            this.path = path
-            this.sound = SDL2.Mix_LoadWAV(joinpath(basePath, "projectFiles", "assets", "sounds", path))
-            this.volume = volume
-
-            if (this.sound == C_NULL)
-                error("$(path). SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
-            end
-
-            SDL2.Mix_Volume(Int32(channel), Int32(volume))
-            this.channel = channel
-
-            return this
-        end
-
-        # Sound creation for editor
-        function SoundSource(basePath, path, channel, volume, isMusic)
-            this = new()
+            fullPath = joinpath(basePath, "assets", "sounds", path)
+            sound = isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
             
+            if sound == C_NULL
+                println(fullPath)
+                error("Error loading file at $path. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
+            end
+            
+            isMusic ? SDL2.Mix_VolumeMusic(Int32(volume)) : SDL2.Mix_Volume(Int32(channel), Int32(volume))
+
             this.basePath = basePath
             this.channel = channel
             this.isMusic = isMusic
             this.parent = C_NULL
             this.path = path
+            this.sound = sound
             this.volume = volume
-            
+
             return this
         end
-
-        # Sound creation for editor
+        
+        # Constructor for music
+        function SoundSource(basePath, path, volume::Integer)
+            return CreateSoundSource(basePath, path, -1, volume, true)
+        end
+        
+        # Constructor for sound effect
+        function SoundSource(basePath, path, channel::Integer, volume::Integer)
+            return CreateSoundSource(basePath, path, channel, volume, false)
+        end
+        
+        # Constructor for editor
         function SoundSource(basePath)
-            this = new()
-            
-            this.basePath = basePath
-            this.channel = -1
-            this.isMusic = false
-            this.parent = C_NULL
-            this.path = ""
-            this.volume = 100
-            
-            return this
+            return CreateSoundSource(basePath, "", -1, 100, false)
+        end
+        
+        # Constructor for editor with specified properties
+        function SoundSource(basePath, channel, volume, isMusic)
+            return CreateSoundSource(basePath, "", channel, volume, isMusic)
         end
     end
     
     function Base.getproperty(this::SoundSource, s::Symbol)
+          # Check the call stack
+          stack = stacktrace()
+        
+          # Get information about the caller
+          caller_info = stack[2]  # Index 2 corresponds to the caller of my_function
+          
+          # Extract caller information
+          caller_file = caller_info.file
+          caller_line = caller_info.line
+          
+          println("my_function was called from $caller_file at line $caller_line.")
         if s == :toggleSound
             function(loops = 0)
                 if this.isMusic
@@ -105,7 +92,7 @@ module SoundSourceModule
         elseif s == :loadSound
             function(soundPath, isMusic)
                 this.isMusic = isMusic
-                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(this.basePath, "projectFiles", "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(this.basePath, "projectFiles", "assets", "sounds", soundPath))
+                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(this.basePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(this.basePath, "assets", "sounds", soundPath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open sound! SDL Error: ", error))

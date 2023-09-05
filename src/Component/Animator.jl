@@ -1,8 +1,7 @@
 ﻿module AnimatorModule
 using ..Component.AnimationModule
+using ..Component.JulGame
 using ..Component.JulGame.Math
-using SimpleDirectMediaLayer
-const SDL2 = SimpleDirectMediaLayer
 
 export Animator
 mutable struct Animator

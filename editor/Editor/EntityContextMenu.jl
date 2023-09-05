@@ -7,8 +7,8 @@ ShowEntityContextMenu()
 Show menu that allows user to add new components to an entity
 """
 function ShowEntityContextMenu(basePath, currentEntitySelected, game)
-    CImGui.MenuItem("Entity Menu", C_NULL, false, false)
-    if CImGui.BeginMenu("New Component")
+    CImGui.MenuItem("Add", C_NULL, false, false)
+    if CImGui.BeginMenu("New")
         if CImGui.MenuItem("Animator")
             currentEntitySelected.addAnimator()
         end

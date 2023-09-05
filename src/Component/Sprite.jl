@@ -19,6 +19,7 @@ mutable struct Sprite
     function Sprite(basePath, imagePath, crop, isCreatedInEditor)
         this = new()
         
+        this.offset = Math.Vector2f()
         this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
@@ -30,7 +31,7 @@ mutable struct Sprite
             return this
         end
 
-        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        this.image = IMG_Load(joinpath(basePath, "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             SDL_ClearError()
@@ -40,9 +41,10 @@ mutable struct Sprite
         return this
     end
 
-    function Sprite(basePath, imagePath, isFlipped, isCreatedInEditor)
+    function Sprite(basePath, imagePath, isFlipped::Bool, isCreatedInEditor)
         this = new()
         
+        this.offset = Math.Vector2f()
         this.basePath = basePath
         this.isFlipped = isFlipped
         this.imagePath = imagePath
@@ -54,7 +56,7 @@ mutable struct Sprite
             return this
         end
 
-        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        this.image = IMG_Load(joinpath(basePath, "assets", "images", imagePath))
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             SDL_ClearError()
@@ -67,6 +69,7 @@ mutable struct Sprite
     function Sprite(basePath, imagePath, isCreatedInEditor)
         this = new()
         
+        this.offset = Math.Vector2f()
         this.basePath = basePath
         this.isFlipped = false
         this.imagePath = imagePath
@@ -78,10 +81,14 @@ mutable struct Sprite
             return this
         end
 
-        this.image = IMG_Load(joinpath(basePath, "projectFiles", "assets", "images", imagePath))
+        SDL_ClearError()
+        fullPath = joinpath(basePath, "assets", "images", imagePath)
+        this.image = IMG_Load(fullPath)
         error = unsafe_string(SDL_GetError())
         if !isempty(error)
             SDL_ClearError()
+
+            println(fullPath)
             println(string("Couldn't open image! SDL Error: ", error))
         end
 
@@ -101,17 +108,19 @@ function Base.getproperty(this::Sprite, s::Symbol)
             flip = SDL_FLIP_NONE
             
             srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
+
             SDL_RenderCopyEx(
                 this.renderer, 
                 this.texture, 
                 srcRect, 
-                Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x - MAIN.scene.camera.position.x) * SCALE_UNITS)), 
-                convert(Int32,round((parentTransform.getPosition().y - MAIN.scene.camera.position.y) * SCALE_UNITS)),
+                Ref(SDL_Rect(convert(Int32,round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS)), 
+                convert(Int32,round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS)),
                 convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
                 convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))), 
                 0.0, 
                 C_NULL, 
                 this.isFlipped ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE)
+            
         end
     elseif s == :injectRenderer
         function(renderer)
@@ -132,7 +141,7 @@ function Base.getproperty(this::Sprite, s::Symbol)
         end
     elseif s == :loadImage
         function(imagePath)
-            this.image = IMG_Load(joinpath(this.basePath, "projectFiles", "assets", "images", imagePath))
+            this.image = IMG_Load(joinpath(this.basePath, "assets", "images", imagePath))
             error = unsafe_string(SDL_GetError())
             if !isempty(error)
                 println(string("Couldn't open image! SDL Error: ", error))

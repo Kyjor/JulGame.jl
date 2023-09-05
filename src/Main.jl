@@ -3,7 +3,6 @@ module MainLoop
 	using ..JulGame: Input, Math
 
 	include("Enums.jl")
-
 	include("Constants.jl")
 	include("Scene.jl")
 
@@ -14,6 +13,7 @@ module MainLoop
 		entities
 		events
 		font
+		globals
 		heightMultiplier
 		input
 		isDraggingEntity
@@ -31,6 +31,7 @@ module MainLoop
 		selectedEntityIndex
 		selectedEntityUpdated
 		selectedTextBoxIndex
+		screenDimensions
 		targetFrameRate
 		textBoxes
 		widthMultiplier
@@ -53,33 +54,31 @@ module MainLoop
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
-
+			this.screenDimensions = C_NULL
+			this.globals = []
+			
 			return this
 		end
 	end
 
 	function Base.getproperty(this::Main, s::Symbol)
-		if s == :init 
-			function(isUsingEditor = false)
+		if s == :init 											
+			function(isUsingEditor = false, dimensions = C_NULL)
 				
-
+				this.screenDimensions = dimensions
 				if isUsingEditor
 					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS | SDL2.SDL_WINDOW_RESIZABLE)
 				else
-					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED)
+					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions != C_NULL ? this.screenDimensions.x : this.scene.camera.dimensions.x, this.screenDimensions != C_NULL ? this.screenDimensions.y : this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
 				end
 
-				SDL2.SDL_SetWindowResizable(this.window, SDL2.SDL_FALSE)
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_RENDERER_PRESENTVSYNC)
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				referenceHeight = 1080
 				referenceWidth = 1920
-				referenceScale = referenceHeight*referenceWidth
-				currentScale = windowInfo.w*windowInfo.h
 				this.heightMultiplier = windowInfo.h/referenceHeight
 				this.widthMultiplier = windowInfo.w/referenceWidth
-				scaleMultiplier = currentScale/referenceScale
 				fontSize = 50
 				
 				SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
@@ -116,14 +115,13 @@ module MainLoop
 
 				if !isUsingEditor
 					for script in scripts
-						if script.initialize != C_NULL
-							try
-								script.initialize()
-							catch e
-								println("Error initializing script")
-								Base.show_backtrace(stdout, catch_backtrace())
-							end
-						end
+						try
+							script.initialize()
+						catch e
+							println("Error initializing script")
+							println(e)
+							#Base.show_backtrace(stdout, catch_backtrace())
+						end	
 					end
 				end
 
@@ -202,12 +200,13 @@ module MainLoop
 							if DEBUG && entity.getCollider() != C_NULL
 								pos = entity.getTransform().getPosition()
 								colSize = entity.getCollider().getSize()
+								colOffset = entity.getCollider().offset
 								SDL2.SDL_RenderDrawLines(this.renderer, [
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)), 
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
+									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
 							end
 						end
 						for screenButton in this.screenButtons
@@ -257,6 +256,17 @@ module MainLoop
 						end
 					end
 				finally
+					for entity in this.scene.entities
+						for script in entity.scripts
+							try
+								script.onShutDown()
+							catch e
+								println("Error initializing script")
+								println(e)
+								#Base.show_backtrace(stdout, catch_backtrace())
+							end	
+						end
+					end
 					SDL2.Mix_Quit()
 					SDL2.SDL_Quit()
 				end
@@ -390,12 +400,13 @@ module MainLoop
 						if DEBUG && entity.getCollider() != C_NULL
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
+							colOffset = entity.getCollider().offset
 							SDL2.SDL_RenderDrawLines(this.renderer, [
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS + colSize.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS + colSize.y * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS  + colSize.y * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
 						end
 					end
 					for screenButton in this.screenButtons
@@ -441,7 +452,7 @@ module MainLoop
 					end
 					
 					SDL2.SDL_RenderPresent(this.renderer)
-					returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex]	
+					returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]	
 					this.selectedEntityUpdated = false
 					return returnData
 				catch e
@@ -459,8 +470,9 @@ module MainLoop
 			end
 		elseif s == :selectEntityWithClick
 			function ()
-				entityIndex = 1
+				entityIndex = 0
 				for entity in this.entities
+					entityIndex += 1
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
 						
@@ -472,12 +484,14 @@ module MainLoop
 						# println("mouse pos raw y: $(this.mousePositionWorldRaw.y)")
 						# println("mouse pos y: $(this.mousePositionWorld.y)")
 						# println("size y: $(size.y)")
+						if this.selectedEntityIndex == entityIndex
+							continue
+						end
 						this.selectedEntityIndex = entityIndex
 						this.selectedTextBoxIndex = -1
 						this.selectedEntityUpdated = true
 						return
 					end
-					entityIndex += 1
 				end
 				textBoxIndex = 1
 				for textBox in this.textBoxes
@@ -490,6 +504,14 @@ module MainLoop
 					textBoxIndex += 1
 				end
 				this.selectedEntityIndex = -1
+			end
+		elseif s == :minimizeWindow
+			function ()
+				SDL2.SDL_MinimizeWindow(this.window)
+			end
+		elseif s == :restoreWindow
+			function ()
+				SDL2.SDL_RestoreWindow(this.window)
 			end
 		else
 			try

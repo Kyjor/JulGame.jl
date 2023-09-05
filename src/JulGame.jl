@@ -3,7 +3,7 @@ module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
     export SDL2
-    
+
     include("Macros.jl")
     using .Macros: @event
     export @event
@@ -18,7 +18,7 @@ module JulGame
 
     include("Main.jl") 
     using .MainLoop: Main   
-    const MAIN = Main(2.0)
+    const MAIN = Main(1.0)
     export MAIN
 
     include("UI/UI.jl")

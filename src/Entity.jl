@@ -90,9 +90,9 @@ module EntityModule
                     componentType = eval(Symbol(componentType))
                 end
                 for component in this.components
-                if typeof(component) <: componentType
-                    return component
-                end
+                    if typeof(component) <: componentType
+                        return component
+                    end
                 end
                 return C_NULL
             end
@@ -129,6 +129,10 @@ module EntityModule
             function()
             return this.getComponent(Rigidbody)
             end
+        elseif s == :getSoundSource
+            function()
+            return this.getComponent(SoundSource)
+            end
         elseif s == :addComponent
             function(component)
                 push!(this.components, component)
@@ -144,9 +148,15 @@ module EntityModule
             end
         elseif s == :addScript
             function(script)
-                println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
+                #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
                 push!(this.scripts, script)
                 script.setParent(this)
+                try
+                    script.initialize()
+                catch e
+                    println(e)
+                    Base.show_backtrace(stdout, catch_backtrace())
+                end
             end
         elseif s == :getScripts
             function()
