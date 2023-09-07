@@ -7,6 +7,8 @@ import node from "@astrojs/node";
 export default defineConfig({
   integrations: [starlight({
     title: 'JulGame Docs',
+    site: 'https://kyjor.github.io',
+    base: '/JulGame.jl/docs',
     social: {
       github: 'https://github.com/Kyjor/JulGame.jl'
     },
@@ -16,7 +18,7 @@ export default defineConfig({
       // Each item here is one entry in the navigation menu.
       {
         label: 'What is JulGame?',
-        link: '/general/what-is-julgame/'
+        link: '/JulGame.jl/docs/general/what-is-julgame/'
       }]
     }, {
       label: 'Guides',
@@ -24,17 +26,17 @@ export default defineConfig({
       // Each item here is one entry in the navigation menu.
       {
         label: 'Create a Simple Game',
-        link: '/guides/example/'
+        link: '/JulGame.jl/docs/guides/example/'
       }]
     }, {
       label: 'API Reference',
       autogenerate: {
-        directory: 'reference'
+        directory: '/JulGame.jl/docs/reference'
       }
     }]
   })],
-  output: "server",
-  adapter: node({
-    mode: "standalone"
-  })
+  // output: "server",
+  // adapter: node({
+  //   mode: "standalone"
+  // })
 });
