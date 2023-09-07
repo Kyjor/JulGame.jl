@@ -5,10 +5,10 @@ import node from "@astrojs/node";
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://kyjor.github.io',
+  base: '/JulGame.jl/docs',
   integrations: [starlight({
     title: 'JulGame Docs',
-    site: 'https://kyjor.github.io',
-    base: '/JulGame.jl/docs',
     social: {
       github: 'https://github.com/Kyjor/JulGame.jl'
     },
