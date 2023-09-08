@@ -31,7 +31,9 @@ export default defineConfig({
     }, {
       label: 'API Reference',
       autogenerate: {
-        directory: '/JulGame.jl/docs/reference'
+        directory: '/JulGame.jl/docs/reference',
+        collapsed: true
+
       }
     }]
   })],
