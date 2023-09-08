@@ -18,7 +18,7 @@ export default defineConfig({
       // Each item here is one entry in the navigation menu.
       {
         label: 'What is JulGame?',
-        link: '/JulGame.jl/docs/general/what-is-julgame/'
+        link: '/general/what-is-julgame/'
       }]
     }, {
       label: 'Guides',
@@ -26,12 +26,12 @@ export default defineConfig({
       // Each item here is one entry in the navigation menu.
       {
         label: 'Create a Simple Game',
-        link: '/JulGame.jl/docs/guides/example/'
+        link: '/guides/example/'
       }]
     }, {
       label: 'API Reference',
       autogenerate: {
-        directory: '/JulGame.jl/docs/reference',
+        directory: '/reference',
         collapsed: true
 
       }
