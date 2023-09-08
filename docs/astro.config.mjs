@@ -9,6 +9,7 @@ export default defineConfig({
   base: '/JulGame.jl',
   integrations: [starlight({
     title: 'JulGame Docs',
+    lastUpdated: true,
     social: {
       github: 'https://github.com/Kyjor/JulGame.jl'
     },
@@ -33,7 +34,6 @@ export default defineConfig({
       autogenerate: {
         directory: '/reference',
         collapsed: true
-
       }
     }]
   })],
