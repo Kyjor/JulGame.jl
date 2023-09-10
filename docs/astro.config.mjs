@@ -6,7 +6,7 @@ import node from "@astrojs/node";
 // https://astro.build/config
 export default defineConfig({
   //site: 'https://kyjor.github.io',
-  //base: '/JulGame.jl',
+  base: '/JulGame.jl',
   integrations: [starlight({
     title: 'JulGame Docs',
     lastUpdated: true,
