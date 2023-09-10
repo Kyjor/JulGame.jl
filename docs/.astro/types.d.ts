@@ -207,6 +207,27 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Animation/properties/animatedFPS.md": {
+	id: "reference/Animation/properties/animatedFPS.md";
+  slug: "reference/animation/properties/animatedfps";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Animator/animator.md": {
+	id: "reference/Animator/animator.md";
+  slug: "reference/animator/animator";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Animator/properties/animations.md": {
+	id: "reference/Animator/properties/animations.md";
+  slug: "reference/animator/properties/animations";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 };
 
 	};
