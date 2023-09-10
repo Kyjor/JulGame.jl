@@ -1,17 +1,20 @@
 ---
 title: Animation
 description: Animation properties and methods.
+sidebar:
+  order: 1
 ---
 
 ### Properties
 
-| [animatedFPS](https://docs.kyjor.io/ScriptReference/Animation/animatedFPS.md) | The amount of `frames` that will be shown per second.                     |
+| Property | Description                      |
 |-------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| [frames](https://docs.kyjor.io/ScriptReference/Animation/frames.md)           | An array of `Vector4` that holds data about cropping the current `sprite` |
-| [sprite](https://docs.kyjor.io/ScriptReference/Animation/animatedFPS.md)      | The `Sprite` component that is being manipulated by the animation.        |
+| [animatedFPS](/reference/animation/properties/animatedfps/)           | The amount of `frames` that will be shown per second. |
+| [frames](/reference/animation/properties/frames/)           | An array of `Vector4` that holds data about cropping the current `sprite`. |
+| [sprite](/reference/animation/properties/sprite/)      | The `Sprite` component that is being manipulated by the animation.        |
 
 ### Public Methods
 
-| [N/A](https://docs.kyjor.io/ScriptReference/Animation/animatedFPS.md) | To be written |
+| Method | Description |
 |-----------------------------------------------------------------------|---------------|
-| [N/A](https://docs.kyjor.io/ScriptReference/Animation/animatedFPS.md) | To be written |
+| [N/A]() | To be written |
