@@ -7,6 +7,7 @@ import node from "@astrojs/node";
 export default defineConfig({
   site: 'https://kyjor.github.io',
   base: '/JulGame.jl',
+  trailingSlash: 'ignore',
   integrations: [starlight({
     title: 'JulGame Docs',
     lastUpdated: true,

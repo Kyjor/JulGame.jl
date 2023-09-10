@@ -9,7 +9,7 @@ sidebar:
 
 | Property | Description                    |
 |-------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| [animations](/reference/animator/properties/animations/)           | An array of [Animations](/reference/animation/animation/). |
+| [animations](/JulGame.jl/reference/animator/properties/animations/)           | An array of [Animations](/JulGame.jl/reference/animation/animation/). |
 
 ### Public Methods
 
