@@ -228,6 +228,20 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Collider/collider.md": {
+	id: "reference/Collider/collider.md";
+  slug: "reference/collider/collider";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Collider/properties/animations.md": {
+	id: "reference/Collider/properties/animations.md";
+  slug: "reference/collider/properties/animations";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 };
 
 	};
