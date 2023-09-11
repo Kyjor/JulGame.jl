@@ -242,6 +242,20 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Rigidbody/properties/acceleration.md": {
+	id: "reference/Rigidbody/properties/acceleration.md";
+  slug: "reference/rigidbody/properties/acceleration";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Rigidbody/rigidbody.md": {
+	id: "reference/Rigidbody/rigidbody.md";
+  slug: "reference/rigidbody/rigidbody";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 };
 
 	};
