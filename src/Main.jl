@@ -72,7 +72,7 @@ module MainLoop
 					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions != C_NULL ? this.screenDimensions.x : this.scene.camera.dimensions.x, this.screenDimensions != C_NULL ? this.screenDimensions.y : this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
 				end
 
-				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_RENDERER_PRESENTVSYNC)
+				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				referenceHeight = 1080
@@ -103,7 +103,7 @@ module MainLoop
 					textBox.initialize(this.renderer, this.zoom)
 				end
 
-				this.targetFrameRate = 60
+				this.targetFrameRate = 120
 				this.entities = this.scene.entities
 				this.rigidbodies = this.scene.rigidbodies
 				this.screenButtons = this.scene.screenButtons
@@ -219,31 +219,28 @@ module MainLoop
 				
 						if DEBUG
 							# Stats to display
-							text = SDL2.TTF_RenderText_Blended( this.font, string("FPS: ", round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0))), SDL2.SDL_Color(0,255,0,255) )
-							text1 = SDL2.TTF_RenderText_Blended( this.font, string("Frame time: ", round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0), "ms"), SDL2.SDL_Color(0,255,0,255) )
-							mousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)", SDL2.SDL_Color(0,255,0,255) )
-							scaledMousePositionText = SDL2.TTF_RenderText_Blended( this.font, "Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))", SDL2.SDL_Color(0,255,0,255) )
-							mousePositionWorldText = SDL2.TTF_RenderText_Blended( this.font, "Mouse pos world: $(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))", SDL2.SDL_Color(0,255,0,255) )
-							textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,text)
-							textTexture1 = SDL2.SDL_CreateTextureFromSurface(this.renderer,text1)
-							mousePositionTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,mousePositionText)
-							scaledMousePositionTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,scaledMousePositionText)
-							mousePositionWorldTextTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer,mousePositionWorldText)
-							SDL2.SDL_RenderCopy(this.renderer, textTexture, C_NULL, Ref(SDL2.SDL_Rect(0,0,150,50)))
-							SDL2.SDL_RenderCopy(this.renderer, textTexture1, C_NULL, Ref(SDL2.SDL_Rect(0,50,200,50)))
-							SDL2.SDL_RenderCopy(this.renderer, mousePositionTextTexture, C_NULL, Ref(SDL2.SDL_Rect(0,100,200,50)))
-							SDL2.SDL_RenderCopy(this.renderer, scaledMousePositionTextTexture, C_NULL, Ref(SDL2.SDL_Rect(0,150,200,50)))
-							SDL2.SDL_RenderCopy(this.renderer, mousePositionWorldTextTexture, C_NULL, Ref(SDL2.SDL_Rect(0,200,200,50)))
-							SDL2.SDL_FreeSurface(text)
-							SDL2.SDL_FreeSurface(text1)
-							SDL2.SDL_FreeSurface(mousePositionText)
-							SDL2.SDL_FreeSurface(mousePositionWorldText)
-							SDL2.SDL_FreeSurface(scaledMousePositionText)
-							SDL2.SDL_DestroyTexture(textTexture)
-							SDL2.SDL_DestroyTexture(textTexture1)
-							SDL2.SDL_DestroyTexture(mousePositionTextTexture)
-							SDL2.SDL_DestroyTexture(scaledMousePositionTextTexture)
-							SDL2.SDL_DestroyTexture(mousePositionWorldTextTexture)
+							statText = [
+								"FPS: $(round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
+								"Frame time: $(round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
+								"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
+								"Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))",
+								"Mouse pos world: $(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,(this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))"
+							]
+
+							textures = []
+
+							for (i, text) in enumerate(statText)
+								surface = SDL2.TTF_RenderText_Blended(this.font, text, SDL2.SDL_Color(0, 255, 0, 255))
+								texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, surface)
+								SDL2.SDL_FreeSurface(surface)
+								push!(textures, texture)
+								SDL2.SDL_RenderCopy(this.renderer, texture, C_NULL, Ref(SDL2.SDL_Rect(0, (i * 50), 200, 50)))
+							end
+
+							# Destroy textures
+							for texture in textures
+								SDL2.SDL_DestroyTexture(texture)
+							end
 						end
 				
 						SDL2.SDL_RenderPresent(this.renderer)
@@ -252,7 +249,7 @@ module MainLoop
 						targetFrameTime = 1000/this.targetFrameRate
 				
 						if elapsedMS < targetFrameTime
-							SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
+							#SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 						end
 					end
 				finally

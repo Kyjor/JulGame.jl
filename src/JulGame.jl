@@ -25,7 +25,6 @@ module JulGame
     using .UI
     export ScreenButtonModule, TextBoxModule
 
-    export Component
     include("Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SoundSourceModule, SpriteModule, TransformModule
@@ -34,7 +33,6 @@ module JulGame
     using .EntityModule   
     export Entity
 
-    export SceneManagement
     include("SceneManagement/SceneManagement.jl")
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
