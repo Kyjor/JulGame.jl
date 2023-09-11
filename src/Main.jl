@@ -72,7 +72,7 @@ module MainLoop
 					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions != C_NULL ? this.screenDimensions.x : this.scene.camera.dimensions.x, this.screenDimensions != C_NULL ? this.screenDimensions.y : this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
 				end
 
-				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_RENDERER_PRESENTVSYNC)
+				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				referenceHeight = 1080
@@ -249,7 +249,7 @@ module MainLoop
 						targetFrameTime = 1000/this.targetFrameRate
 				
 						if elapsedMS < targetFrameTime
-							SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
+							#SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 						end
 					end
 				finally
