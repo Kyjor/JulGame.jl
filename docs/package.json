@@ -1,0 +1,20 @@
+{
+  "name": "julgame-docs",
+  "type": "module",
+  "version": "0.0.3",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.2.0",
+    "@astrojs/node": "^6.0.0",
+    "@astrojs/starlight": "^0.9.1",
+    "astro": "^3.0.6",
+    "sharp": "^0.32.5",
+    "typescript": "^5.2.2"
+  }
+}

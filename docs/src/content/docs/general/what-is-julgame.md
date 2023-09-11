@@ -1,4 +1,7 @@
-[Documentation is in progress!](https://docs.kyjor.io)
+---
+title: What is JulGame?
+description: An explanation of the engine, along with it's current features and wishlist.
+---
 
 ![JulGame Logo](https://github.com/Kyjor/JulGame.jl/assets/13784123/f68ece3a-62a1-48fb-a905-c7c8b9aa35c1)
 
@@ -6,6 +9,7 @@
 
 ![JulGameEditor](https://github.com/Kyjor/JulGame.jl/assets/13784123/c4ad139f-4d78-47f9-9d13-7bfd150e81bf)
 
+Documentation coming soon!
 
 [Example Repo](https://github.com/Kyjor/JulGame-Example)
 
