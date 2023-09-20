@@ -103,7 +103,6 @@ module MainLoop
 					textBox.initialize(this.renderer, this.zoom)
 				end
 
-				this.targetFrameRate = 120
 				this.entities = this.scene.entities
 				this.rigidbodies = this.scene.rigidbodies
 				this.screenButtons = this.scene.screenButtons
@@ -249,7 +248,7 @@ module MainLoop
 						targetFrameTime = 1000/this.targetFrameRate
 				
 						if elapsedMS < targetFrameTime
-							#SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
+							SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 						end
 					end
 				finally

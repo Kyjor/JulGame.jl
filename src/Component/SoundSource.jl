@@ -15,12 +15,15 @@ module SoundSourceModule
         function CreateSoundSource(basePath, path, channel, volume::Integer, isMusic::Bool)
             this = new()
 
+            SDL2.SDL_ClearError()
             fullPath = joinpath(basePath, "assets", "sounds", path)
             sound = isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
-            
-            if sound == C_NULL
+            error = unsafe_string(SDL2.SDL_GetError())
+
+            if sound == C_NULL || !isempty(error)
                 println(fullPath)
-                error("Error loading file at $path. SDL Error: $(unsafe_string(SDL2.SDL_GetError()))")
+                error("Error loading file at $path. SDL Error: $(error)")
+                SDL2.SDL_ClearError()
             end
             
             isMusic ? SDL2.Mix_VolumeMusic(Int32(volume)) : SDL2.Mix_Volume(Int32(channel), Int32(volume))
@@ -85,7 +88,7 @@ module SoundSourceModule
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open sound! SDL Error: ", error))
-                    SDL2.SDL_ClearError()
+                    SDL2.SDL2.SDL_ClearError()
                     this.sound = C_NULL
                     return
                 end
