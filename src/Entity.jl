@@ -206,7 +206,7 @@ module EntityModule
                 if this.getComponent(Sprite) != C_NULL
                     return
                 end
-                this.addComponent(Sprite(basePath, "", true))
+                this.addComponent(Sprite(basePath, "", C_NULL, false, true))
                 this.getComponent("Sprite").injectRenderer(game.renderer)
             end
         else
