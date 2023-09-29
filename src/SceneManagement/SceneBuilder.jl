@@ -49,13 +49,14 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, dimensions = Vector2f(800, 800), zoom = 1.0, globals = [])
+                function(isUsingEditor = false, dimensions = Vector2f(800, 800), zoom = 1.0, targetFrameRate = 60.0, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "assets")
                     main = MAIN
                     main.zoom = zoom
                     main.globals = globals
-                    main.level = this
+                    main.level = 
+                    main.targetFrameRate = targetFrameRate
                     scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
