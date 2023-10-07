@@ -5,14 +5,14 @@
 
     export Sprite
     mutable struct Sprite
-        basePath
+        basePath::String
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         image
-        imagePath
-        offset
-        parent
-        position
+        imagePath::String
+        offset::Math.Vector2f
+        parent::Any # Entity
+        position::Math.Vector2f
         renderer
         texture
         
