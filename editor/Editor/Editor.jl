@@ -501,7 +501,7 @@ module Editor
     
                 glfwMakeContextCurrent(window)
                 glfwSwapBuffers(window)
-                gameInfo = game == C_NULL ? [] : game.editorLoop(update)
+                gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt32(0)), Ref(Bool(false)), true, update)
             end
         catch e
             @warn "Error in renderloop!" exception=e
