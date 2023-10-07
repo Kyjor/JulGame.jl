@@ -125,147 +125,13 @@ module MainLoop
 				end
 
 				if !isUsingEditor
-					this.run()
+					this.fullLoop()
 					return
 				end
 			end
 		elseif s == :loadScene
 			function (scene)
 				this.scene = scene
-			end
-		elseif s == :run
-			function ()
-				try
-
-					DEBUG = false
-					close = false
-					startTime = 0.0
-					totalFrames = 0
-
-					#physics vars
-					lastPhysicsTime = SDL2.SDL_GetTicks()
-					
-					while !close
-						# Start frame timing
-						totalFrames += 1
-						lastStartTime = startTime
-						startTime = SDL2.SDL_GetPerformanceCounter()
-						#region ============= Input
-						this.input.pollInput()
-						
-						if this.input.quit
-							close = true
-						end
-						DEBUG = this.input.debug
-						
-						#endregion ============== Input
-							
-						#Physics
-						currentPhysicsTime = SDL2.SDL_GetTicks()
-						deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
-						if deltaTime > .25
-							lastPhysicsTime =  SDL2.SDL_GetTicks()
-							continue
-						end
-						for rigidbody in this.rigidbodies
-							rigidbody.update(deltaTime)
-						end
-						lastPhysicsTime =  SDL2.SDL_GetTicks()
-
-						#Rendering
-						currentRenderTime = SDL2.SDL_GetTicks()
-						SDL2.SDL_SetRenderDrawColor(this.renderer, this.cameraBackgroundColor[1], this.cameraBackgroundColor[2], this.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE)
-						# Clear the current render target before rendering again
-						SDL2.SDL_RenderClear(this.renderer)
-
-						this.scene.camera.update()
-						
-						SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-						for entity in this.entities
-							if !entity.isActive
-								continue
-							end
-
-							entity.update(deltaTime)
-							entityAnimator = entity.getAnimator()
-							if entityAnimator != C_NULL
-								entityAnimator.update(currentRenderTime, deltaTime)
-							end
-							entitySprite = entity.getSprite()
-							if entitySprite != C_NULL
-								entitySprite.draw()
-							end
-
-							if DEBUG && entity.getCollider() != C_NULL
-								pos = entity.getTransform().getPosition()
-								colSize = entity.getCollider().getSize()
-								colOffset = entity.getCollider().offset
-								SDL2.SDL_RenderDrawLines(this.renderer, [
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
-									SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
-							end
-						end
-						for screenButton in this.screenButtons
-							screenButton.render()
-						end
-
-						for textBox in this.textBoxes
-							textBox.render(DEBUG)
-						end
-				
-						if DEBUG
-							# Stats to display
-							statText = [
-								"FPS: $(round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
-								"Frame time: $(round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
-								"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
-								"Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))",
-								"Mouse pos world: $(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom)),$(floor(Int,(this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))"
-							]
-
-							textures = []
-
-							for (i, text) in enumerate(statText)
-								surface = SDL2.TTF_RenderText_Blended(this.font, text, SDL2.SDL_Color(0, 255, 0, 255))
-								texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, surface)
-								SDL2.SDL_FreeSurface(surface)
-								push!(textures, texture)
-								SDL2.SDL_RenderCopy(this.renderer, texture, C_NULL, Ref(SDL2.SDL_Rect(0, (i * 50), 200, 50)))
-							end
-
-							# Destroy textures
-							for texture in textures
-								SDL2.SDL_DestroyTexture(texture)
-							end
-						end
-				
-						SDL2.SDL_RenderPresent(this.renderer)
-						endTime = SDL2.SDL_GetPerformanceCounter()
-						elapsedMS = (endTime - startTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
-						targetFrameTime = 1000/this.targetFrameRate
-				
-						if elapsedMS < targetFrameTime
-							SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
-						end
-					end
-				finally
-					for entity in this.scene.entities
-						for script in entity.scripts
-							try
-								script.onShutDown()
-							catch e
-								println("Error initializing script")
-								println(e)
-								#Base.show_backtrace(stdout, catch_backtrace())
-							end	
-						end
-					end
-					SDL2.Mix_Quit()
-					SDL2.SDL_Quit()
-				end
 			end
 		elseif s == :editorLoop
 			function (update)
@@ -455,6 +321,285 @@ module MainLoop
 					@error "$(e)"
 					Base.show_backtrace(stderr, catch_backtrace())
 				end
+			end
+		elseif s == :fullLoop
+			function ()
+				try
+					DEBUG = false
+					close = Ref(Bool(false))
+					startTime = Ref(UInt64(0))
+					lastPhysicsTime = Ref(UInt32(SDL2.SDL_GetTicks()))
+
+					while !close[]
+						this.gameLoop(startTime, lastPhysicsTime, close)
+					end
+				finally
+					for entity in this.scene.entities
+						for script in entity.scripts
+							try
+								script.onShutDown()
+							catch e
+								println("Error shutting down script")
+								println(e)
+								#Base.show_backtrace(stdout, catch_backtrace())
+							end	
+						end
+					end
+					SDL2.Mix_Quit()
+					SDL2.SDL_Quit()
+				end
+			end
+		elseif s == :gameLoop
+			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+				try
+					lastStartTime = startTime
+					startTime[] = SDL2.SDL_GetPerformanceCounter()
+
+					x,y,w,h = Int[1], Int[1], Int[1], Int[1]
+					if isEditor
+						SDL2.SDL_GetWindowPosition(this.window, pointer(x), pointer(y))
+						SDL2.SDL_GetWindowSize(this.window, pointer(w), pointer(h))
+
+						if update[2] != x[1] || update[3] != y[1]
+								SDL2.SDL_SetWindowPosition(this.window, update[2], update[3])
+						end
+						if update[4] != w[1] || update[5] != h[1]
+							SDL2.SDL_SetWindowSize(this.window, update[4], update[5])
+							referenceHeight = 1080
+							referenceWidth = 1920
+							this.widthMultiplier = update[4]/referenceWidth
+							this.heightMultiplier = update[5]/referenceHeight
+						
+							SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+						end
+					end
+
+					DEBUG = false
+					#region =============    Input
+					this.lastMousePosition = this.input.mousePosition
+					this.input.pollInput()
+					
+					if this.input.quit && !isEditor
+						close[] = true
+					end
+					DEBUG = this.input.debug
+
+					if isEditor
+						this.handleEditorInputs()
+					end
+
+					#endregion ============= Input
+
+					#region =============    Physics
+					if !isEditor
+						currentPhysicsTime = SDL2.SDL_GetTicks()
+						deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
+						if deltaTime > .25
+							lastPhysicsTime[] =  SDL2.SDL_GetTicks()
+							return
+						end
+						for rigidbody in this.rigidbodies
+							rigidbody.update(deltaTime)
+						end
+						lastPhysicsTime[] =  SDL2.SDL_GetTicks()
+					end
+					#endregion ============= Physics
+
+
+					#region =============    Rendering
+					currentRenderTime = SDL2.SDL_GetTicks()
+					SDL2.SDL_SetRenderDrawColor(this.renderer, this.cameraBackgroundColor[1], this.cameraBackgroundColor[2], this.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE)
+					# Clear the current render target before rendering again
+					SDL2.SDL_RenderClear(this.renderer)
+
+					this.scene.camera.update()
+				
+					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+
+					for entity in this.entities
+						if !entity.isActive
+							continue
+						end
+
+						entity.update(deltaTime)
+						entityAnimator = entity.getAnimator()
+						if entityAnimator != C_NULL
+							entityAnimator.update(currentRenderTime, deltaTime)
+						end
+						entitySprite = entity.getSprite()
+						if entitySprite != C_NULL
+							entitySprite.draw()
+						end
+
+						if DEBUG && entity.getCollider() != C_NULL
+							pos = entity.getTransform().getPosition()
+							colSize = entity.getCollider().getSize()
+							colOffset = entity.getCollider().offset
+							SDL2.SDL_RenderDrawLines(this.renderer, [
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
+						end
+					end
+					#endregion ============= Rendering
+
+					
+					#region ============= UI
+					for screenButton in this.screenButtons
+						screenButton.render()
+					end
+
+					for textBox in this.textBoxes
+						textBox.render(DEBUG)
+					end
+					#endregion ============= UI
+
+					SDL2.SDL_SetRenderDrawColor(this.renderer, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+					if isEditor
+						selectedEntity = update[7] > 0 ? this.scene.entities[update[7]] : C_NULL
+						if selectedEntity != C_NULL
+							pos = selectedEntity.getTransform().getPosition()
+							size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
+							SDL2.SDL_RenderDrawLines(this.renderer, [
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + size.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + size.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + size.y * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + size.y * SCALE_UNITS)), 
+								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+						end
+					end
+					this.lastMousePositionWorld = this.mousePositionWorld
+					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom)
+					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
+					
+					#region ================ Debug
+					if DEBUG
+						# Stats to display
+						statText = [
+							"FPS: $(round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
+							"Frame time: $(round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
+							"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
+							"Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))",
+							"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
+						]
+
+						textures = []
+
+						for (i, text) in enumerate(statText)
+							surface = SDL2.TTF_RenderText_Blended(this.font, text, SDL2.SDL_Color(0, 255, 0, 255))
+							texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, surface)
+							SDL2.SDL_FreeSurface(surface)
+							push!(textures, texture)
+							SDL2.SDL_RenderCopy(this.renderer, texture, C_NULL, Ref(SDL2.SDL_Rect(0, (i * 50), 200, 50)))
+						end
+
+						# Destroy textures
+						for texture in textures
+							SDL2.SDL_DestroyTexture(texture)
+						end
+					end
+					#endregion ============= Debug
+
+					SDL2.SDL_RenderPresent(this.renderer)
+					endTime = SDL2.SDL_GetPerformanceCounter()
+					elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
+					targetFrameTime = 1000/this.targetFrameRate
+			
+					if elapsedMS < targetFrameTime && !isEditor
+						SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
+					end
+
+					if isEditor
+						returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]	
+						this.selectedEntityUpdated = false
+						return returnData
+					end
+				catch e
+					println("$(e)")
+					Base.show_backtrace(stderr, catch_backtrace())
+				end
+			end
+		elseif s == :handleEditorInputs
+			function ()
+				#Rendering
+				
+				cameraPosition = this.scene.camera.position
+				if SDL2.SDL_BUTTON_MIDDLE in this.input.mouseButtonsHeldDown
+					xDiff = this.lastMousePosition.x - this.input.mousePosition.x
+					xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 0.1 : -0.1)
+					yDiff = this.lastMousePosition.y - this.input.mousePosition.y
+					yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 0.1 : -0.1)
+
+					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+
+					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
+						diff = this.panCounter.x > this.panThreshold ? 0.2 : -0.2
+						cameraPosition = Math.Vector2f(cameraPosition.x + diff, cameraPosition.y)
+						this.panCounter = Math.Vector2f(0, this.panCounter.y)
+					end
+					if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
+						diff = this.panCounter.y > this.panThreshold ? 0.2 : -0.2
+						cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + diff)
+						this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+					end
+				elseif this.input.getMouseButtonPressed(SDL2.SDL_BUTTON_LEFT)
+					# function that selects an entity if we click on it	
+					this.selectEntityWithClick()
+				elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
+					# TODO: Make this work for textboxes
+					snapping = false
+					if this.input.getButtonHeldDown("LCTRL")
+						snapping = true
+					end
+					xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
+					yDiff = this.lastMousePositionWorld.y - this.mousePositionWorld.y
+
+					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+
+					entityToMoveTransform = this.entities[this.selectedEntityIndex].getTransform()
+					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
+						diff = this.panCounter.x > this.panThreshold ? -1 : 1
+						entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
+						this.panCounter = Math.Vector2f(0, this.panCounter.y)
+					end
+					if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
+						diff = this.panCounter.y > this.panThreshold ? -1 : 1
+						entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
+						this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+					end
+				elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1)
+					if this.input.getButtonHeldDown("LCTRL") && this.input.getButtonPressed("D")
+						push!(this.entities, deepcopy(this.entities[this.selectedEntityIndex]))
+						this.selectedEntityIndex = length(this.entities)
+					end
+				elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
+				end
+
+				if "SPACE" in this.input.buttonsHeldDown
+					if "LEFT" in this.input.buttonsHeldDown
+						this.zoom -= .01
+						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+					elseif "RIGHT" in this.input.buttonsHeldDown
+						this.zoom += .01
+						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+					end
+				elseif this.input.getButtonHeldDown("LEFT")
+					cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
+				elseif this.input.getButtonHeldDown("RIGHT")
+					cameraPosition = Math.Vector2f(cameraPosition.x + 0.25, cameraPosition.y)
+				elseif this.input.getButtonHeldDown("DOWN")
+					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.25)
+				elseif this.input.getButtonHeldDown("UP")
+					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.25)
+				end
+		
+				if update[6] 
+					cameraPosition = Math.Vector2f()
+				end
+				this.scene.camera.update(cameraPosition)
+
 			end
 		elseif s == :createNewEntity
 			function ()

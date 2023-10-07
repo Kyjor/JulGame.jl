@@ -16,7 +16,7 @@
         renderer
         texture
         
-        function Sprite(basePath::String, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector2f}=C_NULL, isFlipped::Bool=false, isCreatedInEditor::Bool=false)
+        function Sprite(basePath::String, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, isCreatedInEditor::Bool=false)
             this = new()
             
             this.offset = Math.Vector2f()
