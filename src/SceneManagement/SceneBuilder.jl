@@ -55,7 +55,7 @@ module SceneBuilderModule
                     main = MAIN
                     main.zoom = zoom
                     main.globals = globals
-                    main.level = 
+                    main.level = this
                     main.targetFrameRate = targetFrameRate
                     scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
