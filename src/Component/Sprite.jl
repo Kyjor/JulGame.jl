@@ -8,13 +8,13 @@
         basePath::String
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
-        image
+        image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
         offset::Math.Vector2f
         parent::Any # Entity
         position::Math.Vector2f
-        renderer
-        texture
+        renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
+        texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
         function Sprite(basePath::String, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, isCreatedInEditor::Bool=false)
             this = new()
@@ -73,7 +73,7 @@
                 
             end
         elseif s == :injectRenderer
-            function(renderer)
+            function(renderer::Ptr{SDL2.LibSDL2.SDL_Renderer})
                 this.renderer = renderer
                 if this.image == C_NULL
                     return
@@ -86,11 +86,11 @@
                 this.isFlipped = !this.isFlipped
             end
     elseif s == :setParent
-            function(parent)
+            function(parent::Any)
                 this.parent = parent
             end
         elseif s == :loadImage
-            function(imagePath)
+            function(imagePath::String)
                 SDL2.SDL_ClearError()
                 this.image = SDL2.IMG_Load(joinpath(this.basePath, "assets", "images", imagePath))
                 error = unsafe_string(SDL2.SDL_GetError())
