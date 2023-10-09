@@ -8,9 +8,9 @@
         animations::Array{Animation}
         currentAnimation::Animation
         lastFrame::Int64
-        lastUpdate
-        parent
-        sprite
+        lastUpdate::UInt32
+        parent::Any
+        sprite::Any
 
         function Animator(animations)
             this = new()
