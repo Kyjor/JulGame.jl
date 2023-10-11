@@ -5,12 +5,12 @@ const GRAVITY = Ref{Float64}(9.81)[]
 
 export Rigidbody
 mutable struct Rigidbody 
-    acceleration
+    acceleration::Math.Vector2f
     drag::Float64
     grounded::Bool
     mass::Float64
-    offset
-    parent
+    offset::Math.Vector2f
+    parent::Any
     useGravity::Bool
     velocity::Math.Vector2f
     

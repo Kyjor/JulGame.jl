@@ -3,16 +3,16 @@ module SoundSourceModule
     
     export SoundSource
     mutable struct SoundSource
-        basePath
-        channel
-        isMusic
-        parent
-        path
+        basePath::String
+        channel::Integer
+        isMusic::Bool
+        parent::Any
+        path::String
         sound
-        volume
+        volume::Integer
 
         # Music
-        function CreateSoundSource(basePath, path, channel, volume::Integer, isMusic::Bool)
+        function CreateSoundSource(basePath::String, path::String, channel::Integer, volume::Integer, isMusic::Bool)
             this = new()
 
             SDL2.SDL_ClearError()
@@ -39,23 +39,23 @@ module SoundSourceModule
             return this
         end
         
+        # Constructor for editor
+        function SoundSource(basePath::String)
+            return CreateSoundSource(basePath, "", -1, 100, false)
+        end
+
         # Constructor for music
-        function SoundSource(basePath, path, volume::Integer)
+        function SoundSource(basePath::String, path::String, volume::Integer)
             return CreateSoundSource(basePath, path, -1, volume, true)
         end
         
         # Constructor for sound effect
-        function SoundSource(basePath, path, channel::Integer, volume::Integer)
+        function SoundSource(basePath::String, path::String, channel::Integer, volume::Integer)
             return CreateSoundSource(basePath, path, channel, volume, false)
         end
         
-        # Constructor for editor
-        function SoundSource(basePath)
-            return CreateSoundSource(basePath, "", -1, 100, false)
-        end
-        
         # Constructor for editor with specified properties
-        function SoundSource(basePath, channel, volume, isMusic)
+        function SoundSource(basePath::String, channel::Integer, volume::Integer, isMusic::Bool)
             return CreateSoundSource(basePath, "", channel, volume, isMusic)
         end
     end
@@ -65,7 +65,7 @@ module SoundSourceModule
             function(loops = 0)
                 if this.isMusic
                     if SDL2.Mix_PlayingMusic() == 0
-                        SDL2.Mix_PlayMusic( this.sound, Int32(-1) )
+                        SDL2.Mix_PlayMusic( this.sound, Integer(-1) )
                     else
                         if SDL2.Mix_PausedMusic() == 1 
                             SDL2.Mix_ResumeMusic()
@@ -74,7 +74,7 @@ module SoundSourceModule
                         end
                     end
                 else
-                    SDL2.Mix_PlayChannel( Int32(this.channel), this.sound, Int32(loops) )
+                    SDL2.Mix_PlayChannel( Integer(this.channel), this.sound, Integer(loops) )
                 end
             end
         elseif s == :stopMusic
@@ -82,7 +82,7 @@ module SoundSourceModule
                 SDL2.Mix_HaltMusic()
             end
         elseif s == :loadSound
-            function(soundPath, isMusic)
+            function(soundPath::String, isMusic::Bool)
                 this.isMusic = isMusic
                 this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(this.basePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(this.basePath, "assets", "sounds", soundPath))
                 error = unsafe_string(SDL2.SDL_GetError())
@@ -95,7 +95,7 @@ module SoundSourceModule
                 this.path = soundPath
             end
         elseif s == :setParent
-            function(parent)
+            function(parent::Any)
                 this.parent = parent
             end
         else
