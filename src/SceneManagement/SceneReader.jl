@@ -85,7 +85,7 @@ module SceneReaderModule
     function deserializeComponent(basePath, component, isEditor)
         try
             if component.type == "Transform"
-                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
+                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), Float64(component.rotation))
             elseif component.type == "Animation"
                 newComponent = Animation(component.frames, component.animatedFPS)
             elseif component.type == "Animator"

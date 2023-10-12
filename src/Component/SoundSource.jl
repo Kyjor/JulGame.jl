@@ -8,7 +8,7 @@ module SoundSourceModule
         isMusic::Bool
         parent::Any
         path::String
-        sound
+        sound::Union{Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
         volume::Integer
 
         # Music
