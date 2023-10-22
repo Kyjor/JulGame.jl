@@ -1,6 +1,6 @@
 module MainLoop
 	using ..JulGame
-	using ..JulGame: Input, Math
+	using ..JulGame: Input, Math, UI
 
 	include("Enums.jl")
 	include("Constants.jl")
@@ -10,6 +10,7 @@ module MainLoop
 	mutable struct Main
 		assets
 		cameraBackgroundColor
+		debugTextBoxes
 		entities
 		events
 		font
@@ -46,6 +47,7 @@ module MainLoop
 			this.input = Input()
 			
 			this.cameraBackgroundColor = [0,0,0]
+			this.debugTextBoxes = []
 			this.events = []
 			this.input.scene = this.scene
 			this.mousePositionWorld = Math.Vector2f()
@@ -163,7 +165,7 @@ module MainLoop
 		elseif s == :gameLoop
 			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
 				try
-					lastStartTime = startTime
+					lastStartTime = startTime[]
 					startTime[] = SDL2.SDL_GetPerformanceCounter()
 
 					x,y,w,h = Int[1], Int[1], Int[1], Int[1]
@@ -260,7 +262,6 @@ module MainLoop
 					end
 					#endregion ============= Rendering
 
-					
 					#region ============= UI
 					for screenButton in this.screenButtons
 						screenButton.render()
@@ -292,31 +293,29 @@ module MainLoop
 					#region ================ Debug
 					if DEBUG
 						# Stats to display
-						statText = [
-							"FPS: $(round(1000 / round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
-							"Frame time: $(round((startTime - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
+						statTexts = [
+							"FPS: $(round(1000 / round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
+							"Frame time: $(round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
 							"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
 							"Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))",
 							"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
 						]
 
-						textures = []
+						if length(this.debugTextBoxes) == 0
+							fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 
-						for (i, text) in enumerate(statText)
-							surface = SDL2.TTF_RenderText_Blended(this.font, text, SDL2.SDL_Color(0, 255, 0, 255))
-							texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, surface)
-							SDL2.SDL_FreeSurface(surface)
-							push!(textures, texture)
-							SDL2.SDL_RenderCopy(this.renderer, texture, C_NULL, Ref(SDL2.SDL_Rect(0, (i * 50), 200, 50)))
+							for i = 1:length(statTexts)
+								push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", "", fontPath, 40, Math.Vector2(0, 35 * i), Math.Vector2(100, 10 * i), Math.Vector2(0, 0), statTexts[i], false, true))
+							end
+							for textBox in this.debugTextBoxes
+								textBox.initialize(this.renderer, this.zoom)
+							end
+						else
+							for i = 1:length(this.debugTextBoxes)
+								this.debugTextBoxes[i].updateText(statTexts[i])
+								this.debugTextBoxes[i].render(false)
+							end
 						end
-
-						# Destroy textures
-						for texture in textures
-							SDL2.SDL_DestroyTexture(texture)
-						end
-						# for textBox in this.debugTextBoxes
-						# 	textBox.render(DEBUG)
-						# end
 					end
 					#endregion ============= Debug
 
