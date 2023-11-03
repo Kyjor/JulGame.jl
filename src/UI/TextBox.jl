@@ -25,11 +25,11 @@ module TextBoxModule
         textTexture
         zoom
 
-        function TextBox(name, basePath, fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool, isDefaultFont = false) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, basePath::String, fontPath::String, fontSize::Number, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool, isDefaultFont::Bool = false, isEditor::Bool = false) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? joinpath(pwd(), "..", "fonts") : basePath
+            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : basePath
             this.fontPath = fontPath
             this.fontSize = fontSize
             this.autoSizeText = false
