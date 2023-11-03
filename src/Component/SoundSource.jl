@@ -58,6 +58,10 @@ module SoundSourceModule
         function SoundSource(basePath::String, channel::Integer, volume::Integer, isMusic::Bool)
             return CreateSoundSource(basePath, "", channel, volume, isMusic)
         end
+        
+        function SoundSource(basePath::String, path::String, channel::Integer, volume::Integer, isMusic::Bool)
+            return CreateSoundSource(basePath, path, channel, volume, isMusic)
+        end
     end
     
     function Base.getproperty(this::SoundSource, s::Symbol)
