@@ -41,6 +41,7 @@ module SceneBuilderModule
         function Scene(srcPath, scene)
             this = new()    
 
+            SDL2.init()
             this.scene = scene
             this.srcPath = srcPath
 

@@ -144,11 +144,9 @@ module MainLoop
 							try
 								script.onShutDown()
 							catch e
-								#if !contains(e, "onShutDown")
-									println("Error shutting down script")
-									println(e)
-									Base.show_backtrace(stdout, catch_backtrace())
-								#end
+								println("Error shutting down script")
+								println(e)
+								Base.show_backtrace(stdout, catch_backtrace())
 							end	
 						end
 					end
