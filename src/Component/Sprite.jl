@@ -26,7 +26,8 @@
             this.crop = crop
             this.position = Math.Vector2f(0.0, 0.0)
             this.image = C_NULL
-            
+            this.texture = C_NULL
+
             if isCreatedInEditor
                 return this
             end
@@ -52,6 +53,12 @@
                 if this.image == C_NULL
                     return
                 end
+                if MAIN.renderer == C_NULL #|| this.renderer == Ptr{nothing}
+                    return                    
+                end
+                if this.texture == C_NULL
+                    this.texture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.image)
+                end
 
                 parentTransform = this.parent.getTransform()
                 parentTransform.setPosition(Math.Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
@@ -60,7 +67,7 @@
                 srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
 
                 SDL2.SDL_RenderCopyEx(
-                    this.renderer, 
+                    MAIN.renderer, 
                     this.texture, 
                     srcRect, 
                     Ref(SDL2.SDL_Rect(convert(Int32,round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS)), 
@@ -92,6 +99,7 @@
         elseif s == :loadImage
             function(imagePath::String)
                 SDL2.SDL_ClearError()
+                this.renderer = MAIN.renderer
                 this.image = SDL2.IMG_Load(joinpath(this.basePath, "assets", "images", imagePath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)

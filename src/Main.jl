@@ -89,9 +89,6 @@ module MainLoop
 				
 				scripts = []
 				for entity in this.scene.entities
-					if entity.getSprite() != C_NULL
-						entity.getSprite().injectRenderer(this.renderer)
-					end
 					for script in entity.scripts
 						push!(scripts, script)
 					end
@@ -101,15 +98,10 @@ module MainLoop
 					screenButton.injectRenderer(this.renderer, this.font)
 				end
 				
-				for textBox in this.scene.textBoxes
-					textBox.initialize(this.renderer, this.zoom)
-				end
-
 				this.entities = this.scene.entities
 				this.rigidbodies = this.scene.rigidbodies
 				this.screenButtons = this.scene.screenButtons
 				this.textBoxes = this.scene.textBoxes
-
 				this.lastMousePosition = Math.Vector2(0, 0)
 				this.panCounter = Math.Vector2f(0, 0)
 				this.panThreshold = .1
@@ -152,9 +144,11 @@ module MainLoop
 							try
 								script.onShutDown()
 							catch e
-								println("Error shutting down script")
-								println(e)
-								#Base.show_backtrace(stdout, catch_backtrace())
+								#if !contains(e, "onShutDown")
+									println("Error shutting down script")
+									println(e)
+									Base.show_backtrace(stdout, catch_backtrace())
+								#end
 							end	
 						end
 					end
@@ -306,9 +300,6 @@ module MainLoop
 
 							for i = 1:length(statTexts)
 								push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", "", fontPath, 40, Math.Vector2(0, 35 * i), Math.Vector2(100, 10 * i), Math.Vector2(0, 0), statTexts[i], false, true))
-							end
-							for textBox in this.debugTextBoxes
-								textBox.initialize(this.renderer, this.zoom)
 							end
 						else
 							for i = 1:length(this.debugTextBoxes)
