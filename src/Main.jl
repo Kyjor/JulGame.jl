@@ -67,23 +67,24 @@ module MainLoop
 		if s == :init 											
 			function(isUsingEditor = false, dimensions = C_NULL)
 				
-				this.screenDimensions = dimensions
+				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
 				if isUsingEditor
-					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y, SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS | SDL2.SDL_WINDOW_RESIZABLE)
+					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS | SDL2.SDL_WINDOW_RESIZABLE)
 				else
-					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions != C_NULL ? this.screenDimensions.x : this.scene.camera.dimensions.x, this.screenDimensions != C_NULL ? this.screenDimensions.y : this.scene.camera.dimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
+					this.window = SDL2.SDL_CreateWindow("Game", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
 				end
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
-				referenceHeight = 1080
-				referenceWidth = 1920
-				this.heightMultiplier = windowInfo.h/referenceHeight
-				this.widthMultiplier = windowInfo.w/referenceWidth
+				referenceHeight = this.screenDimensions.x
+				referenceWidth = this.screenDimensions.y
+				#this.heightMultiplier = windowInfo.h/referenceHeight
+				#this.widthMultiplier = windowInfo.w/referenceWidth
 				fontSize = 50
 				
-				SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+				# SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 				fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 				this.font = SDL2.TTF_OpenFont(fontPath, fontSize)
 				
@@ -111,9 +112,11 @@ module MainLoop
 						try
 							script.initialize()
 						catch e
-							println("Error initializing script")
-							println(e)
-							#Base.show_backtrace(stdout, catch_backtrace())
+							if typeof(e) != ErrorException || !contains(e.msg, "initialize")
+								println("Error initializing script")
+								println(e)
+								Base.show_backtrace(stdout, catch_backtrace())
+							end
 						end	
 					end
 				end
@@ -174,10 +177,10 @@ module MainLoop
 							SDL2.SDL_SetWindowSize(this.window, update[4], update[5])
 							referenceHeight = 1080
 							referenceWidth = 1920
-							this.widthMultiplier = update[4]/referenceWidth
-							this.heightMultiplier = update[5]/referenceHeight
+							#this.widthMultiplier = update[4]/referenceWidth
+							#this.heightMultiplier = update[5]/referenceHeight
 						
-							SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+							SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 						end
 					end
 
@@ -281,8 +284,8 @@ module MainLoop
 						end
 					end
 					this.lastMousePositionWorld = this.mousePositionWorld
-					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom)
-					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.widthMultiplier * this.zoom)) / SCALE_UNITS / this.widthMultiplier / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.heightMultiplier * this.zoom)) / SCALE_UNITS / this.heightMultiplier / this.zoom))
+					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
+					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
 					
 					#region ================ Debug
 					if DEBUG
@@ -291,7 +294,7 @@ module MainLoop
 							"FPS: $(round(1000 / round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
 							"Frame time: $(round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
 							"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
-							"Scaled Mouse pos: $(round(this.input.mousePosition.x/this.widthMultiplier)),$(round(this.input.mousePosition.y/this.heightMultiplier))",
+							#"Scaled Mouse pos: $(round(this.input.mousePosition.x)),$(round(this.input.mousePosition.y))",
 							"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
 						]
 
@@ -387,10 +390,10 @@ module MainLoop
 				if "SPACE" in this.input.buttonsHeldDown
 					if "LEFT" in this.input.buttonsHeldDown
 						this.zoom -= .01
-						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.zoom)
 					elseif "RIGHT" in this.input.buttonsHeldDown
 						this.zoom += .01
-						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
+						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.zoom)
 					end
 				elseif this.input.getButtonHeldDown("LEFT")
 					cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
