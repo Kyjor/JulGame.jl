@@ -4,7 +4,8 @@ module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
     export SDL2
-
+    const SCALE_UNITS = 64.0
+    export SCALE_UNITS 
     include("Macros.jl")
     using .Macros: @event
     export @event
@@ -28,7 +29,7 @@ module JulGame
 
     include("Component/Component.jl")
     using .Component
-    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SoundSourceModule, SpriteModule, TransformModule
+    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
 
     include("Entity.jl") 
     using .EntityModule   

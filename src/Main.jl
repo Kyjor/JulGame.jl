@@ -79,11 +79,8 @@ module MainLoop
 
 				referenceHeight = this.screenDimensions.x
 				referenceWidth = this.screenDimensions.y
-				#this.heightMultiplier = windowInfo.h/referenceHeight
-				#this.widthMultiplier = windowInfo.w/referenceWidth
 				fontSize = 50
 				
-				# SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.heightMultiplier * this.zoom)
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 				fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 				this.font = SDL2.TTF_OpenFont(fontPath, fontSize)
@@ -244,17 +241,16 @@ module MainLoop
 						if entitySprite != C_NULL
 							entitySprite.draw()
 						end
+						entityShape = entity.getShape()
+						if entityShape != C_NULL
+							entityShape.draw()
+						end
 
 						if DEBUG && entity.getCollider() != C_NULL
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
 							colOffset = entity.getCollider().offset
-							SDL2.SDL_RenderDrawLines(this.renderer, [
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS)),
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x + colSize.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y + colSize.y) * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x + colOffset.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y + colOffset.y) * SCALE_UNITS))], 5)
+							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS), round(colSize.x * SCALE_UNITS), round(colSize.y * SCALE_UNITS))))
 						end
 					end
 					#endregion ============= Rendering
@@ -275,12 +271,8 @@ module MainLoop
 						if selectedEntity != C_NULL
 							pos = selectedEntity.getTransform().getPosition()
 							size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
-							SDL2.SDL_RenderDrawLines(this.renderer, [
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + size.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS)),
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS + size.x * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS + size.y * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS  + size.y * SCALE_UNITS)), 
-								SDL2.SDL_Point(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS))], 5)
+
+							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS), round(size.x * SCALE_UNITS), round(size.x * SCALE_UNITS))))
 						end
 					end
 					this.lastMousePositionWorld = this.mousePositionWorld
@@ -294,7 +286,6 @@ module MainLoop
 							"FPS: $(round(1000 / round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
 							"Frame time: $(round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
 							"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
-							#"Scaled Mouse pos: $(round(this.input.mousePosition.x)),$(round(this.input.mousePosition.y))",
 							"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
 						]
 

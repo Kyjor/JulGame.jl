@@ -12,7 +12,6 @@
         imagePath::String
         offset::Math.Vector2f
         parent::Any # Entity
-        position::Math.Vector2f
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
@@ -24,7 +23,6 @@
             this.isFlipped = isFlipped
             this.imagePath = imagePath
             this.crop = crop
-            this.position = Math.Vector2f(0.0, 0.0)
             this.image = C_NULL
             this.texture = C_NULL
 
@@ -61,9 +59,6 @@
                 end
 
                 parentTransform = this.parent.getTransform()
-                parentTransform.setPosition(Math.Vector2f(parentTransform.getPosition().x, round(parentTransform.getPosition().y; digits=3))) 
-                flip = SDL2.SDL_FLIP_NONE
-                
                 srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
 
                 SDL2.SDL_RenderCopyEx(

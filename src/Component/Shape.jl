@@ -1,22 +1,23 @@
 module ShapeModule
     using ..Component.JulGame
 
-    const SCALE_UNITS = Ref{Float64}(64.0)[]
-
     export Shape
     mutable struct Shape
-        dimensions::Union{Ptr{Nothing}, Math.Vector4}
-        offset::Math.Vector2f
+        color::Math.Vector3
+        dimensions::Math.Vector2
+        isFilled::Bool
+        offset::Math.Vector2
         parent::Any # Entity
-        position::Math.Vector2f
+        position::Math.Vector2
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         
-        function Shape(dimensions::Union{Ptr{Nothing}, Math.Vector4}=C_NULL)
+        function Shape(dimensions::Math.Vector2 = Math.Vector2(1,1), color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2 = Math.Vector2())
             this = new()
             
-            this.offset = Math.Vector2f()
+            this.color = color
             this.dimensions = dimensions
-            this.position = Math.Vector2f(0.0, 0.0)
+            this.isFilled = isFilled
+            this.offset = offset
 
             return this
         end
@@ -25,11 +26,19 @@ module ShapeModule
     function Base.getproperty(this::Shape, s::Symbol)
         if s == :draw
             function()
-                
-                # Render green outlined quad
-                #outlineRect = SDL_Rect(SCREEN_WIDTH / 6, SCREEN_HEIGHT / 6, SCREEN_WIDTH * 2 / 3, SCREEN_HEIGHT * 2 / 3);
-                #SDL_SetRenderDrawColor( gRenderer, 0x00, 0xFF, 0x00, 0xFF );        
-                #SDL_RenderDrawRect( gRenderer, &outlineRect );
+                if MAIN.renderer == C_NULL #|| this.renderer == Ptr{nothing}
+                    return                    
+                end
+
+                parentTransform = this.parent.getTransform()
+
+                outlineRect = Ref(SDL2.SDL_Rect(convert(Int32,round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS)), 
+                convert(Int32,round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS)),
+                convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
+                convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
+                SDL2.SDL_SetRenderDrawColor(MAIN.renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
+
+                this.isFilled ? SDL2.SDL_RenderFillRect( MAIN.renderer, outlineRect) : SDL2.SDL_RenderDrawRect( MAIN.renderer, outlineRect);
                 
             end
         elseif s == :injectRenderer
