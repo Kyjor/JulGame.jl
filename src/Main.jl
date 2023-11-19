@@ -75,7 +75,7 @@ module MainLoop
 				end
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(0,0, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)))
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(dimensions.x/2 - this.scene.camera.dimensions.x/2, dimensions.y/2 - this.scene.camera.dimensions.y/2, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)))
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				referenceHeight = this.screenDimensions.x
