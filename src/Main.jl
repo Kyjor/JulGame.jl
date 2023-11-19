@@ -75,6 +75,7 @@ module MainLoop
 				end
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(0,0, this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)))
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				referenceHeight = this.screenDimensions.x
@@ -216,14 +217,14 @@ module MainLoop
 
 					#region =============    Rendering
 					currentRenderTime = SDL2.SDL_GetTicks()
-					SDL2.SDL_SetRenderDrawColor(this.renderer, this.cameraBackgroundColor[1], this.cameraBackgroundColor[2], this.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE)
+					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 					# Clear the current render target before rendering again
 					SDL2.SDL_RenderClear(this.renderer)
 
 					this.scene.camera.update()
 				
+					
 					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-
 					for entity in this.entities
 						if !entity.isActive
 							continue
@@ -250,7 +251,7 @@ module MainLoop
 							pos = entity.getTransform().getPosition()
 							colSize = entity.getCollider().getSize()
 							colOffset = entity.getCollider().offset
-							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS), round(colSize.x * SCALE_UNITS), round(colSize.y * SCALE_UNITS))))
+							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS), round(colSize.x * SCALE_UNITS), round(colSize.y * SCALE_UNITS))))
 						end
 					end
 					#endregion ============= Rendering
@@ -271,8 +272,8 @@ module MainLoop
 						if selectedEntity != C_NULL
 							pos = selectedEntity.getTransform().getPosition()
 							size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
-
-							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y - this.scene.camera.position.y) * SCALE_UNITS), round(size.x * SCALE_UNITS), round(size.x * SCALE_UNITS))))
+							offset = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getOffset : Math.Vector2f()
+							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS), round(size.x * SCALE_UNITS), round(size.x * SCALE_UNITS))))
 						end
 					end
 					this.lastMousePositionWorld = this.mousePositionWorld

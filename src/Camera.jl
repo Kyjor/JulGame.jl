@@ -1,4 +1,5 @@
-global const SCALE_UNITS = Ref{Float64}(64.0)[]
+using JulGame
+using JulGame.Math
 
 mutable struct Camera
     dimensions
@@ -6,7 +7,7 @@ mutable struct Camera
     position::Vector2f
     target
 
-    function Camera(dimensions::Vector2f, initialPosition::Vector2f, offset::Vector2f,target)
+    function Camera(dimensions::Vector2, initialPosition::Vector2f, offset::Vector2f,target)
         this = new()
         
         this.dimensions = dimensions
@@ -25,9 +26,14 @@ function Base.getproperty(this::Camera, s::Symbol)
         end
     elseif s == :update
         function(newPosition = C_NULL)
+            SDL2.SDL_SetRenderDrawColor(MAIN.renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE );
+            SDL2.SDL_RenderFillRect(MAIN.renderer, Ref(SDL2.SDL_Rect(0,0,this.dimensions.x, this.dimensions.y)))
+
             if this.target != C_NULL && newPosition == C_NULL
                 targetPos = this.target.getPosition()
-                this.position = Vector2f(targetPos.x - (this.dimensions.x/SCALE_UNITS/2) + this.offset.x, targetPos.y - (this.dimensions.y/SCALE_UNITS/2) + this.offset.y)
+                center =  Vector2f(this.dimensions.x/MAIN.zoom/SCALE_UNITS/2, this.dimensions.y/MAIN.zoom/SCALE_UNITS/2)
+                targetScale = this.target.getScale()
+                this.position = targetPos - center + 0.5 * targetScale
                 return
             end
             if newPosition == C_NULL
