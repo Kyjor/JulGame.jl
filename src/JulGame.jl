@@ -1,9 +1,11 @@
 __precompile__(false)
+
 module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
     export SDL2
-
+    const SCALE_UNITS = 64.0
+    export SCALE_UNITS 
     include("Macros.jl")
     using .Macros: @event
     export @event
@@ -16,25 +18,23 @@ module JulGame
     using .InputModule: Input
     export Input
 
+    include("UI/UI.jl")
+    using .UI
+    export ScreenButtonModule, TextBoxModule
+
     include("Main.jl") 
     using .MainLoop: Main   
     const MAIN = Main(1.0)
     export MAIN
 
-    include("UI/UI.jl")
-    using .UI
-    export ScreenButtonModule, TextBoxModule
-
-    export Component
     include("Component/Component.jl")
     using .Component
-    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, SoundSourceModule, SpriteModule, TransformModule
+    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
 
     include("Entity.jl") 
     using .EntityModule   
     export Entity
 
-    export SceneManagement
     include("SceneManagement/SceneManagement.jl")
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 

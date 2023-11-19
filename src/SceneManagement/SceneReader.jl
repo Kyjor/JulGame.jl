@@ -54,7 +54,7 @@ module SceneReaderModule
                 
                 push!(entities, newEntity)
             end
-            textBoxes = deserializeTextBoxes(basePath, json.TextBoxes)
+            textBoxes = deserializeTextBoxes(basePath, json.TextBoxes, isEditor)
     
             push!(res, entities)
             push!(res, textBoxes)
@@ -65,12 +65,12 @@ module SceneReaderModule
         end
     end
 
-    function deserializeTextBoxes(basePath, jsonTextBoxes)
+    function deserializeTextBoxes(basePath, jsonTextBoxes, isEditor = false)
         res = []
 
         for textBox in jsonTextBoxes
             try
-                newTextBox = TextBox(textBox.name, basePath, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), Vector2(textBox.size.x, textBox.size.y), Vector2(textBox.sizePercentage.x, textBox.sizePercentage.y), textBox.text, textBox.isCentered, textBox.isDefaultFont)        
+                newTextBox = TextBox(textBox.name, basePath, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), Vector2(textBox.size.x, textBox.size.y), Vector2(textBox.sizePercentage.x, textBox.sizePercentage.y), textBox.text, textBox.isCentered, textBox.isDefaultFont, isEditor)        
                 push!(res, newTextBox)
             catch e 
                 println(e)
@@ -85,7 +85,7 @@ module SceneReaderModule
     function deserializeComponent(basePath, component, isEditor)
         try
             if component.type == "Transform"
-                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), component.rotation)
+                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), Float64(component.rotation))
             elseif component.type == "Animation"
                 newComponent = Animation(component.frames, component.animatedFPS)
             elseif component.type == "Animator"
@@ -112,7 +112,7 @@ module SceneReaderModule
                 end
             elseif component.type == "Sprite"
                     crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
-                    newComponent = Sprite(basePath, component.imagePath, crop, false)
+                    newComponent = Sprite(basePath, component.imagePath, crop)
                     newComponent.isFlipped = component.isFlipped
             end
             

@@ -4,6 +4,7 @@ module EntityModule
     using ..JulGame.ColliderModule
     using ..JulGame.Math
     using ..JulGame.RigidbodyModule
+    using ..JulGame.ShapeModule
     using ..JulGame.SoundSourceModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
@@ -29,25 +30,26 @@ module EntityModule
             this.components = []
             this.isActive = true
             this.name = name
+            this.addComponent(Transform())
             this.scripts = []
 
             return this
         end
 
-        function Entity(name::String, transform)
+        function Entity(name::String, transform::Transform)
             this = new()
 
             this.id = 1
             this.components = []
             this.isActive = true
             this.name = name
-            this.addComponent(transform == C_NULL ? Transform() : transform)
+            this.addComponent(transform)
             this.scripts = []
 
             return this
         end
 
-        function Entity(name::String, transform::Transform, components::Array)
+        function Entity(name::String, transform::Transform, components::Array{Union{Animation, Animator, Collider, Rigidbody, Shape, SoundSource, Sprite}})
             this = new()
 
             this.id = 1
@@ -116,6 +118,10 @@ module EntityModule
         elseif s == :getSprite
             function()
                 return this.getComponent(Sprite)
+            end
+        elseif s == :getShape
+            function()
+                return this.getComponent(Shape)
             end
         elseif s == :getCollider
             function()
@@ -206,8 +212,15 @@ module EntityModule
                 if this.getComponent(Sprite) != C_NULL
                     return
                 end
-                this.addComponent(Sprite(basePath, "", true))
+                this.addComponent(Sprite(basePath, "", C_NULL, false, true))
                 this.getComponent("Sprite").injectRenderer(game.renderer)
+            end
+        elseif s == :addShape
+            function()
+                if this.getComponent(Shape) != C_NULL
+                    return
+                end
+                this.addComponent(Shape())
             end
         else
             try

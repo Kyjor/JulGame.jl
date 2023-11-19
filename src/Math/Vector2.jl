@@ -3,7 +3,8 @@ struct Vector2
     y::Int64
     #default constructor
     Vector2() = new(0, 0)
-    
+    Vector2(value::Number) = new(convert(Int64, round(value)), convert(Int64, round(value)))
+
     Vector2(x::Int64, y::Int64) = new(x,y)
     Vector2(x::Int32, y::Int32) = new(convert(Int64, x), convert(Int64, y))
 

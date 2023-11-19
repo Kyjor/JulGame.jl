@@ -6,12 +6,12 @@ global const GRAVITY = Ref{Float64}(9.81)[]
 
 export Collider
 mutable struct Collider
-    collisionEvents
-    currentCollisions
+    collisionEvents::Array{Any}
+    currentCollisions::Array{Collider}
     enabled::Bool
     isTrigger::Bool
     offset::Math.Vector2f
-    parent
+    parent::Any
     size::Math.Vector2f
     tag::String
     
@@ -74,7 +74,7 @@ function Base.getproperty(this::Collider, s::Symbol)
             return this.parent
         end
     elseif s == :setParent
-        function(parent)
+        function(parent::Any)
             this.parent = parent
         end
     elseif s == :checkCollisions

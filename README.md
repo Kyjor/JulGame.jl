@@ -1,8 +1,9 @@
-[Documentation is in progress!](https://docs.kyjor.io)
-
+[Documentation is in progress!](https://kyjor.github.io/JulGame.jl)
+[Trello board](https://trello.com/b/M6uH0Jmy/julgame)
 ![JulGame Logo](https://github.com/Kyjor/JulGame.jl/assets/13784123/f68ece3a-62a1-48fb-a905-c7c8b9aa35c1)
 
 ![The Jester](https://github.com/Kyjor/JulGame.jl/assets/13784123/61c51bab-557d-4712-86a8-59ab91350667)
+![CoinGrabber](https://github.com/Kyjor/JulGame.jl/assets/13784123/43811fd4-781d-4530-9de0-59c282b27710)
 
 ![JulGameEditor](https://github.com/Kyjor/JulGame.jl/assets/13784123/c4ad139f-4d78-47f9-9d13-7bfd150e81bf)
 
@@ -106,7 +107,7 @@ This is a list of references that I used in order to get JulGame where it is, al
 Here I will be keeping a list for the first games created with JulGame :)
 
 1. [The Jester](https://kyjor.itch.io/the-jester)
-2.
+2. [Coin Grabber](https://kyjor.itch.io/coin-grabber)
 3.
 4.
 5.

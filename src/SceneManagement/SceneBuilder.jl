@@ -41,6 +41,7 @@ module SceneBuilderModule
         function Scene(srcPath, scene)
             this = new()    
 
+            SDL2.init()
             this.scene = scene
             this.srcPath = srcPath
 
@@ -49,17 +50,24 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, dimensions = Vector2f(800, 800), zoom = 1.0, globals = [])
+                function(isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), zoom = 1.0, targetFrameRate = 60.0, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "assets")
                     main = MAIN
                     main.zoom = zoom
                     main.globals = globals
                     main.level = this
+                    main.targetFrameRate = targetFrameRate
                     scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
-                    main.scene.camera = Camera(Vector2f(975, 750), Vector2f(),Vector2f(0.64, 0.64), C_NULL)
+                    if dimensions.x < camDimensions.x 
+                        camDimensions = Vector2(dimensions.x, camDimensions.y)
+                    end
+                    if dimensions.y < camDimensions.y 
+                        camDimensions = Vector2(camDimensions.x, dimensions.y)
+                    end
+                    main.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
                     main.scene.rigidbodies = []
                     main.scene.colliders = []
                     for entity in main.scene.entities
@@ -119,8 +127,7 @@ module SceneBuilderModule
                 end
             elseif s == :createNewTextBox
                 function (fontPath)
-                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true, true)
-                    textBox.initialize(this.main.renderer, this.main.zoom)
+                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true, true, true)
                     push!(this.main.textBoxes, textBox)
                 end
             else
