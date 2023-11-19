@@ -228,6 +228,97 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Collider/collider.md": {
+	id: "reference/Collider/collider.md";
+  slug: "reference/collider/collider";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Collider/properties/collisionEvents.md": {
+	id: "reference/Collider/properties/collisionEvents.md";
+  slug: "reference/collider/properties/collisionevents";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Rigidbody/properties/acceleration.md": {
+	id: "reference/Rigidbody/properties/acceleration.md";
+  slug: "reference/rigidbody/properties/acceleration";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Rigidbody/rigidbody.md": {
+	id: "reference/Rigidbody/rigidbody.md";
+  slug: "reference/rigidbody/rigidbody";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/properties/color.md": {
+	id: "reference/Shape/properties/color.md";
+  slug: "reference/shape/properties/color";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/properties/dimensions.md": {
+	id: "reference/Shape/properties/dimensions.md";
+  slug: "reference/shape/properties/dimensions";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/properties/isFilled.md": {
+	id: "reference/Shape/properties/isFilled.md";
+  slug: "reference/shape/properties/isfilled";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/properties/offset.md": {
+	id: "reference/Shape/properties/offset.md";
+  slug: "reference/shape/properties/offset";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/properties/parent.md": {
+	id: "reference/Shape/properties/parent.md";
+  slug: "reference/shape/properties/parent";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/shape.md": {
+	id: "reference/Shape/shape.md";
+  slug: "reference/shape/shape";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/SoundSource/properties/acceleration.md": {
+	id: "reference/SoundSource/properties/acceleration.md";
+  slug: "reference/soundsource/properties/acceleration";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/SoundSource/sound-source.md": {
+	id: "reference/SoundSource/sound-source.md";
+  slug: "reference/soundsource/sound-source";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"release-notes/v0.0.4.md": {
+	id: "release-notes/v0.0.4.md";
+  slug: "release-notes/v004";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 };
 
 	};

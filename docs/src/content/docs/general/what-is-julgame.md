@@ -9,7 +9,6 @@ description: An explanation of the engine, along with it's current features and 
 
 ![JulGameEditor](https://github.com/Kyjor/JulGame.jl/assets/13784123/c4ad139f-4d78-47f9-9d13-7bfd150e81bf)
 
-Documentation coming soon!
 
 [Example Repo](https://github.com/Kyjor/JulGame-Example)
 

@@ -8,8 +8,6 @@ module ShapeModule
         isFilled::Bool
         offset::Math.Vector2
         parent::Any # Entity
-        position::Math.Vector2
-        renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         
         function Shape(dimensions::Math.Vector2 = Math.Vector2(1,1), color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2 = Math.Vector2())
             this = new()
@@ -26,7 +24,7 @@ module ShapeModule
     function Base.getproperty(this::Shape, s::Symbol)
         if s == :draw
             function()
-                if MAIN.renderer == C_NULL #|| this.renderer == Ptr{nothing}
+                if MAIN.renderer == C_NULL
                     return                    
                 end
 
@@ -40,10 +38,6 @@ module ShapeModule
 
                 this.isFilled ? SDL2.SDL_RenderFillRect( MAIN.renderer, outlineRect) : SDL2.SDL_RenderDrawRect( MAIN.renderer, outlineRect);
                 
-            end
-        elseif s == :injectRenderer
-            function(renderer::Ptr{SDL2.LibSDL2.SDL_Renderer})
-                this.renderer = renderer
             end
     elseif s == :setParent
             function(parent::Any)
