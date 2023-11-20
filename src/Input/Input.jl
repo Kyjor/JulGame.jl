@@ -13,10 +13,16 @@ module InputModule
         mouseButtonsHeldDown::Array
         mouseButtonsReleased::Array
         mousePosition
+        joystick
         scanCodeStrings::Array{String}
         scanCodes::Array
         scene
         quit::Bool
+        
+        #Gamepad
+        jaxis
+        xDir
+        yDir
 
         function Input()
             this = new()
@@ -41,6 +47,20 @@ module InputModule
                 end
                 push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
             end
+
+            SDL2.SDL_Init(UInt32(SDL2.SDL_INIT_JOYSTICK))
+            if SDL2.SDL_NumJoysticks() < 1
+                println("Warning: No joysticks connected!")
+            else
+                # Load joystick
+                this.joystick = SDL2.SDL_JoystickOpen(0)
+                if this.joystick == C_NULL
+                    println("Warning: Unable to open game controller! SDL Error: ", unsafe_string(SDL2.SDL_GetError()))
+                end
+            end
+            this.jaxis = C_NULL
+            this.xDir = 0
+            this.yDir = 0
 
             return this
         end
@@ -87,6 +107,12 @@ module InputModule
 
                         this.handleMouseEvent(evt)
                     end 
+
+                    #if evt.type == SDL2.SDL_JOYAXISMOTION
+                        if evt.jaxis.which == 0
+                            this.jaxis = evt.jaxis
+                        end
+                    #end
 
                     if evt.type == SDL2.SDL_QUIT
                         this.quit = true

@@ -50,10 +50,11 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), zoom = 1.0, targetFrameRate = 60.0, globals = [])
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), zoom = 1.0, targetFrameRate = 60.0, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "assets")
                     main = MAIN
+                    main.windowName = windowName
                     main.zoom = zoom
                     main.globals = globals
                     main.level = this

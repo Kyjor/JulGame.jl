@@ -3,8 +3,7 @@ module SceneLoaderModule
     using ..SceneManagement.SceneBuilderModule
 
     export loadScene
-    function loadScene(projectPath, sceneFileName, isUsingEditor = false)
-        SDL2.init()
+    function loadScene(projectPath, sceneFileName, isUsingEditor = false) 
         if isUsingEditor
             dir = @__DIR__
         else
