@@ -80,11 +80,15 @@ module TextBoxModule
                 println(unsafe_string(SDL2.SDL_GetError()))
                 this.font = font
                 this.renderText = SDL2.TTF_RenderText_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+
+                # println(surface[1])
+                # println(surface[1].w)
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
                 this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.renderText)
-                w,h = Int32[1], Int32[1]
-                SDL2.TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
-                this.size = Math.Vector2(w[1], h[1])
-                
+                # w,h = Int32[1], Int32[1]
+                # SDL2.TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
+                # this.size = Math.Vector2(w[1], h[1])
                 if this.isCentered 
                     this.position = Math.Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y/this.zoom)
                 end
@@ -101,7 +105,7 @@ module TextBoxModule
                 this.text = newText
                 SDL2.SDL_FreeSurface(this.renderText)
                 SDL2.SDL_DestroyTexture(this.textTexture)
-                this.renderText = SDL2.TTF_RenderText_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                this.renderText = SDL2.TTF_RenderUTF8_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
                 this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.renderText)
 
                 if this.autoSizeText

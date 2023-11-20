@@ -11,7 +11,7 @@ module MainLoop
 		assets
 		cameraBackgroundColor
 		debugTextBoxes
-		entities
+		entities::Array
 		events
 		font
 		globals
