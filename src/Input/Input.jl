@@ -23,6 +23,10 @@ module InputModule
         jaxis
         xDir
         yDir
+        numAxes
+        numButtons
+        numHats
+        button
 
         function Input()
             this = new()
@@ -57,10 +61,21 @@ module InputModule
                 if this.joystick == C_NULL
                     println("Warning: Unable to open game controller! SDL Error: ", unsafe_string(SDL2.SDL_GetError()))
                 end
+                name = SDL2.SDL_JoystickName(this.joystick)
+                this.numAxes = SDL2.SDL_JoystickNumAxes(this.joystick)
+                this.numButtons = SDL2.SDL_JoystickNumButtons(this.joystick)
+                this.numHats = SDL2.SDL_JoystickNumHats(this.joystick)
+
+                println("Now reading from joystick '$(unsafe_string(name))' with:")
+                println("$(this.numAxes) axes")
+                println("$(this.numButtons) buttons")
+                println("$(this.numHats) hats")
+
             end
             this.jaxis = C_NULL
             this.xDir = 0
             this.yDir = 0
+            this.button = 0
 
             return this
         end
@@ -112,6 +127,56 @@ module InputModule
                         if evt.jaxis.which == 0
                             this.jaxis = evt.jaxis
                         end
+                        for i in 0:this.numAxes-1
+                            axis = SDL2.SDL_JoystickGetAxis(this.joystick, i)
+                            if i < 0
+                                println("Axis $i: $(SDL2.SDL_JoystickGetAxis(this.joystick, i))")
+                            end
+                            JOYSTICK_DEAD_ZONE = 8000
+
+                            if i == 0
+                                if axis < -JOYSTICK_DEAD_ZONE
+                                    this.xDir = -1
+                                # Right of dead zone
+                                elseif axis > JOYSTICK_DEAD_ZONE
+                                    this.xDir = 1
+                                else
+                                    this.xDir = 0
+                                end
+                            elseif i == 1
+                                if axis < -JOYSTICK_DEAD_ZONE
+                                    this.yDir = -1
+                                # Right of dead zone
+                                elseif axis > JOYSTICK_DEAD_ZONE
+                                    this.yDir = 1
+                                else
+                                    this.yDir = 0
+                                end
+                            end
+
+                        end
+                        println("x:$(this.xDir), y:$(this.yDir)")
+                        for i in 0:this.numButtons-1
+                            button = SDL2.SDL_JoystickGetButton(this.joystick, i)
+
+                            if button != 0
+                                println("Button $i: $(button)")
+                            end
+                            if i == 0 && button == 1
+                                this.button = 1
+                            elseif i == 0
+                                this.button = 0
+                            end
+                        end
+                        
+                        for i in 0:this.numHats-1
+
+                            hat = SDL2.SDL_JoystickGetHat(this.joystick, i)
+                            if hat != 0
+                                println("Hat $i: $(hat)")
+                            end
+                        end
+                        
                     #end
 
                     if evt.type == SDL2.SDL_QUIT
@@ -154,7 +219,7 @@ module InputModule
                     #println(string("Window $(event.window.windowID) exposed"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
                     #println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
+                elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
                     #println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
                     #println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
