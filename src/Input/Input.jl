@@ -55,6 +55,9 @@ module InputModule
             SDL2.SDL_Init(UInt32(SDL2.SDL_INIT_JOYSTICK))
             if SDL2.SDL_NumJoysticks() < 1
                 println("Warning: No joysticks connected!")
+                this.numAxes = 0
+                this.numButtons = 0
+                this.numHats = 0
             else
                 # Load joystick
                 this.joystick = SDL2.SDL_JoystickOpen(0)
@@ -155,7 +158,7 @@ module InputModule
                             end
 
                         end
-                        println("x:$(this.xDir), y:$(this.yDir)")
+                        # println("x:$(this.xDir), y:$(this.yDir)")
                         for i in 0:this.numButtons-1
                             button = SDL2.SDL_JoystickGetButton(this.joystick, i)
 

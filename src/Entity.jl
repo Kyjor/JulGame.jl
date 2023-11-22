@@ -212,7 +212,7 @@ module EntityModule
                 if this.getComponent(Sprite) != C_NULL
                     return
                 end
-                this.addComponent(Sprite(basePath, "", C_NULL, false, true))
+                this.addComponent(Sprite(basePath, "", C_NULL, false, Vector3(255,255,255), true))
                 this.getComponent("Sprite").injectRenderer(game.renderer)
             end
         elseif s == :addShape
