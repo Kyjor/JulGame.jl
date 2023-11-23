@@ -50,7 +50,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), zoom = 1.0, targetFrameRate = 60.0, globals = [])
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = false, zoom = 1.0, targetFrameRate = 60.0, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "assets")
                     main = MAIN
@@ -62,10 +62,10 @@ module SceneBuilderModule
                     scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
-                    if dimensions.x < camDimensions.x 
+                    if dimensions.x < camDimensions.x && dimensions.x > 0
                         camDimensions = Vector2(dimensions.x, camDimensions.y)
                     end
-                    if dimensions.y < camDimensions.y 
+                    if dimensions.y < camDimensions.y && dimensions.y > 0
                         camDimensions = Vector2(camDimensions.x, dimensions.y)
                     end
                     main.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
@@ -117,7 +117,7 @@ module SceneBuilderModule
 
                     main.assets = ASSETS
                     main.loadScene(main.scene)
-                    main.init(isUsingEditor, dimensions)
+                    main.init(isUsingEditor, dimensions, isResizable)
 
                     this.main = main
                     return main

@@ -15,7 +15,6 @@ module MainLoop
 		events
 		font
 		globals
-		heightMultiplier
 		input
 		isDraggingEntity
 		lastMousePosition
@@ -35,7 +34,6 @@ module MainLoop
 		screenDimensions
 		targetFrameRate
 		textBoxes
-		widthMultiplier
 		window
 		windowName::String
 		zoom::Float64
@@ -66,26 +64,30 @@ module MainLoop
 
 	function Base.getproperty(this::Main, s::Symbol)
 		if s == :init 											
-			function(isUsingEditor = false, dimensions = C_NULL)
+			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false)
 				
-				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
-				if isUsingEditor
-					this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS | SDL2.SDL_WINDOW_RESIZABLE)
-				else
-					this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, SDL2.SDL_RENDERER_ACCELERATED | SDL2.SDL_WINDOW_RESIZABLE)
+				if dimensions == Math.Vector2()
+					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
+					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
+					dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
+
 				end
+				
+				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions 
+
+				flags = SDL2.SDL_RENDERER_ACCELERATED | 
+				(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
+				(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
+				(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+
+				this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(dimensions.x/2 - round(this.scene.camera.dimensions.x/2*this.zoom), dimensions.y/2 - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
 				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
-				referenceHeight = this.screenDimensions.x
-				referenceWidth = this.screenDimensions.y
-				fontSize = 50
-				
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
-				fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
-				this.font = SDL2.TTF_OpenFont(fontPath, fontSize)
+				this.font = SDL2.TTF_OpenFont(joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), 50)
 				
 				scripts = []
 				for entity in this.scene.entities
@@ -174,11 +176,6 @@ module MainLoop
 						end
 						if update[4] != w[1] || update[5] != h[1]
 							SDL2.SDL_SetWindowSize(this.window, update[4], update[5])
-							referenceHeight = 1080
-							referenceWidth = 1920
-							#this.widthMultiplier = update[4]/referenceWidth
-							#this.heightMultiplier = update[5]/referenceHeight
-						
 							SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 						end
 					end
@@ -383,10 +380,10 @@ module MainLoop
 				if "SPACE" in this.input.buttonsHeldDown
 					if "LEFT" in this.input.buttonsHeldDown
 						this.zoom -= .01
-						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.zoom)
+						SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 					elseif "RIGHT" in this.input.buttonsHeldDown
 						this.zoom += .01
-						SDL2.SDL_RenderSetScale(this.renderer, this.widthMultiplier * this.zoom, this.zoom)
+						SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 					end
 				elseif this.input.getButtonHeldDown("LEFT")
 					cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
