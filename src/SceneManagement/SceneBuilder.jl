@@ -50,7 +50,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = false, zoom = 1.0, targetFrameRate = 60.0, globals = [])
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = false, zoom::Float64 = 1.0, autoResize::Bool = true, targetFrameRate = 60.0, globals = [])
                     #file loading
                     ASSETS = joinpath(this.srcPath, "assets")
                     main = MAIN

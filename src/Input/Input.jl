@@ -1,3 +1,4 @@
+#todo: separate mouse, keyboard, gamepad, and window into their own files
 module InputModule
     using ..JulGame
     using ..JulGame.Math
@@ -223,7 +224,7 @@ module InputModule
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
                     #println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
-                    #println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
+                    println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
                     #println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
