@@ -9,6 +9,7 @@ module MainLoop
 	export Main
 	mutable struct Main
 		assets
+		autoScaleZoom::Bool
 		cameraBackgroundColor
 		debugTextBoxes
 		entities::Array
@@ -40,11 +41,11 @@ module MainLoop
 
 		function Main(zoom::Float64)
 			this = new()
-			
+
 			this.zoom = zoom
 			this.scene = Scene()
 			this.input = Input()
-			
+
 			this.cameraBackgroundColor = [0,0,0]
 			this.debugTextBoxes = []
 			this.events = []
@@ -57,46 +58,27 @@ module MainLoop
 			this.selectedEntityUpdated = false
 			this.screenDimensions = C_NULL
 			this.globals = []
-			
+			this.input.main = this
+
 			return this
 		end
 	end
 
 	function Base.getproperty(this::Main, s::Symbol)
-		if s == :init 											
+		if s == :init
 			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
-				
+
 				if dimensions == Math.Vector2()
 					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
 					dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
 				end
-				if autoScaleZoom
-					targetRatio = this.scene.camera.dimensions.x/this.scene.camera.dimensions.y
-					if this.scene.camera.dimensions.x == max(this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)
-						for i in dimensions.x:-1:this.scene.camera.dimensions.x
-							value = i/targetRatio
-							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
-							if isInt && value <= dimensions.y
-								this.zoom = i/this.scene.camera.dimensions.x
-								break
-							end
-						end
-					else
-						for i in dimensions.y:-1:this.scene.camera.dimensions.y
-							value = i*targetRatio
-							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
-							if isInt && value <= dimensions.x
-								this.zoom = i/this.scene.camera.dimensions.y
-								break
-							end
-						end
-					end
-				end
-				
-				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions 
+				this.autoScaleZoom = autoScaleZoom
+				this.scaleZoom(dimensions.x,dimensions.y)
 
-				flags = SDL2.SDL_RENDERER_ACCELERATED | 
+				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
+
+				flags = SDL2.SDL_RENDERER_ACCELERATED |
 				(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
 				(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
 				(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
@@ -104,23 +86,24 @@ module MainLoop
 				this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(dimensions.x/2 - round(this.scene.camera.dimensions.x/2*this.zoom), dimensions.y/2 - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
-				windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
+
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 				this.font = SDL2.TTF_OpenFont(joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), 50)
-				
+
 				scripts = []
 				for entity in this.scene.entities
 					for script in entity.scripts
 						push!(scripts, script)
 					end
 				end
-				
+
 				for screenButton in this.scene.screenButtons
 					screenButton.injectRenderer(this.renderer, this.font)
 				end
-				
+
 				this.entities = this.scene.entities
 				this.rigidbodies = this.scene.rigidbodies
 				this.screenButtons = this.scene.screenButtons
@@ -139,7 +122,7 @@ module MainLoop
 								println(e)
 								Base.show_backtrace(stdout, catch_backtrace())
 							end
-						end	
+						end
 					end
 				end
 
@@ -174,7 +157,7 @@ module MainLoop
 									println(e)
 									Base.show_backtrace(stdout, catch_backtrace())
 								end
-							end	
+							end
 						end
 					end
 					SDL2.Mix_Quit()
@@ -205,7 +188,7 @@ module MainLoop
 					#region =============    Input
 					this.lastMousePosition = this.input.mousePosition
 					this.input.pollInput()
-					
+
 					if this.input.quit && !isEditor
 						close[] = true
 					end
@@ -241,8 +224,8 @@ module MainLoop
 					SDL2.SDL_RenderClear(this.renderer)
 
 					this.scene.camera.update()
-				
-					
+
+
 					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 					for entity in this.entities
 						if !entity.isActive
@@ -256,7 +239,7 @@ module MainLoop
 								entityAnimator.update(currentRenderTime, deltaTime)
 							end
 						end
-						
+
 						entitySprite = entity.getSprite()
 						if entitySprite != C_NULL
 							entitySprite.draw()
@@ -298,7 +281,7 @@ module MainLoop
 					this.lastMousePositionWorld = this.mousePositionWorld
 					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
 					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
-					
+
 					#region ================ Debug
 					if DEBUG
 						# Stats to display
@@ -328,13 +311,13 @@ module MainLoop
 					endTime = SDL2.SDL_GetPerformanceCounter()
 					elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
 					targetFrameTime = 1000/this.targetFrameRate
-			
+
 					if elapsedMS < targetFrameTime && !isEditor
 						SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 					end
 
 					if isEditor && update != C_NULL
-						returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]	
+						returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
 						this.selectedEntityUpdated = false
 						return returnData
 					end
@@ -366,7 +349,7 @@ module MainLoop
 						this.panCounter = Math.Vector2f(this.panCounter.x, 0)
 					end
 				elseif this.input.getMouseButtonPressed(SDL2.SDL_BUTTON_LEFT)
-					# function that selects an entity if we click on it	
+					# function that selects an entity if we click on it
 					this.selectEntityWithClick()
 				elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
 					# TODO: Make this work for textboxes
@@ -415,12 +398,12 @@ module MainLoop
 				elseif this.input.getButtonHeldDown("UP")
 					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.25)
 				end
-		
-				if update != C_NULL && update[6] 
+
+				if update != C_NULL && update[6]
 					cameraPosition = Math.Vector2f()
 				end
 				this.scene.camera.update(cameraPosition)
-				
+
 				return cameraPosition
 			end
 		elseif s == :createNewEntity
@@ -438,7 +421,7 @@ module MainLoop
 					entityIndex += 1
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
-						
+
 						# println("pos x: $(entity.getTransform().getPosition().x)")
 						# println("mouse pos raw x: $(this.mousePositionWorldRaw.x)")
 						# println("mouse pos x: $(this.mousePositionWorld.x)")
@@ -475,6 +458,42 @@ module MainLoop
 		elseif s == :restoreWindow
 			function ()
 				SDL2.SDL_RestoreWindow(this.window)
+			end
+		elseif s == :updateViewport
+			function (x,y)
+				if !this.autoScaleZoom
+					return
+				end
+				this.scaleZoom(x,y)
+				SDL2.SDL_RenderClear(this.renderer)
+				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+			end
+		elseif s == :scaleZoom
+			function (x,y)
+				if this.autoScaleZoom
+					targetRatio = this.scene.camera.dimensions.x/this.scene.camera.dimensions.y
+					if this.scene.camera.dimensions.x == max(this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)
+						for i in x:-1:this.scene.camera.dimensions.x
+							value = i/targetRatio
+							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
+							if isInt && value <= y
+								this.zoom = i/this.scene.camera.dimensions.x
+								break
+							end
+						end
+					else
+						for i in y:-1:this.scene.camera.dimensions.y
+							value = i*targetRatio
+							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
+							if isInt && value <= x
+								this.zoom = i/this.scene.camera.dimensions.y
+								break
+							end
+						end
+					end
+				end
 			end
 		else
 			try
