@@ -64,13 +64,34 @@ module MainLoop
 
 	function Base.getproperty(this::Main, s::Symbol)
 		if s == :init 											
-			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false)
+			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 				
 				if dimensions == Math.Vector2()
 					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
 					dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
-
+				end
+				if autoScaleZoom
+					targetRatio = this.scene.camera.dimensions.x/this.scene.camera.dimensions.y
+					if this.scene.camera.dimensions.x == max(this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)
+						for i in dimensions.x:-1:this.scene.camera.dimensions.x
+							value = i/targetRatio
+							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
+							if isInt && value <= dimensions.y
+								this.zoom = i/this.scene.camera.dimensions.x
+								break
+							end
+						end
+					else
+						for i in dimensions.y:-1:this.scene.camera.dimensions.y
+							value = i*targetRatio
+							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
+							if isInt && value <= dimensions.x
+								this.zoom = i/this.scene.camera.dimensions.y
+								break
+							end
+						end
+					end
 				end
 				
 				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions 
