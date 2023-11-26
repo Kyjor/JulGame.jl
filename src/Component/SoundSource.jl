@@ -3,7 +3,6 @@ module SoundSourceModule
     
     export SoundSource
     mutable struct SoundSource
-        basePath::String
         channel::Integer
         isMusic::Bool
         parent::Any
@@ -12,11 +11,11 @@ module SoundSourceModule
         volume::Integer
 
         # Music
-        function CreateSoundSource(basePath::String, path::String, channel::Integer, volume::Integer, isMusic::Bool)
+        function CreateSoundSource(path::String, channel::Integer, volume::Integer, isMusic::Bool)
             this = new()
 
             SDL2.SDL_ClearError()
-            fullPath = joinpath(basePath, "assets", "sounds", path)
+            fullPath = joinpath(MAIN.basePath, "assets", "sounds", path)
             sound = isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
             error = unsafe_string(SDL2.SDL_GetError())
 
@@ -28,7 +27,6 @@ module SoundSourceModule
             
             isMusic ? SDL2.Mix_VolumeMusic(Int32(volume)) : SDL2.Mix_Volume(Int32(channel), Int32(volume))
 
-            this.basePath = basePath
             this.channel = channel
             this.isMusic = isMusic
             this.parent = C_NULL
@@ -40,27 +38,27 @@ module SoundSourceModule
         end
         
         # Constructor for editor
-        function SoundSource(basePath::String)
-            return CreateSoundSource(basePath, "", -1, 100, false)
+        function SoundSource()
+            return CreateSoundSource("", -1, 100, false)
         end
 
         # Constructor for music
-        function SoundSource(basePath::String, path::String, volume::Integer)
-            return CreateSoundSource(basePath, path, -1, volume, true)
+        function SoundSource(path::String, volume::Integer)
+            return CreateSoundSource(path, -1, volume, true)
         end
         
         # Constructor for sound effect
-        function SoundSource(basePath::String, path::String, channel::Integer, volume::Integer)
-            return CreateSoundSource(basePath, path, channel, volume, false)
+        function SoundSource(path::String, channel::Integer, volume::Integer)
+            return CreateSoundSource(path, channel, volume, false)
         end
         
         # Constructor for editor with specified properties
-        function SoundSource(basePath::String, channel::Integer, volume::Integer, isMusic::Bool)
-            return CreateSoundSource(basePath, "", channel, volume, isMusic)
+        function SoundSource(channel::Integer, volume::Integer, isMusic::Bool)
+            return CreateSoundSource("", channel, volume, isMusic)
         end
         
-        function SoundSource(basePath::String, path::String, channel::Integer, volume::Integer, isMusic::Bool)
-            return CreateSoundSource(basePath, path, channel, volume, isMusic)
+        function SoundSource(path::String, channel::Integer, volume::Integer, isMusic::Bool)
+            return CreateSoundSource(path, channel, volume, isMusic)
         end
     end
     
@@ -88,7 +86,7 @@ module SoundSourceModule
         elseif s == :loadSound
             function(soundPath::String, isMusic::Bool)
                 this.isMusic = isMusic
-                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(this.basePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(this.basePath, "assets", "sounds", soundPath))
+                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(MAIN.basePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(MAIN.basePath, "assets", "sounds", soundPath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open sound! SDL Error: ", error))

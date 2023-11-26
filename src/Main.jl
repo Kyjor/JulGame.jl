@@ -59,6 +59,7 @@ module MainLoop
 			this.screenDimensions = C_NULL
 			this.globals = []
 			this.input.main = this
+			this.basePath = joinpath(pwd(), "..")
 
 			return this
 		end
