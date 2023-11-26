@@ -3815,11 +3815,6 @@
             "isActive": true,
             "name": "GameManager",
             "scripts": [
-                {
-                    "name": "GameManager",
-                    "parameters": [
-                    ]
-                }
             ],
             "id": 129,
             "components": [
@@ -4337,11 +4332,6 @@
             "isActive": true,
             "name": "Player",
             "scripts": [
-                {
-                    "name": "PlayerMovement",
-                    "parameters": [
-                    ]
-                }
             ],
             "id": 144,
             "components": [
@@ -4413,11 +4403,6 @@
             "isActive": true,
             "name": "Bee",
             "scripts": [
-                {
-                    "name": "Enemy",
-                    "parameters": [
-                    ]
-                }
             ],
             "id": 145,
             "components": [
