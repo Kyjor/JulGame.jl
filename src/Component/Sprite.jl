@@ -31,7 +31,7 @@
             end
         
             SDL2.SDL_ClearError()
-            fullPath = joinpath(MAIN.basePath, "assets", "images", imagePath)
+            fullPath = joinpath(BasePath, "assets", "images", imagePath)
             this.image = SDL2.IMG_Load(fullPath)
             error = unsafe_string(SDL2.SDL_GetError())
             if !isempty(error)
@@ -96,7 +96,7 @@
             function(imagePath::String)
                 SDL2.SDL_ClearError()
                 this.renderer = MAIN.renderer
-                this.image = SDL2.IMG_Load(joinpath(MAIN.basePath, "assets", "images", imagePath))
+                this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open image! SDL Error: ", error))

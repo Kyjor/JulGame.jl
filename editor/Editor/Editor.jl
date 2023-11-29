@@ -40,7 +40,7 @@ module Editor
     function loadScene(projectPath, sceneFileName)
         game = C_NULL
         try
-            game = SceneLoaderModule.loadScene(projectPath, sceneFileName, true);
+            game = SceneLoaderModule.loadScene(sceneFileName, projectPath, true);
         catch e 
             println(e)
             Base.show_backtrace(stdout, catch_backtrace())
@@ -379,7 +379,7 @@ module Editor
                     end
                     projectPath = currentTextInTextBox
                     sceneFileName = currentTextInTextBox1
-                    CImGui.Button("Load Scene") && (game = loadScene(projectPath, sceneFileName))
+                    CImGui.Button("Load Scene") && (game = loadScene(sceneFileName, projectPath))
                     CImGui.End()
                 end
 

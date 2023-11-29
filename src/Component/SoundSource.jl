@@ -15,7 +15,7 @@ module SoundSourceModule
             this = new()
 
             SDL2.SDL_ClearError()
-            fullPath = joinpath(MAIN.basePath, "assets", "sounds", path)
+            fullPath = joinpath(BasePath, "assets", "sounds", path)
             sound = isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
             error = unsafe_string(SDL2.SDL_GetError())
 
@@ -86,7 +86,7 @@ module SoundSourceModule
         elseif s == :loadSound
             function(soundPath::String, isMusic::Bool)
                 this.isMusic = isMusic
-                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(MAIN.basePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(MAIN.basePath, "assets", "sounds", soundPath))
+                this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(BasePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(BasePath, "assets", "sounds", soundPath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open sound! SDL Error: ", error))

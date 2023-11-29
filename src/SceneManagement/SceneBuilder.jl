@@ -38,28 +38,29 @@ module SceneBuilderModule
         scene
         srcPath
 
-        function Scene(srcPath, scene)
-            this = new()    
+        function Scene(sceneFileName::String, srcPath::String = joinpath(pwd(), ".."))
+            this = new()  
 
             SDL2.init()
-            this.scene = scene
+            this.scene = sceneFileName
             this.srcPath = srcPath
+            JulGame.BasePath = srcPath
 
             return this
         end
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = false, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = [])
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = [])
                     #file loading
-                    ASSETS = joinpath(this.srcPath, "assets")
+
                     main = MAIN
                     main.windowName = windowName
                     main.zoom = zoom
                     main.globals = globals
                     main.level = this
                     main.targetFrameRate = targetFrameRate
-                    scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
+                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
                     if dimensions.x < camDimensions.x && dimensions.x > 0
@@ -115,7 +116,7 @@ module SceneBuilderModule
 
                     end
 
-                    main.assets = ASSETS
+                    main.assets = joinpath(BasePath, "assets")
                     main.loadScene(main.scene)
                     main.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
 
