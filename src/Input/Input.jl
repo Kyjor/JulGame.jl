@@ -1,3 +1,4 @@
+#todo: separate mouse, keyboard, gamepad, and window into their own files
 module InputModule
     using ..JulGame
     using ..JulGame.Math
@@ -9,6 +10,7 @@ module InputModule
         buttonsReleased::Array{String}
         debug::Bool
         isWindowFocused::Bool
+        main
         mouseButtonsPressedDown::Array
         mouseButtonsHeldDown::Array
         mouseButtonsReleased::Array
@@ -55,6 +57,9 @@ module InputModule
             SDL2.SDL_Init(UInt32(SDL2.SDL_INIT_JOYSTICK))
             if SDL2.SDL_NumJoysticks() < 1
                 println("Warning: No joysticks connected!")
+                this.numAxes = 0
+                this.numButtons = 0
+                this.numHats = 0
             else
                 # Load joystick
                 this.joystick = SDL2.SDL_JoystickOpen(0)
@@ -155,7 +160,7 @@ module InputModule
                             end
 
                         end
-                        println("x:$(this.xDir), y:$(this.yDir)")
+                        # println("x:$(this.xDir), y:$(this.yDir)")
                         for i in 0:this.numButtons-1
                             button = SDL2.SDL_JoystickGetButton(this.joystick, i)
 
@@ -221,6 +226,7 @@ module InputModule
                     #println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
                     #println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
+                    this.main.updateViewport(event.window.data1, event.window.data2)
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
                     #println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
                 elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED

@@ -5,7 +5,7 @@
 
     export Sprite
     mutable struct Sprite
-        basePath::String
+        color::Math.Vector3
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
@@ -15,13 +15,13 @@
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(basePath::String, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, isCreatedInEditor::Bool=false)
+        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false)
             this = new()
             
             this.offset = Math.Vector2f()
-            this.basePath = basePath
             this.isFlipped = isFlipped
             this.imagePath = imagePath
+            this.color = color
             this.crop = crop
             this.image = C_NULL
             this.texture = C_NULL
@@ -31,7 +31,7 @@
             end
         
             SDL2.SDL_ClearError()
-            fullPath = joinpath(basePath, "assets", "images", imagePath)
+            fullPath = joinpath(BasePath, "assets", "images", imagePath)
             this.image = SDL2.IMG_Load(fullPath)
             error = unsafe_string(SDL2.SDL_GetError())
             if !isempty(error)
@@ -56,6 +56,7 @@
                 end
                 if this.texture == C_NULL
                     this.texture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.image)
+                    this.setColor()
                 end
 
                 parentTransform = this.parent.getTransform()
@@ -87,7 +88,7 @@
             function()
                 this.isFlipped = !this.isFlipped
             end
-    elseif s == :setParent
+        elseif s == :setParent
             function(parent::Any)
                 this.parent = parent
             end
@@ -95,7 +96,7 @@
             function(imagePath::String)
                 SDL2.SDL_ClearError()
                 this.renderer = MAIN.renderer
-                this.image = SDL2.IMG_Load(joinpath(this.basePath, "assets", "images", imagePath))
+                this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open image! SDL Error: ", error))
@@ -106,6 +107,11 @@
                 
                 this.imagePath = imagePath
                 this.texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.image)
+                this.setColor()
+            end
+        elseif s == :setColor
+            function ()
+                SDL2.SDL_SetTextureColorMod( this.texture, UInt8(this.color.x%256), UInt8(this.color.y%256), (this.color.z%256) );
             end
         else
             try

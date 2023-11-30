@@ -107,7 +107,7 @@ module TextBoxModule
                 SDL2.SDL_DestroyTexture(this.textTexture)
                 this.renderText = SDL2.TTF_RenderUTF8_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
                 this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.renderText)
-
+                
                 if this.autoSizeText
                     w,h = Int32[1], Int32[1]
                     SDL2.TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
@@ -121,6 +121,11 @@ module TextBoxModule
             function(field, x, y)
                 setfield!(this, field, Math.Vector2(x,y))
                 println("set $(field) to $(getfield(this, field))")
+            end
+        elseif s == :setColor
+            function (r,g,b)
+                #SDL2.SDL_SetTextureColorMod( this.textTexture, UInt8(this.color.x%256), UInt8(this.color.y%256), (this.color.z%256) );
+                SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
             end
         else
             try
