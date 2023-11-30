@@ -3,4 +3,6 @@ using Test
 
 ROOTDIR = joinpath(@__DIR__, "..")
 
-include("engine/engine.jl")
+@testset "All tests" begin
+    include("engine/engine.jl")
+end
