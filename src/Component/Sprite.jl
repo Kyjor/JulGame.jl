@@ -1,8 +1,6 @@
 ﻿module SpriteModule
     using ..Component.JulGame
 
-    const SCALE_UNITS = Ref{Float64}(64.0)[]
-
     export Sprite
     mutable struct Sprite
         color::Math.Vector3
