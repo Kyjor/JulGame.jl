@@ -6,6 +6,9 @@ module JulGame
     export SDL2
     const SCALE_UNITS = 64.0
     export SCALE_UNITS 
+    BasePath = ""
+    export BasePath
+    
     include("Macros.jl")
     using .Macros: @event
     export @event

@@ -5,7 +5,6 @@
 
     export Sprite
     mutable struct Sprite
-        basePath::String
         color::Math.Vector3
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
@@ -16,11 +15,10 @@
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(basePath::String, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false)
+        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false)
             this = new()
             
             this.offset = Math.Vector2f()
-            this.basePath = basePath
             this.isFlipped = isFlipped
             this.imagePath = imagePath
             this.color = color
@@ -33,7 +31,7 @@
             end
         
             SDL2.SDL_ClearError()
-            fullPath = joinpath(basePath, "assets", "images", imagePath)
+            fullPath = joinpath(BasePath, "assets", "images", imagePath)
             this.image = SDL2.IMG_Load(fullPath)
             error = unsafe_string(SDL2.SDL_GetError())
             if !isempty(error)
@@ -98,7 +96,7 @@
             function(imagePath::String)
                 SDL2.SDL_ClearError()
                 this.renderer = MAIN.renderer
-                this.image = SDL2.IMG_Load(joinpath(this.basePath, "assets", "images", imagePath))
+                this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open image! SDL Error: ", error))

@@ -166,165 +166,7 @@ module MainLoop
 			end
 		elseif s == :gameLoop
 			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
-				try
-					lastStartTime = startTime[]
-					startTime[] = SDL2.SDL_GetPerformanceCounter()
-
-					x,y,w,h = Int[1], Int[1], Int[1], Int[1]
-					if isEditor && update != C_NULL
-						SDL2.SDL_GetWindowPosition(this.window, pointer(x), pointer(y))
-						SDL2.SDL_GetWindowSize(this.window, pointer(w), pointer(h))
-
-						if update[2] != x[1] || update[3] != y[1]
-								SDL2.SDL_SetWindowPosition(this.window, update[2], update[3])
-						end
-						if update[4] != w[1] || update[5] != h[1]
-							SDL2.SDL_SetWindowSize(this.window, update[4], update[5])
-							SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
-						end
-					end
-
-					DEBUG = false
-					#region =============    Input
-					this.lastMousePosition = this.input.mousePosition
-					this.input.pollInput()
-
-					if this.input.quit && !isEditor
-						close[] = true
-					end
-					DEBUG = this.input.debug
-
-					cameraPosition = Math.Vector2f()
-					if isEditor
-						cameraPosition = this.handleEditorInputsCamera()
-					end
-
-					#endregion ============= Input
-
-					#region =============    Physics
-					if !isEditor
-						currentPhysicsTime = SDL2.SDL_GetTicks()
-						deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
-						if deltaTime > .25
-							lastPhysicsTime[] =  SDL2.SDL_GetTicks()
-							return
-						end
-						for rigidbody in this.rigidbodies
-							rigidbody.update(deltaTime)
-						end
-						lastPhysicsTime[] =  SDL2.SDL_GetTicks()
-					end
-					#endregion ============= Physics
-
-
-					#region =============    Rendering
-					currentRenderTime = SDL2.SDL_GetTicks()
-					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
-					# Clear the current render target before rendering again
-					SDL2.SDL_RenderClear(this.renderer)
-
-					this.scene.camera.update()
-
-
-					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-					for entity in this.entities
-						if !entity.isActive
-							continue
-						end
-
-						if !isEditor
-							entity.update(deltaTime)
-							entityAnimator = entity.getAnimator()
-							if entityAnimator != C_NULL
-								entityAnimator.update(currentRenderTime, deltaTime)
-							end
-						end
-
-						entitySprite = entity.getSprite()
-						if entitySprite != C_NULL
-							entitySprite.draw()
-						end
-						entityShape = entity.getShape()
-						if entityShape != C_NULL
-							entityShape.draw()
-						end
-
-						if DEBUG && entity.getCollider() != C_NULL
-							pos = entity.getTransform().getPosition()
-							colSize = entity.getCollider().getSize()
-							colOffset = entity.getCollider().offset
-							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS), round(colSize.x * SCALE_UNITS), round(colSize.y * SCALE_UNITS))))
-						end
-					end
-					#endregion ============= Rendering
-
-					#region ============= UI
-					for screenButton in this.screenButtons
-						screenButton.render()
-					end
-
-					for textBox in this.textBoxes
-						textBox.render(DEBUG)
-					end
-					#endregion ============= UI
-
-					SDL2.SDL_SetRenderDrawColor(this.renderer, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
-					if isEditor && update != C_NULL
-						selectedEntity = update[7] > 0 ? this.scene.entities[update[7]] : C_NULL
-						if selectedEntity != C_NULL
-							pos = selectedEntity.getTransform().getPosition()
-							size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
-							offset = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getOffset : Math.Vector2f()
-							SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS), round(size.x * SCALE_UNITS), round(size.x * SCALE_UNITS))))
-						end
-					end
-					this.lastMousePositionWorld = this.mousePositionWorld
-					this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
-					this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
-
-					#region ================ Debug
-					if DEBUG
-						# Stats to display
-						statTexts = [
-							"FPS: $(round(1000 / round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
-							"Frame time: $(round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
-							"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
-							"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
-						]
-
-						if length(this.debugTextBoxes) == 0
-							fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
-
-							for i = 1:length(statTexts)
-								push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", "", fontPath, 40, Math.Vector2(0, 35 * i), Math.Vector2(100, 10 * i), Math.Vector2(0, 0), statTexts[i], false, true))
-							end
-						else
-							for i = 1:length(this.debugTextBoxes)
-								this.debugTextBoxes[i].updateText(statTexts[i])
-								this.debugTextBoxes[i].render(false)
-							end
-						end
-					end
-					#endregion ============= Debug
-
-					SDL2.SDL_RenderPresent(this.renderer)
-					endTime = SDL2.SDL_GetPerformanceCounter()
-					elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
-					targetFrameTime = 1000/this.targetFrameRate
-
-					if elapsedMS < targetFrameTime && !isEditor
-						SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
-					end
-
-					if isEditor && update != C_NULL
-						returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
-						this.selectedEntityUpdated = false
-						return returnData
-					end
-				catch e
-					println("$(e)")
-					Base.show_backtrace(stderr, catch_backtrace())
-				end
+				return GameLoop(this, startTime, lastPhysicsTime, close, isEditor, update)
 			end
 		elseif s == :handleEditorInputsCamera
 			function (update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
@@ -335,9 +177,9 @@ module MainLoop
 					xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 0.1 : -0.1)
 					yDiff = this.lastMousePosition.y - this.input.mousePosition.y
 					yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 0.1 : -0.1)
-
+		
 					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
-
+		
 					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
 						diff = this.panCounter.x > this.panThreshold ? 0.2 : -0.2
 						cameraPosition = Math.Vector2f(cameraPosition.x + diff, cameraPosition.y)
@@ -359,9 +201,9 @@ module MainLoop
 					end
 					xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
 					yDiff = this.lastMousePositionWorld.y - this.mousePositionWorld.y
-
+		
 					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
-
+		
 					entityToMoveTransform = this.entities[this.selectedEntityIndex].getTransform()
 					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
 						diff = this.panCounter.x > this.panThreshold ? -1 : 1
@@ -380,7 +222,7 @@ module MainLoop
 					end
 				elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
 				end
-
+		
 				if "SPACE" in this.input.buttonsHeldDown
 					if "LEFT" in this.input.buttonsHeldDown
 						this.zoom -= .01
@@ -398,12 +240,12 @@ module MainLoop
 				elseif this.input.getButtonHeldDown("UP")
 					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.25)
 				end
-
+		
 				if update != C_NULL && update[6]
 					cameraPosition = Math.Vector2f()
 				end
 				this.scene.camera.update(cameraPosition)
-
+		
 				return cameraPosition
 			end
 		elseif s == :createNewEntity
@@ -503,4 +345,174 @@ module MainLoop
 			end
 		end
 	end
+
+    """
+    	GameLoop()
+        Runs the game 
+    """
+    function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+        try
+			lastStartTime = startTime[]
+			startTime[] = SDL2.SDL_GetPerformanceCounter()
+
+			x,y,w,h = Int[1], Int[1], Int[1], Int[1]
+			if isEditor && update != C_NULL
+				SDL2.SDL_GetWindowPosition(this.window, pointer(x), pointer(y))
+				SDL2.SDL_GetWindowSize(this.window, pointer(w), pointer(h))
+
+				if update[2] != x[1] || update[3] != y[1]
+						SDL2.SDL_SetWindowPosition(this.window, round(update[2]), round(update[3]))
+				end
+				if update[4] != w[1] || update[5] != h[1]
+					SDL2.SDL_SetWindowSize(this.window, round(update[4]), round(update[5]))
+					SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+				end
+			end
+
+			DEBUG = false
+			#region =============    Input
+			this.lastMousePosition = this.input.mousePosition
+			this.input.pollInput()
+
+			if this.input.quit && !isEditor
+				close[] = true
+			end
+			DEBUG = this.input.debug
+
+			cameraPosition = Math.Vector2f()
+			if isEditor
+				cameraPosition = this.handleEditorInputsCamera()
+			end
+
+			#endregion ============= Input
+
+			#region =============    Physics
+			if !isEditor
+				currentPhysicsTime = SDL2.SDL_GetTicks()
+				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
+				if deltaTime > .25
+					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
+					return
+				end
+				for rigidbody in this.rigidbodies
+					rigidbody.update(deltaTime)
+				end
+				lastPhysicsTime[] =  SDL2.SDL_GetTicks()
+			end
+			#endregion ============= Physics
+
+
+			#region =============    Rendering
+			currentRenderTime = SDL2.SDL_GetTicks()
+			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+			# Clear the current render target before rendering again
+			SDL2.SDL_RenderClear(this.renderer)
+
+			this.scene.camera.update()
+
+
+			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+			for entity in this.entities
+				if !entity.isActive
+					continue
+				end
+
+				if !isEditor
+					entity.update(deltaTime)
+					entityAnimator = entity.getAnimator()
+					if entityAnimator != C_NULL
+						entityAnimator.update(currentRenderTime, deltaTime)
+					end
+				end
+
+				entitySprite = entity.getSprite()
+				if entitySprite != C_NULL
+					entitySprite.draw()
+				end
+				entityShape = entity.getShape()
+				if entityShape != C_NULL
+					entityShape.draw()
+				end
+
+				if DEBUG && entity.getCollider() != C_NULL
+					pos = entity.getTransform().getPosition()
+					colSize = entity.getCollider().getSize()
+					colOffset = entity.getCollider().offset
+					SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS), round(colSize.x * SCALE_UNITS), round(colSize.y * SCALE_UNITS))))
+				end
+			end
+			#endregion ============= Rendering
+
+			#region ============= UI
+			for screenButton in this.screenButtons
+				screenButton.render()
+			end
+
+			for textBox in this.textBoxes
+				textBox.render(DEBUG)
+			end
+			#endregion ============= UI
+
+			SDL2.SDL_SetRenderDrawColor(this.renderer, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+			if isEditor && update != C_NULL
+				selectedEntity = update[7] > 0 ? this.scene.entities[update[7]] : C_NULL
+				try
+					if selectedEntity != C_NULL
+						pos = selectedEntity.getTransform().getPosition()
+						size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
+						offset = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().offset : Math.Vector2f()
+						SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS), round(size.x * SCALE_UNITS), round(size.x * SCALE_UNITS))))
+					end
+				catch e
+					println(e)
+				end
+			end
+			this.lastMousePositionWorld = this.mousePositionWorld
+			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
+			this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
+
+			#region ================ Debug
+			if DEBUG
+				# Stats to display
+				statTexts = [
+					"FPS: $(round(1000 / round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
+					"Frame time: $(round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)) ms",
+					"Raw Mouse pos: $(this.input.mousePosition.x),$(this.input.mousePosition.y)",
+					"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
+				]
+
+				if length(this.debugTextBoxes) == 0
+					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+
+					for i = 1:length(statTexts)
+						push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", "", fontPath, 40, Math.Vector2(0, 35 * i), Math.Vector2(100, 10 * i), Math.Vector2(0, 0), statTexts[i], false, true))
+					end
+				else
+					for i = 1:length(this.debugTextBoxes)
+						this.debugTextBoxes[i].updateText(statTexts[i])
+						this.debugTextBoxes[i].render(false)
+					end
+				end
+			end
+			#endregion ============= Debug
+
+			SDL2.SDL_RenderPresent(this.renderer)
+			endTime = SDL2.SDL_GetPerformanceCounter()
+			elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
+			targetFrameTime = 1000/this.targetFrameRate
+
+			if elapsedMS < targetFrameTime && !isEditor
+				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
+			end
+
+			if isEditor && update != C_NULL
+				returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
+				this.selectedEntityUpdated = false
+				return returnData
+			end
+		catch e
+			println("$(e)")
+			Base.show_backtrace(stderr, catch_backtrace())
+		end
+    end
 end

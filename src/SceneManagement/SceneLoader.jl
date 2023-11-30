@@ -4,12 +4,9 @@ module SceneLoaderModule
 
     export loadScene
     function loadScene(projectPath, sceneFileName, isUsingEditor = false) 
-        if isUsingEditor
-            dir = @__DIR__
-        else
-            dir = pwd()
-        end
-        main = Scene(projectPath, sceneFileName)
-        return main.init(isUsingEditor)
+        JulGame.BasePath = projectPath
+        main = Scene(sceneFileName, projectPath)
+        
+        return main.init("Editor", isUsingEditor)
     end
 end

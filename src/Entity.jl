@@ -201,18 +201,18 @@ module EntityModule
                 this.addComponent(Rigidbody(1.0))
             end
         elseif s == :addSoundSource
-            function(basePath)
+            function()
                 if this.getComponent(SoundSource) != C_NULL
                     return
                 end
-                this.addComponent(SoundSource(basePath))
+                this.addComponent(SoundSource())
             end
         elseif s == :addSprite
-            function(basePath, game)
+            function(game)
                 if this.getComponent(Sprite) != C_NULL
                     return
                 end
-                this.addComponent(Sprite(basePath, "", C_NULL, false, Vector3(255,255,255), true))
+                this.addComponent(Sprite("", C_NULL, false, Vector3(255,255,255), true))
                 this.getComponent("Sprite").injectRenderer(game.renderer)
             end
         elseif s == :addShape
