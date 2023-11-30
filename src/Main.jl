@@ -34,6 +34,7 @@ module MainLoop
 		selectedTextBoxIndex
 		screenDimensions
 		targetFrameRate
+		testMode::Bool
 		textBoxes
 		window
 		windowName::String
@@ -59,6 +60,7 @@ module MainLoop
 			this.screenDimensions = C_NULL
 			this.globals = []
 			this.input.main = this
+			this.testMode = false
 
 			return this
 		end
@@ -145,6 +147,9 @@ module MainLoop
 
 					while !close[]
 						this.gameLoop(startTime, lastPhysicsTime, close)
+						if this.testMode
+							break
+						end
 					end
 				finally
 					for entity in this.scene.entities
