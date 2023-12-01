@@ -4,5 +4,6 @@ using Test
 ROOTDIR = joinpath(@__DIR__, "..")
 
 @testset "All tests" begin
-    include("engine/engine.jl")
+    include("engine/enginetests.jl")
+    include("math/mathtests.jl")
 end

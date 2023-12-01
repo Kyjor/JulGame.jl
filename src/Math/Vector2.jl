@@ -38,7 +38,11 @@ struct Vector2
         return Vector2(vec.x * float, vec.y * float)
     end
 
+    function Base.:/(vec::Vector2, vec1::Vector2)
+        return Vector2(vec.x / vec1.x, vec.y / vec1.y)
+    end
+    
     function Base.:/(vec::Vector2, float::Float64)
-        return Vector2(vec.x / float, vec.y / float)
+        return Vector2(vec.x / float, round(vec.y / float))
     end
 end   
