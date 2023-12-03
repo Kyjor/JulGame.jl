@@ -34,6 +34,6 @@ jobs:
       - uses: julia-actions/julia-runtest@latest
         env:
           DISPLAY: :99
-      - uses: julia-actions/julia-uploadcodecov@latest
+      - uses: codecov/codecov-action@v3
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}     
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}   
