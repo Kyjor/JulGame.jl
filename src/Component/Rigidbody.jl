@@ -44,6 +44,7 @@ mutable struct Rigidbody
 end
 
 function Base.getproperty(this::Rigidbody, s::Symbol)
+    # Todo: update this based on offset and scale
     if s == :update
         function(dt)
             velocityMultiplier = Math.Vector2f(1.0, 1.0)
