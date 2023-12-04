@@ -18,8 +18,16 @@ struct Vector2f
         return Vector2f(vec.x + vec1.x, vec.y + vec1.y)
     end
 
+    function Base.:+(vec::Vector2f, num::Number)
+        return Vector2f(vec.x + convert(Float64,num), vec.y + convert(Float64,num))
+    end
+
     function Base.:-(vec::Vector2f, vec1::Vector2f)
         return Vector2f(vec.x - vec1.x, vec.y - vec1.y)
+    end
+
+    function Base.:-(vec::Vector2f, num::Number)
+        return Vector2f(vec.x - convert(Float64,num), vec.y - convert(Float64,num))
     end
 
     function Base.:*(vec::Vector2f, vec1::Vector2f)
@@ -40,5 +48,9 @@ struct Vector2f
 
     function Base.:/(vec::Vector2f, float::Float64)
         return Vector2f(vec.x / float, vec.y / float)
+    end
+
+    function Base.:/(vec::Vector2f, num::Number)
+        return Vector2f(vec.x / convert(Float64, num), vec.y / convert(Float64,num))
     end
 end   

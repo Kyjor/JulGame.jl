@@ -66,10 +66,12 @@
                     MAIN.renderer, 
                     this.texture, 
                     srcRect, 
-                    Ref(SDL2.SDL_Rect(convert(Int32,round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS)), 
-                    convert(Int32,round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS)),
-                    convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
-                    convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS)))), 
+                    Ref(SDL2.SDL_Rect(
+                        convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                        convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                        convert(Int32, round(parentTransform.getScale().x * SCALE_UNITS)),
+                        convert(Int32, round(parentTransform.getScale().y * SCALE_UNITS))
+                    )),
                     0.0, 
                     C_NULL, 
                     this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE)
