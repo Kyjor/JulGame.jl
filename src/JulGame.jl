@@ -1,5 +1,3 @@
-__precompile__(false)
-
 module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
