@@ -343,7 +343,7 @@ module Editor
                 @cstatic begin
                     CImGui.Begin("Play & Build") 
                     entryPath = "$(joinpath(projectPath, "src"))"
-                    scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
+                    scriptPath = "$(joinpath(pwd(), "..", "..", "EditorScripts", "RunScene.bat"))"
 
                     try
                         CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath"))

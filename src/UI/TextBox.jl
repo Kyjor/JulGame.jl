@@ -26,7 +26,7 @@ module TextBoxModule
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
+            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
             this.fontPath = fontPath
             this.fontSize = fontSize
             this.id = 0
