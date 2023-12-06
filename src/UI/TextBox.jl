@@ -5,44 +5,38 @@ module TextBoxModule
     export TextBox      
     mutable struct TextBox
         alpha
-        autoSizeText
-        basePath
+        basePath::String
         font
-        fontPath
-        fontSize
-        id
-        isCentered    
-        isDefaultFont
-        isTextUpdated
-        name
-        position
-        renderer
+        fontPath::String
+        fontSize::Int32
+        id::Int64
+        isCenteredX::Bool
+        isCenteredY::Bool
+        isDefaultFont::Bool
+        isTextUpdated::Bool
+        name::String
+        position::Vector2
         renderText
-        size
-        sizePercentage
-        text
+        size::Vector2
+        text::String
         textTexture
-        zoom
+        worldEntity::Bool
 
-        function TextBox(name::String, basePath::String, fontPath::String, fontSize::Number, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool, isDefaultFont::Bool = false, isEditor::Bool = false) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false, isDefaultFont::Bool = false, isEditor::Bool = false) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : basePath
+            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
             this.fontPath = fontPath
             this.fontSize = fontSize
-            this.autoSizeText = false
             this.id = 0
-            this.isCentered = isCentered
+            this.isCenteredX = isCenteredX
+            this.isCenteredY = isCenteredY
             this.isDefaultFont = isDefaultFont
             this.isTextUpdated = false
             this.name = name
             this.position = position
-            this.size = size
-            this.sizePercentage = sizePercentage
             this.text = text
-            this.zoom = 1.0
-            this.renderer = C_NULL
             this.initialize()
 
             return this
@@ -53,7 +47,7 @@ module TextBoxModule
         if s == :render
             function(DEBUG)
                 if DEBUG
-                    SDL2.SDL_RenderDrawLines(this.renderer, [
+                    SDL2.SDL_RenderDrawLines(MAIN.renderer, [
                         SDL2.SDL_Point(this.position.x, this.position.y), 
                         SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
                         SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
@@ -65,33 +59,22 @@ module TextBoxModule
                     this.updateText(this.text)
                     this.isTextUpdated = false
                 end
-                # @assert 
-                SDL2.SDL_RenderCopy(
-                    this.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))
-                ) 
-                # == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+                @assert SDL2.SDL_RenderCopy(MAIN.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
-                this.zoom = MAIN.zoom
-                this.renderer = MAIN.renderer
+                MAIN.renderer = MAIN.renderer
                 path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
                 font = SDL2.TTF_OpenFont(path, this.fontSize)
                 println(unsafe_string(SDL2.SDL_GetError()))
                 this.font = font
-                this.renderText = SDL2.TTF_RenderText_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
                 surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
-                # println(surface[1])
-                # println(surface[1].w)
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.renderText)
-                # w,h = Int32[1], Int32[1]
-                # SDL2.TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
-                # this.size = Math.Vector2(w[1], h[1])
-                if this.isCentered 
-                    this.position = Math.Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y/this.zoom)
-                end
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
+
+                this.centerText()
             end
         elseif s == :setPosition
             function(position::Math.Vector2)
@@ -106,16 +89,12 @@ module TextBoxModule
                 SDL2.SDL_FreeSurface(this.renderText)
                 SDL2.SDL_DestroyTexture(this.textTexture)
                 this.renderText = SDL2.TTF_RenderUTF8_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.renderText)
+                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
                 
-                if this.autoSizeText
-                    w,h = Int32[1], Int32[1]
-                    SDL2.TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
-                    this.size = Math.Vector2(w[1], h[1])
-                end
-                if this.isCentered 
-                    this.position = Math.Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y)
-                end
+                this.centerText()
             end
         elseif s == :setVector2Value
             function(field, x, y)
@@ -124,8 +103,16 @@ module TextBoxModule
             end
         elseif s == :setColor
             function (r,g,b)
-                #SDL2.SDL_SetTextureColorMod( this.textTexture, UInt8(this.color.x%256), UInt8(this.color.y%256), (this.color.z%256) );
                 SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
+            end
+        elseif s == :centerText
+            function()
+                if this.isCenteredX
+                    this.position = Math.Vector2(max(MAIN.scene.camera.dimensions.x/2 - this.size.x/2, 0), this.position.y)
+                end
+                if this.isCenteredY
+                    this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
+                end
             end
         else
             try

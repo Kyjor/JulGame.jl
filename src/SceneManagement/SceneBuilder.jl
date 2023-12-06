@@ -129,7 +129,7 @@ module SceneBuilderModule
                 end
             elseif s == :createNewTextBox
                 function (fontPath)
-                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true, true, true)
+                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
                     push!(this.main.textBoxes, textBox)
                 end
             else

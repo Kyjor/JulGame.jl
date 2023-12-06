@@ -70,7 +70,7 @@ module SceneReaderModule
 
         for textBox in jsonTextBoxes
             try
-                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), Vector2(textBox.size.x, textBox.size.y), Vector2(textBox.sizePercentage.x, textBox.sizePercentage.y), textBox.text, textBox.isCentered, textBox.isDefaultFont, isEditor)        
+                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), textBox.text, textBox.isCenteredX, textBox.isCenteredY, textBox.isDefaultFont, isEditor)        
                 push!(res, newTextBox)
             catch e 
                 println(e)
@@ -112,8 +112,7 @@ module SceneReaderModule
                 end
             elseif component.type == "Sprite"
                     crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
-                    newComponent = Sprite(component.imagePath, crop)
-                    newComponent.isFlipped = component.isFlipped
+                    newComponent = Sprite(component.imagePath, crop, component.isFlipped)
             end
             
             return newComponent
