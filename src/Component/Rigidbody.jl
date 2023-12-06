@@ -59,6 +59,8 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
             transform.setPosition(newPosition)
+            println("Rigidbody")
+            println(newPosition)
             this.setVelocity(newVelocity * velocityMultiplier)
             this.acceleration = newAcceleration
 

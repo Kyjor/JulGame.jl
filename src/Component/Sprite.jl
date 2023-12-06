@@ -12,6 +12,7 @@
         imagePath::String
         offset::Math.Vector2f
         parent::Any # Entity
+        size::Math.Vector2
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
@@ -61,17 +62,39 @@
 
                 parentTransform = this.parent.getTransform()
                 srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
+                # dstRect = Ref(SDL2.SDL_Rect(
+                #     convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                #     convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                #     convert(Int32, round(parentTransform.getScale().x * SCALE_UNITS)),
+                #     convert(Int32, round(parentTransform.getScale().y * SCALE_UNITS))
+                # ))
+                # println("Sprite")
+                # println(this.size)
+                # println(this.offset)
+                println("Sprite")
+                println(this.parent.name)
+                 println(parentTransform.getPosition())
+                # x = (parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (this.size.x * SCALE_UNITS - SCALE_UNITS) / 2
+                # x = (1 > x && x > -1) ? 0 : round(x)
+                # y = (parentTransform.getPositionq().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (this.size.y * SCALE_UNITS - SCALE_UNITS) / 2
+                # y = (1 > y && y > -1) ? 0 : round(y)
+                # println(x)
+                # println(y)
+                # println(round(Int32, this.size.x * SCALE_UNITS, RoundDown))
+                # println(round(Int32, this.size.y * SCALE_UNITS, RoundDown))
+
+                dstRect = Ref(SDL2.SDL_Rect(
+                    convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (this.size.x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (this.size.y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Int32, round(this.size.x * SCALE_UNITS)),
+                    convert(Int32, round(this.size.y * SCALE_UNITS))
+                ))
 
                 SDL2.SDL_RenderCopyEx(
                     MAIN.renderer, 
                     this.texture, 
                     srcRect, 
-                    Ref(SDL2.SDL_Rect(
-                        convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
-                        convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                        convert(Int32, round(parentTransform.getScale().x * SCALE_UNITS)),
-                        convert(Int32, round(parentTransform.getScale().y * SCALE_UNITS))
-                    )),
+                    dstRect,
                     0.0, 
                     C_NULL, 
                     this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE)
@@ -99,6 +122,9 @@
                 SDL2.SDL_ClearError()
                 this.renderer = MAIN.renderer
                 this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
+                surface = unsafe_wrap(Array, this.image, 10; own = false)
+
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open image! SDL Error: ", error))
