@@ -112,8 +112,7 @@ module SceneReaderModule
                 end
             elseif component.type == "Sprite"
                     crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
-                    newComponent = Sprite(component.imagePath, crop)
-                    newComponent.isFlipped = component.isFlipped
+                    newComponent = Sprite(component.imagePath, crop, component.isFlipped)
             end
             
             return newComponent
