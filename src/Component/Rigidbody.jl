@@ -1,6 +1,5 @@
 ﻿module RigidbodyModule
 using ..Component.JulGame
-const SCALE_UNITS = Ref{Float64}(64.0)[]
 const GRAVITY = Ref{Float64}(9.81)[]
 
 export Rigidbody
@@ -59,8 +58,6 @@ function Base.getproperty(this::Rigidbody, s::Symbol)
             newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
             transform.setPosition(newPosition)
-            println("Rigidbody")
-            println(newPosition)
             this.setVelocity(newVelocity * velocityMultiplier)
             this.acceleration = newAcceleration
 

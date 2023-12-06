@@ -315,6 +315,9 @@ module MainLoop
 				SDL2.SDL_RenderClear(this.renderer)
 				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)
 				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				for textBox in this.textBoxes
+					textBox.centerText()
+				end
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 			end
 		elseif s == :scaleZoom
@@ -498,7 +501,7 @@ module MainLoop
 					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 
 					for i = 1:length(statTexts)
-						push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", "", fontPath, 40, Math.Vector2(0, 35 * i), Math.Vector2(100, 10 * i), Math.Vector2(0, 0), statTexts[i], false, true))
+						push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true))
 					end
 				else
 					for i = 1:length(this.debugTextBoxes)
