@@ -16,7 +16,7 @@
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int64=-1)
+        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit=-1)
             this = new()
 
             this.offset = Math.Vector2f()
