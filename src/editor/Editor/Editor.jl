@@ -15,7 +15,7 @@ module Editor
     using ..JulGame.SceneLoaderModule
     using ..JulGame.TextBoxModule
 
-    include("../../src/Macros.jl")
+    include("../../Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
