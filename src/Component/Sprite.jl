@@ -1,8 +1,6 @@
 ﻿module SpriteModule
     using ..Component.JulGame
 
-    const SCALE_UNITS = Ref{Float64}(64.0)[]
-
     export Sprite
     mutable struct Sprite
         color::Math.Vector3
@@ -18,16 +16,16 @@
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(imagePath::String, crop::Math.Vector4=Math.Vector4(), isFlipped::Bool=false,  pixelsPerUnit::Int64=-1, isCreatedInEditor::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255))
+        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false)
             this = new()
-            
+
             this.offset = Math.Vector2f()
             this.isFlipped = isFlipped
             this.imagePath = imagePath
             this.color = color
             this.crop = crop
             this.image = C_NULL
-            this.pixelsPerUnit = pixelsPerUnit
+            this.pixelsPerUnit = -1
             this.rotation = 0.0
             this.texture = C_NULL
 
