@@ -1,12 +1,10 @@
 ﻿module SpriteModule
     using ..Component.JulGame
 
-    const SCALE_UNITS = Ref{Float64}(64.0)[]
-
     export Sprite
     mutable struct Sprite
         color::Math.Vector3
-        crop::Union{Ptr{Nothing}, Math.Vector4}
+        crop::Math.Vector4
         isFlipped::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
@@ -18,9 +16,9 @@
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false,  pixelsPerUnit::Int64=-1, isCreatedInEditor::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255))
+        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit=-1)
             this = new()
-            
+
             this.offset = Math.Vector2f()
             this.isFlipped = isFlipped
             this.imagePath = imagePath
@@ -67,7 +65,7 @@
                 end
 
                 parentTransform = this.parent.getTransform()
-                srcRect = this.crop == C_NULL ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
+                srcRect = this.crop == Math.Vector4() ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
                 dstRect = Ref(SDL2.SDL_Rect(
                     convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
                     convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),

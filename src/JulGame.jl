@@ -2,8 +2,9 @@ module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
     export SDL2
-    const SCALE_UNITS = 64.0
-    export SCALE_UNITS 
+    
+    include("Constants.jl")
+    
     BasePath = ""
     export BasePath
     
@@ -40,7 +41,7 @@ module JulGame
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
 
-    include("../editor/Editor/Editor.jl")
+    include("editor/Editor/Editor.jl")
     using .Editor
     export Editor 
 end

@@ -1,0 +1,3041 @@
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        This is the Avocado tab!
+        blah blah blah blah blah
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        This is the Artichoke tab!
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.000000 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    0% Progress Bar
+    5/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9949.0)
+    GetItemRectMax() = (771.0, 9968.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        Avocado
+        This is the Avocado tab!
+        blah blah blah blah blah Broccoli Cucumber
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        Artichoke
+        This is the Artichoke tab! Beetroot Celery Daikon
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        ? + 0000
+        This is the 0000 tab! 0001 0002
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.044885 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    1% Progress Bar
+    10/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9966.0)
+    GetItemRectMax() = (771.0, 9985.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        Avocado
+        This is the Avocado tab!
+        blah blah blah blah blah Broccoli Cucumber
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        Artichoke
+        This is the Artichoke tab! Beetroot Celery Daikon
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        ? + 0000
+        This is the 0000 tab! 0001 0002
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.053944 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    1% Progress Bar
+    15/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9966.0)
+    GetItemRectMax() = (771.0, 9985.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        Avocado
+        This is the Avocado tab!
+        blah blah blah blah blah Broccoli Cucumber
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        Artichoke
+        This is the Artichoke tab! Beetroot Celery Daikon
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        ? + 0000
+        This is the 0000 tab! 0001 0002
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.068893 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    1% Progress Bar
+    21/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9966.0)
+    GetItemRectMax() = (771.0, 9985.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        Avocado
+        This is the Avocado tab!
+        blah blah blah blah blah Broccoli Cucumber
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        Artichoke
+        This is the Artichoke tab! Beetroot Celery Daikon
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        ? + 0000
+        This is the 0000 tab! 0001 0002
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.041729 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    2% Progress Bar
+    26/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9966.0)
+    GetItemRectMax() = (771.0, 9985.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        Avocado
+        This is the Avocado tab!
+        blah blah blah blah blah Broccoli Cucumber
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        Artichoke
+        This is the Artichoke tab! Beetroot Celery Daikon
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        ? + 0000
+        This is the 0000 tab! 0001 0002
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.042913 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    2% Progress Bar
+    31/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9966.0)
+    GetItemRectMax() = (771.0, 9985.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###
+(?)
+[ Copy "Hello, world!" to clipboard ]
+### Window options ###
+| [ ] No titlebar | [ ] No scrollbar | [ ] No menu |
+| [ ] No move | [ ] No resize | [ ] No collapse |
+| [ ] No close | [ ] No nav | [ ] No background |
+| [ ] No bring to front | [ ] No docking |
+### Widgets ###
+> Basic
+    [ Button ]
+    [x] checkbox
+    (x) radio a ( ) radio b ( ) radio c
+    [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ] [ Click ]
+    Hold to repeat: 0
+    Hover over me - or me
+    --------------------------------
+    Value label
+    { AAAA } combo (?)
+    { Hello, world! } input text (?)
+    { enter text here } input text (w/ hint)
+    { 123 } [ - ] [ + ] input int
+    (?)
+    { 0.001 } [ - ] [ + ] input float
+    { 999999.00000001 } [ - ] [ + ] input double
+    { 1.000000e+010 } input scientific (?)
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 50 } drag int (?)
+    { 42% } drag int 0..100
+    { 1.000 } drag float
+    { 0.006700 ns } drag small float
+    { 0 } slider int (?)
+    { ratio = 0.123 } slider float
+    { 0.0000 } slider float (log)
+    { 0 deg } slider angle
+    { Fire } slider enum (?)
+    { R:255 } { G:  0 } { B: 51 } color 1
+    (?)
+    { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    (?)
+> Trees
+    > Basic trees
+        > Child 0
+            blah blah [ button ]
+        > Child 1
+        > Child 2
+        > Child 3
+        > Child 4
+    > Advanced, with Selectable nodes
+        (?)
+        [x] ImGuiTreeNodeFlags_OpenOnArrow
+        [x] ImGuiTreeNodeFlags_OpenOnDoubleClick
+        [x] ImGuiTreeNodeFlags_SpanAvailWidth (?)
+        [ ] ImGuiTreeNodeFlags_SpanFullWidth
+        [ ] Align label with current X position
+        [ ] Test tree node as drag source
+        Hello!
+        > Selectable Node 0
+        > Selectable Node 1
+        > Selectable Node 2
+        > Selectable Leaf 3
+        > Selectable Leaf 4
+        > Selectable Leaf 5
+> Collapsing Headers
+    [x] Show 2nd header
+    ### Header ###
+    ### Header with a close button ###
+> Bullets
+    Bullet point 1
+    Bullet point 2
+    On multiple lines
+    > Tree node
+        Another bullet point
+    Bullet point 3 (two calls)
+    [ Button ]
+> Text
+    > Colorful Text
+        Pink
+        Yellow
+        Disabled (?)
+    > Word Wrapping
+        This text should automatically wrap on the edge of the window. The current implementation for text wrapping follows simple rules suitable for English and possibly other languages.
+        { 200 } Wrap width
+        Test paragraph 0:
+        The lazy dog is a good dog. This paragraph should fit within 200 pixels. Testing a 1 character word. The quick brown fox jumps over the lazy dog.
+        Test paragraph 1:
+        aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh
+    > UTF-8 Text
+        CJK text will only appears if the font was loaded with the appropriate CJK character ranges. Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. Read docs/FONTS.md for details.
+        Hiragana: かきくけこ (kakikukeko)
+        Kanjis: 日本語 (nihongo)
+        { 日本語 } UTF-8 input
+> Images
+    Below we are displaying the font texture (which is the only texture we have access to in this demo). Use the 'ImTextureID' type as storage to pass pointers or identifier to your own texture data. Hover the texture for a zoomed view!
+    512x64
+    And now some textured buttons..
+    Pressed 0 times.
+> Combo
+    [ ] ImGuiComboFlags_PopupAlignLeft (?)
+    [ ] ImGuiComboFlags_NoArrowButton
+    [ ] ImGuiComboFlags_NoPreview
+    { AAAA } combo 1
+    { aaaa } combo 2 (one-liner)
+    combo 3 (array)
+    { AAAA } combo 4 (function)
+> List boxes
+    Full-width:
+> Selectables
+    > Basic
+        1. I am selectable
+        2. I am selectable
+        3. I am not selectable
+        4. I am selectable
+        5. I am double clickable
+    > Selection State: Single Selection
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Selection State: Multiple Selection
+        (?)
+        Object 0
+        Object 1
+        Object 2
+        Object 3
+        Object 4
+    > Rendering more text into the same line
+        main.c  2,345 bytes
+        Hello.cpp 12,345 bytes
+        Hello.h  2,345 bytes
+    > In columns
+        | Item 0 | Item 1 | Item 2 |
+        | Item 3 | Item 4 | Item 5 |
+        | Item 6 | Item 7 | Item 8 |
+        | Item 9 |
+        --------------------------------
+
+        | Item 0 | Some other contents | 123456 |
+        | Item 1 | Some other contents | 123456 |
+        | Item 2 | Some other contents | 123456 |
+        | Item 3 | Some other contents | 123456 |
+        | Item 4 | Some other contents | 123456 |
+        | Item 5 | Some other contents | 123456 |
+        | Item 6 | Some other contents | 123456 |
+        | Item 7 | Some other contents | 123456 |
+        | Item 8 | Some other contents | 123456 |
+        | Item 9 | Some other contents | 123456 |
+    > Grid
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+        Sailor Sailor Sailor Sailor
+    > Alignment
+        (?)
+        (0.0,0.0) (0.5,0.0) (1.0,0.0)
+        (0.0,0.5) (0.5,0.5) (1.0,0.5)
+        (0.0,1.0) (0.5,1.0) (1.0,1.0)
+> Text Input
+    > Multi-line Text Input
+        (?)
+        [ ] ImGuiInputTextFlags_ReadOnly
+        [x] ImGuiInputTextFlags_AllowTabInput
+        [ ] ImGuiInputTextFlags_CtrlEnterForNewLine
+        { /*
+         The Pentium F00F bug, shorthand for F0 0F C7 C8,
+         the hexadecimal encoding of one offending instruction,
+         more formally, the invalid operand with locked CMPXCHG8B
+         instruction bug, is a design flaw in the majority of
+         Intel Pentium, Pentium MMX, and Pentium OverDrive
+         processors (all in the P5 microarchitecture).
+        */
+        
+        label:
+        	lock cmpxchg8b eax
+        }
+    > Filtered Text Input
+        { } default
+        { } decimal
+        { } hexadecimal
+        { } uppercase
+        { } no blank
+        { } "imgui" letters
+    > Password Input
+        password (?)
+        password (w/ hint)
+        { password123 } password (clear)
+    > Completion, History, Edit Callbacks
+        { } Completion (?)
+        { } History (?)
+        { } Edit (?) (0)
+    > Resize Callback
+        (?)
+        { }
+        Data: 000002434A7B1C00
+        Size: 1
+        Capacity: 8
+> Tabs
+    > Basic
+        Avocado
+        This is the Avocado tab!
+        blah blah blah blah blah Broccoli Cucumber
+        --------------------------------
+    > Advanced & Close Button
+        [x] ImGuiTabBarFlags_Reorderable
+        [ ] ImGuiTabBarFlags_AutoSelectNewTabs
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [ ] ImGuiTabBarFlags_NoCloseWithMiddleMouseButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        [x] Artichoke [x] Beetroot [x] Celery [x] Daikon
+        Artichoke
+        This is the Artichoke tab! Beetroot Celery Daikon
+        --------------------------------
+    > TabItemButton & Leading/Trailing flags
+        [x] Show Leading TabItemButton()
+        [x] Show Trailing TabItemButton()
+        [ ] ImGuiTabBarFlags_TabListPopupButton
+        [x] ImGuiTabBarFlags_FittingPolicyResizeDown
+        [ ] ImGuiTabBarFlags_FittingPolicyScroll
+        ? + 0000
+        This is the 0000 tab! 0001 0002
+        --------------------------------
+> Plots Widgets
+    [x] Animate
+    Frame Times
+    avg 0.061404 Lines
+    Histogram
+    --------------------------------
+
+    { Sin } func { 70 } Sample count
+    Lines
+    Histogram
+    --------------------------------
+    2% Progress Bar
+    36/1753
+> Color/Picker Widgets
+    [x] With Alpha Preview
+    [ ] With Half Alpha Preview
+    [x] With Drag and Drop
+    [x] With Options Menu (?)
+    [ ] With HDR (?)
+    Color widget: (?)
+    { R:114 } { G:144 } { B:154 } MyColor
+    Color widget HSV with Alpha:
+    { H:138 } { S: 66 } { V:154 } { A:200 } MyColor
+    Color widget with Float Display:
+    { R:0.447 } { G:0.565 } { B:0.604 } { A:0.784 } MyColor
+    Color button with Picker: (?)
+    Color button with Custom Picker Popup:
+    [ Palette ]
+    Color button only:
+    [ ] ImGuiColorEditFlags_NoBorder
+    Color picker:
+    [x] With Alpha
+    [x] With Alpha Bar
+    [x] With Side Preview [ ] With Ref Color
+    { Auto/Current } Display Mode (?)
+    { Auto/Current } Picker Mode (?)
+    MyColor
+    { R:114 } { G:144 } { B:154 } { A:200 }
+    { H:138 } { S: 66 } { V:154 } { A:200 }
+    { #72909AC8 }
+    Set defaults in code: (?)
+    [ Default: Uint8 + HSV + Hue Bar ]
+    [ Default: Float + HDR + Hue Wheel ]
+    HSV encoded colors (?)
+    Color widget with InputHSV:
+    { R:0.620 } { G:1.000 } { B:0.000 } { A:1.000 } HSV shown as RGB
+    { H:0.230 } { S:1.000 } { V:1.000 } { A:1.000 } HSV shown as HSV
+    { 0.230 } { 1.000 } { 1.000 } { 1.000 } Raw HSV values
+> Drag/Slider Flags
+    [ ] ImGuiSliderFlags_AlwaysClamp (?)
+    [ ] ImGuiSliderFlags_Logarithmic (?)
+    [ ] ImGuiSliderFlags_NoRoundToFormat (?)
+    [ ] ImGuiSliderFlags_NoInput (?)
+    Underlying float value: 0.500000
+    { 0.500 } DragFloat (0 -> 1)
+    { 0.500 } DragFloat (0 -> +inf)
+    { 0.500 } DragFloat (-inf -> 1)
+    { 0.500 } DragFloat (-inf -> +inf)
+    { 50 } DragInt (0 -> 100)
+    Underlying float value: 0.500000
+    { 0.500 } SliderFloat (0 -> 1)
+    { 50 } SliderInt (0 -> 100)
+> Range Widgets
+    { Min: 10.0 % } { Max: 90.0 % } range float
+    { Min: 100 units } { Max: 1000 units } range int
+    { Min: 100 units } { Max: 1000 units } range int (no bounds)
+> Data Types
+    Drags:
+    [ ] Clamp integers to 0..50 (?)
+    { 127 } drag s8
+    { 255 ms } drag u8
+    { 32767 } drag s16
+    { 65535 ms } drag u16
+    { -1 } drag s32
+    { 4294967295 ms } drag u32
+    { -1 } drag s64
+    { 18446744073709551615 } drag u64
+    { 0.123000 } drag float
+    { 0.123000 } drag float log
+    { 90000.0123456789 grams } drag double
+    { 0 < 90000.0123456789 < 1 } drag double log
+    Sliders
+    { 127 } slider s8 full
+    { 255 } slider u8 full
+    { 32767 } slider s16 full
+    { 65535 } slider u16 full
+    { -1 } slider s32 low
+    { -1 } slider s32 high
+    { -1 } slider s32 full
+    { 4294967295 } slider u32 low
+    { 4294967295 } slider u32 high
+    { 4294967295 } slider u32 full
+    { -1 } slider s64 low
+    { -1 } slider s64 high
+    { -1 } slider s64 full
+    { 18446744073709551615 ms } slider u64 low
+    { 18446744073709551615 ms } slider u64 high
+    { 18446744073709551615 ms } slider u64 full
+    { 0.123000 } slider float low
+    { 0.1230000034 } slider float low log
+    { 1.230000e-001 } slider float high
+    { 90000.0123456789 grams } slider double low
+    { 90000.0123456789 } slider double low log
+    { 9.000001e+004 grams } slider double high
+    Sliders (reverse)
+    { 127 } slider s8 reverse
+    { 255 } slider u8 reverse
+    { -1 } slider s32 reverse
+    { 4294967295 } slider u32 reverse
+    { -1 } slider s64 reverse
+    { 18446744073709551615 ms } slider u64 reverse
+    Inputs
+    [x] Show step buttons
+    { 127 } [ - ] [ + ] input s8
+    { 255 } [ - ] [ + ] input u8
+    { 32767 } [ - ] [ + ] input s16
+    { 65535 } [ - ] [ + ] input u16
+    { -1 } [ - ] [ + ] input s32
+    { FFFFFFFF } [ - ] [ + ] input s32 hex
+    { 4294967295 } [ - ] [ + ] input u32
+    { FFFFFFFF } [ - ] [ + ] input u32 hex
+    { -1 } [ - ] [ + ] input s64
+    { 18446744073709551615 } [ - ] [ + ] input u64
+    { 0.123000 } [ - ] [ + ] input float
+    { 90000.012346 } [ - ] [ + ] input double
+> Multi-component Widgets
+    { 0.100 } { 0.200 } input float2
+    { 0.100 } { 0.200 } drag float2
+    { 0.100 } { 0.200 } slider float2
+    { 1 } { 5 } input int2
+    { 1 } { 5 } drag int2
+    { 1 } { 5 } slider int2
+    { 0.100 } { 0.200 } { 0.300 } input float3
+    { 0.100 } { 0.200 } { 0.300 } drag float3
+    { 0.100 } { 0.200 } { 0.300 } slider float3
+    { 1 } { 5 } { 100 } input int3
+    { 1 } { 5 } { 100 } drag int3
+    { 1 } { 5 } { 100 } slider int3
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } input float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } drag float4
+    { 0.100 } { 0.200 } { 0.300 } { 0.440 } slider float4
+    { 1 } { 5 } { 100 } { 255 } input int4
+    { 1 } { 5 } { 100 } { 255 } drag int4
+    { 1 } { 5 } { 100 } { 255 } slider int4
+> Vertical Sliders
+    0
+    0.00
+    sec 0.60
+    sec 0.35
+    sec 0.90
+    sec
+> Drag and Drop
+    > Drag and drop in standard widgets
+        (?)
+        { R:255 } { G:  0 } { B: 51 } color 1
+        { R:102 } { G:179 } { B:  0 } { A:128 } color 2
+    > Drag and drop to copy/swap items
+        (x) Copy ( ) Move ( ) Swap
+        [ Bobby ] [ Beatrice ] [ Betty ]
+        [ Brianna ] [ Barry ] [ Bernard ]
+        [ Bibi ] [ Blaine ] [ Bryn ]
+    > Drag to reorder items (simple)
+        (?)
+        Item One
+        Item Two
+        Item Three
+        Item Four
+        Item Five
+> Querying Status (Edited/Active/Focused/Hovered etc.)
+    { Button } Item Type (?)
+    [ ITEM: Button ]
+    Return value = 0
+    IsItemFocused() = 0
+    IsItemHovered() = 0
+    IsItemHovered(_AllowWhenBlockedByPopup) = 0
+    IsItemHovered(_AllowWhenBlockedByActiveItem) = 0
+    IsItemHovered(_AllowWhenOverlapped) = 0
+    IsItemHovered(_RectOnly) = 0
+    IsItemActive() = 0
+    IsItemEdited() = 0
+    IsItemActivated() = 0
+    IsItemDeactivated() = 0
+    IsItemDeactivatedAfterEdit() = 0
+    IsItemVisible() = 0
+    IsItemClicked() = 0
+    IsItemToggledOpen() = 0
+    GetItemRectMin() = (679.0, 9966.0)
+    GetItemRectMax() = (771.0, 9985.0)
+    GetItemRectSize() = (92.0, 19.0)
+    [ ] Embed everything inside a child window (for additional testing)
+    IsWindowFocused() = 1
+    IsWindowFocused(_ChildWindows) = 1
+    IsWindowFocused(_ChildWindows|_RootWindow) = 1
+    IsWindowFocused(_RootWindow) = 1
+    IsWindowFocused(_AnyWindow) = 1
+
+    IsWindowHovered() = 1
+    IsWindowHovered(_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_AllowWhenBlockedByActiveItem) = 1
+    IsWindowHovered(_ChildWindows) = 1
+    IsWindowHovered(_ChildWindows|_RootWindow) = 1
+    IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = 1
+    IsWindowHovered(_RootWindow) = 1
+    IsWindowHovered(_AnyWindow) = 1
+
+This is another child window for testing the _ChildWindows flag.
+    { This widget is only here to be able to tab-out of the widgets above. } unused
+    [ ] Hovered/Active tests after Begin() for title bar testing
+### Layout & Scrolling ###
+### Popups & Modal windows ###
+### Tables & Columns ###
+### Filtering ###
+### Inputs, Navigation & Focus ###

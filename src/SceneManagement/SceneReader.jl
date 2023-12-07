@@ -111,8 +111,8 @@ module SceneReaderModule
                     newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
                 end
             elseif component.type == "Sprite"
-                    crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
-                    newComponent = Sprite(component.imagePath, crop, component.isFlipped)
+                crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4() : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
+                newComponent = Sprite(component.imagePath, crop, component.isFlipped)
             end
             
             return newComponent
