@@ -1,12 +1,12 @@
 struct Vector3
-    x::Int64
-    y::Int64
-    z::Int64
+    x::Integer
+    y::Integer
+    z::Integer
 
     #default constructor
     Vector3() = new(0, 0, 0)
-    Vector3(value::Number) = new(convert(Int64, round(value)), convert(Int64, round(value)), convert(Int64, round(value)))
-    Vector3(x::Number, y::Number, z::Number) = new(convert(Int64, round(x)), convert(Int64, round(y)), convert(Int64, round(z)))
+    Vector3(value::Number) = new(convert(Integer, round(value)), convert(Integer, round(value)), convert(Integer, round(value)))
+    Vector3(x::Number, y::Number, z::Number) = new(convert(Integer, round(x)), convert(Integer, round(y)), convert(Integer, round(z)))
 
     #operators 
     function Base.:+(vec::Vector3, vec1::Vector3)
@@ -21,7 +21,7 @@ struct Vector3
         return Vector3(vec.x * vec1.x, vec.y * vec1.y, vec.z * vec1.z)
     end
 
-    function Base.:*(vec::Vector3, int::Int64)
+    function Base.:*(vec::Vector3, int::Integer)
         return Vector3(vec.x * int, vec.y * int, vec.z * int)
     end
     
@@ -37,7 +37,7 @@ struct Vector3
         return Vector3(round(vec.x / float), round(vec.y / float), round(vec.z / float))
     end
 
-    function Base.:/(vec::Vector3, int::Int64)
+    function Base.:/(vec::Vector3, int::Integer)
         return Vector3(vec.x / int, vec.y / int, vec.z / int)
     end
 

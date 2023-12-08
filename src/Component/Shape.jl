@@ -30,10 +30,10 @@ module ShapeModule
 
                 parentTransform = this.parent.getTransform()
 
-                outlineRect = Ref(SDL2.SDL_Rect(convert(Int32,round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-                convert(Int32,round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
-                convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
+                outlineRect = Ref(SDL2.SDL_Rect(convert(Integer,round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+                convert(Integer,round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                convert(Integer,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
+                convert(Integer,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
                 SDL2.SDL_SetRenderDrawColor(MAIN.renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
 
                 this.isFilled ? SDL2.SDL_RenderFillRect( MAIN.renderer, outlineRect) : SDL2.SDL_RenderDrawRect( MAIN.renderer, outlineRect);

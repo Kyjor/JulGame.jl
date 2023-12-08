@@ -24,7 +24,7 @@
             @test res == Math.Vector2(1, 1)
         end
 
-        @testset "Vector2 constructor with Int64 and Float64 arguments" begin
+        @testset "Vector2 constructor with Integer and Float64 arguments" begin
             v = Math.Vector2(2, 3.7)
             @test v.x == 2
             @test v.y == 4
@@ -34,7 +34,7 @@
             @test v.y == -6
         end
 
-        @testset "Vector2 constructor with Float64 and Int64 arguments" begin
+        @testset "Vector2 constructor with Float64 and Integer arguments" begin
             v = Math.Vector2(1.5, 4)
             @test v.x == 2
             @test v.y == 4
@@ -44,9 +44,9 @@
             @test v.y == -7
         end
 
-        @testset "Vector2 multiplication with Int64" begin
+        @testset "Vector2 multiplication with Integer" begin
             vec = Math.Vector2(2, 3)
-            int::Int64 = 2
+            int::Integer = 2
             expected = Math.Vector2(4, 6)
             @test vec * int == expected
         end
@@ -75,19 +75,15 @@
 
     @testset "Vector2f tests" begin
         @testset "Vector2f constructors" begin
-            # Test default constructor
             @test Math.Vector2f().x == 0.0
             @test Math.Vector2f().y == 0.0
             
-            # Test constructor with Float64 arguments
             @test Math.Vector2f(1.0, 2.0).x == 1.0
             @test Math.Vector2f(1.0, 2.0).y == 2.0
             
-            # Test constructor with Int64 arguments
             @test Math.Vector2f(1, 2).x == 1.0
             @test Math.Vector2f(1, 2).y == 2.0
             
-            # Test constructor with mixed Number arguments
             @test Math.Vector2f(1.5, 2).x == 1.5
             @test Math.Vector2f(1.5, 2).y == 2.0
             @test Math.Vector2f(1, 2.5).x == 1.0
@@ -120,7 +116,7 @@
                 @test vec1 * vec2 == Math.Vector2f(8.0, 15.0)
             end
 
-            @testset "Vector2f and Int64 multiplication" begin
+            @testset "Vector2f and Integer multiplication" begin
                 @test vec1 * int == Math.Vector2f(4.0, 6.0)
             end
 

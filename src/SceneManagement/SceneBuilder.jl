@@ -93,7 +93,7 @@ module SceneBuilderModule
                                 else 
                                     try
                                         newParam = parse(Float64, param)
-                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Int64, param)
+                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Integer, param)
                                     catch 
                                     end
                                 end

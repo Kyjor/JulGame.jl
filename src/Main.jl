@@ -143,7 +143,7 @@ module MainLoop
 					DEBUG = false
 					close = Ref(Bool(false))
 					startTime = Ref(UInt64(0))
-					lastPhysicsTime = Ref(UInt32(SDL2.SDL_GetTicks()))
+					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
 					while !close[]
 						this.gameLoop(startTime, lastPhysicsTime, close)
@@ -170,7 +170,7 @@ module MainLoop
 				end
 			end
 		elseif s == :gameLoop
-			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
 				return GameLoop(this, startTime, lastPhysicsTime, close, isEditor, update)
 			end
 		elseif s == :handleEditorInputsCamera
@@ -358,7 +358,7 @@ module MainLoop
     	GameLoop()
         Runs the game 
     """
-    function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+    function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
         try
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()

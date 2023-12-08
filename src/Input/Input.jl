@@ -54,7 +54,7 @@ module InputModule
                 push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
             end
 
-            SDL2.SDL_Init(UInt32(SDL2.SDL_INIT_JOYSTICK))
+            SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
             if SDL2.SDL_NumJoysticks() < 1
                 println("Warning: No joysticks connected!")
                 this.numAxes = 0

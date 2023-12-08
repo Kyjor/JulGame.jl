@@ -27,7 +27,7 @@ module JulGame
 
     include("Main.jl") 
     using .MainLoop: Main   
-    const MAIN = Main(1.0)
+    const MAIN = Main(Float64(1.0))
     export MAIN
 
     include("Component/Component.jl")

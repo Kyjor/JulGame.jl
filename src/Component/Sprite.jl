@@ -11,7 +11,7 @@
         offset::Math.Vector2f
         parent::Any # Entity
         rotation::Float64
-        pixelsPerUnit::Int64
+        pixelsPerUnit::Integer
         size::Math.Vector2
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
@@ -67,18 +67,18 @@
                 parentTransform = this.parent.getTransform()
                 srcRect = this.crop == Math.Vector4() ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
                 dstRect = Ref(SDL2.SDL_Rect(
-                    convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Int32, round(parentTransform.getScale().x * SCALE_UNITS)),
-                    convert(Int32, round(parentTransform.getScale().y * SCALE_UNITS))
+                    convert(Integer, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Integer, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Integer, round(parentTransform.getScale().x * SCALE_UNITS)),
+                    convert(Integer, round(parentTransform.getScale().y * SCALE_UNITS))
                 ))
                 
                 if this.pixelsPerUnit > 0
                     dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Int32, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Int32, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Int32, round(this.size.x * SCALE_UNITS/this.pixelsPerUnit)),
-                        convert(Int32, round(this.size.y * SCALE_UNITS/this.pixelsPerUnit))
+                        convert(Integer, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
+                        convert(Integer, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
+                        convert(Integer, round(this.size.x * SCALE_UNITS/this.pixelsPerUnit)),
+                        convert(Integer, round(this.size.y * SCALE_UNITS/this.pixelsPerUnit))
                     ))                
                 end
 

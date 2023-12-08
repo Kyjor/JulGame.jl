@@ -25,7 +25,7 @@ module SoundSourceModule
                 SDL2.SDL_ClearError()
             end
             
-            isMusic ? SDL2.Mix_VolumeMusic(Int32(volume)) : SDL2.Mix_Volume(Int32(channel), Int32(volume))
+            isMusic ? SDL2.Mix_VolumeMusic(Integer(volume)) : SDL2.Mix_Volume(Integer(channel), Int32(volume))
 
             this.channel = channel
             this.isMusic = isMusic
