@@ -4,6 +4,7 @@ module JulGame
     export SDL2
     
     include("Constants.jl")
+    export SCALE_UNITS, GRAVITY
     
     BasePath = ""
     export BasePath

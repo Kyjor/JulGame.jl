@@ -14,15 +14,15 @@ module TextBoxModule
         isCenteredY::Bool
         isDefaultFont::Bool
         isTextUpdated::Bool
+        isWorldEntity::Bool
         name::String
         position::Vector2
         renderText
         size::Vector2
         text::String
         textTexture
-        worldEntity::Bool
 
-        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false, isDefaultFont::Bool = false, isEditor::Bool = false) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false, isDefaultFont::Bool = false, isEditor::Bool = false; isWorldEntity::Bool=false) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
@@ -37,6 +37,8 @@ module TextBoxModule
             this.name = name
             this.position = position
             this.text = text
+            this.isWorldEntity = isWorldEntity
+            println("isWorldEntity: $(isWorldEntity)")
             this.initialize()
 
             return this
@@ -59,7 +61,12 @@ module TextBoxModule
                     this.updateText(this.text)
                     this.isTextUpdated = false
                 end
-                @assert SDL2.SDL_RenderCopy(MAIN.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+
+                cameraDiff = this.isWorldEntity ? 
+                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+                Math.Vector2(0,0)
+
+                @assert SDL2.SDL_RenderCopy(MAIN.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
@@ -74,7 +81,9 @@ module TextBoxModule
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
                 this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
 
-                this.centerText()
+                if !this.isWorldEntity
+                    this.centerText()
+                end
             end
         elseif s == :setPosition
             function(position::Math.Vector2)
@@ -94,7 +103,9 @@ module TextBoxModule
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
                 this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
                 
-                this.centerText()
+                if !this.isWorldEntity
+                    this.centerText()
+                end
             end
         elseif s == :setVector2Value
             function(field, x, y)

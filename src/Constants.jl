@@ -1,4 +1,2 @@
 const SCALE_UNITS = 64.0
 const GRAVITY = 9.81
-
-export SCALE_UNITS, GRAVITY
