@@ -53,7 +53,10 @@ module SceneBuilderModule
             if s == :init 
                 function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = [])
                     #file loading
-
+                    if autoScaleZoom 
+                        zoom = 1.0
+                    end
+                    
                     main = MAIN
                     main.windowName = windowName
                     main.zoom = zoom
