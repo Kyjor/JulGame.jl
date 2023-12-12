@@ -7,8 +7,8 @@
     mutable struct Animator
         animations::Array{Animation}
         currentAnimation::Animation
-        lastFrame::Int64
-        lastUpdate::UInt32
+        lastFrame::Integer
+        lastUpdate::UInt64
         parent::Any
         sprite::Any
 

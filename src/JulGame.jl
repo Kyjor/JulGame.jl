@@ -1,11 +1,14 @@
-__precompile__(false)
-
 module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer 
     export SDL2
-    const SCALE_UNITS = 64.0
-    export SCALE_UNITS 
+    
+    include("Constants.jl")
+    export SCALE_UNITS, GRAVITY
+    
+    BasePath = ""
+    export BasePath
+    
     include("Macros.jl")
     using .Macros: @event
     export @event
@@ -24,7 +27,7 @@ module JulGame
 
     include("Main.jl") 
     using .MainLoop: Main   
-    const MAIN = Main(1.0)
+    const MAIN = Main(Float64(1.0))
     export MAIN
 
     include("Component/Component.jl")
@@ -39,7 +42,7 @@ module JulGame
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
 
-    include("../editor/Editor/Editor.jl")
+    include("editor/Editor/Editor.jl")
     using .Editor
     export Editor 
 end

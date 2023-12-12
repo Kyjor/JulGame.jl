@@ -1,4 +1,4 @@
-[Documentation is in progress!](https://kyjor.github.io/JulGame.jl)
+[Documentation is in progress!](https://docs.kyjor.io/JulGame.jl)
 [Trello board](https://trello.com/b/M6uH0Jmy/julgame)
 ![JulGame Logo](https://github.com/Kyjor/JulGame.jl/assets/13784123/f68ece3a-62a1-48fb-a905-c7c8b9aa35c1)
 

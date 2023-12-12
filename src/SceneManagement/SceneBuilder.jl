@@ -38,33 +38,35 @@ module SceneBuilderModule
         scene
         srcPath
 
-        function Scene(srcPath, scene)
-            this = new()    
+        function Scene(sceneFileName::String, srcPath::String = joinpath(pwd(), ".."))
+            this = new()  
 
             SDL2.init()
-            this.scene = scene
+            this.scene = sceneFileName
             this.srcPath = srcPath
+            JulGame.BasePath = srcPath
 
             return this
         end
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), zoom = 1.0, targetFrameRate = 60.0, globals = [])
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = [])
                     #file loading
-                    ASSETS = joinpath(this.srcPath, "assets")
+
                     main = MAIN
+                    main.windowName = windowName
                     main.zoom = zoom
                     main.globals = globals
                     main.level = this
                     main.targetFrameRate = targetFrameRate
-                    scene = deserializeScene(this.srcPath, joinpath(this.srcPath, "scenes", this.scene), isUsingEditor)
+                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
-                    if dimensions.x < camDimensions.x 
+                    if dimensions.x < camDimensions.x && dimensions.x > 0
                         camDimensions = Vector2(dimensions.x, camDimensions.y)
                     end
-                    if dimensions.y < camDimensions.y 
+                    if dimensions.y < camDimensions.y && dimensions.y > 0
                         camDimensions = Vector2(camDimensions.x, dimensions.y)
                     end
                     main.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
@@ -91,7 +93,7 @@ module SceneBuilderModule
                                 else 
                                     try
                                         newParam = parse(Float64, param)
-                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Int64, param)
+                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Integer, param)
                                     catch 
                                     end
                                 end
@@ -114,9 +116,9 @@ module SceneBuilderModule
 
                     end
 
-                    main.assets = ASSETS
+                    main.assets = joinpath(BasePath, "assets")
                     main.loadScene(main.scene)
-                    main.init(isUsingEditor, dimensions)
+                    main.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
 
                     this.main = main
                     return main
@@ -127,7 +129,7 @@ module SceneBuilderModule
                 end
             elseif s == :createNewTextBox
                 function (fontPath)
-                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), Vector2(1000, 100), Vector2(0, 0), "TextBox", true, true, true)
+                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
                     push!(this.main.textBoxes, textBox)
                 end
             else

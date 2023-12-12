@@ -17,7 +17,7 @@ module SceneReaderModule
     end
 
     export deserializeScene
-    function deserializeScene(basePath, filePath, isEditor)
+    function deserializeScene(filePath, isEditor)
         try
             entitiesJson = read(filePath, String)
 
@@ -31,7 +31,7 @@ module SceneReaderModule
                 scripts = []
     
                 for component in entity.components
-                    push!(components, deserializeComponent(basePath, component, isEditor))
+                    push!(components, deserializeComponent(component, isEditor))
                 end
                 
                 for script in entity.scripts
@@ -54,7 +54,7 @@ module SceneReaderModule
                 
                 push!(entities, newEntity)
             end
-            textBoxes = deserializeTextBoxes(basePath, json.TextBoxes, isEditor)
+            textBoxes = deserializeTextBoxes(json.TextBoxes, isEditor)
     
             push!(res, entities)
             push!(res, textBoxes)
@@ -65,12 +65,12 @@ module SceneReaderModule
         end
     end
 
-    function deserializeTextBoxes(basePath, jsonTextBoxes, isEditor = false)
+    function deserializeTextBoxes(jsonTextBoxes, isEditor = false)
         res = []
 
         for textBox in jsonTextBoxes
             try
-                newTextBox = TextBox(textBox.name, basePath, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), Vector2(textBox.size.x, textBox.size.y), Vector2(textBox.sizePercentage.x, textBox.sizePercentage.y), textBox.text, textBox.isCentered, textBox.isDefaultFont, isEditor)        
+                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), textBox.text, textBox.isCenteredX, textBox.isCenteredY, textBox.isDefaultFont, isEditor)        
                 push!(res, newTextBox)
             catch e 
                 println(e)
@@ -82,7 +82,7 @@ module SceneReaderModule
     end
 
     export deserializeComponent
-    function deserializeComponent(basePath, component, isEditor)
+    function deserializeComponent(component, isEditor)
         try
             if component.type == "Transform"
                 newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), Float64(component.rotation))
@@ -106,14 +106,13 @@ module SceneReaderModule
                 newComponent = Rigidbody(convert(Float64, component.mass))
             elseif component.type == "SoundSource"
                 if isEditor
-                    newComponent = SoundSource(basePath, component.path, component.channel, component.volume, component.isMusic)
+                    newComponent = SoundSource(component.path, component.channel, component.volume, component.isMusic)
                 else
-                    newComponent = component.isMusic ? SoundSource(basePath, component.path, component.volume) : SoundSource(basePath, component.path, component.channel, component.volume)
+                    newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
                 end
             elseif component.type == "Sprite"
-                    crop = !haskey(component, "crop") || isempty(component.crop) ? C_NULL : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
-                    newComponent = Sprite(basePath, component.imagePath, crop)
-                    newComponent.isFlipped = component.isFlipped
+                crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4() : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
+                newComponent = Sprite(component.imagePath, crop, component.isFlipped)
             end
             
             return newComponent

@@ -1,6 +1,5 @@
 ﻿module RigidbodyModule
 using ..Component.JulGame
-const SCALE_UNITS = Ref{Float64}(64.0)[]
 const GRAVITY = Ref{Float64}(9.81)[]
 
 export Rigidbody
@@ -44,6 +43,7 @@ mutable struct Rigidbody
 end
 
 function Base.getproperty(this::Rigidbody, s::Symbol)
+    # Todo: update this based on offset and scale
     if s == :update
         function(dt)
             velocityMultiplier = Math.Vector2f(1.0, 1.0)

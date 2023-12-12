@@ -31,9 +31,9 @@ function Base.getproperty(this::Camera, s::Symbol)
 
             if this.target != C_NULL && newPosition == C_NULL
                 targetPos = this.target.getPosition()
-                center =  Vector2f(this.dimensions.x/MAIN.zoom/SCALE_UNITS/2, this.dimensions.y/MAIN.zoom/SCALE_UNITS/2)
+                center =  Vector2f(this.dimensions.x/SCALE_UNITS/2, this.dimensions.y/SCALE_UNITS/2)
                 targetScale = this.target.getScale()
-                this.position = targetPos - center + 0.5 * targetScale + this.offset / MAIN.zoom
+                this.position = targetPos - center + 0.5 * targetScale + this.offset
                 return
             end
             if newPosition == C_NULL
