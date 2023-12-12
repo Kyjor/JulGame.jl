@@ -105,7 +105,6 @@ module InputModule
                             for screenButton in this.scene.screenButtons
                                 # Check position of button to see which we are interacting with
                                 eventWasInsideThisButton = true
-                                println(MAIN.scene.camera.startingCoordinates.y)
                                 if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x
                                     eventWasInsideThisButton = false
                                 elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.dimensions.x * MAIN.zoom
