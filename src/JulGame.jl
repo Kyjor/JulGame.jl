@@ -8,6 +8,9 @@ module JulGame
     
     BasePath = ""
     export BasePath
+
+    Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
+    export Renderer
     
     include("Macros.jl")
     using .Macros: @event
@@ -24,11 +27,19 @@ module JulGame
     include("UI/UI.jl")
     using .UI
     export ScreenButtonModule, TextBoxModule
+    
+    include("Particle/Particle.jl") 
+    using .ParticleModule
+    export ParticleModule
 
     include("Main.jl") 
     using .MainLoop: Main   
     const MAIN = Main(Float64(1.0))
     export MAIN
+    
+    include("Particle/Dot.jl")
+    using .DotModule
+    export DotModule
 
     include("Component/Component.jl")
     using .Component
