@@ -89,7 +89,8 @@ module MainLoop
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
 				# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
@@ -313,10 +314,13 @@ module MainLoop
 				end
 				this.scaleZoom(x,y)
 				SDL2.SDL_RenderClear(this.renderer)
-				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)	
+				this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
 				for textBox in this.textBoxes
-					textBox.centerText()
+					if !textBox.isWorldEntity
+						textBox.centerText()
+					end
 				end
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 			end

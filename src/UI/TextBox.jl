@@ -38,7 +38,6 @@ module TextBoxModule
             this.position = position
             this.text = text
             this.isWorldEntity = isWorldEntity
-            println("isWorldEntity: $(isWorldEntity)")
             this.initialize()
 
             return this
