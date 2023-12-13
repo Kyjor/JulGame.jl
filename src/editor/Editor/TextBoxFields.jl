@@ -27,7 +27,7 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
     elseif fieldName == "alpha"
         x = Cint(Value)
         @c CImGui.SliderInt("$(textBoxField)", &x, 0, 255)
-        setfield!(selectedTextBox, textBoxField, convert(Int64, round(x)))
+        setfield!(selectedTextBox, textBoxField, convert(Integer, round(x)))
 
         if x != Value
             selectedTextBox.isTextUpdated = true

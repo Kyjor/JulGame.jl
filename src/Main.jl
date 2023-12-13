@@ -89,7 +89,8 @@ module MainLoop
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
 				# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
@@ -143,7 +144,7 @@ module MainLoop
 					DEBUG = false
 					close = Ref(Bool(false))
 					startTime = Ref(UInt64(0))
-					lastPhysicsTime = Ref(UInt32(SDL2.SDL_GetTicks()))
+					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
 					while !close[]
 						this.gameLoop(startTime, lastPhysicsTime, close)
@@ -170,7 +171,7 @@ module MainLoop
 				end
 			end
 		elseif s == :gameLoop
-			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
 				return GameLoop(this, startTime, lastPhysicsTime, close, isEditor, update)
 			end
 		elseif s == :handleEditorInputsCamera
@@ -313,8 +314,14 @@ module MainLoop
 				end
 				this.scaleZoom(x,y)
 				SDL2.SDL_RenderClear(this.renderer)
-				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom), round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)	
+				this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				for textBox in this.textBoxes
+					if !textBox.isWorldEntity
+						textBox.centerText()
+					end
+				end
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 			end
 		elseif s == :scaleZoom
@@ -355,7 +362,7 @@ module MainLoop
     	GameLoop()
         Runs the game 
     """
-    function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt32} = Ref(UInt32(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+    function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
         try
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
@@ -443,7 +450,11 @@ module MainLoop
 					pos = entity.getTransform().getPosition()
 					colSize = entity.getCollider().getSize()
 					colOffset = entity.getCollider().offset
-					SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS), round(colSize.x * SCALE_UNITS), round(colSize.y * SCALE_UNITS))))
+					SDL2.SDL_RenderDrawRect( this.renderer, 
+					Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+					round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+					round(colSize.x * SCALE_UNITS), 
+					round(colSize.y * SCALE_UNITS))))
 				end
 			end
 			#endregion ============= Rendering
@@ -466,7 +477,11 @@ module MainLoop
 						pos = selectedEntity.getTransform().getPosition()
 						size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
 						offset = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().offset : Math.Vector2f()
-						SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS), round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS), round(size.x * SCALE_UNITS), round(size.x * SCALE_UNITS))))
+						SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(
+						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						round(size.x * SCALE_UNITS), 
+						round(size.y * SCALE_UNITS))))
 					end
 				catch e
 					println(e)
@@ -490,7 +505,7 @@ module MainLoop
 					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 
 					for i = 1:length(statTexts)
-						push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", "", fontPath, 40, Math.Vector2(0, 35 * i), Math.Vector2(100, 10 * i), Math.Vector2(0, 0), statTexts[i], false, true))
+						push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true))
 					end
 				else
 					for i = 1:length(this.debugTextBoxes)

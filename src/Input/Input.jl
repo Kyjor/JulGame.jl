@@ -54,7 +54,7 @@ module InputModule
                 push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
             end
 
-            SDL2.SDL_Init(UInt32(SDL2.SDL_INIT_JOYSTICK))
+            SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
             if SDL2.SDL_NumJoysticks() < 1
                 println("Warning: No joysticks connected!")
                 this.numAxes = 0
@@ -105,14 +105,13 @@ module InputModule
                             for screenButton in this.scene.screenButtons
                                 # Check position of button to see which we are interacting with
                                 eventWasInsideThisButton = true
-
-                                if x[1] < screenButton.position.x
+                                if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x
                                     eventWasInsideThisButton = false
-                                elseif x[1] > screenButton.position.x + screenButton.dimensions.x
+                                elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.dimensions.x * MAIN.zoom
                                     eventWasInsideThisButton = false
-                                elseif y[1] < screenButton.position.y
+                                elseif y[1] < screenButton.position.y + MAIN.scene.camera.startingCoordinates.y
                                     eventWasInsideThisButton = false
-                                elseif y[1] > screenButton.position.y + screenButton.dimensions.y
+                                elseif y[1] > MAIN.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.dimensions.y * MAIN.zoom
                                     eventWasInsideThisButton = false
                                 end
 

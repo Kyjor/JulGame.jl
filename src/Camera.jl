@@ -5,6 +5,7 @@ mutable struct Camera
     dimensions
     offset
     position::Vector2f
+    startingCoordinates::Vector2f
     target
 
     function Camera(dimensions::Vector2, initialPosition::Vector2f, offset::Vector2f,target)
@@ -14,6 +15,7 @@ mutable struct Camera
         this.position = initialPosition
         this.offset = Vector2f(offset.x, offset.y)
         this.target = target
+        this.startingCoordinates = Vector2f()                                                                                                                                                                                                           
         this.initialize()
 
         return this

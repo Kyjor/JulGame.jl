@@ -15,7 +15,7 @@ module Editor
     using ..JulGame.SceneLoaderModule
     using ..JulGame.TextBoxModule
 
-    include("../../src/Macros.jl")
+    include("../../Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
     include("./ComponentInputs.jl")
@@ -343,7 +343,7 @@ module Editor
                 @cstatic begin
                     CImGui.Begin("Play & Build") 
                     entryPath = "$(joinpath(projectPath, "src"))"
-                    scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
+                    scriptPath = "$(joinpath(pwd(), "..", "..", "EditorScripts", "RunScene.bat"))"
 
                     try
                         CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath"))
@@ -501,7 +501,7 @@ module Editor
     
                 glfwMakeContextCurrent(window)
                 glfwSwapBuffers(window)
-                gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt32(0)), Ref(Bool(false)), true, update)
+                gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), Ref(Bool(false)), true, update)
             end
         catch e
             @warn "Error in renderloop!" exception=e

@@ -1,2 +1,2 @@
-global const SCALE_UNITS = Ref{Float64}(64.0)[]
-global const GRAVITY = Ref{Float64}(9.81)[]
+const SCALE_UNITS = 64.0
+const GRAVITY = 9.81
