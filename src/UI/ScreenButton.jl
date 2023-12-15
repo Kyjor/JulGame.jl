@@ -47,7 +47,7 @@ module ScreenButtonModule
                     Ref(SDL2.SDL_Rect(this.position.x, this.position.y, this.dimensions.x,this.dimensions.y)), 
                     0.0, 
                     C_NULL, 
-                    SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL_GetError()))"
+                    SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
                 #@assert SDL2.SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
             end

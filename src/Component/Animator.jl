@@ -12,25 +12,15 @@
         parent::Any
         sprite::Any
 
-        function Animator(animations)
+        function Animator(animations = [])
             this = new()
             
             this.animations = animations
-            this.currentAnimation = this.animations[1]
+            this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
             this.lastFrame = 1
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = C_NULL
             this.sprite = C_NULL
-
-            return this
-        end
-
-        function Animator()
-            this = new()
-            
-            this.animations = []
-            this.lastFrame = 1
-            this.lastUpdate = SDL2.SDL_GetTicks()
 
             return this
         end
@@ -58,11 +48,7 @@
                 end
                 this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
             end
-        elseif s == :forceSpriteUpdate
-            function(frameIndex)
-                this.sprite.crop = this.currentAnimation.frames[frameIndex]
-            end
-    elseif s == :setSprite
+        elseif s == :setSprite
             function(sprite)
                 this.sprite = sprite
             end
@@ -82,4 +68,25 @@
             end
         end
     end
+
+    
+    """
+    ForceSpriteUpdate(this::Animator, frameIndex::Integer)
+    
+    Updates the sprite crop of the animator to the specified frame index.
+    
+    # Arguments
+    - `this::Animator`: The animator object.
+    - `frameIndex::Integer`: The index of the frame to update the sprite crop to.
+    
+    # Example
+    ```
+    animator = Animator([Animation([Math.Vector4(0,0,0,0)], 60)])
+    ForceSpriteUpdate(animator, 1)
+    ```
+    """
+    function ForceSpriteUpdate(this::Animator, frameIndex::Integer)
+        this.sprite.crop = this.currentAnimation.frames[frameIndex]
+    end
+    export ForceSpriteUpdate
 end

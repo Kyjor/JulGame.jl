@@ -1,3 +1,3 @@
-using Entry
+using Testing
 
-Entry.julia_main()
+Testing.julia_main()
