@@ -4,6 +4,11 @@
             "isActive": true,
             "name": "tile1",
             "scripts": [
+                {
+                    "name": "TestScript",
+                    "parameters": [
+                    ]
+                }
             ],
             "id": 1,
             "components": [
