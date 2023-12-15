@@ -217,7 +217,8 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             vec = currentEntitySelected.getComponent("Sprite").crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.getComponent("Sprite").crop
             vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
             @c CImGui.InputInt4("input int4", vec4i)
-            currentEntitySelected.getComponent("Sprite").crop = (vec.x == 0 && vec.y == 0 && vec.h == 0 && vec.w == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+
+            currentEntitySelected.getComponent("Sprite").crop = (vec4i[1] == 0 && vec4i[2] == 0 && vec4i[3] == 0 && vec4i[4] == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
         end  
     end
 end

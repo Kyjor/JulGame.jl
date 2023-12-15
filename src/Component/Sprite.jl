@@ -4,7 +4,7 @@
     export Sprite
     mutable struct Sprite
         color::Math.Vector3
-        crop::Math.Vector4
+        crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
@@ -65,7 +65,7 @@
                 end
 
                 parentTransform = this.parent.getTransform()
-                srcRect = this.crop == Math.Vector4() ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
+                srcRect = (this.crop == Math.Vector4() || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
                 dstRect = Ref(SDL2.SDL_Rect(
                     convert(Integer, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
                     convert(Integer, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
@@ -114,8 +114,6 @@
                 SDL2.SDL_ClearError()
                 this.renderer = MAIN.renderer
                 this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
-                surface = unsafe_wrap(Array, this.image, 10; own = false)
-                this.size = Math.Vector2(surface[1].w, surface[1].h)
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open image! SDL Error: ", error))
@@ -123,6 +121,11 @@
                     this.image = C_NULL
                     return
                 end
+
+
+
+                surface = unsafe_wrap(Array, this.image, 10; own = false)
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
                 
                 this.imagePath = imagePath
                 this.texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.image)
