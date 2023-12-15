@@ -1,7 +1,7 @@
-name = "Platformer"
+name = "Testing"
 uuid = "c86e6512-13ad-4cb8-a305-d9a62f3cd09b"
 authors = ["Kyjor <kyjordev@gmail.com>"]
 version = "0.0.1"
 
 [deps]
-SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"
+JulGame = "4850f9bb-d191-4a1e-9f97-ee64062927c3"

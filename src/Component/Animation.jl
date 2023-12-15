@@ -6,7 +6,6 @@ module AnimationModule
         animatedFPS::Integer # public
         frames::Array{Math.Vector4} # public
         parent::Any # public
-        sprite::Any # public
         test # private
 
         function Animation(frames, animatedFPS)
@@ -15,7 +14,6 @@ module AnimationModule
             this.animatedFPS = animatedFPS
             this.frames = frames
             this.parent = C_NULL
-            this.sprite = C_NULL
             this.test = "test"
 
             return this
@@ -35,7 +33,7 @@ module AnimationModule
     end
 
     function Base.getproperty(this::Animation, s::Symbol)
-        public_props = (:animatedFPS, :frames, :parent, :sprite)
+        public_props = (:animatedFPS, :frames, :parent)
 
         if s == :setParent
             function(parent)
