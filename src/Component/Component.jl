@@ -3,6 +3,7 @@ module Component
     abstract type EntityComponent end
       include("Animation.jl")
       include("Animator.jl")
+      include("CircleCollider.jl")
       include("Collider.jl")
       include("Rigidbody.jl")
       include("Shape.jl")
