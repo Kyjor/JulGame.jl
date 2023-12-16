@@ -1,6 +1,5 @@
 ﻿module RigidbodyModule
 using ..Component.JulGame
-const GRAVITY = Ref{Float64}(9.81)[]
 
 export Rigidbody
 mutable struct Rigidbody 
