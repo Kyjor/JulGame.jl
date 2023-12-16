@@ -1,7 +1,6 @@
 module ColliderModule
     include("../Enums.jl")
     using ..Component.JulGame
-    global const GRAVITY = Ref{Float64}(9.81)[]
 
     export Collider
     mutable struct Collider
@@ -22,20 +21,6 @@ module ColliderModule
             this.enabled = true
             this.isTrigger = false
             this.offset = offset
-            this.size = size
-            this.tag = tag
-
-            return this
-        end
-
-        function Collider(size::Math.Vector2f, tag::String)
-            this = new()
-
-            this.collisionEvents = []
-            this.currentCollisions = []
-            this.enabled = true
-            this.isTrigger = false
-            this.offset = Math.Vector2f()
             this.size = size
             this.tag = tag
 
