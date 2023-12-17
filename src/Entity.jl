@@ -2,6 +2,7 @@ module EntityModule
     using ..JulGame.AnimationModule
     using ..JulGame.AnimatorModule
     using ..JulGame.ColliderModule
+    using ..JulGame.CircleColliderModule
     using ..JulGame.Math
     using ..JulGame.RigidbodyModule
     using ..JulGame.ShapeModule
@@ -16,65 +17,20 @@ module EntityModule
         isActive::Bool
         name::String
         scripts::Array{Any}
-        
-        function Entity()
-            this = new()
-
-            return this
-        end
-
-        function Entity(name::String)
-            this = new()
-            
-            this.id = 1
-            this.components = []
-            this.isActive = true
-            this.name = name
-            this.addComponent(Transform())
-            this.scripts = []
-
-            return this
-        end
-
-        function Entity(name::String, transform::Transform)
+        #
+        function Entity(name::String = "New entity", transform::Union{Ptr{Nothing}, Transform} = C_NULL, components::Array{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}} = Vector{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}}(), scripts::Array = [])
             this = new()
 
             this.id = 1
+            this.name = name
             this.components = []
             this.isActive = true
-            this.name = name
+            transform = transform == C_NULL ? Transform() : transform
             this.addComponent(transform)
-            this.scripts = []
-
-            return this
-        end
-
-        function Entity(name::String, transform::Transform, components::Array{Union{Animation, Animator, Collider, Rigidbody, Shape, SoundSource, Sprite}})
-            this = new()
-
-            this.id = 1
-            this.components = []
-            this.isActive = true
-            this.name = name
-            this.addComponent(transform)
-            for component in components
-                this.addComponent(component)
-            end
-            this.scripts = []
-
-            return this
-        end
-        
-        function Entity(name::String, transform::Transform, components::Array, scripts::Array)
-            this = new()
-
-            this.id = 1
-            this.name = name
-            this.components = []
-            this.isActive = true
-            this.addComponent(transform)
-            for component in components
-                this.addComponent(component)
+            if components != C_NULL
+                for component in components
+                    this.addComponent(component)
+                end
             end
             this.scripts = []
             for script in scripts
@@ -91,7 +47,14 @@ module EntityModule
                 if typeof(componentType) == String
                     componentType = eval(Symbol(componentType))
                 end
+
                 for component in this.components
+                    if componentType <: Collider
+                        if typeof(component) <: CircleCollider #typeof(component) <: Collider || 
+                            return component
+                        end
+                    end
+
                     if typeof(component) <: componentType
                         return component
                     end
@@ -101,9 +64,9 @@ module EntityModule
         elseif s == :removeComponent #Retrieves the first component of specified type from the list of components attached to the entity
             function(componentType)
                 for i = 1:length(this.components)
-                if typeof(this.components[i]) <: componentType
-                    deleteat!(this.components, i)
-                end
+                    if typeof(this.components[i]) <: componentType
+                        deleteat!(this.components, i)
+                    end
                 end
                 return C_NULL
             end
@@ -188,10 +151,17 @@ module EntityModule
             end
         elseif s == :addCollider
             function()
-                if this.getComponent(Collider) != C_NULL
+                if this.getComponent(Collider) != C_NULL || this.getComponent(CircleCollider) == C_NULL
                     return
                 end
                 this.addComponent(Collider(Vector2f(this.getTransform().scale.x, this.getTransform().scale.y), "Test"))
+            end
+        elseif s == :addCircleCollider
+            function()
+                if this.getComponent(Collider) != C_NULL || this.getComponent(CircleCollider) != C_NULL
+                    return
+                end
+                this.addComponent(max(this.getTransform().scale.x, this.getTransform().scale.y), Vector2f(0,0), "Test")
             end
         elseif s == :addRigidbody
             function()

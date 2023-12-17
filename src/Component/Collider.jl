@@ -134,6 +134,10 @@ module ColliderModule
             function(field, x, y)
                 setfield!(this, field, Math.Vector2f(x,y))
             end
+        elseif s == :getType
+            function()
+                return "Collider"
+            end
         else
             try
                 getfield(this, s)

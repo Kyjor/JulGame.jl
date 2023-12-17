@@ -88,6 +88,7 @@ module MainLoop
 				this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
 
 				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+				JulGame.Renderer = this.renderer 
 
 				this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
 				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
@@ -398,6 +399,8 @@ module MainLoop
 
 			#endregion ============= Input
 
+			SDL2.SDL_RenderClear(this.renderer)
+
 			#region =============    Physics
 			if !isEditor
 				currentPhysicsTime = SDL2.SDL_GetTicks()
@@ -418,7 +421,7 @@ module MainLoop
 			currentRenderTime = SDL2.SDL_GetTicks()
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 			# Clear the current render target before rendering again
-			SDL2.SDL_RenderClear(this.renderer)
+			# SDL2.SDL_RenderClear(this.renderer)
 
 			this.scene.camera.update()
 
@@ -448,24 +451,39 @@ module MainLoop
 
 				if DEBUG && entity.getCollider() != C_NULL
 					pos = entity.getTransform().getPosition()
-					colSize = entity.getCollider().getSize()
-					colOffset = entity.getCollider().offset
-					SDL2.SDL_RenderDrawRect( this.renderer, 
-					Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-					round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-					round(colSize.x * SCALE_UNITS), 
-					round(colSize.y * SCALE_UNITS))))
+					collider = entity.getCollider()
+					if collider.getType() == "CircleCollider"
+						SDL2E.SDL_RenderDrawCircle(
+							round(Integer, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Integer, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Integer, collider.diameter/2 * SCALE_UNITS))
+					else
+						colSize = collider.getSize()
+						colOffset = collider.offset
+						SDL2.SDL_RenderDrawRect( this.renderer, 
+						Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+						round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+						round(colSize.x * SCALE_UNITS), 
+						round(colSize.y * SCALE_UNITS))))
+					end
+					# colSize = collider.getSize()
+					# colOffset = collider.offset
+					# SDL2.SDL_RenderDrawRect( this.renderer, 
+					# Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+					# round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+					# round(colSize.x * SCALE_UNITS), 
+					# round(colSize.y * SCALE_UNITS))))
 				end
 			end
 			#endregion ============= Rendering
 
 			#region ============= UI
 			for screenButton in this.screenButtons
-				screenButton.render()
+				#screenButton.render()
 			end
 
 			for textBox in this.textBoxes
-				textBox.render(DEBUG)
+				#textBox.render(DEBUG)
 			end
 			#endregion ============= UI
 
@@ -487,6 +505,8 @@ module MainLoop
 					println(e)
 				end
 			end
+			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+
 			this.lastMousePositionWorld = this.mousePositionWorld
 			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
 			this.mousePositionWorld = Math.Vector2(floor(Int,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
@@ -514,6 +534,17 @@ module MainLoop
 					end
 				end
 			end
+
+			# SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+			# SDL2.SDL_RenderClear(this.renderer)
+			# for i::Int = 1:1000
+			# 	SDL2.SDL_RenderDrawPoint(this.renderer, i, -i)
+			# 	SDL2.SDL_RenderDrawLine(Renderer, i, -i, i, -i)
+			# 	SDL2.SDL_RenderDrawLines(MAIN.renderer, [
+            #             SDL2.SDL_Point(0, 0), 
+            #             SDL2.SDL_Point(500, 0)], 2)
+			# end
+
 			#endregion ============= Debug
 
 			SDL2.SDL_RenderPresent(this.renderer)

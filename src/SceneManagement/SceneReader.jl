@@ -3,6 +3,7 @@ module SceneReaderModule
     using ..SceneManagement.JulGame.AnimatorModule
     using ..SceneManagement.JulGame.AnimationModule
     using ..SceneManagement.JulGame.ColliderModule
+    using ..SceneManagement.JulGame.CircleColliderModule
     using ..SceneManagement.JulGame.EntityModule
     using ..SceneManagement.JulGame.Math
     using ..SceneManagement.JulGame.RigidbodyModule
@@ -102,6 +103,8 @@ module SceneReaderModule
                 newComponent = Collider(Vector2f(component.size.x, component.size.y), Vector2f(), component.tag)
                 newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
                 newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+            elseif component.type == "CircleCollider"
+                newComponent = CircleCollider(component.diameter, Vector2f(), component.tag)
             elseif component.type == "Rigidbody"
                 newComponent = Rigidbody(convert(Float64, component.mass))
             elseif component.type == "SoundSource"
