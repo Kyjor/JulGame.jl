@@ -99,7 +99,7 @@ module SceneReaderModule
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
-                newComponent = Collider(Vector2f(component.size.x, component.size.y), component.tag)
+                newComponent = Collider(Vector2f(component.size.x, component.size.y), Vector2f(), component.tag)
                 newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
                 newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
             elseif component.type == "Rigidbody"
