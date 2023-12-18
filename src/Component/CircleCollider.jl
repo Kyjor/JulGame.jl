@@ -7,6 +7,7 @@ module CircleColliderModule
     mutable struct CircleCollider
         collisionEvents::Array{Any}
         currentCollisions::Array{Collider}
+        currentRests::Array{Collider}
         diameter::Float64
         enabled::Bool
         isGrounded::Bool
@@ -20,6 +21,7 @@ module CircleColliderModule
     
             this.collisionEvents = []
             this.currentCollisions = []
+            this.currentRests = []
             this.diameter = diameter
             this.enabled = true
             this.isGrounded = false
@@ -43,6 +45,9 @@ module CircleColliderModule
                 #Only check the player against other colliders
                 counter = 0
                 
+                this.isGrounded = this.parent.getRigidbody().grounded
+                
+
                 for i in 1:length(colliders)
                     #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                     if !colliders[i].getParent().isActive || !colliders[i].enabled
@@ -51,9 +56,18 @@ module CircleColliderModule
                         end
                         continue
                     end
-                    this.isGrounded = false
-                    if this != colliders[i]
+                    if this != colliders[i] && this.parent.getRigidbody().getVelocity().y >= 0
+                        println(this.parent.getRigidbody().getVelocity().y)
                         collision = CheckCollision(this, colliders[i])
+                        if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
+                            # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
+                            for j in 1:length(this.currentRests)
+                                if this.currentRests[j].getParent().getTransform().getPosition().y == colliders[i].getParent().getTransform().getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
+                                    push!(this.currentRests, colliders[i])
+                                    break
+                                end
+                            end
+                        end
                         transform = this.getParent().getTransform()
                         # if collision[1] == Top::CollisionDirection
                         #     push!(this.currentCollisions, colliders[i])
@@ -82,12 +96,13 @@ module CircleColliderModule
                         # if collision[1] == Bottom::CollisionDirection
                         #this.isGrounded = collision[1]
                         if collision[1] == true
-                            push!(this.currentCollisions, colliders[i])
+                            println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().getTransform().getPosition())
+                            push!(this.currentRests, colliders[i])
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
                             #Begin to overlap, correct position
-                            transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y)) #- collision[2]))
+                            transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
                             this.isGrounded = true
                         end
                         # end
@@ -99,7 +114,14 @@ module CircleColliderModule
                         # end
                     end
                 end
-                this.parent.getRigidbody().grounded = this.isGrounded
+                for i in 1:length(this.currentRests)
+                    if CheckIfResting(this, this.currentRests[i])[1] == false
+                        deleteat!(this.currentRests, i)
+                        break
+                    end
+                end
+           
+                this.parent.getRigidbody().grounded = length(this.currentRests) > 0 && this.parent.getRigidbody().getVelocity().y >= 0
                 this.currentCollisions = []
             end
         elseif s == :setParent
@@ -128,17 +150,15 @@ module CircleColliderModule
     end
 
     function CheckCollision(colliderA::CircleCollider, colliderB::CircleCollider)
-            # Calculate total radius squared
-            totalRadiusSquared::Float64 = (a.diameter + b.diameter)^2
-
-            # If the distance between the centers of the circles is less than the sum of their radii
-            if DistanceSquared(a.offset.x, a.offset.y, b.offset.x, b.offset.y)::Float64 < totalRadiusSquared
-                # The circles have collided
-                return true
-            end
-
-            # If not
-            return false
+        # Calculate total radius squared
+        totalRadiusSquared::Float64 = (a.diameter + b.diameter)^2
+        # If the distance between the centers of the circles is less than the sum of their radii
+        if DistanceSquared(a.offset.x, a.offset.y, b.offset.x, b.offset.y)::Float64 < totalRadiusSquared
+            # The circles have collided
+            return true
+        end
+        # If not
+        return false
     end
 
     function CheckCollision(a::CircleCollider, b::Collider)
@@ -151,8 +171,8 @@ module CircleColliderModule
         # Find closest x offset
         if posA.x < posB.x
             cX = posB.x
-        elseif posA.x > posB.x + b.size.x * SCALE_UNITS
-            cX = posB.x + b.size.x * SCALE_UNITS
+        elseif posA.x > posB.x + b.size.x
+            cX = posB.x + b.size.x
         else
             cX = posA.x
         end
@@ -160,8 +180,8 @@ module CircleColliderModule
         # Find closest y offset
         if posA.y < posB.y
             cY = posB.y
-        elseif posA.y > posB.y + b.size.y * SCALE_UNITS
-            cY = posB.y + b.size.y  * SCALE_UNITS
+        elseif posA.y > posB.y + b.size.y
+            cY = posB.y + b.size.y
         else
             cY = posA.y
         end
@@ -170,14 +190,39 @@ module CircleColliderModule
         # If the closest point is inside the circle
         if distanceSquared < (a.diameter / 2)^2
             # This circle and the rectangle have collided
-            println("Collision")
-            println(distanceSquared)
             return [true, distanceSquared]
         end
 
-        println("No Collision")
         # If the shapes have not collided
         return [false, distanceSquared]
+    end
+
+    function CheckIfResting(a::CircleCollider, b::Collider)
+        # Closest point on collision box
+        cX = 0
+
+        posA = a.getParent().getTransform().getPosition() + a.offset
+        posB = b.getParent().getTransform().getPosition() + b.offset
+        radius = a.diameter / 2
+
+        # Find closest x offset
+        if posA.x < posB.x
+            cX = posB.x
+        elseif posA.x > posB.x + b.size.x
+            cX = posB.x + b.size.x
+        else
+            cX = posA.x
+        end
+
+        distance = (cX - posA.x)^2
+        # # If the closest point is inside the circle
+        if distance < (radius / 2)^2
+            # This circle and the rectangle have collided
+            return [true, distance]
+        end
+
+        # If the shapes have not collided
+        return [false, distance]
     end
 
     function DistanceSquared(x1::Number, y1::Number, x2::Number, y2::Number)
