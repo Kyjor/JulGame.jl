@@ -5,6 +5,7 @@ module Component
       include("Animator.jl")
       include("Collider.jl")
       include("Rigidbody.jl")
+      include("Shape.jl")
       include("SoundSource.jl")
       include("Sprite.jl")
       include("Transform.jl")
@@ -13,6 +14,7 @@ module Component
     export AnimatorModule
     export ColliderModule
     export RigidbodyModule
+    export ShapeModule
     export SoundSourceModule
     export SpriteModule
     export TransformModule

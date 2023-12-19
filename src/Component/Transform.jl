@@ -6,56 +6,16 @@ module TransformModule
         position::Math.Vector2f
         scale::Math.Vector2f
             
-        function Transform()
+        function Transform(position::Math.Vector2f = Math.Vector2f(0.0, 0.0), scale::Math.Vector2f = Math.Vector2f(1.0, 1.0), rotation::Float64 = 0.0)
             this = new()
-
-            this.position = Math.Vector2f(0.0, 0.0)
-            this.scale = Math.Vector2f(1.0, 1.0)
-            this.rotation = 0.0
-
-            return this
-        end
-
-        function Transform(position::Math.Vector2f)
-            this = new()
-    
-            this.position = position
-            this.scale = Math.Vector2f(1.0, 1.0)
-            this.rotation = 0.0
-    
-            return this
-        end
-
-        function Transform(position::Math.Vector2f, scale::Math.Vector2f)
-            this = new()
-    
-            this.position = position
-            this.scale = scale
-            this.rotation = 0.0
-    
-            return this
-        end
-
-        function Transform(position::Math.Vector2f, scale::Math.Vector2f, rotation = 0.0)
-            this = new()
-        
+            
             this.position = position
             this.scale = scale
             this.rotation = rotation
-        
+            
             return this
-        end
-
-        function Transform(rotation::Float64, position::Math.Vector2f, scale::Math.Vector2f)
-            this = new()
-    
-            this.position = position
-            this.scale = scale
-            this.rotation = rotation
-    
-            return this
-        end
-    end
+        end   
+    end     
 
     function Base.getproperty(this::Transform, s::Symbol)
         if s == :getPosition

@@ -15,6 +15,14 @@ export default defineConfig({
       github: 'https://github.com/Kyjor/JulGame.jl'
     },
     sidebar: [{
+      label: 'Release Notes',
+      collapsed: true,
+      autogenerate: {
+        directory: 'release-notes',
+        collapsed: true
+      }
+    }, 
+      {
       label: 'Getting Started',
       items: [
       // Each item here is one entry in the navigation menu.
@@ -24,6 +32,7 @@ export default defineConfig({
       }]
     }, {
       label: 'Guides',
+      collapsed: true,
       items: [
       // Each item here is one entry in the navigation menu.
       {
@@ -32,6 +41,7 @@ export default defineConfig({
       }]
     }, {
       label: 'API Reference',
+      collapsed: true,
       autogenerate: {
         directory: 'reference',
         collapsed: true

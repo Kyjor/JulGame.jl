@@ -1,48 +1,44 @@
 module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
-    using SimpleDirectMediaLayer.LibSDL2
 
     export TextBox      
     mutable struct TextBox
         alpha
-        autoSizeText
-        basePath
+        basePath::String
         font
-        fontPath
-        fontSize
-        id
-        isCentered    
-        isDefaultFont
-        isTextUpdated
-        name
-        position
-        renderer
+        fontPath::String
+        fontSize::Integer
+        id::Integer
+        isCenteredX::Bool
+        isCenteredY::Bool
+        isDefaultFont::Bool
+        isTextUpdated::Bool
+        isWorldEntity::Bool
+        name::String
+        position::Vector2
         renderText
-        size
-        sizePercentage
-        text
+        size::Vector2
+        text::String
         textTexture
-        zoom
 
-        function TextBox(name, basePath, fontPath, fontSize, position::Math.Vector2, size::Math.Vector2, sizePercentage::Math.Vector2, text::String, isCentered::Bool, isDefaultFont = false) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false, isDefaultFont::Bool = false, isEditor::Bool = false; isWorldEntity::Bool=false) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? joinpath(pwd(), "..", "fonts") : basePath
+            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
             this.fontPath = fontPath
             this.fontSize = fontSize
-            this.autoSizeText = false
             this.id = 0
-            this.isCentered = isCentered
+            this.isCenteredX = isCenteredX
+            this.isCenteredY = isCenteredY
             this.isDefaultFont = isDefaultFont
             this.isTextUpdated = false
             this.name = name
             this.position = position
-            this.size = size
-            this.sizePercentage = sizePercentage
             this.text = text
-            this.zoom = 1.0
+            this.isWorldEntity = isWorldEntity
+            this.initialize()
 
             return this
         end
@@ -52,40 +48,40 @@ module TextBoxModule
         if s == :render
             function(DEBUG)
                 if DEBUG
-                    SDL_RenderDrawLines(this.renderer, [
-                        SDL_Point(this.position.x, this.position.y), 
-                        SDL_Point(this.position.x + this.size.x, this.position.y),
-                        SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
-                        SDL_Point(this.position.x, this.position.y + this.size.y), 
-                        SDL_Point(this.position.x, this.position.y)], 5)
+                    SDL2.SDL_RenderDrawLines(MAIN.renderer, [
+                        SDL2.SDL_Point(this.position.x, this.position.y), 
+                        SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
+                        SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
+                        SDL2.SDL_Point(this.position.x, this.position.y + this.size.y), 
+                        SDL2.SDL_Point(this.position.x, this.position.y)], 5)
                 end
 
                 if this.isTextUpdated
                     this.updateText(this.text)
                     this.isTextUpdated = false
                 end
-                # @assert 
-                SDL_RenderCopy(
-                    this.renderer, this.textTexture, C_NULL, Ref(SDL_Rect((this.position.x), this.position.y, this.size.x, this.size.y))
-                ) 
-                # == 0 "error rendering textbox text: $(unsafe_string(SDL_GetError()))"
+
+                cameraDiff = this.isWorldEntity ? 
+                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+                Math.Vector2(0,0)
+
+                @assert SDL2.SDL_RenderCopy(MAIN.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
-            function(renderer, zoom)
-                this.zoom = zoom
-                this.renderer = renderer
+            function()
+                MAIN.renderer = MAIN.renderer
                 path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-                font = TTF_OpenFont(path, this.fontSize)
-                println(unsafe_string(SDL_GetError()))
+                font = SDL2.TTF_OpenFont(path, this.fontSize)
+                println(unsafe_string(SDL2.SDL_GetError()))
                 this.font = font
-                this.renderText = TTF_RenderText_Blended(this.font, this.text, SDL_Color(255,255,255,this.alpha))
-                this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
-                w,h = Int32[1], Int32[1]
-                TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
-                this.size = Math.Vector2(w[1], h[1])
-                
-                if this.isCentered 
-                    this.position = Math.Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y/this.zoom)
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
+
+                if !this.isWorldEntity
+                    this.centerText()
                 end
             end
         elseif s == :setPosition
@@ -98,24 +94,35 @@ module TextBoxModule
         elseif s == :updateText
             function(newText)
                 this.text = newText
-                SDL_FreeSurface(this.renderText)
-                SDL_DestroyTexture(this.textTexture)
-                this.renderText = TTF_RenderText_Blended( this.font, this.text, SDL_Color(255,255,255,this.alpha))
-                this.textTexture = SDL_CreateTextureFromSurface(this.renderer, this.renderText)
+                SDL2.SDL_FreeSurface(this.renderText)
+                SDL2.SDL_DestroyTexture(this.textTexture)
+                this.renderText = SDL2.TTF_RenderUTF8_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
-                if this.autoSizeText
-                    w,h = Int32[1], Int32[1]
-                    TTF_SizeText(this.font, this.text, pointer(w), pointer(h))
-                    this.size = Math.Vector2(w[1], h[1])
-                end
-                if this.isCentered 
-                    this.position = Math.Vector2(max(((1920/this.zoom) - this.size.x)/2, 0), this.position.y)
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
+                
+                if !this.isWorldEntity
+                    this.centerText()
                 end
             end
         elseif s == :setVector2Value
             function(field, x, y)
                 setfield!(this, field, Math.Vector2(x,y))
                 println("set $(field) to $(getfield(this, field))")
+            end
+        elseif s == :setColor
+            function (r,g,b)
+                SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
+            end
+        elseif s == :centerText
+            function()
+                if this.isCenteredX
+                    this.position = Math.Vector2(max(MAIN.scene.camera.dimensions.x/2 - this.size.x/2, 0), this.position.y)
+                end
+                if this.isCenteredY
+                    this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
+                end
             end
         else
             try

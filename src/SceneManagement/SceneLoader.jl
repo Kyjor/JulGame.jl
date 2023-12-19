@@ -3,14 +3,10 @@ module SceneLoaderModule
     using ..SceneManagement.SceneBuilderModule
 
     export loadScene
-    function loadScene(projectPath, sceneFileName, isUsingEditor = false)
-        SDL2.init()
-        if isUsingEditor
-            dir = @__DIR__
-        else
-            dir = pwd()
-        end
-        main = Scene(projectPath, sceneFileName)
-        return main.init(isUsingEditor)
+    function loadScene(projectPath, sceneFileName, isUsingEditor = false) 
+        JulGame.BasePath = projectPath
+        main = Scene(sceneFileName, projectPath)
+        
+        return main.init("Editor", isUsingEditor)
     end
 end
