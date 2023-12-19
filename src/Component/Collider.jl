@@ -6,10 +6,12 @@ module ColliderModule
     mutable struct Collider
         collisionEvents::Array{Any}
         currentCollisions::Array{Collider}
+        currentRests::Array{Collider}
         enabled::Bool
         isTrigger::Bool
         offset::Math.Vector2f
         parent::Any
+        rigidbody::Any
         size::Math.Vector2f
         tag::String
         
@@ -18,9 +20,12 @@ module ColliderModule
 
             this.collisionEvents = []
             this.currentCollisions = []
+            this.currentRests = []
             this.enabled = true
             this.isTrigger = false
             this.offset = offset
+            this.rigidbody = C_NULL
+            this.parent = C_NULL
             this.size = size
             this.tag = tag
 
@@ -60,13 +65,14 @@ module ColliderModule
         elseif s == :setParent
             function(parent::Any)
                 this.parent = parent
+                this.rigidbody = parent.getRigidbody()
             end
         elseif s == :checkCollisions
             function()
                 colliders = MAIN.scene.colliders
                 #Only check the player against other colliders
                 counter = 0
-                onGround = false
+                onGround = this.parent.getRigidbody().grounded
                 for i in 1:length(colliders)
                     #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                     if !colliders[i].getParent().isActive || !colliders[i].enabled
@@ -77,6 +83,16 @@ module ColliderModule
                     end
                     if this != colliders[i]
                         collision = CheckCollision(this, colliders[i])
+                        if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
+                            # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
+                            for j in 1:length(this.currentRests)
+                                if this.currentRests[j].getParent().getTransform().getPosition().y == colliders[i].getParent().getTransform().getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
+                                    push!(this.currentRests, colliders[i])
+                                    break
+                                end
+                            end
+                        end
+                        
                         transform = this.getParent().getTransform()
                         if collision[1] == Top::CollisionDirection
                             push!(this.currentCollisions, colliders[i])
@@ -102,8 +118,9 @@ module ColliderModule
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
                         end
-                        if collision[1] == Bottom::CollisionDirection
+                        if collision[1] == Bottom::CollisionDirection && this.parent.getRigidbody().getVelocity().y >= 0
                             push!(this.currentCollisions, colliders[i])
+                            push!(this.currentRests, colliders[i])
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
@@ -119,7 +136,14 @@ module ColliderModule
                         end
                     end
                 end
-                this.parent.getRigidbody().grounded = onGround
+                for i in 1:length(this.currentRests)
+                    if CheckIfResting(this, this.currentRests[i])[1] == false
+                        deleteat!(this.currentRests, i)
+                        break
+                    end
+                end
+
+                this.parent.getRigidbody().grounded = length(this.currentRests) > 0 && this.parent.getRigidbody().getVelocity().y >= 0
                 this.currentCollisions = []
             end
         elseif s == :update
@@ -133,6 +157,10 @@ module ColliderModule
         elseif s == :setVector2fValue
             function(field, x, y)
                 setfield!(this, field, Math.Vector2f(x,y))
+            end
+        elseif s == :getType
+            function()
+                return "Collider"
             end
         else
             try
@@ -223,5 +251,49 @@ module ColliderModule
         end 
         
         throw
+    end
+
+    function CheckIfResting(colliderA::Collider, colliderB::Collider)
+        posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderA.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posB = colliderB.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderB.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        offsetAX = colliderA.offset.x * SCALE_UNITS
+        offsetBX = colliderB.offset.x * SCALE_UNITS
+        colliderAXSize = colliderA.getSize().x * SCALE_UNITS
+        colliderBXSize = colliderB.getSize().x * SCALE_UNITS
+
+        #Calculate the sides of rect A
+        leftA = posA.x + offsetAX
+        rightA = posA.x + colliderAXSize + offsetAX
+        #Calculate the sides of rect B
+        leftB = posB.x + offsetBX
+        rightB = posB.x + colliderBXSize + offsetBX
+        
+         #If any of the sides from A are outside of B
+        depthRight = 0.0
+        depthLeft = 0.0
+    
+        if rightA <= leftB
+            dist = leftB - rightA
+            return (false, dist)
+        elseif rightA > leftB
+            depthRight = rightA - leftB
+        end
+        
+        if leftA >= rightB
+            dist = leftA - rightB
+            return (false, dist)
+        elseif leftA < rightB
+            depthLeft = rightB - leftA
+        end
+        println(depthLeft, " ", depthRight)
+        
+        collisionSide = min(depthLeft, depthRight)
+        
+        if collisionSide == depthLeft
+            return (true, collisionSide/SCALE_UNITS)
+        elseif collisionSide == depthRight
+            return (true, collisionSide/SCALE_UNITS)
+        end 
+
     end
 end

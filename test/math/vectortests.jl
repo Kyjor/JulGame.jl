@@ -161,5 +161,17 @@
             res = vec1 / vec2
             @test res == Math.Vector3(1, 1, 1)
         end
+
+        @testset "Vector3 constructor with Integer and Float64 arguments" begin
+            v = Math.Vector3(2, 3.7, 4)
+            @test v.x == 2
+            @test v.y == 4
+            @test v.z == 4
+
+            v = Math.Vector3(-1, -5.9, -2)
+            @test v.x == -1
+            @test v.y == -6
+            @test v.z == -2
+        end
     end
 end
