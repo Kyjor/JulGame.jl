@@ -12,23 +12,18 @@ for %%i in (*.jl) do (
 )
 
 if %COUNT% gtr 1 (
-    echo Error: Multiple .jl files found in the specified directory. You should only have one .jl file in your src.
+    echo Error: Multiple .jl files found in the specified directory.
     exit /b 1
 )
 
 if not defined JL_FILE (
-    echo Error: No .jl file found in the specified directory. You should have one .jl file in your src folder.
+    echo Error: No .jl file found in the specified directory.
     exit /b 1
 )
+set "JULIA_DEPOT_PATH="
+set "JULIA_LOAD_PATH="
 
-REM Create a string with all current environment variables
-set "ENV_VARIABLES="
-for /f "usebackq tokens=1,* delims==" %%a in (`set`) do (
-    set "ENV_VARIABLES=!ENV_VARIABLES!;ENV[\"%%a\"] = \"%%b\""
-)
-
-REM Execute the found .jl file
-julia --compile=min -e "push!(LOAD_PATH, \"@\"); push!(LOAD_PATH, \"@v#.#\"); push!(LOAD_PATH, \"@stdlib\"); include(\"%JL_FILE%\")"
+REM Execute the found .jl file with the specified julia.exe and current environment variables
+start julia --compile=min -e "push!(LOAD_PATH, \"@\"); push!(LOAD_PATH, \"@v#.#\"); push!(LOAD_PATH, \"@stdlib\"); include(\"%JL_FILE%\")"
 
 cd "%CURRENT_PATH%"
-REM push!(LOAD_PATH, \"@\"); \"@v#.#\"); push!(LOAD_PATH, \"@stdlib\");
