@@ -285,7 +285,6 @@ module ColliderModule
         elseif leftA < rightB
             depthLeft = rightB - leftA
         end
-        println(depthLeft, " ", depthRight)
         
         collisionSide = min(depthLeft, depthRight)
         
