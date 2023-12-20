@@ -57,7 +57,6 @@ module CircleColliderModule
                         continue
                     end
                     if this != colliders[i] && this.parent.getRigidbody().getVelocity().y >= 0
-                        println(this.parent.getRigidbody().getVelocity().y)
                         collision = CheckCollision(this, colliders[i])
                         if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                             # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests

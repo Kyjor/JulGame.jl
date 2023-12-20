@@ -148,7 +148,7 @@ module MainLoop
 					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
 					while !close[]
-						this.gameLoop(startTime, lastPhysicsTime, close)
+						GameLoop(this, startTime, lastPhysicsTime, close, false, C_NULL)
 						if this.testMode
 							break
 						end
@@ -270,15 +270,6 @@ module MainLoop
 					entityIndex += 1
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
-
-						# println("pos x: $(entity.getTransform().getPosition().x)")
-						# println("mouse pos raw x: $(this.mousePositionWorldRaw.x)")
-						# println("mouse pos x: $(this.mousePositionWorld.x)")
-						# println("size x: $(size.x)")
-						# println("pos y: $(entity.getTransform().getPosition().y)")
-						# println("mouse pos raw y: $(this.mousePositionWorldRaw.y)")
-						# println("mouse pos y: $(this.mousePositionWorld.y)")
-						# println("size y: $(size.y)")
 						if this.selectedEntityIndex == entityIndex
 							continue
 						end
@@ -412,7 +403,7 @@ module MainLoop
 				for rigidbody in this.rigidbodies
 					rigidbody.update(deltaTime)
 				end
-				lastPhysicsTime[] =  SDL2.SDL_GetTicks()
+				lastPhysicsTime[] =  currentPhysicsTime
 			end
 			#endregion ============= Physics
 
@@ -466,13 +457,6 @@ module MainLoop
 						round(colSize.x * SCALE_UNITS), 
 						round(colSize.y * SCALE_UNITS))))
 					end
-					# colSize = collider.getSize()
-					# colOffset = collider.offset
-					# SDL2.SDL_RenderDrawRect( this.renderer, 
-					# Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-					# round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-					# round(colSize.x * SCALE_UNITS), 
-					# round(colSize.y * SCALE_UNITS))))
 				end
 			end
 			#endregion ============= Rendering
@@ -534,16 +518,6 @@ module MainLoop
 					end
 				end
 			end
-
-			# SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-			# SDL2.SDL_RenderClear(this.renderer)
-			# for i::Int = 1:1000
-			# 	SDL2.SDL_RenderDrawPoint(this.renderer, i, -i)
-			# 	SDL2.SDL_RenderDrawLine(Renderer, i, -i, i, -i)
-			# 	SDL2.SDL_RenderDrawLines(MAIN.renderer, [
-            #             SDL2.SDL_Point(0, 0), 
-            #             SDL2.SDL_Point(500, 0)], 2)
-			# end
 
 			#endregion ============= Debug
 
