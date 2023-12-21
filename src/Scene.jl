@@ -20,16 +20,6 @@
 
         return this
     end
-
-    function Scene(colliders, entities, rigidbodies)
-        this = new()
-        
-        this.colliders = colliders
-        this.entities = entities
-        this.rigidbodies = rigidbodies
-        
-        return this
-    end
 end
 
 function Base.getproperty(this::Scene, s::Symbol)
