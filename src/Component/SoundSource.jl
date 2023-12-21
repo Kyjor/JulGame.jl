@@ -7,7 +7,7 @@ module SoundSourceModule
         isMusic::Bool
         parent::Any
         path::String
-        sound::Union{Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
+        sound::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
         volume::Integer
 
         # Music
@@ -39,7 +39,16 @@ module SoundSourceModule
         
         # Constructor for editor
         function SoundSource()
-            return CreateSoundSource("", -1, 100, false)
+            this = new()
+
+            this.channel = -1
+            this.isMusic = false
+            this.parent = C_NULL
+            this.path = ""
+            this.sound = C_NULL
+            this.volume = 100
+
+            return this
         end
 
         # Constructor for music
@@ -90,7 +99,7 @@ module SoundSourceModule
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
                     println(string("Couldn't open sound! SDL Error: ", error))
-                    SDL2.SDL2.SDL_ClearError()
+                    SDL2.SDL_ClearError()
                     this.sound = C_NULL
                     return
                 end

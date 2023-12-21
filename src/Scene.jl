@@ -20,16 +20,6 @@
 
         return this
     end
-
-    function Scene(colliders, entities, rigidbodies)
-        this = new()
-        
-        this.colliders = colliders
-        this.entities = entities
-        this.rigidbodies = rigidbodies
-        
-        return this
-    end
 end
 
 function Base.getproperty(this::Scene, s::Symbol)
@@ -40,6 +30,15 @@ function Base.getproperty(this::Scene, s::Symbol)
     elseif s == :getCollidersInRange
         function(originCollider)
             # search for colliders in colliders that could possibly touch origin collider and return as array
+        end
+    elseif s == :getEntityByName
+        function(name)
+            for entity in this.entities
+                if entity.name == name
+                    return entity
+                end
+            end
+            return C_NULL
         end
     else
         try

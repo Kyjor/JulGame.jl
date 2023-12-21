@@ -15,7 +15,7 @@ module ColliderModule
         size::Math.Vector2f
         tag::String
         
-        function Collider(size::Math.Vector2f, offset::Math.Vector2f, tag::String)
+        function Collider(size::Math.Vector2f = Math.Vector2f(1,1), offset::Math.Vector2f = Math.Vector2f(), tag::String="Default")
             this = new()
 
             this.collisionEvents = []
