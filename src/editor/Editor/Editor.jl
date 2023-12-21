@@ -73,7 +73,7 @@ module Editor
     
         # create window
         game = C_NULL #Entry.run(true)
-        window = glfwCreateWindow(1920, 1080, "JulGame v0.0.2", C_NULL, C_NULL)
+        window = glfwCreateWindow(1920, 1080, "JulGame v0.1.0", C_NULL, C_NULL)
         @assert window != C_NULL
         glfwMakeContextCurrent(window)
         glfwSwapInterval(1)  # enable vsync
