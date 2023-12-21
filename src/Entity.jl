@@ -151,10 +151,10 @@ module EntityModule
             end
         elseif s == :addCollider
             function()
-                if this.getComponent(Collider) != C_NULL || this.getComponent(CircleCollider) == C_NULL
+                if this.getComponent(Collider) != C_NULL || this.getComponent(CircleCollider) != C_NULL
                     return
                 end
-                this.addComponent(Collider(Vector2f(this.getTransform().scale.x, this.getTransform().scale.y), "Test"))
+                this.addComponent(Collider())
             end
         elseif s == :addCircleCollider
             function()
