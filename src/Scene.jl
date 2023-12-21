@@ -31,6 +31,15 @@ function Base.getproperty(this::Scene, s::Symbol)
         function(originCollider)
             # search for colliders in colliders that could possibly touch origin collider and return as array
         end
+    elseif s == :getEntityByName
+        function(name)
+            for entity in this.entities
+                if entity.name == name
+                    return entity
+                end
+            end
+            return C_NULL
+        end
     else
         try
             getfield(this, s)
