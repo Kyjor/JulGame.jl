@@ -73,6 +73,13 @@ module SceneBuilderModule
                         camDimensions = Vector2(camDimensions.x, dimensions.y)
                     end
                     main.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
+
+                    for textBox in main.scene.textBoxes
+                        if textBox.isWorldEntity
+                            textBox.centerText()
+                        end
+                    end
+
                     main.scene.rigidbodies = []
                     main.scene.colliders = []
                     for entity in main.scene.entities
@@ -132,7 +139,9 @@ module SceneBuilderModule
                 end
             elseif s == :createNewTextBox
                 function (fontPath)
-                    textBox = TextBox("TextBox", "", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
+                    println(fontPath)
+                    textBox = TextBox("TextBox", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
+                    textBox.basePath = ""
                     push!(this.main.textBoxes, textBox)
                 end
             else

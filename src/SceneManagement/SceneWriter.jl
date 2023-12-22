@@ -17,18 +17,17 @@ module SceneWriterModule
         push!(textBoxesDict, Dict(
             "id" => count, 
             "alpha" => textBox.alpha, 
-            "autoSizeText" => textBox.autoSizeText, 
             "fontPath" => textBox.fontPath, 
             "fontSize" => textBox.fontSize, 
-            "isCentered" => textBox.isCentered,
+            "isCenteredX" => textBox.isCenteredX,
+            "isCenteredY" => textBox.isCenteredY,
             "isDefaultFont" => textBox.isDefaultFont,
             "isTextUpdated" => textBox.isTextUpdated,
+            "isWorldEntity" => textBox.isWorldEntity,
             "name" => textBox.name,
             "position" => Dict("x" => textBox.position.x, "y" => textBox.position.y),
             "size" => Dict("x" => textBox.size.x, "y" => textBox.size.y),
-            "sizePercentage" => Dict("x" => textBox.sizePercentage.x, "y" => textBox.sizePercentage.y),
-            "text" => textBox.text,
-            "zoom" => textBox.zoom
+            "text" => textBox.text
             ))
         count += 1
         end

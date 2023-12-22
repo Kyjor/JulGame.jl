@@ -28,7 +28,6 @@ module ScreenButtonModule
             this.mouseOverSprite = false
             this.position = position
             this.text = text
-            this.injectRenderer()
 
             return this
         end
@@ -51,10 +50,10 @@ module ScreenButtonModule
 
                 #@assert SDL2.SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
-        elseif s == :injectRenderer
+        elseif s == :initialize
             function()
 
-                this.renderer = MAIN.renderer
+                this.renderer = JulGame.renderer
                 this.buttonDownTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.buttonDownSprite)
                 this.buttonUpTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.buttonUpSprite)
                 this.currentTexture = this.buttonUpTexture

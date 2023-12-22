@@ -92,9 +92,9 @@
                     this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE)
                 
             end
-        elseif s == :injectRenderer
-            function(renderer::Ptr{SDL2.LibSDL2.SDL_Renderer})
-                this.renderer = renderer
+        elseif s == :initialize
+            function()
+                this.renderer = JulGame.Renderer
                 if this.image == C_NULL
                     return
                 end
