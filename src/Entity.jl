@@ -183,7 +183,7 @@ module EntityModule
                     return
                 end
                 this.addComponent(Sprite("", C_NULL, false, Math.Vector3(255, 255, 255), true))
-                this.getComponent("Sprite").injectRenderer(game.renderer)
+                this.getComponent("Sprite").initialize()
             end
         elseif s == :addShape
             function()

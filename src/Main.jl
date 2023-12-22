@@ -104,8 +104,11 @@ module MainLoop
 					end
 				end
 
+				for textBox in this.scene.textBoxes
+					textBox.initialize()
+				end
 				for screenButton in this.scene.screenButtons
-					screenButton.injectRenderer(this.renderer, this.font)
+					screenButton.initialize()
 				end
 
 				this.entities = this.scene.entities
@@ -309,11 +312,6 @@ module MainLoop
 				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)	
 				this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
 				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
-				for textBox in this.textBoxes
-					if !textBox.isWorldEntity
-						textBox.centerText()
-					end
-				end
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 			end
 		elseif s == :scaleZoom
@@ -463,11 +461,11 @@ module MainLoop
 
 			#region ============= UI
 			for screenButton in this.screenButtons
-				#screenButton.render()
+				screenButton.render()
 			end
 
 			for textBox in this.textBoxes
-				#textBox.render(DEBUG)
+				textBox.render(DEBUG)
 			end
 			#endregion ============= UI
 
@@ -509,7 +507,9 @@ module MainLoop
 					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 
 					for i = 1:length(statTexts)
-						push!(this.debugTextBoxes, UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true))
+						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true)
+						push!(this.debugTextBoxes, textBox)
+						textBox.initialize()
 					end
 				else
 					for i = 1:length(this.debugTextBoxes)

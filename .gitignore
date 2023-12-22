@@ -34,3 +34,5 @@ imgui.ini
 editor/JulGame/
 
 editor/Editor/imgui_log.txt
+
+src/editor/EditorBuild/

@@ -26,7 +26,7 @@ module TextBoxModule
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
+            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
             this.fontPath = fontPath
             this.fontSize = fontSize
             this.id = 0
@@ -38,7 +38,6 @@ module TextBoxModule
             this.position = position
             this.text = text
             this.isWorldEntity = isWorldEntity
-            this.initialize()
 
             return this
         end
@@ -48,7 +47,7 @@ module TextBoxModule
         if s == :render
             function(DEBUG)
                 if DEBUG
-                    SDL2.SDL_RenderDrawLines(MAIN.renderer, [
+                    SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
                         SDL2.SDL_Point(this.position.x, this.position.y), 
                         SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
                         SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
@@ -64,21 +63,25 @@ module TextBoxModule
                 cameraDiff = this.isWorldEntity ? 
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
                 Math.Vector2(0,0)
-
-                @assert SDL2.SDL_RenderCopy(MAIN.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+                
+                @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
-                MAIN.renderer = MAIN.renderer
                 path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
+                SDL2.SDL_ClearError()
                 font = SDL2.TTF_OpenFont(path, this.fontSize)
                 println(unsafe_string(SDL2.SDL_GetError()))
                 this.font = font
+                SDL2.SDL_ClearError()
                 this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                println(unsafe_string(SDL2.SDL_GetError()))
                 surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
+                SDL2.SDL_ClearError()
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
+                println(unsafe_string(SDL2.SDL_GetError()))
 
                 if !this.isWorldEntity
                     this.centerText()
@@ -100,7 +103,7 @@ module TextBoxModule
                 surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.renderText)
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
                 
                 if !this.isWorldEntity
                     this.centerText()

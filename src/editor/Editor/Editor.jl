@@ -388,7 +388,7 @@ module Editor
                     if gameInfo !== nothing && length(gameInfo) > 0 
                         try
                             CImGui.Button("New entity") && (game.createNewEntity())
-                            CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("VT323", "VT323-Regular.ttf")))                    
+                            CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")))                    
                         catch e
                             println(e)
                         end
