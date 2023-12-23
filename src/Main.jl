@@ -33,6 +33,7 @@ module MainLoop
 		selectedEntityUpdated
 		selectedTextBoxIndex
 		screenDimensions
+		spriteLayers::Dict
 		targetFrameRate
 		testMode::Bool
 		textBoxes
@@ -118,6 +119,8 @@ module MainLoop
 				this.lastMousePosition = Math.Vector2(0, 0)
 				this.panCounter = Math.Vector2f(0, 0)
 				this.panThreshold = .1
+
+				this.spriteLayers = BuildSpriteLayers(this)
 
 				if !isUsingEditor
 					for script in scripts
@@ -348,11 +351,49 @@ module MainLoop
 		end
 	end
 
-    """
-    	GameLoop()
-        Runs the game 
-    """
-    function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+"""
+BuildSpriteLayers(main::Main)
+
+Builds the sprite layers for the main game.
+
+# Arguments
+- `main::Main`: The main game object.
+
+"""
+function BuildSpriteLayers(main::Main)
+	layerDict = Dict{String, Array}()
+	layerDict["sort"] = []
+	for entity in main.entities
+		entitySprite = entity.getSprite()
+		if entitySprite != C_NULL
+			if !haskey(layerDict, "$(entitySprite.layer)")
+				push!(layerDict["sort"], entitySprite.layer)
+				layerDict["$(entitySprite.layer)"] = [entitySprite]
+			else
+				push!(layerDict["$(entitySprite.layer)"], entitySprite)
+			end
+		end
+	end
+	sort!(layerDict["sort"])
+
+	return layerDict
+end
+
+"""
+GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+
+Runs the game loop.
+
+Parameters:
+- `this`: The main struct.
+- `startTime`: A reference to the start time of the game loop.
+- `lastPhysicsTime`: A reference to the last physics time of the game loop.
+- `close`: A reference to a boolean indicating whether the game loop should be closed.
+- `isEditor`: A boolean indicating whether the game loop is running in editor mode.
+- `update`: An array containing information to pass back to the editor.
+
+"""
+function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
         try
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
@@ -409,11 +450,7 @@ module MainLoop
 			#region =============    Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
-			# Clear the current render target before rendering again
-			# SDL2.SDL_RenderClear(this.renderer)
-
 			this.scene.camera.update()
-
 
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 			for entity in this.entities
@@ -429,10 +466,6 @@ module MainLoop
 					end
 				end
 
-				entitySprite = entity.getSprite()
-				if entitySprite != C_NULL
-					entitySprite.draw()
-				end
 				entityShape = entity.getShape()
 				if entityShape != C_NULL
 					entityShape.draw()
@@ -455,6 +488,12 @@ module MainLoop
 						round(colSize.x * SCALE_UNITS), 
 						round(colSize.y * SCALE_UNITS))))
 					end
+				end
+			end
+
+			for layer in this.spriteLayers["sort"]
+				for sprite in this.spriteLayers["$(layer)"]
+					sprite.draw()
 				end
 			end
 			#endregion ============= Rendering

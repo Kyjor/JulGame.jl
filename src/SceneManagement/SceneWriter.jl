@@ -103,7 +103,8 @@ module SceneWriterModule
                     "type" => componentType, 
                     "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "w" => component.crop.w, "h" => component.crop.h), 
                     "isFlipped" => component.isFlipped, 
-                    "imagePath" => component.imagePath
+                    "imagePath" => component.imagePath,
+                    "layer" => component.layer,
                     )
                 push!(componentsDict, serializedComponent)
             end

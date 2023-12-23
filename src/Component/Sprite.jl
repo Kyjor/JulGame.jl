@@ -8,6 +8,7 @@
         isFlipped::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
+        layer::Integer
         offset::Math.Vector2f
         parent::Any # Entity
         rotation::Float64
@@ -25,6 +26,7 @@
             this.color = color
             this.crop = crop
             this.image = C_NULL
+            this.layer = 0
             this.pixelsPerUnit = pixelsPerUnit
             this.rotation = 0.0
             this.texture = C_NULL
