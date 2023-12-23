@@ -141,7 +141,7 @@ module SceneBuilderModule
                 function (fontPath)
                     println(fontPath)
                     textBox = TextBox("TextBox", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
-                    textBox.basePath = ""
+                    textBox.initialize()
                     push!(this.main.textBoxes, textBox)
                 end
             else
