@@ -124,8 +124,6 @@
                     return
                 end
 
-
-
                 surface = unsafe_wrap(Array, this.image, 10; own = false)
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
                 

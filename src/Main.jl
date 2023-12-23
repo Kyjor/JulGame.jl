@@ -466,6 +466,13 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					end
 				end
 
+				if isEditor
+					entitySprite = entity.getSprite()
+					if entitySprite != C_NULL
+						entitySprite.draw()
+					end
+				end
+
 				entityShape = entity.getShape()
 				if entityShape != C_NULL
 					entityShape.draw()
@@ -491,9 +498,11 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 			end
 
-			for layer in this.spriteLayers["sort"]
-				for sprite in this.spriteLayers["$(layer)"]
-					sprite.draw()
+			if !isEditor
+				for layer in this.spriteLayers["sort"]
+					for sprite in this.spriteLayers["$(layer)"]
+						sprite.draw()
+					end
 				end
 			end
 			#endregion ============= Rendering
