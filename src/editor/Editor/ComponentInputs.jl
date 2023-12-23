@@ -219,6 +219,10 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             @c CImGui.InputInt4("input int4", vec4i)
 
             currentEntitySelected.getComponent("Sprite").crop = (vec4i[1] == 0 && vec4i[2] == 0 && vec4i[3] == 0 && vec4i[4] == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+        elseif fieldString == "layer"
+            x = Cint(currentEntitySelected.getComponent("Sprite").layer)
+            @c CImGui.InputInt("layer", &x, 1)
+            currentEntitySelected.getComponent("Sprite").layer = x
         end  
     end
 end
