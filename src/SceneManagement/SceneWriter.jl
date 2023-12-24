@@ -80,6 +80,7 @@ module SceneWriterModule
                     "tag" => component.tag, 
                     "isTrigger" => component.isTrigger, 
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "isPlatformerCollider" => component.isPlatformerCollider,
                     )
                 push!(componentsDict, serializedComponent)
             elseif componentType == "Rigidbody"

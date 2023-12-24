@@ -9,6 +9,7 @@ module ColliderModule
         currentRests::Array{Collider}
         enabled::Bool
         isTrigger::Bool
+        isPlatformerCollider::Bool
         offset::Math.Vector2f
         parent::Any
         rigidbody::Any
@@ -23,6 +24,7 @@ module ColliderModule
             this.currentRests = []
             this.enabled = true
             this.isTrigger = false
+            this.isPlatformerCollider = false
             this.offset = offset
             this.rigidbody = C_NULL
             this.parent = C_NULL
@@ -120,13 +122,17 @@ module ColliderModule
                         end
                         if collision[1] == Bottom::CollisionDirection && this.parent.getRigidbody().getVelocity().y >= 0
                             push!(this.currentCollisions, colliders[i])
-                            push!(this.currentRests, colliders[i])
+                            if !colliders[i].isTrigger
+                                push!(this.currentRests, colliders[i])
+                            end
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
-                            onGround = true
+                            if !colliders[i].isTrigger
+                                onGround = true
+                            end
                         end
                         if collision[1] == Below::ColliderLocation
                             push!(this.currentCollisions, colliders[i])
@@ -235,25 +241,33 @@ module ColliderModule
     
         #If none of the sides from A are outside B
         collisionSide = min(depthBottom, depthTop, depthLeft, depthRight)
-        
+        collisionDistance = colliderB.isTrigger ? 0.0 : collisionSide/SCALE_UNITS
+
         if collisionSide == depthBottom
-            #println("Collision from below ", collisionSide/SCALE_UNITS)
-            return (Bottom::CollisionDirection, collisionSide/SCALE_UNITS)
-        elseif collisionSide == depthTop
-            #println("Collision from above")
-            return (Top::CollisionDirection, collisionSide/SCALE_UNITS)
-        elseif collisionSide == depthLeft
-            #println("Collision from the left")
-            return (Left::CollisionDirection, collisionSide/SCALE_UNITS)
-        elseif collisionSide == depthRight
-            #println("Collision from the right")
-            return (Right::CollisionDirection, collisionSide/SCALE_UNITS)
+            #println("Collision from below ", collisionDistance)
+            if colliderB.isPlatformerCollider && collisionDistance > 0.1 #todo: make this a variable based on collider size. It's a magic number right now.
+                return (None::CollisionDirection, 0.0)
+            end
+            return (Bottom::CollisionDirection, collisionDistance)
+        elseif collisionSide == depthTop && !colliderB.isPlatformerCollider
+            #println("Collision from above ", collisionDistance)
+            return (Top::CollisionDirection, collisionDistance)
+        elseif collisionSide == depthLeft && !colliderB.isPlatformerCollider
+            #println("Collision from the left ", collisionDistance)
+            return (Left::CollisionDirection, collisionDistance)
+        elseif collisionSide == depthRight && !colliderB.isPlatformerCollider
+            #println("Collision from the right ", collisionDistance)
+            return (Right::CollisionDirection, collisionDistance)
         end 
         
-        throw
+        return (None::CollisionDirection, 0.0)
     end
 
     function CheckIfResting(colliderA::Collider, colliderB::Collider)
+        if colliderB.isTrigger
+            return (false, 0.0)
+        end
+
         posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderA.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
         posB = colliderB.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderB.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
         offsetAX = colliderA.offset.x * SCALE_UNITS
