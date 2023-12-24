@@ -12,7 +12,6 @@ module MainLoop
 		autoScaleZoom::Bool
 		cameraBackgroundColor
 		debugTextBoxes
-		entities::Array
 		events
 		font
 		globals
@@ -26,9 +25,7 @@ module MainLoop
 		panCounter
 		panThreshold
 		renderer
-		rigidbodies
 		scene::Scene
-		screenButtons
 		selectedEntityIndex
 		selectedEntityUpdated
 		selectedTextBoxIndex
@@ -36,7 +33,6 @@ module MainLoop
 		spriteLayers::Dict
 		targetFrameRate
 		testMode::Bool
-		textBoxes
 		window
 		windowName::String
 		zoom::Float64
@@ -112,10 +108,7 @@ module MainLoop
 					screenButton.initialize()
 				end
 
-				this.entities = this.scene.entities
-				this.rigidbodies = this.scene.rigidbodies
-				this.screenButtons = this.scene.screenButtons
-				this.textBoxes = this.scene.textBoxes
+				this.scene.textBoxes
 				this.lastMousePosition = Math.Vector2(0, 0)
 				this.panCounter = Math.Vector2f(0, 0)
 				this.panThreshold = .1
@@ -217,7 +210,7 @@ module MainLoop
 		
 					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
 		
-					entityToMoveTransform = this.entities[this.selectedEntityIndex].getTransform()
+					entityToMoveTransform = this.scene.entities[this.selectedEntityIndex].getTransform()
 					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
 						diff = this.panCounter.x > this.panThreshold ? -1 : 1
 						entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
@@ -230,8 +223,8 @@ module MainLoop
 					end
 				elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1)
 					if this.input.getButtonHeldDown("LCTRL") && this.input.getButtonPressed("D")
-						push!(this.entities, deepcopy(this.entities[this.selectedEntityIndex]))
-						this.selectedEntityIndex = length(this.entities)
+						push!(this.scene.entities, deepcopy(this.scene.entities[this.selectedEntityIndex]))
+						this.selectedEntityIndex = length(this.scene.entities)
 					end
 				elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
 				end
@@ -272,7 +265,7 @@ module MainLoop
 		elseif s == :selectEntityWithClick
 			function ()
 				entityIndex = 0
-				for entity in this.entities
+				for entity in this.scene.entities
 					entityIndex += 1
 					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
@@ -286,7 +279,7 @@ module MainLoop
 					end
 				end
 				textBoxIndex = 1
-				for textBox in this.textBoxes
+				for textBox in this.scene.textBoxes
 					if this.mousePositionWorld.x >= textBox.position.x && this.mousePositionWorld.x <= textBox.position.x + textBox.size.x && this.mousePositionWorld.y >= textBox.position.y && this.mousePositionWorld.y <= textBox.position.y + textBox.size.y
 						this.selectedTextBoxIndex = textBoxIndex
 						this.selectedEntityIndex = -1
@@ -363,7 +356,7 @@ Builds the sprite layers for the main game.
 function BuildSpriteLayers(main::Main)
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
-	for entity in main.entities
+	for entity in main.scene.entities
 		entitySprite = entity.getSprite()
 		if entitySprite != C_NULL
 			if !haskey(layerDict, "$(entitySprite.layer)")
@@ -383,14 +376,14 @@ export DestroyEntity
 """
 DestroyEntity(entity)
 
-Destroy the specified entity. This also removes the entity's sprite from the sprite layers so that it is no longer rendered.
+Destroy the specified entity. This removes the entity's sprite from the sprite layers so that it is no longer rendered. It also removes the entity's rigidbody from the main game's rigidbodies array.
 
 # Arguments
 - `entity`: The entity to be destroyed.
 """
 function DestroyEntity(entity)
-	for i = 1:length(MAIN.entities)
-		if MAIN.entities[i] == entity
+	for i = 1:length(MAIN.scene.entities)
+		if MAIN.scene.entities[i] == entity
 			if entity.getSprite() != C_NULL
 				for j = 1:length(MAIN.spriteLayers["$(entity.getSprite().layer)"])
 					if MAIN.spriteLayers["$(entity.getSprite().layer)"][j] == entity.getSprite()
@@ -400,7 +393,25 @@ function DestroyEntity(entity)
 				end
 			end
 
-			deleteat!(MAIN.entities, i)
+			if entity.getRigidbody() != C_NULL
+				for j = 1:length(MAIN.scene.rigidbodies)
+					if MAIN.scene.rigidbodies[j] == entity.getRigidbody()
+						deleteat!(MAIN.scene.rigidbodies, j)
+						break
+					end
+				end
+			end
+
+			if entity.getCollider() != C_NULL
+				for j = 1:length(MAIN.scene.colliders)
+					if MAIN.scene.colliders[j] == entity.getCollider()
+						deleteat!(MAIN.scene.colliders, j)
+						break
+					end
+				end
+			end
+
+			deleteat!(MAIN.scene.entities, i)
 			break
 		end
 	end
@@ -417,7 +428,7 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 
 """
 function CreateEntity(entity)
-	push!(MAIN.entities, entity)
+	push!(MAIN.scene.entities, entity)
 	if entity.getSprite() != C_NULL
 		if !haskey(MAIN.spriteLayers, "$(entity.getSprite().layer)")
 			push!(MAIN.spriteLayers["sort"], entity.getSprite().layer)
@@ -427,6 +438,16 @@ function CreateEntity(entity)
 			push!(MAIN.spriteLayers["$(entity.getSprite().layer)"], entity.getSprite())
 		end
 	end
+
+	if entity.getRigidbody() != C_NULL
+		push!(MAIN.scene.rigidbodies, entity.getRigidbody())
+	end
+
+	if entity.getCollider() != C_NULL
+		push!(MAIN.scene.colliders, entity.getCollider())
+	end
+
+	return entity
 end
 
 """
@@ -491,7 +512,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
 					return
 				end
-				for rigidbody in this.rigidbodies
+				for rigidbody in this.scene.rigidbodies
 					rigidbody.update(deltaTime)
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
@@ -505,7 +526,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			this.scene.camera.update()
 
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-			for entity in this.entities
+			for entity in this.scene.entities
 				if !entity.isActive
 					continue
 				end
@@ -560,11 +581,11 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			#endregion ============= Rendering
 
 			#region ============= UI
-			for screenButton in this.screenButtons
+			for screenButton in this.scene.screenButtons
 				screenButton.render()
 			end
 
-			for textBox in this.textBoxes
+			for textBox in this.scene.textBoxes
 				textBox.render(DEBUG)
 			end
 			#endregion ============= UI
@@ -631,7 +652,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			end
 
 			if isEditor && update != C_NULL
-				returnData = [[this.entities, this.textBoxes, this.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
+				returnData = [[this.scene.entities, this.scene.textBoxes, this.scene.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
 				this.selectedEntityUpdated = false
 				return returnData
 			end

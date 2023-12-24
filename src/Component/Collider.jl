@@ -75,21 +75,21 @@ module ColliderModule
                 #Only check the player against other colliders
                 counter = 0
                 onGround = this.parent.getRigidbody().grounded
-                for i in 1:length(colliders)
+                for collider in colliders
                     #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
-                    if !colliders[i].getParent().isActive || !colliders[i].enabled
+                    if !collider.getParent().isActive || !collider.enabled
                         if this.parent.getRigidbody().grounded && i == length(colliders)
                             this.parent.getRigidbody().grounded = false
                         end
                         continue
                     end
-                    if this != colliders[i]
-                        collision = CheckCollision(this, colliders[i])
-                        if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
+                    if this != collider
+                        collision = CheckCollision(this, collider)
+                        if CheckIfResting(this, collider)[1] == true && length(this.currentRests) > 0 && !(collider in this.currentRests)
                             # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                             for j in 1:length(this.currentRests)
-                                if this.currentRests[j].getParent().getTransform().getPosition().y == colliders[i].getParent().getTransform().getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
-                                    push!(this.currentRests, colliders[i])
+                                if this.currentRests[j].getParent().getTransform().getPosition().y == collider.getParent().getTransform().getPosition().y && this.currentRests[j].getSize().y == collider.getSize().y
+                                    push!(this.currentRests, collider)
                                     break
                                 end
                             end
@@ -97,7 +97,7 @@ module ColliderModule
                         
                         transform = this.getParent().getTransform()
                         if collision[1] == Top::CollisionDirection
-                            push!(this.currentCollisions, colliders[i])
+                            push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
@@ -105,7 +105,7 @@ module ColliderModule
                             transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
                         end
                         if collision[1] == Left::CollisionDirection
-                            push!(this.currentCollisions, colliders[i])
+                            push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
@@ -113,7 +113,7 @@ module ColliderModule
                             transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
                         end
                         if collision[1] == Right::CollisionDirection
-                            push!(this.currentCollisions, colliders[i])
+                            push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
@@ -121,21 +121,21 @@ module ColliderModule
                             transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
                         end
                         if collision[1] == Bottom::CollisionDirection && this.parent.getRigidbody().getVelocity().y >= 0
-                            push!(this.currentCollisions, colliders[i])
-                            if !colliders[i].isTrigger
-                                push!(this.currentRests, colliders[i])
+                            push!(this.currentCollisions, collider)
+                            if !collider.isTrigger
+                                push!(this.currentRests, collider)
                             end
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
-                            if !colliders[i].isTrigger
+                            if !collider.isTrigger
                                 onGround = true
                             end
                         end
                         if collision[1] == Below::ColliderLocation
-                            push!(this.currentCollisions, colliders[i])
+                            push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
                                 eventToCall()
                             end
