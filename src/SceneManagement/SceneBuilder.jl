@@ -135,7 +135,7 @@ module SceneBuilderModule
                 end
             elseif s == :createNewEntity
                 function ()
-                    push!(this.main.entities, Entity("New entity", C_NULL))
+                    push!(this.main.scene.entities, Entity("New entity", C_NULL))
                 end
             elseif s == :createNewTextBox
                 function (fontPath)
