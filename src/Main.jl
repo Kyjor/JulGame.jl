@@ -525,7 +525,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 			this.scene.camera.update()
 
-			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+
 			for entity in this.scene.entities
 				if !entity.isActive
 					continue
@@ -538,6 +538,21 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						entityAnimator.update(currentRenderTime, deltaTime)
 					end
 				end
+			end
+
+			if !isEditor
+				for layer in this.spriteLayers["sort"]
+					for sprite in this.spriteLayers["$(layer)"]
+						sprite.draw()
+					end
+				end
+			end
+
+			for entity in this.scene.entities
+				if !entity.isActive
+					continue
+				end
+
 
 				if isEditor
 					entitySprite = entity.getSprite()
@@ -552,6 +567,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 
 				if DEBUG && entity.getCollider() != C_NULL
+					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 					pos = entity.getTransform().getPosition()
 					collider = entity.getCollider()
 					if collider.getType() == "CircleCollider"
@@ -571,13 +587,6 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 			end
 
-			if !isEditor
-				for layer in this.spriteLayers["sort"]
-					for sprite in this.spriteLayers["$(layer)"]
-						sprite.draw()
-					end
-				end
-			end
 			#endregion ============= Rendering
 
 			#region ============= UI
