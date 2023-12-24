@@ -379,6 +379,56 @@ function BuildSpriteLayers(main::Main)
 	return layerDict
 end
 
+export DestroyEntity
+"""
+DestroyEntity(entity)
+
+Destroy the specified entity. This also removes the entity's sprite from the sprite layers so that it is no longer rendered.
+
+# Arguments
+- `entity`: The entity to be destroyed.
+"""
+function DestroyEntity(entity)
+	for i = 1:length(MAIN.entities)
+		if MAIN.entities[i] == entity
+			if entity.getSprite() != C_NULL
+				for j = 1:length(MAIN.spriteLayers["$(entity.getSprite().layer)"])
+					if MAIN.spriteLayers["$(entity.getSprite().layer)"][j] == entity.getSprite()
+						deleteat!(MAIN.spriteLayers["$(entity.getSprite().layer)"], j)
+						break
+					end
+				end
+			end
+
+			deleteat!(MAIN.entities, i)
+			break
+		end
+	end
+end
+
+export CreateEntity
+"""
+CreateEntity(entity)
+
+Create a new entity. Adds the entity to the main game's entities array and adds the entity's sprite to the sprite layers so that it is rendered.
+
+# Arguments
+- `entity`: The entity to create.
+
+"""
+function CreateEntity(entity)
+	push!(MAIN.entities, entity)
+	if entity.getSprite() != C_NULL
+		if !haskey(MAIN.spriteLayers, "$(entity.getSprite().layer)")
+			push!(MAIN.spriteLayers["sort"], entity.getSprite().layer)
+			MAIN.spriteLayers["$(entity.getSprite().layer)"] = [entity.getSprite()]
+			sort!(MAIN.spriteLayers["sort"])
+		else
+			push!(MAIN.spriteLayers["$(entity.getSprite().layer)"], entity.getSprite())
+		end
+	end
+end
+
 """
 GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
 
@@ -404,7 +454,9 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				SDL2.SDL_GetWindowSize(this.window, pointer(w), pointer(h))
 
 				if update[2] != x[1] || update[3] != y[1]
+					if (update[2] < 2147483648 && update[3] < 2147483648)
 						SDL2.SDL_SetWindowPosition(this.window, round(update[2]), round(update[3]))
+					end
 				end
 				if update[4] != w[1] || update[5] != h[1]
 					SDL2.SDL_SetWindowSize(this.window, round(update[4]), round(update[5]))

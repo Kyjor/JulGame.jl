@@ -102,6 +102,7 @@ module SceneReaderModule
             elseif component.type == "Collider"
                 newComponent = Collider(Vector2f(component.size.x, component.size.y), Vector2f(), component.tag)
                 newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
+                newComponent.isPlatformerCollider = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
                 newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
             elseif component.type == "CircleCollider"
                 newComponent = CircleCollider(convert(Float64, component.diameter), Vector2f(component.offset.x, component.offset.y), component.tag)
