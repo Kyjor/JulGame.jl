@@ -28,9 +28,10 @@ module ShapeModule
     function Base.getproperty(this::Shape, s::Symbol)
         if s == :draw
             function()
-                if MAIN.renderer == C_NULL
+                if JulGame.Renderer == C_NULL
                     return                    
                 end
+                println("drawing shape")
 
                 parentTransform = this.parent.getTransform()
 
@@ -45,9 +46,9 @@ module ShapeModule
                 convert(Integer,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
                 convert(Integer,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
                 convert(Integer,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
-                SDL2.SDL_SetRenderDrawColor(MAIN.renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
+                SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
 
-                this.isFilled ? SDL2.SDL_RenderFillRect( MAIN.renderer, outlineRect) : SDL2.SDL_RenderDrawRect( MAIN.renderer, outlineRect);
+                this.isFilled ? SDL2.SDL_RenderFillRect( JulGame.Renderer, outlineRect) : SDL2.SDL_RenderDrawRect( JulGame.Renderer, outlineRect);
                 
             end
     elseif s == :setParent

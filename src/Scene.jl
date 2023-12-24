@@ -38,6 +38,8 @@ function Base.getproperty(this::Scene, s::Symbol)
                     return entity
                 end
             end
+
+            @warn "No entity with name $name found"
             return C_NULL
         end
     else

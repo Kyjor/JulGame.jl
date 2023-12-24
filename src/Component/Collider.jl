@@ -245,7 +245,7 @@ module ColliderModule
 
         if collisionSide == depthBottom
             #println("Collision from below ", collisionDistance)
-            if colliderB.isPlatformerCollider && collisionDistance > 0.1 #todo: make this a variable based on collider size. It's a magic number right now.
+            if colliderB.isPlatformerCollider && collisionDistance > 0.25 #todo: make this a variable based on collider size. It's a magic number right now.
                 return (None::CollisionDirection, 0.0)
             end
             return (Bottom::CollisionDirection, collisionDistance)
