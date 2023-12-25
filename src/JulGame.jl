@@ -5,6 +5,9 @@ module JulGame
     const SDL2E = SDL2Extension
     export SDL2, SDL2E
 
+    include("Utils.jl")
+    export CallSDLFunction
+
     include("Constants.jl")
     export SCALE_UNITS, GRAVITY
     

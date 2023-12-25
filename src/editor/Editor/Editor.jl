@@ -62,14 +62,7 @@ module Editor
             glsl_version = 130
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0)
-    
-            # glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
-            # glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # 3.0+ only
         end
-    
-        # setup GLFW error callback
-        #? error_callback(err::GLFW.GLFWError) = @error "GLFW ERROR: code $(err.code) msg: $(err.description)"
-        #? GLFW.SetErrorCallback(error_callback)
     
         # create window
         game = C_NULL #Entry.run(true)
@@ -88,18 +81,6 @@ module Editor
         CImGui.StyleColorsDark()
         # CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
-    
-        # load Fonts
-        # - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use `CImGui.PushFont/PopFont` to select them.
-        # - `CImGui.AddFontFromFileTTF` will return the `Ptr{ImFont}` so you can store it if you need to select the font among multiple.
-        # - If the file cannot be loaded, the function will return C_NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-        # - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling `CImGui.Build()`/`GetTexDataAsXXXX()``, which `ImGui_ImplXXXX_NewFrame` below will call.
-        # - Read 'fonts/README.txt' for more instructions and details.
-        fonts_dir = joinpath(@__DIR__, "..", "fonts")
-        fonts = unsafe_load(CImGui.GetIO().Fonts)
-        # default_font = CImGui.AddFontDefault(fonts)
-        CImGui.AddFontFromFileTTF(fonts, joinpath(fonts_dir, "Roboto-Medium.ttf"), 16)
-        # @assert default_font != C_NULL
     
         # setup Platform/Renderer bindings
         glfw_ctx = ImGuiGLFWBackend.create_context(window, install_callbacks = true)
