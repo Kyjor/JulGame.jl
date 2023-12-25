@@ -27,7 +27,7 @@ module TextBoxModule
 
             this.alpha = 255
             this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
-            this.fontPath = fontPath
+            this.fontPath = (isEditor && isDefaultFont) ? joinpath("FiraCode", "ttf", "FiraCode-Medium.ttf") : fontPath
             this.fontSize = fontSize
             this.id = 0
             this.isCenteredX = isCenteredX
@@ -68,24 +68,7 @@ module TextBoxModule
             end
         elseif s == :initialize
             function()
-                path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-                SDL2.SDL_ClearError()
-                font = SDL2.TTF_OpenFont(path, this.fontSize)
-                println(unsafe_string(SDL2.SDL_GetError()))
-                this.font = font
-                SDL2.SDL_ClearError()
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
-                println(unsafe_string(SDL2.SDL_GetError()))
-                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-
-                this.size = Math.Vector2(surface[1].w, surface[1].h)
-                SDL2.SDL_ClearError()
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
-                println(unsafe_string(SDL2.SDL_GetError()))
-
-                if !this.isWorldEntity
-                    this.centerText()
-                end
+                Initialize(this)
             end
         elseif s == :setPosition
             function(position::Math.Vector2)
@@ -99,7 +82,7 @@ module TextBoxModule
                 this.text = newText
                 SDL2.SDL_FreeSurface(this.renderText)
                 SDL2.SDL_DestroyTexture(this.textTexture)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
                 surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
@@ -135,4 +118,25 @@ module TextBoxModule
             end
         end
     end
+
+    function Initialize(this)
+        path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
+
+        this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
+        if this.font == C_NULL
+            return
+        end
+
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+        
+        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
+
+        if !this.isWorldEntity
+            this.centerText()
+        end
+    end
+
 end

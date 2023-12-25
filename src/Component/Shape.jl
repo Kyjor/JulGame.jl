@@ -31,7 +31,6 @@ module ShapeModule
                 if JulGame.Renderer == C_NULL
                     return                    
                 end
-                println("drawing shape")
 
                 parentTransform = this.parent.getTransform()
 
