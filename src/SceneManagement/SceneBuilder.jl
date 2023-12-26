@@ -100,11 +100,11 @@ module SceneBuilderModule
                                     param = true
                                 elseif lowercase(param) == "false"
                                     param = false
-                                else 
+                                else
                                     try
-                                        newParam = parse(Float64, param)
-                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Integer, param)
-                                    catch 
+                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
+                                    catch e
+                                        println(e)
                                     end
                                 end
                                 push!(params, param)
