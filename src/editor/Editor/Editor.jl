@@ -361,7 +361,7 @@ module Editor
                         end
                         projectPath = currentTextInTextBox
                         sceneFileName = currentTextInTextBox1
-                        CImGui.Button("Load Scene") && (game = loadScene(sceneFileName, projectPath))
+                        CImGui.Button("Load Scene") && (game = loadScene("$(sceneFileName).json", projectPath))
                         CImGui.End()
                     end
 

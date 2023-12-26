@@ -17,7 +17,7 @@ module SceneWriterModule
         push!(textBoxesDict, Dict(
             "id" => count, 
             "alpha" => textBox.alpha, 
-            "fontPath" => textBox.fontPath, 
+            "fontPath" => normalizePath(textBox.fontPath), 
             "fontSize" => textBox.fontSize, 
             "isCenteredX" => textBox.isCenteredX,
             "isCenteredY" => textBox.isCenteredY,
@@ -94,7 +94,7 @@ module SceneWriterModule
                     "type" => componentType, 
                     "channel" => component.channel, 
                     "isMusic" => component.isMusic, 
-                    "path" => component.path, 
+                    "path" => normalizePath(component.path), 
                     "sound" => component.sound, 
                     "volume" => component.volume, 
                     )
@@ -104,13 +104,17 @@ module SceneWriterModule
                     "type" => componentType, 
                     "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "w" => component.crop.w, "h" => component.crop.h), 
                     "isFlipped" => component.isFlipped, 
-                    "imagePath" => component.imagePath,
+                    "imagePath" => normalizePath(component.imagePath),
                     "layer" => component.layer,
                     )
                 push!(componentsDict, serializedComponent)
             end
         end
         return componentsDict
+    end
+
+    function normalizePath(path)
+        return replace(joinpath(path), "\\" => "//")
     end
 
     export serializeEntityScripts
