@@ -134,7 +134,7 @@ module Editor
                     CImGui.NewFrame()
         
                     event = @event begin
-                        serializeEntities(entities, textBoxes, projectPath, sceneFileName)
+                        serializeEntities(entities, textBoxes, projectPath, "$(sceneFileName).json")
                     end
                     events = [event]
                     @c ShowMainMenuBar(Ref{Bool}(true), events)
