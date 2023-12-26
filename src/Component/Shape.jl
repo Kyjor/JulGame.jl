@@ -8,10 +8,10 @@ module ShapeModule
         isFilled::Bool
         isWorldEntity::Bool
         offset::Math.Vector2
-        position::Math.Vector2
+        position::Math.Vector2f
         parent::Any # Entity
         
-        function Shape(dimensions::Math.Vector2 = Math.Vector2(1,1), color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2 = Math.Vector2(); isWorldEntity::Bool = true, position::Math.Vector2 = Math.Vector2())
+        function Shape(dimensions::Math.Vector2 = Math.Vector2(1,1), color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2 = Math.Vector2(); isWorldEntity::Bool = true, position::Math.Vector2f = Math.Vector2f())
             this = new()
             
             this.color = color
