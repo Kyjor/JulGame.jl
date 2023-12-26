@@ -8,16 +8,18 @@
         isFlipped::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
+        isWorldEntity::Bool
         layer::Integer
         offset::Math.Vector2f
         parent::Any # Entity
+        position::Math.Vector2f
         rotation::Float64
         pixelsPerUnit::Integer
         size::Math.Vector2
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit=-1)
+        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit=-1, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f())
             this = new()
 
             this.offset = Math.Vector2f()
@@ -26,8 +28,10 @@
             this.color = color
             this.crop = crop
             this.image = C_NULL
+            this.isWorldEntity = isWorldEntity
             this.layer = 0
             this.pixelsPerUnit = pixelsPerUnit
+            this.position = position
             this.rotation = 0.0
             this.texture = C_NULL
 
@@ -67,18 +71,26 @@
                 end
 
                 parentTransform = this.parent.getTransform()
+
+                cameraDiff = this.isWorldEntity ? 
+                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+                Math.Vector2(0,0)
+                position = this.isWorldEntity ?
+                parentTransform.getPosition() :
+                this.position
+
                 srcRect = (this.crop == Math.Vector4() || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.w,this.crop.h))
                 dstRect = Ref(SDL2.SDL_Rect(
-                    convert(Integer, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Integer, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Integer, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Integer, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
                     convert(Integer, round(parentTransform.getScale().x * SCALE_UNITS)),
                     convert(Integer, round(parentTransform.getScale().y * SCALE_UNITS))
                 ))
                 
                 if this.pixelsPerUnit > 0
                     dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Integer, round((parentTransform.getPosition().x + this.offset.x - MAIN.scene.camera.position.x) * SCALE_UNITS - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Integer, round((parentTransform.getPosition().y + this.offset.y - MAIN.scene.camera.position.y) * SCALE_UNITS - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
+                        convert(Integer, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
+                        convert(Integer, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
                         convert(Integer, round(this.size.x * SCALE_UNITS/this.pixelsPerUnit)),
                         convert(Integer, round(this.size.y * SCALE_UNITS/this.pixelsPerUnit))
                     ))                
