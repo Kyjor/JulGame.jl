@@ -61,8 +61,12 @@ module SceneReaderModule
             push!(res, textBoxes)
             return res
         catch e 
-            println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+            if !isEditor
+                println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
+            else
+                rethrow(e)
+            end
         end
     end
 

@@ -7,27 +7,28 @@ module SceneBuilderModule
     using ..SceneManagement.JulGame.TextBoxModule
     using ..SceneManagement.SceneReaderModule
 
-    if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
-        println("Loading scripts...")
-        include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
-    else
-        script_folder_name = "scripts"
-        current_dir = pwd()
-
-        # Find all folders in the current directory
-        folders = filter(isdir, readdir(current_dir))
-
-        # Check each folder for the "scripts" subfolder
-        for folder in folders
-            scripts_path = joinpath(current_dir, folder, script_folder_name)
-            if isdir(scripts_path)
-                println("Loading scripts in $scripts_path...")
-                include.(filter(contains(r".jl$"), readdir(scripts_path; join=true)))
-                break  # Exit loop if "scripts" folder is found in any parent folder
+    function __init__()
+        if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
+            println("Loading scripts...")
+            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
+        else
+            script_folder_name = "scripts"
+            current_dir = pwd()
+            
+            # Find all folders in the current directory
+            folders = filter(isdir, readdir(current_dir))
+            
+            # Check each folder for the "scripts" subfolder
+            for folder in folders
+                scripts_path = joinpath(current_dir, folder, script_folder_name)
+                if isdir(scripts_path)
+                    println("Loading scripts in $scripts_path...")
+                    include.(filter(contains(r".jl$"), readdir(scripts_path; join=true)))
+                    break  # Exit loop if "scripts" folder is found in any parent folder
+                end
             end
         end
     end
-
         
     include("../Camera.jl")
     include("../Main.jl")
