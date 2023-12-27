@@ -69,6 +69,7 @@ module MainLoop
 		if s == :init
 			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 
+				SDL2.init()
 				if dimensions == Math.Vector2()
 					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
@@ -96,49 +97,12 @@ module MainLoop
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 				this.font = SDL2.TTF_OpenFont(joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), 50)
 
-				scripts = []
-				for entity in this.scene.entities
-					for script in entity.scripts
-						push!(scripts, script)
-					end
-				end
-
-				for textBox in this.scene.textBoxes
-					textBox.initialize()
-				end
-				for screenButton in this.scene.screenButtons
-					screenButton.initialize()
-				end
-
-				this.scene.textBoxes
-				this.lastMousePosition = Math.Vector2(0, 0)
-				this.panCounter = Math.Vector2f(0, 0)
-				this.panThreshold = .1
-
-				this.spriteLayers = BuildSpriteLayers(this)
-
-				if !isUsingEditor
-					for script in scripts
-						try
-							script.initialize()
-						catch e
-							if typeof(e) != ErrorException || !contains(e.msg, "initialize")
-								println("Error initializing script")
-								println(e)
-								Base.show_backtrace(stdout, catch_backtrace())
-							end
-						end
-					end
-				end
+				InitializeScriptsAndComponents(this)
 
 				if !isUsingEditor
 					this.fullLoop()
 					return
 				end
-			end
-		elseif s == :loadScene
-			function (scene)
-				this.scene = scene
 			end
 		elseif s == :fullLoop
 			function ()
@@ -345,6 +309,57 @@ module MainLoop
 			end
 		end
 	end
+
+function InitializeScriptsAndComponents(this::Main)
+	scripts = []
+	for entity in this.scene.entities
+		for script in entity.scripts
+			push!(scripts, script)
+		end
+	end
+
+	for textBox in this.scene.textBoxes
+		textBox.initialize()
+	end
+	for screenButton in this.scene.screenButtons
+		screenButton.initialize()
+	end
+
+	this.lastMousePosition = Math.Vector2(0, 0)
+	this.panCounter = Math.Vector2f(0, 0)
+	this.panThreshold = .1
+
+	this.spriteLayers = BuildSpriteLayers(this)
+
+	if !isUsingEditor
+		for script in scripts
+			try
+				script.initialize()
+			catch e
+				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
+					println("Error initializing script")
+					println(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+			end
+		end
+	end
+end
+
+export ChangeScene
+function ChangeScene(this::Main)
+	#destroy current scene 
+	
+
+	#load new scene 
+	this.scene = Scene()
+	this.level.scene = sceneFileName
+	this.level.changeScene()
+	spriteLayers::Dict
+
+	InitializeScriptsAndComponents(this)
+
+end
 
 """
 BuildSpriteLayers(main::Main)

@@ -41,7 +41,6 @@ module SceneBuilderModule
         function Scene(sceneFileName::String, srcPath::String = joinpath(pwd(), ".."))
             this = new()  
 
-            SDL2.init()
             this.scene = sceneFileName
             this.srcPath = srcPath
             JulGame.BasePath = srcPath
@@ -127,11 +126,71 @@ module SceneBuilderModule
                     end
 
                     main.assets = joinpath(BasePath, "assets")
-                    main.loadScene(main.scene)
                     main.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
 
                     this.main = main
                     return main
+                end
+            elseif s == :changeScene
+                function()
+                    main = MAIN
+                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+                    main.scene.entities = scene[1]
+                    main.scene.textBoxes = scene[2]
+
+                    for textBox in main.scene.textBoxes
+                        if textBox.isWorldEntity
+                            textBox.centerText()
+                        end
+                    end
+
+                    for entity in main.scene.entities
+                        for component in entity.components
+                            if typeof(component) == Rigidbody
+                                push!(main.scene.rigidbodies, component)
+                            elseif typeof(component) == Collider
+                                push!(main.scene.colliders, component)
+                            end
+                        end
+
+                        if !isUsingEditor
+                            scriptCounter = 1
+                            for script in entity.scripts
+                                params = []
+                                for param in script.parameters
+                                    if lowercase(param) == "true"
+                                        param = true
+                                    elseif lowercase(param) == "false"
+                                        param = false
+                                    else
+                                        try
+                                            param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
+                                        catch e
+                                            println(e)
+                                        end
+                                    end
+                                    push!(params, param)
+                                end
+
+                                newScript = C_NULL
+                                try
+                                    newScript = TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
+                                catch e
+                                    println(e)
+                                    Base.show_backtrace(stdout, catch_backtrace())
+                                end
+
+                                entity.scripts[scriptCounter] = newScript
+                                newScript.setParent(entity)
+                                scriptCounter += 1
+                            end
+                        end
+                    end
+
+                    main.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
+
+                    this.main = main
+                        
                 end
             elseif s == :createNewEntity
                 function ()
