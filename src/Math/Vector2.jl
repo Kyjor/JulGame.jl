@@ -6,7 +6,6 @@ struct Vector2
     Vector2(value::Number) = new(convert(Integer, round(value)), convert(Integer, round(value)))
 
     Vector2(x::Integer, y::Integer) = new(x,y)
-    Vector2(x::Integer, y::Integer) = new(convert(Integer, x), convert(Integer, y))
 
     #convert if float
     Vector2(x::Float64, y::Float64) = new(convert(Integer,round(x)),convert(Integer,round(y)));

@@ -69,7 +69,6 @@ module MainLoop
 		if s == :init
 			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 
-				SDL2.init()
 				if dimensions == Math.Vector2()
 					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
@@ -97,7 +96,7 @@ module MainLoop
 				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
 				this.font = SDL2.TTF_OpenFont(joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), 50)
 
-				InitializeScriptsAndComponents(this)
+				InitializeScriptsAndComponents(this, isUsingEditor)
 
 				if !isUsingEditor
 					this.fullLoop()
@@ -310,7 +309,7 @@ module MainLoop
 		end
 	end
 
-function InitializeScriptsAndComponents(this::Main)
+function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	scripts = []
 	for entity in this.scene.entities
 		for script in entity.scripts
