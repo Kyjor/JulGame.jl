@@ -515,7 +515,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					return
 				end
 				for rigidbody in this.scene.rigidbodies
-					rigidbody.update(deltaTime)
+					try
+						rigidbody.update(deltaTime)
+					catch e
+						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
+						throw(e)
+					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
 			end
@@ -534,7 +539,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 
 				if !isEditor
-					entity.update(deltaTime)
+					try
+						entity.update(deltaTime)
+					catch e
+						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
+						throw(e)
+					end
 					entityAnimator = entity.getAnimator()
 					if entityAnimator != C_NULL
 						entityAnimator.update(currentRenderTime, deltaTime)
@@ -560,7 +570,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							continue
 						end
 						rendercount += 1
-						sprite.draw()
+						try
+							sprite.draw()
+						catch e
+							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
+							throw(e)
+						end
 					end
 				end
 				#println("Skipped $skipcount, rendered $rendercount")
@@ -575,7 +590,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				if isEditor
 					entitySprite = entity.getSprite()
 					if entitySprite != C_NULL
-						entitySprite.draw()
+						try
+							entitySprite.draw()
+						catch e
+							println(entity.name, " with id: ", entity.id, " has an error in its sprite")
+							throw(e)
+						end
 					end
 				end
 
