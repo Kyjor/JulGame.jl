@@ -22,6 +22,7 @@ module MainLoop
 		level
 		mousePositionWorld
 		mousePositionWorldRaw
+		optimizeSpriteRendering::Bool
 		panCounter
 		panThreshold
 		renderer
@@ -51,6 +52,7 @@ module MainLoop
 			this.mousePositionWorld = Math.Vector2f()
 			this.mousePositionWorldRaw = Math.Vector2f()
 			this.lastMousePositionWorld = Math.Vector2f()
+			this.optimizeSpriteRendering = false
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
@@ -541,11 +543,27 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			end
 
 			if !isEditor
+				skipcount = 0
+				rendercount = 0
+				# println("position: $(this.scene.camera.position) offset: $(this.scene.camera.offset) dimensions: $(this.scene.camera.dimensions)")
+				 #println("dimensions: $(this.scene.camera.dimensions)")
 				for layer in this.spriteLayers["sort"]
 					for sprite in this.spriteLayers["$(layer)"]
+						# get camera size and position and only render if the sprite is within the camera's view
+						cameraPosition = this.scene.camera.position
+						cameraSize = this.scene.camera.dimensions
+						spritePosition = sprite.parent.getTransform().getPosition()
+						spriteSize = sprite.parent.getTransform().getScale()
+						
+						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || spritePosition.y > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+							skipcount += 1
+							continue
+						end
+						rendercount += 1
 						sprite.draw()
 					end
 				end
+				#println("Skipped $skipcount, rendered $rendercount")
 			end
 
 			for entity in this.scene.entities
