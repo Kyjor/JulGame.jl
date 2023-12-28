@@ -8,14 +8,15 @@ module MainLoop
 
 	export Main
 	mutable struct Main
-		assets
+		assets::String
 		autoScaleZoom::Bool
 		cameraBackgroundColor
+		close::Bool
 		debugTextBoxes
 		events
 		globals
 		input
-		isDraggingEntity
+		isDraggingEntity::Bool
 		lastMousePosition
 		lastMousePositionWorld
 		level
@@ -30,6 +31,7 @@ module MainLoop
 		selectedEntityUpdated
 		selectedTextBoxIndex
 		screenDimensions
+		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate
 		testMode::Bool
@@ -45,6 +47,7 @@ module MainLoop
 			this.input = Input()
 
 			this.cameraBackgroundColor = [0,0,0]
+			this.close = false
 			this.debugTextBoxes = []
 			this.events = []
 			this.input.scene = this.scene
@@ -56,6 +59,7 @@ module MainLoop
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
 			this.screenDimensions = C_NULL
+			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
 			this.testMode = false
@@ -76,11 +80,12 @@ module MainLoop
 					return
 				end
 			end
-		elseif s == :changeScene
+		elseif s == :initializeNewScene
 			function()
+				this.level.changeScene()
 				InitializeScriptsAndComponents(this, false)
 
-				if !isUsingEditor
+				if true
 					this.fullLoop()
 					return
 				end
@@ -89,12 +94,12 @@ module MainLoop
 			function ()
 				try
 					DEBUG = false
-					close = Ref(Bool(false))
+					this.close = false
 					startTime = Ref(UInt64(0))
 					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
-					while !close[]
-						GameLoop(this, startTime, lastPhysicsTime, close, false, C_NULL)
+					while !this.close
+						GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
 						if this.testMode
 							break
 						end
@@ -113,8 +118,14 @@ module MainLoop
 							end
 						end
 					end
-					SDL2.Mix_Quit()
-					SDL2.SDL_Quit()
+					if !this.shouldChangeScene
+						SDL2.SDL_DestroyRenderer(this.renderer)
+						SDL2.SDL_DestroyWindow(this.window)
+						SDL2.SDL_Quit()
+					else
+						this.shouldChangeScene = false
+						this.initializeNewScene()
+					end
 				end
 			end
 		elseif s == :gameLoop
@@ -357,6 +368,8 @@ end
 
 export ChangeScene
 function ChangeScene(sceneFileName::String)
+	MAIN.close = true
+	MAIN.shouldChangeScene = true
 	#destroy current scene 
 	for entity in MAIN.scene.entities
 		for script in entity.scripts
@@ -386,12 +399,11 @@ function ChangeScene(sceneFileName::String)
 	# end
 
 	#load new scene 
+	camera = MAIN.scene.camera
 	MAIN.scene = Scene()
+	MAIN.scene.camera = camera
 	MAIN.level.scene = sceneFileName
-	MAIN.level.changeScene()
-	spriteLayers::Dict
-
-	InitializeScriptsAndComponents(MAIN)
+	#spriteLayers::Dict
 end
 
 """
@@ -513,15 +525,15 @@ Parameters:
 - `this`: The main struct.
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
-- `close`: A reference to a boolean indicating whether the game loop should be closed.
 - `isEditor`: A boolean indicating whether the game loop is running in editor mode.
 - `update`: An array containing information to pass back to the editor.
 
 """
-function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
         try
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
+			println("Total entities: ", length(this.scene.entities))
 
 			x,y,w,h = Int[1], Int[1], Int[1], Int[1]
 			if isEditor && update != C_NULL
@@ -545,7 +557,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			this.input.pollInput()
 
 			if this.input.quit && !isEditor
-				close[] = true
+				this.close = true
 			end
 			DEBUG = this.input.debug
 
@@ -571,7 +583,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						rigidbody.update(deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-						throw(e)
+						Base.show_backtrace(stdout, catch_backtrace())
 					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
@@ -584,7 +596,6 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 			this.scene.camera.update()
 
-
 			for entity in this.scene.entities
 				if !entity.isActive
 					continue
@@ -593,6 +604,9 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				if !isEditor
 					try
 						entity.update(deltaTime)
+						if this.close
+							return
+						end
 					catch e
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
 						throw(e)

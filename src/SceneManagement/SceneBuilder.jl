@@ -35,7 +35,6 @@ module SceneBuilderModule
     
     export Scene
     mutable struct Scene
-        main
         scene
         srcPath
 
@@ -57,37 +56,36 @@ module SceneBuilderModule
                         zoom = 1.0
                     end
 
-                    main = MAIN
-                    main.windowName = windowName
-                    main.zoom = zoom
-                    main.globals = globals
-                    main.level = this
-                    main.targetFrameRate = targetFrameRate
+                    MAIN.windowName = windowName
+                    MAIN.zoom = zoom
+                    MAIN.globals = globals
+                    MAIN.level = this
+                    MAIN.targetFrameRate = targetFrameRate
                     scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
-                    main.scene.entities = scene[1]
-                    main.scene.textBoxes = scene[2]
+                    MAIN.scene.entities = scene[1]
+                    MAIN.scene.textBoxes = scene[2]
                     if dimensions.x < camDimensions.x && dimensions.x > 0
                         camDimensions = Vector2(dimensions.x, camDimensions.y)
                     end
                     if dimensions.y < camDimensions.y && dimensions.y > 0
                         camDimensions = Vector2(camDimensions.x, dimensions.y)
                     end
-                    main.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
-
-                    for textBox in main.scene.textBoxes
+                    MAIN.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
+                    
+                    for textBox in MAIN.scene.textBoxes
                         if textBox.isWorldEntity
                             textBox.centerText()
                         end
                     end
 
-                    main.scene.rigidbodies = []
-                    main.scene.colliders = []
-                    for entity in main.scene.entities
+                    MAIN.scene.rigidbodies = []
+                    MAIN.scene.colliders = []
+                    for entity in MAIN.scene.entities
                         for component in entity.components
                             if typeof(component) == Rigidbody
-                                push!(main.scene.rigidbodies, component)
+                                push!(MAIN.scene.rigidbodies, component)
                             elseif typeof(component) == Collider
-                                push!(main.scene.colliders, component)
+                                push!(MAIN.scene.colliders, component)
                             end
                         end
 
@@ -126,31 +124,29 @@ module SceneBuilderModule
 
                     end
 
-                    main.assets = joinpath(BasePath, "assets")
-                    main.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
+                    MAIN.assets = joinpath(BasePath, "assets")
+                    MAIN.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
 
-                    this.main = main
-                    return main
+                    return MAIN
                 end
             elseif s == :changeScene
                 function()
-                    main = this.main
                     scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), false)
-                    main.scene.entities = scene[1]
-                    main.scene.textBoxes = scene[2]
+                    MAIN.scene.entities = scene[1]
+                    MAIN.scene.textBoxes = scene[2]
 
-                    for textBox in main.scene.textBoxes
+                    for textBox in MAIN.scene.textBoxes
                         if textBox.isWorldEntity
                             textBox.centerText()
                         end
                     end
 
-                    for entity in main.scene.entities
+                    for entity in MAIN.scene.entities
                         for component in entity.components
                             if typeof(component) == Rigidbody
-                                push!(main.scene.rigidbodies, component)
+                                push!(MAIN.scene.rigidbodies, component)
                             elseif typeof(component) == Collider
-                                push!(main.scene.colliders, component)
+                                push!(MAIN.scene.colliders, component)
                             end
                         end
 
@@ -187,12 +183,7 @@ module SceneBuilderModule
                                 scriptCounter += 1
                             end
                         end
-                    end
-
-                    main.changeScene()
-
-                    this.main = main
-                        
+                    end 
                 end
             elseif s == :createNewEntity
                 function ()
