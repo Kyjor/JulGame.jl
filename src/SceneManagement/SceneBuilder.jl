@@ -132,7 +132,14 @@ module SceneBuilderModule
             elseif s == :changeScene
                 function()
                     scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), false)
-                    MAIN.scene.entities = scene[1]
+                    
+                    println("Changing scene to $this.scene")
+                    println("Entities in main scene: ", length(MAIN.scene.entities))
+
+                    for entity in scene[1]
+                        push!(MAIN.scene.entities, entity)
+                    end
+
                     MAIN.scene.textBoxes = scene[2]
 
                     for textBox in MAIN.scene.textBoxes
@@ -142,6 +149,10 @@ module SceneBuilderModule
                     end
 
                     for entity in MAIN.scene.entities
+                        if entity.persistentBetweenScenes
+                            continue
+                        end
+                        
                         for component in entity.components
                             if typeof(component) == Rigidbody
                                 push!(MAIN.scene.rigidbodies, component)

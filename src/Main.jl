@@ -129,8 +129,8 @@ module MainLoop
 				end
 			end
 		elseif s == :gameLoop
-			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
-				return GameLoop(this, startTime, lastPhysicsTime, close, isEditor, update)
+			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+				return GameLoop(this, startTime, lastPhysicsTime, isEditor, update)
 			end
 		elseif s == :handleEditorInputsCamera
 			function (update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
@@ -371,7 +371,19 @@ function ChangeScene(sceneFileName::String)
 	MAIN.close = true
 	MAIN.shouldChangeScene = true
 	#destroy current scene 
+	#println("Entities before destroying: ", length(MAIN.scene.entities))
+	count = 0
+	skipcount = 0
+	persistentEntities = []	
 	for entity in MAIN.scene.entities
+		if entity.persistentBetweenScenes
+			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
+			push!(persistentEntities, entity)
+			skipcount += 1
+			continue
+		end
+
+		DestroyEntityComponents(entity)
 		for script in entity.scripts
 			try
 				script.onShutDown()
@@ -383,15 +395,21 @@ function ChangeScene(sceneFileName::String)
 				end
 			end
 		end
-		DestroyEntity(entity)
+		count += 1
 	end
+	# println("Destroyed $count entities")
+	# println("Skipped $skipcount entities")
 
+	# println("Entities left after destroying: ", length(persistentEntities))
+
+	#Todo
 	#delete all textboxes
 	# for textBox in MAIN.scene.textBoxes
 	# 	textBox.destroy()
 	# 	delete!(MAIN.scene.textBoxes, textBox)
 	# end
 
+	#Todo
 	# #delete all screen buttons
 	# for screenButton in MAIN.scene.screenButtons
 	# 	screenButton.destroy()
@@ -401,9 +419,9 @@ function ChangeScene(sceneFileName::String)
 	#load new scene 
 	camera = MAIN.scene.camera
 	MAIN.scene = Scene()
+	MAIN.scene.entities = persistentEntities
 	MAIN.scene.camera = camera
 	MAIN.level.scene = sceneFileName
-	#spriteLayers::Dict
 end
 
 """
@@ -446,39 +464,43 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 function DestroyEntity(entity)
 	for i = 1:length(MAIN.scene.entities)
 		if MAIN.scene.entities[i] == entity
-			entitySprite = entity.getSprite()
-			if entitySprite != C_NULL
-				for j = 1:length(MAIN.spriteLayers["$(entitySprite.layer)"])
-					if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
-						entitySprite.destroy()
-						deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
-						break
-					end
-				end
-			end
-
-			entityRigidbody = entity.getRigidbody()
-			if entityRigidbody != C_NULL
-				for j = 1:length(MAIN.scene.rigidbodies)
-					if MAIN.scene.rigidbodies[j] == entityRigidbody
-						deleteat!(MAIN.scene.rigidbodies, j)
-						break
-					end
-				end
-			end
-
-			entityCollider = entity.getCollider()
-			if entityCollider != C_NULL
-				for j = 1:length(MAIN.scene.colliders)
-					if MAIN.scene.colliders[j] == entityCollider
-						deleteat!(MAIN.scene.colliders, j)
-						break
-					end
-				end
-			end
-
+			#	println("Destroying entity: ", entity.name, " with id: ", entity.id, " at index: ", index)
+			DestroyEntityComponents(entity)
 			deleteat!(MAIN.scene.entities, i)
 			break
+		end
+	end
+end
+
+function DestroyEntityComponents(entity)
+	entitySprite = entity.getSprite()
+	if entitySprite != C_NULL
+		for j = 1:length(MAIN.spriteLayers["$(entitySprite.layer)"])
+			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
+				entitySprite.destroy()
+				deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
+				break
+			end
+		end
+	end
+
+	entityRigidbody = entity.getRigidbody()
+	if entityRigidbody != C_NULL
+		for j = 1:length(MAIN.scene.rigidbodies)
+			if MAIN.scene.rigidbodies[j] == entityRigidbody
+				deleteat!(MAIN.scene.rigidbodies, j)
+				break
+			end
+		end
+	end
+
+	entityCollider = entity.getCollider()
+	if entityCollider != C_NULL
+		for j = 1:length(MAIN.scene.colliders)
+			if MAIN.scene.colliders[j] == entityCollider
+				deleteat!(MAIN.scene.colliders, j)
+				break
+			end
 		end
 	end
 end
@@ -533,7 +555,6 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
         try
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
-			println("Total entities: ", length(this.scene.entities))
 
 			x,y,w,h = Int[1], Int[1], Int[1], Int[1]
 			if isEditor && update != C_NULL

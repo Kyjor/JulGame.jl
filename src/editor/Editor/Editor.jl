@@ -489,7 +489,7 @@ module Editor
         
                     glfwMakeContextCurrent(window)
                     glfwSwapBuffers(window)
-                    gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), Ref(Bool(false)), true, update)
+                    gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, update)
                 catch e 
                     push!(latest_exceptions, e)
                     if length(latest_exceptions) > 10
