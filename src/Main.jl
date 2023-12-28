@@ -13,7 +13,6 @@ module MainLoop
 		cameraBackgroundColor
 		debugTextBoxes
 		events
-		font
 		globals
 		input
 		isDraggingEntity
@@ -69,33 +68,7 @@ module MainLoop
 		if s == :init
 			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 
-				if dimensions == Math.Vector2()
-					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
-					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
-					dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
-				end
-				this.autoScaleZoom = autoScaleZoom
-				this.scaleZoom(dimensions.x,dimensions.y)
-
-				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
-
-				flags = SDL2.SDL_RENDERER_ACCELERATED |
-				(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
-				(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-				(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
-
-				this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
-
-				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-				JulGame.Renderer = this.renderer 
-
-				this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
-				# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
-
-				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
-				this.font = SDL2.TTF_OpenFont(joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), 50)
-
+				PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
 				InitializeScriptsAndComponents(this, isUsingEditor)
 
 				if !isUsingEditor
@@ -309,6 +282,34 @@ module MainLoop
 		end
 	end
 
+	function PrepareWindow(this::Main, isUsingEditor::Bool = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+		if dimensions == Math.Vector2()
+			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
+			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
+			dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
+		end
+		this.autoScaleZoom = autoScaleZoom
+		this.scaleZoom(dimensions.x,dimensions.y)
+
+		this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
+
+		flags = SDL2.SDL_RENDERER_ACCELERATED |
+		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
+		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
+		(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+
+		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
+
+		this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+		JulGame.Renderer = this.renderer 
+
+		this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+		SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
+
+		SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+	end
+
 function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	scripts = []
 	for entity in this.scene.entities
@@ -400,27 +401,31 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 function DestroyEntity(entity)
 	for i = 1:length(MAIN.scene.entities)
 		if MAIN.scene.entities[i] == entity
-			if entity.getSprite() != C_NULL
-				for j = 1:length(MAIN.spriteLayers["$(entity.getSprite().layer)"])
-					if MAIN.spriteLayers["$(entity.getSprite().layer)"][j] == entity.getSprite()
-						deleteat!(MAIN.spriteLayers["$(entity.getSprite().layer)"], j)
+			entitySprite = entity.getSprite()
+			if entitySprite != C_NULL
+				for j = 1:length(MAIN.spriteLayers["$(entitySprite.layer)"])
+					if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
+						entitySprite.destroy()
+						deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
 						break
 					end
 				end
 			end
 
-			if entity.getRigidbody() != C_NULL
+			entityRigidbody = entity.getRigidbody()
+			if entityRigidbody != C_NULL
 				for j = 1:length(MAIN.scene.rigidbodies)
-					if MAIN.scene.rigidbodies[j] == entity.getRigidbody()
+					if MAIN.scene.rigidbodies[j] == entityRigidbody
 						deleteat!(MAIN.scene.rigidbodies, j)
 						break
 					end
 				end
 			end
 
-			if entity.getCollider() != C_NULL
+			entityCollider = entity.getCollider()
+			if entityCollider != C_NULL
 				for j = 1:length(MAIN.scene.colliders)
-					if MAIN.scene.colliders[j] == entity.getCollider()
+					if MAIN.scene.colliders[j] == entityCollider
 						deleteat!(MAIN.scene.colliders, j)
 						break
 					end

@@ -59,12 +59,10 @@
     function Base.getproperty(this::Sprite, s::Symbol)
         if s == :draw
             function()
-                if this.image == C_NULL
+                if this.image == C_NULL || MAIN.renderer == C_NULL
                     return
                 end
-                if MAIN.renderer == C_NULL #|| this.renderer == Ptr{nothing}
-                    return                    
-                end
+
                 if this.texture == C_NULL
                     this.texture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.image)
                     this.setColor()
@@ -142,6 +140,17 @@
                 this.imagePath = imagePath
                 this.texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.image)
                 this.setColor()
+            end
+        elseif s == :destroy
+            function()
+                if this.image == C_NULL
+                    return
+                end
+
+                SDL2.SDL_DestroyTexture(this.texture)
+                SDL2.SDL_FreeSurface(this.image)
+                this.image = C_NULL
+                this.texture = C_NULL
             end
         elseif s == :setColor
             function ()
