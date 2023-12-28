@@ -134,8 +134,8 @@ module SceneBuilderModule
                 end
             elseif s == :changeScene
                 function()
-                    main = MAIN
-                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+                    main = this.main
+                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), false)
                     main.scene.entities = scene[1]
                     main.scene.textBoxes = scene[2]
 
@@ -154,7 +154,7 @@ module SceneBuilderModule
                             end
                         end
 
-                        if !isUsingEditor
+                        if true # !isUsingEditor
                             scriptCounter = 1
                             for script in entity.scripts
                                 params = []
@@ -175,7 +175,8 @@ module SceneBuilderModule
 
                                 newScript = C_NULL
                                 try
-                                    newScript = TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
+                                    newScript = eval(Symbol(script.name))(params...)
+                                    # TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
                                 catch e
                                     println(e)
                                     Base.show_backtrace(stdout, catch_backtrace())
@@ -188,7 +189,7 @@ module SceneBuilderModule
                         end
                     end
 
-                    main.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
+                    main.changeScene()
 
                     this.main = main
                         

@@ -76,6 +76,15 @@ module MainLoop
 					return
 				end
 			end
+		elseif s == :changeScene
+			function()
+				InitializeScriptsAndComponents(this, false)
+
+				if !isUsingEditor
+					this.fullLoop()
+					return
+				end
+			end
 		elseif s == :fullLoop
 			function ()
 				try
@@ -347,18 +356,42 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 end
 
 export ChangeScene
-function ChangeScene(this::Main)
+function ChangeScene(sceneFileName::String)
 	#destroy current scene 
-	
+	for entity in MAIN.scene.entities
+		for script in entity.scripts
+			try
+				script.onShutDown()
+			catch e
+				if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
+					println("Error shutting down script")
+					println(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+			end
+		end
+		DestroyEntity(entity)
+	end
+
+	#delete all textboxes
+	# for textBox in MAIN.scene.textBoxes
+	# 	textBox.destroy()
+	# 	delete!(MAIN.scene.textBoxes, textBox)
+	# end
+
+	# #delete all screen buttons
+	# for screenButton in MAIN.scene.screenButtons
+	# 	screenButton.destroy()
+	# 	delete!(MAIN.scene.screenButtons, screenButton)
+	# end
 
 	#load new scene 
-	this.scene = Scene()
-	this.level.scene = sceneFileName
-	this.level.changeScene()
+	MAIN.scene = Scene()
+	MAIN.level.scene = sceneFileName
+	MAIN.level.changeScene()
 	spriteLayers::Dict
 
-	InitializeScriptsAndComponents(this)
-
+	InitializeScriptsAndComponents(MAIN)
 end
 
 """
