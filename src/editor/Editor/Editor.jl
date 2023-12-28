@@ -41,9 +41,8 @@ module Editor
         game = C_NULL
         try
             game = SceneLoaderModule.loadScene(sceneFileName, projectPath, true);
-        catch e 
-            println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+        catch e
+            rethrow(e)
         end
 
         return game
@@ -99,6 +98,7 @@ module Editor
             entities = []
             textBoxes = []
             screenButtons = []
+            latest_exceptions = []
             gameInfo = []
             mousePosition = C_NULL
             projectPath = ""
@@ -303,7 +303,13 @@ module Editor
 
                     @cstatic begin
                         CImGui.Begin("Debug")
-                        CImGui.Text("To be implemented")
+                        CImGui.Text("The latest 10 exceptions are:")
+                        # Todo: multiple errors and parse them to give hints. Also color code them.
+                        counter = 1
+                        for exception in latest_exceptions
+                            CImGui.Text("[$(counter)] $exception")
+                            counter += 1
+                        end
                         CImGui.End()
                     end
 
@@ -483,9 +489,13 @@ module Editor
         
                     glfwMakeContextCurrent(window)
                     glfwSwapBuffers(window)
-                    gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), Ref(Bool(false)), true, update)
+                    gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, update)
                 catch e 
-                    println(e)
+                    push!(latest_exceptions, e)
+                    if length(latest_exceptions) > 10
+                        deleteat!(latest_exceptions, 1)
+                    end
+
                     Base.show_backtrace(stdout, catch_backtrace())
                 end
             end

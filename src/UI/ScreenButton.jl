@@ -36,6 +36,10 @@ module ScreenButtonModule
     function Base.getproperty(this::ScreenButton, s::Symbol)
         if s == :render
             function()
+                if this.currentTexture == C_NULL
+                    return
+                end
+
                 if !this.mouseOverSprite && this.currentTexture == this.buttonDownTexture
                     this.currentTexture = this.buttonUpTexture
                 end    
@@ -84,6 +88,18 @@ module ScreenButtonModule
         elseif s == :setParent
             function(parent)
                 this.parent = parent
+            end
+        elseif s == :destroy
+            function()
+                if !this.buttonDownTexture == C_NULL
+                    SDL2.SDL_DestroyTexture(this.buttonDownTexture)
+                end
+                if !this.buttonUpTexture == C_NULL
+                    SDL2.SDL_DestroyTexture(this.buttonUpTexture)
+                end
+                this.buttonDownTexture = C_NULL
+                this.buttonUpTexture = C_NULL
+                this.currentTexture = C_NULL
             end
         else
             try

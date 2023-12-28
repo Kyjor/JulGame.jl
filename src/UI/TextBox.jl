@@ -46,6 +46,10 @@ module TextBoxModule
     function Base.getproperty(this::TextBox, s::Symbol)
         if s == :render
             function(DEBUG)
+                if this.textTexture == C_NULL
+                    return
+                end
+
                 if DEBUG
                     SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
                         SDL2.SDL_Point(this.position.x, this.position.y), 
@@ -109,6 +113,15 @@ module TextBoxModule
                 if this.isCenteredY
                     this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
                 end
+            end
+        elseif s == :destroy
+            function()
+                if this.textTexture == C_NULL
+                    return
+                end
+
+                SDL2.SDL_DestroyTexture(this.textTexture)
+                this.textTexture = C_NULL
             end
         else
             try

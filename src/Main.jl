@@ -8,15 +8,15 @@ module MainLoop
 
 	export Main
 	mutable struct Main
-		assets
+		assets::String
 		autoScaleZoom::Bool
 		cameraBackgroundColor
+		close::Bool
 		debugTextBoxes
 		events
-		font
 		globals
 		input
-		isDraggingEntity
+		isDraggingEntity::Bool
 		lastMousePosition
 		lastMousePositionWorld
 		level
@@ -31,6 +31,7 @@ module MainLoop
 		selectedEntityUpdated
 		selectedTextBoxIndex
 		screenDimensions
+		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate
 		testMode::Bool
@@ -46,6 +47,7 @@ module MainLoop
 			this.input = Input()
 
 			this.cameraBackgroundColor = [0,0,0]
+			this.close = false
 			this.debugTextBoxes = []
 			this.events = []
 			this.input.scene = this.scene
@@ -57,6 +59,7 @@ module MainLoop
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
 			this.screenDimensions = C_NULL
+			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
 			this.testMode = false
@@ -69,87 +72,34 @@ module MainLoop
 		if s == :init
 			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 
-				if dimensions == Math.Vector2()
-					displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
-					SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
-					dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
-				end
-				this.autoScaleZoom = autoScaleZoom
-				this.scaleZoom(dimensions.x,dimensions.y)
-
-				this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
-
-				flags = SDL2.SDL_RENDERER_ACCELERATED |
-				(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
-				(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-				(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
-
-				this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
-
-				this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-				JulGame.Renderer = this.renderer 
-
-				this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
-				# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
-
-				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
-				this.font = SDL2.TTF_OpenFont(joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), 50)
-
-				scripts = []
-				for entity in this.scene.entities
-					for script in entity.scripts
-						push!(scripts, script)
-					end
-				end
-
-				for textBox in this.scene.textBoxes
-					textBox.initialize()
-				end
-				for screenButton in this.scene.screenButtons
-					screenButton.initialize()
-				end
-
-				this.scene.textBoxes
-				this.lastMousePosition = Math.Vector2(0, 0)
-				this.panCounter = Math.Vector2f(0, 0)
-				this.panThreshold = .1
-
-				this.spriteLayers = BuildSpriteLayers(this)
-
-				if !isUsingEditor
-					for script in scripts
-						try
-							script.initialize()
-						catch e
-							if typeof(e) != ErrorException || !contains(e.msg, "initialize")
-								println("Error initializing script")
-								println(e)
-								Base.show_backtrace(stdout, catch_backtrace())
-							end
-						end
-					end
-				end
+				PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
+				InitializeScriptsAndComponents(this, isUsingEditor)
 
 				if !isUsingEditor
 					this.fullLoop()
 					return
 				end
 			end
-		elseif s == :loadScene
-			function (scene)
-				this.scene = scene
+		elseif s == :initializeNewScene
+			function()
+				this.level.changeScene()
+				InitializeScriptsAndComponents(this, false)
+
+				if true
+					this.fullLoop()
+					return
+				end
 			end
 		elseif s == :fullLoop
 			function ()
 				try
 					DEBUG = false
-					close = Ref(Bool(false))
+					this.close = false
 					startTime = Ref(UInt64(0))
 					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
-					while !close[]
-						GameLoop(this, startTime, lastPhysicsTime, close, false, C_NULL)
+					while !this.close
+						GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
 						if this.testMode
 							break
 						end
@@ -168,13 +118,19 @@ module MainLoop
 							end
 						end
 					end
-					SDL2.Mix_Quit()
-					SDL2.SDL_Quit()
+					if !this.shouldChangeScene
+						SDL2.SDL_DestroyRenderer(this.renderer)
+						SDL2.SDL_DestroyWindow(this.window)
+						SDL2.SDL_Quit()
+					else
+						this.shouldChangeScene = false
+						this.initializeNewScene()
+					end
 				end
 			end
 		elseif s == :gameLoop
-			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
-				return GameLoop(this, startTime, lastPhysicsTime, close, isEditor, update)
+			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+				return GameLoop(this, startTime, lastPhysicsTime, isEditor, update)
 			end
 		elseif s == :handleEditorInputsCamera
 			function (update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
@@ -346,6 +302,128 @@ module MainLoop
 		end
 	end
 
+	function PrepareWindow(this::Main, isUsingEditor::Bool = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+		if dimensions == Math.Vector2()
+			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
+			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
+			dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
+		end
+		this.autoScaleZoom = autoScaleZoom
+		this.scaleZoom(dimensions.x,dimensions.y)
+
+		this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
+
+		flags = SDL2.SDL_RENDERER_ACCELERATED |
+		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
+		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
+		(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+
+		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
+
+		this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+		JulGame.Renderer = this.renderer 
+
+		this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+		SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
+
+		SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+	end
+
+function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
+	scripts = []
+	for entity in this.scene.entities
+		for script in entity.scripts
+			push!(scripts, script)
+		end
+	end
+
+	for textBox in this.scene.textBoxes
+		textBox.initialize()
+	end
+	for screenButton in this.scene.screenButtons
+		screenButton.initialize()
+	end
+
+	this.lastMousePosition = Math.Vector2(0, 0)
+	this.panCounter = Math.Vector2f(0, 0)
+	this.panThreshold = .1
+
+	this.spriteLayers = BuildSpriteLayers(this)
+
+	if !isUsingEditor
+		for script in scripts
+			try
+				script.initialize()
+			catch e
+				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
+					println("Error initializing script")
+					println(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+			end
+		end
+	end
+end
+
+export ChangeScene
+function ChangeScene(sceneFileName::String)
+	MAIN.close = true
+	MAIN.shouldChangeScene = true
+	#destroy current scene 
+	#println("Entities before destroying: ", length(MAIN.scene.entities))
+	count = 0
+	skipcount = 0
+	persistentEntities = []	
+	for entity in MAIN.scene.entities
+		if entity.persistentBetweenScenes
+			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
+			push!(persistentEntities, entity)
+			skipcount += 1
+			continue
+		end
+
+		DestroyEntityComponents(entity)
+		for script in entity.scripts
+			try
+				script.onShutDown()
+			catch e
+				if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
+					println("Error shutting down script")
+					println(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+			end
+		end
+		count += 1
+	end
+	# println("Destroyed $count entities")
+	# println("Skipped $skipcount entities")
+
+	# println("Entities left after destroying: ", length(persistentEntities))
+
+	#Todo
+	#delete all textboxes
+	# for textBox in MAIN.scene.textBoxes
+	# 	textBox.destroy()
+	# 	delete!(MAIN.scene.textBoxes, textBox)
+	# end
+
+	#Todo
+	# #delete all screen buttons
+	# for screenButton in MAIN.scene.screenButtons
+	# 	screenButton.destroy()
+	# 	delete!(MAIN.scene.screenButtons, screenButton)
+	# end
+
+	#load new scene 
+	camera = MAIN.scene.camera
+	MAIN.scene = Scene()
+	MAIN.scene.entities = persistentEntities
+	MAIN.scene.camera = camera
+	MAIN.level.scene = sceneFileName
+end
+
 """
 BuildSpriteLayers(main::Main)
 
@@ -386,35 +464,43 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 function DestroyEntity(entity)
 	for i = 1:length(MAIN.scene.entities)
 		if MAIN.scene.entities[i] == entity
-			if entity.getSprite() != C_NULL
-				for j = 1:length(MAIN.spriteLayers["$(entity.getSprite().layer)"])
-					if MAIN.spriteLayers["$(entity.getSprite().layer)"][j] == entity.getSprite()
-						deleteat!(MAIN.spriteLayers["$(entity.getSprite().layer)"], j)
-						break
-					end
-				end
-			end
-
-			if entity.getRigidbody() != C_NULL
-				for j = 1:length(MAIN.scene.rigidbodies)
-					if MAIN.scene.rigidbodies[j] == entity.getRigidbody()
-						deleteat!(MAIN.scene.rigidbodies, j)
-						break
-					end
-				end
-			end
-
-			if entity.getCollider() != C_NULL
-				for j = 1:length(MAIN.scene.colliders)
-					if MAIN.scene.colliders[j] == entity.getCollider()
-						deleteat!(MAIN.scene.colliders, j)
-						break
-					end
-				end
-			end
-
+			#	println("Destroying entity: ", entity.name, " with id: ", entity.id, " at index: ", index)
+			DestroyEntityComponents(entity)
 			deleteat!(MAIN.scene.entities, i)
 			break
+		end
+	end
+end
+
+function DestroyEntityComponents(entity)
+	entitySprite = entity.getSprite()
+	if entitySprite != C_NULL
+		for j = 1:length(MAIN.spriteLayers["$(entitySprite.layer)"])
+			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
+				entitySprite.destroy()
+				deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
+				break
+			end
+		end
+	end
+
+	entityRigidbody = entity.getRigidbody()
+	if entityRigidbody != C_NULL
+		for j = 1:length(MAIN.scene.rigidbodies)
+			if MAIN.scene.rigidbodies[j] == entityRigidbody
+				deleteat!(MAIN.scene.rigidbodies, j)
+				break
+			end
+		end
+	end
+
+	entityCollider = entity.getCollider()
+	if entityCollider != C_NULL
+		for j = 1:length(MAIN.scene.colliders)
+			if MAIN.scene.colliders[j] == entityCollider
+				deleteat!(MAIN.scene.colliders, j)
+				break
+			end
 		end
 	end
 end
@@ -461,12 +547,11 @@ Parameters:
 - `this`: The main struct.
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
-- `close`: A reference to a boolean indicating whether the game loop should be closed.
 - `isEditor`: A boolean indicating whether the game loop is running in editor mode.
 - `update`: An array containing information to pass back to the editor.
 
 """
-function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
+function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Array{Any}} = C_NULL)
         try
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
@@ -493,7 +578,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			this.input.pollInput()
 
 			if this.input.quit && !isEditor
-				close[] = true
+				this.close = true
 			end
 			DEBUG = this.input.debug
 
@@ -515,7 +600,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					return
 				end
 				for rigidbody in this.scene.rigidbodies
-					rigidbody.update(deltaTime)
+					try
+						rigidbody.update(deltaTime)
+					catch e
+						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
+						Base.show_backtrace(stdout, catch_backtrace())
+					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
 			end
@@ -527,14 +617,21 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 			this.scene.camera.update()
 
-
 			for entity in this.scene.entities
 				if !entity.isActive
 					continue
 				end
 
 				if !isEditor
-					entity.update(deltaTime)
+					try
+						entity.update(deltaTime)
+						if this.close
+							return
+						end
+					catch e
+						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
+						throw(e)
+					end
 					entityAnimator = entity.getAnimator()
 					if entityAnimator != C_NULL
 						entityAnimator.update(currentRenderTime, deltaTime)
@@ -560,7 +657,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							continue
 						end
 						rendercount += 1
-						sprite.draw()
+						try
+							sprite.draw()
+						catch e
+							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
+							throw(e)
+						end
 					end
 				end
 				#println("Skipped $skipcount, rendered $rendercount")
@@ -575,7 +677,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				if isEditor
 					entitySprite = entity.getSprite()
 					if entitySprite != C_NULL
-						entitySprite.draw()
+						try
+							entitySprite.draw()
+						catch e
+							println(entity.name, " with id: ", entity.id, " has an error in its sprite")
+							throw(e)
+						end
 					end
 				end
 

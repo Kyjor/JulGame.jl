@@ -16,8 +16,9 @@ module EntityModule
         components::Array{Any}
         isActive::Bool
         name::String
+        persistentBetweenScenes::Bool
         scripts::Array{Any}
-        #
+        
         function Entity(name::String = "New entity", transform::Union{Ptr{Nothing}, Transform} = C_NULL, components::Array{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}} = Vector{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}}(), scripts::Array = [])
             this = new()
 
@@ -36,6 +37,7 @@ module EntityModule
             for script in scripts
                 this.addScript(script)
             end
+            this.persistentBetweenScenes = false
 
             return this
         end

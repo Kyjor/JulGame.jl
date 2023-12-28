@@ -4,7 +4,6 @@
     entities
     rigidbodies
     screenButtons
-    sounds
     textBoxes
 
     function Scene()
@@ -15,7 +14,6 @@
         this.entities = []
         this.rigidbodies = []
         this.screenButtons = []
-        this.sounds = []
         this.textBoxes = []
 
         return this

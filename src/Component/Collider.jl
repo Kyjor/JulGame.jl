@@ -99,7 +99,7 @@ module ColliderModule
                         if collision[1] == Top::CollisionDirection
                             push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
-                                eventToCall()
+                                eventToCall(collider)
                             end
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
@@ -107,7 +107,7 @@ module ColliderModule
                         if collision[1] == Left::CollisionDirection
                             push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
-                                eventToCall()
+                                eventToCall(collider)
                             end
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
@@ -115,7 +115,7 @@ module ColliderModule
                         if collision[1] == Right::CollisionDirection
                             push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
-                                eventToCall()
+                                eventToCall(collider)
                             end
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
@@ -126,7 +126,11 @@ module ColliderModule
                                 push!(this.currentRests, collider)
                             end
                             for eventToCall in this.collisionEvents
-                                eventToCall()
+                                try
+                                    eventToCall(collider)
+                                catch e
+                                    println(e)
+                                end
                             end
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
@@ -137,7 +141,7 @@ module ColliderModule
                         if collision[1] == Below::ColliderLocation
                             push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
-                                eventToCall()
+                                eventToCall(collider)
                             end
                         end
                     end
