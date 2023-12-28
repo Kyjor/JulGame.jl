@@ -31,7 +31,6 @@ module SceneBuilderModule
     end
         
     include("../Camera.jl")
-    include("../Main.jl")
     
     export Scene
     mutable struct Scene
