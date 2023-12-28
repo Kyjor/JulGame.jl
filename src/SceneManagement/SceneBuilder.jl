@@ -133,8 +133,8 @@ module SceneBuilderModule
                 function()
                     scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), false)
                     
-                    println("Changing scene to $this.scene")
-                    println("Entities in main scene: ", length(MAIN.scene.entities))
+                    # println("Changing scene to $this.scene")
+                    # println("Entities in main scene: ", length(MAIN.scene.entities))
 
                     for entity in scene[1]
                         push!(MAIN.scene.entities, entity)

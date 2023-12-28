@@ -105,6 +105,16 @@ module SoundSourceModule
                 end
                 this.path = soundPath
             end
+
+        elseif s == :unloadSound
+            function()
+                if this.isMusic
+                    SDL2.Mix_FreeMusic(this.sound)
+                else
+                    SDL2.Mix_FreeChunk(this.sound)
+                end
+                this.sound = C_NULL
+            end
         elseif s == :setParent
             function(parent::Any)
                 this.parent = parent

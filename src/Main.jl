@@ -503,6 +503,11 @@ function DestroyEntityComponents(entity)
 			end
 		end
 	end
+
+	entitySoundSource = entity.getSoundSource()
+	if entitySoundSource != C_NULL
+		entitySoundSource.unloadSound()
+	end
 end
 
 export CreateEntity
@@ -729,6 +734,10 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				selectedEntity = update[7] > 0 ? this.scene.entities[update[7]] : C_NULL
 				try
 					if selectedEntity != C_NULL
+						if this.input.getButtonPressed("Delete")
+							println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
+						end
+
 						pos = selectedEntity.getTransform().getPosition()
 						size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
 						offset = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().offset : Math.Vector2f()

@@ -4,6 +4,7 @@ module Editor
     using CImGui.CSyntax
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
+    using Dates
     using ImGuiGLFWBackend #CImGui.GLFWBackend
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
@@ -76,7 +77,7 @@ module Editor
         io = CImGui.GetIO()
         io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
     
-        # setup Dear ImGui style
+        # setup Dear ImGui style #Todo: Make this a setting
         CImGui.StyleColorsDark()
         # CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
@@ -307,7 +308,7 @@ module Editor
                         # Todo: multiple errors and parse them to give hints. Also color code them.
                         counter = 1
                         for exception in latest_exceptions
-                            CImGui.Text("[$(counter)] $exception")
+                            CImGui.Text("[$(counter)] $(exception[2]): $(exception[1])")
                             counter += 1
                         end
                         CImGui.End()
@@ -491,7 +492,7 @@ module Editor
                     glfwSwapBuffers(window)
                     gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, update)
                 catch e 
-                    push!(latest_exceptions, e)
+                    push!(latest_exceptions, [e, Dates.now()])
                     if length(latest_exceptions) > 10
                         deleteat!(latest_exceptions, 1)
                     end
