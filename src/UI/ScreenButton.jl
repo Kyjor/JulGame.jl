@@ -13,7 +13,6 @@ module ScreenButtonModule
         dimensions
         mouseOverSprite
         position
-        renderer
         text
         textTexture
 
@@ -36,7 +35,7 @@ module ScreenButtonModule
     function Base.getproperty(this::ScreenButton, s::Symbol)
         if s == :render
             function()
-                if this.currentTexture == C_NULL
+                if this.currentTexture == C_NULL || this.currentTexture === nothing || JulGame.Renderer == C_NULL
                     return
                 end
 
@@ -44,7 +43,7 @@ module ScreenButtonModule
                     this.currentTexture = this.buttonUpTexture
                 end    
                 @assert SDL2.SDL_RenderCopyEx(
-                    this.renderer, 
+                    JulGame.Renderer, 
                     this.currentTexture, 
                     C_NULL, 
                     Ref(SDL2.SDL_Rect(this.position.x, this.position.y, this.dimensions.x,this.dimensions.y)), 
@@ -52,17 +51,15 @@ module ScreenButtonModule
                     C_NULL, 
                     SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-                #@assert SDL2.SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+                #@assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
-
-                this.renderer = JulGame.renderer
-                this.buttonDownTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.buttonDownSprite)
-                this.buttonUpTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.buttonUpSprite)
+                this.buttonDownTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.buttonDownSprite)
+                this.buttonUpTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.buttonUpSprite)
                 this.currentTexture = this.buttonUpTexture
                 # text = SDL2.TTF_RenderText_Blended(font, this.text, SDL2.SDL_Color(255,255,255,255) )
-                # this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, text)
+                # this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, text)
 
             end
         elseif s == :setPosition
