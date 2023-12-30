@@ -107,8 +107,12 @@ module MainLoop
 						try
 							GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
 						catch e
-							println(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+							if this.testMode
+								throw(e)
+							else
+								println(e)
+								Base.show_backtrace(stdout, catch_backtrace())
+							end
 						end
 						if this.testMode && this.currentTestTime >= this.testLength
 							break
@@ -619,7 +623,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						rigidbody.update(deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
 					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
@@ -645,11 +649,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						end
 					catch e
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-						if this.testMode
-							rethrow(e)
-						else
-							throw(e)
-						end
+						rethrow(e)
 					end
 					entityAnimator = entity.getAnimator()
 					if entityAnimator != C_NULL
@@ -680,11 +680,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							sprite.draw()
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-							if this.testMode || isUsingEditor
-								rethrow(e)
-							else
-								throw(e)
-							end
+							rethrow(e)
 						end
 					end
 				end
@@ -704,7 +700,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							entitySprite.draw()
 						catch e
 							println(entity.name, " with id: ", entity.id, " has an error in its sprite")
-							throw(e)
+							rethrow(e)
 						end
 					end
 				end
@@ -808,7 +804,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
 			targetFrameTime = 1000/this.targetFrameRate
 			this.currentTestTime += elapsedMS/100
-			
+
 			if elapsedMS < targetFrameTime && !isEditor
 				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 			end
@@ -818,9 +814,14 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				this.selectedEntityUpdated = false
 				return returnData
 			end
+			wtmlfa = test(4543)
 		catch e
-			println("$(e)")
-			Base.show_backtrace(stderr, catch_backtrace())
+			if this.testMode || isEditor
+				rethrow(e)
+			else
+				println("$(e)")
+				Base.show_backtrace(stderr, catch_backtrace())
+			end
 		end
     end
 end
