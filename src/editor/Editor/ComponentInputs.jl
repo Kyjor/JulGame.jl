@@ -96,7 +96,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         setfield!(itemToUpdate,componentField,componentFieldValue)
 
     elseif componentFieldType == "Vector4"
-        vec4i = Cint[componentFieldValue.x, componentFieldValue.y, componentFieldValue.w, componentFieldValue.h]
+        vec4i = Cint[componentFieldValue.x, componentFieldValue.y, componentFieldValue.z, componentFieldValue.t]
         @c CImGui.InputInt4("input int4", vec4i)
         
     elseif componentFieldType == "Array" # Then we need to unpack the nested items
@@ -131,7 +131,7 @@ function ShowArrayPropertyInput(arr, index)
     type = getType(arr[index])
     if type == "Vector4"
         vec = arr[index]
-        vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+        vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
         @c CImGui.InputInt4("input int4", vec4i)
         return JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
     end
@@ -167,7 +167,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                                     for k = 1:length(animations[i].frames)
                                         if CImGui.TreeNode("frame $(k)")
                                             vec = animations[i].frames[k]
-                                            vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+                                            vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
                                             currentEntitySelected.getAnimator().animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
                                             CImGui.TreePop()
@@ -215,7 +215,7 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
         elseif fieldString == "crop"
             vec = currentEntitySelected.getComponent("Sprite").crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.getComponent("Sprite").crop
-            vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+            vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
             @c CImGui.InputInt4("input int4", vec4i)
 
             currentEntitySelected.getComponent("Sprite").crop = (vec4i[1] == 0 && vec4i[2] == 0 && vec4i[3] == 0 && vec4i[4] == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])

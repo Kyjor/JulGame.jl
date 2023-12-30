@@ -12,6 +12,7 @@ module MainLoop
 		autoScaleZoom::Bool
 		cameraBackgroundColor
 		close::Bool
+		currentTestTime::Float64
 		debugTextBoxes
 		events
 		globals
@@ -34,6 +35,7 @@ module MainLoop
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate
+		testLength::Float64
 		testMode::Bool
 		window
 		windowName::String
@@ -62,7 +64,10 @@ module MainLoop
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
+
+			this.currentTestTime = 0.0
 			this.testMode = false
+			this.testLength = 0.0
 
 			return this
 		end
@@ -99,8 +104,17 @@ module MainLoop
 					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
 					while !this.close
-						GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
-						if this.testMode
+						try
+							GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
+						catch e
+							if this.testMode
+								throw(e)
+							else
+								println(e)
+								Base.show_backtrace(stdout, catch_backtrace())
+							end
+						end
+						if this.testMode && this.currentTestTime >= this.testLength
 							break
 						end
 					end
@@ -600,6 +614,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			if !isEditor
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
+
+				this.currentTestTime += deltaTime
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
 					return
@@ -609,7 +625,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						rigidbody.update(deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
 					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
@@ -635,7 +651,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						end
 					catch e
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-						throw(e)
+						rethrow(e)
 					end
 					entityAnimator = entity.getAnimator()
 					if entityAnimator != C_NULL
@@ -666,7 +682,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							sprite.draw()
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-							throw(e)
+							rethrow(e)
 						end
 					end
 				end
@@ -686,7 +702,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							entitySprite.draw()
 						catch e
 							println(entity.name, " with id: ", entity.id, " has an error in its sprite")
-							throw(e)
+							rethrow(e)
 						end
 					end
 				end
@@ -800,8 +816,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				return returnData
 			end
 		catch e
-			println("$(e)")
-			Base.show_backtrace(stderr, catch_backtrace())
+			if this.testMode || isEditor
+				rethrow(e)
+			else
+				println("$(e)")
+				Base.show_backtrace(stderr, catch_backtrace())
+			end
 		end
     end
 end

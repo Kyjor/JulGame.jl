@@ -43,7 +43,7 @@ module AnimationModule
             function(value, field, index)
                 fieldToUpdate = getfield(this, field)
                 if this.getType(value) == "Vector4"
-                    fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.w, value.h)
+                    fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.z, value.t)
                 end
             end
         elseif s == :appendArray

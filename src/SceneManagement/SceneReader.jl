@@ -98,7 +98,7 @@ module SceneReaderModule
                 for animation in component.animations
                 newAnimationFrames = []
                 for animationFrame in animation.frames
-                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.w, animationFrame.h))
+                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
                 end
                 push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
                 end
@@ -119,7 +119,7 @@ module SceneReaderModule
                     newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
                 end
             elseif component.type == "Sprite"
-                crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4() : Vector4(component.crop.x, component.crop.y, component.crop.w, component.crop.h)
+                crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
                 newComponent = Sprite(component.imagePath, crop, component.isFlipped)
                 newComponent.layer = !haskey(component, "layer") ? 0 : component.layer
             end
