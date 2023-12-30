@@ -68,31 +68,18 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             # Inputs match SDL2 scancodes after "SDL_SCANCODE_"
             # https://wiki.libsdl.org/SDL2/SDL_Scancode
             # Spaces full scancode is "SDL_SCANCODE_SPACE" so we use "SPACE". Every other key is the same.
-            if ((input.getButtonPressed("SPACE")  || input.button == 1)|| this.isJump) && this.parent.getRigidbody().grounded && this.canMove 
+            if this.parent.getRigidbody().grounded
                 this.jumpSound.toggleSound()
                 AddVelocity(this.parent.getRigidbody(), Vector2f(0, this.jumpVelocity))
                 this.animator.currentAnimation = this.animator.animations[3]
             end
-            if (input.getButtonHeldDown("A") || input.getButtonHeldDown("LEFT") || input.xDir == -1) && this.canMove
-                x = -speed
-                if this.parent.getRigidbody().grounded
-                    this.animator.currentAnimation = this.animator.animations[2]
-                end
-                if this.isFacingRight
-                    this.isFacingRight = false
-                    this.parent.getSprite().flip()
-                end
-            elseif (input.getButtonHeldDown("D")  || input.getButtonHeldDown("RIGHT") || input.xDir == 1) && this.canMove
-                if this.parent.getRigidbody().grounded
-                    this.animator.currentAnimation = this.animator.animations[2]
-                end
-                x = speed
-                if !this.isFacingRight
-                    this.isFacingRight = true
-                    this.parent.getSprite().flip()
-                end
-            elseif this.parent.getRigidbody().grounded
-                this.animator.currentAnimation = this.animator.animations[1]
+            if this.parent.getRigidbody().grounded
+                this.animator.currentAnimation = this.animator.animations[2]
+            end
+            x = speed
+            if !this.isFacingRight
+                this.isFacingRight = true
+                this.parent.getSprite().flip()
             end
             
             SetVelocity(this.parent.getRigidbody(), Vector2f(x, this.parent.getRigidbody().getVelocity().y))
@@ -100,6 +87,28 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             this.isJump = false
             if this.parent.getTransform().position.y > 8
                 this.respawn()
+                if this.gameManager.currentLevel == 1
+                    if this.deathsThisLevel == 0
+                        this.gameManager.starCount = this.gameManager.starCount + 1
+                    end
+                    this.gameManager.currentLevel = 2
+                    ChangeScene("level_2.json")
+                elseif this.gameManager.currentLevel == 2
+                    if this.deathsThisLevel == 0
+                        this.gameManager.starCount = this.gameManager.starCount + 1
+                    end
+                    this.gameManager.currentLevel = 3
+                    ChangeScene("level_3.json")
+                else 
+                    # you win text
+                    MAIN.scene.textBoxes[1].isCenteredX, MAIN.scene.textBoxes[1].isCenteredY = true, true
+                    MAIN.scene.textBoxes[1].updateText("You Win!")
+                    MAIN.scene.textBoxes[1].setColor(0,0,0)
+                    if this.deathsThisLevel == 0
+                        this.gameManager.starCount = this.gameManager.starCount + 1
+                        MAIN.scene.textBoxes[2].updateText(string(this.gameManager.starCount))
+                    end
+                end
             end
 
             speed = abs(5 * (1 - cos(this.parent.getTransform().position.x- this.cameraTarget.position.x)))
@@ -121,32 +130,6 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 DestroyEntity(otherCollider.parent)
                 this.coinSound.toggleSound()
                 MAIN.scene.textBoxes[1].updateText(string(parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[1]) + 1, "/", parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[2])))
-                if parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[1]) == parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[2])
-                    if this.gameManager.currentLevel == 1
-                        if this.deathsThisLevel == 0
-                            this.gameManager.starCount = this.gameManager.starCount + 1
-                        end
-                        this.gameManager.currentLevel = 2
-                        ChangeScene("level_2.json")
-                    elseif this.gameManager.currentLevel == 2
-                        if this.deathsThisLevel == 0
-                            this.gameManager.starCount = this.gameManager.starCount + 1
-                        end
-                        this.gameManager.currentLevel = 3
-                        ChangeScene("level_3.json")
-                    else 
-                        # you win text
-                        MAIN.scene.textBoxes[1].isCenteredX, MAIN.scene.textBoxes[1].isCenteredY = true, true
-                        MAIN.scene.textBoxes[1].updateText("You Win!")
-                        MAIN.scene.textBoxes[1].setColor(0,0,0)
-                        if this.deathsThisLevel == 0
-                            this.gameManager.starCount = this.gameManager.starCount + 1
-                            MAIN.scene.textBoxes[2].updateText(string(this.gameManager.starCount))
-                        end
-                    end
-                end
-            elseif otherCollider.tag == "Hazard"
-                this.respawn()
             elseif otherCollider.tag == "Star"
                 this.starSound.toggleSound()
                 DestroyEntity(otherCollider.parent)

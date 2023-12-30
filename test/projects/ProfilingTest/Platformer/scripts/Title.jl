@@ -38,10 +38,8 @@ function Base.getproperty(this::Title, s::Symbol)
                 end
             end
 
-            if MAIN.input.getButtonPressed("RETURN")
-                JulGame.SoundSourceModule.SoundSource("confirm-ui.wav", -1, 50).toggleSound()
-                ChangeScene("level_1.json")
-            end
+            JulGame.SoundSourceModule.SoundSource("confirm-ui.wav", -1, 50).toggleSound()
+            ChangeScene("level_1.json")
 
         end
     elseif s == :setParent 

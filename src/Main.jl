@@ -614,6 +614,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			if !isEditor
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
+
+				this.currentTestTime += deltaTime
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
 					return
@@ -803,7 +805,6 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			endTime = SDL2.SDL_GetPerformanceCounter()
 			elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
 			targetFrameTime = 1000/this.targetFrameRate
-			this.currentTestTime += elapsedMS/100
 
 			if elapsedMS < targetFrameTime && !isEditor
 				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))

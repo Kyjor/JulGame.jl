@@ -3,6 +3,8 @@ module Platformer
     using JulGame.Math
     using JulGame.SceneBuilderModule
     
+    JulGame.MAIN.testMode = true
+    JulGame.MAIN.testLength = 30.0
     function run()
         scene = Scene("level_0.json")
         return scene.init("JulGame Example", false, Vector2(),Vector2(1280, 720), true, 1.0, true, 144)
