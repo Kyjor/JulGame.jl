@@ -38,7 +38,7 @@ mutable struct PlayerMovement
         this.hurtSound = SoundSource("hit.wav", 1, 50)
         this.starSound = SoundSource("power-up.wav", 1, 50)
         this.jumpSound = C_NULL 
-        this.jumpVelocity = typeof(jumpVelocity) === Float64 ? jumpVelocity : parse(Float64, jumpVelocity)
+        this.jumpVelocity = -5
 
         this.xDir = 0
         this.yDir = 0
@@ -62,7 +62,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         function(deltaTime)
             this.canMove = true
             x = 0
-            speed = 5
+            speed = 10
             input = MAIN.input
 
             # Inputs match SDL2 scancodes after "SDL_SCANCODE_"
@@ -70,6 +70,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             # Spaces full scancode is "SDL_SCANCODE_SPACE" so we use "SPACE". Every other key is the same.
             if this.parent.getRigidbody().grounded
                 this.jumpSound.toggleSound()
+                SetVelocity(this.parent.getRigidbody(), Vector2f(this.parent.getRigidbody().getVelocity().x, 0))
                 AddVelocity(this.parent.getRigidbody(), Vector2f(0, this.jumpVelocity))
                 this.animator.currentAnimation = this.animator.animations[3]
             end
