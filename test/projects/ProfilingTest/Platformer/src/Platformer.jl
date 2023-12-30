@@ -13,4 +13,13 @@ module Platformer
     julia_main() = run()
 end
 # comment when building
-Platformer.run()
+# Platformer.run()
+
+using Profile
+
+#@profile Platformer.run()
+
+#Profile.print(format=:flat)
+
+#@profview_allocs Platformer.run() sample_rate = 1
+@profview Platformer.run()
