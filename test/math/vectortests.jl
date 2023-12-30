@@ -1,7 +1,3 @@
-include("../../src/Math/Math.jl")
-using Main.Math
-using Test
-
 @testset "Vector tests" begin
     @testset "Vector2 tests" begin
         # set up
