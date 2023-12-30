@@ -12,6 +12,7 @@ module MainLoop
 		autoScaleZoom::Bool
 		cameraBackgroundColor
 		close::Bool
+		currentTestTime::Float64
 		debugTextBoxes
 		events
 		globals
@@ -34,6 +35,7 @@ module MainLoop
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate
+		testLength::Float64
 		testMode::Bool
 		window
 		windowName::String
@@ -62,7 +64,10 @@ module MainLoop
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
+
+			this.currentTestTime = 0.0
 			this.testMode = false
+			this.testLength = 0.0
 
 			return this
 		end
@@ -99,8 +104,13 @@ module MainLoop
 					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
 					while !this.close
-						GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
-						if this.testMode
+						try
+							GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
+						catch e
+							println(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
+						if this.testMode && this.currentTestTime >= this.testLength
 							break
 						end
 					end
@@ -635,7 +645,11 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						end
 					catch e
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-						throw(e)
+						if this.testMode
+							rethrow(e)
+						else
+							throw(e)
+						end
 					end
 					entityAnimator = entity.getAnimator()
 					if entityAnimator != C_NULL
@@ -666,7 +680,11 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							sprite.draw()
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-							throw(e)
+							if this.testMode || isUsingEditor
+								rethrow(e)
+							else
+								throw(e)
+							end
 						end
 					end
 				end

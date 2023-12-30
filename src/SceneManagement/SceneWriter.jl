@@ -102,7 +102,7 @@ module SceneWriterModule
             elseif componentType == "Sprite"
                 serializedComponent = Dict(
                     "type" => componentType, 
-                    "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "w" => component.crop.w, "h" => component.crop.h), 
+                    "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "z" => component.crop.z, "t" => component.crop.t), 
                     "isFlipped" => component.isFlipped, 
                     "imagePath" => normalizePath(component.imagePath),
                     "layer" => component.layer,
