@@ -7,7 +7,7 @@
     mutable struct Animator
         animations::Array{Animation}
         currentAnimation::Animation
-        lastFrame::Integer
+        lastFrame::Int
         lastUpdate::UInt64
         parent::Any
         sprite::Any
@@ -62,13 +62,13 @@
 
     
     """
-    ForceFrameUpdate(this::Animator, frameIndex::Integer)
+    ForceFrameUpdate(this::Animator, frameIndex::Int)
     
     Updates the sprite crop of the animator to the specified frame index.
     
     # Arguments
     - `this::Animator`: The animator object.
-    - `frameIndex::Integer`: The index of the frame to update the sprite crop to.
+    - `frameIndex::Int`: The index of the frame to update the sprite crop to.
     
     # Example
     ```
@@ -76,7 +76,7 @@
     ForceFrameUpdate(animator, 1)
     ```
     """
-    function ForceFrameUpdate(this::Animator, frameIndex::Integer)
+    function ForceFrameUpdate(this::Animator, frameIndex::Int)
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export ForceFrameUpdate

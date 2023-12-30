@@ -9,12 +9,12 @@
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
         isWorldEntity::Bool
-        layer::Integer
+        layer::Int
         offset::Math.Vector2f
         parent::Any # Entity
         position::Math.Vector2f
         rotation::Float64
-        pixelsPerUnit::Integer
+        pixelsPerUnit::Int
         size::Math.Vector2
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
@@ -79,18 +79,18 @@
 
                 srcRect = (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.z,this.crop.t))
                 dstRect = Ref(SDL2.SDL_Rect(
-                    convert(Integer, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Integer, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Integer, round(parentTransform.getScale().x * SCALE_UNITS)),
-                    convert(Integer, round(parentTransform.getScale().y * SCALE_UNITS))
+                    convert(Int, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Int, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Int, round(parentTransform.getScale().x * SCALE_UNITS)),
+                    convert(Int, round(parentTransform.getScale().y * SCALE_UNITS))
                 ))
                 
                 if this.pixelsPerUnit > 0
                     dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Integer, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Integer, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Integer, round(this.size.x * SCALE_UNITS/this.pixelsPerUnit)),
-                        convert(Integer, round(this.size.y * SCALE_UNITS/this.pixelsPerUnit))
+                        convert(Int, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
+                        convert(Int, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
+                        convert(Int, round(this.size.x * SCALE_UNITS/this.pixelsPerUnit)),
+                        convert(Int, round(this.size.y * SCALE_UNITS/this.pixelsPerUnit))
                     ))                
                 end
 

@@ -89,7 +89,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         @c CImGui.InputFloat("$(componentField)", &x, 1)
         setfield!(itemToUpdate,componentField,componentFieldValue)
     
-    elseif componentFieldType == "Integer"
+    elseif componentFieldType == "Int"
         CImGui.Text(componentField)
         x = Cint(componentFieldValue)
         @c CImGui.InputInt("$(componentField)", &x, 1)

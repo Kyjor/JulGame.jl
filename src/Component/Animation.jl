@@ -3,7 +3,7 @@ module AnimationModule
 
     export Animation
     mutable struct Animation
-        animatedFPS::Integer # public
+        animatedFPS::Int # public
         frames::Array{Math.Vector4} # public
         parent::Any # public
         test # private

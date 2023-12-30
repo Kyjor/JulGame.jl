@@ -3,15 +3,15 @@ module SoundSourceModule
     
     export SoundSource
     mutable struct SoundSource
-        channel::Integer
+        channel::Int
         isMusic::Bool
         parent::Any
         path::String
         sound::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
-        volume::Integer
+        volume::Int
 
         # Music
-        function CreateSoundSource(path::String, channel::Integer, volume::Integer, isMusic::Bool)
+        function CreateSoundSource(path::String, channel::Int, volume::Int, isMusic::Bool)
             this = new()
 
             SDL2.SDL_ClearError()
@@ -25,7 +25,7 @@ module SoundSourceModule
                 SDL2.SDL_ClearError()
             end
             
-            isMusic ? SDL2.Mix_VolumeMusic(Integer(volume)) : SDL2.Mix_Volume(Integer(channel), Int32(volume))
+            isMusic ? SDL2.Mix_VolumeMusic(Int(volume)) : SDL2.Mix_Volume(Int(channel), Int32(volume))
 
             this.channel = channel
             this.isMusic = isMusic
@@ -52,21 +52,21 @@ module SoundSourceModule
         end
 
         # Constructor for music
-        function SoundSource(path::String, volume::Integer)
+        function SoundSource(path::String, volume::Int)
             return CreateSoundSource(path, -1, volume, true)
         end
         
         # Constructor for sound effect
-        function SoundSource(path::String, channel::Integer, volume::Integer)
+        function SoundSource(path::String, channel::Int, volume::Int)
             return CreateSoundSource(path, channel, volume, false)
         end
         
         # Constructor for editor with specified properties
-        function SoundSource(channel::Integer, volume::Integer, isMusic::Bool)
+        function SoundSource(channel::Int, volume::Int, isMusic::Bool)
             return CreateSoundSource("", channel, volume, isMusic)
         end
         
-        function SoundSource(path::String, channel::Integer, volume::Integer, isMusic::Bool)
+        function SoundSource(path::String, channel::Int, volume::Int, isMusic::Bool)
             return CreateSoundSource(path, channel, volume, isMusic)
         end
     end
@@ -76,7 +76,7 @@ module SoundSourceModule
             function(loops = 0)
                 if this.isMusic
                     if SDL2.Mix_PlayingMusic() == 0
-                        SDL2.Mix_PlayMusic( this.sound, Integer(-1) )
+                        SDL2.Mix_PlayMusic( this.sound, Int(-1) )
                     else
                         if SDL2.Mix_PausedMusic() == 1 
                             SDL2.Mix_ResumeMusic()
@@ -85,7 +85,7 @@ module SoundSourceModule
                         end
                     end
                 else
-                    SDL2.Mix_PlayChannel( Integer(this.channel), this.sound, Integer(loops) )
+                    SDL2.Mix_PlayChannel( Int(this.channel), this.sound, Int(loops) )
                 end
             end
         elseif s == :stopMusic

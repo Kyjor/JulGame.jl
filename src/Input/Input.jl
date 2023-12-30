@@ -201,7 +201,7 @@ module InputModule
         elseif s == :checkScanCode
             function (keyboardState, keyState, scanCodes)
                 for scanCode in scanCodes
-                    if keyboardState[Integer(scanCode) + 1] == keyState
+                    if keyboardState[Int(scanCode) + 1] == keyState
                         return true
                     end
                 end

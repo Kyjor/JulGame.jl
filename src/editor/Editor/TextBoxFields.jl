@@ -27,7 +27,7 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
     elseif fieldName == "alpha"
         x = Cint(Value)
         @c CImGui.SliderInt("$(textBoxField)", &x, 0, 255)
-        setfield!(selectedTextBox, textBoxField, convert(Integer, round(x)))
+        setfield!(selectedTextBox, textBoxField, convert(Int, round(x)))
 
         if x != Value
             selectedTextBox.isTextUpdated = true
@@ -39,7 +39,7 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
         z = Cfloat(Value.b)
         w = Cfloat(Value.a)
         @c CImGui.ColorEdit4("$(textBoxField)", &x, &y, &z, &w)
-        setfield!(selectedTextBox, textBoxField, Color(convert(Integer, round(x)), convert(Integer, round(y)), convert(Integer, round(z)), convert(Integer, round(w))))
+        setfield!(selectedTextBox, textBoxField, Color(convert(Int, round(x)), convert(Int, round(y)), convert(Int, round(z)), convert(Int, round(w))))
 
         if x != Value.r || y != Value.g || z != Value.b || w != Value.a
             selectedTextBox.isTextUpdated = true

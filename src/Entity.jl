@@ -12,7 +12,7 @@ module EntityModule
 
     export Entity
     mutable struct Entity
-        id::Integer
+        id::Int
         components::Array{Any}
         isActive::Bool
         name::String

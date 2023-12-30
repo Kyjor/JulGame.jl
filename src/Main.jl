@@ -719,9 +719,9 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					collider = entity.getCollider()
 					if collider.getType() == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
-							round(Integer, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Integer, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Integer, collider.diameter/2 * SCALE_UNITS))
+							round(Int, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int, collider.diameter/2 * SCALE_UNITS))
 					else
 						colSize = collider.getSize()
 						colOffset = collider.offset
