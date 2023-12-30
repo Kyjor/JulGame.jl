@@ -5,9 +5,9 @@ module CircleColliderModule
 
     export CircleCollider
     mutable struct CircleCollider
-        collisionEvents::Array{Any}
-        currentCollisions::Array{Collider}
-        currentRests::Array{Collider}
+        collisionEvents::Vector{Any}
+        currentCollisions::Vector{Collider}
+        currentRests::Vector{Collider}
         diameter::Float64
         enabled::Bool
         isGrounded::Bool

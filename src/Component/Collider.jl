@@ -3,10 +3,21 @@ module ColliderModule
     using ..Component.JulGame
 
     export Collider
-    mutable struct Collider
-        collisionEvents::Array{Any}
-        currentCollisions::Array{Collider}
-        currentRests::Array{Collider}
+    struct Collider
+        enabled::Bool
+        isPlatformerCollider::Bool
+        isTrigger::Bool
+        offset::Math.Vector2f
+        size::Math.Vector2f
+        tag::String
+    end
+
+
+    export InternalCollider
+    mutable struct InternalCollider
+        collisionEvents::Vector{Function}
+        currentCollisions::Vector{InternalCollider}
+        currentRests::Vector{InternalCollider}
         enabled::Bool
         isTrigger::Bool
         isPlatformerCollider::Bool
@@ -16,18 +27,17 @@ module ColliderModule
         size::Math.Vector2f
         tag::String
         
-        function Collider(size::Math.Vector2f = Math.Vector2f(1,1), offset::Math.Vector2f = Math.Vector2f(), tag::String="Default")
+        function InternalCollider(parent::Any, size::Math.Vector2f = Math.Vector2f(1,1), offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, isPlatformerCollider::Bool = false, enabled::Bool=true, rigidbody::Any = C_NULL)
             this = new()
 
             this.collisionEvents = []
             this.currentCollisions = []
             this.currentRests = []
-            this.enabled = true
-            this.isTrigger = false
-            this.isPlatformerCollider = false
+            this.enabled = enabled
+            this.isTrigger = isTrigger
+            this.isPlatformerCollider = isPlatformerCollider
             this.offset = offset
-            this.rigidbody = C_NULL
-            this.parent = C_NULL
+            this.parent = parent
             this.size = size
             this.tag = tag
 
@@ -35,7 +45,7 @@ module ColliderModule
         end
     end
 
-    function Base.getproperty(this::Collider, s::Symbol)
+    function Base.getproperty(this::InternalCollider, s::Symbol)
         if s == :getSize
             function()
                 return this.size
@@ -67,7 +77,6 @@ module ColliderModule
         elseif s == :setParent
             function(parent::Any)
                 this.parent = parent
-                this.rigidbody = parent.getRigidbody()
             end
         elseif s == :checkCollisions
             function()
@@ -181,7 +190,7 @@ module ColliderModule
         end
     end
 
-    function CheckCollision(colliderA::Collider, colliderB::Collider)
+    function CheckCollision(colliderA::InternalCollider, colliderB::InternalCollider)
         nameA = colliderA.getParent().getName()
         nameB = colliderB.getParent().getName()
         posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderA.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
@@ -267,7 +276,7 @@ module ColliderModule
         return (None::CollisionDirection, 0.0)
     end
 
-    function CheckIfResting(colliderA::Collider, colliderB::Collider)
+    function CheckIfResting(colliderA::InternalCollider, colliderB::InternalCollider)
         if colliderB.isTrigger
             return (false, 0.0)
         end

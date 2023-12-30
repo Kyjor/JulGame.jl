@@ -13,20 +13,19 @@ module EntityModule
     export Entity
     mutable struct Entity
         id::Int
-        components::Array{Any}
+        components::Vector{Union{Animation, Animator, InternalCollider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite, Transform}}
         isActive::Bool
         name::String
         persistentBetweenScenes::Bool
-        scripts::Array{Any}
+        scripts::Vector{Any}
         
-        function Entity(name::String = "New entity", transform::Union{Ptr{Nothing}, Transform} = C_NULL, components::Array{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}} = Vector{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}}(), scripts::Array = [])
+        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}} = Vector{Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}}(), scripts::Array = [])
             this = new()
 
             this.id = 1
             this.name = name
             this.components = []
             this.isActive = true
-            transform = transform == C_NULL ? Transform() : transform
             this.addComponent(transform)
             if components != C_NULL
                 for component in components
@@ -52,7 +51,7 @@ module EntityModule
 
                 for component in this.components
                     if componentType <: Collider
-                        if typeof(component) <: CircleCollider #typeof(component) <: Collider || 
+                        if typeof(component) <: CircleCollider || typeof(component) <: InternalCollider
                             return component
                         end
                     end
@@ -105,8 +104,15 @@ module EntityModule
             return this.getComponent(SoundSource)
             end
         elseif s == :addComponent
-            function(component)
-                push!(this.components, component)
+            function(component::Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite, Transform})
+                if typeof(component) <: Collider
+                    rigidbody::Union{Rigidbody, Ptr{Nothing}} = this.getComponent(Rigidbody)
+                    newComponent::InternalCollider = InternalCollider(this::Entity, component.size::Vector2f, component.offset::Vector2f, component.tag::String, component.isTrigger::Bool, component.isPlatformerCollider::Bool, component.enabled::Bool, rigidbody)
+                    push!(this.components, newComponent::InternalCollider)
+                    return
+                end
+
+                push!(this.components, component::Union{Animation, Animator, Collider, CircleCollider, Rigidbody, Shape, SoundSource, Sprite, Transform})
                 if typeof(component) <: Transform
                     return
                 end

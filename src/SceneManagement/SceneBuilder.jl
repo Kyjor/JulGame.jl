@@ -81,9 +81,9 @@ module SceneBuilderModule
                     MAIN.scene.colliders = []
                     for entity in MAIN.scene.entities
                         for component in entity.components
-                            if typeof(component) == Rigidbody
+                            if typeof(component) <: Rigidbody
                                 push!(MAIN.scene.rigidbodies, component)
-                            elseif typeof(component) == Collider
+                            elseif typeof(component) <: InternalCollider
                                 push!(MAIN.scene.colliders, component)
                             end
                         end
@@ -153,9 +153,9 @@ module SceneBuilderModule
                         end
                         
                         for component in entity.components
-                            if typeof(component) == Rigidbody
+                            if typeof(component) <: Rigidbody
                                 push!(MAIN.scene.rigidbodies, component)
-                            elseif typeof(component) == Collider
+                            elseif typeof(component) <: InternalCollider
                                 push!(MAIN.scene.colliders, component)
                             end
                         end

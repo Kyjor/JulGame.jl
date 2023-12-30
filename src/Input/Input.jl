@@ -5,9 +5,9 @@ module InputModule
     
     export Input
     mutable struct Input
-        buttonsPressedDown::Array{String}
-        buttonsHeldDown::Array{String}
-        buttonsReleased::Array{String}
+        buttonsPressedDown::Vector{String}
+        buttonsHeldDown::Vector{String}
+        buttonsReleased::Vector{String}
         debug::Bool
         isWindowFocused::Bool
         main
@@ -16,7 +16,7 @@ module InputModule
         mouseButtonsReleased::Array
         mousePosition
         joystick
-        scanCodeStrings::Array{String}
+        scanCodeStrings::Vector{String}
         scanCodes::Array
         scene
         quit::Bool

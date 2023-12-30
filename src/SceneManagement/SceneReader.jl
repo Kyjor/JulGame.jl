@@ -104,10 +104,11 @@ module SceneReaderModule
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
-                newComponent = Collider(Vector2f(component.size.x, component.size.y), Vector2f(), component.tag)
-                newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
-                newComponent.isPlatformerCollider = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
-                newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+                isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
+                enabled::Bool = !haskey(component, "enabled") ? true : component.isTrigger
+                isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
+                offset::Vector2f = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+                newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
             elseif component.type == "CircleCollider"
                 newComponent = CircleCollider(convert(Float64, component.diameter), Vector2f(component.offset.x, component.offset.y), component.tag)
             elseif component.type == "Rigidbody"

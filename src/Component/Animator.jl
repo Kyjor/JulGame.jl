@@ -5,7 +5,7 @@
 
     export Animator
     mutable struct Animator
-        animations::Array{Animation}
+        animations::Vector{Animation}
         currentAnimation::Animation
         lastFrame::Int
         lastUpdate::UInt64

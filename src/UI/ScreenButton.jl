@@ -4,7 +4,7 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton
-        clickEvents::Array{Any}
+        clickEvents::Vector{Any}
         currentTexture
         buttonDownSprite
         buttonDownTexture
