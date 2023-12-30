@@ -814,7 +814,6 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				this.selectedEntityUpdated = false
 				return returnData
 			end
-			wtmlfa = test(4543)
 		catch e
 			if this.testMode || isEditor
 				rethrow(e)
