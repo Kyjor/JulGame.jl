@@ -1,47 +1,51 @@
-struct Vector3
-    x::Integer
-    y::Integer
-    z::Integer
+"""
+# Generic 3D Vector structure
 
-    #default constructor
-    Vector3() = new(0, 0, 0)
-    Vector3(value::Number) = new(convert(Integer, round(value)), convert(Integer, round(value)), convert(Integer, round(value)))
-    Vector3(x::Number, y::Number, z::Number) = new(convert(Integer, round(x)), convert(Integer, round(y)), convert(Integer, round(z)))
+Two space dimensional vector <`x`,`y`,`z`>
+This structure has read and rewrite the `x`, `y` and `z` components freedom.
+"""
+struct _Vector3{T}
+    x::T
+    y::T
+    z::T
 
-    #operators 
-    function Base.:+(vec::Vector3, vec1::Vector3)
-        return Vector3(vec.x + vec1.x, vec.y + vec1.y, vec.z + vec1.z)
-    end
-
-    function Base.:-(vec::Vector3, vec1::Vector3)
-        return Vector3(vec.x - vec1.x, vec.y - vec1.y, vec.z - vec1.z)
+    function _Vector3{T}(v::L) where {T,L}
+        return (T <: Integer) ? new{T}(round(T,v),round(T,v),round(T,v)) :
+            new{T}(convert(T,v),convert(T,v),convert(T,v))
     end
 
-    function Base.:*(vec::Vector3, vec1::Vector3)
-        return Vector3(vec.x * vec1.x, vec.y * vec1.y, vec.z * vec1.z)
+    _Vector3{T}() where T = new{T}(0)
+
+    function _Vector3{T}(x::L, y::P, z::Q) where {T,L,P,Q}
+        return (T <: Integer) ? new{T}(round(T,x), round(T,y), round(T,z)) :
+            new{T}(convert(T,x), convert(T,y), convert(T,z))
     end
 
-    function Base.:*(vec::Vector3, int::Integer)
-        return Vector3(vec.x * int, vec.y * int, vec.z * int)
-    end
-    
-    function Base.:*(vec::Vector3, float::Float64)
-        return Vector3(vec.x * float, vec.y * float, vec.z * float)
-    end
-    
-    function Base.:*(float::Float64, vec::Vector3)
-        return Vector3(vec.x * float, vec.y * float, vec.z * float)
-    end
+    # Operator overloading
+    Base.:+(vec::_Vector3{T}, vec1::_Vector3{L}) where {T,L} = _Vector3{T}(vec.x + vec1.x, vec.y + vec1.y,
+                                                                           vec1.z + vec.z)
+    Base.:+(vec::_Vector3{T}, a::Real) where T = _Vector3{T}(vec.x + a, vec.y + a, vec.z + a)
+    Base.:+(a::Real, vec::_Vector3{T}) where T = _Vector3{T}(vec.x + a, vec.y + a, vec.z + a)
+    Base.:+(vec::_Vector3{T}) where T = vec
 
-    function Base.:/(vec::Vector3, float::Float64)
-        return Vector3(round(vec.x / float), round(vec.y / float), round(vec.z / float))
-    end
+    Base.:-(vec::_Vector3{T}, vec1::_Vector3{L}) where {T,L} = _Vector3{T}(vec.x - vec1.x, vec.y - vec1.y,
+                                                                           vec.z - vec1.z)
+    Base.:-(vec::_Vector3{T}, a::Real) where T = _Vector3{T}(vec.x - a, vec.y - a, vec.z - a)
+    Base.:-(a::Real, vec::_Vector3{T}) where T = _Vector3{T}(a - vec.x, a - vec.y,a - vec.z)
+    Base.:-(vec::_Vector3{T}) where T = _Vector3{T}(-vec.x, -vec.y, -vec.z)
 
-    function Base.:/(vec::Vector3, int::Integer)
-        return Vector3(vec.x / int, vec.y / int, vec.z / int)
-    end
+    Base.:*(vec::_Vector3{T}, vec1::_Vector3{L}) where {T,L} = _Vector3{T}(vec.x * vec1.x, vec.y * vec1.y,
+                                                                           vec.z * vec1.z)
+    Base.:*(vec::_Vector3{T}, a::Real) where T = _Vector3{T}(vec.x * a, vec.y * a, vec.z * a)
+    Base.:*(a::Real, vec::_Vector3{T}) where T = _Vector3{T}(vec.x * a, vec.y * a, vec.z * a)
 
-    function Base.:/(vec::Vector3, vec1::Vector3)
-        return Vector3(vec.x / vec1.x, vec.y / vec1.y, vec.z / vec1.z)
-    end
+    Base.:/(vec::_Vector3{T}, vec1::_Vector3{L}) where {T,L} = _Vector3{T}(vec.x / vec1.x, vec.y / vec1.y, 
+                                                                           vec.z / vec1.z)
+    Base.:/(vec::_Vector3{T}, a::Real) where T = _Vector3{T}(vec.x / a, vec.y / a, vec.z / a)
+    Base.:/(a::Real, vec::_Vector3{T}) where T = _Vector3{T}(a / vec.x, a / vec.y, a / vec.z)
+
+    Base.:(==)(a::_Vector3{T}, b::_Vector3{L}) where {T,L} = (a.x == b.x && a.y == b.y && a.z == b.z)
 end   
+
+Vector3 = _Vector3{Integer}
+Vector3f = _Vector3{Float64}
