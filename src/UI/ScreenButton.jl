@@ -11,6 +11,7 @@ module ScreenButtonModule
         buttonUpSprite
         buttonUpTexture
         dimensions
+        isInitialized::Bool
         mouseOverSprite
         position
         text
@@ -23,10 +24,13 @@ module ScreenButtonModule
             this.buttonUpSprite = SDL2.IMG_Load(joinpath(basePath, "assets", "images", buttonUpSpritePath))
             #this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : basePath
             this.clickEvents = []
+            this.currentTexture = C_NULL
             this.dimensions = dimensions
             this.mouseOverSprite = false
             this.position = position
             this.text = text
+            this.textTexture = C_NULL
+            this.isInitialized = false
 
             return this
         end
@@ -35,7 +39,11 @@ module ScreenButtonModule
     function Base.getproperty(this::ScreenButton, s::Symbol)
         if s == :render
             function()
-                if this.currentTexture == C_NULL || this.currentTexture === nothing || JulGame.Renderer == C_NULL
+                if !this.isInitialized
+                    this.initialize()
+                end
+
+                if this.currentTexture == C_NULL
                     return
                 end
 
@@ -60,7 +68,7 @@ module ScreenButtonModule
                 this.currentTexture = this.buttonUpTexture
                 # text = SDL2.TTF_RenderText_Blended(font, this.text, SDL2.SDL_Color(255,255,255,255) )
                 # this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, text)
-
+                this.isInitialized = true
             end
         elseif s == :setPosition
             function(position::Math.Vector2)
@@ -103,6 +111,7 @@ module ScreenButtonModule
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end

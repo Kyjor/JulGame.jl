@@ -12,6 +12,7 @@ module TextBoxModule
         id::Integer
         isCenteredX::Bool
         isCenteredY::Bool
+        isInitialized::Bool
         isDefaultFont::Bool
         isTextUpdated::Bool
         isWorldEntity::Bool
@@ -38,6 +39,8 @@ module TextBoxModule
             this.position = position
             this.text = text
             this.isWorldEntity = isWorldEntity
+            this.textTexture = C_NULL
+            this.isInitialized = false
 
             return this
         end
@@ -46,6 +49,10 @@ module TextBoxModule
     function Base.getproperty(this::TextBox, s::Symbol)
         if s == :render
             function(DEBUG)
+                if !this.isInitialized
+                    Initialize(this)
+                end
+
                 if this.textTexture == C_NULL
                     return
                 end
@@ -67,7 +74,7 @@ module TextBoxModule
                 cameraDiff = this.isWorldEntity ? 
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
                 Math.Vector2(0,0)
-                
+
                 @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
@@ -128,6 +135,7 @@ module TextBoxModule
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end
@@ -150,6 +158,8 @@ module TextBoxModule
         if !this.isWorldEntity
             this.centerText()
         end
+
+        this.isInitialized = true
     end
 
 end

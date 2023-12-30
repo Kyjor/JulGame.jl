@@ -312,6 +312,7 @@ module MainLoop
 				getfield(this, s)
 			catch e
 				println(e)
+				Base.show_backtrace(stdout, catch_backtrace())
 			end
 		end
 	end
@@ -764,7 +765,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						round(size.y * SCALE_UNITS))))
 					end
 				catch e
-					println(e)
+					rethrow(e)
 				end
 			end
 			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
