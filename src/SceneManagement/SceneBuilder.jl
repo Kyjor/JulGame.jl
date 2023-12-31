@@ -155,9 +155,10 @@ module SceneBuilderModule
                         for component in entity.components
                             if typeof(component) <: Rigidbody
                                 push!(MAIN.scene.rigidbodies, component)
-                            elseif typeof(component) <: InternalCollider
-                                push!(MAIN.scene.colliders, component)
                             end
+                        end
+                        if entity.collider != C_NULL
+                            push!(MAIN.scene.colliders, entity.collider)
                         end
 
                         if true # !isUsingEditor
