@@ -8,7 +8,7 @@ using JulGame.SoundSourceModule
 using JulGame.TransformModule
 
 mutable struct Spider
-    animator::AnimatorModule.Animator
+    animator
     endingX::Int32
     isMovingRight::Bool
     parent::JulGame.EntityModule.Entity
@@ -31,7 +31,7 @@ end
 function Base.getproperty(this::Spider, s::Symbol)
     if s == :initialize
         function()
-            this.animator = this.parent.getAnimator()
+            this.animator = this.parent.animator
         end
     elseif s == :update
         function(deltaTime)

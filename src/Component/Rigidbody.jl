@@ -47,8 +47,8 @@
                 SetVelocity(this, newVelocity * velocityMultiplier)
                 this.acceleration = newAcceleration
 
-                if this.parent.getCollider() != C_NULL
-                    this.parent.getCollider().checkCollisions()
+                if this.parent.collider != C_NULL
+                    this.parent.collider.checkCollisions()
                 end
             end
         elseif s == :applyForces
@@ -96,8 +96,8 @@
         this.velocity = this.velocity + velocity
         if(velocity.y < 0)
             this.grounded = false
-            if this.parent.getCollider() != C_NULL
-                this.parent.getCollider().currentRests = []
+            if this.parent.collider != C_NULL
+                this.parent.collider.currentRests = []
             end
         end
     end

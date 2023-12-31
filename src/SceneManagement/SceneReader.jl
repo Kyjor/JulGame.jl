@@ -50,6 +50,13 @@ module SceneReaderModule
                 newEntity.isActive = entity.isActive
                 newEntity.scripts = scripts
                 for component in components
+                    if typeof(component) == Animator
+                        newEntity.addAnimator(component::Animator)
+                        continue
+                    elseif typeof(component) == Collider
+                        newEntity.addCollider(component::Collider)
+                        continue
+                    end
                     newEntity.addComponent(component)
                 end
                 
@@ -94,9 +101,9 @@ module SceneReaderModule
             elseif component.type == "Animation"
                 newComponent = Animation(component.frames, component.animatedFPS)
             elseif component.type == "Animator"
-                newAnimations = []
+                newAnimations = Animation[]
                 for animation in component.animations
-                newAnimationFrames = []
+                newAnimationFrames = Vector4[]
                 for animationFrame in animation.frames
                     push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
                 end

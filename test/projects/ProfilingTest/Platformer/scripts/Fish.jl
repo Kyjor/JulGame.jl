@@ -8,7 +8,7 @@ using JulGame.SoundSourceModule
 using JulGame.TransformModule
 
 mutable struct Fish
-    animator::AnimatorModule.Animator
+    animator
     endingY::Int32
     isFire::Bool
     isMovingUp::Bool
@@ -33,7 +33,7 @@ end
 function Base.getproperty(this::Fish, s::Symbol)
     if s == :initialize
         function()
-            this.animator = this.parent.getAnimator()
+            this.animator = this.parent.animator
             this.parent.getSprite().rotation = 90
         end
     elseif s == :update

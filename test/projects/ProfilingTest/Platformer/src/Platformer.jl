@@ -13,13 +13,15 @@ module Platformer
     julia_main() = run()
 end
 # comment when building
-# Platformer.run()
-
-using Profile
+Platformer.run()
+#using Profile
 
 #@profile Platformer.run()
 
 #Profile.print(format=:flat)
 
 #@profview_allocs Platformer.run() sample_rate = 1
-@profview Platformer.run()
+#using Cthulhubbblbkb
+#@profview Platformer.run()
+# Click somewhere in the profile
+#Cthulhu.descend_clicked()

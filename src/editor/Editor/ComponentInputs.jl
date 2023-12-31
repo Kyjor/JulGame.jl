@@ -149,9 +149,9 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
             
             if fieldString == "animations"
                 animationFields=fieldnames(JulGame.AnimationModule.Animation);
-                animations = currentEntitySelected.getAnimator().animations
+                animations = currentEntitySelected.animator.animations
 
-                CImGui.Button("Add Animation") && currentEntitySelected.getAnimator().appendArray()
+                CImGui.Button("Add Animation") && currentEntitySelected.animator.appendArray()
                 for i = 1:length(animations) 
                     if CImGui.TreeNode("animation $(i)")
                         for j = 1:length(animationFields)
@@ -159,7 +159,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                             if animationFieldString == "animatedFPS"
                                 x = Cint(animations[i].animatedFPS)
                                 @c CImGui.InputInt("$(animationFieldString) $(j)", &x, 1)
-                                currentEntitySelected.getAnimator().animations[i].animatedFPS = x
+                                currentEntitySelected.animator.animations[i].animatedFPS = x
                             elseif animationFieldString == "frames"
                                 try
                                     CImGui.Button("Add Frame") && animations[i].appendArray()
@@ -169,7 +169,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                                             vec = animations[i].frames[k]
                                             vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
-                                            currentEntitySelected.getAnimator().animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
+                                            currentEntitySelected.animator.animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
                                             CImGui.TreePop()
                                         end
                                     end

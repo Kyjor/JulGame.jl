@@ -50,7 +50,7 @@ end
 function Base.getproperty(this::PlayerMovement, s::Symbol)
     if s == :initialize
         function()
-            this.animator = this.parent.getAnimator()
+            this.animator = this.parent.animator
             this.animator.currentAnimation = this.animator.animations[1]
             this.jumpSound = this.parent.getSoundSource()
             this.cameraTarget = Transform(Vector2f(this.parent.getTransform().position.x, 0))
@@ -123,7 +123,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         function(parent)
             this.parent = parent
             collisionEvent = @argevent (col) this.handleCollisions(col)
-            this.parent.getComponent(Collider).addCollisionEvent(collisionEvent)
+            this.parent.collider.addCollisionEvent(collisionEvent)
         end
     elseif s == :handleCollisions
         function(otherCollider)

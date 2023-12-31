@@ -239,7 +239,7 @@ module MainLoop
 				entityIndex = 0
 				for entity in this.scene.entities
 					entityIndex += 1
-					size = entity.getCollider() != C_NULL ? entity.getCollider().getSize() : entity.getTransform().getScale()
+					size = entity.collider != C_NULL ? entity.collider.getSize() : entity.getTransform().getScale()
 					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
 						if this.selectedEntityIndex == entityIndex
 							continue
@@ -509,7 +509,7 @@ function DestroyEntityComponents(entity)
 		end
 	end
 
-	entityCollider = entity.getCollider()
+	entityCollider = entity.collider
 	if entityCollider != C_NULL
 		for j = 1:length(MAIN.scene.colliders)
 			if MAIN.scene.colliders[j] == entityCollider
@@ -551,8 +551,8 @@ function CreateEntity(entity)
 		push!(MAIN.scene.rigidbodies, entity.getRigidbody())
 	end
 
-	if entity.getCollider() != C_NULL
-		push!(MAIN.scene.colliders, entity.getCollider())
+	if entity.collider != C_NULL
+		push!(MAIN.scene.colliders, entity.collider)
 	end
 
 	return entity
@@ -654,7 +654,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
 						rethrow(e)
 					end
-					entityAnimator = entity.getAnimator()
+					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
 						entityAnimator.update(currentRenderTime, deltaTime)
 					end
@@ -713,10 +713,10 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					entityShape.draw()
 				end
 
-				if DEBUG && entity.getCollider() != C_NULL
+				if DEBUG && entity.collider != C_NULL
 					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 					pos = entity.getTransform().getPosition()
-					collider = entity.getCollider()
+					collider = entity.collider
 					if collider.getType() == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
 							round(Int, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
@@ -756,8 +756,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						end
 
 						pos = selectedEntity.getTransform().getPosition()
-						size = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().getSize() : selectedEntity.getTransform().getScale()
-						offset = selectedEntity.getCollider() != C_NULL ? selectedEntity.getCollider().offset : Math.Vector2f()
+						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.getTransform().getScale()
+						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
 						SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(
 						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
 						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
