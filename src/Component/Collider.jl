@@ -23,11 +23,10 @@ module ColliderModule
         isPlatformerCollider::Bool
         offset::Math.Vector2f
         parent::Any
-        rigidbody::Any
         size::Math.Vector2f
         tag::String
         
-        function InternalCollider(parent::Any, size::Math.Vector2f = Math.Vector2f(1,1), offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, isPlatformerCollider::Bool = false, enabled::Bool=true, rigidbody::Any = C_NULL)
+        function InternalCollider(parent::Any, size::Math.Vector2f = Math.Vector2f(1,1), offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, isPlatformerCollider::Bool = false, enabled::Bool=true)
             this = new()
 
             this.collisionEvents = []

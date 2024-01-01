@@ -4,8 +4,17 @@ module CircleColliderModule
     using ..Component.ColliderModule
 
     export CircleCollider
-    mutable struct CircleCollider
-        collisionEvents::Vector{Any}
+    struct CircleCollider
+        diameter::Float64
+        enabled::Bool
+        isTrigger::Bool
+        offset::Math.Vector2f
+        tag::String
+    end
+
+    export InternalCircleCollider
+    mutable struct InternalCircleCollider
+        collisionEvents::Vector{Function}
         currentCollisions::Vector{Collider}
         currentRests::Vector{Collider}
         diameter::Float64
@@ -16,17 +25,18 @@ module CircleColliderModule
         parent::Any
         tag::String
 
-        function CircleCollider(diameter::Float64, offset::Math.Vector2f, tag::String)
+        function InternalCircleCollider(parent::Any, diameter::Float64, offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, enabled::Bool=true)
             this = new()
     
             this.collisionEvents = []
             this.currentCollisions = []
             this.currentRests = []
             this.diameter = diameter
-            this.enabled = true
+            this.enabled = enabled
             this.isGrounded = false
-            this.isTrigger = false
+            this.isTrigger = isTrigger
             this.offset = offset
+            this.parent = parent
             this.tag = tag
     
             return this
@@ -160,7 +170,7 @@ module CircleColliderModule
         return false
     end
 
-    function CheckCollision(a::CircleCollider, b::Collider)
+    function CheckCollision(a::InternalCircleCollider, b::InternalCollider)
         # Closest point on collision box
         cX, cY = 0, 0
 
@@ -196,7 +206,7 @@ module CircleColliderModule
         return [false, distanceSquared]
     end
 
-    function CheckIfResting(a::CircleCollider, b::Collider)
+    function CheckIfResting(a::InternalCircleCollider, b::InternalCollider)
         # Closest point on collision box
         cX = 0
 
@@ -224,7 +234,7 @@ module CircleColliderModule
         return [false, distance]
     end
 
-    function DistanceSquared(x1::Number, y1::Number, x2::Number, y2::Number)
+    function DistanceSquared(x1::Real, y1::Real, x2::Real, y2::Real)
         deltaX = x2 - x1
         deltaY = y2 - y1
         return deltaX^2 + deltaY^2

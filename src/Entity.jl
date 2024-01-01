@@ -15,25 +15,26 @@ module EntityModule
         id::Int
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
-        circleCollider::Union{CircleCollider, Ptr{Nothing}}
+        circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
         shape::Union{Shape, Ptr{Nothing}}
         soundSource::Union{Vector{SoundSource}, Ptr{Nothing}}
-        Sprite::Union{Sprite, Ptr{Nothing}}
+        sprite::Union{Sprite, Ptr{Nothing}}
         transform::Transform
 
-        components::Vector{Union{CircleCollider, Shape, SoundSource, Sprite, Transform}}
+        components::Vector{Union{Shape, SoundSource, Sprite, Transform}}
         isActive::Bool
         name::String
         persistentBetweenScenes::Bool
         scripts::Vector{Any}
         
-        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{CircleCollider, Shape, SoundSource, Sprite}} = Vector{Union{CircleCollider, Shape, SoundSource, Sprite}}(), scripts::Array = [])
+        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{Shape, SoundSource, Sprite}} = Vector{Union{Shape, SoundSource, Sprite}}(), scripts::Array = [])
             this = new()
 
             this.id = 1
             this.name = name
             this.animator = C_NULL
+            this.circleCollider = C_NULL
             this.collider = C_NULL
             this.components = []
             this.isActive = true
@@ -47,6 +48,9 @@ module EntityModule
             for script in scripts
                 this.addScript(script)
             end
+            this.shape = C_NULL
+            this.soundSource = C_NULL
+            this.sprite = C_NULL
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
 
@@ -62,12 +66,6 @@ module EntityModule
                 end
 
                 for component in this.components
-                    if componentType <: Collider
-                        if typeof(component) <: CircleCollider
-                            return component
-                        end
-                    end
-
                     if typeof(component) <: componentType
                         return component
                     end
@@ -100,8 +98,8 @@ module EntityModule
             return this.getComponent(SoundSource)
             end
         elseif s == :addComponent
-            function(component::Union{CircleCollider, Shape, SoundSource, Sprite, Transform})
-                push!(this.components, component::Union{CircleCollider, Shape, SoundSource, Sprite, Transform})
+            function(component::Union{Shape, SoundSource, Sprite, Transform})
+                push!(this.components, component::Union{Shape, SoundSource, Sprite, Transform})
                 if typeof(component) <: Transform
                     return
                 end
@@ -149,20 +147,20 @@ module EntityModule
                 end
             end
         elseif s == :addCollider
-            function(collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Test"))
-                if this.collider != C_NULL
+            function(collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
+                if this.collider != C_NULL || this.circleCollider != C_NULL
                     return
                 end
                     
-                rigidbody::Union{InternalRigidbody, Ptr{Nothing}} = this.rigidbody
-                this.collider = InternalCollider(this::Entity, collider.size::Vector2f, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.isPlatformerCollider::Bool, collider.enabled::Bool, rigidbody::Union{InternalRigidbody, Ptr{Nothing}})
+                this.collider = InternalCollider(this::Entity, collider.size::Vector2f, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.isPlatformerCollider::Bool, collider.enabled::Bool)
             end
         elseif s == :addCircleCollider
-            function()
-                if this.getComponent(Collider) != C_NULL || this.getComponent(CircleCollider) != C_NULL
+            function(collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
+                if this.collider != C_NULL || this.circleCollider != C_NULL
                     return
                 end
-                this.addComponent(max(this.getTransform().scale.x, this.getTransform().scale.y), Vector2f(0,0), "Test")
+
+                this.circleCollider = InternalCircleCollider(this::Entity, collider.diameter, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.enabled::Bool)
             end
         elseif s == :addRigidbody
             function(rigidbody::Rigidbody = Rigidbody(1.0))
