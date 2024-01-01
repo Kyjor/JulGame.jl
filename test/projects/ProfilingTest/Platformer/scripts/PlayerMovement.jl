@@ -68,13 +68,13 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             # Inputs match SDL2 scancodes after "SDL_SCANCODE_"
             # https://wiki.libsdl.org/SDL2/SDL_Scancode
             # Spaces full scancode is "SDL_SCANCODE_SPACE" so we use "SPACE". Every other key is the same.
-            if this.parent.getRigidbody().grounded
+            if this.parent.rigidbody.grounded
                 this.jumpSound.toggleSound()
-                SetVelocity(this.parent.getRigidbody(), Vector2f(this.parent.getRigidbody().getVelocity().x, 0))
-                AddVelocity(this.parent.getRigidbody(), Vector2f(0, this.jumpVelocity))
+                SetVelocity(this.parent.rigidbody, Vector2f(this.parent.rigidbody.getVelocity().x, 0))
+                AddVelocity(this.parent.rigidbody, Vector2f(0, this.jumpVelocity))
                 this.animator.currentAnimation = this.animator.animations[3]
             end
-            if this.parent.getRigidbody().grounded
+            if this.parent.rigidbody.grounded
                 this.animator.currentAnimation = this.animator.animations[2]
             end
             x = speed
@@ -83,7 +83,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 this.parent.getSprite().flip()
             end
             
-            SetVelocity(this.parent.getRigidbody(), Vector2f(x, this.parent.getRigidbody().getVelocity().y))
+            SetVelocity(this.parent.rigidbody, Vector2f(x, this.parent.rigidbody.getVelocity().y))
             x = 0
             this.isJump = false
             if this.parent.getTransform().position.y > 8

@@ -77,50 +77,48 @@ module SceneBuilderModule
                         end
                     end
 
-                    MAIN.scene.rigidbodies = []
-                    MAIN.scene.colliders = []
+                    MAIN.scene.rigidbodies = InternalRigidbody[]
+                    MAIN.scene.colliders = InternalCollider[]
                     for entity in MAIN.scene.entities
-                        for component in entity.components
-                            if typeof(component) <: Rigidbody
-                                push!(MAIN.scene.rigidbodies, component)
-                            elseif typeof(component) <: InternalCollider
-                                push!(MAIN.scene.colliders, component)
-                            end
+                        if entity.rigidbody != C_NULL
+                            push!(MAIN.scene.rigidbodies, entity.rigidbody)
+                        end
+                        if entity.collider != C_NULL
+                            push!(MAIN.scene.colliders, entity.collider)
                         end
 
-                    if !isUsingEditor
-                        scriptCounter = 1
-                        for script in entity.scripts
-                            params = []
-                            for param in script.parameters
-                                if lowercase(param) == "true"
-                                    param = true
-                                elseif lowercase(param) == "false"
-                                    param = false
-                                else
-                                    try
-                                        param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
-                                    catch e
-                                        println(e)
+                        if !isUsingEditor
+                            scriptCounter = 1
+                            for script in entity.scripts
+                                params = []
+                                for param in script.parameters
+                                    if lowercase(param) == "true"
+                                        param = true
+                                    elseif lowercase(param) == "false"
+                                        param = false
+                                    else
+                                        try
+                                            param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
+                                        catch e
+                                            println(e)
+                                        end
                                     end
+                                    push!(params, param)
                                 end
-                                push!(params, param)
-                            end
 
-                            newScript = C_NULL
-                            try
-                                newScript = TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
-                            catch e
-                                println(e)
-                                Base.show_backtrace(stdout, catch_backtrace())
-                            end
+                                newScript = C_NULL
+                                try
+                                    newScript = TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
+                                catch e
+                                    println(e)
+                                    Base.show_backtrace(stdout, catch_backtrace())
+                                end
 
-                            entity.scripts[scriptCounter] = newScript
-                            newScript.setParent(entity)
-                            scriptCounter += 1
+                                entity.scripts[scriptCounter] = newScript
+                                newScript.setParent(entity)
+                                scriptCounter += 1
+                            end
                         end
-                    end
-
                     end
 
                     MAIN.assets = joinpath(BasePath, "assets")
@@ -152,10 +150,8 @@ module SceneBuilderModule
                             continue
                         end
                         
-                        for component in entity.components
-                            if typeof(component) <: Rigidbody
-                                push!(MAIN.scene.rigidbodies, component)
-                            end
+                        if entity.rigidbody != C_NULL
+                            push!(MAIN.scene.rigidbodies, entity.rigidbody)
                         end
                         if entity.collider != C_NULL
                             push!(MAIN.scene.colliders, entity.collider)
@@ -211,6 +207,10 @@ module SceneBuilderModule
                     getfield(this, s)
                 catch e
                     println(e)
+                    Base.show_backtrace(stdout, catch_backtrace())
+                    println("")
+                    println("")
+                    println("")
                 end
             end
         end

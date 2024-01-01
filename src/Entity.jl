@@ -16,19 +16,19 @@ module EntityModule
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{CircleCollider, Ptr{Nothing}}
-        rigidbody::Union{Rigidbody, Ptr{Nothing}}
+        rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
         shape::Union{Shape, Ptr{Nothing}}
         soundSource::Union{Vector{SoundSource}, Ptr{Nothing}}
         Sprite::Union{Sprite, Ptr{Nothing}}
         transform::Transform
 
-        components::Vector{Union{CircleCollider, Rigidbody, Shape, SoundSource, Sprite, Transform}}
+        components::Vector{Union{CircleCollider, Shape, SoundSource, Sprite, Transform}}
         isActive::Bool
         name::String
         persistentBetweenScenes::Bool
         scripts::Vector{Any}
         
-        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{Animation, Animator, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}} = Vector{Union{Animation, Animator, CircleCollider, Rigidbody, Shape, SoundSource, Sprite}}(), scripts::Array = [])
+        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{CircleCollider, Shape, SoundSource, Sprite}} = Vector{Union{CircleCollider, Shape, SoundSource, Sprite}}(), scripts::Array = [])
             this = new()
 
             this.id = 1
@@ -48,6 +48,7 @@ module EntityModule
                 this.addScript(script)
             end
             this.persistentBetweenScenes = false
+            this.rigidbody = C_NULL
 
             return this
         end
@@ -94,17 +95,13 @@ module EntityModule
             function()
                 return this.getComponent(Shape)
             end
-        elseif s == :getRigidbody
-            function()
-            return this.getComponent(Rigidbody)
-            end
         elseif s == :getSoundSource
             function()
             return this.getComponent(SoundSource)
             end
         elseif s == :addComponent
-            function(component::Union{Animator, CircleCollider, Rigidbody, Shape, SoundSource, Sprite, Transform})
-                push!(this.components, component::Union{Animation, Animator, CircleCollider, Rigidbody, Shape, SoundSource, Sprite, Transform})
+            function(component::Union{CircleCollider, Shape, SoundSource, Sprite, Transform})
+                push!(this.components, component::Union{CircleCollider, Shape, SoundSource, Sprite, Transform})
                 if typeof(component) <: Transform
                     return
                 end
@@ -157,8 +154,8 @@ module EntityModule
                     return
                 end
                     
-                rigidbody::Union{Rigidbody, Ptr{Nothing}} = this.getComponent(Rigidbody)
-                this.collider = InternalCollider(this::Entity, collider.size::Vector2f, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.isPlatformerCollider::Bool, collider.enabled::Bool, rigidbody)
+                rigidbody::Union{InternalRigidbody, Ptr{Nothing}} = this.rigidbody
+                this.collider = InternalCollider(this::Entity, collider.size::Vector2f, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.isPlatformerCollider::Bool, collider.enabled::Bool, rigidbody::Union{InternalRigidbody, Ptr{Nothing}})
             end
         elseif s == :addCircleCollider
             function()
@@ -168,11 +165,12 @@ module EntityModule
                 this.addComponent(max(this.getTransform().scale.x, this.getTransform().scale.y), Vector2f(0,0), "Test")
             end
         elseif s == :addRigidbody
-            function()
-                if this.getComponent(Rigidbody) != C_NULL
+            function(rigidbody::Rigidbody = Rigidbody(1.0))
+                if this.rigidbody != C_NULL
                     return
                 end
-                this.addComponent(Rigidbody(1.0))
+
+                this.rigidbody = InternalRigidbody(this::Entity, rigidbody.mass)
             end
         elseif s == :addSoundSource
             function()

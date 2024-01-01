@@ -56,6 +56,21 @@ module SceneReaderModule
                     elseif typeof(component) == Collider
                         newEntity.addCollider(component::Collider)
                         continue
+                    elseif typeof(component) == CircleCollider
+                        # newEntity.addCircleCollider(component::CircleCollider)
+                        # continue
+                    elseif typeof(component) == Rigidbody
+                        newEntity.addRigidbody(component::Rigidbody)
+                        continue
+                    elseif typeof(component) == SoundSource
+                        # newEntity.addSoundSource(component::SoundSource)
+                        # continue
+                    elseif typeof(component) == Sprite
+                        # newEntity.addSprite(component::Sprite)
+                        # continue
+                    elseif typeof(component) == Transform
+                        # newEntity.addTransform(component::Transform)
+                        # continue
                     end
                     newEntity.addComponent(component)
                 end

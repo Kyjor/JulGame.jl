@@ -45,18 +45,18 @@ module CircleColliderModule
                 #Only check the player against other colliders
                 counter = 0
                 
-                this.isGrounded = this.parent.getRigidbody().grounded
+                this.isGrounded = this.parent.rigidbody.grounded
                 
 
                 for i in 1:length(colliders)
                     #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                     if !colliders[i].getParent().isActive || !colliders[i].enabled
-                        if this.parent.getRigidbody().grounded && i == length(colliders)
-                            this.parent.getRigidbody().grounded = false
+                        if this.parent.rigidbody.grounded && i == length(colliders)
+                            this.parent.rigidbody.grounded = false
                         end
                         continue
                     end
-                    if this != colliders[i] && this.parent.getRigidbody().getVelocity().y >= 0
+                    if this != colliders[i] && this.parent.rigidbody.getVelocity().y >= 0
                         collision = CheckCollision(this, colliders[i])
                         if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                             # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
@@ -120,7 +120,7 @@ module CircleColliderModule
                     end
                 end
            
-                this.parent.getRigidbody().grounded = length(this.currentRests) > 0 && this.parent.getRigidbody().getVelocity().y >= 0
+                this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
                 this.currentCollisions = []
             end
         elseif s == :setParent

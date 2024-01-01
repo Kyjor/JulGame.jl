@@ -1,10 +1,10 @@
 ﻿mutable struct Scene
     camera
-    colliders
-    entities
-    rigidbodies
-    screenButtons
-    textBoxes
+    colliders::Vector{Any}
+    entities::Vector{Any}
+    rigidbodies::Vector{Any}
+    screenButtons::Vector{Any}
+    textBoxes::Vector{Any}
 
     function Scene()
         this = new()

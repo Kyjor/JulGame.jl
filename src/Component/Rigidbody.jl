@@ -2,7 +2,12 @@
     using ..Component.JulGame
 
     export Rigidbody
-    mutable struct Rigidbody 
+    struct Rigidbody
+        mass::Float64
+    end
+
+    export InternalRigidbody
+    mutable struct InternalRigidbody 
         acceleration::Math.Vector2f
         drag::Float64
         grounded::Bool
@@ -12,7 +17,7 @@
         useGravity::Bool
         velocity::Math.Vector2f
 
-        function Rigidbody(mass::Float64)
+        function InternalRigidbody(parent::Any, mass::Float64 = 1.0)
             this = new()
             
             this.acceleration = Math.Vector2f()
@@ -20,6 +25,7 @@
             this.grounded = false
             this.mass = mass
             this.offset = Math.Vector2f()
+            this.parent = parent
             this.useGravity = true
             this.velocity = Math.Vector2f(0.0, 0.0)
 
@@ -27,7 +33,7 @@
         end
     end
 
-    function Base.getproperty(this::Rigidbody, s::Symbol)
+    function Base.getproperty(this::InternalRigidbody, s::Symbol)
         # Todo: update this based on offset and scale
         if s == :update
             function(dt)
@@ -66,10 +72,6 @@
             function()
                 return this.parent
             end
-        elseif s == :setParent
-            function(parent)
-                this.parent = parent
-            end
         elseif s == :setVector2fValue
             function(field, x, y)
                 setfield!(this, field, Math.Vector2f(x,y))
@@ -92,7 +94,7 @@
     - `this::Rigidbody`: The Rigidbody component to set the velocity for.
     - `velocity::Math.Vector2f`: The velocity to set.
     """
-    function AddVelocity(this::Rigidbody, velocity::Math.Vector2f)
+    function AddVelocity(this::InternalRigidbody, velocity::Math.Vector2f)
         this.velocity = this.velocity + velocity
         if(velocity.y < 0)
             this.grounded = false
@@ -112,7 +114,7 @@
     - `this::Rigidbody`: The Rigidbody component to set the velocity for.
     - `velocity::Vector2f`: The velocity to set.
     """
-    function SetVelocity(this::Rigidbody, velocity::Math.Vector2f)
+    function SetVelocity(this::InternalRigidbody, velocity::Math.Vector2f)
         this.velocity = velocity
         if(velocity.y < 0)
             #this.grounded = false

@@ -83,12 +83,12 @@ module ColliderModule
                 colliders = MAIN.scene.colliders
                 #Only check the player against other colliders
                 counter = 0
-                onGround = this.parent.getRigidbody().grounded
+                onGround = this.parent.rigidbody.grounded
                 for collider in colliders
                     #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                     if !collider.getParent().isActive || !collider.enabled
-                        if this.parent.getRigidbody().grounded && i == length(colliders)
-                            this.parent.getRigidbody().grounded = false
+                        if this.parent.rigidbody.grounded && i == length(colliders)
+                            this.parent.rigidbody.grounded = false
                         end
                         continue
                     end
@@ -129,7 +129,7 @@ module ColliderModule
                             #Begin to overlap, correct position
                             transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
                         end
-                        if collision[1] == Bottom::CollisionDirection && this.parent.getRigidbody().getVelocity().y >= 0
+                        if collision[1] == Bottom::CollisionDirection && this.parent.rigidbody.getVelocity().y >= 0
                             push!(this.currentCollisions, collider)
                             if !collider.isTrigger
                                 push!(this.currentRests, collider)
@@ -162,8 +162,8 @@ module ColliderModule
                     end
                 end
 
-                this.parent.getRigidbody().grounded = length(this.currentRests) > 0 && this.parent.getRigidbody().getVelocity().y >= 0
-                this.currentCollisions = []
+                this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
+                this.currentCollisions = InternalCollider[]
             end
         elseif s == :update
             function()

@@ -499,7 +499,7 @@ function DestroyEntityComponents(entity)
 		end
 	end
 
-	entityRigidbody = entity.getRigidbody()
+	entityRigidbody = entity.rigidbody
 	if entityRigidbody != C_NULL
 		for j = 1:length(MAIN.scene.rigidbodies)
 			if MAIN.scene.rigidbodies[j] == entityRigidbody
@@ -547,8 +547,8 @@ function CreateEntity(entity)
 		end
 	end
 
-	if entity.getRigidbody() != C_NULL
-		push!(MAIN.scene.rigidbodies, entity.getRigidbody())
+	if entity.rigidbody != C_NULL
+		push!(MAIN.scene.rigidbodies, entity.rigidbody)
 	end
 
 	if entity.collider != C_NULL
