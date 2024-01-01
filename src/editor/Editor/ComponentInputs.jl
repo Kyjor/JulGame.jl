@@ -15,17 +15,17 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Collider"
+    elseif componentType == "InternalCollider"
         fieldsInComponent=fieldnames(JulGame.ColliderModule.Collider);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Rigidbody"
+    elseif componentType == "InternalRigidbody"
         fieldsInComponent=fieldnames(JulGame.RigidbodyModule.Rigidbody);
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Animator"
+    elseif componentType == "InternalAnimator"
         fieldsInComponent=fieldnames(JulGame.AnimatorModule.Animator);
         ShowAnimatorProperties(fieldsInComponent, currentEntitySelected)
     elseif componentType == "Animation"
@@ -33,10 +33,10 @@ function ShowComponentProperties(currentEntitySelected, component, componentType
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Sprite"
+    elseif componentType == "InternalSprite"
         fieldsInComponent=fieldnames(JulGame.SpriteModule.Sprite);
         ShowSpriteProperties(fieldsInComponent, currentEntitySelected)
-    elseif componentType == "SoundSource"
+    elseif componentType == "InternalSoundSource"
         fieldsInComponent=fieldnames(JulGame.SoundSourceModule.SoundSource);
         ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
     end

@@ -227,25 +227,36 @@ module Editor
                                         end
                                         setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i], currentTextInTextBox)
                                     elseif FieldsInStruct[i] == :components
-                                        for i = 1:length(Value)
+                                        for j = 1:length(Value)
                                             component = Value[i]
                                             componentType = "$(typeof(component).name.wrapper)"
+                                            println(componentType)
                                             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
             
                                             if CImGui.TreeNode(componentType)
-                                                CImGui.Button("Delete") && (deleteat!(Value, i); break;)
+                                                CImGui.Button("Delete") && (deleteat!(Value, j); break;)
                                                 ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
                                                 CImGui.TreePop()
                                             end
                                         end
+                                    elseif FieldsInStruct[i] in [:animator, :circleCollider, :collider, :shape, :soundSource, :sprite, :rigidbody, :transform]
+                                        component = Value
+                                        componentType = "$(typeof(component).name.wrapper)"
+                                        componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
+        
+                                        if CImGui.TreeNode(componentType)
+                                            CImGui.Button("Delete") #&& (deleteat!(Value, i); break;)
+                                            ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
+                                            CImGui.TreePop()
+                                        end
                                     elseif FieldsInStruct[i] == :scripts
                                         if CImGui.TreeNode("Scripts")
                                             CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
-                                            for i = 1:length(Value)
-                                                if CImGui.TreeNode("Script $(i)")
-                                                    buf = "$(Value[i].name)"*"\0"^(64)
-                                                    CImGui.Button("Delete $(i)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, i); break;)
-                                                    CImGui.InputText("Script $(i)", buf, length(buf))
+                                            for j = 1:length(Value)
+                                                if CImGui.TreeNode("Script $(j)")
+                                                    buf = "$(Value[j].name)"*"\0"^(64)
+                                                    CImGui.Button("Delete $(j)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, j); break;)
+                                                    CImGui.InputText("Script $(j)", buf, length(buf))
                                                     currentTextInTextBox = ""
                                                     for characterIndex = 1:length(buf)
                                                         if Int(buf[characterIndex]) == 0 
@@ -256,15 +267,15 @@ module Editor
                                                         end
                                                     end
                                                     
-                                                    structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, structToUpdate[currentSelectedIndex].scripts[i].parameters)
+                                                    structToUpdate[currentSelectedIndex].scripts[j] = scriptObj(currentTextInTextBox, structToUpdate[currentSelectedIndex].scripts[j].parameters)
                                                     if CImGui.TreeNode("Script $(i) parameters")
-                                                        params = structToUpdate[currentSelectedIndex].scripts[i].parameters
-                                                        CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                                                        params = structToUpdate[currentSelectedIndex].scripts[j].parameters
+                                                        CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[j] = scriptObj(currentTextInTextBox, params); break;)
 
-                                                        for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
+                                                        for k = 1:length(structToUpdate[currentSelectedIndex].scripts[j].parameters)
                                                             buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
-                                                            CImGui.Button("pDelete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
-                                                            CImGui.InputText("Parameter $(j)", buf, length(buf))
+                                                            CImGui.Button("pDelete $(k)") && (deleteat!(params, k); structToUpdate[currentSelectedIndex].scripts[j] = scriptObj(currentTextInTextBox, params); break;)
+                                                            CImGui.InputText("Parameter $(k)", buf, length(buf))
                                                             currentTextInTextBox = ""
                                                             for characterIndex = 1:length(buf)
                                                                 if Int(buf[characterIndex]) == 0 
@@ -275,7 +286,7 @@ module Editor
                                                                 end
                                                             end
                                                             params[j] = currentTextInTextBox
-                                                            structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(structToUpdate[currentSelectedIndex].scripts[i].name, params)
+                                                            structToUpdate[currentSelectedIndex].scripts[j] = scriptObj(structToUpdate[currentSelectedIndex].scripts[j].name, params)
 
                                                         end
                                                         CImGui.TreePop()
