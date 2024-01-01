@@ -708,7 +708,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					end
 				end
 
-				entityShape = entity.getShape()
+				entityShape = entity.shape
 				if entityShape != C_NULL
 					entityShape.draw()
 				end

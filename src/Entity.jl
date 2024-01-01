@@ -17,18 +17,18 @@ module EntityModule
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
-        shape::Union{Shape, Ptr{Nothing}}
+        shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{Vector{SoundSource}, Ptr{Nothing}}
         sprite::Union{Sprite, Ptr{Nothing}}
         transform::Transform
 
-        components::Vector{Union{Shape, SoundSource, Sprite, Transform}}
+        components::Vector{Union{SoundSource, Sprite, Transform}}
         isActive::Bool
         name::String
         persistentBetweenScenes::Bool
         scripts::Vector{Any}
         
-        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{Shape, SoundSource, Sprite}} = Vector{Union{Shape, SoundSource, Sprite}}(), scripts::Array = [])
+        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{SoundSource, Sprite}} = Vector{Union{SoundSource, Sprite}}(), scripts::Array = [])
             this = new()
 
             this.id = 1
@@ -89,17 +89,13 @@ module EntityModule
             function()
                 return this.getComponent(Sprite)
             end
-        elseif s == :getShape
-            function()
-                return this.getComponent(Shape)
-            end
         elseif s == :getSoundSource
             function()
             return this.getComponent(SoundSource)
             end
         elseif s == :addComponent
-            function(component::Union{Shape, SoundSource, Sprite, Transform})
-                push!(this.components, component::Union{Shape, SoundSource, Sprite, Transform})
+            function(component::Union{SoundSource, Sprite, Transform})
+                push!(this.components, component::Union{SoundSource, Sprite, Transform})
                 if typeof(component) <: Transform
                     return
                 end
@@ -186,11 +182,12 @@ module EntityModule
                 this.getComponent("Sprite").initialize()
             end
         elseif s == :addShape
-            function()
-                if this.getComponent(Shape) != C_NULL
+            function(shape::Shape = Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, false, Math.Vector2f(0,0), Math.Vector2f(0,0)))
+                if this.shape != C_NULL
                     return
                 end
-                this.addComponent(Shape())
+
+                this.shape = InternalShape(this::Entity, shape.dimensions, shape.color, shape.isFilled, shape.offset; isWorldEntity = shape.isWorldEntity, position = shape.position)
             end
         else
             try
