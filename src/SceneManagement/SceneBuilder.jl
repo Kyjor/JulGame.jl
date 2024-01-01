@@ -35,7 +35,7 @@ module SceneBuilderModule
     export Scene
     mutable struct Scene
         scene
-        srcPath
+        srcPath::String
 
         function Scene(sceneFileName::String, srcPath::String = joinpath(pwd(), ".."))
             this = new()  

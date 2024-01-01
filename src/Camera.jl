@@ -2,13 +2,13 @@ using JulGame
 using JulGame.Math
 
 mutable struct Camera
-    dimensions
-    offset
+    dimensions::Vector2
+    offset::Vector2f
     position::Vector2f
     startingCoordinates::Vector2f
     target
 
-    function Camera(dimensions::Vector2, initialPosition::Vector2f, offset::Vector2f,target)
+    function Camera(dimensions::Vector2, initialPosition::Vector2f, offset::Vector2f, target)
         this = new()
         
         this.dimensions = dimensions
