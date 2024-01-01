@@ -35,18 +35,18 @@ function Base.getproperty(this::Spider, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
-            if this.parent.getTransform().position.x <= this.startingX && !this.isMovingRight
-                this.parent.getSprite().flip()
+            if this.parent.transform.position.x <= this.startingX && !this.isMovingRight
+                this.parent.sprite.flip()
                 this.isMovingRight = true
-            elseif this.parent.getTransform().position.x >= this.endingX && this.isMovingRight
-                this.parent.getSprite().flip()
+            elseif this.parent.transform.position.x >= this.endingX && this.isMovingRight
+                this.parent.sprite.flip()
                 this.isMovingRight = false
             end
 
             if this.isMovingRight
-                this.parent.getTransform().position = Vector2f(this.parent.getTransform().position.x + this.speed*deltaTime, this.parent.getTransform().position.y)
+                this.parent.transform.position = Vector2f(this.parent.transform.position.x + this.speed*deltaTime, this.parent.transform.position.y)
             else
-                this.parent.getTransform().position = Vector2f(this.parent.getTransform().position.x - this.speed*deltaTime, this.parent.getTransform().position.y)
+                this.parent.transform.position = Vector2f(this.parent.transform.position.x - this.speed*deltaTime, this.parent.transform.position.y)
             end
         end
     elseif s == :setParent

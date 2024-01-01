@@ -2,7 +2,21 @@
     using ..Component.JulGame
 
     export Sprite
-    mutable struct Sprite
+    struct Sprite
+        color::Math.Vector3
+        crop::Union{Ptr{Nothing}, Math.Vector4}
+        isFlipped::Bool
+        imagePath::String
+        isWorldEntity::Bool
+        layer::Int
+        offset::Math.Vector2f
+        position::Math.Vector2f
+        rotation::Float64
+        pixelsPerUnit::Int
+    end
+
+    export InternalSprite
+    mutable struct InternalSprite
         color::Math.Vector3
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
@@ -19,7 +33,7 @@
         renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function Sprite(imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit=-1, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f())
+        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit=-1, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(), rotation::Float64 = 0.0, layer::Int = 0)
             this = new()
 
             this.offset = Math.Vector2f()
@@ -29,10 +43,11 @@
             this.crop = crop
             this.image = C_NULL
             this.isWorldEntity = isWorldEntity
-            this.layer = 0
+            this.layer = layer
+            this.parent = parent
             this.pixelsPerUnit = pixelsPerUnit
             this.position = position
-            this.rotation = 0.0
+            this.rotation = rotation
             this.texture = C_NULL
 
             if isCreatedInEditor
@@ -56,7 +71,7 @@
         end
     end
 
-    function Base.getproperty(this::Sprite, s::Symbol)
+    function Base.getproperty(this::InternalSprite, s::Symbol)
         if s == :draw
             function()
                 if this.image == C_NULL || MAIN.renderer == C_NULL
@@ -68,7 +83,7 @@
                     this.setColor()
                 end
 
-                parentTransform = this.parent.getTransform()
+                parentTransform = this.parent.transform
 
                 cameraDiff = this.isWorldEntity ? 
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 

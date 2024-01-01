@@ -182,7 +182,7 @@ module MainLoop
 		
 					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
 		
-					entityToMoveTransform = this.scene.entities[this.selectedEntityIndex].getTransform()
+					entityToMoveTransform = this.scene.entities[this.selectedEntityIndex].transform
 					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
 						diff = this.panCounter.x > this.panThreshold ? -1 : 1
 						entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
@@ -239,8 +239,8 @@ module MainLoop
 				entityIndex = 0
 				for entity in this.scene.entities
 					entityIndex += 1
-					size = entity.collider != C_NULL ? entity.collider.getSize() : entity.getTransform().getScale()
-					if this.mousePositionWorldRaw.x >= entity.getTransform().getPosition().x && this.mousePositionWorldRaw.x <= entity.getTransform().getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.getTransform().getPosition().y && this.mousePositionWorldRaw.y <= entity.getTransform().getPosition().y + size.y
+					size = entity.collider != C_NULL ? entity.collider.getSize() : entity.transform.getScale()
+					if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
 						if this.selectedEntityIndex == entityIndex
 							continue
 						end
@@ -452,7 +452,7 @@ function BuildSpriteLayers(main::Main)
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
 	for entity in main.scene.entities
-		entitySprite = entity.getSprite()
+		entitySprite = entity.sprite
 		if entitySprite != C_NULL
 			if !haskey(layerDict, "$(entitySprite.layer)")
 				push!(layerDict["sort"], entitySprite.layer)
@@ -488,7 +488,7 @@ function DestroyEntity(entity)
 end
 
 function DestroyEntityComponents(entity)
-	entitySprite = entity.getSprite()
+	entitySprite = entity.sprite
 	if entitySprite != C_NULL
 		for j = 1:length(MAIN.spriteLayers["$(entitySprite.layer)"])
 			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
@@ -519,7 +519,7 @@ function DestroyEntityComponents(entity)
 		end
 	end
 
-	entitySoundSource = entity.getSoundSource()
+	entitySoundSource = entity.soundSource
 	if entitySoundSource != C_NULL
 		entitySoundSource.unloadSound()
 	end
@@ -537,13 +537,13 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 """
 function CreateEntity(entity)
 	push!(MAIN.scene.entities, entity)
-	if entity.getSprite() != C_NULL
-		if !haskey(MAIN.spriteLayers, "$(entity.getSprite().layer)")
-			push!(MAIN.spriteLayers["sort"], entity.getSprite().layer)
-			MAIN.spriteLayers["$(entity.getSprite().layer)"] = [entity.getSprite()]
+	if entity.sprite != C_NULL
+		if !haskey(MAIN.spriteLayers, "$(entity.sprite.layer)")
+			push!(MAIN.spriteLayers["sort"], entity.sprite.layer)
+			MAIN.spriteLayers["$(entity.sprite.layer)"] = [entity.sprite]
 			sort!(MAIN.spriteLayers["sort"])
 		else
-			push!(MAIN.spriteLayers["$(entity.getSprite().layer)"], entity.getSprite())
+			push!(MAIN.spriteLayers["$(entity.sprite.layer)"], entity.sprite)
 		end
 	end
 
@@ -671,8 +671,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						# get camera size and position and only render if the sprite is within the camera's view
 						cameraPosition = this.scene.camera.position
 						cameraSize = this.scene.camera.dimensions
-						spritePosition = sprite.parent.getTransform().getPosition()
-						spriteSize = sprite.parent.getTransform().getScale()
+						spritePosition = sprite.parent.transform.getPosition()
+						spriteSize = sprite.parent.transform.getScale()
 						
 						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || spritePosition.y > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
 							skipcount += 1
@@ -697,7 +697,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 
 				if isEditor
-					entitySprite = entity.getSprite()
+					entitySprite = entity.sprite
 					if entitySprite != C_NULL
 						try
 							entitySprite.draw()
@@ -715,19 +715,19 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 				if DEBUG && entity.collider != C_NULL
 					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-					pos = entity.getTransform().getPosition()
+					pos = entity.transform.getPosition()
 					collider = entity.collider
 					if collider.getType() == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
-							round(Int, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 							round(Int, collider.diameter/2 * SCALE_UNITS))
 					else
 						colSize = collider.getSize()
 						colOffset = collider.offset
 						SDL2.SDL_RenderDrawRect( this.renderer, 
-						Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-						round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+						Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+						round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 						round(colSize.x * SCALE_UNITS), 
 						round(colSize.y * SCALE_UNITS))))
 					end
@@ -755,12 +755,12 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
 						end
 
-						pos = selectedEntity.getTransform().getPosition()
-						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.getTransform().getScale()
+						pos = selectedEntity.transform.getPosition()
+						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
 						SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(
-						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.getTransform().getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.getTransform().getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
 						round(size.x * SCALE_UNITS), 
 						round(size.y * SCALE_UNITS))))
 					end

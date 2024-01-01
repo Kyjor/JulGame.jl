@@ -38,7 +38,7 @@
         if s == :update
             function(dt)
                 velocityMultiplier = Math.Vector2f(1.0, 1.0)
-                transform = this.parent.getTransform()
+                transform = this.parent.transform
                 currentPosition = transform.getPosition()
                 
                 newPosition = transform.getPosition() + this.velocity*dt + this.acceleration*(dt*dt*0.5)

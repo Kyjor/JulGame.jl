@@ -37,18 +37,18 @@ function Base.getproperty(this::Saw, s::Symbol)
     elseif s == :update
         function(deltaTime)
             this.rotation += 5
-            this.parent.getSprite().rotation =  this.rotation % 360
+            this.parent.sprite.rotation =  this.rotation % 360
 
-            if this.parent.getTransform().position.y >= this.startingY && !this.isMovingUp
+            if this.parent.transform.position.y >= this.startingY && !this.isMovingUp
                 this.isMovingUp = true
-            elseif this.parent.getTransform().position.y <= this.endingY && this.isMovingUp
+            elseif this.parent.transform.position.y <= this.endingY && this.isMovingUp
                 this.isMovingUp = false
             end
 
             if this.isMovingUp
-                this.parent.getTransform().position = Vector2f(this.parent.getTransform().position.x, this.parent.getTransform().position.y - this.speed*deltaTime)
+                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y - this.speed*deltaTime)
             else
-                this.parent.getTransform().position = Vector2f(this.parent.getTransform().position.x, this.parent.getTransform().position.y + this.speed*deltaTime)
+                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
             end
         end
     elseif s == :setParent

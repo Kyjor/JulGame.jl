@@ -11,13 +11,13 @@ module InputModule
         debug::Bool
         isWindowFocused::Bool
         main
-        mouseButtonsPressedDown::Array
-        mouseButtonsHeldDown::Array
-        mouseButtonsReleased::Array
+        mouseButtonsPressedDown::Vector
+        mouseButtonsHeldDown::Vector
+        mouseButtonsReleased::Vector
         mousePosition
         joystick
         scanCodeStrings::Vector{String}
-        scanCodes::Array
+        scanCodes::Vector
         scene
         quit::Bool
         
@@ -44,7 +44,7 @@ module InputModule
             this.mousePosition = Math.Vector2(0,0)
             this.quit = false
             this.scanCodes = []
-            this.scanCodeStrings = []
+            this.scanCodeStrings = String[]
             for m in instances(SDL2.SDL_Scancode)
                 codeString = "$(m)"
                 code::SDL2.SDL_Scancode = m

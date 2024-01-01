@@ -49,7 +49,21 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
     end
     itemToUpdateType = getType(currentEntitySelected)
     if itemToUpdateType == "Entity"
-        itemToUpdate = currentEntitySelected.getComponent(componentType)
+        if componentType == "Transform"
+            itemToUpdate = currentEntitySelected.transform
+        elseif componentType == "Collider"
+            itemToUpdate = currentEntitySelected.collider
+        elseif componentType == "Rigidbody"
+            itemToUpdate = currentEntitySelected.rigidbody
+        elseif componentType == "Animator"
+            itemToUpdate = currentEntitySelected.animator
+        elseif componentType == "Animation"
+            itemToUpdate = currentEntitySelected.animation
+        elseif componentType == "Sprite"
+            itemToUpdate = currentEntitySelected.sprite
+        elseif componentType == "SoundSource"
+            itemToUpdate = currentEntitySelected.soundSource
+        end
     else
         itemToUpdate = currentEntitySelected
     end
@@ -196,7 +210,7 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
         fieldString = "$(field)"
 
         if fieldString == "imagePath"
-            buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
+            buf = "$(currentEntitySelected.sprite.imagePath)"*"\0"^(64)
             CImGui.InputText("Image Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
@@ -207,22 +221,22 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
                     break
                 end
             end
-            currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
-            CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
+            currentEntitySelected.sprite.imagePath = currentTextInTextBox
+            CImGui.Button("Load Image") && (currentEntitySelected.sprite.loadImage(currentTextInTextBox))
         elseif fieldString == "isFlipped"
-            isFlipped = currentEntitySelected.getComponent("Sprite").isFlipped
+            isFlipped = currentEntitySelected.sprite.isFlipped
             @c CImGui.Checkbox("isFlipped", &isFlipped)
-            currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
+            currentEntitySelected.sprite.isFlipped = isFlipped
         elseif fieldString == "crop"
-            vec = currentEntitySelected.getComponent("Sprite").crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.getComponent("Sprite").crop
+            vec = currentEntitySelected.sprite.crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.sprite.crop
             vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
             @c CImGui.InputInt4("input int4", vec4i)
 
-            currentEntitySelected.getComponent("Sprite").crop = (vec4i[1] == 0 && vec4i[2] == 0 && vec4i[3] == 0 && vec4i[4] == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+            currentEntitySelected.sprite.crop = (vec4i[1] == 0 && vec4i[2] == 0 && vec4i[3] == 0 && vec4i[4] == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
         elseif fieldString == "layer"
-            x = Cint(currentEntitySelected.getComponent("Sprite").layer)
+            x = Cint(currentEntitySelected.sprite.layer)
             @c CImGui.InputInt("layer", &x, 1)
-            currentEntitySelected.getComponent("Sprite").layer = x
+            currentEntitySelected.sprite.layer = x
         end  
     end
 end
@@ -233,7 +247,7 @@ function ShowSoundSourceProperties(soundFields, currentEntitySelected)
 
         if fieldString == "path"
             CImGui.Text("Sound Path")
-            buf = "$(currentEntitySelected.getComponent("SoundSource").path)"*"\0"^(64)
+            buf = "$(currentEntitySelected.soundSource.path)"*"\0"^(64)
             CImGui.InputText("Sound Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
@@ -244,9 +258,9 @@ function ShowSoundSourceProperties(soundFields, currentEntitySelected)
                     break
                 end
             end
-            currentEntitySelected.getComponent("SoundSource").path = currentTextInTextBox
-            CImGui.Button("Load Sound") && (currentEntitySelected.getComponent("SoundSource").loadSound(currentTextInTextBox, false))
-            CImGui.Button("Load Music") && (currentEntitySelected.getComponent("SoundSource").loadSound(currentTextInTextBox, true))
+            currentEntitySelected.soundSource.path = currentTextInTextBox
+            CImGui.Button("Load Sound") && (currentEntitySelected.soundSource.loadSound(currentTextInTextBox, false))
+            CImGui.Button("Load Music") && (currentEntitySelected.soundSource.loadSound(currentTextInTextBox, true))
         end  
     end
 end

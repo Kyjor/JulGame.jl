@@ -42,3 +42,4 @@ struct _Vector2{T}
 end
 
 Vector2 = _Vector2{Int}
+Vector2f = _Vector2{Float64}

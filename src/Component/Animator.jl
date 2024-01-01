@@ -16,7 +16,7 @@
         lastFrame::Int
         lastUpdate::UInt64
         parent::Any
-        sprite::Union{Sprite, Ptr{Nothing}}
+        sprite::Union{InternalSprite, Ptr{Nothing}}
 
         function InternalAnimator(parent::Any, animations::Vector{Animation} = Animation[])
             this = new()

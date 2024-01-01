@@ -71,13 +71,13 @@ module CircleColliderModule
                         if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                             # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                             for j in 1:length(this.currentRests)
-                                if this.currentRests[j].getParent().getTransform().getPosition().y == colliders[i].getParent().getTransform().getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
+                                if this.currentRests[j].getParent().transform.getPosition().y == colliders[i].getParent().transform.getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
                                     push!(this.currentRests, colliders[i])
                                     break
                                 end
                             end
                         end
-                        transform = this.getParent().getTransform()
+                        transform = this.getParent().transform
                         # if collision[1] == Top::CollisionDirection
                         #     push!(this.currentCollisions, colliders[i])
                         #     for eventToCall in this.collisionEvents
@@ -105,7 +105,7 @@ module CircleColliderModule
                         # if collision[1] == Bottom::CollisionDirection
                         #this.isGrounded = collision[1]
                         if collision[1] == true
-                            println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().getTransform().getPosition())
+                            println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().transform.getPosition())
                             push!(this.currentRests, colliders[i])
                             for eventToCall in this.collisionEvents
                                 eventToCall()
@@ -174,8 +174,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX, cY = 0, 0
 
-        posA = a.getParent().getTransform().getPosition() + a.offset
-        posB = b.getParent().getTransform().getPosition() + b.offset
+        posA = a.getParent().transform.getPosition() + a.offset
+        posB = b.getParent().transform.getPosition() + b.offset
 
         # Find closest x offset
         if posA.x < posB.x
@@ -210,8 +210,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX = 0
 
-        posA = a.getParent().getTransform().getPosition() + a.offset
-        posB = b.getParent().getTransform().getPosition() + b.offset
+        posA = a.getParent().transform.getPosition() + a.offset
+        posB = b.getParent().transform.getPosition() + b.offset
         radius = a.diameter / 2
 
         # Find closest x offset

@@ -1,8 +1,16 @@
 module SoundSourceModule
     using ..JulGame
-    
+
     export SoundSource
-    mutable struct SoundSource
+    struct SoundSource
+        channel::Int
+        isMusic::Bool
+        path::String
+        volume::Int
+    end
+
+    export InternalSoundSource
+    mutable struct InternalSoundSource
         channel::Int
         isMusic::Bool
         parent::Any
@@ -11,7 +19,7 @@ module SoundSourceModule
         volume::Int
 
         # Music
-        function CreateSoundSource(path::String, channel::Int, volume::Int, isMusic::Bool)
+        function InternalSoundSource(parent::Any, path::String, channel::Int, volume::Int, isMusic::Bool)
             this = new()
 
             SDL2.SDL_ClearError()
@@ -29,49 +37,16 @@ module SoundSourceModule
 
             this.channel = channel
             this.isMusic = isMusic
-            this.parent = C_NULL
+            this.parent = parent
             this.path = path
             this.sound = sound
             this.volume = volume
 
             return this
         end
-        
-        # Constructor for editor
-        function SoundSource()
-            this = new()
-
-            this.channel = -1
-            this.isMusic = false
-            this.parent = C_NULL
-            this.path = ""
-            this.sound = C_NULL
-            this.volume = 100
-
-            return this
-        end
-
-        # Constructor for music
-        function SoundSource(path::String, volume::Int)
-            return CreateSoundSource(path, -1, volume, true)
-        end
-        
-        # Constructor for sound effect
-        function SoundSource(path::String, channel::Int, volume::Int)
-            return CreateSoundSource(path, channel, volume, false)
-        end
-        
-        # Constructor for editor with specified properties
-        function SoundSource(channel::Int, volume::Int, isMusic::Bool)
-            return CreateSoundSource("", channel, volume, isMusic)
-        end
-        
-        function SoundSource(path::String, channel::Int, volume::Int, isMusic::Bool)
-            return CreateSoundSource(path, channel, volume, isMusic)
-        end
     end
     
-    function Base.getproperty(this::SoundSource, s::Symbol)
+    function Base.getproperty(this::InternalSoundSource, s::Symbol)
         if s == :toggleSound
             function(loops = 0)
                 if this.isMusic

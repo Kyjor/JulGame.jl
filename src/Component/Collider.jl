@@ -96,14 +96,14 @@ module ColliderModule
                         if CheckIfResting(this, collider)[1] == true && length(this.currentRests) > 0 && !(collider in this.currentRests)
                             # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                             for j in 1:length(this.currentRests)
-                                if this.currentRests[j].getParent().getTransform().getPosition().y == collider.getParent().getTransform().getPosition().y && this.currentRests[j].getSize().y == collider.getSize().y
+                                if this.currentRests[j].getParent().transform.getPosition().y == collider.getParent().transform.getPosition().y && this.currentRests[j].getSize().y == collider.getSize().y
                                     push!(this.currentRests, collider)
                                     break
                                 end
                             end
                         end
                         
-                        transform = this.getParent().getTransform()
+                        transform = this.getParent().transform
                         if collision[1] == Top::CollisionDirection
                             push!(this.currentCollisions, collider)
                             for eventToCall in this.collisionEvents
@@ -192,8 +192,8 @@ module ColliderModule
     function CheckCollision(colliderA::InternalCollider, colliderB::InternalCollider)
         # nameA = colliderA.getParent().name
         # nameB = colliderB.getParent().name
-        posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderA.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
-        posB = colliderB.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderB.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posA = colliderA.getParent().transform.getPosition() * SCALE_UNITS - ((colliderA.getParent().transform.getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posB = colliderB.getParent().transform.getPosition() * SCALE_UNITS - ((colliderB.getParent().transform.getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
         offsetAX = colliderA.offset.x * SCALE_UNITS
         offsetAY = colliderA.offset.y * SCALE_UNITS
         offsetBX = colliderB.offset.x * SCALE_UNITS
@@ -279,8 +279,8 @@ module ColliderModule
             return (false, 0.0)
         end
 
-        posA = colliderA.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderA.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
-        posB = colliderB.getParent().getTransform().getPosition() * SCALE_UNITS - ((colliderB.getParent().getTransform().getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posA = colliderA.getParent().transform.getPosition() * SCALE_UNITS - ((colliderA.getParent().transform.getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posB = colliderB.getParent().transform.getPosition() * SCALE_UNITS - ((colliderB.getParent().transform.getScale() * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
         offsetAX = colliderA.offset.x * SCALE_UNITS
         offsetBX = colliderB.offset.x * SCALE_UNITS
         colliderAXSize = colliderA.getSize().x * SCALE_UNITS

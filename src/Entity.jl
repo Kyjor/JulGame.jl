@@ -18,17 +18,15 @@ module EntityModule
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
         shape::Union{InternalShape, Ptr{Nothing}}
-        soundSource::Union{Vector{SoundSource}, Ptr{Nothing}}
-        sprite::Union{Sprite, Ptr{Nothing}}
+        soundSource::Union{InternalSoundSource, Ptr{Nothing}}
+        sprite::Union{InternalSprite, Ptr{Nothing}}
         transform::Transform
-
-        components::Vector{Union{SoundSource, Sprite, Transform}}
         isActive::Bool
         name::String
         persistentBetweenScenes::Bool
         scripts::Vector{Any}
         
-        function Entity(name::String = "New entity", transform::Transform = Transform(), components::Vector{Union{SoundSource, Sprite}} = Vector{Union{SoundSource, Sprite}}(), scripts::Array = [])
+        function Entity(name::String = "New entity", transform::Transform = Transform(), scripts::Vector = [])
             this = new()
 
             this.id = 1
@@ -36,15 +34,9 @@ module EntityModule
             this.animator = C_NULL
             this.circleCollider = C_NULL
             this.collider = C_NULL
-            this.components = []
             this.isActive = true
-            this.addComponent(transform)
-            if components != C_NULL
-                for component in components
-                    this.addComponent(component)
-                end
-            end
             this.scripts = []
+            this.transform = transform
             for script in scripts
                 this.addScript(script)
             end
@@ -59,52 +51,7 @@ module EntityModule
     end
 
     function Base.getproperty(this::Entity, s::Symbol)
-        if s == :getComponent #Retrieves the first component of specified type from the list of components attached to the entity
-            function(componentType)
-                if typeof(componentType) == String
-                    componentType = eval(Symbol(componentType))
-                end
-
-                for component in this.components
-                    if typeof(component) <: componentType
-                        return component
-                    end
-                end
-                return C_NULL
-            end
-        elseif s == :removeComponent #Retrieves the first component of specified type from the list of components attached to the entity
-            function(componentType)
-                for i = 1:length(this.components)
-                    if typeof(this.components[i]) <: componentType
-                        deleteat!(this.components, i)
-                    end
-                end
-                return C_NULL
-            end
-        elseif s == :getTransform
-            function()
-                return this.getComponent(Transform)
-            end
-        elseif s == :getSprite
-            function()
-                return this.getComponent(Sprite)
-            end
-        elseif s == :getSoundSource
-            function()
-            return this.getComponent(SoundSource)
-            end
-        elseif s == :addComponent
-            function(component::Union{SoundSource, Sprite, Transform})
-                push!(this.components, component::Union{SoundSource, Sprite, Transform})
-                if typeof(component) <: Transform
-                    return
-                end
-                component.setParent(this)
-                if typeof(component) <: Sprite && this.animator != C_NULL
-                    this.animator.setSprite(component)
-                end
-            end
-        elseif s == :addScript
+        if s == :addScript
             function(script)
                 #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
                 push!(this.scripts, script)
@@ -115,10 +62,6 @@ module EntityModule
                     println(e)
                     Base.show_backtrace(stdout, catch_backtrace())
                 end
-            end
-        elseif s == :getScripts
-            function()
-                return this.scripts
             end
         elseif s == :update
             function(deltaTime)
@@ -138,9 +81,11 @@ module EntityModule
                 end
 
                 this.animator = InternalAnimator(this::Entity, animator.animations)
-                if this.getSprite() != C_NULL 
-                    this.animator.setSprite(this.getSprite())
+                if this.sprite != C_NULL 
+                    this.animator.setSprite(this.sprite)
                 end
+
+                return this.animator
             end
         elseif s == :addCollider
             function(collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
@@ -149,6 +94,8 @@ module EntityModule
                 end
                     
                 this.collider = InternalCollider(this::Entity, collider.size::Vector2f, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.isPlatformerCollider::Bool, collider.enabled::Bool)
+
+                return this.collider
             end
         elseif s == :addCircleCollider
             function(collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
@@ -157,6 +104,8 @@ module EntityModule
                 end
 
                 this.circleCollider = InternalCircleCollider(this::Entity, collider.diameter, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.enabled::Bool)
+
+                return this.circleCollider
             end
         elseif s == :addRigidbody
             function(rigidbody::Rigidbody = Rigidbody(1.0))
@@ -165,21 +114,38 @@ module EntityModule
                 end
 
                 this.rigidbody = InternalRigidbody(this::Entity, rigidbody.mass)
+
+                return this.rigidbody
             end
         elseif s == :addSoundSource
-            function()
-                if this.getComponent(SoundSource) != C_NULL
+            function(soundSource::SoundSource = SoundSource(-1, false, "", 50))
+                if this.soundSource != C_NULL
                     return
                 end
-                this.addComponent(SoundSource())
+
+                this.soundSource = InternalSoundSource(this::Entity, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic)
+
+                return this.soundSource
+            end
+        elseif s == :createSoundSource
+            function(soundSource::SoundSource = SoundSource(-1, false, "", 50))
+                newSoundSource::InternalSoundSource = InternalSoundSource(this::Entity, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic)
+
+                return newSoundSource
             end
         elseif s == :addSprite
-            function(game)
-                if this.getComponent(Sprite) != C_NULL
+            function(isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1))
+                if this.sprite != C_NULL
                     return
                 end
-                this.addComponent(Sprite("", C_NULL, false, Math.Vector3(255, 255, 255), true))
-                this.getComponent("Sprite").initialize()
+
+                this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer)
+                if this.animator != C_NULL
+                    this.animator.setSprite(this.sprite)
+                end
+                this.sprite.initialize()
+
+                return this.sprite
             end
         elseif s == :addShape
             function(shape::Shape = Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, false, Math.Vector2f(0,0), Math.Vector2f(0,0)))
@@ -188,6 +154,8 @@ module EntityModule
                 end
 
                 this.shape = InternalShape(this::Entity, shape.dimensions, shape.color, shape.isFilled, shape.offset; isWorldEntity = shape.isWorldEntity, position = shape.position)
+                
+                return this.shape
             end
         else
             try

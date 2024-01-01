@@ -43,7 +43,7 @@ module ShapeModule
                     return                    
                 end
 
-                parentTransform = this.parent.getTransform()
+                parentTransform = this.parent.transform
 
                 cameraDiff = this.isWorldEntity ? 
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
