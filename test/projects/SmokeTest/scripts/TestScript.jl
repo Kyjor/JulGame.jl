@@ -21,7 +21,7 @@ function Base.getproperty(this::TestScript, s::Symbol)
         function()
 
             @testset "Engine Animation Tests" begin
-                newAnimation = AnimationModule.Animation(Vector4[Vector4(0,0,0,0)], 60)
+                newAnimation = AnimationModule.Animation(Vector4[Vector4(0,0,0,0)], Int32(60))
                 @testset "Animation constructor" begin
                     @test newAnimation != C_NULL && newAnimation !== nothing
                     @test newAnimation.animatedFPS == 60

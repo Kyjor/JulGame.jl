@@ -130,7 +130,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             if otherCollider.tag == "Coin"
                 DestroyEntity(otherCollider.parent)
                 this.coinSound.toggleSound()
-                MAIN.scene.textBoxes[1].updateText(string(parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[1]) + 1, "/", parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[2])))
+                MAIN.scene.textBoxes[1].updateText(string(parse(Int32, split(MAIN.scene.textBoxes[1].text, "/")[1]) + 1, "/", parse(Int32, split(MAIN.scene.textBoxes[1].text, "/")[2])))
             elseif otherCollider.tag == "Star"
                 this.starSound.toggleSound()
                 DestroyEntity(otherCollider.parent)

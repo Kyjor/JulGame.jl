@@ -12,7 +12,7 @@ module EntityModule
 
     export Entity
     mutable struct Entity
-        id::Int
+        id::Int32
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}

@@ -98,7 +98,7 @@ module InputModule
                     if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                         didMouseEventOccur = true
                         if this.scene.screenButtons != C_NULL
-                            x,y = Int[1], Int[1]
+                            x,y = Int32[1], Int32[1]
                             SDL2.SDL_GetMouseState(pointer(x), pointer(y))
                             
                             this.mousePosition = Math.Vector2(x[1], y[1])
@@ -201,7 +201,7 @@ module InputModule
         elseif s == :checkScanCode
             function (keyboardState, keyState, scanCodes)
                 for scanCode in scanCodes
-                    if keyboardState[Int(scanCode) + 1] == keyState
+                    if keyboardState[Int32(scanCode) + 1] == keyState
                         return true
                     end
                 end

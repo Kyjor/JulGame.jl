@@ -98,7 +98,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         CImGui.InputText("$(componentField)", buf, length(buf))
         currentTextInTextBox = ""
         for characterIndex = 1:length(buf)
-            if Int(buf[characterIndex]) == 0 
+            if Int32(buf[characterIndex]) == 0 
                 if characterIndex != 1
                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                 end
@@ -113,7 +113,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         @c CImGui.InputFloat("$(componentField)", &x, 1)
         setfield!(itemToUpdate,componentField,componentFieldValue)
     
-    elseif componentFieldType == "Int"
+    elseif componentFieldType == "Int32"
         CImGui.Text(componentField)
         x = Cint(componentFieldValue)
         @c CImGui.InputInt("$(componentField)", &x, 1)
@@ -224,7 +224,7 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             CImGui.InputText("Image Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
-                if Int(buf[characterIndex]) == 0 
+                if Int32(buf[characterIndex]) == 0 
                     if characterIndex != 1
                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                     end
@@ -261,7 +261,7 @@ function ShowSoundSourceProperties(soundFields, currentEntitySelected)
             CImGui.InputText("Sound Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
-                if Int(buf[characterIndex]) == 0 
+                if Int32(buf[characterIndex]) == 0 
                     if characterIndex != 1
                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                     end

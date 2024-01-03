@@ -24,7 +24,7 @@
             @test res == Math.Vector2(1, 1)
         end
 
-        @testset "Vector2 constructor with Int and Float64 arguments" begin
+        @testset "Vector2 constructor with Int32 and Float64 arguments" begin
             v = Math.Vector2(2, 3.7)
             @test v.x == 2
             @test v.y == 4
@@ -34,7 +34,7 @@
             @test v.y == -6
         end
 
-        @testset "Vector2 constructor with Float64 and Int arguments" begin
+        @testset "Vector2 constructor with Float64 and Int32 arguments" begin
             v = Math.Vector2(1.5, 4)
             @test v.x == 2
             @test v.y == 4
@@ -44,9 +44,9 @@
             @test v.y == -7
         end
 
-        @testset "Vector2 multiplication with Int" begin
+        @testset "Vector2 multiplication with Int32" begin
             vec = Math.Vector2(2, 3)
-            int::Int = 2
+            int::Int32 = 2
             expected = Math.Vector2(4, 6)
             @test vec * int == expected
         end
@@ -116,7 +116,7 @@
                 @test vec1 * vec2 == Math.Vector2f(8.0, 15.0)
             end
 
-            @testset "Vector2f and Int multiplication" begin
+            @testset "Vector2f and Int32 multiplication" begin
                 @test vec1 * int == Math.Vector2f(4.0, 6.0)
             end
 
@@ -162,7 +162,7 @@
             @test res == Math.Vector3(1, 1, 1)
         end
 
-        @testset "Vector3 constructor with Int and Float64 arguments" begin
+        @testset "Vector3 constructor with Int32 and Float64 arguments" begin
             v = Math.Vector3(2, 3.7, 4)
             @test v.x == 2
             @test v.y == 4

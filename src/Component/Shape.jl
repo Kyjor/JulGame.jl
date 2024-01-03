@@ -52,10 +52,10 @@ module ShapeModule
                 parentTransform.getPosition() :
                 this.position
 
-                outlineRect = Ref(SDL2.SDL_Rect(convert(Int,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-                convert(Int,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                convert(Int,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
-                convert(Int,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
+                outlineRect = Ref(SDL2.SDL_Rect(convert(Int32,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+                convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
+                convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
                 SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
 
                 this.isFilled ? SDL2.SDL_RenderFillRect( JulGame.Renderer, outlineRect) : SDL2.SDL_RenderDrawRect( JulGame.Renderer, outlineRect);

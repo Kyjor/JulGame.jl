@@ -10,14 +10,14 @@ struct _Vector3{T}
     z::T
 
     function _Vector3{T}(v::L) where {T,L}
-        return (T <: Int) ? new{T}(round(T,v),round(T,v),round(T,v)) :
+        return (T <: Int32) ? new{T}(round(T,v),round(T,v),round(T,v)) :
             new{T}(convert(T,v),convert(T,v),convert(T,v))
     end
 
     _Vector3{T}() where T = new{T}(0)
 
     function _Vector3{T}(x::L, y::P, z::Q) where {T,L,P,Q}
-        return (T <: Int) ? new{T}(round(T,x), round(T,y), round(T,z)) :
+        return (T <: Int32) ? new{T}(round(T,x), round(T,y), round(T,z)) :
             new{T}(convert(T,x), convert(T,y), convert(T,z))
     end
 
@@ -47,5 +47,5 @@ struct _Vector3{T}
     Base.:(==)(a::_Vector3{T}, b::_Vector3{L}) where {T,L} = (a.x == b.x && a.y == b.y && a.z == b.z)
 end   
 
-Vector3 = _Vector3{Int}
+Vector3 = _Vector3{Int32}
 Vector3f = _Vector3{Float64}

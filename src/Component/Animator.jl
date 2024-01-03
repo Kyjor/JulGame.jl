@@ -13,7 +13,7 @@
     mutable struct InternalAnimator
         animations::Vector{Animation}
         currentAnimation::Animation
-        lastFrame::Int
+        lastFrame::Int32
         lastUpdate::UInt64
         parent::Any
         sprite::Union{InternalSprite, Ptr{Nothing}}
@@ -68,13 +68,13 @@
 
     
     """
-    ForceFrameUpdate(this::Animator, frameIndex::Int)
+    ForceFrameUpdate(this::Animator, frameIndex::Int32)
     
     Updates the sprite crop of the animator to the specified frame index.
     
     # Arguments
     - `this::Animator`: The animator object.
-    - `frameIndex::Int`: The index of the frame to update the sprite crop to.
+    - `frameIndex::Int32`: The index of the frame to update the sprite crop to.
     
     # Example
     ```
@@ -82,7 +82,7 @@
     ForceFrameUpdate(animator, 1)
     ```
     """
-    function ForceFrameUpdate(this::InternalAnimator, frameIndex::Int)
+    function ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export ForceFrameUpdate

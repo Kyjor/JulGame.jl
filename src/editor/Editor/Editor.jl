@@ -218,7 +218,7 @@ module Editor
                                         CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
                                         currentTextInTextBox = ""
                                         for characterIndex = 1:length(buf)
-                                            if Int(buf[characterIndex]) == 0 
+                                            if Int32(buf[characterIndex]) == 0 
                                                 if characterIndex != 1
                                                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                                 end
@@ -248,7 +248,7 @@ module Editor
                                                     CImGui.InputText("Script $(i)", buf, length(buf))
                                                     currentTextInTextBox = ""
                                                     for characterIndex = 1:length(buf)
-                                                        if Int(buf[characterIndex]) == 0 
+                                                        if Int32(buf[characterIndex]) == 0 
                                                             if characterIndex != 1
                                                                 currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                                             end
@@ -267,7 +267,7 @@ module Editor
                                                             CImGui.InputText("Parameter $(j)", buf, length(buf))
                                                             currentTextInTextBox = ""
                                                             for characterIndex = 1:length(buf)
-                                                                if Int(buf[characterIndex]) == 0 
+                                                                if Int32(buf[characterIndex]) == 0 
                                                                     if characterIndex != 1
                                                                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                                                     end
@@ -351,7 +351,7 @@ module Editor
                         currentTextInTextBox = ""
                         currentTextInTextBox1 = ""
                         for characterIndex = 1:length(buf)
-                            if Int(buf[characterIndex]) == 0 
+                            if Int32(buf[characterIndex]) == 0 
                                 if characterIndex != 1
                                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                 end
@@ -359,7 +359,7 @@ module Editor
                             end
                         end
                         for characterIndex = 1:length(buf1)
-                            if Int(buf1[characterIndex]) == 0 
+                            if Int32(buf1[characterIndex]) == 0 
                                 if characterIndex != 1
                                     currentTextInTextBox1 = String(SubString(buf1, 1, characterIndex-1))
                                 end
@@ -466,7 +466,7 @@ module Editor
                     end
                     CImGui.End()
         
-                    x,y = Int[1], Int[1]
+                    x,y = Int32[1], Int32[1]
                     glfwGetWindowPos(window, pointer(x), pointer(y))
                     push!(update, x[1] + relativeX)
                     push!(update, y[1] + relativeY)

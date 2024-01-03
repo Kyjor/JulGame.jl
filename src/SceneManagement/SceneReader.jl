@@ -141,12 +141,12 @@ module SceneReaderModule
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
                 isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
-                layer = !haskey(component, "layer") ? 0 : convert(Int, component.layer)
+                layer = !haskey(component, "layer") ? 0 : component.layer
                 offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
                 rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int)
+                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit))
             end
             
             return newComponent
