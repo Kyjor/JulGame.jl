@@ -120,9 +120,9 @@ module SceneReaderModule
                 for animation in component.animations
                 newAnimationFrames = Vector4[]
                 for animationFrame in animation.frames
-                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
+                    push!(newAnimationFrames, Vector4(Int32(animationFrame.x), Int32(animationFrame.y), Int32(animationFrame.z), Int32(animationFrame.t)))
                 end
-                push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+                push!(newAnimations, Animation(newAnimationFrames, Int32(animation.animatedFPS)))
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
