@@ -21,16 +21,14 @@ function Base.getproperty(this::TestScript, s::Symbol)
         function()
 
             @testset "Engine Animation Tests" begin
-                newAnimation = AnimationModule.Animation([], 60)
+                newAnimation = AnimationModule.Animation(Vector4[Vector4(0,0,0,0)], 60)
                 @testset "Animation constructor" begin
-                    newAnimation = AnimationModule.Animation([], 60)
                     @test newAnimation != C_NULL && newAnimation !== nothing
                     @test newAnimation.animatedFPS == 60
-                    @test newAnimation.frames == []
                 end
 
                 @testset "Animator constructor" begin
-                    newAnimator = AnimatorModule.Animator(newAnimation, 60)
+                    newAnimator = AnimatorModule.Animator(AnimationModule.Animation[newAnimation])
                     @test newAnimator != C_NULL && newAnimator !== nothing
                 end
             end
