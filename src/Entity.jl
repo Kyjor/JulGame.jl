@@ -77,6 +77,7 @@ module EntityModule
         elseif s == :addAnimator
             function(animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
                 if this.animator != C_NULL
+                    println("Animator already exists on entity named ", this.name)
                     return
                 end
 
@@ -90,6 +91,7 @@ module EntityModule
         elseif s == :addCollider
             function(collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
                 if this.collider != C_NULL || this.circleCollider != C_NULL
+                    println("Collider already exists on entity named ", this.name)
                     return
                 end
                     
@@ -100,6 +102,7 @@ module EntityModule
         elseif s == :addCircleCollider
             function(collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
                 if this.collider != C_NULL || this.circleCollider != C_NULL
+                    println("Collider already exists on entity named ", this.name)
                     return
                 end
 
@@ -110,6 +113,7 @@ module EntityModule
         elseif s == :addRigidbody
             function(rigidbody::Rigidbody = Rigidbody(1.0))
                 if this.rigidbody != C_NULL
+                    println("Rigidbody already exists on entity named ", this.name)
                     return
                 end
 
@@ -120,6 +124,7 @@ module EntityModule
         elseif s == :addSoundSource
             function(soundSource::SoundSource = SoundSource(-1, false, "", 50))
                 if this.soundSource != C_NULL
+                    println("SoundSource already exists on entity named ", this.name)
                     return
                 end
 
@@ -136,6 +141,7 @@ module EntityModule
         elseif s == :addSprite
             function(isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1))
                 if this.sprite != C_NULL
+                    println("Sprite already exists on entity named ", this.name)
                     return
                 end
 
@@ -150,6 +156,7 @@ module EntityModule
         elseif s == :addShape
             function(shape::Shape = Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, false, Math.Vector2f(0,0), Math.Vector2f(0,0)))
                 if this.shape != C_NULL
+                    println("Shape already exists on entity named ", this.name)
                     return
                 end
 

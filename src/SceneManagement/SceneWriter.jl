@@ -9,7 +9,7 @@ module SceneWriterModule
 
         count = 1
         for entity in entities
-        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents(entity.components), "scripts" => serializeEntityScripts(entity.scripts)))
+        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serializeEntityScripts(entity.scripts)))
         count += 1
         end
         count = 1
@@ -52,6 +52,7 @@ module SceneWriterModule
         for component in components
             componentType = "$(typeof(component).name.wrapper)"
             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
+            componentType = replace(componentType, "Internal" => "")
             #Dict("b" => 1, "c" => 2)
             if componentType == "Transform"
                 serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
@@ -108,6 +109,8 @@ module SceneWriterModule
                     "layer" => component.layer,
                     )
                 push!(componentsDict, serializedComponent)
+            else 
+                println("Component type $(componentType) not supported")
             end
         end
         return componentsDict
