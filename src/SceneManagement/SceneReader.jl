@@ -118,18 +118,18 @@ module SceneReaderModule
             elseif component.type == "Animator"
                 newAnimations = Animation[]
                 for animation in component.animations
-                newAnimationFrames = Vector4[]
+                newAnimationFrames = Vector{Vector4}()
                 for animationFrame in animation.frames
-                    push!(newAnimationFrames, Vector4(Int32(animationFrame.x), Int32(animationFrame.y), Int32(animationFrame.z), Int32(animationFrame.t)))
+                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
                 end
-                push!(newAnimations, Animation(newAnimationFrames, Int32(animation.animatedFPS)))
+                push!(newAnimations, Animation(newAnimationFrames, convert(Int32, animation.animatedFPS)))
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
                 isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
                 enabled::Bool = !haskey(component, "enabled") ? true : component.isTrigger
                 isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
-                offset::Vector2f = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+                offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
                 newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
             elseif component.type == "CircleCollider"
                 newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Vector2f(component.offset.x, component.offset.y), component.tag)
