@@ -39,17 +39,6 @@ module Editor
         () -> (name; parameters)
     end
 
-    function loadScene(projectPath, sceneFileName)
-        game = C_NULL
-        try
-            game = SceneLoaderModule.loadScene(sceneFileName, projectPath, true);
-        catch e
-            rethrow(e)
-        end
-
-        return game
-    end
-
     function LoadScene(scenePath)
         game = C_NULL
         try
@@ -145,7 +134,6 @@ module Editor
             gameInfo = []
             mousePosition = C_NULL
             projectPath = ""
-            sceneFileName = ""
             sceneName = 
             relativeX = 0
             relativeY = 0
@@ -379,6 +367,7 @@ module Editor
 
                         try
                             if gameInfo !== nothing && length(gameInfo) > 0  
+                                println("Project Path: $projectPath")
                                 CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath");)
                             end
                         catch e
@@ -386,46 +375,9 @@ module Editor
                         end
                         CImGui.End()
                     end
-                    @cstatic begin
-                        CImGui.Begin("Project Location")  # create a window called "Project Location"
-                        CImGui.Text("Enter full path to root project folder and the name of scene file to load.")
-                        buf = "$(projectPath)"*"\0"^(128)
-                        buf1 = "$(sceneFileName)"*"\0"^(128)
-                        CImGui.InputText("Project Root Folder", buf, length(buf))
-                        CImGui.InputText("Scene File Name", buf1, length(buf1))
-                        currentTextInTextBox = ""
-                        currentTextInTextBox1 = ""
-                        for characterIndex = 1:length(buf)
-                            if Int32(buf[characterIndex]) == 0 
-                                if characterIndex != 1
-                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                end
-                                break
-                            end
-                        end
-                        for characterIndex = 1:length(buf1)
-                            if Int32(buf1[characterIndex]) == 0 
-                                if characterIndex != 1
-                                    currentTextInTextBox1 = String(SubString(buf1, 1, characterIndex-1))
-                                end
-                                break
-                            end
-                        end
-                        projectPath = currentTextInTextBox
-                        sceneFileName = currentTextInTextBox1
-                        if gameInfo === nothing || length(gameInfo) < 1    
-                            CImGui.Button("Load Scene") && (game = loadScene("$(sceneFileName).json", projectPath))
-                        else 
-                            CImGui.Text("Scene loaded. Click 'Play' to run the game.")
-                            CImGui.NewLine()
-                            CImGui.Text("If you want to load a new scene, you must restart the editor.")
-                        end
-                        CImGui.End()
-                    end
 
                     @cstatic begin
-                        CImGui.Begin("Load Project Folder") 
-                        
+                        CImGui.Begin("Load Project") 
                         if gameInfo === nothing || length(gameInfo) < 1    
                             CImGui.Text("Enter full path to root project folder")
                             buf = "$(projectPath)"*"\0"^(128)
@@ -442,6 +394,7 @@ module Editor
                             
                             projectPath = currentTextInTextBox
                             CImGui.Button("Load Project Using Folder Path") && (scenesLoadedFromFolder = GetAllScenesFromFolder(projectPath))
+                            CImGui.NewLine()
                             CImGui.Button("Load Project using Dialog") && (ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir)))
 
                             for scene in scenesLoadedFromFolder
