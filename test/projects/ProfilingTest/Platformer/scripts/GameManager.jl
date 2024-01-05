@@ -47,7 +47,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
                 this.currentMusic.unloadSound()
             end
 
-            this.currentMusic = this.parent.createSoundSource(SoundSource(-1, true, this.soundBank[this.currentLevel], 25))
+            this.currentMusic = this.parent.createSoundSource(SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
             this.currentMusic.toggleSound()
 
             MAIN.scene.textBoxes[2].updateText(string(this.starCount))

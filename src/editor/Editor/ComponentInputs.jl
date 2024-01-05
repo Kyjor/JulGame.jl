@@ -132,7 +132,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 try
                     CImGui.Button("Add") && componentFieldValue[i].appendArray()
                 catch e
-                    println(e)
+                    rethrow(e)
                 end
                 if nestedFieldType in JulGameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
@@ -140,7 +140,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                     try
                         currentEntitySelected.updateArrayValue(ShowArrayPropertyInput(componentFieldValue, i), componentField, i)
                     catch e
-                        println(e)
+                        rethrow(e)
                     end
                 end
                 CImGui.TreePop()
@@ -153,7 +153,7 @@ end
 
 function ShowArrayPropertyInput(arr, index) 
     type = getType(arr[index])
-    if type == "Vector4"
+    if type == "_Vector4"
         vec = arr[index]
         vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
         @c CImGui.InputInt4("input int4", vec4i)
@@ -193,13 +193,12 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                                             vec = animations[i].frames[k]
                                             vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
-                                            currentEntitySelected.animator.animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
+                                            currentEntitySelected.animator.animations[i].updateArrayValue(JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
                                             CImGui.TreePop()
                                         end
                                     end
                                 catch e
-                                    println(e)
-                                    Base.show_backtrace(stdout, catch_backtrace())
+                                    rethrow(e)
                                 end
                             end
                         end
@@ -210,8 +209,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
             end  
         end
     catch e
-        println(e)
-        Base.show_backtrace(stdout, catch_backtrace())
+        rethrow(e)
     end
 end
 

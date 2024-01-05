@@ -54,9 +54,9 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             MAIN.scene.camera.target = this.cameraTarget
             this.gameManager = MAIN.scene.getEntityByName("Game Manager").scripts[1]
             this.deathsThisLevel = 0
-            this.coinSound = this.parent.createSoundSource(SoundSource(-1, false, "coin.wav", 50))
-            this.hurtSound = this.parent.createSoundSource(SoundSource(-1, false, "hit.wav", 50))
-            this.starSound = this.parent.createSoundSource(SoundSource(-1, false, "power-up.wav", 50))
+            this.coinSound = this.parent.createSoundSource(SoundSource(Int32(-1), false, "coin.wav", Int32(50)))
+            this.hurtSound = this.parent.createSoundSource(SoundSource(Int32(-1), false, "hit.wav", Int32(50)))
+            this.starSound = this.parent.createSoundSource(SoundSource(Int32(-1), false, "power-up.wav", Int32(50)))
         end
     elseif s == :update
         function(deltaTime)

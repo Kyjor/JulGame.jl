@@ -86,7 +86,7 @@ function Base.getproperty(this::TestScript, s::Symbol)
                 @testset "Entity addCircleCollider" begin
                     newEntity.addCircleCollider(newCircleCollider)
                     @test newEntity.circleCollider != C_NULL && newEntity.circleCollider !== nothing
-                    newEntity.circleCollider = C_NULL
+                    newEntity.circleCollider = C_NULL # Reset for next test
                 end
 
                 @testset "Entity addCollider" begin

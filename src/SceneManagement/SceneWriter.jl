@@ -109,7 +109,7 @@ module SceneWriterModule
                     "layer" => component.layer,
                     )
                 push!(componentsDict, serializedComponent)
-            else 
+            elseif "$componentType" != "Ptr"
                 println("Component type $(componentType) not supported")
             end
         end

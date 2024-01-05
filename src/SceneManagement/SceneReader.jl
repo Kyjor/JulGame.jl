@@ -113,8 +113,6 @@ module SceneReaderModule
         try
             if component.type == "Transform"
                 newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), Float64(component.rotation))
-            elseif component.type == "Animation"
-                newComponent = Animation(component.frames, component.animatedFPS)
             elseif component.type == "Animator"
                 newAnimations = Animation[]
                 for animation in component.animations
@@ -136,7 +134,7 @@ module SceneReaderModule
             elseif component.type == "Rigidbody"
                 newComponent = Rigidbody(convert(Float64, component.mass))
             elseif component.type == "SoundSource"
-                newComponent = SoundSource(component.channel, component.isMusic, component.path, component.volume)
+                newComponent = SoundSource(Int32(component.channel), component.isMusic, component.path, Int32(component.volume))
             elseif component.type == "Sprite"
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)

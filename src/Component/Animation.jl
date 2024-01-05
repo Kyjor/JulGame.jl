@@ -20,7 +20,7 @@ module AnimationModule
         if s == :updateArrayValue
             function(value, field, index::Int32)
                 fieldToUpdate = getfield(this, field)
-                if this.getType(value) == "Vector4"
+                if this.getType(value) == "_Vector4"
                     fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.z, value.t)
                 end
             end

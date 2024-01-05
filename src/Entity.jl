@@ -75,7 +75,7 @@ module EntityModule
                 end
             end
         elseif s == :addAnimator
-            function(animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
+            function(animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], Int32(60))]))
                 if this.animator != C_NULL
                     println("Animator already exists on entity named ", this.name)
                     return
@@ -122,7 +122,7 @@ module EntityModule
                 return this.rigidbody
             end
         elseif s == :addSoundSource
-            function(soundSource::SoundSource = SoundSource(-1, false, "", 50))
+            function(soundSource::SoundSource = SoundSource(Int32(-1), false, "", Int32(50)))
                 if this.soundSource != C_NULL
                     println("SoundSource already exists on entity named ", this.name)
                     return
@@ -133,7 +133,7 @@ module EntityModule
                 return this.soundSource
             end
         elseif s == :createSoundSource
-            function(soundSource::SoundSource = SoundSource(-1, false, "", 50))
+            function(soundSource::SoundSource = SoundSource(Int32(-1), false, "", Int32(50)))
                 newSoundSource::InternalSoundSource = InternalSoundSource(this::Entity, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic)
 
                 return newSoundSource

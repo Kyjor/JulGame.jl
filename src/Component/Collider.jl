@@ -40,6 +40,11 @@ module ColliderModule
             this.size = size
             this.tag = tag
 
+            if this.size.x < 0 || this.size.y < 0
+                println("Collider size cannot be negative")
+                return C_NULL
+            end
+
             return this
         end
     end

@@ -55,7 +55,7 @@
             end
         elseif s == :appendArray
             function()
-                push!(this.animations, Animation([Math.Vector4(0,0,0,0)], 60))
+                push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
             end
         else
             try

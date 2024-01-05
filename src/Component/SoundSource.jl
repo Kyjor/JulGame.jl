@@ -24,10 +24,14 @@ module SoundSourceModule
 
             SDL2.SDL_ClearError()
             fullPath = joinpath(BasePath, "assets", "sounds", path)
-            sound = isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
+            if length(path) < 1
+                sound = C_NULL    
+            else
+                sound = isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
+            end
             error = unsafe_string(SDL2.SDL_GetError())
 
-            if sound == C_NULL || !isempty(error)
+            if (sound == C_NULL || !isempty(error)) && length(path) > 0
                 println(fullPath)
                 error("Error loading file at $path. SDL Error: $(error)")
                 SDL2.SDL_ClearError()
