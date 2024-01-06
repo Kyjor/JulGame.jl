@@ -9,7 +9,7 @@ module Editor
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
-    using Gtk
+    using NativeFileDialog
     #using Printf
     using ..JulGame
     using ..JulGame.EntityModule
@@ -74,7 +74,7 @@ module Editor
     end
 
     function ChooseFolderWithDialog()
-        dir = open_dialog("Select Project Folder", action=GtkFileChooserAction.SELECT_FOLDER)
+        dir = pick_folder()
         println("open_dialog returned $dir")
         return dir
     end
@@ -367,7 +367,6 @@ module Editor
 
                         try
                             if gameInfo !== nothing && length(gameInfo) > 0  
-                                println("Project Path: $projectPath")
                                 CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath");)
                             end
                         catch e
