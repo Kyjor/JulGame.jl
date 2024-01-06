@@ -2,7 +2,7 @@ using JulGame
 
 mutable struct GameManager
     currentLevel::Int32
-    currentMusic::SoundSource
+    currentMusic
     soundBank
     starCount::Int32
     parent
@@ -30,24 +30,24 @@ function Base.getproperty(this::GameManager, s::Symbol)
             MAIN.cameraBackgroundColor = [30, 111, 80]
             MAIN.optimizeSpriteRendering = true
 
-            this.parent.addComponent(ShapeModule.Shape(Math.Vector2(10,5), Math.Vector3(0), true; isWorldEntity=false, position=Math.Vector2f(1.2175,0.5)))
+            this.parent.addShape(ShapeModule.Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))
             coinUI = MAIN.scene.getEntityByName("CoinUI")
             livesUI = MAIN.scene.getEntityByName("LivesUI")
 
             coinUI.persistentBetweenScenes = true
-            coinUI.getSprite().isWorldEntity = false
-            coinUI.getSprite().position = JulGame.Math.Vector2f(-.1, 1)
+            coinUI.sprite.isWorldEntity = false
+            coinUI.sprite.position = JulGame.Math.Vector2f(-.1, 1)
 
             livesUI.persistentBetweenScenes = true
-            livesUI.getSprite().isWorldEntity = false
-            livesUI.getSprite().position = JulGame.Math.Vector2f(-.1, .25)
+            livesUI.sprite.isWorldEntity = false
+            livesUI.sprite.position = JulGame.Math.Vector2f(-.1, .25)
             
             this.parent.persistentBetweenScenes = true
             if this.currentLevel > 1
                 this.currentMusic.unloadSound()
             end
 
-            this.currentMusic = SoundSource(this.soundBank[this.currentLevel], 25)
+            this.currentMusic = this.parent.createSoundSource(SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
             this.currentMusic.toggleSound()
 
             MAIN.scene.textBoxes[2].updateText(string(this.starCount))

@@ -8,8 +8,8 @@ module TextBoxModule
         basePath::String
         font
         fontPath::String
-        fontSize::Integer
-        id::Integer
+        fontSize::Int32
+        id::Int32
         isCenteredX::Bool
         isCenteredY::Bool
         isInitialized::Bool

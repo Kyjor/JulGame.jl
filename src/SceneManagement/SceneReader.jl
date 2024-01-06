@@ -46,10 +46,32 @@ module SceneReaderModule
                 
                 newEntity = Entity(entity.name)
                 newEntity.id = entity.id
-                newEntity.removeComponent(Transform)
                 newEntity.isActive = entity.isActive
                 newEntity.scripts = scripts
+
                 for component in components
+                    if typeof(component) == Animator
+                        newEntity.addAnimator(component::Animator)
+                        continue
+                    elseif typeof(component) == Collider
+                        newEntity.addCollider(component::Collider)
+                        continue
+                    elseif typeof(component) == CircleCollider
+                        newEntity.addCircleCollider(component::CircleCollider)
+                        continue
+                    elseif typeof(component) == Rigidbody
+                        newEntity.addRigidbody(component::Rigidbody)
+                        continue
+                    elseif typeof(component) == SoundSource
+                        newEntity.addSoundSource(component::SoundSource)
+                        continue
+                    elseif typeof(component) == Sprite
+                        newEntity.addSprite(false, component::Sprite)
+                        continue
+                    elseif typeof(component) == Transform
+                        newEntity.transform = component::Transform
+                        continue
+                    end
                     newEntity.addComponent(component)
                 end
                 
@@ -91,37 +113,38 @@ module SceneReaderModule
         try
             if component.type == "Transform"
                 newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), Float64(component.rotation))
-            elseif component.type == "Animation"
-                newComponent = Animation(component.frames, component.animatedFPS)
             elseif component.type == "Animator"
-                newAnimations = []
+                newAnimations = Animation[]
                 for animation in component.animations
-                newAnimationFrames = []
+                newAnimationFrames = Vector{Vector4}()
                 for animationFrame in animation.frames
                     push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
                 end
-                push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+                push!(newAnimations, Animation(newAnimationFrames, convert(Int32, animation.animatedFPS)))
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
-                newComponent = Collider(Vector2f(component.size.x, component.size.y), Vector2f(), component.tag)
-                newComponent.isTrigger = !haskey(component, "isTrigger") ? false : component.isTrigger
-                newComponent.isPlatformerCollider = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
-                newComponent.offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+                isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
+                enabled::Bool = !haskey(component, "enabled") ? true : component.isTrigger
+                isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
+                offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
+                newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
             elseif component.type == "CircleCollider"
-                newComponent = CircleCollider(convert(Float64, component.diameter), Vector2f(component.offset.x, component.offset.y), component.tag)
+                newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Vector2f(component.offset.x, component.offset.y), component.tag)
             elseif component.type == "Rigidbody"
                 newComponent = Rigidbody(convert(Float64, component.mass))
             elseif component.type == "SoundSource"
-                if isEditor
-                    newComponent = SoundSource(component.path, component.channel, component.volume, component.isMusic)
-                else
-                    newComponent = component.isMusic ? SoundSource(component.path, component.volume) : SoundSource(component.path, component.channel, component.volume)
-                end
+                newComponent = SoundSource(Int32(component.channel), component.isMusic, component.path, Int32(component.volume))
             elseif component.type == "Sprite"
+                color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
-                newComponent = Sprite(component.imagePath, crop, component.isFlipped)
-                newComponent.layer = !haskey(component, "layer") ? 0 : component.layer
+                isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
+                layer = !haskey(component, "layer") ? 0 : component.layer
+                offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+                position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
+                rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
+                pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
+                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit))
             end
             
             return newComponent

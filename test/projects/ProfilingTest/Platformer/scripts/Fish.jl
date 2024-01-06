@@ -8,7 +8,7 @@ using JulGame.SoundSourceModule
 using JulGame.TransformModule
 
 mutable struct Fish
-    animator::AnimatorModule.Animator
+    animator
     endingY::Int32
     isFire::Bool
     isMovingUp::Bool
@@ -33,23 +33,23 @@ end
 function Base.getproperty(this::Fish, s::Symbol)
     if s == :initialize
         function()
-            this.animator = this.parent.getAnimator()
-            this.parent.getSprite().rotation = 90
+            this.animator = this.parent.animator
+            this.parent.sprite.rotation = 90
         end
     elseif s == :update
         function(deltaTime)
-            if this.parent.getTransform().position.y >= this.startingY && !this.isMovingUp
-                this.parent.getSprite().rotation = this.isFire ? 0 : 90
+            if this.parent.transform.position.y >= this.startingY && !this.isMovingUp
+                this.parent.sprite.rotation = this.isFire ? 0 : 90
                 this.isMovingUp = true
-            elseif this.parent.getTransform().position.y <= this.endingY && this.isMovingUp
-                this.parent.getSprite().rotation = this.isFire ? 180 : 270
+            elseif this.parent.transform.position.y <= this.endingY && this.isMovingUp
+                this.parent.sprite.rotation = this.isFire ? 180 : 270
                 this.isMovingUp = false
             end
 
             if this.isMovingUp
-                this.parent.getTransform().position = Vector2f(this.parent.getTransform().position.x, this.parent.getTransform().position.y - this.speed*deltaTime)
+                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y - this.speed*deltaTime)
             else
-                this.parent.getTransform().position = Vector2f(this.parent.getTransform().position.x, this.parent.getTransform().position.y + this.speed*deltaTime)
+                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
             end
         end
     elseif s == :setParent

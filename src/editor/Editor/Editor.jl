@@ -9,6 +9,7 @@ module Editor
     using ImGuiOpenGLBackend #CImGui.OpenGLBackend
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
+    using NativeFileDialog
     #using Printf
     using ..JulGame
     using ..JulGame.EntityModule
@@ -38,15 +39,44 @@ module Editor
         () -> (name; parameters)
     end
 
-    function loadScene(projectPath, sceneFileName)
+    function LoadScene(scenePath)
         game = C_NULL
         try
-            game = SceneLoaderModule.loadScene(sceneFileName, projectPath, true);
+            game = SceneLoaderModule.LoadSceneFromEditor(scenePath);
         catch e
             rethrow(e)
         end
 
         return game
+    end
+    
+    function GetAllScenesFromFolder(projectPath)
+        sceneFiles = []
+        try
+            # search through projectpath and it's subdirectories for a scenes folder. If it exists, return all of the json files from it
+            for (root, dirs, files) in walkdir(projectPath)
+                if "scenes" in dirs
+                    for (root, dirs, files) in walkdir(joinpath(root, "scenes"))
+                        for file in files
+                            println(file)
+                            if occursin(r".json$", file)
+                                push!(sceneFiles, joinpath(root, file))
+                            end
+                        end
+                    end
+                end
+            end
+        catch e
+            rethrow(e)
+        end
+
+        return sceneFiles
+    end
+
+    function ChooseFolderWithDialog()
+        dir = pick_folder()
+        println("open_dialog returned $dir")
+        return dir
     end
 
     function run()
@@ -66,6 +96,7 @@ module Editor
     
         # create window
         game = C_NULL #Entry.run(true)
+        scenesLoadedFromFolder = []
         window = glfwCreateWindow(1920, 1080, "JulGame v0.1.0", C_NULL, C_NULL)
         @assert window != C_NULL
         glfwMakeContextCurrent(window)
@@ -103,7 +134,7 @@ module Editor
             gameInfo = []
             mousePosition = C_NULL
             projectPath = ""
-            sceneFileName = ""
+            sceneName = 
             relativeX = 0
             relativeY = 0
             isEditorWindowFocused = false
@@ -135,7 +166,7 @@ module Editor
                     CImGui.NewFrame()
         
                     event = @event begin
-                        serializeEntities(entities, textBoxes, projectPath, "$(sceneFileName).json")
+                        serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
                     end
                     events = [event]
                     @c ShowMainMenuBar(Ref{Bool}(true), events)
@@ -218,7 +249,7 @@ module Editor
                                         CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
                                         currentTextInTextBox = ""
                                         for characterIndex = 1:length(buf)
-                                            if Int(buf[characterIndex]) == 0 
+                                            if Int32(buf[characterIndex]) == 0 
                                                 if characterIndex != 1
                                                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                                 end
@@ -226,20 +257,21 @@ module Editor
                                             end
                                         end
                                         setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i], currentTextInTextBox)
-                                    elseif FieldsInStruct[i] == :components
-                                        for i = 1:length(Value)
-                                            component = Value[i]
+                                    elseif FieldsInStruct[i] in [:animator, :circleCollider, :collider, :shape, :soundSource, :sprite, :rigidbody, :transform]
+                                        if getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i]) != C_NULL
+                                            component = Value
                                             componentType = "$(typeof(component).name.wrapper)"
                                             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
-            
-                                            if CImGui.TreeNode(componentType)
-                                                CImGui.Button("Delete") && (deleteat!(Value, i); break;)
+                                            
+                                            if CImGui.TreeNode(replace(componentType, "Internal" => ""))
+                                                FieldsInStruct[i] != :transform && CImGui.Button("Delete") && (setfield!(structToUpdate[currentSelectedIndex], FieldsInStruct[i], C_NULL); break;)
                                                 ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
                                                 CImGui.TreePop()
                                             end
                                         end
                                     elseif FieldsInStruct[i] == :scripts
                                         if CImGui.TreeNode("Scripts")
+                                            ShowHelpMarker("Add a script here to run it on the entity.")
                                             CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
                                             for i = 1:length(Value)
                                                 if CImGui.TreeNode("Script $(i)")
@@ -248,7 +280,7 @@ module Editor
                                                     CImGui.InputText("Script $(i)", buf, length(buf))
                                                     currentTextInTextBox = ""
                                                     for characterIndex = 1:length(buf)
-                                                        if Int(buf[characterIndex]) == 0 
+                                                        if Int32(buf[characterIndex]) == 0 
                                                             if characterIndex != 1
                                                                 currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                                             end
@@ -263,11 +295,11 @@ module Editor
 
                                                         for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
                                                             buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
-                                                            CImGui.Button("pDelete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                                                            CImGui.Button("Delete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
                                                             CImGui.InputText("Parameter $(j)", buf, length(buf))
                                                             currentTextInTextBox = ""
                                                             for characterIndex = 1:length(buf)
-                                                                if Int(buf[characterIndex]) == 0 
+                                                                if Int32(buf[characterIndex]) == 0 
                                                                     if characterIndex != 1
                                                                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                                                                     end
@@ -287,8 +319,7 @@ module Editor
                                         end
                                     end
                                 catch e
-                                    println(e)
-                                    Base.show_backtrace(stdout, catch_backtrace())
+                                    rethrow(e)
                                 end
                             end
                         end
@@ -335,40 +366,61 @@ module Editor
                         scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
 
                         try
-                            CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath");)
+                            if gameInfo !== nothing && length(gameInfo) > 0  
+                                CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath");)
+                            end
                         catch e
-                            println(e)
+                            rethrow(e)
                         end
                         CImGui.End()
                     end
+
                     @cstatic begin
-                        CImGui.Begin("Project Location")  # create a window called "Project Location"
-                        CImGui.Text("Enter full path to root project folder and the name of scene file to load.")
-                        buf = "$(projectPath)"*"\0"^(128)
-                        buf1 = "$(sceneFileName)"*"\0"^(128)
-                        CImGui.InputText("Project Root Folder", buf, length(buf))
-                        CImGui.InputText("Scene File Name", buf1, length(buf1))
-                        currentTextInTextBox = ""
-                        currentTextInTextBox1 = ""
-                        for characterIndex = 1:length(buf)
-                            if Int(buf[characterIndex]) == 0 
-                                if characterIndex != 1
-                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                        CImGui.Begin("Load Project") 
+                        if gameInfo === nothing || length(gameInfo) < 1    
+                            CImGui.Text("Enter full path to root project folder")
+                            buf = "$(projectPath)"*"\0"^(128)
+                            CImGui.InputText("Project Root Folder", buf, length(buf))
+                            currentTextInTextBox = ""
+                            for characterIndex = 1:length(buf)
+                                if Int32(buf[characterIndex]) == 0 
+                                    if characterIndex != 1
+                                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                                    end
+                                    break
                                 end
-                                break
                             end
-                        end
-                        for characterIndex = 1:length(buf1)
-                            if Int(buf1[characterIndex]) == 0 
-                                if characterIndex != 1
-                                    currentTextInTextBox1 = String(SubString(buf1, 1, characterIndex-1))
-                                end
-                                break
+                            
+                            projectPath = currentTextInTextBox
+                            CImGui.Button("Load Project Using Folder Path") && (scenesLoadedFromFolder = GetAllScenesFromFolder(projectPath))
+                            CImGui.NewLine()
+                            CImGui.Button("Load Project using Dialog") && (ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir)))
+
+                            for scene in scenesLoadedFromFolder
+                                CImGui.Button("Load Scene: $(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
+                                CImGui.NewLine()
                             end
+                        else 
+                            CImGui.Text("Scene loaded. Click 'Play' to run the game.")
+                            CImGui.NewLine()
+                            CImGui.Text("If you want to load a new scene, you must restart the editor.")
                         end
-                        projectPath = currentTextInTextBox
-                        sceneFileName = currentTextInTextBox1
-                        CImGui.Button("Load Scene") && (game = loadScene("$(sceneFileName).json", projectPath))
+
+                        CImGui.End()
+                    end
+
+                    @cstatic begin
+                        CImGui.Begin("Controls")  
+                        CImGui.Text("Pan scene: Arrow keys/Hold middle mouse button and move mouse")
+                        CImGui.NewLine()
+                        CImGui.Text("Zoom in/out: Hold spacebar and left and right arrow keys")
+                        CImGui.NewLine()
+                        CImGui.Text("Select entity: Click on entity in scene window or in hierarchy window")
+                        CImGui.NewLine()
+                        CImGui.Text("Move entity: Hold left mouse button and drag entity")
+                        CImGui.NewLine()
+                        CImGui.Text("Duplicate entity: Select entity and click 'Duplicate' in hierarchy window or press 'LCTRL+D' keys")
+                        CImGui.NewLine()
                         CImGui.End()
                     end
 
@@ -378,7 +430,7 @@ module Editor
                             CImGui.Button("New entity") && (game.createNewEntity())
                             CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")))                    
                         catch e
-                            println(e)
+                            rethrow(e)
                         end
                     else
                         CImGui.Text("Load a project in the 'Project Location' window to add entities and textboxes.")
@@ -424,7 +476,7 @@ module Editor
                         CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                         CImGui.TreePop()
                     end
-                    ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
+                    ShowHelpMarker("This is a list of all textboxes in the scene. Click on a textbox to select it.")
                     CImGui.SameLine()
                     if CImGui.TreeNode("Textbox")
                         CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
@@ -466,7 +518,7 @@ module Editor
                     end
                     CImGui.End()
         
-                    x,y = Int[1], Int[1]
+                    x,y = Int32[1], Int32[1]
                     glfwGetWindowPos(window, pointer(x), pointer(y))
                     push!(update, x[1] + relativeX)
                     push!(update, y[1] + relativeY)
@@ -497,6 +549,7 @@ module Editor
                         deleteat!(latest_exceptions, 1)
                     end
 
+                    @error e
                     Base.show_backtrace(stdout, catch_backtrace())
                 end
             end

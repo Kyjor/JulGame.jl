@@ -38,7 +38,8 @@ function Base.getproperty(this::Title, s::Symbol)
                 end
             end
 
-            JulGame.SoundSourceModule.SoundSource("confirm-ui.wav", -1, 50).toggleSound()
+            sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
+            sound.toggleSound()
             ChangeScene("level_1.json")
 
         end

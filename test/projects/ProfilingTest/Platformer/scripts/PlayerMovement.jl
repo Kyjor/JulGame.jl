@@ -34,9 +34,6 @@ mutable struct PlayerMovement
         this.isFacingRight = true
         this.isJump = false
         this.parent = C_NULL
-        this.coinSound = SoundSource("coin.wav", 1, 50)
-        this.hurtSound = SoundSource("hit.wav", 1, 50)
-        this.starSound = SoundSource("power-up.wav", 1, 50)
         this.jumpSound = C_NULL 
         this.jumpVelocity = -5
 
@@ -50,13 +47,16 @@ end
 function Base.getproperty(this::PlayerMovement, s::Symbol)
     if s == :initialize
         function()
-            this.animator = this.parent.getAnimator()
+            this.animator = this.parent.animator
             this.animator.currentAnimation = this.animator.animations[1]
-            this.jumpSound = this.parent.getSoundSource()
-            this.cameraTarget = Transform(Vector2f(this.parent.getTransform().position.x, 0))
+            this.jumpSound = this.parent.soundSource
+            this.cameraTarget = Transform(Vector2f(this.parent.transform.position.x, 0))
             MAIN.scene.camera.target = this.cameraTarget
             this.gameManager = MAIN.scene.getEntityByName("Game Manager").scripts[1]
             this.deathsThisLevel = 0
+            this.coinSound = this.parent.createSoundSource(SoundSource(Int32(-1), false, "coin.wav", Int32(50)))
+            this.hurtSound = this.parent.createSoundSource(SoundSource(Int32(-1), false, "hit.wav", Int32(50)))
+            this.starSound = this.parent.createSoundSource(SoundSource(Int32(-1), false, "power-up.wav", Int32(50)))
         end
     elseif s == :update
         function(deltaTime)
@@ -68,25 +68,25 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             # Inputs match SDL2 scancodes after "SDL_SCANCODE_"
             # https://wiki.libsdl.org/SDL2/SDL_Scancode
             # Spaces full scancode is "SDL_SCANCODE_SPACE" so we use "SPACE". Every other key is the same.
-            if this.parent.getRigidbody().grounded
+            if this.parent.rigidbody.grounded
                 this.jumpSound.toggleSound()
-                SetVelocity(this.parent.getRigidbody(), Vector2f(this.parent.getRigidbody().getVelocity().x, 0))
-                AddVelocity(this.parent.getRigidbody(), Vector2f(0, this.jumpVelocity))
+                SetVelocity(this.parent.rigidbody, Vector2f(this.parent.rigidbody.getVelocity().x, 0))
+                AddVelocity(this.parent.rigidbody, Vector2f(0, this.jumpVelocity))
                 this.animator.currentAnimation = this.animator.animations[3]
             end
-            if this.parent.getRigidbody().grounded
+            if this.parent.rigidbody.grounded
                 this.animator.currentAnimation = this.animator.animations[2]
             end
             x = speed
             if !this.isFacingRight
                 this.isFacingRight = true
-                this.parent.getSprite().flip()
+                this.parent.sprite.flip()
             end
             
-            SetVelocity(this.parent.getRigidbody(), Vector2f(x, this.parent.getRigidbody().getVelocity().y))
+            SetVelocity(this.parent.rigidbody, Vector2f(x, this.parent.rigidbody.getVelocity().y))
             x = 0
             this.isJump = false
-            if this.parent.getTransform().position.y > 8
+            if this.parent.transform.position.y > 8
                 this.respawn()
                 if this.gameManager.currentLevel == 1
                     if this.deathsThisLevel == 0
@@ -112,10 +112,10 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                 end
             end
 
-            speed = abs(5 * (1 - cos(this.parent.getTransform().position.x- this.cameraTarget.position.x)))
+            speed = abs(5 * (1 - cos(this.parent.transform.position.x- this.cameraTarget.position.x)))
             speed = clamp(speed, 1, 5)
-            if this.cameraTarget.position != Vector2f(this.parent.getTransform().position.x, 2.75)
-                this.cameraTarget.position = Vector2f(this.cameraTarget.position.x + (this.parent.getTransform().position.x - this.cameraTarget.position.x) * deltaTime  * speed, 2.75)
+            if this.cameraTarget.position != Vector2f(this.parent.transform.position.x, 2.75)
+                this.cameraTarget.position = Vector2f(this.cameraTarget.position.x + (this.parent.transform.position.x - this.cameraTarget.position.x) * deltaTime  * speed, 2.75)
             end
             
         end
@@ -123,14 +123,14 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         function(parent)
             this.parent = parent
             collisionEvent = @argevent (col) this.handleCollisions(col)
-            this.parent.getComponent(Collider).addCollisionEvent(collisionEvent)
+            this.parent.collider.addCollisionEvent(collisionEvent)
         end
     elseif s == :handleCollisions
         function(otherCollider)
             if otherCollider.tag == "Coin"
                 DestroyEntity(otherCollider.parent)
                 this.coinSound.toggleSound()
-                MAIN.scene.textBoxes[1].updateText(string(parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[1]) + 1, "/", parse(Int, split(MAIN.scene.textBoxes[1].text, "/")[2])))
+                MAIN.scene.textBoxes[1].updateText(string(parse(Int32, split(MAIN.scene.textBoxes[1].text, "/")[1]) + 1, "/", parse(Int32, split(MAIN.scene.textBoxes[1].text, "/")[2])))
             elseif otherCollider.tag == "Star"
                 this.starSound.toggleSound()
                 DestroyEntity(otherCollider.parent)
@@ -141,7 +141,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
     elseif s == :respawn
         function()
             this.hurtSound.toggleSound()
-            this.parent.getTransform().position = Vector2f(1, 4)
+            this.parent.transform.position = Vector2f(1, 4)
             this.gameManager.starCount = max(this.gameManager.starCount - 1, 0)
             MAIN.scene.textBoxes[2].updateText(string(this.gameManager.starCount))
             this.deathsThisLevel += 1
