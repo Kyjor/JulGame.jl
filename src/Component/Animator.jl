@@ -68,12 +68,12 @@
 
     
     """
-    ForceFrameUpdate(this::Animator, frameIndex::Int32)
+    ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
     
     Updates the sprite crop of the animator to the specified frame index.
     
     # Arguments
-    - `this::Animator`: The animator object.
+    - `this::InternalAnimator`: The animator object.
     - `frameIndex::Int32`: The index of the frame to update the sprite crop to.
     
     # Example
