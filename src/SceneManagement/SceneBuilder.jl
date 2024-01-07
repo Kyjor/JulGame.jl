@@ -194,13 +194,13 @@ module SceneBuilderModule
                 end
             elseif s == :createNewEntity
                 function ()
-                    push!(this.main.scene.entities, Entity("New entity", C_NULL))
+                    push!(MAIN.scene.entities, Entity("New entity"))
                 end
             elseif s == :createNewTextBox
                 function (fontPath)
                     textBox = TextBox("TextBox", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
                     textBox.initialize()
-                    push!(this.main.textBoxes, textBox)
+                    push!(MAIN.scene.textBoxes, textBox)
                 end
             else
                 try

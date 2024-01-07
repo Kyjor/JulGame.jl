@@ -93,7 +93,7 @@ module TextBoxModule
                 this.text = newText
                 SDL2.SDL_FreeSurface(this.renderText)
                 SDL2.SDL_DestroyTexture(this.textTexture)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
                 surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
                 this.size = Math.Vector2(surface[1].w, surface[1].h)

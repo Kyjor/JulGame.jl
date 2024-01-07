@@ -26,7 +26,7 @@ module MainLoop
 		optimizeSpriteRendering::Bool
 		panCounter
 		panThreshold
-		renderer
+		renderer::Ptr{SDL2.LibSDL2.SDL_Renderer}
 		scene::Scene
 		selectedEntityIndex
 		selectedEntityUpdated
@@ -34,7 +34,7 @@ module MainLoop
 		screenDimensions
 		shouldChangeScene::Bool
 		spriteLayers::Dict
-		targetFrameRate
+		targetFrameRate::Int32
 		testLength::Float64
 		testMode::Bool
 		window
@@ -805,7 +805,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			SDL2.SDL_RenderPresent(this.renderer)
 			endTime = SDL2.SDL_GetPerformanceCounter()
 			elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
-			targetFrameTime = 1000/this.targetFrameRate
+			targetFrameTime::Float64 = 1000/this.targetFrameRate
 
 			if elapsedMS < targetFrameTime && !isEditor
 				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))

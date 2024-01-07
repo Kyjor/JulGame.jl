@@ -72,7 +72,6 @@ module SceneReaderModule
                         newEntity.transform = component::Transform
                         continue
                     end
-                    newEntity.addComponent(component)
                 end
                 
                 push!(entities, newEntity)
