@@ -131,7 +131,7 @@ module SceneReaderModule
             elseif component.type == "CircleCollider"
                 newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Vector2f(component.offset.x, component.offset.y), component.tag)
             elseif component.type == "Rigidbody"
-                newComponent = Rigidbody(convert(Float64, component.mass))
+                newComponent = Rigidbody(; mass = convert(Float64, component.mass), useGravity = !haskey(component, "useGravity") ? true : component.useGravity)
             elseif component.type == "SoundSource"
                 newComponent = SoundSource(Int32(component.channel), component.isMusic, component.path, Int32(component.volume))
             elseif component.type == "Sprite"

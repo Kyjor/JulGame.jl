@@ -88,6 +88,7 @@ module SceneWriterModule
                 serializedComponent = Dict(
                     "type" => componentType, 
                     "mass" => component.mass, 
+                    "useGravity" => component.useGravity,
                     )
                 push!(componentsDict, serializedComponent)
             elseif componentType == "SoundSource"

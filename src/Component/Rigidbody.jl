@@ -4,6 +4,11 @@
     export Rigidbody
     struct Rigidbody
         mass::Float64
+        useGravity::Bool
+
+        function Rigidbody(;mass::Float64 = 1.0, useGravity::Bool = true)
+            return new(mass, useGravity)
+        end
     end
 
     export InternalRigidbody
@@ -17,7 +22,7 @@
         useGravity::Bool
         velocity::Math.Vector2f
 
-        function InternalRigidbody(parent::Any, mass::Float64 = 1.0)
+        function InternalRigidbody(parent::Any; mass::Float64 = 1.0, useGravity::Bool = true)
             this = new()
             
             this.acceleration = Math.Vector2f()
@@ -26,7 +31,7 @@
             this.mass = mass
             this.offset = Math.Vector2f()
             this.parent = parent
-            this.useGravity = true
+            this.useGravity = useGravity
             this.velocity = Math.Vector2f(0.0, 0.0)
 
             return this
@@ -59,7 +64,7 @@
             end
         elseif s == :applyForces
             function()
-                gravityAcceleration = Math.Vector2f(0.0, GRAVITY)
+                gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? GRAVITY : 0.0)
                 dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
                 dragAcceleration = dragForce / this.mass
                 return gravityAcceleration - dragAcceleration

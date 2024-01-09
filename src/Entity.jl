@@ -111,14 +111,14 @@ module EntityModule
                 return this.circleCollider
             end
         elseif s == :addRigidbody
-            function(rigidbody::Rigidbody = Rigidbody(1.0))
+            function(rigidbody::Rigidbody = Rigidbody())
                 if this.rigidbody != C_NULL
                     println("Rigidbody already exists on entity named ", this.name)
                     return
                 end
 
-                this.rigidbody = InternalRigidbody(this::Entity, rigidbody.mass)
-
+                this.rigidbody = InternalRigidbody(this::Entity; rigidbody.mass, rigidbody.useGravity)
+                
                 return this.rigidbody
             end
         elseif s == :addSoundSource
