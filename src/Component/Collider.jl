@@ -87,7 +87,10 @@ module ColliderModule
                 colliders = MAIN.scene.colliders
                 #Only check the player against other colliders
                 counter = 0
-                onGround = this.parent.rigidbody.grounded
+                onGround = this.parent.rigidbody.grounded 
+                colliderSkipCount = 0
+                colliderCheckedCount = 0
+                
                 for collider in colliders
                     #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                     if !collider.getParent().isActive || !collider.enabled
@@ -96,7 +99,15 @@ module ColliderModule
                         end
                         continue
                     end
+                   
                     if this != collider
+                        # check if other collider is within range of this collider, if it isn't then skip it
+                        if collider.getParent().transform.getPosition().x > this.getParent().transform.getPosition().x + this.getSize().x || collider.getParent().transform.getPosition().x + collider.getSize().x < this.getParent().transform.getPosition().x && MAIN.optimizeSpriteRendering
+                            colliderSkipCount += 1
+                            continue
+                        end
+
+                        colliderCheckedCount += 1
                         collision = CheckCollision(this, collider)
                         if CheckIfResting(this, collider)[1] == true && length(this.currentRests) > 0 && !(collider in this.currentRests)
                             # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
@@ -159,6 +170,9 @@ module ColliderModule
                         end
                     end
                 end
+
+                #println("Skipped $colliderSkipCount colliders, checked $colliderCheckedCount")
+
                 for i in 1:length(this.currentRests)
                     if CheckIfResting(this, this.currentRests[i])[1] == false
                         deleteat!(this.currentRests, i)

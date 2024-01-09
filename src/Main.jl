@@ -661,6 +661,9 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 			end
 
+			# Used for conditional rendering
+			cameraPosition = this.scene.camera.position
+			cameraSize = this.scene.camera.dimensions
 			if !isEditor
 				skipcount = 0
 				rendercount = 0
@@ -668,13 +671,10 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				 #println("dimensions: $(this.scene.camera.dimensions)")
 				for layer in this.spriteLayers["sort"]
 					for sprite in this.spriteLayers["$(layer)"]
-						# get camera size and position and only render if the sprite is within the camera's view
-						cameraPosition = this.scene.camera.position
-						cameraSize = this.scene.camera.dimensions
 						spritePosition = sprite.parent.transform.getPosition()
 						spriteSize = sprite.parent.transform.getScale()
 						
-						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || spritePosition.y > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (spritePosition.y - spriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
 							skipcount += 1
 							continue
 						end
@@ -690,6 +690,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				#println("Skipped $skipcount, rendered $rendercount")
 			end
 
+			colliderSkipCount = 0
+			colliderRenderCount = 0
 			for entity in this.scene.entities
 				if !entity.isActive
 					continue
@@ -713,9 +715,17 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					entityShape.draw()
 				end
 
+				
 				if DEBUG && entity.collider != C_NULL
 					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 					pos = entity.transform.getPosition()
+					scale = entity.transform.getScale()
+
+					if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
+						colliderSkipCount += 1
+						continue
+					end
+					colliderRenderCount += 1
 					collider = entity.collider
 					if collider.getType() == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
@@ -733,6 +743,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					end
 				end
 			end
+			#println("Skipped $colliderSkipCount, rendered $colliderRenderCount")
 
 			#endregion ============= Rendering
 
