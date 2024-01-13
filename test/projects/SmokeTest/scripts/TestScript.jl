@@ -58,7 +58,7 @@ function Base.getproperty(this::TestScript, s::Symbol)
             newRigidbody = C_NULL
             @testset "Engine Rigidbody Tests" begin
                 @testset "Rigidbody constructor" begin
-                    newRigidbody = RigidbodyModule.Rigidbody(1.0)
+                    newRigidbody = RigidbodyModule.Rigidbody()
                     @test newRigidbody != C_NULL && newRigidbody !== nothing
                 end
             end
