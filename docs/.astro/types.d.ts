@@ -184,147 +184,161 @@ declare module 'astro:content' {
   slug: "general/what-is-julgame";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "guides/example.md": {
 	id: "guides/example.md";
   slug: "guides/example";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "index.mdx": {
 	id: "index.mdx";
   slug: "index";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".mdx"] };
 "reference/Animation/animation.md": {
 	id: "reference/Animation/animation.md";
   slug: "reference/animation/animation";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Animation/properties/animatedFPS.md": {
 	id: "reference/Animation/properties/animatedFPS.md";
   slug: "reference/animation/properties/animatedfps";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Animation/properties/frames.md": {
 	id: "reference/Animation/properties/frames.md";
   slug: "reference/animation/properties/frames";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Animator/animator.md": {
 	id: "reference/Animator/animator.md";
   slug: "reference/animator/animator";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Animator/functions/ForceFrameUpdate.md": {
+	id: "reference/Animator/functions/ForceFrameUpdate.md";
+  slug: "reference/animator/functions/forceframeupdate";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Animator/properties/animations.md": {
 	id: "reference/Animator/properties/animations.md";
   slug: "reference/animator/properties/animations";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Animator/properties/currentAnimation.md": {
+	id: "reference/Animator/properties/currentAnimation.md";
+  slug: "reference/animator/properties/currentanimation";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Collider/collider.md": {
 	id: "reference/Collider/collider.md";
   slug: "reference/collider/collider";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Collider/properties/collisionEvents.md": {
 	id: "reference/Collider/properties/collisionEvents.md";
   slug: "reference/collider/properties/collisionevents";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Rigidbody/properties/acceleration.md": {
 	id: "reference/Rigidbody/properties/acceleration.md";
   slug: "reference/rigidbody/properties/acceleration";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Rigidbody/rigidbody.md": {
 	id: "reference/Rigidbody/rigidbody.md";
   slug: "reference/rigidbody/rigidbody";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Shape/properties/color.md": {
 	id: "reference/Shape/properties/color.md";
   slug: "reference/shape/properties/color";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Shape/properties/dimensions.md": {
 	id: "reference/Shape/properties/dimensions.md";
   slug: "reference/shape/properties/dimensions";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Shape/properties/isFilled.md": {
 	id: "reference/Shape/properties/isFilled.md";
   slug: "reference/shape/properties/isfilled";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Shape/properties/offset.md": {
 	id: "reference/Shape/properties/offset.md";
   slug: "reference/shape/properties/offset";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Shape/properties/parent.md": {
 	id: "reference/Shape/properties/parent.md";
   slug: "reference/shape/properties/parent";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/Shape/shape.md": {
 	id: "reference/Shape/shape.md";
   slug: "reference/shape/shape";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/SoundSource/properties/acceleration.md": {
 	id: "reference/SoundSource/properties/acceleration.md";
   slug: "reference/soundsource/properties/acceleration";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "reference/SoundSource/sound-source.md": {
 	id: "reference/SoundSource/sound-source.md";
   slug: "reference/soundsource/sound-source";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 "release-notes/v0.0.4.md": {
 	id: "release-notes/v0.0.4.md";
   slug: "release-notes/v004";
   body: string;
   collection: "docs";
-  data: any
+  data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
 };
 
@@ -336,5 +350,5 @@ declare module 'astro:content' {
 
 	type AnyEntryMap = ContentEntryMap & DataEntryMap;
 
-	type ContentConfig = never;
+	type ContentConfig = typeof import("../src/content/config");
 }

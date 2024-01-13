@@ -1,7 +1,7 @@
 name = "Editor"
 uuid = "9cd31ca0-29e7-4e0e-a29b-ce588029d569"
 authors = ["Kyjor <kyjordev@gmail.com>"]
-version = "0.0.2"
+version = "0.1.0"
 
 [deps]
 SimpleDirectMediaLayer = "98e33af6-2ee5-5afd-9e75-cbc738b767c4"

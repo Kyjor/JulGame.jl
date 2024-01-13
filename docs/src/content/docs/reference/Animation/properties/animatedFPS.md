@@ -1,5 +1,5 @@
 ---
-title: animatedFPS 
+title: Animation.animatedFPS 
 description: The amount of `frames` that will be shown per second.
 ---
 #### Type<span style="color:red;">:</span> Integer<br/>

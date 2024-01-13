@@ -1,13 +1,26 @@
 module JulGame
     using SimpleDirectMediaLayer
-    const SDL2 = SimpleDirectMediaLayer 
-    export SDL2
-    
+    const SDL2 = SimpleDirectMediaLayer
+
+    function __init__()
+        SDL2.init()
+    end
+
+    include("ModuleExtensions/SDL2Extension.jl")
+    const SDL2E = SDL2Extension
+    export SDL2, SDL2E
+
+    include("Utils.jl")
+    export CallSDLFunction
+
     include("Constants.jl")
     export SCALE_UNITS, GRAVITY
     
     BasePath = ""
     export BasePath
+
+    Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
+    export Renderer
     
     include("Macros.jl")
     using .Macros: @event
@@ -32,7 +45,7 @@ module JulGame
 
     include("Component/Component.jl")
     using .Component
-    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
+    export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
 
     include("Entity.jl") 
     using .EntityModule   
