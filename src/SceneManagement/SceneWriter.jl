@@ -9,7 +9,7 @@ module SceneWriterModule
 
         count = 1
         for entity in entities
-        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents(entity.components), "scripts" => serializeEntityScripts(entity.scripts)))
+        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serializeEntityScripts(entity.scripts)))
         count += 1
         end
         count = 1
@@ -17,18 +17,17 @@ module SceneWriterModule
         push!(textBoxesDict, Dict(
             "id" => count, 
             "alpha" => textBox.alpha, 
-            "autoSizeText" => textBox.autoSizeText, 
-            "fontPath" => textBox.fontPath, 
+            "fontPath" => normalizePath(textBox.fontPath), 
             "fontSize" => textBox.fontSize, 
-            "isCentered" => textBox.isCentered,
+            "isCenteredX" => textBox.isCenteredX,
+            "isCenteredY" => textBox.isCenteredY,
             "isDefaultFont" => textBox.isDefaultFont,
             "isTextUpdated" => textBox.isTextUpdated,
+            "isWorldEntity" => textBox.isWorldEntity,
             "name" => textBox.name,
             "position" => Dict("x" => textBox.position.x, "y" => textBox.position.y),
             "size" => Dict("x" => textBox.size.x, "y" => textBox.size.y),
-            "sizePercentage" => Dict("x" => textBox.sizePercentage.x, "y" => textBox.sizePercentage.y),
-            "text" => textBox.text,
-            "zoom" => textBox.zoom
+            "text" => textBox.text
             ))
         count += 1
         end
@@ -43,6 +42,7 @@ module SceneWriterModule
             end
         catch e
             println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
     end
 
@@ -53,6 +53,7 @@ module SceneWriterModule
         for component in components
             componentType = "$(typeof(component).name.wrapper)"
             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
+            componentType = replace(componentType, "Internal" => "")
             #Dict("b" => 1, "c" => 2)
             if componentType == "Transform"
                 serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
@@ -81,12 +82,14 @@ module SceneWriterModule
                     "tag" => component.tag, 
                     "isTrigger" => component.isTrigger, 
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "isPlatformerCollider" => component.isPlatformerCollider,
                     )
                 push!(componentsDict, serializedComponent)
             elseif componentType == "Rigidbody"
                 serializedComponent = Dict(
                     "type" => componentType, 
                     "mass" => component.mass, 
+                    "useGravity" => component.useGravity,
                     )
                 push!(componentsDict, serializedComponent)
             elseif componentType == "SoundSource"
@@ -94,7 +97,7 @@ module SceneWriterModule
                     "type" => componentType, 
                     "channel" => component.channel, 
                     "isMusic" => component.isMusic, 
-                    "path" => component.path, 
+                    "path" => normalizePath(component.path), 
                     "sound" => component.sound, 
                     "volume" => component.volume, 
                     )
@@ -102,14 +105,21 @@ module SceneWriterModule
             elseif componentType == "Sprite"
                 serializedComponent = Dict(
                     "type" => componentType, 
-                    "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "w" => component.crop.w, "h" => component.crop.h), 
+                    "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "z" => component.crop.z, "t" => component.crop.t), 
                     "isFlipped" => component.isFlipped, 
-                    "imagePath" => component.imagePath
+                    "imagePath" => normalizePath(component.imagePath),
+                    "layer" => component.layer,
                     )
                 push!(componentsDict, serializedComponent)
+            elseif "$componentType" != "Ptr"
+                println("Component type $(componentType) not supported")
             end
         end
         return componentsDict
+    end
+
+    function normalizePath(path)
+        return replace(joinpath(path), "\\" => "//")
     end
 
     export serializeEntityScripts

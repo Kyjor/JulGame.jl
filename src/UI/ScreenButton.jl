@@ -4,16 +4,16 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton
-        clickEvents::Array{Any}
+        clickEvents::Vector{Any}
         currentTexture
         buttonDownSprite
         buttonDownTexture
         buttonUpSprite
         buttonUpTexture
         dimensions
+        isInitialized::Bool
         mouseOverSprite
         position
-        renderer
         text
         textTexture
 
@@ -24,11 +24,13 @@ module ScreenButtonModule
             this.buttonUpSprite = SDL2.IMG_Load(joinpath(basePath, "assets", "images", buttonUpSpritePath))
             #this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : basePath
             this.clickEvents = []
+            this.currentTexture = C_NULL
             this.dimensions = dimensions
             this.mouseOverSprite = false
             this.position = position
             this.text = text
-            this.injectRenderer()
+            this.textTexture = C_NULL
+            this.isInitialized = false
 
             return this
         end
@@ -37,30 +39,36 @@ module ScreenButtonModule
     function Base.getproperty(this::ScreenButton, s::Symbol)
         if s == :render
             function()
+                if !this.isInitialized
+                    this.initialize()
+                end
+
+                if this.currentTexture == C_NULL
+                    return
+                end
+
                 if !this.mouseOverSprite && this.currentTexture == this.buttonDownTexture
                     this.currentTexture = this.buttonUpTexture
                 end    
                 @assert SDL2.SDL_RenderCopyEx(
-                    this.renderer, 
+                    JulGame.Renderer, 
                     this.currentTexture, 
                     C_NULL, 
                     Ref(SDL2.SDL_Rect(this.position.x, this.position.y, this.dimensions.x,this.dimensions.y)), 
                     0.0, 
                     C_NULL, 
-                    SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL_GetError()))"
+                    SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-                #@assert SDL2.SDL_RenderCopy(this.renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+                #@assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
-        elseif s == :injectRenderer
+        elseif s == :initialize
             function()
-
-                this.renderer = MAIN.renderer
-                this.buttonDownTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.buttonDownSprite)
-                this.buttonUpTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.buttonUpSprite)
+                this.buttonDownTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.buttonDownSprite)
+                this.buttonUpTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.buttonUpSprite)
                 this.currentTexture = this.buttonUpTexture
                 # text = SDL2.TTF_RenderText_Blended(font, this.text, SDL2.SDL_Color(255,255,255,255) )
-                # this.textTexture = SDL2.SDL_CreateTextureFromSurface(this.renderer, text)
-
+                # this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, text)
+                this.isInitialized = true
             end
         elseif s == :setPosition
             function(position::Math.Vector2)
@@ -86,11 +94,24 @@ module ScreenButtonModule
             function(parent)
                 this.parent = parent
             end
+        elseif s == :destroy
+            function()
+                if !this.buttonDownTexture == C_NULL
+                    SDL2.SDL_DestroyTexture(this.buttonDownTexture)
+                end
+                if !this.buttonUpTexture == C_NULL
+                    SDL2.SDL_DestroyTexture(this.buttonUpTexture)
+                end
+                this.buttonDownTexture = C_NULL
+                this.buttonUpTexture = C_NULL
+                this.currentTexture = C_NULL
+            end
         else
             try
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end

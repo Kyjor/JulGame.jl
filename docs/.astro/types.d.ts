@@ -214,6 +214,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Animation/properties/frames.md": {
+	id: "reference/Animation/properties/frames.md";
+  slug: "reference/animation/properties/frames";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/Animator/animator.md": {
 	id: "reference/Animator/animator.md";
   slug: "reference/animator/animator";
@@ -221,9 +228,23 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Animator/functions/ForceFrameUpdate.md": {
+	id: "reference/Animator/functions/ForceFrameUpdate.md";
+  slug: "reference/animator/functions/forceframeupdate";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/Animator/properties/animations.md": {
 	id: "reference/Animator/properties/animations.md";
   slug: "reference/animator/properties/animations";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Animator/properties/currentAnimation.md": {
+	id: "reference/Animator/properties/currentAnimation.md";
+  slug: "reference/animator/properties/currentanimation";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">

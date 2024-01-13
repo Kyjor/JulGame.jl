@@ -5,19 +5,19 @@ module InputModule
     
     export Input
     mutable struct Input
-        buttonsPressedDown::Array{String}
-        buttonsHeldDown::Array{String}
-        buttonsReleased::Array{String}
+        buttonsPressedDown::Vector{String}
+        buttonsHeldDown::Vector{String}
+        buttonsReleased::Vector{String}
         debug::Bool
         isWindowFocused::Bool
         main
-        mouseButtonsPressedDown::Array
-        mouseButtonsHeldDown::Array
-        mouseButtonsReleased::Array
+        mouseButtonsPressedDown::Vector
+        mouseButtonsHeldDown::Vector
+        mouseButtonsReleased::Vector
         mousePosition
         joystick
-        scanCodeStrings::Array{String}
-        scanCodes::Array
+        scanCodeStrings::Vector{String}
+        scanCodes::Vector
         scene
         quit::Bool
         
@@ -44,7 +44,7 @@ module InputModule
             this.mousePosition = Math.Vector2(0,0)
             this.quit = false
             this.scanCodes = []
-            this.scanCodeStrings = []
+            this.scanCodeStrings = String[]
             for m in instances(SDL2.SDL_Scancode)
                 codeString = "$(m)"
                 code::SDL2.SDL_Scancode = m
@@ -98,7 +98,7 @@ module InputModule
                     if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                         didMouseEventOccur = true
                         if this.scene.screenButtons != C_NULL
-                            x,y = Int[1], Int[1]
+                            x,y = Int32[1], Int32[1]
                             SDL2.SDL_GetMouseState(pointer(x), pointer(y))
                             
                             this.mousePosition = Math.Vector2(x[1], y[1])
@@ -201,7 +201,7 @@ module InputModule
         elseif s == :checkScanCode
             function (keyboardState, keyState, scanCodes)
                 for scanCode in scanCodes
-                    if keyboardState[Integer(scanCode) + 1] == keyState
+                    if keyboardState[Int32(scanCode) + 1] == keyState
                         return true
                     end
                 end
@@ -353,6 +353,7 @@ module InputModule
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end

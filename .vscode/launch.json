@@ -2,15 +2,15 @@
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
+    "version": "0.0.3",
     "configurations": [
         {
             "type": "julia",
             "request": "launch",
-            "name": "Run active Julia file",
-            "program": "${file}",
+            "name": "Run julia editor",
+            "program": "${workspaceFolder}/src/editor/Editor/src/Editor.jl",
             "stopOnEntry": false,
-            "cwd": "${workspaceFolder}/editor/Editor/src",
+            "cwd": "${workspaceFolder}/src/editor/Editor/src",
             "juliaEnv": "${command:activeJuliaEnvironment}"
         }
     ]

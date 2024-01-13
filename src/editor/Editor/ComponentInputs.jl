@@ -9,35 +9,41 @@ ShowComponentProperties(currentEntitySelected, component, componentType)
 Creates inputs based on the component type and populates them.
 """
 function ShowComponentProperties(currentEntitySelected, component, componentType)
-
     if componentType == "Transform"
-        fieldsInComponent=fieldnames(JulGame.TransformModule.Transform);
+        fieldsInComponent=fieldnames(JulGame.TransformModule.Transform)
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Collider"
-        fieldsInComponent=fieldnames(JulGame.ColliderModule.Collider);
+    elseif componentType == "InternalCollider"
+        fieldsInComponent=fieldnames(JulGame.ColliderModule.InternalCollider)
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Rigidbody"
-        fieldsInComponent=fieldnames(JulGame.RigidbodyModule.Rigidbody);
+    elseif componentType == "InternalRigidbody"
+        fieldsInComponent=fieldnames(JulGame.RigidbodyModule.InternalRigidbody)
+        fieldsToSkip = String["acceleration", "grounded", "velocity"]
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Animator"
-        fieldsInComponent=fieldnames(JulGame.AnimatorModule.Animator);
+    elseif componentType == "InternalAnimator"
+        fieldsInComponent=fieldnames(JulGame.AnimatorModule.InternalAnimator)
         ShowAnimatorProperties(fieldsInComponent, currentEntitySelected)
     elseif componentType == "Animation"
-        fieldsInComponent=fieldnames(JulGame.AnimationModule.Animation);
+        fieldsInComponent=fieldnames(JulGame.AnimationModule.Animation)
         for i = 1:length(fieldsInComponent)
             ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
         end
-    elseif componentType == "Sprite"
-        fieldsInComponent=fieldnames(JulGame.SpriteModule.Sprite);
+    elseif componentType == "InternalSprite"
+        fieldsInComponent=fieldnames(JulGame.SpriteModule.InternalSprite)
         ShowSpriteProperties(fieldsInComponent, currentEntitySelected)
-    elseif componentType == "SoundSource"
-        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.SoundSource);
+    elseif componentType == "InternalSoundSource"
+        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.InternalSoundSource)
+        ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
+    elseif componentType == "InternalShape"
+        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.InternalShape)
+        ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
+    elseif componentType == "InternalCircleCollider"
+        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.InternalCircleCollider)
         ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
     end
 
@@ -49,7 +55,25 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
     end
     itemToUpdateType = getType(currentEntitySelected)
     if itemToUpdateType == "Entity"
-        itemToUpdate = currentEntitySelected.getComponent(componentType)
+        if componentType == "Transform"
+            itemToUpdate = currentEntitySelected.transform
+        elseif componentType == "InternalCollider"
+            itemToUpdate = currentEntitySelected.collider
+        elseif componentType == "InternalRigidbody"
+            itemToUpdate = currentEntitySelected.rigidbody
+        elseif componentType == "InternalAnimator"
+            itemToUpdate = currentEntitySelected.animator
+        elseif componentType == "Animation"
+            itemToUpdate = currentEntitySelected.animation
+        elseif componentType == "InternalSprite"
+            itemToUpdate = currentEntitySelected.sprite
+        elseif componentType == "InternalSoundSource"
+            itemToUpdate = currentEntitySelected.soundSource
+        elseif componentType == "InternalShape"
+            itemToUpdate = currentEntitySelected.shape
+        elseif componentType == "InternalCircleCollider"
+            itemToUpdate = currentEntitySelected.circleCollider
+        end
     else
         itemToUpdate = currentEntitySelected
     end
@@ -57,7 +81,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
     componentFieldValue = getfield(component, componentField)
     componentFieldType = getType(componentFieldValue)
 
-    if componentFieldType == "Vector2f"
+    if componentFieldType == "_Vector2"
         CImGui.Text(componentField)
         x = Cfloat(componentFieldValue.x)
         y = Cfloat(componentFieldValue.y)
@@ -74,7 +98,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         CImGui.InputText("$(componentField)", buf, length(buf))
         currentTextInTextBox = ""
         for characterIndex = 1:length(buf)
-            if Int(buf[characterIndex]) == 0 
+            if Int32(buf[characterIndex]) == 0 
                 if characterIndex != 1
                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                 end
@@ -89,17 +113,17 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
         @c CImGui.InputFloat("$(componentField)", &x, 1)
         setfield!(itemToUpdate,componentField,componentFieldValue)
     
-    elseif componentFieldType == "Integer"
+    elseif componentFieldType == "Int32"
         CImGui.Text(componentField)
         x = Cint(componentFieldValue)
         @c CImGui.InputInt("$(componentField)", &x, 1)
         setfield!(itemToUpdate,componentField,componentFieldValue)
 
-    elseif componentFieldType == "Vector4"
-        vec4i = Cint[componentFieldValue.x, componentFieldValue.y, componentFieldValue.w, componentFieldValue.h]
+    elseif componentFieldType == "_Vector4"
+        vec4i = Cint[componentFieldValue.x, componentFieldValue.y, componentFieldValue.z, componentFieldValue.t]
         @c CImGui.InputInt4("input int4", vec4i)
         
-    elseif componentFieldType == "Array" # Then we need to unpack the nested items
+    elseif componentFieldType == "Vector" # Then we need to unpack the nested items
         for i = 1:length(componentFieldValue) 
             nestedType = "$(typeof(componentFieldValue[i]).name.wrapper)"
             nestedFieldType = String(split(nestedType, '.')[length(split(nestedType, '.'))])
@@ -108,7 +132,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 try
                     CImGui.Button("Add") && componentFieldValue[i].appendArray()
                 catch e
-                    println(e)
+                    rethrow(e)
                 end
                 if nestedFieldType in JulGameComponents
                     ShowComponentProperties(componentFieldValue[i], componentFieldValue[i], nestedFieldType)
@@ -116,7 +140,7 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                     try
                         currentEntitySelected.updateArrayValue(ShowArrayPropertyInput(componentFieldValue, i), componentField, i)
                     catch e
-                        println(e)
+                        rethrow(e)
                     end
                 end
                 CImGui.TreePop()
@@ -129,9 +153,9 @@ end
 
 function ShowArrayPropertyInput(arr, index) 
     type = getType(arr[index])
-    if type == "Vector4"
+    if type == "_Vector4"
         vec = arr[index]
-        vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+        vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
         @c CImGui.InputInt4("input int4", vec4i)
         return JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
     end
@@ -149,9 +173,9 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
             
             if fieldString == "animations"
                 animationFields=fieldnames(JulGame.AnimationModule.Animation);
-                animations = currentEntitySelected.getAnimator().animations
+                animations = currentEntitySelected.animator.animations
 
-                CImGui.Button("Add Animation") && currentEntitySelected.getAnimator().appendArray()
+                CImGui.Button("Add Animation") && currentEntitySelected.animator.appendArray()
                 for i = 1:length(animations) 
                     if CImGui.TreeNode("animation $(i)")
                         for j = 1:length(animationFields)
@@ -159,7 +183,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                             if animationFieldString == "animatedFPS"
                                 x = Cint(animations[i].animatedFPS)
                                 @c CImGui.InputInt("$(animationFieldString) $(j)", &x, 1)
-                                currentEntitySelected.getAnimator().animations[i].animatedFPS = x
+                                currentEntitySelected.animator.animations[i].animatedFPS = x
                             elseif animationFieldString == "frames"
                                 try
                                     CImGui.Button("Add Frame") && animations[i].appendArray()
@@ -167,15 +191,14 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
                                     for k = 1:length(animations[i].frames)
                                         if CImGui.TreeNode("frame $(k)")
                                             vec = animations[i].frames[k]
-                                            vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+                                            vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
-                                            currentEntitySelected.getAnimator().animations[i].updateArrayValue(JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4]), animationFields[j], k)
+                                            currentEntitySelected.animator.animations[i].updateArrayValue(JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
                                             CImGui.TreePop()
                                         end
                                     end
                                 catch e
-                                    println(e)
-                                    Base.show_backtrace(stdout, catch_backtrace())
+                                    rethrow(e)
                                 end
                             end
                         end
@@ -186,8 +209,7 @@ function ShowAnimatorProperties(animatorFields, currentEntitySelected)
             end  
         end
     catch e
-        println(e)
-        Base.show_backtrace(stdout, catch_backtrace())
+        rethrow(e)
     end
 end
 
@@ -196,28 +218,33 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
         fieldString = "$(field)"
 
         if fieldString == "imagePath"
-            buf = "$(currentEntitySelected.getComponent("Sprite").imagePath)"*"\0"^(64)
+            buf = "$(currentEntitySelected.sprite.imagePath)"*"\0"^(64)
             CImGui.InputText("Image Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
-                if Int(buf[characterIndex]) == 0 
+                if Int32(buf[characterIndex]) == 0 
                     if characterIndex != 1
                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                     end
                     break
                 end
             end
-            currentEntitySelected.getComponent("Sprite").imagePath = currentTextInTextBox
-            CImGui.Button("Load Image") && (currentEntitySelected.getComponent("Sprite").loadImage(currentTextInTextBox))
+            currentEntitySelected.sprite.imagePath = currentTextInTextBox
+            CImGui.Button("Load Image") && (currentEntitySelected.sprite.loadImage(currentTextInTextBox))
         elseif fieldString == "isFlipped"
-            isFlipped = currentEntitySelected.getComponent("Sprite").isFlipped
+            isFlipped = currentEntitySelected.sprite.isFlipped
             @c CImGui.Checkbox("isFlipped", &isFlipped)
-            currentEntitySelected.getComponent("Sprite").isFlipped = isFlipped
+            currentEntitySelected.sprite.isFlipped = isFlipped
         elseif fieldString == "crop"
-            vec = currentEntitySelected.getComponent("Sprite").crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.getComponent("Sprite").crop
-            vec4i = Cint[vec.x, vec.y, vec.w, vec.h]
+            vec = currentEntitySelected.sprite.crop == C_NULL ? JulGame.Math.Vector4(0,0,0,0) : currentEntitySelected.sprite.crop
+            vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
             @c CImGui.InputInt4("input int4", vec4i)
-            currentEntitySelected.getComponent("Sprite").crop = (vec.x == 0 && vec.y == 0 && vec.h == 0 && vec.w == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+
+            currentEntitySelected.sprite.crop = (vec4i[1] == 0 && vec4i[2] == 0 && vec4i[3] == 0 && vec4i[4] == 0) ? C_NULL : JulGame.Math.Vector4(vec4i[1], vec4i[2], vec4i[3], vec4i[4])
+        elseif fieldString == "layer"
+            x = Cint(currentEntitySelected.sprite.layer)
+            @c CImGui.InputInt("layer", &x, 1)
+            currentEntitySelected.sprite.layer = x
         end  
     end
 end
@@ -228,20 +255,20 @@ function ShowSoundSourceProperties(soundFields, currentEntitySelected)
 
         if fieldString == "path"
             CImGui.Text("Sound Path")
-            buf = "$(currentEntitySelected.getComponent("SoundSource").path)"*"\0"^(64)
+            buf = "$(currentEntitySelected.soundSource.path)"*"\0"^(64)
             CImGui.InputText("Sound Path Input", buf, length(buf))
             currentTextInTextBox = ""
             for characterIndex = 1:length(buf)
-                if Int(buf[characterIndex]) == 0 
+                if Int32(buf[characterIndex]) == 0 
                     if characterIndex != 1
                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
                     end
                     break
                 end
             end
-            currentEntitySelected.getComponent("SoundSource").path = currentTextInTextBox
-            CImGui.Button("Load Sound") && (currentEntitySelected.getComponent("SoundSource").loadSound(currentTextInTextBox, false))
-            CImGui.Button("Load Music") && (currentEntitySelected.getComponent("SoundSource").loadSound(currentTextInTextBox, true))
+            currentEntitySelected.soundSource.path = currentTextInTextBox
+            CImGui.Button("Load Sound") && (currentEntitySelected.soundSource.loadSound(currentTextInTextBox, false))
+            CImGui.Button("Load Music") && (currentEntitySelected.soundSource.loadSound(currentTextInTextBox, true))
         end  
     end
 end
