@@ -101,6 +101,7 @@ module SceneBuilderModule
                                             param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
                                         catch e
                                             println(e)
+                                            Base.show_backtrace(stdout, catch_backtrace())
                                         end
                                     end
                                     push!(params, param)
@@ -171,6 +172,7 @@ module SceneBuilderModule
                                             param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
                                         catch e
                                             println(e)
+                                            Base.show_backtrace(stdout, catch_backtrace())
                                         end
                                     end
                                     push!(params, param)

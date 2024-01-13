@@ -340,6 +340,7 @@ module Editor
                         counter = 1
                         for exception in latest_exceptions
                             CImGui.Text("[$(counter)] $(exception[2]): $(exception[1])")
+                            CImGui.Button("Copy to clipboard") && (CImGui.SetClipboardText("[$(counter)] $(exception[2]): $(exception[1])");)
                             counter += 1
                         end
                         CImGui.End()

@@ -30,7 +30,6 @@
         rotation::Float64
         pixelsPerUnit::Int32
         size::Math.Vector2
-        renderer::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Renderer}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
         function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(), rotation::Float64 = 0.0, layer::Int32 = 0)
@@ -54,18 +53,19 @@
                 return this
             end
         
-            SDL2.SDL_ClearError()
             fullPath = joinpath(BasePath, "assets", "images", imagePath)
+            
             this.image = SDL2.IMG_Load(fullPath)
-            surface = unsafe_wrap(Array, this.image, 10; own = false)
-            this.size = Math.Vector2(surface[1].w, surface[1].h)
-            error = unsafe_string(SDL2.SDL_GetError())
-            if !isempty(error)
-                SDL2.SDL_ClearError()
-        
+            if this.image == C_NULL
+                error = unsafe_string(SDL2.SDL_GetError())
+                
                 println(fullPath)
                 println(string("Couldn't open image! SDL Error: ", error))
+                Base.show_backtrace(stdout, catch_backtrace())
+                return
             end
+            surface = unsafe_wrap(Array, this.image, 10; own = false)
+            this.size = Math.Vector2(surface[1].w, surface[1].h)
         
             return this
         end
@@ -74,12 +74,12 @@
     function Base.getproperty(this::InternalSprite, s::Symbol)
         if s == :draw
             function()
-                if this.image == C_NULL || MAIN.renderer == C_NULL
+                if this.image == C_NULL || JulGame.Renderer == C_NULL
                     return
                 end
 
                 if this.texture == C_NULL
-                    this.texture = SDL2.SDL_CreateTextureFromSurface(MAIN.renderer, this.image)
+                    this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
                     this.setColor()
                 end
 
@@ -110,7 +110,7 @@
                 end
 
                 SDL2.SDL_RenderCopyEx(
-                    MAIN.renderer, 
+                    JulGame.Renderer, 
                     this.texture, 
                     srcRect, 
                     dstRect,
@@ -121,12 +121,11 @@
             end
         elseif s == :initialize
             function()
-                this.renderer = JulGame.Renderer
                 if this.image == C_NULL
                     return
                 end
 
-                this.texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.image)
+                this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
             end
         elseif s == :flip
             function()
@@ -139,7 +138,6 @@
         elseif s == :loadImage
             function(imagePath::String)
                 SDL2.SDL_ClearError()
-                this.renderer = MAIN.renderer
                 this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
                 error = unsafe_string(SDL2.SDL_GetError())
                 if !isempty(error)
@@ -153,7 +151,7 @@
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
                 
                 this.imagePath = imagePath
-                this.texture = SDL2.SDL_CreateTextureFromSurface(this.renderer, this.image)
+                this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
                 this.setColor()
             end
         elseif s == :destroy
@@ -176,6 +174,7 @@
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end

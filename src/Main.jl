@@ -26,7 +26,6 @@ module MainLoop
 		optimizeSpriteRendering::Bool
 		panCounter
 		panThreshold
-		renderer::Ptr{SDL2.LibSDL2.SDL_Renderer}
 		scene::Scene
 		selectedEntityIndex
 		selectedEntityUpdated
@@ -133,7 +132,7 @@ module MainLoop
 						end
 					end
 					if !this.shouldChangeScene
-						SDL2.SDL_DestroyRenderer(this.renderer)
+						SDL2.SDL_DestroyRenderer(JulGame.Renderer)
 						SDL2.SDL_DestroyWindow(this.window)
 						SDL2.SDL_Quit()
 					else
@@ -204,10 +203,10 @@ module MainLoop
 				if "SPACE" in this.input.buttonsHeldDown
 					if "LEFT" in this.input.buttonsHeldDown
 						this.zoom -= .01
-						SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+						SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 					elseif "RIGHT" in this.input.buttonsHeldDown
 						this.zoom += .01
-						SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+						SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 					end
 				elseif this.input.getButtonHeldDown("LEFT")
 					cameraPosition = Math.Vector2f(cameraPosition.x - 0.25, cameraPosition.y)
@@ -276,11 +275,11 @@ module MainLoop
 					return
 				end
 				this.scaleZoom(x,y)
-				SDL2.SDL_RenderClear(this.renderer)
-				SDL2.SDL_RenderSetScale(this.renderer, 1.0, 1.0)	
+				SDL2.SDL_RenderClear(JulGame.Renderer)
+				SDL2.SDL_RenderSetScale(JulGame.Renderer, 1.0, 1.0)	
 				this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-				SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
-				SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+				SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+				SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 			end
 		elseif s == :scaleZoom
 			function (x,y)
@@ -335,14 +334,13 @@ module MainLoop
 
 		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
 
-		this.renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-		JulGame.Renderer = this.renderer 
-
+		JulGame.Renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+		println("Renderer: ", JulGame.Renderer)
 		this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-		SDL2.SDL_RenderSetViewport(this.renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+		SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
 		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
-		SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+		SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 	end
 
 function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
@@ -588,7 +586,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 				if update[4] != w[1] || update[5] != h[1]
 					SDL2.SDL_SetWindowSize(this.window, round(update[4]), round(update[5]))
-					SDL2.SDL_RenderSetScale(this.renderer, this.zoom, this.zoom)
+					SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 				end
 			end
 
@@ -609,7 +607,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 			#endregion ============= Input
 
-			SDL2.SDL_RenderClear(this.renderer)
+			SDL2.SDL_RenderClear(JulGame.Renderer)
 
 			#region =============    Physics
 			if !isEditor
@@ -636,7 +634,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 			#region =============    Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
-			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 			this.scene.camera.update()
 
 			for entity in this.scene.entities
@@ -717,7 +715,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 				
 				if DEBUG && entity.collider != C_NULL
-					SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+					SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 					pos = entity.transform.getPosition()
 					scale = entity.transform.getScale()
 
@@ -735,7 +733,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					else
 						colSize = collider.getSize()
 						colOffset = collider.offset
-						SDL2.SDL_RenderDrawRect( this.renderer, 
+						SDL2.SDL_RenderDrawRect( JulGame.Renderer, 
 						Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
 						round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 						round(colSize.x * SCALE_UNITS), 
@@ -757,7 +755,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			end
 			#endregion ============= UI
 
-			SDL2.SDL_SetRenderDrawColor(this.renderer, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 			if isEditor && update != C_NULL
 				selectedEntity = update[7] > 0 ? this.scene.entities[update[7]] : C_NULL
 				try
@@ -769,7 +767,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						pos = selectedEntity.transform.getPosition()
 						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
-						SDL2.SDL_RenderDrawRect( this.renderer, Ref(SDL2.SDL_Rect(
+						SDL2.SDL_RenderDrawRect( JulGame.Renderer, Ref(SDL2.SDL_Rect(
 						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
 						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
 						round(size.x * SCALE_UNITS), 
@@ -779,7 +777,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					rethrow(e)
 				end
 			end
-			SDL2.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 
 			this.lastMousePositionWorld = this.mousePositionWorld
 			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
@@ -813,7 +811,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 			#endregion ============= Debug
 
-			SDL2.SDL_RenderPresent(this.renderer)
+			SDL2.SDL_RenderPresent(JulGame.Renderer)
 			endTime = SDL2.SDL_GetPerformanceCounter()
 			elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
 			targetFrameTime::Float64 = 1000/this.targetFrameRate

@@ -28,8 +28,8 @@ function Base.getproperty(this::Camera, s::Symbol)
         end
     elseif s == :update
         function(newPosition = C_NULL)
-            SDL2.SDL_SetRenderDrawColor(MAIN.renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE );
-            SDL2.SDL_RenderFillRect(MAIN.renderer, Ref(SDL2.SDL_Rect(0,0,this.dimensions.x, this.dimensions.y)))
+            SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE );
+            SDL2.SDL_RenderFillRect(JulGame.Renderer, Ref(SDL2.SDL_Rect(0,0,this.dimensions.x, this.dimensions.y)))
 
             if this.target != C_NULL && newPosition == C_NULL
                 targetPos = this.target.getPosition()
@@ -52,6 +52,7 @@ function Base.getproperty(this::Camera, s::Symbol)
             getfield(this, s)
         catch e
             println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
     end
 end

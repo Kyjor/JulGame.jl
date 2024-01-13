@@ -154,6 +154,7 @@ module ColliderModule
                                     eventToCall(collider)
                                 catch e
                                     println(e)
+                                    Base.show_backtrace(stdout, catch_backtrace())
                                 end
                             end
                             #Begin to overlap, correct position
@@ -204,6 +205,7 @@ module ColliderModule
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end

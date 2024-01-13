@@ -6,6 +6,7 @@ function CallSDLFunction(func::Function, args...)
     ret = func(args...)
     if (isa(ret, Number) && ret < 0) || ret == C_NULL
         println(unsafe_string(SDL2.SDL_GetError()))
+        Base.show_backtrace(stdout, catch_backtrace())
     end
 
     return ret
