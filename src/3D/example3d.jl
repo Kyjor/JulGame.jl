@@ -160,7 +160,7 @@ function main()
 					quit = true
                     #Handle keypress with current mouse position
 				elseif evt.type == SDL_KEYUP
-					x,y = Int[1], Int[1]
+					x,y = Int32[1], Int32[1]
                     SDL_GetMouseState(pointer(x), pointer(y))
 					if handleKeys(evt.key.keysym.scancode, x, y )
                         renderQuad = !renderQuad

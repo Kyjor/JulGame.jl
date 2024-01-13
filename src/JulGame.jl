@@ -1,9 +1,17 @@
 module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
+
+    function __init__()
+        SDL2.init()
+    end
+
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
     export SDL2, SDL2E
+
+    include("Utils.jl")
+    export CallSDLFunction
 
     include("Constants.jl")
     export SCALE_UNITS, GRAVITY

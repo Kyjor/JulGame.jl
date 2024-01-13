@@ -1,7 +1,7 @@
 module SDL2Extension
     using ..JulGame
     export SDL_RenderDrawCircle, SDL_RenderFillCircle
-    function SDL_RenderDrawCircle(x::Integer, y::Integer, radius::Integer)
+    function SDL_RenderDrawCircle(x::Int32, y::Int32, radius::Int32)
         offsetx = 0
         offsety = radius
         d = radius - 1
@@ -41,7 +41,7 @@ module SDL2Extension
         return status
     end
 
-    function SDL_RenderFillCircle(x::Integer, y::Integer, radius::Integer)
+    function SDL_RenderFillCircle(x::Int32, y::Int32, radius::Int32)
         offsetx = 0
         offsety = radius
         d = radius - 1

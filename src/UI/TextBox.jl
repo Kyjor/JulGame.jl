@@ -8,10 +8,11 @@ module TextBoxModule
         basePath::String
         font
         fontPath::String
-        fontSize::Integer
-        id::Integer
+        fontSize::Int32
+        id::Int32
         isCenteredX::Bool
         isCenteredY::Bool
+        isInitialized::Bool
         isDefaultFont::Bool
         isTextUpdated::Bool
         isWorldEntity::Bool
@@ -27,7 +28,7 @@ module TextBoxModule
 
             this.alpha = 255
             this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
-            this.fontPath = fontPath
+            this.fontPath = (isEditor && isDefaultFont) ? joinpath("FiraCode", "ttf", "FiraCode-Medium.ttf") : fontPath
             this.fontSize = fontSize
             this.id = 0
             this.isCenteredX = isCenteredX
@@ -38,6 +39,8 @@ module TextBoxModule
             this.position = position
             this.text = text
             this.isWorldEntity = isWorldEntity
+            this.textTexture = C_NULL
+            this.isInitialized = false
 
             return this
         end
@@ -46,6 +49,14 @@ module TextBoxModule
     function Base.getproperty(this::TextBox, s::Symbol)
         if s == :render
             function(DEBUG)
+                if !this.isInitialized
+                    Initialize(this)
+                end
+
+                if this.textTexture == C_NULL
+                    return
+                end
+
                 if DEBUG
                     SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
                         SDL2.SDL_Point(this.position.x, this.position.y), 
@@ -63,29 +74,12 @@ module TextBoxModule
                 cameraDiff = this.isWorldEntity ? 
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
                 Math.Vector2(0,0)
-                
+
                 @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
-                path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-                SDL2.SDL_ClearError()
-                font = SDL2.TTF_OpenFont(path, this.fontSize)
-                println(unsafe_string(SDL2.SDL_GetError()))
-                this.font = font
-                SDL2.SDL_ClearError()
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
-                println(unsafe_string(SDL2.SDL_GetError()))
-                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-
-                this.size = Math.Vector2(surface[1].w, surface[1].h)
-                SDL2.SDL_ClearError()
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
-                println(unsafe_string(SDL2.SDL_GetError()))
-
-                if !this.isWorldEntity
-                    this.centerText()
-                end
+                Initialize(this)
             end
         elseif s == :setPosition
             function(position::Math.Vector2)
@@ -99,7 +93,7 @@ module TextBoxModule
                 this.text = newText
                 SDL2.SDL_FreeSurface(this.renderText)
                 SDL2.SDL_DestroyTexture(this.textTexture)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended( this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
                 surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
@@ -127,12 +121,45 @@ module TextBoxModule
                     this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
                 end
             end
+        elseif s == :destroy
+            function()
+                if this.textTexture == C_NULL
+                    return
+                end
+
+                SDL2.SDL_DestroyTexture(this.textTexture)
+                this.textTexture = C_NULL
+            end
         else
             try
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end
+
+    function Initialize(this)
+        path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
+
+        this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
+        if this.font == C_NULL
+            return
+        end
+
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+        
+        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
+
+        if !this.isWorldEntity
+            this.centerText()
+        end
+
+        this.isInitialized = true
+    end
+
 end

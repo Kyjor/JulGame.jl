@@ -1,11 +1,10 @@
 ﻿mutable struct Scene
     camera
-    colliders
-    entities
-    rigidbodies
-    screenButtons
-    sounds
-    textBoxes
+    colliders::Vector{Any}
+    entities::Vector{Any}
+    rigidbodies::Vector{Any}
+    screenButtons::Vector{Any}
+    textBoxes::Vector{Any}
 
     function Scene()
         this = new()
@@ -15,7 +14,6 @@
         this.entities = []
         this.rigidbodies = []
         this.screenButtons = []
-        this.sounds = []
         this.textBoxes = []
 
         return this
@@ -38,6 +36,8 @@ function Base.getproperty(this::Scene, s::Symbol)
                     return entity
                 end
             end
+
+            @warn "No entity with name $name found"
             return C_NULL
         end
     else
@@ -45,6 +45,7 @@ function Base.getproperty(this::Scene, s::Symbol)
             getfield(this, s)
         catch e
             println(e)
+            Base.show_backtrace(stdout, catch_backtrace())
         end
     end
 end

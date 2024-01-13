@@ -2,31 +2,37 @@
     using ..Component.AnimationModule
     using ..Component.JulGame
     using ..Component.JulGame.Math
+    using ..Component.SpriteModule
 
     export Animator
-    mutable struct Animator
-        animations::Array{Animation}
+    struct Animator
+        animations::Vector{Animation}
+    end
+
+    export InternalAnimator
+    mutable struct InternalAnimator
+        animations::Vector{Animation}
         currentAnimation::Animation
-        lastFrame::Integer
+        lastFrame::Int32
         lastUpdate::UInt64
         parent::Any
-        sprite::Any
+        sprite::Union{InternalSprite, Ptr{Nothing}}
 
-        function Animator(animations = [])
+        function InternalAnimator(parent::Any, animations::Vector{Animation} = Animation[])
             this = new()
             
             this.animations = animations
             this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
             this.lastFrame = 1
             this.lastUpdate = SDL2.SDL_GetTicks()
-            this.parent = C_NULL
+            this.parent = parent
             this.sprite = C_NULL
 
             return this
         end
     end
 
-    function Base.getproperty(this::Animator, s::Symbol)
+    function Base.getproperty(this::InternalAnimator, s::Symbol)
         if s == :getLastUpdate
             function()
                 return this.lastUpdate
@@ -49,26 +55,27 @@
             end
         elseif s == :appendArray
             function()
-                push!(this.animations, Animation([Math.Vector4(0,0,0,0)], 60))
+                push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
             end
         else
             try
                 getfield(this, s)
             catch e
                 println(e)
+                Base.show_backtrace(stdout, catch_backtrace())
             end
         end
     end
 
     
     """
-    ForceFrameUpdate(this::Animator, frameIndex::Integer)
+    ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
     
     Updates the sprite crop of the animator to the specified frame index.
     
     # Arguments
-    - `this::Animator`: The animator object.
-    - `frameIndex::Integer`: The index of the frame to update the sprite crop to.
+    - `this::InternalAnimator`: The animator object.
+    - `frameIndex::Int32`: The index of the frame to update the sprite crop to.
     
     # Example
     ```
@@ -76,7 +83,7 @@
     ForceFrameUpdate(animator, 1)
     ```
     """
-    function ForceFrameUpdate(this::Animator, frameIndex::Integer)
+    function ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export ForceFrameUpdate
@@ -97,7 +104,7 @@
     Update(animator, SDL2.SDL_GetTicks(), 1000)
     ```
     """
-    function Update(this::Animator, currentRenderTime, deltaTime)
+    function Update(this::InternalAnimator, currentRenderTime, deltaTime)
         if this.currentAnimation.animatedFPS < 1
             return
         end

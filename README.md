@@ -35,10 +35,8 @@ I thought that JulGame would be a great play on Pygame. I also think it just rol
 
 `] add https://github.com/Kyjor/JulGame.jl#develop` for develop
 
-Either download the latest release of the editor, or run it using the Julia REPL:
-
-`using JulGame`
-`JulGame.Editor.run()`
+Either download the latest release of the editor, or run it by navigating to `JulGame\src\editor\Editor\src\Editor.jl`
+and run `julia Editor.jl`
 
 ## How do you use it?
 
