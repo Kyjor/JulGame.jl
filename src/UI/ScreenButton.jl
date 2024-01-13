@@ -4,31 +4,36 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton
-        clickEvents::Vector{Any}
+        clickEvents::Vector{Function}
         currentTexture
         buttonDownSprite
         buttonDownTexture
+        #TODO: add buttonHoverSprite/Color Mod 
         buttonUpSprite
         buttonUpTexture
         dimensions
+        fontPath::Union{String, Ptr{Nothing}}
         isInitialized::Bool
         mouseOverSprite
-        position
-        text
+        position::Math.Vector2
+        text::String
+        textOffset::Math.Vector2
+        textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(basePath::String, buttonUpSpritePath::String, buttonDownSpritePath::String, dimensions::Math.Vector2, position::Math.Vector2, text::String)
+        function ScreenButton(buttonUpSpritePath::String, buttonDownSpritePath::String, dimensions::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); isCreatedInEditor::Bool=false)
             this = new()
             
-            this.buttonDownSprite = SDL2.IMG_Load(joinpath(basePath, "assets", "images", buttonDownSpritePath))
-            this.buttonUpSprite = SDL2.IMG_Load(joinpath(basePath, "assets", "images", buttonUpSpritePath))
-            #this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "..", "..", "src", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : basePath
+            this.buttonDownSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonDownSpritePath))
+            this.buttonUpSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonUpSpritePath))
             this.clickEvents = []
             this.currentTexture = C_NULL
             this.dimensions = dimensions
+            this.fontPath = fontPath
             this.mouseOverSprite = false
             this.position = position
             this.text = text
+            this.textOffset = textOffset
             this.textTexture = C_NULL
             this.isInitialized = false
 
@@ -43,7 +48,7 @@ module ScreenButtonModule
                     this.initialize()
                 end
 
-                if this.currentTexture == C_NULL
+                if this.currentTexture == C_NULL || this.textTexture == C_NULL
                     return
                 end
 
@@ -59,19 +64,25 @@ module ScreenButtonModule
                     C_NULL, 
                     SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-                #@assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + 50, this.position.y + 10,150,50))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+                @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
-                this.buttonDownTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.buttonDownSprite)
-                this.buttonUpTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.buttonUpSprite)
+                this.buttonDownTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonDownSprite)
+                this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonUpSprite)
                 this.currentTexture = this.buttonUpTexture
-                # text = SDL2.TTF_RenderText_Blended(font, this.text, SDL2.SDL_Color(255,255,255,255) )
-                # this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, text)
+
+                if this.fontPath == C_NULL
+                    this.isInitialized = true
+                    return
+                end
+
+                font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), 64)
+                text = font != C_NULL ? CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255,255,255,255)) : C_NULL
+                surface = unsafe_wrap(Array, text, 10; own = false)
+                this.textSize = Math.Vector2(surface[1].w, surface[1].h)
+                this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, text)
                 this.isInitialized = true
-            end
-        elseif s == :setPosition
-            function(position::Math.Vector2)
             end
         elseif s == :addClickEvent
             function(event)
@@ -89,10 +100,6 @@ module ScreenButtonModule
                 elseif evt.type == SDL2.SDL_MOUSEMOTION
                     #println("mouse move")
                 end 
-            end
-        elseif s == :setParent
-            function(parent)
-                this.parent = parent
             end
         elseif s == :destroy
             function()
