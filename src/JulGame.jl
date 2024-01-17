@@ -15,6 +15,9 @@ module JulGame
 
     include("Constants.jl")
     export SCALE_UNITS, GRAVITY
+
+    PIXELS_PER_UNIT = -1
+    export PIXELS_PER_UNIT
     
     BasePath = ""
     export BasePath
