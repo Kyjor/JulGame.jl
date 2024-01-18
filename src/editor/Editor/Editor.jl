@@ -11,11 +11,11 @@ module Editor
     using ImGuiOpenGLBackend.ModernGL
     using NativeFileDialog
     #using Printf
-    using ..JulGame
-    using ..JulGame.EntityModule
-    using ..JulGame.SceneWriterModule
-    using ..JulGame.SceneLoaderModule
-    using ..JulGame.TextBoxModule
+    using JulGame
+    using JulGame.EntityModule
+    using JulGame.SceneWriterModule
+    using JulGame.SceneLoaderModule
+    using JulGame.TextBoxModule
 
     include("../../Macros.jl")
     include("./MainMenuBar.jl")
