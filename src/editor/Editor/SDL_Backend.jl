@@ -278,7 +278,8 @@ function ImGui_ImplSDL2_ProcessEvent(event)
         bd.MouseButtonsDown = event.type == SDL2.SDL_MOUSEBUTTONDOWN ? bd.MouseButtonsDown | (1 << mouse_button) : bd.MouseButtonsDown & ~(1 << mouse_button)
         return true
     elseif event.type == SDL2.SDL_TEXTINPUT
-        ImGuiIO_AddInputCharactersUTF8(io, event.text.text)
+        println("text.text input: ", event.text.text[1])
+        ImGuiIO_AddInputCharactersUTF8(io, Ref(event.text.text[1]))
         return true
     elseif event.type == SDL2.SDL_KEYDOWN || event.type == SDL2.SDL_KEYUP
         ImGui_ImplSDL2_UpdateKeyModifiers(SDL2.SDL_Keymod(event.key.keysym.mod))
@@ -305,6 +306,138 @@ function ImGui_ImplSDL2_ProcessEvent(event)
     return false
 end
 
+function ImGui_ImplSDL2_UpdateKeyModifiers(sdl_key_mods)
+    io = CImGui.GetIO()
+    ImGuiIO_AddKeyEvent(io, ImGuiMod_Ctrl, (sdl_key_mods & SDL2.KMOD_CTRL) != 0)
+    ImGuiIO_AddKeyEvent(io, ImGuiMod_Shift, (sdl_key_mods & SDL2.KMOD_SHIFT) != 0)
+    ImGuiIO_AddKeyEvent(io, ImGuiMod_Alt, (sdl_key_mods & SDL2.KMOD_ALT) != 0)
+    ImGuiIO_AddKeyEvent(io, ImGuiMod_Super, (sdl_key_mods & SDL2.KMOD_GUI) != 0)
+end
+
+function ImGui_ImplSDL2_KeycodeToImGuiKey(keycode)
+    keycode_dict = Dict(
+        SDL2.LibSDL2.SDLK_TAB => ImGuiKey_Tab,
+        SDL2.LibSDL2.SDLK_LEFT => ImGuiKey_LeftArrow,
+        SDL2.LibSDL2.SDLK_RIGHT => ImGuiKey_RightArrow,
+        SDL2.LibSDL2.SDLK_UP => ImGuiKey_UpArrow,
+        SDL2.LibSDL2.SDLK_DOWN => ImGuiKey_DownArrow,
+        SDL2.LibSDL2.SDLK_PAGEUP => ImGuiKey_PageUp,
+        SDL2.LibSDL2.SDLK_PAGEDOWN => ImGuiKey_PageDown,
+        SDL2.LibSDL2.SDLK_HOME => ImGuiKey_Home,
+        SDL2.LibSDL2.SDLK_END => ImGuiKey_End,
+        SDL2.LibSDL2.SDLK_INSERT => ImGuiKey_Insert,
+        SDL2.LibSDL2.SDLK_DELETE => ImGuiKey_Delete,
+        SDL2.LibSDL2.SDLK_BACKSPACE => ImGuiKey_Backspace,
+        SDL2.LibSDL2.SDLK_SPACE => ImGuiKey_Space,
+        SDL2.LibSDL2.SDLK_RETURN => ImGuiKey_Enter,
+        SDL2.LibSDL2.SDLK_ESCAPE => ImGuiKey_Escape,
+        SDL2.LibSDL2.SDLK_QUOTE => ImGuiKey_Apostrophe,
+        SDL2.LibSDL2.SDLK_COMMA => ImGuiKey_Comma,
+        SDL2.LibSDL2.SDLK_MINUS => ImGuiKey_Minus,
+        SDL2.LibSDL2.SDLK_PERIOD => ImGuiKey_Period,
+        SDL2.LibSDL2.SDLK_SLASH => ImGuiKey_Slash,
+        SDL2.LibSDL2.SDLK_SEMICOLON => ImGuiKey_Semicolon,
+        SDL2.LibSDL2.SDLK_EQUALS => ImGuiKey_Equal,
+        SDL2.LibSDL2.SDLK_LEFTBRACKET => ImGuiKey_LeftBracket,
+        SDL2.LibSDL2.SDLK_BACKSLASH => ImGuiKey_Backslash,
+        SDL2.LibSDL2.SDLK_RIGHTBRACKET => ImGuiKey_RightBracket,
+        SDL2.LibSDL2.SDLK_BACKQUOTE => ImGuiKey_GraveAccent,
+        SDL2.LibSDL2.SDLK_CAPSLOCK => ImGuiKey_CapsLock,
+        SDL2.LibSDL2.SDLK_SCROLLLOCK => ImGuiKey_ScrollLock,
+        SDL2.LibSDL2.SDLK_NUMLOCKCLEAR => ImGuiKey_NumLock,
+        SDL2.LibSDL2.SDLK_PRINTSCREEN => ImGuiKey_PrintScreen,
+        SDL2.LibSDL2.SDLK_PAUSE => ImGuiKey_Pause,
+        SDL2.LibSDL2.SDLK_KP_0 => ImGuiKey_Keypad0,
+        SDL2.LibSDL2.SDLK_KP_1 => ImGuiKey_Keypad1,
+        SDL2.LibSDL2.SDLK_KP_2 => ImGuiKey_Keypad2,
+        SDL2.LibSDL2.SDLK_KP_3 => ImGuiKey_Keypad3,
+        SDL2.LibSDL2.SDLK_KP_4 => ImGuiKey_Keypad4,
+        SDL2.LibSDL2.SDLK_KP_5 => ImGuiKey_Keypad5,
+        SDL2.LibSDL2.SDLK_KP_6 => ImGuiKey_Keypad6,
+        SDL2.LibSDL2.SDLK_KP_7 => ImGuiKey_Keypad7,
+        SDL2.LibSDL2.SDLK_KP_8 => ImGuiKey_Keypad8,
+        SDL2.LibSDL2.SDLK_KP_9 => ImGuiKey_Keypad9,
+        SDL2.LibSDL2.SDLK_KP_PERIOD => ImGuiKey_KeypadDecimal,
+        SDL2.LibSDL2.SDLK_KP_DIVIDE => ImGuiKey_KeypadDivide,
+        SDL2.LibSDL2.SDLK_KP_MULTIPLY => ImGuiKey_KeypadMultiply,
+        SDL2.LibSDL2.SDLK_KP_MINUS => ImGuiKey_KeypadSubtract,
+        SDL2.LibSDL2.SDLK_KP_PLUS => ImGuiKey_KeypadAdd,
+        SDL2.LibSDL2.SDLK_KP_ENTER => ImGuiKey_KeypadEnter,
+        SDL2.LibSDL2.SDLK_KP_EQUALS => ImGuiKey_KeypadEqual,
+        SDL2.LibSDL2.SDLK_LCTRL => ImGuiKey_LeftCtrl,
+        SDL2.LibSDL2.SDLK_LSHIFT => ImGuiKey_LeftShift,
+        SDL2.LibSDL2.SDLK_LALT => ImGuiKey_LeftAlt,
+        SDL2.LibSDL2.SDLK_LGUI => ImGuiKey_LeftSuper,
+        SDL2.LibSDL2.SDLK_RCTRL => ImGuiKey_RightCtrl,
+        SDL2.LibSDL2.SDLK_RSHIFT => ImGuiKey_RightShift,
+        SDL2.LibSDL2.SDLK_RALT => ImGuiKey_RightAlt,
+        SDL2.LibSDL2.SDLK_RGUI => ImGuiKey_RightSuper,
+        SDL2.LibSDL2.SDLK_APPLICATION => ImGuiKey_Menu,
+        SDL2.LibSDL2.SDLK_0 => ImGuiKey_0,
+        SDL2.LibSDL2.SDLK_1 => ImGuiKey_1,
+        SDL2.LibSDL2.SDLK_2 => ImGuiKey_2,
+        SDL2.LibSDL2.SDLK_3 => ImGuiKey_3,
+        SDL2.LibSDL2.SDLK_4 => ImGuiKey_4,
+        SDL2.LibSDL2.SDLK_5 => ImGuiKey_5,
+        SDL2.LibSDL2.SDLK_6 => ImGuiKey_6,
+        SDL2.LibSDL2.SDLK_7 => ImGuiKey_7,
+        SDL2.LibSDL2.SDLK_8 => ImGuiKey_8,
+        SDL2.LibSDL2.SDLK_9 => ImGuiKey_9,
+        SDL2.LibSDL2.SDLK_a => ImGuiKey_A,
+        SDL2.LibSDL2.SDLK_b => ImGuiKey_B,
+        SDL2.LibSDL2.SDLK_c => ImGuiKey_C,
+        SDL2.LibSDL2.SDLK_d => ImGuiKey_D,
+        SDL2.LibSDL2.SDLK_e => ImGuiKey_E,
+        SDL2.LibSDL2.SDLK_f => ImGuiKey_F,
+        SDL2.LibSDL2.SDLK_g => ImGuiKey_G,
+        SDL2.LibSDL2.SDLK_h => ImGuiKey_H,
+        SDL2.LibSDL2.SDLK_i => ImGuiKey_I,
+        SDL2.LibSDL2.SDLK_j => ImGuiKey_J,
+        SDL2.LibSDL2.SDLK_k => ImGuiKey_K,
+        SDL2.LibSDL2.SDLK_l => ImGuiKey_L,
+        SDL2.LibSDL2.SDLK_m => ImGuiKey_M,
+        SDL2.LibSDL2.SDLK_n => ImGuiKey_N,
+        SDL2.LibSDL2.SDLK_o => ImGuiKey_O,
+        SDL2.LibSDL2.SDLK_p => ImGuiKey_P,
+        SDL2.LibSDL2.SDLK_q => ImGuiKey_Q,
+        SDL2.LibSDL2.SDLK_r => ImGuiKey_R,
+        SDL2.LibSDL2.SDLK_s => ImGuiKey_S,
+        SDL2.LibSDL2.SDLK_t => ImGuiKey_T,
+        SDL2.LibSDL2.SDLK_u => ImGuiKey_U,
+        SDL2.LibSDL2.SDLK_v => ImGuiKey_V,
+        SDL2.LibSDL2.SDLK_w => ImGuiKey_W,
+        SDL2.LibSDL2.SDLK_x => ImGuiKey_X,
+        SDL2.LibSDL2.SDLK_y => ImGuiKey_Y,
+        SDL2.LibSDL2.SDLK_z => ImGuiKey_Z,
+        SDL2.LibSDL2.SDLK_F1 => ImGuiKey_F1,
+        SDL2.LibSDL2.SDLK_F2 => ImGuiKey_F2,
+        SDL2.LibSDL2.SDLK_F3 => ImGuiKey_F3,
+        SDL2.LibSDL2.SDLK_F4 => ImGuiKey_F4,
+        SDL2.LibSDL2.SDLK_F5 => ImGuiKey_F5,
+        SDL2.LibSDL2.SDLK_F6 => ImGuiKey_F6,
+        SDL2.LibSDL2.SDLK_F7 => ImGuiKey_F7,
+        SDL2.LibSDL2.SDLK_F8 => ImGuiKey_F8,
+        SDL2.LibSDL2.SDLK_F9 => ImGuiKey_F9,
+        SDL2.LibSDL2.SDLK_F10 => ImGuiKey_F10,
+        SDL2.LibSDL2.SDLK_F11 => ImGuiKey_F11,
+        SDL2.LibSDL2.SDLK_F12 => ImGuiKey_F12,
+        # SDL2.LibSDL2.SDLK_F13 => ImGuiKey_F13,
+        # SDL2.LibSDL2.SDLK_F14 => ImGuiKey_F14,
+        # SDL2.LibSDL2.SDLK_F15 => ImGuiKey_F15,
+        # SDL2.LibSDL2.SDLK_F16 => ImGuiKey_F16,
+        # SDL2.LibSDL2.SDLK_F17 => ImGuiKey_F17,
+        # SDL2.LibSDL2.SDLK_F18 => ImGuiKey_F18,
+        # SDL2.LibSDL2.SDLK_F19 => ImGuiKey_F19,
+        # SDL2.LibSDL2.SDLK_F20 => ImGuiKey_F20,
+        # SDL2.LibSDL2.SDLK_F21 => ImGuiKey_F21,
+        # SDL2.LibSDL2.SDLK_F22 => ImGuiKey_F22,
+        # SDL2.LibSDL2.SDLK_F23 => ImGuiKey_F23,
+        # SDL2.LibSDL2.SDLK_F24 => ImGuiKey_F24,
+        # SDL2.LibSDL2.SDLK_AC_BACK => ImGuiKey_AppBack,
+        # SDL2.LibSDL2.SDLK_AC_FORWARD => ImGuiKey_AppForward
+    )
+    return get(keycode_dict, keycode, ImGuiKey_None)
+end
 
 
 function ImGui_ImplSDL2_InitForVulkan(window)

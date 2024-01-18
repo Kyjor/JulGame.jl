@@ -8,6 +8,9 @@ module Editor
     using NativeFileDialog
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
+    using ImGuiOpenGLBackend #CImGui.OpenGLBackend
+    using ImGuiOpenGLBackend.ModernGL
+    #using Printf
     using JulGame
     using JulGame.EntityModule
     using JulGame.SceneWriterModule
@@ -24,14 +27,38 @@ module Editor
 
 
 function run()
-    if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
+    if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO) < 0
         println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
     end
-    SDL2.SDL_SetHint(SDL2.SDL_HINT_IME_SHOW_UI, "1")
-
+    @static if Sys.isapple()
+        # OpenGL 3.2 + GLSL 150
+        # GL 3.2 Core + GLSL 150
+        glsl_version = 150
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_FLAGS, SDL2.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); # Always required on Mac
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_PROFILE_MASK, SDL2.SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    else
+        # GL 3.0 + GLSL 130
+        glsl_version = 130;
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_FLAGS, 0);
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_PROFILE_MASK, SDL2.SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    end
+    
+    # and prepare OpenGL stuff
+    SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_DRIVER, "opengl")
+    SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_DEPTH_SIZE, 24)
+    SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_STENCIL_SIZE, 8)
+    SDL2.SDL_GL_SetAttribute(SDL2.SDL_GL_DOUBLEBUFFER, 1)
+    current = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
+	SDL2.SDL_GetCurrentDisplayMode(0, pointer(current))
+	dimensions = Math.Vector2(current[1].w, current[1].h)
+    
     window = SDL2.SDL_CreateWindow(
       "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1024, 768,
-      SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_OPENGL | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
+      SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_OPENGL | SDL2.SDL_WINDOW_RESIZABLE
       )
     if window == C_NULL 
         println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))
@@ -39,12 +66,13 @@ function run()
     end
 
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-    if (renderer == C_NULL)
-        println("Failed to create renderer: ", unsafe_string(SDL2.SDL_GetError()))
-    end
+    gl_context = SDL2.SDL_GL_CreateContext(window);
+    SDL2.SDL_GL_SetSwapInterval(1);  # enable vsync
 
 
-    ver = pointer(SDL2.SDL_version[SDL2.SDL_version(0,0,0)])
+  # check opengl version sdl uses
+  #SDL_Log("opengl version: %s", glGetString(GL_VERSION));
+  ver = pointer(SDL2.SDL_version[SDL2.SDL_version(0,0,0)])
     SDL2.SDL_GetVersion(ver)
     global sdlVersion = string(unsafe_load(ver).major, ".", unsafe_load(ver).minor, ".", unsafe_load(ver).patch)
     println("SDL version: ", sdlVersion)
@@ -57,8 +85,9 @@ function run()
 
     io.BackendPlatformUserData = C_NULL
     #TODO: THISSSS
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer)
-    ImGui_ImplSDLRenderer2_Init(renderer)
+    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+    opengl_ctx = ImGuiOpenGLBackend.create_context(glsl_version)
+    ImGuiOpenGLBackend.init(opengl_ctx)
     
     # setup Dear ImGui style #Todo: Make this a setting
     CImGui.StyleColorsDark()
@@ -99,7 +128,7 @@ function run()
                 end
                     
                 #     // start imgui frame
-                ImGui_ImplSDLRenderer2_NewFrame()
+                ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
                 ImGui_ImplSDL2_NewFrame();
                 CImGui.NewFrame()
 
@@ -123,21 +152,35 @@ function run()
 
                 CImGui.Render()
 
-                SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-                SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
-                SDL_RenderClear(renderer);
-                ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
-                SDL_RenderPresent(renderer);
+                width, height = Ref{Cint}(), Ref{Cint}()
+                SDL2.SDL_GL_MakeCurrent(window, gl_context);
+                
+                #println(unsafe_load(io.DisplaySize.x), "x", unsafe_load(io.DisplaySize.y))
+                glViewport(0, 0, 1280, 720)
+                glClearColor(clear_color...)
+                glClear(GL_COLOR_BUFFER_BIT)
+                ImGuiOpenGLBackend.render(opengl_ctx) #ImGui_ImplOpenGL3_RenderDrawData(CImGui.GetDrawData())
+                # #ifdef IMGUI_HAS_DOCK
+                # 	if (ioptr->ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+                #         {
+                #             SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+                #             SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+                #             igUpdatePlatformWindows();
+                #             igRenderPlatformWindowsDefault(NULL,NULL);
+                #             SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+                #         }
+                # #endif
+                SDL2.SDL_GL_SwapWindow(window);
             end
         catch e
             @warn "Error in renderloop!" exception=e
             Base.show_backtrace(stderr, catch_backtrace())
         finally
-            ImGui_ImplSDLRenderer2_Shutdown();
-            ImGui_ImplSDL2_Shutdown();
-
+            #   ImGui_ImplSDL2_Shutdown();
+            SDL2.SDL_GL_DeleteContext(gl_context);
+            #     window = NULL;
+            ImGuiOpenGLBackend.shutdown(opengl_ctx) #ImGui_ImplOpenGL3_Shutdown()
             CImGui.DestroyContext(ctx)
-            SDL_DestroyRenderer(renderer);
             SDL2.SDL_DestroyWindow(window);
             SDL2.SDL_Quit()
     end
