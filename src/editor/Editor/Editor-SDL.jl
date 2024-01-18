@@ -208,7 +208,6 @@ function run()
                 #         }
                 # #endif
                 SDL2.SDL_GL_SwapWindow(window);
-                println("renderloop")
             end
         catch e
             @warn "Error in renderloop!" exception=e

@@ -18,9 +18,6 @@ end
 
 function ImGui_ImplSDL2_Init(window, renderer)
     io = CImGui.GetIO()
-    
-
-    println(io.BackendPlatformUserData)
     @assert unsafe_load(io.BackendPlatformUserData) == C_NULL
 
     # Check and store if we are on a SDL backend that supports global mouse position
@@ -143,11 +140,8 @@ end
 function ImGui_ImplSDL2_GetBackendData()
     
     io::Ptr{ImGuiIO} = CImGui.GetIO()
-    println("io.BackendPlatformUserData: ", unsafe_load(io.BackendPlatformUserData)::Ptr{Cvoid})
     bep = unsafe_load(io.BackendPlatformUserData)::Ptr{Cvoid}
     GC.@preserve bep = unsafe_pointer_to_objref(bep)
-    # println(ctx)
-    # println(unsafe_load(CImGui.GetIO().BackendPlatformUserData))
     return CImGui.GetCurrentContext() != C_NULL ? bep : C_NULL
 end
 
@@ -156,7 +150,6 @@ function ImGui_ImplSDL2_NewFrame()
     bd = ImGui_ImplSDL2_GetBackendData()
     @assert bd != C_NULL# && "Did you call ImGui_ImplSDL2_Init()?"
     io = CImGui.GetIO()
-    println("bd: ", bd)
     # Setup display size (every frame to accommodate for window resizing)
     w, h = Cint(0), Cint(0)
     display_w, display_h = Cint(0), Cint(0)
@@ -189,15 +182,66 @@ function ImGui_ImplSDL2_NewFrame()
     io.DeltaTime = bd.Time > 0 ? float(current_time - bd.Time) / frequency : 1.0 / 60.0
     bd.Time = current_time
 
-    # if bd.PendingMouseLeaveFrame && bd.PendingMouseLeaveFrame >= CImGui.GetFrameCount() && bd.MouseButtonsDown == 0
+    # FLT_MAX = igGET_FLT_MAX()
+
+    # #if bd.PendingMouseLeaveFrame && bd.PendingMouseLeaveFrame >= CImGui.GetFrameCount() && bd.MouseButtonsDown == 0
+    # if bd.PendingMouseLeaveFrame >= CImGui.GetFrameCount() && bd.MouseButtonsDown == 0
     #     bd.MouseWindowID = 0
     #     bd.PendingMouseLeaveFrame = 0
-    #     #io.AddMousePosEvent(-FLT_MAX, -FLT_MAX)
+    #     ImGuiIO_AddMousePosEvent(io, -FLT_MAX, -FLT_MAX)
     # end
 
-    #ImGui_ImplSDL2_UpdateMouseData()
-    #ImGui_ImplSDL2_UpdateMouseCursor()
+    ImGui_ImplSDL2_UpdateMouseData()
+    ImGui_ImplSDL2_UpdateMouseCursor()
 
     # Update game controllers (if enabled and available)
     #ImGui_ImplSDL2_UpdateGamepads()
+end
+
+function ImGui_ImplSDL2_UpdateMouseData()
+    bd = ImGui_ImplSDL2_GetBackendData()
+    io = CImGui.GetIO()
+
+    # We forward mouse input when hovered or captured (via SDL_MOUSEMOTION) or when focused (below)
+    # SDL_CaptureMouse() let the OS know e.g. that our imgui drag outside the SDL window boundaries shouldn't e.g. trigger other operations outside
+    SDL2.SDL_CaptureMouse(bd.MouseButtonsDown != 0 ? SDL2.SDL_TRUE : SDL2.SDL_FALSE)
+    focused_window = SDL2.SDL_GetKeyboardFocus()
+    is_app_focused = bd.Window == focused_window ? true : false
+
+    if is_app_focused
+        # (Optional) Set OS mouse position from Dear ImGui if requested (rarely used, only when ImGuiConfigFlags_NavEnableSetMousePos is enabled by user)
+        if unsafe_load(io.WantSetMousePos)
+            SDL2.SDL_WarpMouseInWindow(bd.Window, Cint(io.MousePos.x), Cint(io.MousePos.y))
+        end
+
+        # (Optional) Fallback to provide mouse position when focused (SDL_MOUSEMOTION already provides this when hovered or captured)
+        if bd.MouseCanUseGlobalState && bd.MouseButtonsDown == 0
+            window_x, window_y, mouse_x_global, mouse_y_global = Cint(0), Cint(0), Cint(0), Cint(0)
+            @c SDL2.SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global)
+            @c SDL2.SDL_GetWindowPosition(bd.Window, &window_x, &window_y)
+            ImGuiIO_AddMousePosEvent(io, Cfloat(mouse_x_global - window_x), Cfloat(mouse_y_global - window_y))
+        end
+    end
+end
+
+function ImGui_ImplSDL2_UpdateMouseCursor()
+    io::Ptr{ImGuiIO} = CImGui.GetIO()
+    if (unsafe_load(io.ConfigFlags) & ImGuiConfigFlags_NoMouseCursorChange == ImGuiConfigFlags_NoMouseCursorChange) ||
+        return nothing
+    end
+    bd = ImGui_ImplSDL2_GetBackendData()
+
+    imgui_cursor = CImGui.GetMouseCursor()
+    if io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None
+        # Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
+        SDL2.SDL_ShowCursor(SDL2.SDL_FALSE)
+    else
+        # Show OS mouse cursor
+        expected_cursor = bd.MouseCursors[imgui_cursor] != C_NULL ? bd.MouseCursors[imgui_cursor] : bd.MouseCursors[ImGuiMouseCursor_Arrow]
+        if bd.LastMouseCursor != expected_cursor
+            SDL2.SDL_SetCursor(expected_cursor) # SDL function doesn't have an early out (see #6113)
+            bd.LastMouseCursor = expected_cursor
+        end
+        SDL2.SDL_ShowCursor(SDL2.SDL_TRUE)
+    end
 end
