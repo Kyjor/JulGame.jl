@@ -168,7 +168,7 @@ module SpriteModule
             end
         elseif s == :setColor
             function ()
-                SDL2.SDL_SetTextureColorMod(this.texture, UInt8(this.color.x%256), UInt8(this.color.y%256), (this.color.z%256));
+                SDL2.SDL_SetTextureColorMod(this.texture, UInt8(this.color.x%256), UInt8(this.color.y%256), UInt8(this.color.z%256));
             end
         else
             try

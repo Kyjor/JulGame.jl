@@ -14,6 +14,10 @@ module Editor
     using JulGame.SceneLoaderModule
     using JulGame.TextBoxModule
     global sdlVersion = "2.0.0"
+    global sdlRenderer = C_NULL
+    # create global Array{Ref,1}
+    global const BackendPlatformUserData = Ref{Any}(C_NULL)
+
     include("../../Macros.jl")
     include("./MainMenuBar.jl")
     include("./EntityContextMenu.jl")
@@ -21,6 +25,7 @@ module Editor
     include("./TextBoxFields.jl")
     include("./Utils.jl")
     include("SDL_Backend.jl")
+    include("imgui_impl_sdlrenderer2.jl")
 
 
 function run()
@@ -39,6 +44,7 @@ function run()
     end
 
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+    global sdlRenderer = renderer
     if (renderer == C_NULL)
         println("Failed to create renderer: ", unsafe_string(SDL2.SDL_GetError()))
     end
@@ -123,11 +129,11 @@ function run()
 
                 CImGui.Render()
 
-                SDL_RenderSetScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
-                SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
-                SDL_RenderClear(renderer);
-                ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
-                SDL_RenderPresent(renderer);
+                SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
+                SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
+                SDL2.SDL_RenderClear(renderer);
+                ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData());
+                SDL2.SDL_RenderPresent(renderer);
             end
         catch e
             @warn "Error in renderloop!" exception=e
@@ -151,3 +157,5 @@ end
 
 
 end
+
+Editor.run()

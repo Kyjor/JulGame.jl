@@ -44,18 +44,23 @@ function ImGui_ImplSDL2_Init(window, renderer)
         Ptr{Cchar}(C_NULL),
         mouse_can_use_global_state
     )
-
-    io.BackendPlatformUserData = pointer_from_objref(bd)
+    
+    GC.@preserve io.BackendPlatformUserData = pointer_from_objref(bd)
+    # println("io.BackendPlatformUserData: ", unsafe_load(io.BackendPlatformUserData))
+    # println("io.BackendPlatformUserData unsafe_pointer_to_objref: ", unsafe_pointer_to_objref(unsafe_load(io.BackendPlatformUserData)))
+    # println("global BackendPlatformUserData: ", BackendPlatformUserData[])
+    # println("global BackendPlatformUserData unsafe_pointer_to_objref: ", unsafe_pointer_to_objref(BackendPlatformUserData[]))
+    #io.BackendPlatformUserData = pointer_from_objref(bd)
     io.BackendPlatformName = pointer("imgui_impl_sdl2")
     io.BackendFlags = unsafe_load(io.BackendFlags) | ImGuiBackendFlags_HasMouseCursors       # We can honor GetMouseCursor() values (optional)
     io.BackendFlags = unsafe_load(io.BackendFlags) | ImGuiBackendFlags_HasSetMousePos        # We can honor io.WantSetMousePos requests (optional, rarely used)
-
+    
     # set clipboard
     # io.SetClipboardTextFn = pointer(ImGui_ImplSDL2_SetClipboardText)
     # io.GetClipboardTextFn = pointer(ImGui_ImplSDL2_GetClipboardText)
     # io.ClipboardUserData = nothing
     # io.SetPlatformImeDataFn = ImGui_ImplSDL2_SetPlatformImeData
-
+    
     # Load mouse cursors
     bd.MouseCursors[ImGuiMouseCursor_Arrow+1] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
     bd.MouseCursors[ImGuiMouseCursor_TextInput+1] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
@@ -66,7 +71,7 @@ function ImGui_ImplSDL2_Init(window, renderer)
     bd.MouseCursors[ImGuiMouseCursor_ResizeNWSE+1] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENWSE)
     bd.MouseCursors[ImGuiMouseCursor_Hand+1] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
     bd.MouseCursors[ImGuiMouseCursor_NotAllowed+1] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_NO)
-
+    
     # Set platform dependent data in viewport
     # Our mouse update function expect PlatformHandle to be filled for the main viewport
     main_viewport = igGetMainViewport()
@@ -80,28 +85,29 @@ function ImGui_ImplSDL2_Init(window, renderer)
     #         main_viewport.PlatformHandleRaw = info.info.cocoa.window
     #     end
     # end
-
+    
     # From 2.0.5: Set SDL hint to receive mouse click events on window focus, otherwise SDL doesn't emit the event.
     # Without this, when clicking to gain focus, our widgets wouldn't activate even though they showed as hovered.
     # (This is unfortunately a global SDL setting, so enabling it might have a side-effect on your application.
     # It is unlikely to make a difference, but if your app absolutely needs to ignore the initial on-focus click:
     # you can ignore SDL_MOUSEBUTTONDOWN events coming right after a SDL_WINDOWEVENT_FOCUS_GAINED)
     #if def(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH)
-        SDL2.SDL_SetHint(SDL2.SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1")
+    SDL2.SDL_SetHint(SDL2.SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1")
     #end
-
+    
     # From 2.0.18: Enable native IME.
     # IMPORTANT: This is used at the time of SDL_CreateWindow() so this will only affects secondary windows, if any.
     # For the main window to be affected, your application needs to call this manually before calling SDL_CreateWindow().
     #if defined(SDL_HINT_IME_SHOW_UI)
     SDL2.SDL_SetHint("SDL_HINT_IME_SHOW_UI", "1")
     #end
-
+    
     # From 2.0.22: Disable auto-capture, this is preventing drag and drop across multiple windows (see #5710)
     #if defined(SDL_HINT_MOUSE_AUTO_CAPTURE)
-        SDL2.SDL_SetHint("SDL_HINT_MOUSE_AUTO_CAPTURE", "0")
+    SDL2.SDL_SetHint("SDL_HINT_MOUSE_AUTO_CAPTURE", "0")
     #end
-
+    
+    BackendPlatformUserData[] = bd
     return true
 end
 
@@ -125,16 +131,29 @@ end
 # // FIXME: multi-context support is not well tested and probably dysfunctional in this backend.
 # // FIXME: some shared resources (mouse cursor shape, gamepad) are mishandled when using multi-context.
 function ImGui_ImplSDL2_GetBackendData()
-    
-    io::Ptr{ImGuiIO} = CImGui.GetIO()
-    bep = unsafe_load(io.BackendPlatformUserData)::Ptr{Cvoid}
-    GC.@preserve bep = unsafe_pointer_to_objref(bep)
+    GC.@preserve io::Ptr{ImGuiIO} = CImGui.GetIO()
+    #bep = unsafe_load(io.BackendPlatformUserData)
+    io.BackendPlatformUserData = pointer_from_objref(ImGui_ImplSDL2_Data(
+        BackendPlatformUserData[].Window,
+        BackendPlatformUserData[].Renderer,
+        BackendPlatformUserData[].Time,
+        BackendPlatformUserData[].MouseWindowID,
+        BackendPlatformUserData[].MouseButtonsDown,
+        BackendPlatformUserData[].MouseCursors,
+        BackendPlatformUserData[].LastMouseCursor,
+        BackendPlatformUserData[].PendingMouseLeaveFrame,
+        BackendPlatformUserData[].ClipboardTextData,
+        BackendPlatformUserData[].MouseCanUseGlobalState
+    ))
+    #GC.@preserve bep = unsafe_load(BackendPlatformUserData[]) 
+    bep = unsafe_pointer_to_objref(unsafe_load(io.BackendPlatformUserData))
     return CImGui.GetCurrentContext() != C_NULL ? bep : C_NULL
 end
 
 
 function ImGui_ImplSDL2_NewFrame()
-    @GC.preserve bd = ImGui_ImplSDL2_GetBackendData()
+    bd = ImGui_ImplSDL2_GetBackendData()
+    println("type(bd): ", typeof(bd))
     @assert bd != C_NULL# && "Did you call ImGui_ImplSDL2_Init()?"
     io = CImGui.GetIO()
     # Setup display size (every frame to accommodate for window resizing)
@@ -278,7 +297,6 @@ function ImGui_ImplSDL2_ProcessEvent(event)
         bd.MouseButtonsDown = event.type == SDL2.SDL_MOUSEBUTTONDOWN ? bd.MouseButtonsDown | (1 << mouse_button) : bd.MouseButtonsDown & ~(1 << mouse_button)
         return true
     elseif event.type == SDL2.SDL_TEXTINPUT
-        println("text.text input: ", event.text.text[1])
         ImGuiIO_AddInputCharactersUTF8(io, Ref(event.text.text[1]))
         return true
     elseif event.type == SDL2.SDL_KEYDOWN || event.type == SDL2.SDL_KEYUP
@@ -290,10 +308,21 @@ function ImGui_ImplSDL2_ProcessEvent(event)
     elseif event.type == SDL2.SDL_WINDOWEVENT
         window_event = event.window.event
         if window_event == SDL2.SDL_WINDOWEVENT_ENTER
+            io::Ptr{ImGuiIO} = CImGui.GetIO()
+            # println("bep: ", bep)
+            # bep = unsafe_(ImGui_ImplSDL2_Data, unsafe_load(io.BackendPlatformUserData))
+            # println("bep: ", bep)
+            # GC.@preserve bep = unsafe_pointer_to_objref(bep)
+            # println("bep: ", bep)
+
+            
             bd.MouseWindowID = event.window.windowID
             bd.PendingMouseLeaveFrame = 0
         end
         if window_event == SDL2.SDL_WINDOWEVENT_LEAVE
+            println("SDL_WINDOWEVENT_LEAVE")
+            println(typeof(bd))
+            println(bd)
             bd.PendingMouseLeaveFrame = CImGui.GetFrameCount() + 1
         end
         if window_event == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
