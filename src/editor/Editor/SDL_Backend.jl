@@ -32,19 +32,6 @@ function ImGui_ImplSDL2_Init(window, renderer)
         end
     end
 
-    # Setup backend capabilities flags
-    # bd = pointer(ImGui_ImplSDL2_Data[ImGui_ImplSDL2_Data(
-    #     window,
-    #     renderer,
-    #     0,
-    #     0,
-    #     0,
-    #     fill(Ptr{Any}(C_NULL), Int(9)),
-    #     Ptr{Cvoid}(C_NULL),
-    #     0,
-    #     Ptr{Cchar}(C_NULL),
-    #     mouse_can_use_global_state
-    # )])
     bd = ImGui_ImplSDL2_Data(
         window,
         renderer,
@@ -147,7 +134,7 @@ end
 
 
 function ImGui_ImplSDL2_NewFrame()
-    bd = ImGui_ImplSDL2_GetBackendData()
+    @GC.preserve bd = ImGui_ImplSDL2_GetBackendData()
     @assert bd != C_NULL# && "Did you call ImGui_ImplSDL2_Init()?"
     io = CImGui.GetIO()
     # Setup display size (every frame to accommodate for window resizing)
@@ -226,22 +213,118 @@ end
 
 function ImGui_ImplSDL2_UpdateMouseCursor()
     io::Ptr{ImGuiIO} = CImGui.GetIO()
-    if (unsafe_load(io.ConfigFlags) & ImGuiConfigFlags_NoMouseCursorChange == ImGuiConfigFlags_NoMouseCursorChange) ||
-        return nothing
-    end
+    # if (unsafe_load(io.ConfigFlags) & ImGuiConfigFlags_NoMouseCursorChange == ImGuiConfigFlags_NoMouseCursorChange) ||
+    #     return nothing
+    # end
     bd = ImGui_ImplSDL2_GetBackendData()
 
     imgui_cursor = CImGui.GetMouseCursor()
-    if io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None
+    if imgui_cursor == ImGuiMouseCursor_None || unsafe_load(io.MouseDrawCursor)
         # Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
         SDL2.SDL_ShowCursor(SDL2.SDL_FALSE)
     else
         # Show OS mouse cursor
-        expected_cursor = bd.MouseCursors[imgui_cursor] != C_NULL ? bd.MouseCursors[imgui_cursor] : bd.MouseCursors[ImGuiMouseCursor_Arrow]
+        expected_cursor = bd.MouseCursors[imgui_cursor+1] != C_NULL ? bd.MouseCursors[imgui_cursor+1] : bd.MouseCursors[ImGuiMouseCursor_Arrow+1]
         if bd.LastMouseCursor != expected_cursor
             SDL2.SDL_SetCursor(expected_cursor) # SDL function doesn't have an early out (see #6113)
             bd.LastMouseCursor = expected_cursor
         end
         SDL2.SDL_ShowCursor(SDL2.SDL_TRUE)
     end
+end
+
+function ImGui_ImplSDL2_InitForSDLRenderer(window, renderer)
+    return ImGui_ImplSDL2_Init(window, renderer)
+end
+
+######################################################################################## Untested
+
+function ImGui_ImplSDL2_ProcessEvent(event)
+    io = CImGui.GetIO()
+    bd = ImGui_ImplSDL2_GetBackendData()
+
+    if event.type == SDL2.SDL_MOUSEMOTION
+        mouse_pos = ImVec2(float(event.motion.x), float(event.motion.y))
+        #io.AddMouseSourceEvent(event.motion.which == SDL2.SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse)
+        ImGuiIO_AddMousePosEvent(io, mouse_pos.x, mouse_pos.y)
+        return true
+    elseif event.type == SDL2.SDL_MOUSEWHEEL
+        wheel_x = sdlVersion >= 2018 ? -event.wheel.preciseX : -(Cfloat(event.wheel.x))
+        wheel_y = sdlVersion >= 2018 ? event.wheel.preciseY : Cfloat(event.wheel.y)
+        # if __EMSCRIPTEN__
+        # wheel_x /= 100.0f 
+        # end
+        #io.AddMouseSourceEvent(event.wheel.which == SDL2.SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse)
+        ImGuiIO_AddMouseWheelEvent(io, wheel_x, wheel_y)
+        return true
+    elseif event.type == SDL2.SDL_MOUSEBUTTONDOWN || event.type == SDL2.SDL_MOUSEBUTTONUP
+        mouse_button = -1
+        if event.button.button == SDL2.SDL_BUTTON_LEFT
+            mouse_button = 0
+        elseif event.button.button == SDL2.SDL_BUTTON_RIGHT
+            mouse_button = 1
+        elseif event.button.button == SDL2.SDL_BUTTON_MIDDLE
+            mouse_button = 2
+        elseif event.button.button == SDL2.SDL_BUTTON_X1
+            mouse_button = 3
+        elseif event.button.button == SDL2.SDL_BUTTON_X2
+            mouse_button = 4
+        end
+        if mouse_button == -1
+            return false
+        end
+        #ImGuiIO_AddMouseSourceEvent(io, event.button.which == SDL2.SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse)
+        ImGuiIO_AddMouseButtonEvent(io, mouse_button, event.type == SDL2.SDL_MOUSEBUTTONDOWN)
+        bd.MouseButtonsDown = event.type == SDL2.SDL_MOUSEBUTTONDOWN ? bd.MouseButtonsDown | (1 << mouse_button) : bd.MouseButtonsDown & ~(1 << mouse_button)
+        return true
+    elseif event.type == SDL2.SDL_TEXTINPUT
+        ImGuiIO_AddInputCharactersUTF8(io, event.text.text)
+        return true
+    elseif event.type == SDL2.SDL_KEYDOWN || event.type == SDL2.SDL_KEYUP
+        ImGui_ImplSDL2_UpdateKeyModifiers(SDL2.SDL_Keymod(event.key.keysym.mod))
+        key = ImGui_ImplSDL2_KeycodeToImGuiKey(event.key.keysym.sym)
+        ImGuiIO_AddKeyEvent(io, key, event.type == SDL2.SDL_KEYDOWN)
+        ImGuiIO_SetKeyEventNativeData(io, key, event.key.keysym.sym, event.key.keysym.scancode, event.key.keysym.scancode) # To support legacy indexing (<1.87 user code). Legacy backend uses SDL2.SDLK_*** as indices to IsKeyXXX() functions.
+        return true
+    elseif event.type == SDL2.SDL_WINDOWEVENT
+        window_event = event.window.event
+        if window_event == SDL2.SDL_WINDOWEVENT_ENTER
+            bd.MouseWindowID = event.window.windowID
+            bd.PendingMouseLeaveFrame = 0
+        end
+        if window_event == SDL2.SDL_WINDOWEVENT_LEAVE
+            bd.PendingMouseLeaveFrame = CImGui.GetFrameCount() + 1
+        end
+        if window_event == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
+            ImGuiIO_AddFocusEvent(io, true)
+        elseif event.window.event == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
+            ImGuiIO_AddFocusEvent(io, false)
+        end
+        return true
+    end
+    return false
+end
+
+
+
+function ImGui_ImplSDL2_InitForVulkan(window)
+    # #if !SDL_HAS_VULKAN
+    #     IM_ASSERT(0 && "Unsupported");
+    # #endif
+    return ImGui_ImplSDL2_Init(window, nothing)
+end
+
+function ImGui_ImplSDL2_InitForD3D(window)
+    # #if !defined(_WIN32)
+    #     IM_ASSERT(0 && "Unsupported");
+    # #endif
+    return ImGui_ImplSDL2_Init(window, nothing)
+end
+
+function ImGui_ImplSDL2_InitForMetal(window)
+    return ImGui_ImplSDL2_Init(window, nothing)
+end
+
+function ImGui_ImplSDL2_InitForOther(window)
+    return ImGui_ImplSDL2_Init(window, nothing)
 end
