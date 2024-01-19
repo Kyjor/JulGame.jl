@@ -5,7 +5,7 @@ module Editor
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using Dates
-    using NativeFileDialog
+    #using NativeFileDialog
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
     using JulGame

@@ -151,25 +151,29 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 end
 
                 #println("offsetof(ImDrawVert, pos): ", offsetof(ImDrawVert, pos))
-                # println("VtxOffset: ", unsafe_load(pcmd.VtxOffset))
                 # println("idx_buffer: ", idx_buffer)
-                println("vtx_buffer: ", vtx_buffer)
+                # println("vtx_buffer: ", vtx_buffer)
+                data = unsafe_load(vtx_buffer.Data)
+                # println("vtx_buffer.Data: ", data.uv)
+                # println("vtx_buffer.Size: ", vtx_buffer.Size)
+                # println("VtxOffset unload: ", unsafe_load(pcmd.VtxOffset))
+                # println("VtxOffset: ", pcmd.VtxOffset)
                 # vtx_buffer_data = unsafe_load(vtx_buffer.Data)
                 # println("vtx_buffer data: ", unsafe_load(vtx_buffer.Data))
                 # println("ImDrawVert: ", sizeof(ImDrawVert))
-                xy = Cfloat(0.0)#reinterpret(Cdouble, reinterpret(Cchar, vtx_buffer.Size + unsafe_load(pcmd.VtxOffset)) + 0)#offsetof(ImDrawVert, pos))
-                uv = Cfloat(500.0)#reinterpret(Cdouble, reinterpret(Cchar, vtx_buffer.Capacity + unsafe_load(pcmd.VtxOffset)) + 0)#offsetof(ImDrawVert, uv))
+                xy = Cfloat[data.pos.x,data.pos.y]#reinterpret(Cdouble, reinterpret(Cchar, vtx_buffer.Size + unsafe_load(pcmd.VtxOffset)) + 0)#offsetof(ImDrawVert, pos))
+                uv = Cfloat[data.uv.x, data.uv.y]#reinterpret(Cdouble, reinterpret(Cchar, vtx_buffer.Capacity + unsafe_load(pcmd.VtxOffset)) + 0)#offsetof(ImDrawVert, uv))
                 #color = Cint(1) #reinterpret(Cint, reinterpret(Cchar, vtx_buffer_data.col + unsafe_load(pcmd.VtxOffset)) + 0)#offsetof(ImDrawVert, col))
                 color = SDL2.SDL_Color(255, 0, 0, 250)
-                # initialize a variable of this type Ptr{Float32} 
+                # initialize a variable of this type Ptr{Float32}
 
-                println("sdlRenderer: " , sdlRenderer)
+                # println("sdlRenderer: " , sdlRenderer)
                 SDL2.SDL_SetRenderDrawColor(sdlRenderer, 100, 100, 100, SDL2.SDL_ALPHA_OPAQUE );
 
 
-                outlineRect = Ref(SDL2.SDL_Rect(convert(Int32,64), 
+                outlineRect = Ref(SDL2.SDL_Rect(convert(Int32,64),
                 convert(Int32,64),
-                convert(Int32,64), 
+                convert(Int32,64),
                 convert(Int32,64)))
                 SDL2.SDL_RenderFillRect(sdlRenderer, outlineRect)
 
@@ -180,34 +184,52 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 w = Ref{Cint}()
                 h = Ref{Cint}()
                 SDL2.SDL_QueryTexture(tex1, C_NULL, C_NULL, w, h)
-                # println("w: ", w[])
-                # println("h: ", h[])
-                # println("sizeof(ImDrawVert): ", sizeof(ImDrawVert))
+                println("w: ", w[])
+                println("h: ", h[])
+                println("sizeof(ImDrawVert): ", sizeof(ImDrawVert))
 
 
 
 
+println("sizeof(ImDrawVert): ", sizeof(ImDrawVert))
+                println("sizeof(ImDrawIdx): ", sizeof(ImDrawIdx))
+                for i = 1:1000
+                    if 3%i != 0
+                        continue
+                    end 
+                    res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
+                        C_NULL,
+                        pointer(xy), Int(sizeof(ImDrawVert)),
+                        pointer(SDL2.SDL_Color[color]), Int(sizeof(ImDrawVert)),
+                        pointer(uv), Int(sizeof(ImDrawVert)),
+                        i,
+                        C_NULL, unsafe_load(pcmd.ElemCount), sizeof(ImDrawIdx))
 
-                # for i = 1:100
-                #     res = SDL2.SDL_RenderGeometryRaw(sdlRenderer, 
+                    if res == 0
+                        println("vertices drawn: ", i)
+                    else
+                            println("error: ", unsafe_string(SDL2.SDL_GetError()))
+                        
+                    end
+                end
+                println("pcmd.ElemCount: ", unsafe_load(pcmd.ElemCount))
+                # res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
                 #     C_NULL,
-                #     pointer(Cfloat[xy]), Int(sizeof(ImDrawVert)),
+                #     pointer(xy), Int(sizeof(ImDrawVert)),
                 #     pointer(SDL2.SDL_Color[color]), Int(sizeof(ImDrawVert)),
-                #     (Cfloat[uv]), Int(sizeof(ImDrawVert)),
-                #     i,
+                #     pointer(uv), Int(sizeof(ImDrawVert)),
+                #     vtx_buffer.Size+1,
                 #     C_NULL, unsafe_load(pcmd.ElemCount), sizeof(ImDrawIdx))
 
-                #     if res == 0
-                #         println("vertices drawn: ", i)
+                #     if res != 0
+                #         println("error: ", unsafe_string(SDL2.SDL_GetError()))
                 #     end
-                # end
 
 
 
 
 
-                
-                # res = SDL2.SDL_RenderGeometryRaw(sdlRenderer, 
+                # res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
                 #     C_NULL,
                 #     pointer(Cfloat[xy]), Int(sizeof(ImDrawVert)),
                 #     pointer(SDL2.SDL_Color[color]), Int(sizeof(ImDrawVert)),
