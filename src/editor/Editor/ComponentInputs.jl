@@ -245,6 +245,11 @@ function ShowSpriteProperties(spriteFields, currentEntitySelected)
             x = Cint(currentEntitySelected.sprite.layer)
             @c CImGui.InputInt("layer", &x, 1)
             currentEntitySelected.sprite.layer = x
+
+        elseif fieldString == "pixelsPerUnit"
+            x = Cint(currentEntitySelected.sprite.pixelsPerUnit)
+            @c CImGui.InputInt("pixelsPerUnit", &x, 1)
+            currentEntitySelected.sprite.pixelsPerUnit = x
         end  
     end
 end
