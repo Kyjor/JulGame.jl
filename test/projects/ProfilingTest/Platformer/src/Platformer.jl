@@ -6,6 +6,7 @@ module Platformer
     JulGame.MAIN.testMode = true
     JulGame.MAIN.testLength = 30.0
     function run()
+        JulGame.PIXELS_PER_UNIT = 16
         scene = Scene("level_0.json")
         return scene.init("JulGame Example", false, Vector2(1280, 720),Vector2(1280, 720), true, 1.0, true, 144)
     end
