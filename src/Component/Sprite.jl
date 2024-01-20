@@ -96,18 +96,18 @@ module SpriteModule
                 dstRect = Ref(SDL2.SDL_Rect(
                     convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
                     convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Int32, round(this.size.x)),
-                    convert(Int32, round(this.size.y))
+                    convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
+                    convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
                 ))
                 
                 if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0
                     ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
                     dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (this.size.x * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (this.size.y * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                        convert(Int32, round(this.size.x * SCALE_UNITS/ppu)),
-                        convert(Int32, round(this.size.y * SCALE_UNITS/ppu))
-                    ))                
+                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((this.crop == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((this.crop == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                        convert(Int32, round((this.crop == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu)),
+                        convert(Int32, round((this.crop == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu))
+                    ))     
                 end
 
                 SDL2.SDL_RenderCopyEx(
