@@ -10,19 +10,18 @@ module Editor
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
     using NativeFileDialog
-    #using Printf
     using JulGame
     using JulGame.EntityModule
     using JulGame.SceneWriterModule
     using JulGame.SceneLoaderModule
     using JulGame.TextBoxModule
 
-    include("../../Macros.jl")
-    include("./MainMenuBar.jl")
-    include("./EntityContextMenu.jl")
-    include("./ComponentInputs.jl")
-    include("./TextBoxFields.jl")
-    include("./Utils.jl")
+    include(joinpath("..","..","Macros.jl"))
+    include("MainMenuBar.jl")
+    include("EntityContextMenu.jl")
+    include("ComponentInputs.jl")
+    include("TextBoxFields.jl")
+    include("Utils.jl")
 
     # function createObject(args...)
     #     for (i, arg) in enumerate(args)
