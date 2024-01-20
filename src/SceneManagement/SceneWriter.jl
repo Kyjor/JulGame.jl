@@ -109,6 +109,7 @@ module SceneWriterModule
                     "isFlipped" => component.isFlipped, 
                     "imagePath" => normalizePath(component.imagePath),
                     "layer" => component.layer,
+                    "pixelsPerUnit" => component.pixelsPerUnit,
                     )
                 push!(componentsDict, serializedComponent)
             elseif "$componentType" != "Ptr"

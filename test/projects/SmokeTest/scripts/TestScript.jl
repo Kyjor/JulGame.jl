@@ -105,6 +105,21 @@ function Base.getproperty(this::TestScript, s::Symbol)
                     @test newEntity.shape != C_NULL && newEntity.shape !== nothing
                 end
             end
+
+            @testset "UI Tests" begin
+                @testset "ScreenButton constructor" begin
+                    
+                    newScreenButton = ScreenButtonModule.ScreenButton("ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+                    push!(MAIN.scene.screenButtons, newScreenButton)
+                    @test newScreenButton != C_NULL && newScreenButton !== nothing
+                end
+
+                @testset "TextBox constructor" begin
+                    newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
+                    push!(MAIN.scene.textBoxes, newTextBox)
+                    @test newTextBox != C_NULL && newTextBox !== nothing
+                end
+            end
         end
     elseif s == :update
         function(deltaTime)

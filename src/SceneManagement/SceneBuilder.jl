@@ -54,7 +54,7 @@ module SceneBuilderModule
                     if autoScaleZoom 
                         zoom = 1.0
                     end
-
+                    
                     MAIN.windowName = windowName
                     MAIN.zoom = zoom
                     MAIN.globals = globals

@@ -1,4 +1,4 @@
-﻿module SpriteModule
+module SpriteModule
     using ..Component.JulGame
 
     export Sprite
@@ -32,7 +32,7 @@
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(), rotation::Float64 = 0.0, layer::Int32 = 0)
+        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(), rotation::Float64 = 0.0, layer::Int32 = Int32(0))
             this = new()
 
             this.offset = Math.Vector2f()
@@ -94,19 +94,20 @@
 
                 srcRect = (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.z,this.crop.t))
                 dstRect = Ref(SDL2.SDL_Rect(
-                    convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
                     convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Int32, round(parentTransform.getScale().x * SCALE_UNITS)),
-                    convert(Int32, round(parentTransform.getScale().y * SCALE_UNITS))
+                    convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
+                    convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
                 ))
                 
-                if this.pixelsPerUnit > 0
+                if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0
+                    ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
                     dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (this.size.x * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (this.size.y * SCALE_UNITS / this.pixelsPerUnit - SCALE_UNITS) / 2)),
-                        convert(Int32, round(this.size.x * SCALE_UNITS/this.pixelsPerUnit)),
-                        convert(Int32, round(this.size.y * SCALE_UNITS/this.pixelsPerUnit))
-                    ))                
+                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                        convert(Int32, round((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu)),
+                        convert(Int32, round((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu))
+                    ))     
                 end
 
                 SDL2.SDL_RenderCopyEx(
