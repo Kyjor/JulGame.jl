@@ -92,32 +92,35 @@ module SpriteModule
                 parentTransform.getPosition() :
                 this.position
 
-                srcRect = (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.z,this.crop.t))
-                dstRect = Ref(SDL2.SDL_Rect(
-                    convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
-                    convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                    convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
-                    convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
+                srcRect = (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_FRect(this.crop.x,this.crop.y,this.crop.z,this.crop.t))
+                dstRect = Ref(SDL2.SDL_FRect(
+                    (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2, # TODO: Center the sprite within the entity
+                    (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2,
+                    this.crop == C_NULL ? this.size.x : this.crop.z,
+                    this.crop == C_NULL ? this.size.y : this.crop.t
                 ))
                 
                 if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0
                     ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
-                    dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                        convert(Int32, round((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu)),
-                        convert(Int32, round((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu))
+                    dstRect = Ref(SDL2.SDL_FRect(
+                        (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
+                        (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
+                        (srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu,
+                        (srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu
                     ))     
                 end
 
-                SDL2.SDL_RenderCopyEx(
+                if  SDL2.SDL_RenderCopyExF(
                     JulGame.Renderer, 
                     this.texture, 
                     srcRect, 
                     dstRect,
                     this.rotation, # ROTATION
                     C_NULL, # Ref(SDL2.SDL_Point(0,0)) CENTER
-                    this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE)
+                    this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE) != 0
+
+                    error = unsafe_string(SDL2.SDL_GetError())
+
                 
             end
         elseif s == :initialize
