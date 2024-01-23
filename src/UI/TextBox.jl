@@ -75,7 +75,7 @@ module TextBoxModule
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
                 Math.Vector2(0,0)
 
-                @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+                @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()

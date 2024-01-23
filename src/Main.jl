@@ -733,7 +733,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						colSize = collider.getSize()
 						colOffset = collider.offset
 						SDL2.SDL_RenderDrawRect( JulGame.Renderer, 
-						Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+						Ref(SDL2.SDL_FRect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
 						round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 						round(colSize.x * SCALE_UNITS), 
 						round(colSize.y * SCALE_UNITS))))
@@ -766,7 +766,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						pos = selectedEntity.transform.getPosition()
 						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
-						SDL2.SDL_RenderDrawRect( JulGame.Renderer, Ref(SDL2.SDL_Rect(
+						SDL2.SDL_RenderDrawRect( JulGame.Renderer, Ref(SDL2.SDL_FRect(
 						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
 						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
 						round(size.x * SCALE_UNITS), 
