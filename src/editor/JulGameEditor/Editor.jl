@@ -10,12 +10,12 @@ module Editor
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
     using NativeFileDialog
-    #using Printf
     using JulGame
     using JulGame.EntityModule
     using JulGame.SceneWriterModule
     using JulGame.SceneLoaderModule
     using JulGame.TextBoxModule
+    using JulGame.MainLoop
 
     include("../../Macros.jl")
     include("./MainMenuBar.jl")
@@ -23,17 +23,6 @@ module Editor
     include("./ComponentInputs.jl")
     include("./TextBoxFields.jl")
     include("./Utils.jl")
-
-    # function createObject(args...)
-    #     for (i, arg) in enumerate(args)
-    #         println("Arg #$i = $(arg[1])")
-    #         var"$(arg[1])" = arg[2]
-    #     end
-
-    #     () -> (begin
-    #         var"$(arg[1])";
-    #     end for (i, arg) in enumerate(args))
-    # end
 
     function scriptObj(name::String, parameters::Array)
         () -> (name; parameters)
@@ -48,6 +37,14 @@ module Editor
         end
 
         return game
+    end
+
+    function CloseCurrentScene(game)
+        try
+            game
+        catch e
+            rethrow(e)
+        end
     end
     
     function GetAllScenesFromFolder(projectPath)
@@ -397,14 +394,19 @@ module Editor
                             CImGui.NewLine()
                             CImGui.Button("Load Project using Dialog") && (ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir)))
 
+                            CImGui.Text("Load Scene:")
                             for scene in scenesLoadedFromFolder
-                                CImGui.Button("Load Scene: $(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
+                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
                                 CImGui.NewLine()
                             end
                         else 
                             CImGui.Text("Scene loaded. Click 'Play' to run the game.")
                             CImGui.NewLine()
-                            CImGui.Text("If you want to load a new scene, you must restart the editor.")
+                            CImGui.Text("Change Scene:")
+                            for scene in scenesLoadedFromFolder
+                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); println(sceneName); ChangeScene(String(sceneName)))
+                                CImGui.NewLine()
+                            end
                         end
 
                         CImGui.End()
