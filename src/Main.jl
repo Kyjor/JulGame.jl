@@ -420,19 +420,17 @@ function ChangeScene(sceneFileName::String)
 
 	println("Entities left after destroying: ", length(persistentEntities))
 
-	#Todo
-	#delete all textboxes
-	# for textBox in MAIN.scene.textBoxes
-	#  	textBox.destroy()
-	#  	delete!(MAIN.scene.textBoxes, textBox)
-	#  end
+	# delete all textboxes
+	for textBox in MAIN.scene.textBoxes
+		delete!(MAIN.scene.textBoxes, textBox)
+	 	textBox.destroy()
+	 end
 
-	#Todo
 	# delete all screen buttons
-	# for screenButton in MAIN.scene.screenButtons
-	#  	screenButton.destroy()
-	#  	delete!(MAIN.scene.screenButtons, screenButton)
-	# end
+	for screenButton in MAIN.scene.screenButtons
+		delete!(MAIN.scene.screenButtons, screenButton)
+	 	screenButton.destroy()
+	end
 
 	#load new scene 
 	camera = MAIN.scene.camera
