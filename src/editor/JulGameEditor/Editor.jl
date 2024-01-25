@@ -17,12 +17,12 @@ module Editor
     using JulGame.TextBoxModule
     using JulGame.MainLoop
 
-    include("../../Macros.jl")
-    include("./MainMenuBar.jl")
-    include("./EntityContextMenu.jl")
-    include("./ComponentInputs.jl")
-    include("./TextBoxFields.jl")
-    include("./Utils.jl")
+    include(joinpath("..","..","Macros.jl"))
+    include("MainMenuBar.jl")
+    include("EntityContextMenu.jl")
+    include("ComponentInputs.jl")
+    include("TextBoxFields.jl")
+    include("Utils.jl")
 
     function scriptObj(name::String, parameters::Array)
         () -> (name; parameters)
