@@ -86,11 +86,11 @@ module MainLoop
 				end
 			end
 		elseif s == :initializeNewScene
-			function()
-				this.level.changeScene()
+			function(isUsingEditor::Bool = false)
+				this.level.changeScene(isUsingEditor)
 				InitializeScriptsAndComponents(this, false)
 
-				if true
+				if !isUsingEditor
 					this.fullLoop()
 					return
 				end
@@ -138,12 +138,17 @@ module MainLoop
 						SDL2.SDL_Quit()
 					else
 						this.shouldChangeScene = false
-						this.initializeNewScene()
+						this.initializeNewScene(false)
 					end
 				end
 			end
 		elseif s == :gameLoop
 			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL)
+				if this.shouldChangeScene
+					this.shouldChangeScene = false
+					this.initializeNewScene(true)
+					return
+				end
 				return GameLoop(this, startTime, lastPhysicsTime, isEditor, update)
 			end
 		elseif s == :handleEditorInputsCamera
@@ -381,6 +386,7 @@ end
 
 export ChangeScene
 function ChangeScene(sceneFileName::String)
+	# println("Changing scene to: ", sceneFileName)
 	MAIN.close = true
 	MAIN.shouldChangeScene = true
 	#destroy current scene 
@@ -415,24 +421,38 @@ function ChangeScene(sceneFileName::String)
 
 	# println("Entities left after destroying: ", length(persistentEntities))
 
-	#Todo
-	#delete all textboxes
-	# for textBox in MAIN.scene.textBoxes
-	# 	textBox.destroy()
-	# 	delete!(MAIN.scene.textBoxes, textBox)
-	# end
+	persistentTextBoxes = []
+	# delete all textboxes
+	for textBox in MAIN.scene.textBoxes
+		if textBox.persistentBetweenScenes
+			#println("Persistent textBox: ", textBox.name)
+			push!(persistentTextBoxes, textBox)
+			skipcount += 1
+			continue
+		end
 
-	#Todo
-	# #delete all screen buttons
-	# for screenButton in MAIN.scene.screenButtons
-	# 	screenButton.destroy()
-	# 	delete!(MAIN.scene.screenButtons, screenButton)
-	# end
+	 	textBox.destroy()
+	end
+	
+	persistentScreenButtons = []
+	# delete all screen buttons
+	for screenButton in MAIN.scene.screenButtons
+		if screenButton.persistentBetweenScenes
+			#println("Persistent screenButton: ", screenButton.name)
+			push!(persistentScreenButtons, screenButton)
+			skipcount += 1
+			continue
+		end
 
+		screenButton.destroy()
+	end
+	
 	#load new scene 
 	camera = MAIN.scene.camera
 	MAIN.scene = Scene()
 	MAIN.scene.entities = persistentEntities
+	MAIN.scene.textBoxes = persistentTextBoxes
+	MAIN.scene.screenButtons = persistentScreenButtons
 	MAIN.scene.camera = camera
 	MAIN.level.scene = sceneFileName
 end
@@ -733,11 +753,11 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					else
 						colSize = collider.getSize()
 						colOffset = collider.offset
-						SDL2.SDL_RenderDrawRect( JulGame.Renderer, 
-						Ref(SDL2.SDL_Rect(round((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-						round((pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-						round(colSize.x * SCALE_UNITS), 
-						round(colSize.y * SCALE_UNITS))))
+						SDL2.SDL_RenderDrawRectF(JulGame.Renderer, 
+						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						(pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						colSize.x * SCALE_UNITS, 
+						colSize.y * SCALE_UNITS)))
 					end
 				end
 			end
@@ -769,11 +789,11 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						pos = selectedEntity.transform.getPosition()
 						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
-						SDL2.SDL_RenderDrawRect( JulGame.Renderer, Ref(SDL2.SDL_Rect(
-						round((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - (selectedEntity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						round((pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - (selectedEntity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2), 
-						round(size.x * SCALE_UNITS), 
-						round(size.y * SCALE_UNITS))))
+						SDL2.SDL_RenderDrawRectF(JulGame.Renderer, 
+						Ref(SDL2.SDL_FRect((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						(pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						size.x * SCALE_UNITS, 
+						size.y * SCALE_UNITS)))
 					end
 				catch e
 					rethrow(e)
