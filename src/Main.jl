@@ -385,11 +385,11 @@ end
 
 export ChangeScene
 function ChangeScene(sceneFileName::String)
-	println("Changing scene to: ", sceneFileName)
+	# println("Changing scene to: ", sceneFileName)
 	MAIN.close = true
 	MAIN.shouldChangeScene = true
 	#destroy current scene 
-	println("Entities before destroying: ", length(MAIN.scene.entities))
+	#println("Entities before destroying: ", length(MAIN.scene.entities))
 	count = 0
 	skipcount = 0
 	persistentEntities = []	
@@ -415,27 +415,43 @@ function ChangeScene(sceneFileName::String)
 		end
 		count += 1
 	end
-	println("Destroyed $count entities")
-	println("Skipped $skipcount entities")
+	# println("Destroyed $count entities")
+	# println("Skipped $skipcount entities")
 
-	println("Entities left after destroying: ", length(persistentEntities))
+	# println("Entities left after destroying: ", length(persistentEntities))
 
+	persistentTextBoxes = []
 	# delete all textboxes
 	for textBox in MAIN.scene.textBoxes
-		delete!(MAIN.scene.textBoxes, textBox)
-	 	textBox.destroy()
-	 end
+		if textBox.persistentBetweenScenes
+			#println("Persistent textBox: ", textBox.name)
+			push!(persistentTextBoxes, textBox)
+			skipcount += 1
+			continue
+		end
 
+	 	textBox.destroy()
+	end
+	
+	persistentScreenButtons = []
 	# delete all screen buttons
 	for screenButton in MAIN.scene.screenButtons
-		delete!(MAIN.scene.screenButtons, screenButton)
-	 	screenButton.destroy()
-	end
+		if screenButton.persistentBetweenScenes
+			#println("Persistent screenButton: ", screenButton.name)
+			push!(persistentScreenButtons, screenButton)
+			skipcount += 1
+			continue
+		end
 
+		screenButton.destroy()
+	end
+	
 	#load new scene 
 	camera = MAIN.scene.camera
 	MAIN.scene = Scene()
 	MAIN.scene.entities = persistentEntities
+	MAIN.scene.textBoxes = persistentTextBoxes
+	MAIN.scene.screenButtons = persistentScreenButtons
 	MAIN.scene.camera = camera
 	MAIN.level.scene = sceneFileName
 end

@@ -15,6 +15,7 @@ module ScreenButtonModule
         fontPath::Union{String, Ptr{Nothing}}
         isInitialized::Bool
         mouseOverSprite
+        persistentBetweenScenes::Bool
         position::Math.Vector2
         text::String
         textOffset::Math.Vector2
@@ -36,6 +37,7 @@ module ScreenButtonModule
             this.textOffset = textOffset
             this.textTexture = C_NULL
             this.isInitialized = false
+            this.persistentBetweenScenes = false
 
             return this
         end

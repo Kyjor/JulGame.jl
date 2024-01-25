@@ -55,7 +55,7 @@ module Editor
                 if "scenes" in dirs
                     for (root, dirs, files) in walkdir(joinpath(root, "scenes"))
                         for file in files
-                            println(file)
+                            # println(file)
                             if occursin(r".json$", file)
                                 push!(sceneFiles, joinpath(root, file))
                             end
@@ -72,7 +72,7 @@ module Editor
 
     function ChooseFolderWithDialog()
         dir = pick_folder()
-        println("open_dialog returned $dir")
+        # println("open_dialog returned $dir")
         return dir
     end
 
@@ -404,7 +404,7 @@ module Editor
                             CImGui.NewLine()
                             CImGui.Text("Change Scene:")
                             for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); println(sceneName); ChangeScene(String(sceneName)))
+                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); ChangeScene(String(sceneName)))
                                 CImGui.NewLine()
                             end
                         end
