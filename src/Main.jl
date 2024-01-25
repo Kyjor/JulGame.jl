@@ -10,33 +10,34 @@ module MainLoop
 	mutable struct Main
 		assets::String
 		autoScaleZoom::Bool
-		cameraBackgroundColor
+		cameraBackgroundColor::Tuple{Int64, Int64, Int64}
 		close::Bool
 		currentTestTime::Float64
-		debugTextBoxes
-		events
-		globals
-		input
+		debugTextBoxes::Vector{UI.TextBoxModule.TextBox}
+		events::Vector # what is this for ?
+		globals::Vector  # what is this for ?
+		input::Input
 		isDraggingEntity::Bool
-		lastMousePosition
-		lastMousePositionWorld
-		level
-		mousePositionWorld
-		mousePositionWorldRaw
+		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
+		lastMousePositionWorld::Union{Math.Vector2, Math.Vector2f}
+        # need to work on import order so that this can be concretely typed
+		level#::JulGame.SceneManagement.SceneBuilderModule.Scene
+		mousePositionWorld::Union{Math.Vector2, Math.Vector2f}
+		mousePositionWorldRaw::Union{Math.Vector2, Math.Vector2f}
 		optimizeSpriteRendering::Bool
-		panCounter
-		panThreshold
+		panCounter::Union{Math.Vector2, Math.Vector2f}
+		panThreshold::Float64
 		scene::Scene
-		selectedEntityIndex
-		selectedEntityUpdated
-		selectedTextBoxIndex
-		screenDimensions
+		selectedEntityIndex::Int64
+		selectedEntityUpdated::Bool
+		selectedTextBoxIndex::Int64
+		screenDimensions::Union{Ptr{Nothing}, Math.Vector2}
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate::Int32
 		testLength::Float64
 		testMode::Bool
-		window
+		window::Ptr{SDL2.SDL_Window}
 		windowName::String
 		zoom::Float64
 
@@ -47,10 +48,10 @@ module MainLoop
 			this.scene = Scene()
 			this.input = Input()
 
-			this.cameraBackgroundColor = [0,0,0]
+			this.cameraBackgroundColor = (0,0,0)
 			this.close = false
-			this.debugTextBoxes = []
-			this.events = []
+			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
+			this.events = [] # what is this for?
 			this.input.scene = this.scene
 			this.mousePositionWorld = Math.Vector2f()
 			this.mousePositionWorldRaw = Math.Vector2f()
@@ -59,7 +60,7 @@ module MainLoop
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
-			this.screenDimensions = C_NULL
+			this.screenDimensions = C_NULL # Why is this a C_NULL by default? why not Math.Vector2(0,0)?
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
