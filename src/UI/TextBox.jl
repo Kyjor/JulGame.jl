@@ -17,6 +17,7 @@ module TextBoxModule
         isTextUpdated::Bool
         isWorldEntity::Bool
         name::String
+        persistentBetweenScenes::Bool
         position::Vector2
         renderText
         size::Vector2
@@ -41,6 +42,7 @@ module TextBoxModule
             this.isWorldEntity = isWorldEntity
             this.textTexture = C_NULL
             this.isInitialized = false
+            this.persistentBetweenScenes = false
 
             return this
         end
@@ -142,7 +144,7 @@ module TextBoxModule
 
     function Initialize(this)
         path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-
+        # println("loading font from $(path)")
         this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
         if this.font == C_NULL
             return

@@ -128,8 +128,8 @@ module SceneBuilderModule
                     return MAIN
                 end
             elseif s == :changeScene
-                function()
-                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), false)
+                function(isUsingEditor::Bool = false)
+                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
                     
                     # println("Changing scene to $this.scene")
                     # println("Entities in main scene: ", length(MAIN.scene.entities))
@@ -158,7 +158,7 @@ module SceneBuilderModule
                             push!(MAIN.scene.colliders, entity.collider)
                         end
 
-                        if true # !isUsingEditor
+                        if !isUsingEditor
                             scriptCounter = 1
                             for script in entity.scripts
                                 params = []
