@@ -55,7 +55,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; TestScript = C_NULL)
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; TestScript = C_NULL, isNewEditor = false)
                     #file loading
                     if autoScaleZoom 
                         zoom = 1.0
@@ -129,7 +129,7 @@ module SceneBuilderModule
                     end
 
                     MAIN.assets = joinpath(BasePath, "assets")
-                    MAIN.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
+                    MAIN.init(isUsingEditor, dimensions, isResizable, autoScaleZoom, isNewEditor)
 
                     return MAIN
                 end

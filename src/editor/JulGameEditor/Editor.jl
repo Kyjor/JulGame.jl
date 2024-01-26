@@ -24,6 +24,9 @@ module Editor
     include("TextBoxFields.jl")
     include("Utils.jl")
 
+    # Windows
+    include(joinpath("Windows", "GameControls.jl"))
+
     function scriptObj(name::String, parameters::Array)
         () -> (name; parameters)
     end
@@ -104,6 +107,7 @@ module Editor
     
         io = CImGui.GetIO()
         io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
+        io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_ViewportsEnable
     
         # setup Dear ImGui style #Todo: Make this a setting
         CImGui.StyleColorsDark()
@@ -157,15 +161,9 @@ module Editor
                     end 
                     
                     glfwPollEvents()
-                    # start the Dear ImGui frame
-                    ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
-                    ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
-                    CImGui.NewFrame()
+                    StartFrame(opengl_ctx, glfw_ctx)
         
-                    event = @event begin
-                        serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
-                    end
-                    events = [event]
+                    events = CreateEvents()
                     @c ShowMainMenuBar(Ref{Bool}(true), events)
                     
                     # Uncomment to see widgets that can be used.
@@ -412,20 +410,7 @@ module Editor
                         CImGui.End()
                     end
 
-                    @cstatic begin
-                        CImGui.Begin("Controls")  
-                        CImGui.Text("Pan scene: Arrow keys/Hold middle mouse button and move mouse")
-                        CImGui.NewLine()
-                        CImGui.Text("Zoom in/out: Hold spacebar and left and right arrow keys")
-                        CImGui.NewLine()
-                        CImGui.Text("Select entity: Click on entity in scene window or in hierarchy window")
-                        CImGui.NewLine()
-                        CImGui.Text("Move entity: Hold left mouse button and drag entity")
-                        CImGui.NewLine()
-                        CImGui.Text("Duplicate entity: Select entity and click 'Duplicate' in hierarchy window or press 'LCTRL+D' keys")
-                        CImGui.NewLine()
-                        CImGui.End()
-                    end
+                    ShowGameControls()
 
                     CImGui.Begin("Hierarchy") 
                     if gameInfo !== nothing && length(gameInfo) > 0 
@@ -568,6 +553,22 @@ module Editor
             SDL2.SDL_Quit()
         end
     end
+
+    function StartFrame(opengl_ctx, glfw_ctx)
+       # start the Dear ImGui frame
+       ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
+       ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
+       CImGui.NewFrame() 
+    end
+
+    function CreateEvents()
+        event = @event begin
+            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+        end
+
+        return [event]
+    end
+
 
     julia_main() = run()
 end

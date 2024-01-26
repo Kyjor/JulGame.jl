@@ -75,7 +75,7 @@ module SpriteModule
 
     function Base.getproperty(this::InternalSprite, s::Symbol)
         if s == :draw
-            function()
+            function(zoom::Float64 = 1.0)
                 if this.image == C_NULL || JulGame.Renderer == C_NULL
                     return
                 end
@@ -88,36 +88,34 @@ module SpriteModule
                 parentTransform = this.parent.transform
 
                 cameraDiff = this.isWorldEntity ? 
-                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS - MAIN.scene.camera.windowPos.x, MAIN.scene.camera.position.y * SCALE_UNITS - MAIN.scene.camera.windowPos.y) : 
                 Math.Vector2(0,0)
                 position = this.isWorldEntity ?
                 parentTransform.getPosition() :
                 this.position
 
                 srcRect = (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
-
-                #println("srcRect: ",typeof(srcRect))
                 dstRect = Ref(SDL2.SDL_FRect(
-                    (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2, # TODO: Center the sprite within the entity
-                    (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2,
-                    this.crop == C_NULL ? this.size.x : this.crop.z,
-                    this.crop == C_NULL ? this.size.y : this.crop.t
+                    (position.x + this.offset.x) * SCALE_UNITS * zoom - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2, # TODO: Center the sprite within the entity
+                    (position.y + this.offset.y) * SCALE_UNITS * zoom - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2,
+                    (this.crop == C_NULL ? this.size.x : this.crop.z) * zoom * SCALE_UNITS,
+                    (this.crop == C_NULL ? this.size.y : this.crop.t) * zoom * SCALE_UNITS
                 ))
-                
+
                 if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0
                     ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
                     dstRect = Ref(SDL2.SDL_FRect(
-                        (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
-                        (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
-                        (srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu,
-                        (srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu
+                        (position.x + this.offset.x) * SCALE_UNITS * zoom - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
+                        (position.y + this.offset.y) * SCALE_UNITS * zoom - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
+                        (srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu * zoom,
+                        (srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu * zoom
                     ))     
                 end
 
                 srcRect = !this.isFloatPrecision ? (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.z,this.crop.t)) : srcRect
                 dstRect = !this.isFloatPrecision ? Ref(SDL2.SDL_Rect(
-                    convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
-                    convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                    convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS * zoom - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
+                    convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS * zoom - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
                     convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
                     convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
                 )) : dstRect
@@ -125,8 +123,8 @@ module SpriteModule
                 if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0 && !this.isFloatPrecision
                     ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
                     dstRect = Ref(SDL2.SDL_Rect(
-                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                        convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS * zoom - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                        convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS * zoom - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
                         convert(Int32, round((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu)),
                         convert(Int32, round((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu))
                     ))     

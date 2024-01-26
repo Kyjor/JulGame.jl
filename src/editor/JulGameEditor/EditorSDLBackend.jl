@@ -6,8 +6,8 @@ module Editor
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using CImGui.LibCImGui
-    using SimpleDirectMediaLayer
-    const SDL2 = SimpleDirectMediaLayer
+    using JulGame
+
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
@@ -30,44 +30,67 @@ module Editor
         
         styleImGui()
         showDemoWindow = true
-        
+        game = nothing
+        gameInfo = []
+        windowPos = ImVec2(0, 0)
+        windowSize = ImVec2(0, 0)
         quit = false
             try
                 while !quit
-                    event_ref = Ref{SDL2.SDL_Event}()
-                    while Bool(SDL2.SDL_PollEvent(event_ref))
-                        evt = event_ref[]
-                        ImGui_ImplSDL2_ProcessEvent(evt)
-                        evt_ty = evt.type
-                        if evt_ty == SDL2.SDL_QUIT
-                            quit = true
-                            break
-                        end
+                    if game === nothing
+                        quit = PollEvents()
                     end
                         
-                   startFrame()
-                   LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
-                   
-                   
+                    StartFrame()
+                    LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
+                    
                     ################################## RENDER HERE
-
+                    
                     ################################# MAIN MENU BAR
-                    event = @event begin
-                       serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
-                    end
-                    events = [event]
+                    events = CreateEvents()
                     @c ShowMainMenuBar(Ref{Bool}(true), events)
                     ################################# END MAIN MENU BAR
 
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
-
-
+                    @cstatic begin
+                        CImGui.Begin("Open Scene")  
+                            windowPos = CImGui.GetWindowPos()
+                            windowSize = CImGui.GetWindowSize()
+                            CImGui.Button("Open") &&  (game = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); game.optimizeSpriteRendering = true; JulGame.PIXELS_PER_UNIT = 16)
+                        CImGui.End()
+                    end
+                    
+                    if game !== nothing
+                        @cstatic begin
+                            CImGui.Begin("ResetCamera")  
+                                CImGui.Button("ResetCamera") && (game.resetCameraPosition())
+                            CImGui.End()
+                        end
+                    end
 
                     ShowGameControls()
 
-                    
                     ################################# STOP RENDERING HERE
-                    render(renderer, io, clear_color)
+                    CImGui.Render()
+                    SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
+                    SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
+                    SDL2.SDL_RenderClear(renderer);
+                    ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData(), test)
+                    
+                    screenA = Ref(SDL2.SDL_Rect(round(windowPos.x), windowPos.y + 20, windowSize.x, windowSize.y - 20))
+                    SDL2.SDL_RenderSetViewport(renderer, screenA)
+                    ################################################# Injecting game loop into editor
+                    if game !== nothing
+                        if game.input.editorCallback == C_NULL
+                            game.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
+                        end
+                        game.input.pollInput()
+                        quit = game.input.quit
+                    end
+                    gameInfo = game === nothing ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, ImVec2(windowPos.x, windowPos.y + 20), ImVec2(windowSize.x, windowSize.y - 20))
+                    #################################################
+
+                    SDL2.SDL_RenderPresent(renderer);
                 end
             catch e
                 @warn "Error in renderloop!" exception=e
@@ -116,8 +139,7 @@ module Editor
         ctx = CImGui.CreateContext()
 
         io = CImGui.GetIO()
-        io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable | CImGui.ImGuiConfigFlags_NavEnableKeyboard | CImGui.ImGuiConfigFlags_NavEnableGamepad
-
+        io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable #| CImGui.ImGuiConfigFlags_NavEnableKeyboard | CImGui.ImGuiConfigFlags_NavEnableGamepad
         io.BackendPlatformUserData = C_NULL
         ImGui_ImplSDL2_InitForSDLRenderer(window, renderer)
         ImGui_ImplSDLRenderer2_Init(renderer)
@@ -133,19 +155,58 @@ module Editor
         # CImGui.StyleColorsLight()
     end
 
-    function startFrame()
+    function PollEvents()
+        event_ref = Ref{SDL2.SDL_Event}()
+        quit = false
+        while Bool(SDL2.SDL_PollEvent(event_ref))
+            evt = event_ref[]
+            ImGui_ImplSDL2_ProcessEvent(evt)
+            evt_ty = evt.type
+            if evt_ty == SDL2.SDL_QUIT
+                quit = true
+                break
+            end
+        end
+
+        return quit
+    end
+
+    function StartFrame()
         ImGui_ImplSDLRenderer2_NewFrame()
         ImGui_ImplSDL2_NewFrame();
         CImGui.NewFrame()
     end
 
-    function render(renderer, io, clear_color)
-        CImGui.Render()
-        SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
-        SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
-        SDL2.SDL_RenderClear(renderer);
-        ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData());
-        SDL2.SDL_RenderPresent(renderer);
+    function CreateEvents()
+        event = @event begin
+            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+        end
+
+        return [event]
+    end
+
+    function Render(renderer, io, clear_color)
+        
+    end
+
+    function test(renderer)
+        SDL2.SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        SDL2.SDL_RenderDrawRectF(renderer, Ref(SDL2.SDL_FRect(0, 0, 64, 64)))
+    end
+
+    function OpenScene(renderer)
+        @cstatic begin
+            CImGui.GetWindowPos()
+            CImGui.Begin("Open Scene")  
+                CImGui.Button("Open") &&  return LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer)
+            CImGui.End()
+        end
+
+        return C_NULL
+    end
+
+    function RenderScene()
+        
     end
 
 end
