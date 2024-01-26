@@ -1,5 +1,6 @@
 module TransformModule
-    using ..Component.JulGame   
+    using ..Component.JulGame 
+    import ..Component.JulGame: deprecated_get_property  
     export Transform
     mutable struct Transform
         rotation::Float64
@@ -18,45 +19,49 @@ module TransformModule
     end     
 
     function Base.getproperty(this::Transform, s::Symbol)
-        if s == :getPosition
-            function()
-                return this.position
-            end
-        elseif s == :setPosition
-            function(position::Math.Vector2f)
-                this.position = position
-            end
-        elseif s == :getScale
-            function()
-                return this.scale
-            end
-        elseif s == :setScale
-            function(scale::Math.Vector2f)
-                this.scale = scale
-            end
-        elseif s == :getRotation
-            function()
-                return this.rotation
-            end
-        elseif s == :setRotation
-            function(rotation::Float64)
-                this.rotation = rotation
-            end
-        elseif s == :update
-            function()
-                #println(this.position)
-            end
-        elseif s == :setVector2fValue
-            function(field, x, y)
-                setfield!(this, field, Math.Vector2f(x,y))
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-        end
+        method_props = (
+            getPosition = get_position,
+            setPosition = set_position,
+            getScale = get_scale,
+            setScale = set_scale,
+            getRotation = get_rotation,
+            setRotation = set_rotation,
+            update = update,
+            setVector2fValue = set_vector2f_value
+        )
+        deprecated_get_property(method_props, this, s)
+    end
+
+
+    function get_position(this::Transform)
+        return this.position
+    end
+
+    function set_position(this::Transform, position::Math.Vector2f)
+        this.position = position
+    end
+
+    function get_scale(this::Transform)
+        return this.scale
+    end
+
+    function set_scale(this::Transform, scale::Math.Vector2f)
+        this.scale = scale
+    end
+
+    function get_rotation(this::Transform)
+        return this.rotation
+    end
+
+    function set_rotation(this::Transform, rotation::Float64)
+        this.rotation = rotation
+    end
+
+    function update(this::Transform)
+        #println(this.position)
+    end
+
+    function set_vector2f_value(this::Transform, field, x, y)
+        setfield!(this, field, Math.Vector2f(x,y))
     end
 end

@@ -2,6 +2,7 @@
 module InputModule
     using ..JulGame
     using ..JulGame.Math
+    import ..JulGame: deprecated_get_property
     
     export Input
     mutable struct Input
@@ -89,280 +90,287 @@ module InputModule
     end
 
     function Base.getproperty(this::Input, s::Symbol)
-        if s == :pollInput
-            function()
-                this.buttonsPressedDown = []
-                didMouseEventOccur = false
-                event_ref = Ref{SDL2.SDL_Event}()
-                while Bool(SDL2.SDL_PollEvent(event_ref))
-                    evt = event_ref[]
-                    this.handleWindowEvents(evt)
-                    if this.editorCallback !== nothing
-                        this.editorCallback(evt)
-                    end
-                    if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
-                        didMouseEventOccur = true
-                        if this.scene.screenButtons != C_NULL
-                            x,y = Int32[1], Int32[1]
-                            SDL2.SDL_GetMouseState(pointer(x), pointer(y))
-                            
-                            this.mousePosition = Math.Vector2(x[1], y[1])
-                            for screenButton in this.scene.screenButtons
-                                # Check position of button to see which we are interacting with
-                                eventWasInsideThisButton = true
-                                if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x
-                                    eventWasInsideThisButton = false
-                                elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.dimensions.x * MAIN.zoom
-                                    eventWasInsideThisButton = false
-                                elseif y[1] < screenButton.position.y + MAIN.scene.camera.startingCoordinates.y
-                                    eventWasInsideThisButton = false
-                                elseif y[1] > MAIN.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.dimensions.y * MAIN.zoom
-                                    eventWasInsideThisButton = false
-                                end
+        method_props = (
+            pollInput = poll_input,
+            checkScanCode = check_scan_code,
+            handleWindowEvents = handle_window_events,
+            handleKeyEvent = handle_key_event,
+            handleMouseEvent = handle_mouse_event,
+            getButtonHeldDown = get_button_held_down,
+            getButtonPressed = get_button_pressed,
+            getButtonReleased = get_button_released,
+            getMouseButton = get_mouse_button,
+            getMouseButtonPressed = get_mouse_button_pressed,
+            getMouseButtonReleased = get_mouse_button_released
+        )
+        deprecated_get_property(method_props, this, s)
+    end
 
-                                screenButton.mouseOverSprite = eventWasInsideThisButton
-                                if !eventWasInsideThisButton
-                                    continue
-                                end
-                                
-                                screenButton.handleEvent(evt, x, y)
-                            end
-                        end
-
-                        this.handleMouseEvent(evt)
-                    end 
-
-                    #if evt.type == SDL2.SDL_JOYAXISMOTION
-                        if evt.jaxis.which == 0
-                            this.jaxis = evt.jaxis
-                        end
-                        for i in 0:this.numAxes-1
-                            axis = SDL2.SDL_JoystickGetAxis(this.joystick, i)
-                            if i < 0
-                                println("Axis $i: $(SDL2.SDL_JoystickGetAxis(this.joystick, i))")
-                            end
-                            JOYSTICK_DEAD_ZONE = 8000
-
-                            if i == 0
-                                if axis < -JOYSTICK_DEAD_ZONE
-                                    this.xDir = -1
-                                # Right of dead zone
-                                elseif axis > JOYSTICK_DEAD_ZONE
-                                    this.xDir = 1
-                                else
-                                    this.xDir = 0
-                                end
-                            elseif i == 1
-                                if axis < -JOYSTICK_DEAD_ZONE
-                                    this.yDir = -1
-                                # Right of dead zone
-                                elseif axis > JOYSTICK_DEAD_ZONE
-                                    this.yDir = 1
-                                else
-                                    this.yDir = 0
-                                end
-                            end
-
-                        end
-                        # println("x:$(this.xDir), y:$(this.yDir)")
-                        for i in 0:this.numButtons-1
-                            button = SDL2.SDL_JoystickGetButton(this.joystick, i)
-
-                            if button != 0
-                                println("Button $i: $(button)")
-                            end
-                            if i == 0 && button == 1
-                                this.button = 1
-                            elseif i == 0
-                                this.button = 0
-                            end
-                        end
-                        
-                        for i in 0:this.numHats-1
-
-                            hat = SDL2.SDL_JoystickGetHat(this.joystick, i)
-                            if hat != 0
-                                println("Hat $i: $(hat)")
-                            end
-                        end
-                        
-                    #end
-
-                    if evt.type == SDL2.SDL_QUIT
-                        this.quit = true
-                        return -1
-                    end
-                    if evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3
-                        this.debug = !this.debug
-                    end
-                end
-                if !didMouseEventOccur
-                    this.mouseButtonsPressedDown = []
-                    this.mouseButtonsReleased = []
-                end
-                keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
-                this.handleKeyEvent(keyboardState)
+    function poll_input(this::Input)
+        this.buttonsPressedDown = []
+        didMouseEventOccur = false
+        event_ref = Ref{SDL2.SDL_Event}()
+        while Bool(SDL2.SDL_PollEvent(event_ref))
+            evt = event_ref[]
+            this.handleWindowEvents(evt)
+            if this.editorCallback !== nothing
+                this.editorCallback(evt)
             end
-        elseif s == :checkScanCode
-            function (keyboardState, keyState, scanCodes)
-                for scanCode in scanCodes
-                    try
-                        if keyboardState[Int32(scanCode) + 1] == keyState
-                            return true
+            if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
+                didMouseEventOccur = true
+                if this.scene.screenButtons != C_NULL
+                    x,y = Int32[1], Int32[1]
+                    SDL2.SDL_GetMouseState(pointer(x), pointer(y))
+                    
+                    this.mousePosition = Math.Vector2(x[1], y[1])
+                    for screenButton in this.scene.screenButtons
+                        # Check position of button to see which we are interacting with
+                        eventWasInsideThisButton = true
+                        if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x
+                            eventWasInsideThisButton = false
+                        elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.dimensions.x * MAIN.zoom
+                            eventWasInsideThisButton = false
+                        elseif y[1] < screenButton.position.y + MAIN.scene.camera.startingCoordinates.y
+                            eventWasInsideThisButton = false
+                        elseif y[1] > MAIN.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.dimensions.y * MAIN.zoom
+                            eventWasInsideThisButton = false
                         end
-                    catch
-                        println("Error checking scan code $(scanCode) at index $(Int32(scanCode) + 1)")
+
+                        screenButton.mouseOverSprite = eventWasInsideThisButton
+                        if !eventWasInsideThisButton
+                            continue
+                        end
+                        
+                        screenButton.handleEvent(evt, x, y)
                     end
                 end
-                return false
-            end    
-        elseif s == :handleWindowEvents
-            function (event)
-                if event.type != SDL2.SDL_WINDOWEVENT
-                    return
+
+                this.handleMouseEvent(evt)
+            end 
+
+            #if evt.type == SDL2.SDL_JOYAXISMOTION
+                if evt.jaxis.which == 0
+                    this.jaxis = evt.jaxis
                 end
-                windowEvent = event.window.event
+                for i in 0:this.numAxes-1
+                    axis = SDL2.SDL_JoystickGetAxis(this.joystick, i)
+                    if i < 0
+                        println("Axis $i: $(SDL2.SDL_JoystickGetAxis(this.joystick, i))")
+                    end
+                    JOYSTICK_DEAD_ZONE = 8000
+
+                    if i == 0
+                        if axis < -JOYSTICK_DEAD_ZONE
+                            this.xDir = -1
+                        # Right of dead zone
+                        elseif axis > JOYSTICK_DEAD_ZONE
+                            this.xDir = 1
+                        else
+                            this.xDir = 0
+                        end
+                    elseif i == 1
+                        if axis < -JOYSTICK_DEAD_ZONE
+                            this.yDir = -1
+                        # Right of dead zone
+                        elseif axis > JOYSTICK_DEAD_ZONE
+                            this.yDir = 1
+                        else
+                            this.yDir = 0
+                        end
+                    end
+
+                end
+                # println("x:$(this.xDir), y:$(this.yDir)")
+                for i in 0:this.numButtons-1
+                    button = SDL2.SDL_JoystickGetButton(this.joystick, i)
+
+                    if button != 0
+                        println("Button $i: $(button)")
+                    end
+                    if i == 0 && button == 1
+                        this.button = 1
+                    elseif i == 0
+                        this.button = 0
+                    end
+                end
                 
-                # Uncomment to debug window events
-                if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
-                    #println(string("Window $(event.window.windowID) shown", ))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
-                    #println(string("Window $(event.window.windowID) hidden"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
-                    #println(string("Window $(event.window.windowID) exposed"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
-                    #println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
-                    #println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-                    this.main.updateViewport(event.window.data1, event.window.data2)
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
-                    #println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
-                    #println(string("Window $(event.window.windowID) minimized"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
-                    #println(string("Window $(event.window.windowID) maximized"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
-                    #println(string("Window $(event.window.windowID) restored"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
-                    #println(string("Mouse entered window $(event.window.windowID)"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
-                    #println(string("Mouse left window $(event.window.windowID)"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
-                    #println(string("Window $(event.window.windowID) gained keyboard focus"))
-                    this.isWindowFocused = true
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
-                    #println(string("Window $(event.window.windowID) lost keyboard focus"))
-                    this.isWindowFocused = false
+                for i in 0:this.numHats-1
 
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
-                    #println(string("Window $(event.window.windowID) closed"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
-                    #println(string("Window $(event.window.windowID) is offered a focus"))
-                elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
-                    #println(string("Window $(event.window.windowID) has a special hit test"))
-                else
-                    #println(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
-                end    
-            end
-        elseif s == :handleKeyEvent
-            function(keyboardState)
-                buttonsPressedDown = this.buttonsPressedDown
-
-                count = 1
-                for scanCode in this.scanCodes
-                    button = scanCode[2]
-                    if this.checkScanCode(keyboardState, 1, [scanCode[1]]) && !(button in this.buttonsHeldDown)
-                        push!(buttonsPressedDown, button)
-                        push!(this.buttonsHeldDown, button)
-                    elseif this.checkScanCode(keyboardState, 0, [scanCode[1]])
-                        if button in this.buttonsHeldDown
-                            deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
-                        end
+                    hat = SDL2.SDL_JoystickGetHat(this.joystick, i)
+                    if hat != 0
+                        println("Hat $i: $(hat)")
                     end
                 end
-                this.buttonsPressedDown = buttonsPressedDown
-            end
-        elseif s == :handleMouseEvent
-            function(event)
-                mouseButtons = []
-                mouseButtonsUp = []
-                mouseButton = C_NULL
-                mouseButtonUp = C_NULL
+                
+            #end
 
-                if event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT
-                    if !(mouseButton in mouseButtons)
-                        if event.type == SDL2.SDL_MOUSEBUTTONDOWN
-                            mouseButton = event.button.button
-                            push!(mouseButtons, mouseButton)
-                        elseif event.type == SDL2.SDL_MOUSEBUTTONUP
-                            mouseButtonUp = event.button.button
-                            push!(mouseButtonsUp, mouseButtonUp)
-                        end
-                    end
-                end
-
-                this.mouseButtonsPressedDown = mouseButtons
-                for mouseButton in mouseButtons
-                    if !(mouseButton in this.mouseButtonsHeldDown)
-                        push!(this.mouseButtonsHeldDown, mouseButton)
-                    end
-                end
-                for mouseButton in mouseButtonsUp
-                    if mouseButton in this.mouseButtonsHeldDown
-                        deleteat!(this.mouseButtonsHeldDown, findfirst(x -> x == mouseButton, this.mouseButtonsHeldDown))
-                    end
-                end
-                this.mouseButtonsReleased = mouseButtonsUp
+            if evt.type == SDL2.SDL_QUIT
+                this.quit = true
+                return -1
             end
-        elseif s == :getButtonHeldDown
-            function(button)
-                if button in this.buttonsHeldDown
-                    return true
-                end
-                return false
-            end
-        elseif s == :getButtonPressed
-            function(button)
-                if button in this.buttonsPressedDown
-                    return true
-                end
-                return false
-            end
-        elseif s == :getButtonReleased
-            function(button)
-                if button in this.buttonsReleased
-                    return true
-                end
-                return false
-            end
-        elseif s == :getMouseButton
-            function(button)
-                if button in this.mouseButtonsHeldDown
-                    return true
-                end
-                return false
-            end
-        elseif s == :getMouseButtonPressed
-            function(button)
-                if button in this.mouseButtonsPressedDown
-                    return true
-                end
-                return false
-            end
-        elseif s == :getMouseButtonReleased
-            function(button)
-                if button in this.mouseButtonsReleased
-                    return true
-                end
-                return false
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
+            if evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3
+                this.debug = !this.debug
             end
         end
+        if !didMouseEventOccur
+            this.mouseButtonsPressedDown = []
+            this.mouseButtonsReleased = []
+        end
+        keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
+        this.handleKeyEvent(keyboardState)
     end
+
+    function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
+        for scanCode in scanCodes
+            try
+                if keyboardState[Int32(scanCode) + 1] == keyState
+                    return true
+                end
+            catch
+                println("Error checking scan code $(scanCode) at index $(Int32(scanCode) + 1)")
+            end
+            
+        return false
+    end    
+
+    function handle_window_events(this::Input, event)
+        if event.type != SDL2.SDL_WINDOWEVENT
+            return
+        end
+        windowEvent = event.window.event
+        
+        # Uncomment to debug window events
+        if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
+            #println(string("Window $(event.window.windowID) shown"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
+            #println(string("Window $(event.window.windowID) hidden"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
+            #println(string("Window $(event.window.windowID) exposed"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
+            #println(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
+            #println(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
+            this.main.updateViewport(event.window.data1, event.window.data2)
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
+            #println(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
+            #println(string("Window $(event.window.windowID) minimized"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
+            #println(string("Window $(event.window.windowID) maximized"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
+            #println(string("Window $(event.window.windowID) restored"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
+            #println(string("Mouse entered window $(event.window.windowID)"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
+            #println(string("Mouse left window $(event.window.windowID)"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
+            #println(string("Window $(event.window.windowID) gained keyboard focus"))
+            this.isWindowFocused = true
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
+            #println(string("Window $(event.window.windowID) lost keyboard focus"))
+            this.isWindowFocused = false
+
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
+            #println(string("Window $(event.window.windowID) closed"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
+            #println(string("Window $(event.window.windowID) is offered a focus"))
+        elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
+            #println(string("Window $(event.window.windowID) has a special hit test"))
+        else
+            #println(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
+        end    
+    end
+
+    function handle_key_event(this::Input, keyboardState)
+        buttonsPressedDown = this.buttonsPressedDown
+
+        count = 1
+        for scanCode in this.scanCodes
+            button = scanCode[2]
+            if this.checkScanCode(keyboardState, 1, [scanCode[1]]) && !(button in this.buttonsHeldDown)
+                push!(buttonsPressedDown, button)
+                push!(this.buttonsHeldDown, button)
+            elseif this.checkScanCode(keyboardState, 0, [scanCode[1]])
+                if button in this.buttonsHeldDown
+                    deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
+                end
+            end
+        end
+        this.buttonsPressedDown = buttonsPressedDown
+    end
+
+    function handle_mouse_event(this::Input, event)
+        mouseButtons = []
+        mouseButtonsUp = []
+        mouseButton = C_NULL
+        mouseButtonUp = C_NULL
+
+        if event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT
+            if !(mouseButton in mouseButtons)
+                if event.type == SDL2.SDL_MOUSEBUTTONDOWN
+                    mouseButton = event.button.button
+                    push!(mouseButtons, mouseButton)
+                elseif event.type == SDL2.SDL_MOUSEBUTTONUP
+                    mouseButtonUp = event.button.button
+                    push!(mouseButtonsUp, mouseButtonUp)
+                end
+            end
+        end
+
+        this.mouseButtonsPressedDown = mouseButtons
+        for mouseButton in mouseButtons
+            if !(mouseButton in this.mouseButtonsHeldDown)
+                push!(this.mouseButtonsHeldDown, mouseButton)
+            end
+        end
+        for mouseButton in mouseButtonsUp
+            if mouseButton in this.mouseButtonsHeldDown
+                deleteat!(this.mouseButtonsHeldDown, findfirst(x -> x == mouseButton, this.mouseButtonsHeldDown))
+            end
+        end
+        this.mouseButtonsReleased = mouseButtonsUp
+    end
+
+    function get_button_held_down(this::Input, button)
+        if button in this.buttonsHeldDown
+            return true
+        end
+        return false
+    end
+
+    function get_button_pressed(this::Input, button)
+        if button in this.buttonsPressedDown
+            return true
+        end
+        return false
+    end
+
+    function get_button_released(this::Input, button)
+        if button in this.buttonsReleased
+            return true
+        end
+        return false
+    end
+
+    function get_mouse_button(this::Input, button)
+        if button in this.mouseButtonsHeldDown
+            return true
+        end
+        return false
+    end
+
+    function get_mouse_button_pressed(this::Input, button)
+        if button in this.mouseButtonsPressedDown
+            return true
+        end
+        return false
+    end
+
+    function get_mouse_button_released(this::Input, button)
+        if button in this.mouseButtonsReleased
+            return true
+        end
+        return false
+    end
+    
 end
