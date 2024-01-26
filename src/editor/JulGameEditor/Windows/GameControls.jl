@@ -1,7 +1,7 @@
 function LoadScene(scenePath, renderer)
     game = C_NULL
     try
-        game = SceneLoaderModule.LoadSceneFromEditor(scenePath, renderer);
+        game = SceneLoaderModule.LoadSceneFromEditor(scenePath, renderer, true);
     catch e
         rethrow(e)
     end

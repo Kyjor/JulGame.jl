@@ -6,7 +6,7 @@ mutable struct Camera
     offset::Vector2f
     position::Vector2f
     startingCoordinates::Vector2f
-    target
+    target#EntityModule.Entity
     windowPos::Vector2
 
     function Camera(dimensions::Vector2, initialPosition::Vector2f, offset::Vector2f, target)

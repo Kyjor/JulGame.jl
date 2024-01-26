@@ -72,9 +72,10 @@ module MainLoop
 
 	function Base.getproperty(this::Main, s::Symbol)
 		if s == :init
-			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
-
-				#PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
+			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
+				if !isNewEditor
+					PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
+				end
 				InitializeScriptsAndComponents(this, isUsingEditor)
 
 				if !isUsingEditor

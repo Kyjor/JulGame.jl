@@ -95,8 +95,6 @@ module SpriteModule
                 this.position
 
                 srcRect = (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
-                this.isFloatPrecision = true
-                #println("srcRect: ",typeof(srcRect))
                 dstRect = Ref(SDL2.SDL_FRect(
                     (position.x + this.offset.x) * SCALE_UNITS * zoom - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2, # TODO: Center the sprite within the entity
                     (position.y + this.offset.y) * SCALE_UNITS * zoom - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2,

@@ -9,7 +9,7 @@ module InputModule
         buttonsHeldDown::Vector{String}
         buttonsReleased::Vector{String}
         debug::Bool
-        editorCallback
+        editorCallback::Union{Function, Nothing}
         isWindowFocused::Bool
         main
         mouseButtonsPressedDown::Vector
@@ -38,7 +38,7 @@ module InputModule
             this.buttonsHeldDown = []
             this.buttonsReleased = []
             this.debug = false
-            this.editorCallback = C_NULL
+            this.editorCallback = nothing
             this.isWindowFocused = true
             this.mouseButtonsPressedDown = []
             this.mouseButtonsHeldDown = []
@@ -97,7 +97,7 @@ module InputModule
                 while Bool(SDL2.SDL_PollEvent(event_ref))
                     evt = event_ref[]
                     this.handleWindowEvents(evt)
-                    if this.editorCallback != C_NULL
+                    if this.editorCallback !== nothing
                         this.editorCallback(evt)
                     end
                     if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
