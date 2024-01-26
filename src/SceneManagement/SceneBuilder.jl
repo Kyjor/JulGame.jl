@@ -8,6 +8,12 @@ module SceneBuilderModule
     using ..SceneReaderModule
 
     function __init__()
+        # if end of path is "test", then we are running tests
+        if endswith(pwd(), "test")
+            println("Loading scripts in test folder...")
+            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
+        end
+
         if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
             println("Loading scripts...")
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
