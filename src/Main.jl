@@ -353,6 +353,7 @@ module MainLoop
 		SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
 		SDL2.SDL_initFramerate(this.fpsManager)
+		SDL2.SDL_setFramerate(this.fpsManager, UInt32(144))
 		println(this.fpsManager)
 		println("FPS: ", SDL2.SDL_getFramerate(this.fpsManager))
 	end

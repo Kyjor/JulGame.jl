@@ -229,7 +229,7 @@ module InputModule
             catch
                 println("Error checking scan code $(scanCode) at index $(Int32(scanCode) + 1)")
             end
-            
+        end
         return false
     end    
 
