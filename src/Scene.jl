@@ -1,5 +1,6 @@
 ﻿mutable struct Scene
-    camera
+    # Need to work on import order so this can be concretely typed or at least parametricized
+    camera::Union{Nothing, Any} #, JulGame.SceneManagement.SceneBuilderModule.Camera}
     colliders::Vector{Any}
     entities::Vector{Any}
     rigidbodies::Vector{Any}
@@ -9,7 +10,7 @@
     function Scene()
         this = new()
 
-        this.camera = C_NULL
+        this.camera = nothing
         this.colliders = []
         this.entities = []
         this.rigidbodies = []
