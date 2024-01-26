@@ -1,5 +1,6 @@
 module ShapeModule
     using ..Component.JulGame
+    import ..Component.JulGame: deprecated_get_property
 
     export Shape
     struct Shape
@@ -37,41 +38,38 @@ module ShapeModule
     end
 
     function Base.getproperty(this::InternalShape, s::Symbol)
-        if s == :draw
-            function()
-                if JulGame.Renderer == C_NULL
-                    return                    
-                end
+        method_props = (
+            draw = draw,
+            setParent = set_parent
+        )
+        deprecated_get_property(method_props, this, s)
+    end
 
-                parentTransform = this.parent.transform
-
-                cameraDiff = this.isWorldEntity ? 
-                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
-                Math.Vector2(0,0)
-                position = this.isWorldEntity ?
-                parentTransform.getPosition() :
-                this.position
-
-                outlineRect = Ref(SDL2.SDL_FRect(convert(Int32,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-                convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-                convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
-                convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
-                SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
-
-                this.isFilled ? SDL2.SDL_RenderFillRectF( JulGame.Renderer, outlineRect) : SDL2.SDL_RenderDrawRectF( JulGame.Renderer, outlineRect);
-                
-            end
-    elseif s == :setParent
-            function(parent::Any)
-                this.parent = parent
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
+    function draw(this::InternalShape)
+        if JulGame.Renderer == C_NULL
+            return                    
         end
+
+        parentTransform = this.parent.transform
+
+        cameraDiff = this.isWorldEntity ? 
+        Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+        Math.Vector2(0,0)
+        position = this.isWorldEntity ?
+        parentTransform.getPosition() :
+        this.position
+
+        outlineRect = Ref(SDL2.SDL_FRect(convert(Int32,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+        convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
+        convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
+        convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
+        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
+
+        this.isFilled ? SDL2.SDL_RenderFillRectF( JulGame.Renderer, outlineRect) : SDL2.SDL_RenderDrawRectF( JulGame.Renderer, outlineRect);
+        
+    end
+
+    function set_parent(this::InternalShape, parent::Any)
+        this.parent = parent
     end
 end
