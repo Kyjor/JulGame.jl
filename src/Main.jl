@@ -709,9 +709,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				for layer in this.spriteLayers["sort"]
 					for sprite in this.spriteLayers["$(layer)"]
 						spritePosition = sprite.parent.transform.getPosition()
-						spritePosition = Math.Vector2f(spritePosition.x * zoomMultiplier, spritePosition.y * zoomMultiplier)
 						spriteSize = sprite.parent.transform.getScale()
-						spriteSize = Math.Vector2f(spriteSize.x * zoomMultiplier, spriteSize.y * zoomMultiplier)
 						
 						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (spritePosition.y - spriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
 							skipcount += 1
@@ -719,7 +717,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 						end
 						rendercount += 1
 						try
-							sprite.draw(this.zoom)
+							sprite.draw(zoomMultiplier)
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
 							rethrow(e)

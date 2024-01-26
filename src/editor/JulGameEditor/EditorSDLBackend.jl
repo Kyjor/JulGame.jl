@@ -70,14 +70,15 @@ module Editor
 
                     ShowGameControls()
 
-                    
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
                     SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
                     SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
                     SDL2.SDL_RenderClear(renderer);
                     ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData(), test)
-
+                    
+                    screenA = Ref(SDL2.SDL_Rect(round(windowPos.x), windowPos.y + 20, windowSize.x, windowSize.y - 20))
+                    SDL2.SDL_RenderSetViewport(renderer, screenA)
                     ################################################# Injecting game loop into editor
                     if game !== nothing
                         if game.input.editorCallback == C_NULL
