@@ -14,8 +14,7 @@ module MainLoop
 		close::Bool
 		currentTestTime::Float64
 		debugTextBoxes::Vector{UI.TextBoxModule.TextBox}
-		events::Vector # what is this for ?
-		globals::Vector  # what is this for ?
+		globals::Vector{Any}
 		input::Input
 		isDraggingEntity::Bool
 		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
@@ -31,7 +30,7 @@ module MainLoop
 		selectedEntityIndex::Int64
 		selectedEntityUpdated::Bool
 		selectedTextBoxIndex::Int64
-		screenDimensions::Union{Ptr{Nothing}, Math.Vector2}
+		screenDimensions::Math.Vector2
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate::Int32
@@ -51,7 +50,6 @@ module MainLoop
 			this.cameraBackgroundColor = (0,0,0)
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
-			this.events = [] # what is this for?
 			this.input.scene = this.scene
 			this.mousePositionWorld = Math.Vector2f()
 			this.mousePositionWorldRaw = Math.Vector2f()
@@ -60,7 +58,7 @@ module MainLoop
 			this.selectedEntityIndex = -1
 			this.selectedTextBoxIndex = -1
 			this.selectedEntityUpdated = false
-			this.screenDimensions = C_NULL # Why is this a C_NULL by default? why not Math.Vector2(0,0)?
+			this.screenDimensions = Math.Vector2(0,0)
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this

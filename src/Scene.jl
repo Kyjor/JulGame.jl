@@ -1,6 +1,6 @@
 ﻿mutable struct Scene
     # Need to work on import order so this can be concretely typed or at least parametricized
-    camera::Union{typeof(C_NULL), Any} #, JulGame.SceneManagement.SceneBuilderModule.Camera}
+    camera::Union{Nothing, Any} #, JulGame.SceneManagement.SceneBuilderModule.Camera}
     colliders::Vector{Any}
     entities::Vector{Any}
     rigidbodies::Vector{Any}
@@ -10,7 +10,7 @@
     function Scene()
         this = new()
 
-        this.camera = C_NULL # why use C_NULL not nothing?
+        this.camera = nothing
         this.colliders = []
         this.entities = []
         this.rigidbodies = []
