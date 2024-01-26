@@ -12,6 +12,15 @@ function CallSDLFunction(func::Function, args...)
     return ret
 end
 
+"""
+    deprecated_get_property(method_lookup, this::T, s::Symbol) where T
+
+This function is used to deprecate the old way of accessing functions in structs.
+The method_lookup should be a tuple of the form `(old_property_name = new_function_name, ...)`.
+
+Once the old property uses are excised from the code base, the `@warn` line can be turned back on 
+to warn the user of a bad property access.
+"""
 function deprecated_get_property(method_lookup, this::T, s::Symbol) where T
     if haskey(method_lookup, s)
         f = method_lookup[s]
