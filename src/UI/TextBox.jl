@@ -1,6 +1,7 @@
 module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
+    import ..UI.JulGame: deprecated_get_property
 
     export TextBox      
     mutable struct TextBox
@@ -49,97 +50,101 @@ module TextBoxModule
     end
 
     function Base.getproperty(this::TextBox, s::Symbol)
-        if s == :render
-            function(DEBUG)
-                if !this.isInitialized
-                    Initialize(this)
-                end
+        method_props = (
+            render = render,
+            initialize = initialize,
+            setPosition = set_position,
+            setParent = set_parent,
+            updateText = update_text,
+            setVector2Value = set_vector2_value,
+            setColor = set_color,
+            centerText = center_text,
+            destroy = destroy
+        )
+        deprecated_get_property(method_props, this, s)
+    end
 
-                if this.textTexture == C_NULL
-                    return
-                end
-
-                if DEBUG
-                    SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
-                        SDL2.SDL_Point(this.position.x, this.position.y), 
-                        SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
-                        SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
-                        SDL2.SDL_Point(this.position.x, this.position.y + this.size.y), 
-                        SDL2.SDL_Point(this.position.x, this.position.y)], 5)
-                end
-
-                if this.isTextUpdated
-                    this.updateText(this.text)
-                    this.isTextUpdated = false
-                end
-
-                cameraDiff = this.isWorldEntity ? 
-                Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
-                Math.Vector2(0,0)
-
-                @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
-            end
-        elseif s == :initialize
-            function()
-                Initialize(this)
-            end
-        elseif s == :setPosition
-            function(position::Math.Vector2)
-            end
-        elseif s == :setParent
-            function(parent)
-                this.parent = parent
-            end
-        elseif s == :updateText
-            function(newText)
-                this.text = newText
-                SDL2.SDL_FreeSurface(this.renderText)
-                SDL2.SDL_DestroyTexture(this.textTexture)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
-                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-
-                this.size = Math.Vector2(surface[1].w, surface[1].h)
-                this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
-                
-                if !this.isWorldEntity
-                    this.centerText()
-                end
-            end
-        elseif s == :setVector2Value
-            function(field, x, y)
-                setfield!(this, field, Math.Vector2(x,y))
-                println("set $(field) to $(getfield(this, field))")
-            end
-        elseif s == :setColor
-            function (r,g,b)
-                SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
-            end
-        elseif s == :centerText
-            function()
-                if this.isCenteredX
-                    this.position = Math.Vector2(max(MAIN.scene.camera.dimensions.x/2 - this.size.x/2, 0), this.position.y)
-                end
-                if this.isCenteredY
-                    this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
-                end
-            end
-        elseif s == :destroy
-            function()
-                if this.textTexture == C_NULL
-                    return
-                end
-
-                SDL2.SDL_DestroyTexture(this.textTexture)
-                this.textTexture = C_NULL
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
+    function render(this::TextBox, DEBUG)
+        if !this.isInitialized
+            Initialize(this)
         end
+
+        if this.textTexture == C_NULL
+            return
+        end
+
+        if DEBUG
+            SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
+                SDL2.SDL_Point(this.position.x, this.position.y), 
+                SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
+                SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
+                SDL2.SDL_Point(this.position.x, this.position.y + this.size.y), 
+                SDL2.SDL_Point(this.position.x, this.position.y)], 5)
+        end
+
+        if this.isTextUpdated
+            this.updateText(this.text)
+            this.isTextUpdated = false
+        end
+
+        cameraDiff = this.isWorldEntity ? 
+        Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+        Math.Vector2(0,0)
+
+        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+    end
+
+    function initialize(this::TextBox)
+        Initialize(this)
+    end
+
+    function set_position(this::TextBox, position::Math.Vector2)
+    end
+
+    function set_parent(this::TextBox, parent)
+        this.parent = parent
+    end
+
+    function update_text(this::TextBox, newText)
+        this.text = newText
+        SDL2.SDL_FreeSurface(this.renderText)
+        SDL2.SDL_DestroyTexture(this.textTexture)
+        this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
+        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+
+        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
+        
+        if !this.isWorldEntity
+            this.centerText()
+        end
+    end
+
+    function set_vector2_value(this::TextBox, field, x, y)
+        setfield!(this, field, Math.Vector2(x,y))
+        println("set $(field) to $(getfield(this, field))")
+    end
+
+    function set_color(this::TextBox, r,g,b)
+        SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
+    end
+
+    function center_text(this::TextBox)
+        if this.isCenteredX
+            this.position = Math.Vector2(max(MAIN.scene.camera.dimensions.x/2 - this.size.x/2, 0), this.position.y)
+        end
+        if this.isCenteredY
+            this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
+        end
+    end
+
+    function destroy(this::TextBox)
+        if this.textTexture == C_NULL
+            return
+        end
+
+        SDL2.SDL_DestroyTexture(this.textTexture)
+        this.textTexture = C_NULL
     end
 
     function Initialize(this)

@@ -1,7 +1,7 @@
 module MainLoop
 	using ..JulGame
 	using ..JulGame: Input, Math, UI
-
+    import ..JulGame: deprecated_get_property
 	include("Enums.jl")
 	include("Constants.jl")
 	include("Scene.jl")
@@ -71,265 +71,261 @@ module MainLoop
 	end
 
 	function Base.getproperty(this::Main, s::Symbol)
-		if s == :init
-			function(isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
-				if !isNewEditor
-					PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
-				end
-				InitializeScriptsAndComponents(this, isUsingEditor)
-
-				if !isUsingEditor
-					this.fullLoop()
-					return
-				end
-			end
-		elseif s == :initializeNewScene
-			function(isUsingEditor::Bool = false)
-				this.level.changeScene(isUsingEditor)
-				InitializeScriptsAndComponents(this, false)
-
-				if !isUsingEditor
-					this.fullLoop()
-					return
-				end
-			end
-		elseif s == :resetCameraPosition
-			function ()
-				cameraPosition = Math.Vector2f()
-				this.scene.camera.update(cameraPosition)
-			end
-		elseif s == :fullLoop
-			function ()
-				try
-					DEBUG = false
-					this.close = false
-					startTime = Ref(UInt64(0))
-					lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
-
-					while !this.close
-						try
-							GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
-						catch e
-							if this.testMode
-								throw(e)
-							else
-								println(e)
-								Base.show_backtrace(stdout, catch_backtrace())
-							end
-						end
-						if this.testMode && this.currentTestTime >= this.testLength
-							break
-						end
-					end
-				finally
-					for entity in this.scene.entities
-						for script in entity.scripts
-							try
-								script.onShutDown()
-							catch e
-								if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
-									println("Error shutting down script")
-									println(e)
-									Base.show_backtrace(stdout, catch_backtrace())
-								end
-							end
-						end
-					end
-					if !this.shouldChangeScene
-						SDL2.SDL_DestroyRenderer(JulGame.Renderer)
-						SDL2.SDL_DestroyWindow(this.window)
-						SDL2.SDL_Quit()
-					else
-						this.shouldChangeScene = false
-						this.initializeNewScene(false)
-					end
-				end
-			end
-		elseif s == :gameLoop
-			function (startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos = C_NULL, windowSize = C_NULL)
-				if this.shouldChangeScene
-					this.shouldChangeScene = false
-					this.initializeNewScene(true)
-					return
-				end
-				return GameLoop(this, startTime, lastPhysicsTime, isEditor, update, windowPos, windowSize)
-			end
-		elseif s == :handleEditorInputsCamera
-			function (update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL)
-				#Rendering
-				cameraPosition = this.scene.camera.position
-				if SDL2.SDL_BUTTON_MIDDLE in this.input.mouseButtonsHeldDown
-					xDiff = this.lastMousePosition.x - this.input.mousePosition.x
-					xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 0.1 : -0.1)
-					yDiff = this.lastMousePosition.y - this.input.mousePosition.y
-					yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 0.1 : -0.1)
-		
-					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
-		
-					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
-						diff = this.panCounter.x > this.panThreshold ? 0.2 : -0.2
-						cameraPosition = Math.Vector2f(cameraPosition.x + diff, cameraPosition.y)
-						this.panCounter = Math.Vector2f(0, this.panCounter.y)
-					end
-					if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
-						diff = this.panCounter.y > this.panThreshold ? 0.2 : -0.2
-						cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + diff)
-						this.panCounter = Math.Vector2f(this.panCounter.x, 0)
-					end
-				elseif this.input.getMouseButtonPressed(SDL2.SDL_BUTTON_LEFT)
-					# function that selects an entity if we click on it
-					this.selectEntityWithClick()
-				elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
-					# TODO: Make this work for textboxes
-					snapping = false
-					if this.input.getButtonHeldDown("LCTRL")
-						snapping = true
-					end
-					xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
-					yDiff = this.lastMousePositionWorld.y - this.mousePositionWorld.y
-		
-					this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
-		
-					entityToMoveTransform = this.scene.entities[this.selectedEntityIndex].transform
-					if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
-						diff = this.panCounter.x > this.panThreshold ? -1 : 1
-						entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
-						this.panCounter = Math.Vector2f(0, this.panCounter.y)
-					end
-					if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
-						diff = this.panCounter.y > this.panThreshold ? -1 : 1
-						entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
-						this.panCounter = Math.Vector2f(this.panCounter.x, 0)
-					end
-				elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1)
-					if this.input.getButtonHeldDown("LCTRL") && this.input.getButtonPressed("D")
-						push!(this.scene.entities, deepcopy(this.scene.entities[this.selectedEntityIndex]))
-						this.selectedEntityIndex = length(this.scene.entities)
-					end
-				elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
-				end
-		
-				if "SPACE" in this.input.buttonsHeldDown
-					if "LEFT" in this.input.buttonsHeldDown
-						this.zoom -= .01
-						this.zoom = clamp(this.zoom, 0.1, 10)
-						if update != C_NULL
-							SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-						end
-					elseif "RIGHT" in this.input.buttonsHeldDown
-						this.zoom += .01
-						this.zoom = clamp(this.zoom, 0.1, 10)
-						if update != C_NULL
-							SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-						end
-					end
-				elseif this.input.getButtonHeldDown("LEFT")
-					cameraPosition = Math.Vector2f(cameraPosition.x - 0.1, cameraPosition.y)
-				elseif this.input.getButtonHeldDown("RIGHT")
-					cameraPosition = Math.Vector2f(cameraPosition.x + 0.1, cameraPosition.y)
-				elseif this.input.getButtonHeldDown("DOWN")
-					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.1)
-				elseif this.input.getButtonHeldDown("UP")
-					cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.1)
-				end
-		
-				if update != C_NULL && update[6]
-					cameraPosition = Math.Vector2f()
-				end
-				this.scene.camera.update(cameraPosition)
-				return cameraPosition
-			end
-		elseif s == :createNewEntity
-			function ()
-				this.level.createNewEntity()
-			end
-		elseif s == :createNewTextBox
-			function (fontPath)
-				this.level.createNewTextBox(fontPath)
-			end
-		elseif s == :selectEntityWithClick
-			function ()
-				entityIndex = 0
-				for entity in this.scene.entities
-					entityIndex += 1
-					size = entity.collider != C_NULL ? entity.collider.getSize() : entity.transform.getScale()
-					if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
-						if this.selectedEntityIndex == entityIndex
-							continue
-						end
-						this.selectedEntityIndex = entityIndex
-						this.selectedTextBoxIndex = -1
-						this.selectedEntityUpdated = true
-						return
-					end
-				end
-				textBoxIndex = 1
-				for textBox in this.scene.textBoxes
-					if this.mousePositionWorld.x >= textBox.position.x && this.mousePositionWorld.x <= textBox.position.x + textBox.size.x && this.mousePositionWorld.y >= textBox.position.y && this.mousePositionWorld.y <= textBox.position.y + textBox.size.y
-						this.selectedTextBoxIndex = textBoxIndex
-						this.selectedEntityIndex = -1
-
-						return
-					end
-					textBoxIndex += 1
-				end
-				this.selectedEntityIndex = -1
-			end
-		elseif s == :minimizeWindow
-			function ()
-				SDL2.SDL_MinimizeWindow(this.window)
-			end
-		elseif s == :restoreWindow
-			function ()
-				SDL2.SDL_RestoreWindow(this.window)
-			end
-		elseif s == :updateViewport
-			function (x,y)
-				if !this.autoScaleZoom
-					return
-				end
-				this.scaleZoom(x,y)
-				SDL2.SDL_RenderClear(JulGame.Renderer)
-				SDL2.SDL_RenderSetScale(JulGame.Renderer, 1.0, 1.0)	
-				this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-				SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
-				SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-			end
-		elseif s == :scaleZoom
-			function (x,y)
-				if this.autoScaleZoom
-					targetRatio = this.scene.camera.dimensions.x/this.scene.camera.dimensions.y
-					if this.scene.camera.dimensions.x == max(this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)
-						for i in x:-1:this.scene.camera.dimensions.x
-							value = i/targetRatio
-							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
-							if isInt && value <= y
-								this.zoom = i/this.scene.camera.dimensions.x
-								break
-							end
-						end
-					else
-						for i in y:-1:this.scene.camera.dimensions.y
-							value = i*targetRatio
-							isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
-							if isInt && value <= x
-								this.zoom = i/this.scene.camera.dimensions.y
-								break
-							end
-						end
-					end
-				end
-			end
-		else
-			try
-				getfield(this, s)
-			catch e
-				println(e)
-				Base.show_backtrace(stdout, catch_backtrace())
-			end
-		end
+        method_props = (
+            init = init,
+            initializeNewScene = initialize_new_scene,
+            resetCameraPosition = reset_camera_position,
+            fullLoop = full_loop,
+            gameLoop = game_loop,
+            handleEditorInputsCamera = handle_editor_inputs_camera,
+            createNewEntity = create_new_entity,
+            createNewTextBox = create_new_text_box,
+            selectEntityWithClick = select_entity_with_click,
+            minimizeWindow = minimize_window,
+            restoreWindow = restore_window,
+            updateViewport = update_viewport,
+            scaleZoom = scale_zoom
+        )
+		deprecated_get_property(method_props, this, s)
 	end
 
+    function init(this::Main, isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
+        if !isNewEditor
+            PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
+        end
+        InitializeScriptsAndComponents(this, isUsingEditor)
+
+        if !isUsingEditor
+            this.fullLoop()
+            return
+        end
+    end
+    function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
+        this.level.changeScene(isUsingEditor)
+        InitializeScriptsAndComponents(this, false)
+
+        if !isUsingEditor
+            this.fullLoop()
+            return
+        end
+    end
+    function reset_camera_position(this::Main)
+        cameraPosition = Math.Vector2f()
+        this.scene.camera.update(cameraPosition)
+    end
+    function full_loop(this::Main)
+        try
+            DEBUG = false
+            this.close = false
+            startTime = Ref(UInt64(0))
+            lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
+
+            while !this.close
+                try
+                    GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
+                catch e
+                    if this.testMode
+                        throw(e)
+                    else
+                        println(e)
+                        Base.show_backtrace(stdout, catch_backtrace())
+                    end
+                end
+                if this.testMode && this.currentTestTime >= this.testLength
+                    break
+                end
+            end
+        finally
+            for entity in this.scene.entities
+                for script in entity.scripts
+                    try
+                        script.onShutDown()
+                    catch e
+                        if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
+                            println("Error shutting down script")
+                            println(e)
+                            Base.show_backtrace(stdout, catch_backtrace())
+                        end
+                    end
+                end
+            end
+            if !this.shouldChangeScene
+                SDL2.SDL_DestroyRenderer(JulGame.Renderer)
+                SDL2.SDL_DestroyWindow(this.window)
+                SDL2.SDL_Quit()
+            else
+                this.shouldChangeScene = false
+                this.initializeNewScene(false)
+            end
+        end
+    end
+    function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos = C_NULL, windowSize = C_NULL)
+        if this.shouldChangeScene
+            this.shouldChangeScene = false
+            this.initializeNewScene(true)
+            return
+        end
+        return GameLoop(this, startTime, lastPhysicsTime, isEditor, update, windowPos, windowSize)
+    end
+    function handle_editor_inputs_camera(this::Main, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL)
+        #Rendering
+        cameraPosition = this.scene.camera.position
+        if SDL2.SDL_BUTTON_MIDDLE in this.input.mouseButtonsHeldDown
+            xDiff = this.lastMousePosition.x - this.input.mousePosition.x
+            xDiff = xDiff == 0 ? 0 : (xDiff > 0 ? 0.1 : -0.1)
+            yDiff = this.lastMousePosition.y - this.input.mousePosition.y
+            yDiff = yDiff == 0 ? 0 : (yDiff > 0 ? 0.1 : -0.1)
+
+            this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+
+            if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
+                diff = this.panCounter.x > this.panThreshold ? 0.2 : -0.2
+                cameraPosition = Math.Vector2f(cameraPosition.x + diff, cameraPosition.y)
+                this.panCounter = Math.Vector2f(0, this.panCounter.y)
+            end
+            if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
+                diff = this.panCounter.y > this.panThreshold ? 0.2 : -0.2
+                cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + diff)
+                this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+            end
+        elseif this.input.getMouseButtonPressed(SDL2.SDL_BUTTON_LEFT)
+            # function that selects an entity if we click on it
+            this.selectEntityWithClick()
+        elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
+            # TODO: Make this work for textboxes
+            snapping = false
+            if this.input.getButtonHeldDown("LCTRL")
+                snapping = true
+            end
+            xDiff = this.lastMousePositionWorld.x - this.mousePositionWorld.x
+            yDiff = this.lastMousePositionWorld.y - this.mousePositionWorld.y
+
+            this.panCounter = Math.Vector2f(this.panCounter.x + xDiff, this.panCounter.y + yDiff)
+
+            entityToMoveTransform = this.scene.entities[this.selectedEntityIndex].transform
+            if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
+                diff = this.panCounter.x > this.panThreshold ? -1 : 1
+                entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
+                this.panCounter = Math.Vector2f(0, this.panCounter.y)
+            end
+            if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
+                diff = this.panCounter.y > this.panThreshold ? -1 : 1
+                entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
+                this.panCounter = Math.Vector2f(this.panCounter.x, 0)
+            end
+        elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1)
+            if this.input.getButtonHeldDown("LCTRL") && this.input.getButtonPressed("D")
+                push!(this.scene.entities, deepcopy(this.scene.entities[this.selectedEntityIndex]))
+                this.selectedEntityIndex = length(this.scene.entities)
+            end
+        elseif SDL2.SDL_BUTTON_LEFT in this.input.mouseButtonsReleased
+        end
+
+        if "SPACE" in this.input.buttonsHeldDown
+            if "LEFT" in this.input.buttonsHeldDown
+                this.zoom -= .01
+                this.zoom = clamp(this.zoom, 0.1, 10)
+                if update != C_NULL
+                    SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
+                end
+            elseif "RIGHT" in this.input.buttonsHeldDown
+                this.zoom += .01
+                this.zoom = clamp(this.zoom, 0.1, 10)
+                if update != C_NULL
+                    SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
+                end
+            end
+        elseif this.input.getButtonHeldDown("LEFT")
+            cameraPosition = Math.Vector2f(cameraPosition.x - 0.1, cameraPosition.y)
+        elseif this.input.getButtonHeldDown("RIGHT")
+            cameraPosition = Math.Vector2f(cameraPosition.x + 0.1, cameraPosition.y)
+        elseif this.input.getButtonHeldDown("DOWN")
+            cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.1)
+        elseif this.input.getButtonHeldDown("UP")
+            cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y - 0.1)
+        end
+
+        if update != C_NULL && update[6]
+            cameraPosition = Math.Vector2f()
+        end
+        this.scene.camera.update(cameraPosition)
+        return cameraPosition
+    end
+    function create_new_entity(this::Main)
+        this.level.createNewEntity()
+    end
+    function create_new_text_box(this::Main, fontPath)
+        this.level.createNewTextBox(fontPath)
+    end
+    function select_entity_with_click(this::Main)
+        entityIndex = 0
+        for entity in this.scene.entities
+            entityIndex += 1
+            size = entity.collider != C_NULL ? entity.collider.getSize() : entity.transform.getScale()
+            if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
+                if this.selectedEntityIndex == entityIndex
+                    continue
+                end
+                this.selectedEntityIndex = entityIndex
+                this.selectedTextBoxIndex = -1
+                this.selectedEntityUpdated = true
+                return
+            end
+        end
+        textBoxIndex = 1
+        for textBox in this.scene.textBoxes
+            if this.mousePositionWorld.x >= textBox.position.x && this.mousePositionWorld.x <= textBox.position.x + textBox.size.x && this.mousePositionWorld.y >= textBox.position.y && this.mousePositionWorld.y <= textBox.position.y + textBox.size.y
+                this.selectedTextBoxIndex = textBoxIndex
+                this.selectedEntityIndex = -1
+
+                return
+            end
+            textBoxIndex += 1
+        end
+        this.selectedEntityIndex = -1
+    end
+    function minimize_window(this::Main)
+        SDL2.SDL_MinimizeWindow(this.window)
+    end
+    function restore_window(this::Main)
+        SDL2.SDL_RestoreWindow(this.window)
+    end
+    function update_viewport(this::Main, x,y)
+        if !this.autoScaleZoom
+            return
+        end
+        this.scaleZoom(x,y)
+        SDL2.SDL_RenderClear(JulGame.Renderer)
+        SDL2.SDL_RenderSetScale(JulGame.Renderer, 1.0, 1.0)	
+        this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
+        SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+        SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
+    end
+    function scale_zoom(this::Main, x,y)
+        if this.autoScaleZoom
+            targetRatio = this.scene.camera.dimensions.x/this.scene.camera.dimensions.y
+            if this.scene.camera.dimensions.x == max(this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)
+                for i in x:-1:this.scene.camera.dimensions.x
+                    value = i/targetRatio
+                    isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
+                    if isInt && value <= y
+                        this.zoom = i/this.scene.camera.dimensions.x
+                        break
+                    end
+                end
+            else
+                for i in y:-1:this.scene.camera.dimensions.y
+                    value = i*targetRatio
+                    isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
+                    if isInt && value <= x
+                        this.zoom = i/this.scene.camera.dimensions.y
+                        break
+                    end
+                end
+            end
+        end
+    end
+    
 	function PrepareWindow(this::Main, isUsingEditor::Bool = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 		if dimensions == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
