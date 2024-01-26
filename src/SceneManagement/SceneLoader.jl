@@ -1,24 +1,28 @@
 module SceneLoaderModule
-    using ..SceneManagement.JulGame
-    using ..SceneManagement.SceneBuilderModule
+    using ...JulGame
+    using ..SceneBuilderModule
 
     export loadScene
     function loadScene(projectPath, sceneFileName, isUsingEditor = false) 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
+        #println("Loading scene $sceneFileName from $projectPath")
         main = Scene(sceneFileName, projectPath)
-        
         return main.init("Editor", isUsingEditor)
     end
     
     export LoadSceneFromEditor
-    function LoadSceneFromEditor(scenePath) 
+    function LoadSceneFromEditor(scenePath, renderer = nothing, isNewEditor::Bool=false) 
         projectPath = GetProjectPathFromFullScenePath(scenePath)
         sceneFileName = GetSceneFileNameFromFullScenePath(scenePath)
 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
+        if renderer !== nothing
+            JulGame.Renderer = renderer
+        end
+        #println("Loading scene $sceneFileName from $projectPath")
         main = Scene("$sceneFileName", "$projectPath")
         
-        return main.init("Editor", true)
+        return main.init("Editor", true; isNewEditor=isNewEditor)
     end
 
     export GetProjectPathFromFullScenePath
@@ -42,6 +46,7 @@ module SceneLoaderModule
 
     export GetSceneFileNameFromFullScenePath
     function GetSceneFileNameFromFullScenePath(scenePath)
+        #println("JulGame.BasePath: $(JulGame.BasePath)")
         sceneFileName = split(scenePath, "/")[end]
         sceneFileName = split(scenePath, "\\")[end]
         return sceneFileName

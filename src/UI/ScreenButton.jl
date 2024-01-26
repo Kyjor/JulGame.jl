@@ -15,6 +15,7 @@ module ScreenButtonModule
         fontPath::Union{String, Ptr{Nothing}}
         isInitialized::Bool
         mouseOverSprite
+        persistentBetweenScenes::Bool
         position::Math.Vector2
         text::String
         textOffset::Math.Vector2
@@ -36,6 +37,7 @@ module ScreenButtonModule
             this.textOffset = textOffset
             this.textTexture = C_NULL
             this.isInitialized = false
+            this.persistentBetweenScenes = false
 
             return this
         end
@@ -55,16 +57,16 @@ module ScreenButtonModule
                 if !this.mouseOverSprite && this.currentTexture == this.buttonDownTexture
                     this.currentTexture = this.buttonUpTexture
                 end    
-                @assert SDL2.SDL_RenderCopyEx(
+                @assert SDL2.SDL_RenderCopyExF(
                     JulGame.Renderer, 
                     this.currentTexture, 
                     C_NULL, 
-                    Ref(SDL2.SDL_Rect(this.position.x, this.position.y, this.dimensions.x,this.dimensions.y)), 
+                    Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.dimensions.x,this.dimensions.y)), 
                     0.0, 
                     C_NULL, 
                     SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-                @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+                @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
@@ -103,10 +105,10 @@ module ScreenButtonModule
             end
         elseif s == :destroy
             function()
-                if !this.buttonDownTexture == C_NULL
+                if this.buttonDownTexture != C_NULL
                     SDL2.SDL_DestroyTexture(this.buttonDownTexture)
                 end
-                if !this.buttonUpTexture == C_NULL
+                if this.buttonUpTexture != C_NULL
                     SDL2.SDL_DestroyTexture(this.buttonUpTexture)
                 end
                 this.buttonDownTexture = C_NULL

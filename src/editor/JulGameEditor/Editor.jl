@@ -10,30 +10,22 @@ module Editor
     using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
     using ImGuiOpenGLBackend.ModernGL
     using NativeFileDialog
-    #using Printf
     using JulGame
     using JulGame.EntityModule
     using JulGame.SceneWriterModule
     using JulGame.SceneLoaderModule
     using JulGame.TextBoxModule
+    using JulGame.MainLoop
 
-    include("../../Macros.jl")
-    include("./MainMenuBar.jl")
-    include("./EntityContextMenu.jl")
-    include("./ComponentInputs.jl")
-    include("./TextBoxFields.jl")
-    include("./Utils.jl")
+    include(joinpath("..","..","Macros.jl"))
+    include("MainMenuBar.jl")
+    include("EntityContextMenu.jl")
+    include("ComponentInputs.jl")
+    include("TextBoxFields.jl")
+    include("Utils.jl")
 
-    # function createObject(args...)
-    #     for (i, arg) in enumerate(args)
-    #         println("Arg #$i = $(arg[1])")
-    #         var"$(arg[1])" = arg[2]
-    #     end
-
-    #     () -> (begin
-    #         var"$(arg[1])";
-    #     end for (i, arg) in enumerate(args))
-    # end
+    # Windows
+    include(joinpath("Windows", "GameControls.jl"))
 
     function scriptObj(name::String, parameters::Array)
         () -> (name; parameters)
@@ -49,6 +41,14 @@ module Editor
 
         return game
     end
+
+    function CloseCurrentScene(game)
+        try
+            game
+        catch e
+            rethrow(e)
+        end
+    end
     
     function GetAllScenesFromFolder(projectPath)
         sceneFiles = []
@@ -58,7 +58,7 @@ module Editor
                 if "scenes" in dirs
                     for (root, dirs, files) in walkdir(joinpath(root, "scenes"))
                         for file in files
-                            println(file)
+                            # println(file)
                             if occursin(r".json$", file)
                                 push!(sceneFiles, joinpath(root, file))
                             end
@@ -75,7 +75,7 @@ module Editor
 
     function ChooseFolderWithDialog()
         dir = pick_folder()
-        println("open_dialog returned $dir")
+        # println("open_dialog returned $dir")
         return dir
     end
 
@@ -107,6 +107,7 @@ module Editor
     
         io = CImGui.GetIO()
         io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
+        io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_ViewportsEnable
     
         # setup Dear ImGui style #Todo: Make this a setting
         CImGui.StyleColorsDark()
@@ -160,15 +161,9 @@ module Editor
                     end 
                     
                     glfwPollEvents()
-                    # start the Dear ImGui frame
-                    ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
-                    ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
-                    CImGui.NewFrame()
+                    StartFrame(opengl_ctx, glfw_ctx)
         
-                    event = @event begin
-                        serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
-                    end
-                    events = [event]
+                    events = CreateEvents()
                     @c ShowMainMenuBar(Ref{Bool}(true), events)
                     
                     # Uncomment to see widgets that can be used.
@@ -397,33 +392,25 @@ module Editor
                             CImGui.NewLine()
                             CImGui.Button("Load Project using Dialog") && (ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir)))
 
+                            CImGui.Text("Load Scene:")
                             for scene in scenesLoadedFromFolder
-                                CImGui.Button("Load Scene: $(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
+                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
                                 CImGui.NewLine()
                             end
                         else 
                             CImGui.Text("Scene loaded. Click 'Play' to run the game.")
                             CImGui.NewLine()
-                            CImGui.Text("If you want to load a new scene, you must restart the editor.")
+                            CImGui.Text("Change Scene:")
+                            for scene in scenesLoadedFromFolder
+                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); ChangeScene(String(sceneName)))
+                                CImGui.NewLine()
+                            end
                         end
 
                         CImGui.End()
                     end
 
-                    @cstatic begin
-                        CImGui.Begin("Controls")  
-                        CImGui.Text("Pan scene: Arrow keys/Hold middle mouse button and move mouse")
-                        CImGui.NewLine()
-                        CImGui.Text("Zoom in/out: Hold spacebar and left and right arrow keys")
-                        CImGui.NewLine()
-                        CImGui.Text("Select entity: Click on entity in scene window or in hierarchy window")
-                        CImGui.NewLine()
-                        CImGui.Text("Move entity: Hold left mouse button and drag entity")
-                        CImGui.NewLine()
-                        CImGui.Text("Duplicate entity: Select entity and click 'Duplicate' in hierarchy window or press 'LCTRL+D' keys")
-                        CImGui.NewLine()
-                        CImGui.End()
-                    end
+                    ShowGameControls()
 
                     CImGui.Begin("Hierarchy") 
                     if gameInfo !== nothing && length(gameInfo) > 0 
@@ -566,6 +553,22 @@ module Editor
             SDL2.SDL_Quit()
         end
     end
+
+    function StartFrame(opengl_ctx, glfw_ctx)
+       # start the Dear ImGui frame
+       ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
+       ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
+       CImGui.NewFrame() 
+    end
+
+    function CreateEvents()
+        event = @event begin
+            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+        end
+
+        return [event]
+    end
+
 
     julia_main() = run()
 end

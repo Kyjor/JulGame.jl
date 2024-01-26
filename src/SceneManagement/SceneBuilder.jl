@@ -1,13 +1,19 @@
 module SceneBuilderModule
-    using ..SceneManagement.JulGame
-    using ..SceneManagement.JulGame.Math
-    using ..SceneManagement.JulGame.ColliderModule
-    using ..SceneManagement.JulGame.EntityModule
-    using ..SceneManagement.JulGame.RigidbodyModule
-    using ..SceneManagement.JulGame.TextBoxModule
-    using ..SceneManagement.SceneReaderModule
+    using ...JulGame
+    using ...Math
+    using ...ColliderModule
+    using ...EntityModule
+    using ...RigidbodyModule
+    using ...TextBoxModule
+    using ..SceneReaderModule
 
     function __init__()
+        # if end of path is "test", then we are running tests
+        if endswith(pwd(), "test")
+            println("Loading scripts in test folder...")
+            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
+        end
+
         if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
             println("Loading scripts...")
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
@@ -49,7 +55,7 @@ module SceneBuilderModule
 
         function Base.getproperty(this::Scene, s::Symbol)
             if s == :init 
-                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; TestScript = C_NULL)
+                function(windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; TestScript = C_NULL, isNewEditor = false)
                     #file loading
                     if autoScaleZoom 
                         zoom = 1.0
@@ -123,13 +129,13 @@ module SceneBuilderModule
                     end
 
                     MAIN.assets = joinpath(BasePath, "assets")
-                    MAIN.init(isUsingEditor, dimensions, isResizable, autoScaleZoom)
+                    MAIN.init(isUsingEditor, dimensions, isResizable, autoScaleZoom, isNewEditor)
 
                     return MAIN
                 end
             elseif s == :changeScene
-                function()
-                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), false)
+                function(isUsingEditor::Bool = false)
+                    scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
                     
                     # println("Changing scene to $this.scene")
                     # println("Entities in main scene: ", length(MAIN.scene.entities))
@@ -158,7 +164,7 @@ module SceneBuilderModule
                             push!(MAIN.scene.colliders, entity.collider)
                         end
 
-                        if true # !isUsingEditor
+                        if !isUsingEditor
                             scriptCounter = 1
                             for script in entity.scripts
                                 params = []

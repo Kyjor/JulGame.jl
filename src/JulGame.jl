@@ -41,15 +41,11 @@ module JulGame
     using .UI
     export ScreenButtonModule, TextBoxModule
 
-    include("Main.jl") 
-    using .MainLoop: Main   
-    const MAIN = Main(Float64(1.0))
-    export MAIN
-
+    
     include("Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
-
+    
     include("Entity.jl") 
     using .EntityModule   
     export Entity
@@ -57,4 +53,9 @@ module JulGame
     include("SceneManagement/SceneManagement.jl")
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
+    
+    include("Main.jl") 
+    using .MainLoop: Main   
+    const MAIN = Main(Float64(1.0))
+    export MAIN
 end

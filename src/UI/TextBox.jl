@@ -17,6 +17,7 @@ module TextBoxModule
         isTextUpdated::Bool
         isWorldEntity::Bool
         name::String
+        persistentBetweenScenes::Bool
         position::Vector2
         renderText
         size::Vector2
@@ -41,6 +42,7 @@ module TextBoxModule
             this.isWorldEntity = isWorldEntity
             this.textTexture = C_NULL
             this.isInitialized = false
+            this.persistentBetweenScenes = false
 
             return this
         end
@@ -75,7 +77,7 @@ module TextBoxModule
                 Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
                 Math.Vector2(0,0)
 
-                @assert SDL2.SDL_RenderCopy(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_Rect(round(this.position.x - cameraDiff.x), round(this.position.y - cameraDiff.y), this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+                @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
             end
         elseif s == :initialize
             function()
@@ -142,7 +144,7 @@ module TextBoxModule
 
     function Initialize(this)
         path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-
+        # println("loading font from $(path)")
         this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
         if this.font == C_NULL
             return
