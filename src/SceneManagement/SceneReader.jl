@@ -1,16 +1,16 @@
 module SceneReaderModule
     using JSON3
-    using ..SceneManagement.JulGame.AnimatorModule
-    using ..SceneManagement.JulGame.AnimationModule
-    using ..SceneManagement.JulGame.ColliderModule
-    using ..SceneManagement.JulGame.CircleColliderModule
-    using ..SceneManagement.JulGame.EntityModule
-    using ..SceneManagement.JulGame.Math
-    using ..SceneManagement.JulGame.RigidbodyModule
-    using ..SceneManagement.JulGame.SoundSourceModule
-    using ..SceneManagement.JulGame.SpriteModule
-    using ..SceneManagement.JulGame.UI.TextBoxModule
-    using ..SceneManagement.JulGame.TransformModule
+    using ...AnimatorModule
+    using ...AnimationModule
+    using ...ColliderModule
+    using ...CircleColliderModule
+    using ...EntityModule
+    using ...Math
+    using ...RigidbodyModule
+    using ...SoundSourceModule
+    using ...SpriteModule
+    using ...UI.TextBoxModule
+    using ...TransformModule
 
 
     function scriptObj(name::String, parameters::Array)

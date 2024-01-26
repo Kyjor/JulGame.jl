@@ -1,6 +1,6 @@
 module SceneLoaderModule
-    using ..SceneManagement.JulGame
-    using ..SceneManagement.SceneBuilderModule
+    using ...JulGame
+    using ..SceneBuilderModule
 
     export loadScene
     function loadScene(projectPath, sceneFileName, isUsingEditor = false) 

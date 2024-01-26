@@ -1,11 +1,11 @@
 module SceneBuilderModule
-    using ..SceneManagement.JulGame
-    using ..SceneManagement.JulGame.Math
-    using ..SceneManagement.JulGame.ColliderModule
-    using ..SceneManagement.JulGame.EntityModule
-    using ..SceneManagement.JulGame.RigidbodyModule
-    using ..SceneManagement.JulGame.TextBoxModule
-    using ..SceneManagement.SceneReaderModule
+    using ...JulGame
+    using ...Math
+    using ...ColliderModule
+    using ...EntityModule
+    using ...RigidbodyModule
+    using ...TextBoxModule
+    using ..SceneReaderModule
 
     function __init__()
         if isdir(joinpath(pwd(), "..", "scripts")) #dev builds

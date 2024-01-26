@@ -19,8 +19,7 @@ module MainLoop
 		isDraggingEntity::Bool
 		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
 		lastMousePositionWorld::Union{Math.Vector2, Math.Vector2f}
-        # need to work on import order so that this can be concretely typed
-		level#::JulGame.SceneManagement.SceneBuilderModule.Scene
+		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		mousePositionWorld::Union{Math.Vector2, Math.Vector2f}
 		mousePositionWorldRaw::Union{Math.Vector2, Math.Vector2f}
 		optimizeSpriteRendering::Bool
