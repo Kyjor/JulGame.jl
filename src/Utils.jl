@@ -11,3 +11,12 @@ function CallSDLFunction(func::Function, args...)
 
     return ret
 end
+
+function deprecated_get_property(method_lookup, this::T, s::Symbol) where T
+    if haskey(method_lookup, s)
+        f = method_lookup[s]
+        # @warn "Using get_property to access the function $s from $T is deprecated. Please call $(typeof(f)) instead"
+        return (args...; kwargs...) -> method_lookup[s](this, args...; kwargs...)
+    end
+    return getfield(this, s)
+end
