@@ -1,5 +1,5 @@
 using JulGame
-using JulGame.Math
+using .Math
 
 mutable struct Camera
     dimensions::Vector2
@@ -28,8 +28,8 @@ function Base.getproperty(this::Camera, s::Symbol)
         end
     elseif s == :update
         function(newPosition = C_NULL)
-            SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE );
-            SDL2.SDL_RenderFillRectF(JulGame.Renderer, Ref(SDL2.SDL_FRect(0,0,this.dimensions.x, this.dimensions.y)))
+            SDL2.SDL_SetRenderDrawColor(Renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE );
+            SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(0,0,this.dimensions.x, this.dimensions.y)))
 
             if this.target != C_NULL && newPosition == C_NULL
                 targetPos = this.target.getPosition()
