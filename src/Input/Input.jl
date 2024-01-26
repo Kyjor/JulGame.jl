@@ -200,14 +200,18 @@ module InputModule
                     this.mouseButtonsPressedDown = []
                     this.mouseButtonsReleased = []
                 end
-                keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 290; own = false)
+                keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
                 this.handleKeyEvent(keyboardState)
             end
         elseif s == :checkScanCode
             function (keyboardState, keyState, scanCodes)
                 for scanCode in scanCodes
-                    if keyboardState[Int32(scanCode) + 1] == keyState
-                        return true
+                    try
+                        if keyboardState[Int32(scanCode) + 1] == keyState
+                            return true
+                        end
+                    catch
+                        println("Error checking scan code $(scanCode) at index $(Int32(scanCode) + 1)")
                     end
                 end
                 return false

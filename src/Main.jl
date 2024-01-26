@@ -14,6 +14,7 @@ module MainLoop
 		close::Bool
 		currentTestTime::Float64
 		debugTextBoxes::Vector{UI.TextBoxModule.TextBox}
+		fpsManager#::Ptr{SDL2.LibSDL2.FPSmanager}
 		globals::Vector{Any}
 		input::Input
 		isDraggingEntity::Bool
@@ -354,7 +355,7 @@ module MainLoop
 		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 		SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-		this.fpsManager = pointer(SDL2.LibSDL2.FPSmanager[SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0))])
+		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
 		SDL2.SDL_initFramerate(this.fpsManager)
 		println(this.fpsManager)
 		println("FPS: ", SDL2.SDL_getFramerate(this.fpsManager))
@@ -878,9 +879,9 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			if elapsedMS < targetFrameTime && !isEditor
 				#SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 			end
-			println("Before delay")
+
 			SDL2.SDL_framerateDelay(this.fpsManager)
-			println("After delay")
+			
 			if isEditor && update != C_NULL
 				returnData = [[this.scene.entities, this.scene.textBoxes, this.scene.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
 				this.selectedEntityUpdated = false
