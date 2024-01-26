@@ -7,6 +7,7 @@ mutable struct Camera
     position::Vector2f
     startingCoordinates::Vector2f
     target
+    windowPos::Vector2
 
     function Camera(dimensions::Vector2, initialPosition::Vector2f, offset::Vector2f, target)
         this = new()
@@ -16,6 +17,7 @@ mutable struct Camera
         this.offset = Vector2f(offset.x, offset.y)
         this.target = target
         this.startingCoordinates = Vector2f()                                                                                                                                                                                                           
+        this.windowPos = Vector2(0,0)
         this.initialize()
 
         return this
@@ -29,7 +31,7 @@ function Base.getproperty(this::Camera, s::Symbol)
     elseif s == :update
         function(newPosition = C_NULL)
             SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE );
-            SDL2.SDL_RenderFillRectF(JulGame.Renderer, Ref(SDL2.SDL_FRect(0,0,this.dimensions.x, this.dimensions.y)))
+            SDL2.SDL_RenderFillRectF(JulGame.Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.dimensions.x, this.dimensions.y)))
 
             if this.target != C_NULL && newPosition == C_NULL
                 targetPos = this.target.getPosition()

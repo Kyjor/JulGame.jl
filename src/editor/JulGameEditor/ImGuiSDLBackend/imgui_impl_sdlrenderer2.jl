@@ -31,8 +31,8 @@ end
 
 function ImGui_ImplSDLRenderer2_Shutdown()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
-    @assert bd != C_NULL # "No renderer backend to shutdown, or already shutdown?"
-    io = ImGui.GetIO()
+#    @assert bd != C_NULL # "No renderer backend to shutdown, or already shutdown?"
+    io = CImGui.GetIO()
 
     ImGui_ImplSDLRenderer2_DestroyDeviceObjects()
 
@@ -73,7 +73,7 @@ Base.@kwdef mutable struct BackupSDLRendererState
     ClipRect::SDL2.SDL_Rect
 end
 
-function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
+function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data, callback)
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
 
     # If there's a scale factor set by the user, use that instead
@@ -105,6 +105,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
 
     # Render command lists
     ImGui_ImplSDLRenderer2_SetupRenderState()
+    callback(sdlRenderer)
     data = unsafe_load(draw_data)
     cmd_lists = unsafe_wrap(Vector{Ptr{ImDrawList}}, data.CmdLists, data.CmdListsCount)
     
@@ -133,6 +134,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
         idx_buffer = cmd_list.IdxBuffer |> unsafe_load
         #println("Window Name: ", unsafe_string(unsafe_load(cmd_list._OwnerName)))
         cmd_buffer = cmd_list.CmdBuffer |> unsafe_load
+        
         for cmd_i = 0:cmd_buffer.Size-1
             pcmd = cmd_buffer.Data + cmd_i * sizeof(ImDrawCmd)
             elem_count = unsafe_load(pcmd.ElemCount)
@@ -166,9 +168,9 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 end
 
                 #     r = SDL2.SDL_Rect(ix, iy, iz, iw)
-                r = SDL2.SDL_Rect((Int)(clip_min.x), (Int)(clip_min.y), (Int)(clip_max.x - clip_min.x), (Int)(clip_max.y - clip_min.y))
+                r = SDL2.SDL_Rect((Int)(round(clip_min.x)), (Int)(round(clip_min.y)), (Int)(round(clip_max.x - clip_min.x)), (Int)(round(clip_max.y - clip_min.y)))
 
-                    @c SDL2.SDL_RenderSetClipRect(sdlRenderer, &r)
+                    # @c SDL2.SDL_RenderSetClipRect(sdlRenderer, &r)
                 
                     color = unsafe_load(vtx_buffer.Data).col
                     r = (color >> 16) & 0xFF
@@ -185,6 +187,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                     color = Ptr{Int}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + col_offset)
                     
                     tex = Ptr{SDL2.SDL_Texture}(ImDrawCmd_GetTexID(pcmd))
+                    
                     res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
                         tex,
                         xy, Int(sizeof(ImDrawVert)),
@@ -254,7 +257,7 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
 end
 
 function ImGui_ImplSDLRenderer2_DestroyFontsTexture()
-    io = ImGui.GetIO()
+    io = CImGui.GetIO()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
     if bd.FontTexture != C_NULL
         io.Fonts.SetTexID(0)

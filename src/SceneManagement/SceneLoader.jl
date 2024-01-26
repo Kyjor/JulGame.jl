@@ -11,11 +11,12 @@ module SceneLoaderModule
     end
     
     export LoadSceneFromEditor
-    function LoadSceneFromEditor(scenePath) 
+    function LoadSceneFromEditor(scenePath, renderer) 
         projectPath = GetProjectPathFromFullScenePath(scenePath)
         sceneFileName = GetSceneFileNameFromFullScenePath(scenePath)
 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
+        JulGame.Renderer = renderer
         #println("Loading scene $sceneFileName from $projectPath")
         main = Scene("$sceneFileName", "$projectPath")
         
