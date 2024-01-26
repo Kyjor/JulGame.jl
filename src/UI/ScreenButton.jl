@@ -105,10 +105,10 @@ module ScreenButtonModule
             end
         elseif s == :destroy
             function()
-                if !this.buttonDownTexture == C_NULL
+                if this.buttonDownTexture != C_NULL
                     SDL2.SDL_DestroyTexture(this.buttonDownTexture)
                 end
-                if !this.buttonUpTexture == C_NULL
+                if this.buttonUpTexture != C_NULL
                     SDL2.SDL_DestroyTexture(this.buttonUpTexture)
                 end
                 this.buttonDownTexture = C_NULL
