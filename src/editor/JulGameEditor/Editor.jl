@@ -161,9 +161,9 @@ module Editor
                     end 
                     
                     glfwPollEvents()
-                    StartFrame(opengl_ctx, glfw_ctx)
+                    start_frame(opengl_ctx, glfw_ctx)
         
-                    events = CreateEvents()
+                    events = create_events(entities, textBoxes, projectPath, sceneName)
                     @c ShowMainMenuBar(Ref{Bool}(true), events)
                     
                     # Uncomment to see widgets that can be used.
@@ -554,14 +554,14 @@ module Editor
         end
     end
 
-    function StartFrame(opengl_ctx, glfw_ctx)
+    function start_frame(opengl_ctx, glfw_ctx)
        # start the Dear ImGui frame
        ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
        ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
        CImGui.NewFrame() 
     end
 
-    function CreateEvents()
+    function create_events(entities, textBoxes, projectPath, sceneName)
         event = @event begin
             serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
         end
