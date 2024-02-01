@@ -170,7 +170,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data, callback)
                 #     r = SDL2.SDL_Rect(ix, iy, iz, iw)
                 r = SDL2.SDL_Rect((Int)(round(clip_min.x)), (Int)(round(clip_min.y)), (Int)(round(clip_max.x - clip_min.x)), (Int)(round(clip_max.y - clip_min.y)))
 
-                    # @c SDL2.SDL_RenderSetClipRect(sdlRenderer, &r)
+                @c SDL2.SDL_RenderSetClipRect(sdlRenderer, &r) # This prevents rendering to outside of the current window. For example, if you have a window that is 800x600 and you try to render a 1000x1000 image, it will only render the part that is inside the window.
                 
                     color = unsafe_load(vtx_buffer.Data).col
                     r = (color >> 16) & 0xFF

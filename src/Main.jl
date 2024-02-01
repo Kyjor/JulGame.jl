@@ -222,15 +222,18 @@ module MainLoop
         end
 
         if "SPACE" in this.input.buttonsHeldDown
-            if "LEFT" in this.input.buttonsHeldDown
-                this.zoom -= .01
-                this.zoom = clamp(this.zoom, 0.01, 10)
+            if "LEFT" in this.input.buttonsPressedDown
+                this.zoom -= .1
+                this.zoom = round(clamp(this.zoom, 0.2, 3); digits=1)
 				SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
+				println("Zoom: ", this.zoom)
                 if update != C_NULL
                 end
-            elseif "RIGHT" in this.input.buttonsHeldDown
-                this.zoom += .01
-                this.zoom = clamp(this.zoom, 0.01, 10)
+            elseif "RIGHT" in this.input.buttonsPressedDown
+                this.zoom += .1
+                this.zoom = round(clamp(this.zoom, 0.2, 3); digits=1)
+				println("Zoom: ", this.zoom)
+
 				SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
                 if update != C_NULL
                 end
@@ -593,8 +596,9 @@ Parameters:
 - `update`: An array containing information to pass back to the editor.
 
 """
-function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos = C_NULL, windowSize = C_NULL)
+function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos = C_NULL, windowSize = C_NULL)
         try
+			#SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
@@ -614,7 +618,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 			end
 			if isEditor && update == C_NULL
-				this.scene.camera.dimensions = Math.Vector2(windowSize.x, windowSize.y)
+				this.scene.camera.dimensions = Math.Vector2(1920, 1080)
+				update_viewport(this, 1920, 1080)
 				this.scene.camera.windowPos = Math.Vector2(windowPos.x, windowPos.y)
 			end
 
@@ -701,7 +706,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				rendercount = 0
 				# println("position: $(this.scene.camera.position) offset: $(this.scene.camera.offset) dimensions: $(this.scene.camera.dimensions)")
 				 #println("dimensions: $(this.scene.camera.dimensions)")
-				zoomMultiplier = (isEditor && update == C_NULL) ? this.zoom : 1.0
+				zoomMultiplier = 1.0
 				for layer in this.spriteLayers["sort"]
 					for sprite in this.spriteLayers["$(layer)"]
 						spritePosition = sprite.parent.transform.getPosition()
@@ -760,7 +765,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					end
 					colliderRenderCount += 1
 					collider = entity.collider
-					zoomMultiplier = (isEditor && update == C_NULL) ? this.zoom : 1.0
+					zoomMultiplier = 1.0
 					if collider.getType() == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
 							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
@@ -805,7 +810,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 							println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
 						end
 
-						zoomMultiplier = (isEditor && update == C_NULL) ? this.zoom : 1.0
+						zoomMultiplier = 1.0
 						pos = selectedEntity.transform.getPosition()
 						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
 						size = Math.Vector2f(size.x * zoomMultiplier, size.y * zoomMultiplier)
