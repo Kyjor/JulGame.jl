@@ -87,10 +87,10 @@ module SpriteModule
         deprecated_get_property(method_props, this, s)
     end
     function draw(this::InternalSprite, zoom::Float64 = 1.0)
+        zoom = 1.0
         if this.image == C_NULL || JulGame.Renderer == C_NULL
             return
         end
-
         if this.texture == C_NULL
             this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
             this.setColor()

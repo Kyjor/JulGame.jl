@@ -67,12 +67,11 @@ module Editor
                             CImGui.End()
                         end
                     end
-
                     @cstatic begin
                         CImGui.Begin("Hello World")  
-                            windowPos = CImGui.GetWindowPos()
-                            windowSize = CImGui.GetWindowSize()
-                            CImGui.Image(sceneTexture, ImVec2(windowSize.x - 20, windowSize.y - 20))
+                        windowPos = CImGui.GetWindowPos()
+                        windowSize = CImGui.GetWindowSize()
+                        CImGui.Image(sceneTexture, ImVec2(windowSize.x - 20, windowSize.y - 20))
                         CImGui.End()
                     end
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
