@@ -224,21 +224,21 @@ module MainLoop
         if "SPACE" in this.input.buttonsHeldDown
             if "LEFT" in this.input.buttonsHeldDown
                 this.zoom -= .01
-                this.zoom = clamp(this.zoom, 0.1, 10)
+                this.zoom = clamp(this.zoom, 0.01, 10)
                 if update != C_NULL
                     SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
                 end
             elseif "RIGHT" in this.input.buttonsHeldDown
                 this.zoom += .01
-                this.zoom = clamp(this.zoom, 0.1, 10)
+                this.zoom = clamp(this.zoom, 0.01, 10)
                 if update != C_NULL
                     SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
                 end
             end
         elseif this.input.getButtonHeldDown("LEFT")
-            cameraPosition = Math.Vector2f(cameraPosition.x - 0.1, cameraPosition.y)
+            cameraPosition = Math.Vector2f(cameraPosition.x - 0.01, cameraPosition.y)
         elseif this.input.getButtonHeldDown("RIGHT")
-            cameraPosition = Math.Vector2f(cameraPosition.x + 0.1, cameraPosition.y)
+            cameraPosition = Math.Vector2f(cameraPosition.x + 0.01, cameraPosition.y)
         elseif this.input.getButtonHeldDown("DOWN")
             cameraPosition = Math.Vector2f(cameraPosition.x, cameraPosition.y + 0.1)
         elseif this.input.getButtonHeldDown("UP")

@@ -216,7 +216,7 @@ module InputModule
             this.mouseButtonsPressedDown = []
             this.mouseButtonsReleased = []
         end
-        keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 290; own = false)
+        keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
         this.handleKeyEvent(keyboardState)
     end
 

@@ -27,7 +27,9 @@ module Editor
     function run()
         info = initSDLAndImGui()
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
-        
+
+        sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, 300, 200)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
+
         styleImGui()
         showDemoWindow = true
         game = nothing
@@ -48,14 +50,12 @@ module Editor
                     
                     ################################# MAIN MENU BAR
                     events = CreateEvents()
-                    @c ShowMainMenuBar(Ref{Bool}(true), events)
+                    #@c ShowMainMenuBar(Ref{Bool}(true), events)
                     ################################# END MAIN MENU BAR
 
-                    @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
+                    #@c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
                     @cstatic begin
                         CImGui.Begin("Open Scene")  
-                            windowPos = CImGui.GetWindowPos()
-                            windowSize = CImGui.GetWindowSize()
                             CImGui.Button("Open") &&  (game = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); game.optimizeSpriteRendering = true; JulGame.PIXELS_PER_UNIT = 16)
                         CImGui.End()
                     end
@@ -68,26 +68,38 @@ module Editor
                         end
                     end
 
-                    ShowGameControls()
-
+                    @cstatic begin
+                        CImGui.Begin("Hello World")  
+                            windowPos = CImGui.GetWindowPos()
+                            windowSize = CImGui.GetWindowSize()
+                            CImGui.Image(sceneTexture, ImVec2(windowSize.x - 20, windowSize.y - 20))
+                        CImGui.End()
+                    end
+                    SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
+                    #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                    gameInfo = game === nothing ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, ImVec2(windowPos.x, windowPos.y + 20), ImVec2(windowSize.x, windowSize.y - 20))
+                    SDL2.SDL_SetRenderTarget(renderer, C_NULL)
+                    SDL2.SDL_RenderClear(renderer)
+                    
+                    #ShowGameControls()
+                    
+                    
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
                     SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
                     SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
                     SDL2.SDL_RenderClear(renderer);
                     ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData(), test)
-                    
                     screenA = Ref(SDL2.SDL_Rect(round(windowPos.x), windowPos.y + 20, windowSize.x, windowSize.y - 20))
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
                     ################################################# Injecting game loop into editor
                     if game !== nothing
-                        if game.input.editorCallback == C_NULL
+                        if game.input.editorCallback === nothing
                             game.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
                         end
                         game.input.pollInput()
                         quit = game.input.quit
                     end
-                    gameInfo = game === nothing ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, ImVec2(windowPos.x, windowPos.y + 20), ImVec2(windowSize.x, windowSize.y - 20))
                     #################################################
 
                     SDL2.SDL_RenderPresent(renderer);
