@@ -159,7 +159,7 @@ module MainLoop
         end
     end
 
-    function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos::Union{Nothing, Math.Vector2} = nothing, windowSize::Union{Nothing, Math.Vector2} = nothing)
+    function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
         if this.shouldChangeScene
             this.shouldChangeScene = false
             this.initializeNewScene(true)
@@ -265,7 +265,7 @@ module MainLoop
         for entity in this.scene.entities
             entityIndex += 1
             size = entity.collider != C_NULL ? entity.collider.getSize() : entity.transform.getScale()
-            if this.mousePositionWorldRaw.x - windowPos.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y - windowPos.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
+            if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
                 if this.selectedEntityIndex == entityIndex
                     continue
                 end
@@ -614,7 +614,7 @@ Parameters:
 - `update`: An array containing information to pass back to the editor.
 
 """
-function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos = C_NULL, windowSize = C_NULL)
+function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
         try
 			SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 
@@ -639,7 +639,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			if isEditor && update == C_NULL
 				this.scene.camera.dimensions = Math.Vector2(windowSize.x, windowSize.y)
 				# update_viewport_editor(this, windowSize.x, windowSize.y)
-				this.scene.camera.windowPos = Math.Vector2(windowPos.x, windowPos.y)
 			end
 
 			DEBUG = false
@@ -721,9 +720,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			if !isEditor || update == C_NULL
 				skipcount = 0
 				rendercount = 0
-				# println("position: $(this.scene.camera.position) offset: $(this.scene.camera.offset) dimensions: $(this.scene.camera.dimensions)")
-				 #println("dimensions: $(this.scene.camera.dimensions)")
-				zoomMultiplier = 1.0
 				for layer in this.spriteLayers["sort"]
 					for sprite in this.spriteLayers["$(layer)"]
 						spritePosition = sprite.parent.transform.getPosition()
@@ -735,7 +731,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						end
 						rendercount += 1
 						try
-							sprite.draw(zoomMultiplier)
+							SpriteModule.draw(sprite)
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
 							rethrow(e)
@@ -769,7 +765,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					end
 					colliderRenderCount += 1
 					collider = entity.collider
-					zoomMultiplier = 1.0
 					if collider.getType() == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
 							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
@@ -777,13 +772,13 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							round(Int32, collider.diameter/2 * SCALE_UNITS))
 					else
 						colSize = collider.getSize()
-						colSize = Math.Vector2f(colSize.x * zoomMultiplier, colSize.y * zoomMultiplier)
+						colSize = Math.Vector2f(colSize.x, colSize.y)
 						colOffset = collider.offset
-						colOffset = Math.Vector2f(colOffset.x * zoomMultiplier, colOffset.y * zoomMultiplier)
+						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
 
 						SDL2.SDL_RenderDrawRectF(JulGame.Renderer, 
-						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS * zoomMultiplier - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						(pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS * zoomMultiplier - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						(pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
 						colSize.x * SCALE_UNITS, 
 						colSize.y * SCALE_UNITS)))
 					end
@@ -814,12 +809,11 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
 						end
 
-						zoomMultiplier = 1.0
 						pos = selectedEntity.transform.getPosition()
 						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
-						size = Math.Vector2f(size.x * zoomMultiplier, size.y * zoomMultiplier)
+						size = Math.Vector2f(size.x, size.y)
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
-						offset = Math.Vector2f(offset.x * zoomMultiplier, offset.y * zoomMultiplier)
+						offset = Math.Vector2f(offset.x, offset.y)
 						SDL2.SDL_RenderDrawRectF(JulGame.Renderer, 
 						Ref(SDL2.SDL_FRect((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2), 
 						(pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2), 
@@ -836,7 +830,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			this.lastMousePositionWorld = this.mousePositionWorld
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
-			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
+			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x - pos1.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y - pos1.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
 			this.mousePositionWorld = Math.Vector2(floor(Int32,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int32,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y )
 			#region ================ Debug

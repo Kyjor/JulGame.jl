@@ -73,7 +73,7 @@ Base.@kwdef mutable struct BackupSDLRendererState
     ClipRect::SDL2.SDL_Rect
 end
 
-function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data, callback)
+function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
 
     # If there's a scale factor set by the user, use that instead
@@ -105,7 +105,6 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data, callback)
 
     # Render command lists
     ImGui_ImplSDLRenderer2_SetupRenderState()
-    callback(sdlRenderer)
     data = unsafe_load(draw_data)
     cmd_lists = unsafe_wrap(Vector{Ptr{ImDrawList}}, data.CmdLists, data.CmdListsCount)
     
