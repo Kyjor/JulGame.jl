@@ -6,7 +6,7 @@ module Editor
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using CImGui.LibCImGui
-    using JulGame
+    using JulGame: Math, SDL2
 
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
@@ -46,19 +46,19 @@ module Editor
                     end
                         
                     StartFrame()
-                    #LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
+                    LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
                     
                     ################################## RENDER HERE
                     
                     ################################# MAIN MENU BAR
                     events = CreateEvents()
-                    #@c ShowMainMenuBar(Ref{Bool}(true), events)
+                    @c ShowMainMenuBar(Ref{Bool}(true), events)
                     ################################# END MAIN MENU BAR
 
-                    #@c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
+                    @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
                     @cstatic begin
                         CImGui.Begin("Open Scene")  
-                            CImGui.Button("Open") &&  (game = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); game.optimizeSpriteRendering = true; JulGame.PIXELS_PER_UNIT = 16)
+                            CImGui.Button("Open") &&  (game = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); JulGame.PIXELS_PER_UNIT = 16; game.autoScaleZoom = true)
                         CImGui.End()
                     end
                     
@@ -85,7 +85,7 @@ module Editor
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    gameInfo = game === nothing ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, ImVec2(0, 0), ImVec2(scenewindowSize.x, scenewindowSize.y - 20))
+                    gameInfo = game === nothing ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, Math.Vector2(sceneWindowPos.x, sceneWindowPos.y), Math.Vector2(scenewindowSize.x, scenewindowSize.y - 20))
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     
@@ -94,7 +94,7 @@ module Editor
                     
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
-                    #SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
+                    SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
                     SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
                     SDL2.SDL_RenderClear(renderer);
                     ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData(), test)
