@@ -644,7 +644,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			DEBUG = false
 			#region =============    Input
 			this.lastMousePosition = this.input.mousePosition
-			if !isEditor || update != C_NULL
+			if !isEditor
 				this.input.pollInput()
 			end
 

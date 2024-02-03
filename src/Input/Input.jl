@@ -115,6 +115,8 @@ module InputModule
             this.handleWindowEvents(evt)
             if this.editorCallback !== nothing
                 this.editorCallback(evt)
+                println(evt)
+                return
             end
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                 didMouseEventOccur = true

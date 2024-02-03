@@ -184,7 +184,8 @@ function ImGui_ImplSDL2_NewFrame()
     end
     io.DeltaTime = bd.Time > 0 ? float(current_time - bd.Time) / frequency : 1.0 / 60.0
     bd.Time = current_time
-
+    
+    SDL2.SDL_Delay(10) # Todo: Update this. This is a hack to prevent backspace and enter from being called multiple times at once
     # FLT_MAX = igGET_FLT_MAX()
 
     # #if bd.PendingMouseLeaveFrame && bd.PendingMouseLeaveFrame >= CImGui.GetFrameCount() && bd.MouseButtonsDown == 0
