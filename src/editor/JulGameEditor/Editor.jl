@@ -69,9 +69,13 @@ module Editor
                             CImGui.Text("Enter full path to root project folder")
                             projectText = text_input_single_line("Project Root Folder", projectText)
                             
-                            CImGui.Button("Load Project Using Folder Path") && (scenesLoadedFromFolder = GetAllScenesFromFolder(projectText))
+                            if CImGui.Button("Load Project Using Folder Path")
+                                scenesLoadedFromFolder = GetAllScenesFromFolder(projectText)
+                            end
                             CImGui.NewLine()
-                            CImGui.Button("Load Project using Dialog") && (ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir)))
+                            if CImGui.Button("Load Project using Dialog")
+                                ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir))
+                            end
 
                             CImGui.Text("Load Scene:")
                             # for scene in scenesLoadedFromFolder
