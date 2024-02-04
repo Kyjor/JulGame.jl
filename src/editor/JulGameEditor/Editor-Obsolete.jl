@@ -34,7 +34,7 @@ module Editor
     function LoadScene(scenePath)
         game = C_NULL
         try
-            game = SceneLoaderModule.LoadSceneFromEditor(scenePath);
+            game = SceneLoaderModule.load_scene_from_editor(scenePath);
         catch e
             rethrow(e)
         end
@@ -394,7 +394,7 @@ module Editor
 
                             CImGui.Text("Load Scene:")
                             for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
+                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene); sceneName = get_scene_file_name_from_full_scene_path(scene);)
                                 CImGui.NewLine()
                             end
                         else 
@@ -402,7 +402,7 @@ module Editor
                             CImGui.NewLine()
                             CImGui.Text("Change Scene:")
                             for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); ChangeScene(String(sceneName)))
+                                CImGui.Button("$(scene)") && (sceneName = get_scene_file_name_from_full_scene_path(scene); ChangeScene(String(sceneName)))
                                 CImGui.NewLine()
                             end
                         end

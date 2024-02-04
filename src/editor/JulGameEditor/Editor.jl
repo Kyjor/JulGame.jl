@@ -6,7 +6,7 @@ module Editor
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using CImGui.LibCImGui
-    using JulGame: Math, SDL2
+    using JulGame: Math, SceneLoaderModule, SDL2
     using NativeFileDialog
 
     global sdlVersion = "2.0.0"
@@ -73,12 +73,14 @@ module Editor
                         else 
                             CImGui.Text("Change Scene:")
                         end
-                        
+
                         for scene in scenesLoadedFromFolder
                             if CImGui.Button("$(scene)")
-                                currentSceneName = GetSceneFileNameFromFullScenePath(scene)
+                                currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 if currentSceneMain === nothing
                                     currentSceneMain = load_scene(scene) 
+                                    JulGame.PIXELS_PER_UNIT = 16
+                                    currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
                                     ChangeScene(String(currentSceneName))
@@ -90,12 +92,6 @@ module Editor
                         CImGui.End()
                     end
 
-                    @cstatic begin
-                        CImGui.Begin("Open Scene")  
-                            CImGui.Button("Open") &&  (currentSceneMain = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); JulGame.PIXELS_PER_UNIT = 16; game.autoScaleZoom = true)
-                        CImGui.End()
-                    end
-                    
                     if currentSceneMain !== nothing
                         @cstatic begin
                             CImGui.Begin("ResetCamera")  

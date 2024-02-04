@@ -226,17 +226,11 @@ module MainLoop
                 this.zoom -= .1
                 this.zoom = round(clamp(this.zoom, 0.2, 3); digits=1)
 				SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-				println("Zoom: ", this.zoom)
-                if update != C_NULL
-                end
             elseif "RIGHT" in this.input.buttonsPressedDown
                 this.zoom += .1
                 this.zoom = round(clamp(this.zoom, 0.2, 3); digits=1)
-				println("Zoom: ", this.zoom)
 
 				SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-                if update != C_NULL
-                end
             end
         elseif this.input.getButtonHeldDown("LEFT")
             cameraPosition = Math.Vector2f(cameraPosition.x - 0.01, cameraPosition.y)
@@ -870,12 +864,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			if elapsedMS < targetFrameTime && !isEditor
 				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
-			end
-
-			if isEditor && update != C_NULL
-				returnData = [[this.scene.entities, this.scene.textBoxes, this.scene.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused]
-				this.selectedEntityUpdated = false
-				return returnData
 			end
 		catch e
 			if this.testMode || isEditor

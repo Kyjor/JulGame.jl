@@ -1,5 +1,5 @@
 """
-    load_scene(scenePath)
+    load_scene(scenePath::String)
 
 Load a scene from the specified `scenePath` using the SceneLoaderModule.
 Returns the loaded game.
@@ -11,7 +11,7 @@ Returns the loaded game.
 function load_scene(scenePath::String)
     game = C_NULL
     try
-        game = SceneLoaderModule.LoadSceneFromEditor(scenePath);
+        game = SceneLoaderModule.load_scene_from_editor(scenePath);
     catch e
         rethrow(e)
     end
@@ -21,7 +21,7 @@ end
 
 
 """
-    get_all_scenes_from_folder(projectPath)
+    get_all_scenes_from_folder(projectPath::String)
 
 Searches through the specified `projectPath` and its subdirectories for a "scenes" folder. If found, it returns a list of all JSON files within that folder.
 
@@ -67,7 +67,7 @@ end
 
 
 """
-    load_scene(scenePath, renderer)
+    load_scene(scenePath::String, renderer)
 
 Load a scene from the specified `scenePath` using the given `renderer`.
 
@@ -81,7 +81,7 @@ The loaded main struct.
 function load_scene(scenePath::String, renderer)
     game = C_NULL
     try
-        game = SceneLoaderModule.LoadSceneFromEditor(scenePath, renderer, true);
+        game = SceneLoaderModule.load_scene_from_editor(scenePath, renderer, true);
     catch e
         rethrow(e)
     end
