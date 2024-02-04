@@ -7,6 +7,7 @@ module Editor
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using CImGui.LibCImGui
     using JulGame: Math, SDL2
+    using NativeFileDialog
 
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
@@ -19,6 +20,7 @@ module Editor
     include("EntityContextMenu.jl")
     include("ComponentInputs.jl")
     include("TextBoxFields.jl")
+    include(joinpath("Utils", "SceneUtils.jl"))
     include("Utils.jl")
     include(joinpath("Components", "TextInputs.jl"))
 
@@ -40,7 +42,7 @@ module Editor
         # Text Input variables
         projectText::String = ""
         ##############################
-
+        scenesLoadedFromFolder = []
 
         sceneWindowPos = ImVec2(0, 0)
         scenewindowSize = ImVec2(startingSize.x, startingSize.y)
@@ -70,18 +72,18 @@ module Editor
                             projectText = text_input_single_line("Project Root Folder", projectText)
                             
                             if CImGui.Button("Load Project Using Folder Path")
-                                scenesLoadedFromFolder = GetAllScenesFromFolder(projectText)
+                                scenesLoadedFromFolder = get_all_scenes_from_folder(projectText)
                             end
                             CImGui.NewLine()
                             if CImGui.Button("Load Project using Dialog")
-                                ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir))
+                                choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder = get_all_scenes_from_folder(dir))
                             end
 
                             CImGui.Text("Load Scene:")
-                            # for scene in scenesLoadedFromFolder
-                            #     CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
-                            #     CImGui.NewLine()
-                            # end
+                            for scene in scenesLoadedFromFolder
+                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
+                                CImGui.NewLine()
+                            end
                         else 
                             CImGui.Text("Scene loaded. Click 'Play' to run the game.")
                             CImGui.NewLine()
