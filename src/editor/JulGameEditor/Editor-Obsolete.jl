@@ -164,7 +164,7 @@ module Editor
                     start_frame(opengl_ctx, glfw_ctx)
         
                     events = create_events(entities, textBoxes, projectPath, sceneName)
-                    @c ShowMainMenuBar(Ref{Bool}(true), events)
+                    @c show_main_menu_bar(Ref{Bool}(true), events)
                     
                     # Uncomment to see widgets that can be used.
                     #@c CImGui.ShowDemoWindow(Ref{Bool}(true)) 

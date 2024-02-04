@@ -39,7 +39,7 @@ module Editor
         # Text Input variables
         projectText::String = ""
         ##############################
-        scenesLoadedFromFolder = []
+        scenesLoadedFromFolder = Ref(String[])
 
         sceneWindowPos = ImVec2(0, 0)
         scenewindowSize = ImVec2(startingSize.x, startingSize.y)
@@ -56,25 +56,18 @@ module Editor
                     ################################## RENDER HERE
                     
                     ################################# MAIN MENU BAR
-                    events = CreateEvents()
-                    @c ShowMainMenuBar(Ref{Bool}(true), events)
+                    events = [save_scene_event(), select_project_event(currentSceneMain, scenesLoadedFromFolder)]
+                    @c show_main_menu_bar(events)
                     ################################# END MAIN MENU BAR
 
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
 
                     @cstatic begin
                         CImGui.Begin("Project") 
+                        txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
+                        CImGui.Text(txt)
 
-                        if currentSceneMain === nothing    
-                            if CImGui.Button("Load Project using Dialog")
-                                choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder = get_all_scenes_from_folder(dir))
-                            end
-                            CImGui.Text("Load Scene:")
-                        else 
-                            CImGui.Text("Change Scene:")
-                        end
-
-                        for scene in scenesLoadedFromFolder
+                        for scene in scenesLoadedFromFolder[]
                             if CImGui.Button("$(scene)")
                                 currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 if currentSceneMain === nothing
@@ -228,12 +221,22 @@ module Editor
         CImGui.NewFrame()
     end
 
-    function CreateEvents()
+    function save_scene_event()
         event = @event begin
             serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
         end
 
-        return [event]
+        return event
+    end
+    
+    function select_project_event(currentSceneMain, scenesLoadedFromFolder)
+        event = @event begin
+            if currentSceneMain === nothing 
+                choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            end
+        end
+
+        return event
     end
 end
 Editor.run()

@@ -6,7 +6,7 @@ using CImGui.CSyntax.CStatic
     ShowAppMainMenuBar(p_open::Ref{Bool})
 Create a fullscreen menu bar and populate it.
 """
-function ShowMainMenuBar(p_open::Ref{Bool}, events)
+function show_main_menu_bar(events)
     if CImGui.BeginMainMenuBar()
         if CImGui.BeginMenu("File")
             ShowMenuFile(events)
@@ -57,6 +57,9 @@ function ShowMenuFile(events)
     #     # end
     #     CImGui.EndMenu()
     # end
+    if CImGui.MenuItem("Open...", "Ctrl+O")
+        events[2]()
+    end
     if CImGui.MenuItem("Save", "Ctrl+S")
         @info "Trigger Save | find me here: $(@__FILE__):$(@__LINE__)"
         events[1]()
