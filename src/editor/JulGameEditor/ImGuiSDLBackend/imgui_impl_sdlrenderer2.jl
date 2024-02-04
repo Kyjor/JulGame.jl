@@ -151,16 +151,16 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 clip_min =ImVec2((unsafe_load(pcmd.ClipRect.x) - clip_off.x) * clip_scale.x, (unsafe_load(pcmd.ClipRect.y) - clip_off.y) * clip_scale.y)
                 clip_max = ImVec2((unsafe_load(pcmd.ClipRect.z) - clip_off.x) * clip_scale.x, (unsafe_load(pcmd.ClipRect.w) - clip_off.y) * clip_scale.y)
                 if clip_min.x < 0.0
-                    clip_min.x = 0.0 
+                    clip_min = ImVec2(0.0, clip_min.y)
                 end
                 if clip_min.y < 0.0  
-                    clip_min.y = 0.0
+                    clip_min = ImVec2(clip_min.x, 0.0)
                 end
                 if clip_max.x > fb_width 
-                     clip_max.x = fb_width
+                     clip_max = ImVec2(fb_width, clip_max.y)
                 end
                 if clip_max.y > fb_height 
-                    clip_max.y = fb_height
+                    clip_max = ImVec2(clip_max.x, fb_height)
                 end
                 if clip_max.x <= clip_min.x || clip_max.y <= clip_min.y
                     continue

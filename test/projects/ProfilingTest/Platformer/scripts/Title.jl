@@ -40,8 +40,7 @@ function Base.getproperty(this::Title, s::Symbol)
 
             sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
             sound.toggleSound()
-            ChangeScene("level_1.json")
-
+            change_scene("level_1.json")
         end
     elseif s == :setParent 
         function(parent)

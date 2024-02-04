@@ -108,10 +108,12 @@ module MainLoop
             return
         end
     end
+
     function reset_camera_position(this::Main)
         cameraPosition = Math.Vector2f()
         this.scene.camera.update(cameraPosition)
     end
+	
     function full_loop(this::Main)
         try
             DEBUG = false
@@ -403,8 +405,17 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	end
 end
 
-export ChangeScene
-function ChangeScene(sceneFileName::String)
+export change_scene
+"""
+	change_scene(sceneFileName::String)
+
+Change the scene to the specified `sceneFileName`. This function destroys the current scene, including all entities, textboxes, and screen buttons, except for the ones marked as persistent. It then loads the new scene and sets the camera and persistent entities, textboxes, and screen buttons.
+
+# Arguments
+- `sceneFileName::String`: The name of the scene file to load.
+
+"""
+function change_scene(sceneFileName::String)
 	# println("Changing scene to: ", sceneFileName)
 	MAIN.close = true
 	MAIN.shouldChangeScene = true
@@ -865,6 +876,12 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			if elapsedMS < targetFrameTime && !isEditor
 				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
 			end
+
+			if isEditor && update != C_NULL 
+				returnData = [[this.scene.entities, this.scene.textBoxes, this.scene.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused] 
+				this.selectedEntityUpdated = false 
+				return returnData 
+			end 
 		catch e
 			if this.testMode || isEditor
 				rethrow(e)

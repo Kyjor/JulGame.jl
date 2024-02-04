@@ -93,13 +93,13 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                         this.gameManager.starCount = this.gameManager.starCount + 1
                     end
                     this.gameManager.currentLevel = 2
-                    ChangeScene("level_2.json")
+                    change_scene("level_2.json")
                 elseif this.gameManager.currentLevel == 2
                     if this.deathsThisLevel == 0
                         this.gameManager.starCount = this.gameManager.starCount + 1
                     end
                     this.gameManager.currentLevel = 3
-                    ChangeScene("level_3.json")
+                    change_scene("level_3.json")
                 else 
                     # you win text
                     MAIN.scene.textBoxes[1].isCenteredX, MAIN.scene.textBoxes[1].isCenteredY = true, true

@@ -6,7 +6,7 @@ module Editor
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using CImGui.LibCImGui
-    using JulGame: Math, SceneLoaderModule, SDL2
+    using JulGame: MainLoop, Math, SceneLoaderModule, SDL2
     using NativeFileDialog
 
     global sdlVersion = "2.0.0"
@@ -78,12 +78,12 @@ module Editor
                             if CImGui.Button("$(scene)")
                                 currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 if currentSceneMain === nothing
-                                    currentSceneMain = load_scene(scene) 
+                                    currentSceneMain = load_scene(scene, renderer) 
                                     JulGame.PIXELS_PER_UNIT = 16
                                     currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    ChangeScene(String(currentSceneName))
+                                    change_scene(String(currentSceneName))
                                 end
                             end
                             CImGui.NewLine()
@@ -235,25 +235,5 @@ module Editor
 
         return [event]
     end
-
-    function Render(renderer, io, clear_color)
-        
-    end
-
-    function OpenScene(renderer)
-        @cstatic begin
-            CImGui.GetWindowPos()
-            CImGui.Begin("Open Scene")  
-                CImGui.Button("Open") &&  return LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer)
-            CImGui.End()
-        end
-
-        return C_NULL
-    end
-
-    function RenderScene()
-        
-    end
-
 end
 Editor.run()
