@@ -12,7 +12,7 @@ module SceneLoaderModule
     
     export LoadSceneFromEditor
     function LoadSceneFromEditor(scenePath, renderer = nothing, isNewEditor::Bool=false) 
-        projectPath = GetProjectPathFromFullScenePath(scenePath)
+        projectPath = get_project_path_from_full_scene_path(scenePath)
         sceneFileName = GetSceneFileNameFromFullScenePath(scenePath)
 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
@@ -25,8 +25,8 @@ module SceneLoaderModule
         return main.init("Editor", true; isNewEditor=isNewEditor)
     end
 
-    export GetProjectPathFromFullScenePath
-    function GetProjectPathFromFullScenePath(scenePath)
+    export get_project_path_from_full_scene_path
+    function get_project_path_from_full_scene_path(scenePath)
         projectPath = ""
         dirArray = length(split(scenePath, "/")) > 1 ? split(scenePath, "/") : split(scenePath, "\\")
         counter = 1

@@ -1,14 +1,3 @@
-function LoadScene(scenePath, renderer)
-    game = C_NULL
-    try
-        game = SceneLoaderModule.LoadSceneFromEditor(scenePath, renderer, true);
-    catch e
-        rethrow(e)
-    end
-
-    return game
-end
-
 function ShowGameControls()
     @cstatic begin
         CImGui.Begin("Controls")  

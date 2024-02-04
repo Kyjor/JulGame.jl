@@ -13,19 +13,12 @@ module Editor
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
 
-    include(joinpath("ImGuiSDLBackend", "imgui_impl_sdl2.jl"))
-    include(joinpath("ImGuiSDLBackend", "imgui_impl_sdlrenderer2.jl"))
     include(joinpath("..","..","Macros.jl"))
-    include("MainMenuBar.jl")
-    include("EntityContextMenu.jl")
-    include("ComponentInputs.jl")
-    include("TextBoxFields.jl")
-    include(joinpath("Utils", "SceneUtils.jl"))
-    include("Utils.jl")
-    include(joinpath("Components", "TextInputs.jl"))
 
-    # Windows
-    include(joinpath("Windows", "GameControls.jl"))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "ImGuiSDLBackend"); join=true)))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
     function run()
         info = initSDLAndImGui()
@@ -36,7 +29,11 @@ module Editor
 
         styleImGui()
         showDemoWindow = true
-        game = nothing
+        ##############################
+        # Project variables
+        currentSceneMain = nothing
+        currentSceneName = ""
+        currentSelectedProjectPath = ""
         gameInfo = []
         ##############################
         # Text Input variables
@@ -49,7 +46,7 @@ module Editor
         quit = false
             try
                 while !quit
-                    if game === nothing
+                    if currentSceneMain === nothing
                         quit = PollEvents()
                     end
                         
@@ -66,32 +63,28 @@ module Editor
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
 
                     @cstatic begin
-                        CImGui.Begin("Load Project") 
-                        if true    
-                            CImGui.Text("Enter full path to root project folder")
-                            projectText = text_input_single_line("Project Root Folder", projectText)
-                            
-                            if CImGui.Button("Load Project Using Folder Path")
-                                scenesLoadedFromFolder = get_all_scenes_from_folder(projectText)
-                            end
-                            CImGui.NewLine()
+                        CImGui.Begin("Project") 
+
+                        if currentSceneMain === nothing    
                             if CImGui.Button("Load Project using Dialog")
                                 choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder = get_all_scenes_from_folder(dir))
                             end
-
                             CImGui.Text("Load Scene:")
-                            for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
-                                CImGui.NewLine()
-                            end
                         else 
-                            CImGui.Text("Scene loaded. Click 'Play' to run the game.")
-                            CImGui.NewLine()
                             CImGui.Text("Change Scene:")
-                            for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); ChangeScene(String(sceneName)))
-                                CImGui.NewLine()
+                        end
+                        
+                        for scene in scenesLoadedFromFolder
+                            if CImGui.Button("$(scene)")
+                                currentSceneName = GetSceneFileNameFromFullScenePath(scene)
+                                if currentSceneMain === nothing
+                                    currentSceneMain = load_scene(scene) 
+                                    currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
+                                else
+                                    ChangeScene(String(currentSceneName))
+                                end
                             end
+                            CImGui.NewLine()
                         end
 
                         CImGui.End()
@@ -99,14 +92,14 @@ module Editor
 
                     @cstatic begin
                         CImGui.Begin("Open Scene")  
-                            CImGui.Button("Open") &&  (game = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); JulGame.PIXELS_PER_UNIT = 16; game.autoScaleZoom = true)
+                            CImGui.Button("Open") &&  (currentSceneMain = LoadScene("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\scenes\\scene.json", renderer); JulGame.PIXELS_PER_UNIT = 16; game.autoScaleZoom = true)
                         CImGui.End()
                     end
                     
-                    if game !== nothing
+                    if currentSceneMain !== nothing
                         @cstatic begin
                             CImGui.Begin("ResetCamera")  
-                                CImGui.Button("ResetCamera") && (game.resetCameraPosition())
+                                CImGui.Button("ResetCamera") && (currentSceneMain.resetCameraPosition())
                             CImGui.End()
                         end
                     end
@@ -126,7 +119,7 @@ module Editor
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    gameInfo = game === nothing ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(scenewindowSize.x, scenewindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, C_NULL, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(scenewindowSize.x, scenewindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     
@@ -142,12 +135,12 @@ module Editor
                     screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, scenewindowSize.x, scenewindowSize.y - 20))
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
                     ################################################# Injecting game loop into editor
-                    if game !== nothing
-                        if game.input.editorCallback === nothing
-                            game.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
+                    if currentSceneMain !== nothing
+                        if currentSceneMain.input.editorCallback === nothing
+                            currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
                         end
-                        game.input.pollInput()
-                        quit = game.input.quit
+                        currentSceneMain.input.pollInput()
+                        quit = currentSceneMain.input.quit
                     end
                     #################################################
 

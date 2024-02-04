@@ -1,4 +1,14 @@
-function load_scene(scenePath)
+"""
+    load_scene(scenePath)
+
+Load a scene from the specified `scenePath` using the SceneLoaderModule.
+Returns the loaded game.
+
+# Arguments
+- `scenePath`: The path to the scene file.
+
+"""
+function load_scene(scenePath::String)
     game = C_NULL
     try
         game = SceneLoaderModule.LoadSceneFromEditor(scenePath);
@@ -9,15 +19,19 @@ function load_scene(scenePath)
     return game
 end
 
-function close_current_scene(game)
-    try
-        game
-    catch e
-        rethrow(e)
-    end
-end
 
-function get_all_scenes_from_folder(projectPath)
+"""
+    get_all_scenes_from_folder(projectPath)
+
+Searches through the specified `projectPath` and its subdirectories for a "scenes" folder. If found, it returns a list of all JSON files within that folder.
+
+# Arguments
+- `projectPath`: The path to the project directory.
+
+# Returns
+An array of file paths to the JSON files found in the "scenes" folder.
+"""
+function get_all_scenes_from_folder(projectPath::String)
     sceneFiles = []
     try
         # search through projectpath and it's subdirectories for a scenes folder. If it exists, return all of the json files from it
@@ -40,8 +54,37 @@ function get_all_scenes_from_folder(projectPath)
     return sceneFiles
 end
 
+"""
+    choose_folder_with_dialog()
+
+Opens a dialog box to choose a folder.
+"""
 function choose_folder_with_dialog()
     dir = pick_folder()
     # println("open_dialog returned $dir")
     return dir
+end
+
+
+"""
+    load_scene(scenePath, renderer)
+
+Load a scene from the specified `scenePath` using the given `renderer`.
+
+# Arguments
+- `scenePath`: The path to the scene file.
+- `renderer`: The renderer to use for loading the scene.
+
+# Returns
+The loaded main struct.
+"""
+function load_scene(scenePath::String, renderer)
+    game = C_NULL
+    try
+        game = SceneLoaderModule.LoadSceneFromEditor(scenePath, renderer, true);
+    catch e
+        rethrow(e)
+    end
+
+    return game
 end

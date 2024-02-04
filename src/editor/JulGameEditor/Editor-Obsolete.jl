@@ -394,7 +394,7 @@ module Editor
 
                             CImGui.Text("Load Scene:")
                             for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
+                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
                                 CImGui.NewLine()
                             end
                         else 
