@@ -37,7 +37,7 @@ module Editor
         gameInfo = []
         ##############################
         # Text Input variables
-        projectText::String = ""
+        hierarchyFilterText::String = ""
         ##############################
         scenesLoadedFromFolder = Ref(String[])
 
@@ -105,6 +105,55 @@ module Editor
                         CImGui.Image(sceneTexture, sceneTextureSize)
                         CImGui.End()
                     end
+
+                    CImGui.Begin("Hierarchy") 
+                        ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
+                        CImGui.SameLine()
+                        if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
+                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
+                
+                            for i in 1:length(currentSceneMain.scene.entities)
+                                node_flags = CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
+                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(currentSceneMain.scene.entities[i].name)")
+                                CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelectedIndex = i; currentEntityUpdated = true; currentTextBoxSelectedIndex = -1)
+                            end
+                            CImGui.PopStyleVar()
+                            CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
+                            CImGui.TreePop()
+                        end
+                    CImGui.End()
+
+                    CImGui.Begin("Filter") 
+                    if CImGui.CollapsingHeader("Filtering")
+                        CImGui.Text("Filter usage:\n"*
+                                    "  \"\"         display all lines\n"*
+                                    "  \"xxx\"      display lines containing \"xxx\"\n"*
+                                    "  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n"*
+                                    "  \"-xxx\"     hide lines containing \"xxx\"")
+                        hierarchyFilterText = text_input_single_line("filter") 
+                        lines = ["aaa1.c", "bbb1.c", "ccc1.c", "aaa2.cpp", "bbb2.cpp", "ccc2.cpp", "abc.h", "hello, world"]
+                        filtered_lines = filter(line -> (contains(line, hierarchyFilterText) || isempty(hierarchyFilterText)), lines)
+                        
+                        for line in filtered_lines
+                            CImGui.BulletText(line)
+                        end
+                    end
+                    CImGui.End()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);

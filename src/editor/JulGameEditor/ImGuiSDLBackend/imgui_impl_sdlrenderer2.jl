@@ -195,9 +195,9 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                         vtx_buffer.Size-unsafe_load(pcmd.VtxOffset),
                         Ptr{Cvoid}(unsafe_load(pcmd.IdxOffset) + idx_buffer.Data), unsafe_load(pcmd.ElemCount), sizeof(ImDrawIdx))
 
-                        if res != 0
-                            println("error: ", unsafe_string(SDL2.SDL_GetError()))
-                        end
+                    if res != 0
+                        println("error: ", unsafe_string(SDL2.SDL_GetError()))
+                    end
             end
         end
     end
