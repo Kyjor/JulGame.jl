@@ -8,7 +8,9 @@ Create a fullscreen menu bar and populate it.
 """
 function show_main_menu_bar(events)
     if CImGui.BeginMainMenuBar()
-        if CImGui.BeginMenu("File")
+        mem_p::Ptr{Cstring} = @ccall malloc("Test"::Cstring)::Ptr{Cstring}
+        @cstatic buf="File"*"\0"^128 begin
+        if CImGui.BeginMenu(buf)
             ShowMenuFile(events)
             CImGui.EndMenu()
         end
@@ -32,6 +34,7 @@ function show_main_menu_bar(events)
         #     CImGui.EndMenu()
         # end
         CImGui.EndMainMenuBar()
+    end
     end
 end
 

@@ -123,12 +123,26 @@ module Editor
                             end
                             
                             for n = 1:length(filteredEntities)
+                                CImGui.PushID(n)
+
                                 buf = "$(n): $(filteredEntities[n].name)"
                                 if CImGui.Selectable(buf, hierarchyEntitySelections[n])
                                     # clear selection when CTRL is not held
                                     !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
                                     hierarchyEntitySelections[n] ⊻= 1
                                 end
+                                
+                                # our buttons are both drag sources and drag targets here!
+
+                                if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+                                    @c CImGui.SetDragDropPayload("DND_DEMO_CELL", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
+                                    mode == Mode_Copy && CImGui.Text("Copy $(names[n+1])") # display preview (could be anything, e.g. when dragging an image we could decide to display the filename and a small preview of the image, etc.)
+                                    mode == Mode_Move && CImGui.Text("Move $(names[n+1])")
+                                    mode == Mode_Swap && CImGui.Text("Swap $(names[n+1])")
+                                    CImGui.EndDragDropSource()
+                                end
+
+                                CImGui.PopID()
                             end
 
                             CImGui.PopStyleVar()
@@ -199,8 +213,8 @@ module Editor
         SDL2.SDL_SetHint(SDL2.SDL_HINT_IME_SHOW_UI, "1")
 
         window = SDL2.SDL_CreateWindow(
-        "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1024, 768,
-        SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_OPENGL | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
+        "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1920, 1080,
+        SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
         )
         if window == C_NULL 
             println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))
