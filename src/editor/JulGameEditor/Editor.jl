@@ -36,8 +36,9 @@ module Editor
         currentSelectedProjectPath = ""
         gameInfo = []
         ##############################
-        # Text Input variables
+        # Hierarchy variables
         hierarchyFilterText::String = ""
+        hierarchyEntitySelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
 
@@ -111,41 +112,30 @@ module Editor
                         CImGui.SameLine()
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-                
-                            for i in 1:length(currentSceneMain.scene.entities)
-                                node_flags = CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(currentSceneMain.scene.entities[i].name)")
-                                CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelectedIndex = i; currentEntityUpdated = true; currentTextBoxSelectedIndex = -1)
+
+                            currentHierarchyFilterText = hierarchyFilterText
+                            hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
+                            updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
+                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
+                            ShowHelpMarker("Hold CTRL and click to select multiple items.")
+                            if length(hierarchyEntitySelections) == 0 || updateSelectionsBasedOnFilter
+                                hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
+                            
+                            for n = 1:length(filteredEntities)
+                                buf = "$(n): $(filteredEntities[n].name)"
+                                if CImGui.Selectable(buf, hierarchyEntitySelections[n])
+                                    # clear selection when CTRL is not held
+                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
+                                    hierarchyEntitySelections[n] ⊻= 1
+                                end
+                            end
+
                             CImGui.PopStyleVar()
                             CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                             CImGui.TreePop()
                         end
                     CImGui.End()
-
-                    CImGui.Begin("Filter") 
-                    if CImGui.CollapsingHeader("Filtering")
-                        CImGui.Text("Filter usage:\n"*
-                                    "  \"\"         display all lines\n"*
-                                    "  \"xxx\"      display lines containing \"xxx\"\n"*
-                                    "  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n"*
-                                    "  \"-xxx\"     hide lines containing \"xxx\"")
-                        hierarchyFilterText = text_input_single_line("filter") 
-                        lines = ["aaa1.c", "bbb1.c", "ccc1.c", "aaa2.cpp", "bbb2.cpp", "ccc2.cpp", "abc.h", "hello, world"]
-                        filtered_lines = filter(line -> (contains(line, hierarchyFilterText) || isempty(hierarchyFilterText)), lines)
-                        
-                        for line in filtered_lines
-                            CImGui.BulletText(line)
-                        end
-                    end
-                    CImGui.End()
-
-
-
-
-
-
-
 
 
 
