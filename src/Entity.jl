@@ -17,15 +17,15 @@ module EntityModule
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
+        isActive::Bool
+        name::String
+        persistentBetweenScenes::Bool
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
+        scripts::Vector{Any}
         shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
         transform::Transform
-        isActive::Bool
-        name::String
-        persistentBetweenScenes::Bool
-        scripts::Vector{Any}
         
         function Entity(name::String = "New entity", transform::Transform = Transform(), scripts::Vector = [])
             this = new()

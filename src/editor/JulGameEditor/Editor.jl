@@ -37,6 +37,7 @@ module Editor
         gameInfo = []
         ##############################
         # Hierarchy variables
+        filteredEntities = Entity[]
         hierarchyFilterText::String = ""
         hierarchyEntitySelections = Bool[]
         ##############################
@@ -86,17 +87,15 @@ module Editor
                         CImGui.End()
                     end
 
-                    if currentSceneMain !== nothing
-                        @cstatic begin
-                            CImGui.Begin("ResetCamera")  
-                                CImGui.Button("ResetCamera") && (currentSceneMain.resetCameraPosition())
-                            CImGui.End()
-                        end
-                    end
                     @cstatic begin
                         CImGui.Begin("Scene")  
                         sceneWindowPos = CImGui.GetWindowPos()
                         scenewindowSize = CImGui.GetWindowSize()
+                        # CImGui.Text("Window Size: x:$(scenewindowSize.x), y:$(scenewindowSize.y) ")
+                        # CImGui.SameLine()
+                        # currentSceneMain !== nothing && CImGui.Button("ResetCamera") && (currentSceneMain.resetCameraPosition())
+
+                        CImGui.SameLine()
                         if scenewindowSize.x != sceneTextureSize.x || scenewindowSize.y != sceneTextureSize.y
                             SDL2.SDL_DestroyTexture(sceneTexture)
                             sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, scenewindowSize.x, scenewindowSize.y)
@@ -116,17 +115,17 @@ module Editor
                         CImGui.End()
                     end
 
-                    CImGui.Begin("Hierarchy") 
-                        ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
-                        CImGui.SameLine()
+                        CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
+                            CImGui.SameLine()
+                            ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.--")
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
                             currentHierarchyFilterText = hierarchyFilterText
                             hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
                             updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
-                            ShowHelpMarker("Hold CTRL and click to select multiple items.")
+                            ShowHelpMarker("Hold CTRL and click to select multiple items.--")
                             if length(hierarchyEntitySelections) == 0 || updateSelectionsBasedOnFilter
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
@@ -153,16 +152,13 @@ module Editor
                                         payload = unsafe_load(payload)
                                         println("payload: ", payload)
                                         @assert payload.DataSize == sizeof(Cint)
-                                        # payload_n = unsafe_load(Ptr{Cint}(payload.Data))
-                                        #     names[n+1] = names[payload_n+1]
-                                        #     names[payload_n+1] = ""
                                     end
                                     CImGui.EndDragDropTarget()
                                 end
 
                                 # Reorder entities: We can only reorder entities if the entiities are not being filtered
                                 if length(filteredEntities) == length(currentSceneMain.scene.entities)
-                                    CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic
+                                    CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
                                     if CImGui.BeginDragDropTarget()
                                         payload = CImGui.AcceptDragDropPayload("Entity") 
                                         if payload != C_NULL
@@ -187,11 +183,19 @@ module Editor
                         end
                     CImGui.End()
 
+                    show_debug_window(String[])
+                    
+                    CImGui.Begin("Entity Inspector") 
+                        for entityIndex = eachindex(hierarchyEntitySelections)
+                            if hierarchyEntitySelections[entityIndex]
+                                for entityField in fieldnames(Entity)
+                                    show_field_editor(filteredEntities[entityIndex], entityField)
+                                end
+                                break # TODO: Remove this when we can select multiple entities and edit them all at once
+                            end
+                        end
 
-
-
-
-
+                    CImGui.End()
 
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)

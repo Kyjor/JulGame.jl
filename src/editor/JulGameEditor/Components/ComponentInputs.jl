@@ -2,99 +2,67 @@ using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 using JulGame
+using JulGame.Math
 
-const JulGameComponents = ["Transform", "Collider", "Rigidbody", "Animator", "Animation", "Entity", "SoundSource", "Sprite"]
 """
-ShowComponentProperties(currentEntitySelected, component, componentType)
+show_field_editor(entity, field)
 Creates inputs based on the component type and populates them.
 """
-function ShowComponentProperties(currentEntitySelected, component, componentType)
-    if componentType == "Transform"
-        fieldsInComponent=fieldnames(JulGame.TransformModule.Transform)
-        for i = 1:length(fieldsInComponent)
-            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        end
-    elseif componentType == "InternalCollider"
-        fieldsInComponent=fieldnames(JulGame.ColliderModule.InternalCollider)
-        for i = 1:length(fieldsInComponent)
-            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        end
-    elseif componentType == "InternalRigidbody"
-        fieldsInComponent=fieldnames(JulGame.RigidbodyModule.InternalRigidbody)
-        fieldsToSkip = String["acceleration", "grounded", "velocity"]
-        for i = 1:length(fieldsInComponent)
-            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        end
-    elseif componentType == "InternalAnimator"
-        fieldsInComponent=fieldnames(JulGame.AnimatorModule.InternalAnimator)
-        ShowAnimatorProperties(fieldsInComponent, currentEntitySelected)
-    elseif componentType == "Animation"
-        fieldsInComponent=fieldnames(JulGame.AnimationModule.Animation)
-        for i = 1:length(fieldsInComponent)
-            ShowComponentPropertyInput(currentEntitySelected, component, componentType, fieldsInComponent[i])
-        end
-    elseif componentType == "InternalSprite"
-        fieldsInComponent=fieldnames(JulGame.SpriteModule.InternalSprite)
-        ShowSpriteProperties(fieldsInComponent, currentEntitySelected)
-    elseif componentType == "InternalSoundSource"
-        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.InternalSoundSource)
-        ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
-    elseif componentType == "InternalShape"
-        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.InternalShape)
-        ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
-    elseif componentType == "InternalCircleCollider"
-        fieldsInComponent=fieldnames(JulGame.SoundSourceModule.InternalCircleCollider)
-        ShowSoundSourceProperties(fieldsInComponent, currentEntitySelected)
-    end
-
-end
-
-function ShowComponentPropertyInput(currentEntitySelected, component, componentType, componentField, name = C_NULL)
-    if currentEntitySelected === nothing 
+function show_field_editor(entity, field)
+    field = getfield(entity, field)
+    if field == C_NULL || field === nothing
         return
     end
-    itemToUpdateType = getType(currentEntitySelected)
-    if itemToUpdateType == "Entity"
-        if componentType == "Transform"
-            itemToUpdate = currentEntitySelected.transform
-        elseif componentType == "InternalCollider"
-            itemToUpdate = currentEntitySelected.collider
-        elseif componentType == "InternalRigidbody"
-            itemToUpdate = currentEntitySelected.rigidbody
-        elseif componentType == "InternalAnimator"
-            itemToUpdate = currentEntitySelected.animator
-        elseif componentType == "Animation"
-            itemToUpdate = currentEntitySelected.animation
-        elseif componentType == "InternalSprite"
-            itemToUpdate = currentEntitySelected.sprite
-        elseif componentType == "InternalSoundSource"
-            itemToUpdate = currentEntitySelected.soundSource
-        elseif componentType == "InternalShape"
-            itemToUpdate = currentEntitySelected.shape
-        elseif componentType == "InternalCircleCollider"
-            itemToUpdate = currentEntitySelected.circleCollider
-        end
-    else
-        itemToUpdate = currentEntitySelected
+
+    if typeof(field) != JulGame.TransformModule.Transform && typeof(field) != JulGame.ColliderModule.InternalCollider && typeof(field) != JulGame.RigidbodyModule.InternalRigidbody && typeof(field) != JulGame.AnimatorModule.InternalAnimator && typeof(field) != JulGame.SpriteModule.InternalSprite && typeof(field) != JulGame.SoundSourceModule.InternalSoundSource && typeof(field) != JulGame.ShapeModule.InternalShape && typeof(field) != JulGame.CircleColliderModule.InternalCircleCollider
+        # TODO: show_component_property_input(entity, field)
+        return
     end
 
-    componentFieldValue = getfield(component, componentField)
-    componentFieldType = getType(componentFieldValue)
+    fieldName::String = replace(split("$(typeof(field))", ".")[end], "Internal" => "")
+    if CImGui.TreeNode("$(fieldName)") # JulGame.ColliderModule.InternalCollider => InternalCollider => Collider
+        for field in fieldnames(typeof(field))
+            show_component_property_input(getfield(entity, Symbol(lowercase(fieldName))), field)
+        end
+     
+        # elseif isa(field, RigidbodyModule.InternalRigidbody)
+        #     fieldsToSkip = String["acceleration", "grounded", "velocity"]
+        #     for field in fieldnames(TransformModule.Transform)
+        #         show_component_property_input(entity.transform, field)
+        #     end
+     
+        CImGui.TreePop()
+    end
+end
 
-    if componentFieldType == "_Vector2"
+function show_component_property_input(component, componentField)
+    componentFieldType = ""
+    fieldValue = getfield(component, componentField)
+    if isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
+        isFloat::Bool = isa(fieldValue, Math._Vector2{Float64}) ? true : false
+
         CImGui.Text(componentField)
-        x = Cfloat(componentFieldValue.x)
-        y = Cfloat(componentFieldValue.y)
-        @c CImGui.InputFloat("$(componentField) x", &x, 1)
-        @c CImGui.InputFloat("$(componentField) y", &y, 1)
-        itemToUpdate.setVector2fValue(componentField,convert(Float64, x),convert(Float64, y))
+        x = isFloat ? Cfloat(fieldValue.x) : Cint(fieldValue.x)
+        y = isFloat ? Cfloat(fieldValue.y) : Cint(fieldValue.y)
+        if isFloat 
+            @c CImGui.InputFloat("$(componentField) x", &x, 1)
+            @c CImGui.InputFloat("$(componentField) y", &y, 1)
+        else
+            @c CImGui.InputInt("$(componentField) x", &x, 1)
+            @c CImGui.InputInt("$(componentField) y", &y, 1)
+        end
+        setfield!(component, componentField, (isFloat ? Vector2f(x, y) : Vector2(x, y)))
+
+    elseif componentFieldType == "_Vector4"
+        vec4i = Cint[componentFieldValue.x, fieldValue.y, fieldValue.z, fieldValue.t]
+        @c CImGui.InputInt4("input int4", vec4i)
 
     elseif componentFieldType == "Bool" 
-        @c CImGui.Checkbox("$(componentField)", &componentFieldValue)
-        setfield!(itemToUpdate,componentField,componentFieldValue)
+        @c CImGui.Checkbox("$(componentField)", &fieldValue)
+        setfield!(component, componentField, fieldValue)
 
     elseif componentFieldType == "String"
-        buf = "$(componentFieldValue)"*"\0"^(64)
+        buf = "$(fieldValue)"*"\0"^(64)
         CImGui.InputText("$(componentField)", buf, length(buf))
         currentTextInTextBox = ""
         for characterIndex = 1:length(buf)
@@ -105,25 +73,19 @@ function ShowComponentPropertyInput(currentEntitySelected, component, componentT
                 break
             end
         end
-        setfield!(itemToUpdate,componentField,componentFieldValue)
+        setfield!(component, componentField, fieldValue)
 
-    elseif componentFieldType == "Float64"
+    elseif typeof(fieldValue) == Int32
         CImGui.Text(componentField)
-        x = Cfloat(componentFieldValue)
-        @c CImGui.InputFloat("$(componentField)", &x, 1)
-        setfield!(itemToUpdate,componentField,componentFieldValue)
-    
-    elseif componentFieldType == "Int32"
-        CImGui.Text(componentField)
-        x = Cint(componentFieldValue)
+        x = Cint(fieldValue)
         @c CImGui.InputInt("$(componentField)", &x, 1)
-        setfield!(itemToUpdate,componentField,componentFieldValue)
+        setfield!(component, componentField, fieldValue)
+    end
+end
 
-    elseif componentFieldType == "_Vector4"
-        vec4i = Cint[componentFieldValue.x, componentFieldValue.y, componentFieldValue.z, componentFieldValue.t]
-        @c CImGui.InputInt4("input int4", vec4i)
-        
-    elseif componentFieldType == "Vector" # Then we need to unpack the nested items
+function ShowComponentPropertyInput(currentEntitySelected, component, componentType, componentField, name = C_NULL)
+ 
+    if componentFieldType == "Vector" # Then we need to unpack the nested items
         for i = 1:length(componentFieldValue) 
             nestedType = "$(typeof(componentFieldValue[i]).name.wrapper)"
             nestedFieldType = String(split(nestedType, '.')[length(split(nestedType, '.'))])
