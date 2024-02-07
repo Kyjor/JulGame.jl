@@ -1,7 +1,7 @@
 module ShapeModule
     using ..Component.JulGame
     import ..Component.JulGame: deprecated_get_property
-
+    import ..Component
     export Shape
     struct Shape
         color::Math.Vector3
@@ -39,13 +39,13 @@ module ShapeModule
 
     function Base.getproperty(this::InternalShape, s::Symbol)
         method_props = (
-            draw = draw,
-            setParent = set_parent
+            draw = Component.draw,
+            setParent = Component.set_parent
         )
         deprecated_get_property(method_props, this, s)
     end
 
-    function draw(this::InternalShape)
+    function Component.draw(this::InternalShape)
         if JulGame.Renderer == C_NULL
             return                    
         end
@@ -69,7 +69,7 @@ module ShapeModule
         
     end
 
-    function set_parent(this::InternalShape, parent::Any)
+    function Component.set_parent(this::InternalShape, parent::Any)
         this.parent = parent
     end
 end

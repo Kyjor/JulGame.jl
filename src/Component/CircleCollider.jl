@@ -3,6 +3,7 @@ module CircleColliderModule
     using ..Component.JulGame
     using ..Component.ColliderModule
     import ..Component.JulGame: deprecated_get_property
+    import ..Component
 
     export CircleCollider
     struct CircleCollider
@@ -47,21 +48,21 @@ module CircleColliderModule
 
     function Base.getproperty(this::CircleCollider, s::Symbol)
         method_props = (
-            getSize = get_size,
-            checkCollisions = check_collisions,
-            setParent = set_parent,
-            getParent = get_parent,
-            addCollisionEvent = add_collision_event,
-            getType = get_type
+            getSize = Component.get_size,
+            checkCollisions = Component.check_collisions,
+            setParent = Component.set_parent,
+            getParent = Component.get_parent,
+            addCollisionEvent = Component.add_collision_event,
+            getType = Component.get_type
         )
         deprecated_get_property(method_props, this, s)
     end
     
-    function get_size(this::CircleCollider)
+    function Component.get_size(this::CircleCollider)
         return this.size
     end
 
-    function check_collisions(this::CircleCollider)
+    function Component.check_collisions(this::CircleCollider)
         colliders = MAIN.scene.colliders
         #Only check the player against other colliders
         counter = 0
@@ -145,19 +146,19 @@ module CircleColliderModule
         this.currentCollisions = []
     end
 
-    function set_parent(this::CircleCollider, parent::Any)
+    function Component.set_parent(this::CircleCollider, parent::Any)
         this.parent = parent
     end
 
-    function get_parent(this::CircleCollider)
+    function Component.get_parent(this::CircleCollider)
         return this.parent
     end
 
-    function add_collision_event(this::CircleCollider, event)
+    function Component.add_collision_event(this::CircleCollider, event)
         push!(this.collisionEvents, event)
     end   
 
-    function get_type(this::CircleCollider)
+    function Component.get_type(this::CircleCollider)
         return "CircleCollider"
     end
 

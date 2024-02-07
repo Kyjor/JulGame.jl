@@ -1,6 +1,7 @@
 module SoundSourceModule
     using ..JulGame
     import ..JulGame: deprecated_get_property
+    import ..Component
     
     export SoundSource
     struct SoundSource
@@ -53,16 +54,16 @@ module SoundSourceModule
     
     function Base.getproperty(this::InternalSoundSource, s::Symbol)
         method_props = (
-            toggleSound = toggle_sound,
-            stopMusic = stop_music,
-            loadSound = load_sound,
-            unloadSound = unload_sound,
-            setParent = set_parent
+            toggleSound = Component.toggle_sound,
+            stopMusic = Component.stop_music,
+            loadSound = Component.load_sound,
+            unloadSound = Component.unload_sound,
+            setParent = Component.set_parent
         )
         deprecated_get_property(method_props, this, s)
     end
 
-    function toggle_sound(this::InternalSoundSource, loops = 0)
+    function Component.toggle_sound(this::InternalSoundSource, loops = 0)
         if this.isMusic
             if SDL2.Mix_PlayingMusic() == 0
                 SDL2.Mix_PlayMusic( this.sound, Int32(-1) )
@@ -78,11 +79,11 @@ module SoundSourceModule
         end
     end
     
-    function stop_music(this::InternalSoundSource)
+    function Component.stop_music(this::InternalSoundSource)
         SDL2.Mix_HaltMusic()
     end
     
-    function load_sound(this::InternalSoundSource, soundPath::String, isMusic::Bool)
+    function Component.load_sound(this::InternalSoundSource, soundPath::String, isMusic::Bool)
         this.isMusic = isMusic
         this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(BasePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(BasePath, "assets", "sounds", soundPath))
         error = unsafe_string(SDL2.SDL_GetError())
@@ -95,7 +96,7 @@ module SoundSourceModule
         this.path = soundPath
     end
 
-    function unload_sound(this::InternalSoundSource)
+    function Component.unload_sound(this::InternalSoundSource)
         if this.isMusic
             SDL2.Mix_FreeMusic(this.sound)
         else
@@ -104,7 +105,7 @@ module SoundSourceModule
         this.sound = C_NULL
     end
     
-    function set_parent(this::InternalSoundSource, parent::Any)
+    function Component.set_parent(this::InternalSoundSource, parent::Any)
         this.parent = parent
     end
 
