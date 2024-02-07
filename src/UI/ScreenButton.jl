@@ -56,8 +56,6 @@ module ScreenButtonModule
         deprecated_get_property(method_props, this, s)
     end
     
-
-    render
     function UI.render(this::ScreenButton)
         if !this.isInitialized
             this.initialize()
@@ -82,7 +80,6 @@ module ScreenButtonModule
         @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
-    render
     function UI.initialize(this::ScreenButton)
         this.buttonDownTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonDownSprite)
         this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonUpSprite)
@@ -101,12 +98,10 @@ module ScreenButtonModule
         this.isInitialized = true
     end
 
-    render
     function UI.add_click_event(this::ScreenButton, event)
         push!(this.clickEvents, event)
     end
 
-    render
     function UI.handle_event(this::ScreenButton, evt, x, y)
         if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
             this.currentTexture = this.buttonDownTexture
@@ -119,8 +114,7 @@ module ScreenButtonModule
             #println("mouse move")
         end 
     end
-
-    render
+    
     function UI.destroy(this::ScreenButton)
         if this.buttonDownTexture != C_NULL
             SDL2.SDL_DestroyTexture(this.buttonDownTexture)

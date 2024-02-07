@@ -66,7 +66,7 @@ module TextBoxModule
 
     function UI.render(this::TextBox, DEBUG)
         if !this.isInitialized
-            Initialize(this)
+            UI.initialize(this)
         end
 
         if this.textTexture == C_NULL
@@ -95,7 +95,25 @@ module TextBoxModule
     end
 
     function UI.initialize(this::TextBox)
-        Initialize(this)
+        path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
+        # println("loading font from $(path)")
+        this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
+        if this.font == C_NULL
+            return
+        end
+
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+        
+        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
+
+        if !this.isWorldEntity
+            this.centerText()
+        end
+
+        this.isInitialized = true
     end
 
     function UI.set_position(this::TextBox, position::Math.Vector2)
@@ -145,28 +163,6 @@ module TextBoxModule
 
         SDL2.SDL_DestroyTexture(this.textTexture)
         this.textTexture = C_NULL
-    end
-
-    function UI.Initialize(this)
-        path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-        # println("loading font from $(path)")
-        this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
-        if this.font == C_NULL
-            return
-        end
-
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
-        
-        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
-        
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
-
-        if !this.isWorldEntity
-            this.centerText()
-        end
-
-        this.isInitialized = true
     end
 
 end

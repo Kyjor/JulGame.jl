@@ -10,6 +10,7 @@ module EntityModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
     import ..JulGame: deprecated_get_property
+    import ..JulGame: Component
 
     export Entity
     mutable struct Entity
@@ -99,7 +100,7 @@ module EntityModule
 
         this.animator = InternalAnimator(this::Entity, animator.animations)
         if this.sprite != C_NULL 
-            this.animator.setSprite(this.sprite)
+            Component.set_sprite(this.animator, this.sprite)
         end
 
         return this.animator
@@ -162,7 +163,7 @@ module EntityModule
 
         this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer)
         if this.animator != C_NULL
-            this.animator.setSprite(this.sprite)
+            Component.set_sprite(this.animator, this.sprite)
         end
         this.sprite.initialize()
 
