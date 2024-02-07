@@ -104,6 +104,18 @@ module Editor
                         end
 
                         CImGui.Image(sceneTexture, sceneTextureSize)
+                        if CImGui.BeginDragDropTarget()
+                            payload = CImGui.AcceptDragDropPayload("DND_DEMO_CELL")
+                            if payload != C_NULL
+                                payload = unsafe_load(payload)
+                                println("payload: ", payload)
+                                @assert payload.DataSize == sizeof(Cint)
+                                # payload_n = unsafe_load(Ptr{Cint}(payload.Data))
+                                #     names[n+1] = names[payload_n+1]
+                                #     names[payload_n+1] = ""
+                            end
+                            CImGui.EndDragDropTarget()
+                        end
                         CImGui.End()
                     end
 
@@ -132,14 +144,37 @@ module Editor
                                     hierarchyEntitySelections[n] ⊻= 1
                                 end
                                 
-                                # our buttons are both drag sources and drag targets here!
-
+                                # our entities are both drag sources and drag targets here!
                                 if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
                                     @c CImGui.SetDragDropPayload("DND_DEMO_CELL", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
-                                    mode == Mode_Copy && CImGui.Text("Copy $(names[n+1])") # display preview (could be anything, e.g. when dragging an image we could decide to display the filename and a small preview of the image, etc.)
-                                    mode == Mode_Move && CImGui.Text("Move $(names[n+1])")
-                                    mode == Mode_Swap && CImGui.Text("Swap $(names[n+1])")
+                                    CImGui.Text("Move $(filteredEntities[n].name)---")
                                     CImGui.EndDragDropSource()
+                                end
+                                if CImGui.BeginDragDropTarget()
+                                    payload = CImGui.AcceptDragDropPayload("DND_DEMO_CELL")
+                                    if payload != C_NULL
+                                        payload = unsafe_load(payload)
+                                        println("payload: ", payload)
+                                        @assert payload.DataSize == sizeof(Cint)
+                                        # payload_n = unsafe_load(Ptr{Cint}(payload.Data))
+                                        #     names[n+1] = names[payload_n+1]
+                                        #     names[payload_n+1] = ""
+                                    end
+                                    CImGui.EndDragDropTarget()
+                                end
+
+                                CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,2)) #Todo: Make this dynamic
+                                if CImGui.BeginDragDropTarget()
+                                    payload = CImGui.AcceptDragDropPayload("DND_DEMO_CELL")
+                                    if payload != C_NULL
+                                        payload = unsafe_load(payload)
+                                        println("payload: ", payload)
+                                        @assert payload.DataSize == sizeof(Cint)
+                                        # payload_n = unsafe_load(Ptr{Cint}(payload.Data))
+                                        #     names[n+1] = names[payload_n+1]
+                                        #     names[payload_n+1] = ""
+                                    end
+                                    CImGui.EndDragDropTarget()
                                 end
 
                                 CImGui.PopID()
