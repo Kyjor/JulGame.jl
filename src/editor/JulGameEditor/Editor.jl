@@ -105,14 +105,11 @@ module Editor
 
                         CImGui.Image(sceneTexture, sceneTextureSize)
                         if CImGui.BeginDragDropTarget()
-                            payload = CImGui.AcceptDragDropPayload("DND_DEMO_CELL")
+                            payload = CImGui.AcceptDragDropPayload("Scene")
                             if payload != C_NULL
                                 payload = unsafe_load(payload)
                                 println("payload: ", payload)
                                 @assert payload.DataSize == sizeof(Cint)
-                                # payload_n = unsafe_load(Ptr{Cint}(payload.Data))
-                                #     names[n+1] = names[payload_n+1]
-                                #     names[payload_n+1] = ""
                             end
                             CImGui.EndDragDropTarget()
                         end
@@ -134,7 +131,7 @@ module Editor
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
                             
-                            for n = 1:length(filteredEntities)
+                            for n = eachindex(filteredEntities)
                                 CImGui.PushID(n)
 
                                 buf = "$(n): $(filteredEntities[n].name)"
@@ -146,12 +143,12 @@ module Editor
                                 
                                 # our entities are both drag sources and drag targets here!
                                 if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
-                                    @c CImGui.SetDragDropPayload("DND_DEMO_CELL", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
+                                    @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
                                     CImGui.Text("Move $(filteredEntities[n].name)---")
                                     CImGui.EndDragDropSource()
                                 end
                                 if CImGui.BeginDragDropTarget()
-                                    payload = CImGui.AcceptDragDropPayload("DND_DEMO_CELL")
+                                    payload = CImGui.AcceptDragDropPayload("Entity")
                                     if payload != C_NULL
                                         payload = unsafe_load(payload)
                                         println("payload: ", payload)
@@ -163,19 +160,23 @@ module Editor
                                     CImGui.EndDragDropTarget()
                                 end
 
-                                CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,2)) #Todo: Make this dynamic
-                                if CImGui.BeginDragDropTarget()
-                                    payload = CImGui.AcceptDragDropPayload("DND_DEMO_CELL")
-                                    if payload != C_NULL
-                                        payload = unsafe_load(payload)
-                                        println("payload: ", payload)
-                                        @assert payload.DataSize == sizeof(Cint)
-                                        # payload_n = unsafe_load(Ptr{Cint}(payload.Data))
-                                        #     names[n+1] = names[payload_n+1]
-                                        #     names[payload_n+1] = ""
+                                # Reorder entities: We can only reorder entities if the entiities are not being filtered
+                                if length(filteredEntities) == length(currentSceneMain.scene.entities)
+                                    CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic
+                                    if CImGui.BeginDragDropTarget()
+                                        payload = CImGui.AcceptDragDropPayload("Entity") 
+                                        if payload != C_NULL
+                                            payload = unsafe_load(payload)
+                                            @assert payload.DataSize == sizeof(Cint)
+                                            origin = unsafe_load(Ptr{Cint}(payload.Data))
+                                            destination = n
+                                            # Move the entity(origin) to the position after the entity at the destination index and adust the other entities accordingly. Use splicing to do this.
+                                            move_entity(currentSceneMain.scene.entities, origin, destination)
+                                        end
+                                        CImGui.EndDragDropTarget()
                                     end
-                                    CImGui.EndDragDropTarget()
                                 end
+
 
                                 CImGui.PopID()
                             end
@@ -317,6 +318,19 @@ module Editor
         return event
     end
     
+    """
+        select_project_event(currentSceneMain, scenesLoadedFromFolder)
+
+    This function creates an event that allows the user to select a project folder. If `currentSceneMain` is `nothing`, it prompts the user to choose a folder using a dialog box and updates `scenesLoadedFromFolder` with all the scenes found in the selected folder.
+
+    # Arguments
+    - `currentSceneMain`: The current main loop.
+    - `scenesLoadedFromFolder`: An array to store the scenes loaded from the selected folder.
+
+    # Returns
+    - `event`: The event that triggers the folder selection.
+
+    """
     function select_project_event(currentSceneMain, scenesLoadedFromFolder)
         event = @event begin
             if currentSceneMain === nothing 
@@ -325,6 +339,22 @@ module Editor
         end
 
         return event
+    end
+
+    function move_entity(entities, origin, destination)
+        if origin == destination
+            return
+        end
+
+        originEntity = splice!(entities, origin)
+        if origin < destination
+            # We need to adjust the destination index because we removed the origin entity
+            # We only need to do this in the case where the origin index is less than the destination index, because the other way around, the destination index is already "adjusted" because the items before it are not shifted
+            destination -= 1 
+        end
+        updatedEntities = [entities[destination], originEntity]
+        
+        splice!(entities, destination : destination, updatedEntities)
     end
 end
 Editor.run()

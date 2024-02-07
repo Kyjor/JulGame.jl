@@ -1,6 +1,6 @@
 module MainLoop
 	using ..JulGame
-	using ..JulGame: Input, Math, UI
+	using ..JulGame: Component, Input, Math, UI
     import ..JulGame: deprecated_get_property
 	include("Enums.jl")
 	include("Constants.jl")
@@ -736,7 +736,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						end
 						rendercount += 1
 						try
-							SpriteModule.draw(sprite)
+							Component.draw(sprite)
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
 							rethrow(e)

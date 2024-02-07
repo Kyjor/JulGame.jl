@@ -87,7 +87,7 @@ module SpriteModule
         deprecated_get_property(method_props, this, s)
     end
     
-    function Component.draw(this::InternalSprite, zoom::Float64 = 1.0)
+    function Component.draw(this::InternalSprite)
         if this.image == C_NULL || JulGame.Renderer == C_NULL
             return
         end
