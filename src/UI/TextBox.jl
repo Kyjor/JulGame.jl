@@ -2,7 +2,7 @@ module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI.JulGame: deprecated_get_property
-
+    import ..UI
     export TextBox      
     mutable struct TextBox
         alpha
@@ -51,20 +51,20 @@ module TextBoxModule
 
     function Base.getproperty(this::TextBox, s::Symbol)
         method_props = (
-            render = render,
-            initialize = initialize,
-            setPosition = set_position,
-            setParent = set_parent,
-            updateText = update_text,
-            setVector2Value = set_vector2_value,
-            setColor = set_color,
-            centerText = center_text,
-            destroy = destroy
+            render = UI.render,
+            initialize = UI.initialize,
+            setPosition = UI.set_position,
+            setParent = UI.set_parent,
+            updateText = UI.update_text,
+            setVector2Value = UI.set_vector2_value,
+            setColor = UI.set_color,
+            centerText = UI.center_text,
+            destroy = UI.destroy
         )
         deprecated_get_property(method_props, this, s)
     end
 
-    function render(this::TextBox, DEBUG)
+    function UI.render(this::TextBox, DEBUG)
         if !this.isInitialized
             Initialize(this)
         end
@@ -94,18 +94,18 @@ module TextBoxModule
         @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
-    function initialize(this::TextBox)
+    function UI.initialize(this::TextBox)
         Initialize(this)
     end
 
-    function set_position(this::TextBox, position::Math.Vector2)
+    function UI.set_position(this::TextBox, position::Math.Vector2)
     end
 
-    function set_parent(this::TextBox, parent)
+    function UI.set_parent(this::TextBox, parent)
         this.parent = parent
     end
 
-    function update_text(this::TextBox, newText)
+    function UI.update_text(this::TextBox, newText)
         this.text = newText
         SDL2.SDL_FreeSurface(this.renderText)
         SDL2.SDL_DestroyTexture(this.textTexture)
@@ -120,16 +120,16 @@ module TextBoxModule
         end
     end
 
-    function set_vector2_value(this::TextBox, field, x, y)
+    function UI.set_vector2_value(this::TextBox, field, x, y)
         setfield!(this, field, Math.Vector2(x,y))
         println("set $(field) to $(getfield(this, field))")
     end
 
-    function set_color(this::TextBox, r,g,b)
+    function UI.set_color(this::TextBox, r,g,b)
         SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
     end
 
-    function center_text(this::TextBox)
+    function UI.center_text(this::TextBox)
         if this.isCenteredX
             this.position = Math.Vector2(max(MAIN.scene.camera.dimensions.x/2 - this.size.x/2, 0), this.position.y)
         end
@@ -138,7 +138,7 @@ module TextBoxModule
         end
     end
 
-    function destroy(this::TextBox)
+    function UI.destroy(this::TextBox)
         if this.textTexture == C_NULL
             return
         end
@@ -147,7 +147,7 @@ module TextBoxModule
         this.textTexture = C_NULL
     end
 
-    function Initialize(this)
+    function UI.Initialize(this)
         path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
         # println("loading font from $(path)")
         this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
