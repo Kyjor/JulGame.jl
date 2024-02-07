@@ -8,14 +8,14 @@ using JulGame.Math
 show_field_editor(entity, field)
 Creates inputs based on the component type and populates them.
 """
-function show_field_editor(entity, field)
-    field = getfield(entity, field)
+function show_field_editor(entity, fieldName)
+    field = getfield(entity, fieldName)
     if field == C_NULL || field === nothing
         return
     end
 
     if typeof(field) != JulGame.TransformModule.Transform && typeof(field) != JulGame.ColliderModule.InternalCollider && typeof(field) != JulGame.RigidbodyModule.InternalRigidbody && typeof(field) != JulGame.AnimatorModule.InternalAnimator && typeof(field) != JulGame.SpriteModule.InternalSprite && typeof(field) != JulGame.SoundSourceModule.InternalSoundSource && typeof(field) != JulGame.ShapeModule.InternalShape && typeof(field) != JulGame.CircleColliderModule.InternalCircleCollider
-        # TODO: show_component_property_input(entity, field)
+        show_component_property_input(entity, fieldName)
         return
     end
 
@@ -24,7 +24,7 @@ function show_field_editor(entity, field)
         for field in fieldnames(typeof(field))
             show_component_property_input(getfield(entity, Symbol(lowercase(fieldName))), field)
         end
-     
+       
         # elseif isa(field, RigidbodyModule.InternalRigidbody)
         #     fieldsToSkip = String["acceleration", "grounded", "velocity"]
         #     for field in fieldnames(TransformModule.Transform)
@@ -53,15 +53,31 @@ function show_component_property_input(component, componentField)
         end
         setfield!(component, componentField, (isFloat ? Vector2f(x, y) : Vector2(x, y)))
 
-    elseif componentFieldType == "_Vector4"
-        vec4i = Cint[componentFieldValue.x, fieldValue.y, fieldValue.z, fieldValue.t]
-        @c CImGui.InputInt4("input int4", vec4i)
+    elseif isa(fieldValue, Math._Vector3{Float64}) || isa(fieldValue, Math._Vector3{Int32})
+        isFloat = isa(fieldValue, Math._Vector3{Float64}) ? true : false
 
-    elseif componentFieldType == "Bool" 
+        vec3 = isFloat ? Cfloat[fieldValue.x, fieldValue.y, fieldValue.z] : Cint[fieldValue.x, fieldValue.y, fieldValue.z]
+        if isFloat 
+            @c CImGui.InputFloat3("input float3", vec3)
+        else
+            @c CImGui.InputInt3("input int3", vec3)
+        end
+
+    elseif isa(fieldValue, Math._Vector4{Float64}) || isa(fieldValue, Math._Vector4{Int32})
+        isFloat = isa(fieldValue, Math._Vector4{Float64}) ? true : false
+
+        vec4 = isFloat ? Cfloat[fieldValue.x, fieldValue.y, fieldValue.z, fieldValue.t] : Cint[fieldValue.x, fieldValue.y, fieldValue.z, fieldValue.t]
+        if isFloat 
+            @c CImGui.InputFloat4("input float4", vec4)
+        else
+            @c CImGui.InputInt4("input int4", vec4)
+        end
+
+    elseif isa(fieldValue, Bool) 
         @c CImGui.Checkbox("$(componentField)", &fieldValue)
         setfield!(component, componentField, fieldValue)
 
-    elseif componentFieldType == "String"
+    elseif isa(fieldValue, String)
         buf = "$(fieldValue)"*"\0"^(64)
         CImGui.InputText("$(componentField)", buf, length(buf))
         currentTextInTextBox = ""
@@ -73,13 +89,13 @@ function show_component_property_input(component, componentField)
                 break
             end
         end
-        setfield!(component, componentField, fieldValue)
+        setfield!(component, componentField, currentTextInTextBox)
 
-    elseif typeof(fieldValue) == Int32
+    elseif isa(fieldValue, Int32)
         CImGui.Text(componentField)
         x = Cint(fieldValue)
         @c CImGui.InputInt("$(componentField)", &x, 1)
-        setfield!(component, componentField, fieldValue)
+        setfield!(component, componentField, x)
     end
 end
 

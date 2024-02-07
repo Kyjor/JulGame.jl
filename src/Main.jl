@@ -193,7 +193,7 @@ module MainLoop
                 this.panCounter = Math.Vector2f(this.panCounter.x, 0)
             end
         elseif this.input.getMouseButtonPressed(SDL2.SDL_BUTTON_LEFT)
-            select_entity_with_click(this, windowPos)
+            select_entity_with_click(this)
         elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntityIndex != -1 || this.selectedTextBoxIndex != -1) && this.selectedEntityIndex != this.selectedTextBoxIndex
             # TODO: Make this work for textboxes
             snapping = false
@@ -771,7 +771,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					end
 					colliderRenderCount += 1
 					collider = entity.collider
-					zoomMultiplier = (isEditor && update == C_NULL) ? this.zoom : 1.0
 					if JulGame.get_type(collider) == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
 							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
@@ -779,7 +778,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							round(Int32, collider.diameter/2 * SCALE_UNITS))
 					else
 						colSize = JulGame.get_size(collider)
-						colSize = Math.Vector2f(colSize.x * zoomMultiplier, colSize.y * zoomMultiplier)
+						colSize = Math.Vector2f(colSize.x, colSize.y)
 						colOffset = collider.offset
 						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
 
@@ -819,7 +818,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						pos = selectedEntity.transform.getPosition()
                         
 						size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.getScale()
-						size = Math.Vector2f(size.x * zoomMultiplier, size.y * zoomMultiplier)
+						size = Math.Vector2f(size.x, size.y)
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
 						offset = Math.Vector2f(offset.x, offset.y)
 						SDL2.SDL_RenderDrawRectF(JulGame.Renderer, 
