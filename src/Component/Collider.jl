@@ -2,6 +2,7 @@ module ColliderModule
     include("../Enums.jl")
     using ..Component.JulGame
     import ..Component.JulGame: deprecated_get_property
+    import ..Component 
 
     export Collider
     struct Collider
@@ -52,56 +53,56 @@ module ColliderModule
 
     function Base.getproperty(this::InternalCollider, s::Symbol)
         method_props = (
-            getSize = get_size,
-            setSize = set_size,
-            getOffset = get_offset,
-            setOffset = set_offset,
-            getTag = get_tag,
-            setTag = set_tag,
-            getParent = get_parent,
-            setParent = set_parent,
-            checkCollisions = check_collisions,
-            update = update,
-            addCollisionEvent = add_collision_event,
-            setVector2fValue = set_vector2f_value,
-            getType = get_type
+            getSize = Component.get_size,
+            setSize = Component.set_size,
+            getOffset = Component.get_offset,
+            setOffset = Component.set_offset,
+            getTag = Component.get_tag,
+            setTag = Component.set_tag,
+            getParent = Component.get_parent,
+            setParent = Component.set_parent,
+            checkCollisions = Component.check_collisions,
+            update = Component.update,
+            addCollisionEvent = Component.add_collision_event,
+            setVector2fValue = Component.set_vector2f_value,
+            getType = Component.get_type
         )
         deprecated_get_property(method_props, this, s)
     end
     
-    function get_size(this::InternalCollider)
+    function Component.get_size(this::InternalCollider)
         return this.size
     end
 
-    function set_size(this::InternalCollider, size::Math.Vector2f)
+    function Component.set_size(this::InternalCollider, size::Math.Vector2f)
         this.size = size
     end
 
-    function get_offset(this::InternalCollider)
+    function Component.get_offset(this::InternalCollider)
         return this.offset
     end
 
-    function set_offset(this::InternalCollider, offset::Math.Vector2f)
+    function Component.set_offset(this::InternalCollider, offset::Math.Vector2f)
         this.offset = offset
     end
 
-    function get_tag(this::InternalCollider)
+    function Component.get_tag(this::InternalCollider)
         return this.tag
     end
 
-    function set_tag(this::InternalCollider, tag::String)
+    function Component.set_tag(this::InternalCollider, tag::String)
         this.tag = tag
     end
 
-    function get_parent(this::InternalCollider)
+    function Component.get_parent(this::InternalCollider)
         return this.parent
     end
 
-    function set_parent(this::InternalCollider, parent::Any)
+    function Component.set_parent(this::InternalCollider, parent::Any)
         this.parent = parent
     end
 
-    function check_collisions(this::InternalCollider)
+    function Component.check_collisions(this::InternalCollider)
         colliders = MAIN.scene.colliders
         #Only check the player against other colliders
         counter = 0
@@ -203,19 +204,19 @@ module ColliderModule
         this.currentCollisions = InternalCollider[]
     end
 
-    function update(this::InternalCollider)
+    function Component.update(this::InternalCollider)
         
     end
 
-    function add_collision_event(this::InternalCollider, event)
+    function Component.add_collision_event(this::InternalCollider, event)
         push!(this.collisionEvents, event)
     end        
 
-    function set_vector2f_value(this::InternalCollider, field, x, y)
+    function Component.set_vector2f_value(this::InternalCollider, field, x, y)
         setfield!(this, field, Math.Vector2f(x,y))
     end
 
-    function get_type(this::InternalCollider)
+    function Component.get_type(this::InternalCollider)
         return "Collider"
     end
     

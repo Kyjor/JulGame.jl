@@ -1,6 +1,7 @@
 module SpriteModule
     using ..Component.JulGame
     import ..Component.JulGame: deprecated_get_property
+    import ..Component
 
     export Sprite
     struct Sprite
@@ -76,17 +77,17 @@ module SpriteModule
 
     function Base.getproperty(this::InternalSprite, s::Symbol)
         method_props = (
-            draw = draw,
-            initialize = initialize,
-            flip = flip,
-            setParent = set_parent,
-            loadImage = load_image,
-            destroy = destroy,
-            setColor = set_color
+            draw = Component.draw,
+            initialize = Component.initialize,
+            flip = Component.flip,
+            setParent = Component.set_parent,
+            loadImage = Component.load_image,
+            destroy = Component.destroy,
+            setColor = Component.set_color
         )
         deprecated_get_property(method_props, this, s)
     end
-    function draw(this::InternalSprite, zoom::Float64 = 1.0)
+    function Component.draw(this::InternalSprite, zoom::Float64 = 1.0)
         if this.image == C_NULL || JulGame.Renderer == C_NULL
             return
         end
@@ -166,7 +167,7 @@ module SpriteModule
         end
     end
 
-    function initialize(this::InternalSprite)
+    function Component.initialize(this::InternalSprite)
         if this.image == C_NULL
             return
         end
@@ -174,15 +175,15 @@ module SpriteModule
         this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
     end
 
-    function flip(this::InternalSprite)
+    function Component.flip(this::InternalSprite)
         this.isFlipped = !this.isFlipped
     end
 
-    function set_parent(this::InternalSprite, parent::Any)
+    function Component.set_parent(this::InternalSprite, parent::Any)
         this.parent = parent
     end
 
-    function load_image(this::InternalSprite, imagePath::String)
+    function Component.load_image(this::InternalSprite, imagePath::String)
         SDL2.SDL_ClearError()
         this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))
         error = unsafe_string(SDL2.SDL_GetError())
@@ -201,7 +202,7 @@ module SpriteModule
         this.setColor()
     end
 
-    function destroy(this::InternalSprite)
+    function Component.destroy(this::InternalSprite)
         if this.image == C_NULL
             return
         end
@@ -212,7 +213,7 @@ module SpriteModule
         this.texture = C_NULL
     end
 
-    function set_color(this::InternalSprite)
+    function Component.set_color(this::InternalSprite)
         SDL2.SDL_SetTextureColorMod(this.texture, UInt8(this.color.x%256), UInt8(this.color.y%256), (this.color.z%256));
     end
 end
