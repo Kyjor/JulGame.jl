@@ -11,6 +11,7 @@ module EntityModule
     using ..JulGame.TransformModule
     import ..JulGame: deprecated_get_property
     import ..JulGame: Component
+    import ..JulGame
 
     export Entity
     mutable struct Entity
@@ -54,22 +55,22 @@ module EntityModule
 
     function Base.getproperty(this::Entity, s::Symbol)
         method_props = (
-            addScript = add_script,
-            update = update,
-            addAnimator = add_animator,
-            addCollider = add_collider,
-            addCircleCollider = add_circle_collider,
-            addRigidbody = add_rigidbody,
-            addSoundSource = add_sound_source,
-            createSoundSource = create_sound_source,
-            addSprite = add_sprite,
-            addShape = add_shape
+            addScript = JulGame.add_script,
+            update = JulGame.update,
+            addAnimator = JulGame.add_animator,
+            addCollider = JulGame.add_collider,
+            addCircleCollider = JulGame.add_circle_collider,
+            addRigidbody = JulGame.add_rigidbody,
+            addSoundSource = JulGame.add_sound_source,
+            createSoundSource = JulGame.create_sound_source,
+            addSprite = JulGame.add_sprite,
+            addShape = JulGame.add_shape
         )
         deprecated_get_property(method_props, this, s)
     end
 
 
-    function add_script(this::Entity, script)
+    function JulGame.add_script(this::Entity, script)
         #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
         push!(this.scripts, script)
         script.setParent(this)
@@ -81,7 +82,7 @@ module EntityModule
         end
     end
 
-    function update(this::Entity, deltaTime)
+    function JulGame.update(this::Entity, deltaTime)
         for script in this.scripts
             try
                 script.update(deltaTime)
@@ -92,7 +93,7 @@ module EntityModule
         end
     end
 
-    function add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], Int32(60))]))
+    function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], Int32(60))]))
         if this.animator != C_NULL
             println("Animator already exists on entity named ", this.name)
             return
@@ -106,7 +107,7 @@ module EntityModule
         return this.animator
     end
 
-    function add_collider(this::Entity, collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
+    function JulGame.add_collider(this::Entity, collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
         if this.collider != C_NULL || this.circleCollider != C_NULL
             println("Collider already exists on entity named ", this.name)
             return
@@ -117,7 +118,7 @@ module EntityModule
         return this.collider
     end
 
-    function add_circle_collider(this::Entity, collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
+    function JulGame.add_circle_collider(this::Entity, collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
         if this.collider != C_NULL || this.circleCollider != C_NULL
             println("Collider already exists on entity named ", this.name)
             return
@@ -128,7 +129,7 @@ module EntityModule
         return this.circleCollider
     end
 
-    function add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody())
+    function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody())
         if this.rigidbody != C_NULL
             println("Rigidbody already exists on entity named ", this.name)
             return
@@ -139,7 +140,7 @@ module EntityModule
         return this.rigidbody
     end
 
-    function add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", Int32(50)))
+    function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", Int32(50)))
         if this.soundSource != C_NULL
             println("SoundSource already exists on entity named ", this.name)
             return
@@ -150,12 +151,12 @@ module EntityModule
         return this.soundSource
     end
 
-    function create_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", Int32(50)))
+    function JulGame.create_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", Int32(50)))
         newSoundSource::InternalSoundSource = InternalSoundSource(this::Entity, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic)
         return newSoundSource
     end
 
-    function add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1))
+    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1))
         if this.sprite != C_NULL
             println("Sprite already exists on entity named ", this.name)
             return
@@ -170,7 +171,7 @@ module EntityModule
         return this.sprite
     end
 
-    function add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, false, Math.Vector2f(0,0), Math.Vector2f(0,0)))
+    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, false, Math.Vector2f(0,0), Math.Vector2f(0,0)))
         if this.shape != C_NULL
             println("Shape already exists on entity named ", this.name)
             return
