@@ -1,7 +1,8 @@
 module MainLoop
 	using ..JulGame
 	using ..JulGame: Input, Math, UI
-    import ..JulGame: deprecated_get_property
+    import ..JulGame: deprecated_get_property, Component
+    import ..JulGame.SceneManagement: SceneBuilderModule
 	include("Enums.jl")
 	include("Constants.jl")
 	include("Scene.jl")
@@ -101,7 +102,7 @@ module MainLoop
         end
     end
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        this.level.changeScene(isUsingEditor)
+        SceneBuilderModule.change_scene(this.level, isUsingEditor)
         InitializeScriptsAndComponents(this, false)
 
         if !isUsingEditor
@@ -251,17 +252,21 @@ module MainLoop
         this.scene.camera.update(cameraPosition)
         return cameraPosition
     end
+
     function create_new_entity(this::Main)
-        this.level.createNewEntity()
+        SceneBuilderModule.create_new_entity(this.level)
     end
+
     function create_new_text_box(this::Main, fontPath)
-        this.level.createNewTextBox(fontPath)
+        SceneBuilderModule.create_new_text_box(this.level, fontPath)
     end
+
     function select_entity_with_click(this::Main)
         entityIndex = 0
         for entity in this.scene.entities
             entityIndex += 1
-            size = entity.collider != C_NULL ? entity.collider.getSize() : entity.transform.getScale()
+            
+            size = entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.getScale()
             if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
                 if this.selectedEntityIndex == entityIndex
                     continue

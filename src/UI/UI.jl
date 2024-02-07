@@ -1,17 +1,17 @@
 module UI
     using ..JulGame
-
-    function add_click_event end
-    function center_text end
-    function destroy end
-    function handle_event end
-    function initialize end
-    function render end
-    function set_color end
-    function set_parent end
-    function set_position end
-    function set_vector2_value end
-    function update_text end
+    import ..JulGame: 
+        add_click_event,
+        center_text,
+        destroy,
+        handle_event,
+        initialize,
+        render,
+        set_color,
+        set_parent,
+        set_position,
+        set_vector2_value,
+        update_text
 
 
     include("ScreenButton.jl")

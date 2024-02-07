@@ -1,4 +1,5 @@
 module JulGame
+    include("CommonFunctions.jl")
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
 
