@@ -1,7 +1,8 @@
 module MainLoop
 	using ..JulGame
 	using ..JulGame: Input, Math, UI
-    import ..JulGame: deprecated_get_property
+    import ..JulGame: deprecated_get_property, Component
+    import ..JulGame.SceneManagement: SceneBuilderModule
 	include("Enums.jl")
 	include("Constants.jl")
 	include("Scene.jl")
@@ -101,7 +102,7 @@ module MainLoop
         end
     end
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        this.level.changeScene(isUsingEditor)
+        SceneBuilderModule.change_scene(this.level, isUsingEditor)
         InitializeScriptsAndComponents(this, false)
 
         if !isUsingEditor
@@ -251,17 +252,21 @@ module MainLoop
         this.scene.camera.update(cameraPosition)
         return cameraPosition
     end
+
     function create_new_entity(this::Main)
-        this.level.createNewEntity()
+        SceneBuilderModule.create_new_entity(this.level)
     end
+
     function create_new_text_box(this::Main, fontPath)
-        this.level.createNewTextBox(fontPath)
+        SceneBuilderModule.create_new_text_box(this.level, fontPath)
     end
+
     function select_entity_with_click(this::Main)
         entityIndex = 0
         for entity in this.scene.entities
             entityIndex += 1
-            size = entity.collider != C_NULL ? entity.collider.getSize() : entity.transform.getScale()
+            
+            size = entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.getScale()
             if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
                 if this.selectedEntityIndex == entityIndex
                     continue
@@ -361,10 +366,10 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	end
 
 	for textBox in this.scene.textBoxes
-		textBox.initialize()
+        JulGame.initialize(textBox)
 	end
 	for screenButton in this.scene.screenButtons
-		screenButton.initialize()
+        JulGame.initialize(screenButton)
 	end
 
 	this.lastMousePosition = Math.Vector2(0, 0)
@@ -434,8 +439,7 @@ function ChangeScene(sceneFileName::String)
 			skipcount += 1
 			continue
 		end
-
-	 	textBox.destroy()
+        JulGame.destroy(textBox)
 	end
 	
 	persistentScreenButtons = []
@@ -653,7 +657,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						rigidbody.update(deltaTime)
+						JulGame.update(rigidbody, deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
 						rethrow(e)
@@ -678,7 +682,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 				if !isEditor
 					try
-						entity.update(deltaTime)
+                        JulGame.update(entity, deltaTime)
 						if this.close
 							return
 						end
@@ -688,7 +692,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					end
 					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
-						entityAnimator.update(currentRenderTime, deltaTime)
+                        JulGame.update(entityAnimator, currentRenderTime, deltaTime)
 					end
 				end
 			end
@@ -761,13 +765,13 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					colliderRenderCount += 1
 					collider = entity.collider
 					zoomMultiplier = (isEditor && update == C_NULL) ? this.zoom : 1.0
-					if collider.getType() == "CircleCollider"
+					if JulGame.get_type(collider) == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
 							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
 							round(Int32, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 							round(Int32, collider.diameter/2 * SCALE_UNITS))
 					else
-						colSize = collider.getSize()
+						colSize = JulGame.get_size(collider)
 						colSize = Math.Vector2f(colSize.x * zoomMultiplier, colSize.y * zoomMultiplier)
 						colOffset = collider.offset
 						colOffset = Math.Vector2f(colOffset.x * zoomMultiplier, colOffset.y * zoomMultiplier)
@@ -790,7 +794,7 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 			end
 
 			for textBox in this.scene.textBoxes
-				textBox.render(DEBUG)
+                JulGame.render(textBox, DEBUG)
 			end
 			#endregion ============= UI
 
@@ -807,7 +811,8 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 
 						zoomMultiplier = (isEditor && update == C_NULL) ? this.zoom : 1.0
 						pos = selectedEntity.transform.getPosition()
-						size = selectedEntity.collider != C_NULL ? selectedEntity.collider.getSize() : selectedEntity.transform.getScale()
+                        
+						size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.getScale()
 						size = Math.Vector2f(size.x * zoomMultiplier, size.y * zoomMultiplier)
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
 						offset = Math.Vector2f(offset.x * zoomMultiplier, offset.y * zoomMultiplier)
@@ -845,12 +850,13 @@ function GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime
 					for i = 1:length(statTexts)
 						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true)
 						push!(this.debugTextBoxes, textBox)
-						textBox.initialize()
+                        JulGame.initialize(textBox)
 					end
 				else
 					for i = 1:length(this.debugTextBoxes)
-						this.debugTextBoxes[i].updateText(statTexts[i])
-						this.debugTextBoxes[i].render(false)
+                        db_textbox = this.debugTextBoxes[i]
+                        JulGame.update_text(db_textbox, statTexts[i])
+                        JulGame.render(db_textbox, false)
 					end
 				end
 			end
