@@ -62,7 +62,7 @@ module Editor
                     @c show_main_menu_bar(events)
                     ################################# END MAIN MENU BAR
 
-                    @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow))
+                    # @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see avaialble widgets
 
                     @cstatic begin
                         CImGui.Begin("Project") 

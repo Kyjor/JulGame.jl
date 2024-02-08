@@ -15,6 +15,7 @@ module SpriteModule
         position::Math.Vector2f
         rotation::Float64
         pixelsPerUnit::Int32
+        center::Math.Vector2
     end
 
     export InternalSprite
@@ -36,12 +37,13 @@ module SpriteModule
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(), rotation::Float64 = 0.0, layer::Int32 = Int32(0))
+        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(), rotation::Float64 = 0.0, layer::Int32 = Int32(0), center::Math.Vector2 = Math.Vector2(0,0))
             this = new()
 
             this.offset = Math.Vector2f()
             this.isFlipped = isFlipped
             this.imagePath = imagePath
+            this.center = center
             this.color = color
             this.crop = crop
             this.image = C_NULL

@@ -143,7 +143,8 @@ module SceneReaderModule
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
                 rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit))
+                center = !haskey(component, "center") ? Vector2(0,0) : Vector2(component.center.x, component.center.y)
+                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit), center::Vector2)
             end
             
             return newComponent
