@@ -13,6 +13,7 @@ module SceneBuilderModule
         if endswith(pwd(), "test")
             println("Loading scripts in test folder...")
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
+            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "SmokeTest", "scripts"); join=true)))
         end
 
         if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
@@ -66,7 +67,7 @@ module SceneBuilderModule
 
     
 
-    function init(this::Scene, windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; TestScript = C_NULL, isNewEditor = false)
+    function init(this::Scene, windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
         #file loading
         if autoScaleZoom 
             zoom = 1.0
@@ -127,7 +128,7 @@ module SceneBuilderModule
 
                     newScript = C_NULL
                     try
-                        newScript = TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
+                        newScript = eval(Symbol(script.name))(params...)
                     catch e
                         println(e)
 						Base.show_backtrace(stdout, catch_backtrace())
@@ -181,35 +182,39 @@ module SceneBuilderModule
                 scriptCounter = 1
                 for script in entity.scripts
                     params = []
-                    for param in script.parameters
-                        if lowercase(param) == "true"
-                            param = true
-                        elseif lowercase(param) == "false"
-                            param = false
-                        else
-                            try
-                                param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
-                            catch e
-                                println(e)
-						        Base.show_backtrace(stdout, catch_backtrace())
-						        rethrow(e)
+                    if isa(script, Dict)
+                        for param in script.parameters
+                            
+                            if lowercase(param) == "true"
+                                param = true
+                            elseif lowercase(param) == "false"
+                                param = false
+                            else
+                                try
+                                    param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
+                                catch e
+                                    println(e)
+                                    Base.show_backtrace(stdout, catch_backtrace())
+                                    rethrow(e)
+                                end
                             end
+                            push!(params, param)
                         end
-                        push!(params, param)
                     end
 
                     newScript = C_NULL
                     try
                         newScript = eval(Symbol(script.name))(params...)
-                        # TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
                     catch e
                         println(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
                     end
 
-                    entity.scripts[scriptCounter] = newScript
-                    newScript.setParent(entity)
+                    if newScript != C_NULL
+                        entity.scripts[scriptCounter] = newScript
+                        newScript.setParent(entity)
+                    end
                     scriptCounter += 1
                 end
             end

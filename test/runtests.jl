@@ -5,13 +5,14 @@ ROOTDIR = joinpath(@__DIR__, "..")
 EXAMPLEGAMEDIR = joinpath(ROOTDIR, "examples")
 SMOKETESTDIR = joinpath(@__DIR__, "projects", "SmokeTest")
 PROFILINGTESTDIR = joinpath(@__DIR__, "projects", "ProfilingTest")
-include(joinpath(SMOKETESTDIR, "scripts", "TestScript.jl"))
+include(joinpath(SMOKETESTDIR, "src", "SmokeTest.jl"))
 include(joinpath(PROFILINGTESTDIR, "Platformer", "src", "Platformer.jl"))
 
 @testset "All tests" begin
-    include("engine/enginetests.jl")
-    include("math/mathtests.jl")
+    cd(joinpath(SMOKETESTDIR, "src"))
+    @test SmokeTest.run(SMOKETESTDIR) == 0
     cd(joinpath(@__DIR__, "projects", "ProfilingTest", "Platformer", "src"))
+    include("math/mathtests.jl")
     @testset "Platformer" begin
         @test Platformer.run() == 0
     end

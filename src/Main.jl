@@ -156,6 +156,9 @@ module MainLoop
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer)
                 SDL2.SDL_DestroyWindow(this.window)
                 SDL2.SDL_Quit()
+			elseif !this.shouldChangeScene && this.testMode
+				SDL2.SDL_DestroyRenderer(JulGame.Renderer)
+                SDL2.SDL_DestroyWindow(this.window)
             else
                 this.shouldChangeScene = false
                 this.initializeNewScene(false)
@@ -530,7 +533,6 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 function DestroyEntity(entity)
 	for i = eachindex(MAIN.scene.entities)
 		if MAIN.scene.entities[i] == entity
-			#	println("Destroying entity: ", entity.name, " with id: ", entity.id, " at index: ", index)
 			destroy_entity_components(entity)
 			deleteat!(MAIN.scene.entities, i)
 			break
@@ -540,7 +542,6 @@ end
 
 function destroy_entity_components(entity)
 	entitySprite = entity.sprite
-	println("Destroying entity: ", entity.name, " with id: ", entity.id)
 	if entitySprite != C_NULL
 		for j = eachindex(MAIN.spriteLayers["$(entitySprite.layer)"])
 			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
