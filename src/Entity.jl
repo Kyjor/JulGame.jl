@@ -79,6 +79,7 @@ module EntityModule
         catch e
             println(e)
             Base.show_backtrace(stdout, catch_backtrace())
+            rethrow(e)
         end
     end
 
@@ -89,6 +90,7 @@ module EntityModule
             catch e
                 println(e)
                 Base.show_backtrace(stdout, catch_backtrace())
+                rethrow(e)
             end
         end
     end

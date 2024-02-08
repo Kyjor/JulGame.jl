@@ -229,7 +229,7 @@ module Editor
                             CImGui.Separator()
                             
                             FieldsInStruct=fieldnames(currentEntitySelectedIndex != -1 ? JulGame.Entity : TextBoxModule.TextBox);
-                            for i = 1:length(FieldsInStruct)
+                            for i = eachindex(FieldsInStruct)
                                 #Check field i
                                 try
                                     Value=getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
@@ -243,7 +243,7 @@ module Editor
                                         buf = "$(Value)"*"\0"^(64)
                                         CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
                                         currentTextInTextBox = ""
-                                        for characterIndex = 1:length(buf)
+                                        for characterIndex = eachindex(buf)
                                             if Int32(buf[characterIndex]) == 0 
                                                 if characterIndex != 1
                                                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
@@ -268,13 +268,13 @@ module Editor
                                         if CImGui.TreeNode("Scripts")
                                             ShowHelpMarker("Add a script here to run it on the entity.")
                                             CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
-                                            for i = 1:length(Value)
+                                            for i = eachindex(Value)
                                                 if CImGui.TreeNode("Script $(i)")
                                                     buf = "$(Value[i].name)"*"\0"^(64)
                                                     CImGui.Button("Delete $(i)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, i); break;)
                                                     CImGui.InputText("Script $(i)", buf, length(buf))
                                                     currentTextInTextBox = ""
-                                                    for characterIndex = 1:length(buf)
+                                                    for characterIndex = eachindex(buf)
                                                         if Int32(buf[characterIndex]) == 0 
                                                             if characterIndex != 1
                                                                 currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
@@ -288,12 +288,12 @@ module Editor
                                                         params = structToUpdate[currentSelectedIndex].scripts[i].parameters
                                                         CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
 
-                                                        for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
+                                                        for j = eachindex(structToUpdate[currentSelectedIndex].scripts[i].parameters)
                                                             buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
                                                             CImGui.Button("Delete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
                                                             CImGui.InputText("Parameter $(j)", buf, length(buf))
                                                             currentTextInTextBox = ""
-                                                            for characterIndex = 1:length(buf)
+                                                            for characterIndex = eachindex(buf)
                                                                 if Int32(buf[characterIndex]) == 0 
                                                                     if characterIndex != 1
                                                                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
@@ -378,7 +378,7 @@ module Editor
                             buf = "$(projectPath)"*"\0"^(128)
                             CImGui.InputText("Project Root Folder", buf, length(buf))
                             currentTextInTextBox = ""
-                            for characterIndex = 1:length(buf)
+                            for characterIndex = eachindex(buf)
                                 if Int32(buf[characterIndex]) == 0 
                                     if characterIndex != 1
                                         currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
@@ -448,7 +448,7 @@ module Editor
                                     CImGui.IsItemClicked() && (node_clicked = i;)
                                 end
                             end
-                            for i in 1:length(entities)
+                            for i in eachindex(entities)
                                 # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
                                 node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
                                 # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
@@ -488,7 +488,7 @@ module Editor
                                     CImGui.IsItemClicked() && (node_clicked = i;)
                                 end
                             end
-                            for i in 1:length(textBoxes)
+                            for i in eachindex(textBoxes)
                                 # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
                                 node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
                                 # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().

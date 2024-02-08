@@ -130,7 +130,8 @@ module MainLoop
                         throw(e)
                     else
                         println(e)
-                        Base.show_backtrace(stdout, catch_backtrace())
+						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
                     end
                 end
                 if this.testMode && this.currentTestTime >= this.testLength
@@ -145,8 +146,8 @@ module MainLoop
                     catch e
                         if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
                             println("Error shutting down script")
-                            println(e)
                             Base.show_backtrace(stdout, catch_backtrace())
+                            rethrow(e)
                         end
                     end
                 end
@@ -398,9 +399,9 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 				script.initialize()
 			catch e
 				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
-					println("Error initializing script")
 					println(e)
 					Base.show_backtrace(stdout, catch_backtrace())
+					rethrow(e)
 				end
 			end
 		end
@@ -434,7 +435,7 @@ function change_scene(sceneFileName::String)
 			continue
 		end
 
-		DestroyEntityComponents(entity)
+		destroy_entity_components(entity)
 		for script in entity.scripts
 			try
 				script.onShutDown()
@@ -443,6 +444,7 @@ function change_scene(sceneFileName::String)
 					println("Error shutting down script")
 					println(e)
 					Base.show_backtrace(stdout, catch_backtrace())
+					rethrow(e)
 				end
 			end
 		end
@@ -526,20 +528,21 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 - `entity`: The entity to be destroyed.
 """
 function DestroyEntity(entity)
-	for i = 1:length(MAIN.scene.entities)
+	for i = eachindex(MAIN.scene.entities)
 		if MAIN.scene.entities[i] == entity
 			#	println("Destroying entity: ", entity.name, " with id: ", entity.id, " at index: ", index)
-			DestroyEntityComponents(entity)
+			destroy_entity_components(entity)
 			deleteat!(MAIN.scene.entities, i)
 			break
 		end
 	end
 end
 
-function DestroyEntityComponents(entity)
+function destroy_entity_components(entity)
 	entitySprite = entity.sprite
+	println("Destroying entity: ", entity.name, " with id: ", entity.id)
 	if entitySprite != C_NULL
-		for j = 1:length(MAIN.spriteLayers["$(entitySprite.layer)"])
+		for j = eachindex(MAIN.spriteLayers["$(entitySprite.layer)"])
 			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
 				entitySprite.destroy()
 				deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
@@ -550,7 +553,7 @@ function DestroyEntityComponents(entity)
 
 	entityRigidbody = entity.rigidbody
 	if entityRigidbody != C_NULL
-		for j = 1:length(MAIN.scene.rigidbodies)
+		for j = eachindex(MAIN.scene.rigidbodies)
 			if MAIN.scene.rigidbodies[j] == entityRigidbody
 				deleteat!(MAIN.scene.rigidbodies, j)
 				break
@@ -560,7 +563,7 @@ function DestroyEntityComponents(entity)
 
 	entityCollider = entity.collider
 	if entityCollider != C_NULL
-		for j = 1:length(MAIN.scene.colliders)
+		for j = eachindex(MAIN.scene.colliders)
 			if MAIN.scene.colliders[j] == entityCollider
 				deleteat!(MAIN.scene.colliders, j)
 				break
@@ -685,6 +688,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						JulGame.update(rigidbody, deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
+						println(e)
+						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
 					end
 				end
@@ -711,6 +716,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						end
 					catch e
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
+						println(e)
+						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
 					end
 					entityAnimator = entity.animator
@@ -740,6 +747,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							Component.draw(sprite)
 						catch e
 							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
+							println(e)
+							Base.show_backtrace(stdout, catch_backtrace())
 							rethrow(e)
 						end
 					end
@@ -828,6 +837,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						size.y * SCALE_UNITS)))
 					end
 				catch e
+					println(e)
+					Base.show_backtrace(stdout, catch_backtrace())
 					rethrow(e)
 				end
 			end
@@ -853,13 +864,13 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				if length(this.debugTextBoxes) == 0
 					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 
-					for i = 1:length(statTexts)
+					for i = eachindex(statTexts)
 						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true)
 						push!(this.debugTextBoxes, textBox)
                         JulGame.initialize(textBox)
 					end
 				else
-					for i = 1:length(this.debugTextBoxes)
+					for i = eachindex(this.debugTextBoxes)
                         db_textbox = this.debugTextBoxes[i]
                         JulGame.update_text(db_textbox, statTexts[i])
                         JulGame.render(db_textbox, false)
@@ -886,12 +897,9 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				return returnData 
 			end 
 		catch e
-			if this.testMode || isEditor
-				rethrow(e)
-			else
-				println("$(e)")
-				Base.show_backtrace(stderr, catch_backtrace())
-			end
+			println(e)
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
 		end
     end
 end

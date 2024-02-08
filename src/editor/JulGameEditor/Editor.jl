@@ -188,9 +188,26 @@ module Editor
                     CImGui.Begin("Entity Inspector") 
                         for entityIndex = eachindex(hierarchyEntitySelections)
                             if hierarchyEntitySelections[entityIndex]
+                                CImGui.PushID("AddMenu")
+                                if CImGui.BeginMenu("Add")
+                                    ShowEntityContextMenu(filteredEntities[entityIndex])
+                                    CImGui.EndMenu()
+                                end
+                                CImGui.PopID()
+                                CImGui.Separator()
                                 for entityField in fieldnames(Entity)
+                                    if length(filteredEntities) < entityIndex
+                                        break
+                                    end
                                     show_field_editor(filteredEntities[entityIndex], entityField)
                                 end
+                                CImGui.Separator()
+                                CImGui.Text("Delete Entity: NO CONFIRMATION")
+                                if CImGui.Button("Delete")
+                                    MainLoop.DestroyEntity(currentSceneMain.scene.entities[entityIndex])
+                                    break
+                                end
+
                                 break # TODO: Remove this when we can select multiple entities and edit them all at once
                             end
                         end

@@ -130,7 +130,7 @@ module ColliderModule
                 collision = CheckCollision(this, collider)
                 if CheckIfResting(this, collider)[1] == true && length(this.currentRests) > 0 && !(collider in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
-                    for j in 1:length(this.currentRests)
+                    for j in eachindex(this.currentRests)
                         if this.currentRests[j].getParent().transform.getPosition().y == collider.getParent().transform.getPosition().y && this.currentRests[j].getSize().y == collider.getSize().y
                             push!(this.currentRests, collider)
                             break
@@ -173,7 +173,8 @@ module ColliderModule
                             eventToCall(collider)
                         catch e
                             println(e)
-                            Base.show_backtrace(stdout, catch_backtrace())
+						    Base.show_backtrace(stdout, catch_backtrace())
+						    rethrow(e)
                         end
                     end
                     #Begin to overlap, correct position
@@ -193,7 +194,7 @@ module ColliderModule
 
         #println("Skipped $colliderSkipCount colliders, checked $colliderCheckedCount")
 
-        for i in 1:length(this.currentRests)
+        for i in eachindex(this.currentRests)
             if CheckIfResting(this, this.currentRests[i])[1] == false
                 deleteat!(this.currentRests, i)
                 break

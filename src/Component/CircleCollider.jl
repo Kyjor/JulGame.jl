@@ -70,7 +70,7 @@ module CircleColliderModule
         this.isGrounded = this.parent.rigidbody.grounded
         
 
-        for i in 1:length(colliders)
+        for i in eachindex(colliders)
             #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
             if !colliders[i].getParent().isActive || !colliders[i].enabled
                 if this.parent.rigidbody.grounded && i == length(colliders)
@@ -82,7 +82,7 @@ module CircleColliderModule
                 collision = CheckCollision(this, colliders[i])
                 if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
-                    for j in 1:length(this.currentRests)
+                    for j in eachindex(this.currentRests)
                         if this.currentRests[j].getParent().transform.getPosition().y == colliders[i].getParent().transform.getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
                             push!(this.currentRests, colliders[i])
                             break
@@ -135,7 +135,7 @@ module CircleColliderModule
                 # end
             end
         end
-        for i in 1:length(this.currentRests)
+        for i in eachindex(this.currentRests)
             if CheckIfResting(this, this.currentRests[i])[1] == false
                 deleteat!(this.currentRests, i)
                 break

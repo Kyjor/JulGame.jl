@@ -118,7 +118,8 @@ module SceneBuilderModule
                                 param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
                             catch e
                                 println(e)
-                                Base.show_backtrace(stdout, catch_backtrace())
+						        Base.show_backtrace(stdout, catch_backtrace())
+						        rethrow(e)
                             end
                         end
                         push!(params, param)
@@ -129,7 +130,8 @@ module SceneBuilderModule
                         newScript = TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
                     catch e
                         println(e)
-                        Base.show_backtrace(stdout, catch_backtrace())
+						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
                     end
 
                     entity.scripts[scriptCounter] = newScript
@@ -189,7 +191,8 @@ module SceneBuilderModule
                                 param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
                             catch e
                                 println(e)
-                                Base.show_backtrace(stdout, catch_backtrace())
+						        Base.show_backtrace(stdout, catch_backtrace())
+						        rethrow(e)
                             end
                         end
                         push!(params, param)
@@ -201,7 +204,8 @@ module SceneBuilderModule
                         # TestScript == C_NULL ? eval(Symbol(script.name))(params...) : TestScript()
                     catch e
                         println(e)
-                        Base.show_backtrace(stdout, catch_backtrace())
+						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
                     end
 
                     entity.scripts[scriptCounter] = newScript

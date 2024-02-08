@@ -82,12 +82,9 @@ module SceneReaderModule
             push!(res, textBoxes)
             return res
         catch e 
-            if !isEditor
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            else
-                rethrow(e)
-            end
+            println(e)
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 
@@ -100,7 +97,8 @@ module SceneReaderModule
                 push!(res, newTextBox)
             catch e 
                 println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
+				Base.show_backtrace(stdout, catch_backtrace())
+				rethrow(e)
             end
         end
 
@@ -150,7 +148,8 @@ module SceneReaderModule
             return newComponent
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 end
