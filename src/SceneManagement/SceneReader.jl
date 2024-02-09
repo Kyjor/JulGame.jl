@@ -1,16 +1,16 @@
 module SceneReaderModule
     using JSON3
-    using ..SceneManagement.JulGame.AnimatorModule
-    using ..SceneManagement.JulGame.AnimationModule
-    using ..SceneManagement.JulGame.ColliderModule
-    using ..SceneManagement.JulGame.CircleColliderModule
-    using ..SceneManagement.JulGame.EntityModule
-    using ..SceneManagement.JulGame.Math
-    using ..SceneManagement.JulGame.RigidbodyModule
-    using ..SceneManagement.JulGame.SoundSourceModule
-    using ..SceneManagement.JulGame.SpriteModule
-    using ..SceneManagement.JulGame.UI.TextBoxModule
-    using ..SceneManagement.JulGame.TransformModule
+    using ...AnimatorModule
+    using ...AnimationModule
+    using ...ColliderModule
+    using ...CircleColliderModule
+    using ...EntityModule
+    using ...Math
+    using ...RigidbodyModule
+    using ...SoundSourceModule
+    using ...SpriteModule
+    using ...UI.TextBoxModule
+    using ...TransformModule
 
 
     function scriptObj(name::String, parameters::Array)
@@ -82,12 +82,9 @@ module SceneReaderModule
             push!(res, textBoxes)
             return res
         catch e 
-            if !isEditor
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            else
-                rethrow(e)
-            end
+            println(e)
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 
@@ -100,7 +97,8 @@ module SceneReaderModule
                 push!(res, newTextBox)
             catch e 
                 println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
+				Base.show_backtrace(stdout, catch_backtrace())
+				rethrow(e)
             end
         end
 
@@ -143,13 +141,15 @@ module SceneReaderModule
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
                 rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit))
+                center = !haskey(component, "center") ? Vector2(0,0) : Vector2(component.center.x, component.center.y)
+                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit), center::Vector2)
             end
             
             return newComponent
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 end

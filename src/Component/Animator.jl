@@ -3,7 +3,8 @@
     using ..Component.JulGame
     using ..Component.JulGame.Math
     using ..Component.SpriteModule
-
+    import ..Component.JulGame: deprecated_get_property
+    import ..Component
     export Animator
     struct Animator
         animations::Vector{Animation}
@@ -33,40 +34,43 @@
     end
 
     function Base.getproperty(this::InternalAnimator, s::Symbol)
-        if s == :getLastUpdate
-            function()
-                return this.lastUpdate
-            end
-        elseif s == :setLastUpdate
-            function(value)
-                this.lastUpdate = value
-            end
-        elseif s == :update
-            function(currentRenderTime, deltaTime)
-                Update(this, currentRenderTime, deltaTime)
-            end
-        elseif s == :setSprite
-            function(sprite)
-                this.sprite = sprite
-            end
-        elseif s == :setParent
-            function(parent)
-                this.parent = parent
-            end
-        elseif s == :appendArray
-            function()
-                push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-        end
+        method_props = (
+            getLastUpdate = Component.get_last_update,
+            setLastUpdate = Component.set_last_update,
+            update = Component.update,
+            setSprite = Component.set_sprite,
+            setParent = Component.set_parent,
+            appendArray = Component.append_array
+        )
+
+        deprecated_get_property(method_props, this, s)
     end
 
+    
+    function Component.get_last_update(this::InternalAnimator)
+        return this.lastUpdate
+    end
+
+    function Component.set_last_update(this::InternalAnimator, value)
+        this.lastUpdate = value
+    end
+
+    function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
+        Update(this, currentRenderTime, deltaTime)
+    end
+
+    function Component.set_sprite(this::InternalAnimator, sprite)
+        this.sprite = sprite
+    end
+
+    function Component.set_parent(this::InternalAnimator, parent)
+        this.parent = parent
+    end
+
+    function Component.append_array(this::InternalAnimator)
+        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
+    end
+    
     
     """
     ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)

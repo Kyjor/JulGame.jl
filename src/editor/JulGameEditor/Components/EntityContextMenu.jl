@@ -3,10 +3,10 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 
 """
-ShowEntityContextMenu()
+ShowEntityContextMenu(currentEntitySelected)
 Show menu that allows user to add new components to an entity
 """
-function ShowEntityContextMenu(basePath, currentEntitySelected, game)
+function ShowEntityContextMenu(currentEntitySelected)
     CImGui.MenuItem("Add", C_NULL, false, false)
     if CImGui.BeginMenu("New")
         if CImGui.MenuItem("Animator")

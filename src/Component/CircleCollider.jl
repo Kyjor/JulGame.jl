@@ -2,6 +2,8 @@
 module CircleColliderModule
     using ..Component.JulGame
     using ..Component.ColliderModule
+    import ..Component.JulGame: deprecated_get_property
+    import ..Component
 
     export CircleCollider
     struct CircleCollider
@@ -45,121 +47,122 @@ module CircleColliderModule
 
 
     function Base.getproperty(this::CircleCollider, s::Symbol)
-        if s == :getSize
-            function()
-                return this.size
-            end
-        elseif s == :checkCollisions
-            function()
-                colliders = MAIN.scene.colliders
-                #Only check the player against other colliders
-                counter = 0
-                
-                this.isGrounded = this.parent.rigidbody.grounded
-                
-
-                for i in 1:length(colliders)
-                    #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
-                    if !colliders[i].getParent().isActive || !colliders[i].enabled
-                        if this.parent.rigidbody.grounded && i == length(colliders)
-                            this.parent.rigidbody.grounded = false
-                        end
-                        continue
-                    end
-                    if this != colliders[i] && this.parent.rigidbody.getVelocity().y >= 0
-                        collision = CheckCollision(this, colliders[i])
-                        if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
-                            # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
-                            for j in 1:length(this.currentRests)
-                                if this.currentRests[j].getParent().transform.getPosition().y == colliders[i].getParent().transform.getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
-                                    push!(this.currentRests, colliders[i])
-                                    break
-                                end
-                            end
-                        end
-                        transform = this.getParent().transform
-                        # if collision[1] == Top::CollisionDirection
-                        #     push!(this.currentCollisions, colliders[i])
-                        #     for eventToCall in this.collisionEvents
-                        #         eventToCall()
-                        #     end
-                        #     #Begin to overlap, correct position
-                        #     transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
-                        # end
-                        # if collision[1] == Left::CollisionDirection
-                        #     push!(this.currentCollisions, colliders[i])
-                        #     for eventToCall in this.collisionEvents
-                        #         eventToCall()
-                        #     end
-                        #     #Begin to overlap, correct position
-                        #     transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
-                        # end
-                        # if collision[1] == Right::CollisionDirection
-                        #     push!(this.currentCollisions, colliders[i])
-                        #     for eventToCall in this.collisionEvents
-                        #         eventToCall()
-                        #     end
-                        #     #Begin to overlap, correct position
-                        #     transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
-                        # end
-                        # if collision[1] == Bottom::CollisionDirection
-                        #this.isGrounded = collision[1]
-                        if collision[1] == true
-                            println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().transform.getPosition())
-                            push!(this.currentRests, colliders[i])
-                            for eventToCall in this.collisionEvents
-                                eventToCall()
-                            end
-                            #Begin to overlap, correct position
-                            transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
-                            this.isGrounded = true
-                        end
-                        # end
-                        # if collision[1] == Below::ColliderLocation
-                        #     push!(this.currentCollisions, colliders[i])
-                        #     for eventToCall in this.collisionEvents
-                        #         eventToCall()
-                        #     end
-                        # end
-                    end
-                end
-                for i in 1:length(this.currentRests)
-                    if CheckIfResting(this, this.currentRests[i])[1] == false
-                        deleteat!(this.currentRests, i)
-                        break
-                    end
-                end
-           
-                this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
-                this.currentCollisions = []
-            end
-        elseif s == :setParent
-            function(parent::Any)
-                this.parent = parent
-            end
-        elseif s == :getParent
-            function()
-                return this.parent
-            end
-        elseif s == :addCollisionEvent
-            function(event)
-                push!(this.collisionEvents, event)
-            end   
-        elseif s == :getType
-            function()
-                return "CircleCollider"
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-        end
+        method_props = (
+            getSize = Component.get_size,
+            checkCollisions = Component.check_collisions,
+            setParent = Component.set_parent,
+            getParent = Component.get_parent,
+            addCollisionEvent = Component.add_collision_event,
+            getType = Component.get_type
+        )
+        deprecated_get_property(method_props, this, s)
+    end
+    
+    function Component.get_size(this::CircleCollider)
+        return this.size
     end
 
-    function CheckCollision(colliderA::CircleCollider, colliderB::CircleCollider)
+    function Component.check_collisions(this::CircleCollider)
+        colliders = MAIN.scene.colliders
+        #Only check the player against other colliders
+        counter = 0
+        
+        this.isGrounded = this.parent.rigidbody.grounded
+        
+
+        for i in eachindex(colliders)
+            #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
+            if !colliders[i].getParent().isActive || !colliders[i].enabled
+                if this.parent.rigidbody.grounded && i == length(colliders)
+                    this.parent.rigidbody.grounded = false
+                end
+                continue
+            end
+            if this != colliders[i] && this.parent.rigidbody.getVelocity().y >= 0
+                collision = CheckCollision(this, colliders[i])
+                if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
+                    # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
+                    for j in eachindex(this.currentRests)
+                        if this.currentRests[j].getParent().transform.getPosition().y == colliders[i].getParent().transform.getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
+                            push!(this.currentRests, colliders[i])
+                            break
+                        end
+                    end
+                end
+                transform = this.getParent().transform
+                # if collision[1] == Top::CollisionDirection
+                #     push!(this.currentCollisions, colliders[i])
+                #     for eventToCall in this.collisionEvents
+                #         eventToCall()
+                #     end
+                #     #Begin to overlap, correct position
+                #     transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
+                # end
+                # if collision[1] == Left::CollisionDirection
+                #     push!(this.currentCollisions, colliders[i])
+                #     for eventToCall in this.collisionEvents
+                #         eventToCall()
+                #     end
+                #     #Begin to overlap, correct position
+                #     transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
+                # end
+                # if collision[1] == Right::CollisionDirection
+                #     push!(this.currentCollisions, colliders[i])
+                #     for eventToCall in this.collisionEvents
+                #         eventToCall()
+                #     end
+                #     #Begin to overlap, correct position
+                #     transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
+                # end
+                # if collision[1] == Bottom::CollisionDirection
+                #this.isGrounded = collision[1]
+                if collision[1] == true
+                    println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().transform.getPosition())
+                    push!(this.currentRests, colliders[i])
+                    for eventToCall in this.collisionEvents
+                        eventToCall()
+                    end
+                    #Begin to overlap, correct position
+                    transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
+                    this.isGrounded = true
+                end
+                # end
+                # if collision[1] == Below::ColliderLocation
+                #     push!(this.currentCollisions, colliders[i])
+                #     for eventToCall in this.collisionEvents
+                #         eventToCall()
+                #     end
+                # end
+            end
+        end
+        for i in eachindex(this.currentRests)
+            if CheckIfResting(this, this.currentRests[i])[1] == false
+                deleteat!(this.currentRests, i)
+                break
+            end
+        end
+   
+        this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
+        this.currentCollisions = []
+    end
+
+    function Component.set_parent(this::CircleCollider, parent::Any)
+        this.parent = parent
+    end
+
+    function Component.get_parent(this::CircleCollider)
+        return this.parent
+    end
+
+    function Component.add_collision_event(this::CircleCollider, event)
+        push!(this.collisionEvents, event)
+    end   
+
+    function Component.get_type(this::CircleCollider)
+        return "CircleCollider"
+    end
+
+    function CheckCollision(a::CircleCollider, b::CircleCollider)
         # Calculate total radius squared
         totalRadiusSquared::Float64 = (a.diameter + b.diameter)^2
         # If the distance between the centers of the circles is less than the sum of their radii

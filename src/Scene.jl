@@ -1,5 +1,5 @@
 ﻿mutable struct Scene
-    camera
+    camera::Union{Nothing, JulGame.SceneManagement.SceneBuilderModule.Camera}
     colliders::Vector{Any}
     entities::Vector{Any}
     rigidbodies::Vector{Any}
@@ -9,7 +9,7 @@
     function Scene()
         this = new()
 
-        this.camera = C_NULL
+        this.camera = nothing
         this.colliders = []
         this.entities = []
         this.rigidbodies = []
@@ -21,31 +21,29 @@
 end
 
 function Base.getproperty(this::Scene, s::Symbol)
-    if s == :update
-        function()
-            # update here
-        end
-    elseif s == :getCollidersInRange
-        function(originCollider)
-            # search for colliders in colliders that could possibly touch origin collider and return as array
-        end
-    elseif s == :getEntityByName
-        function(name)
-            for entity in this.entities
-                if entity.name == name
-                    return entity
-                end
-            end
+    method_props = (
+        update = update,
+        getCollidersInRange = get_colliders_in_range,
+        getEntityByName = get_entity_by_name
+    )
+    deprecated_get_property(method_props, this, s)
+end
 
-            @warn "No entity with name $name found"
-            return C_NULL
-        end
-    else
-        try
-            getfield(this, s)
-        catch e
-            println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+function update(this::Scene)
+    # update here
+end
+
+function get_colliders_in_range(this::Scene, originCollider)
+    # search for colliders in colliders that could possibly touch origin collider and return as array
+end
+
+function get_entity_by_name(this::Scene, name)
+    for entity in this.entities
+        if entity.name == name
+            return entity
         end
     end
+
+    @warn "No entity with name $name found"
+    return C_NULL
 end

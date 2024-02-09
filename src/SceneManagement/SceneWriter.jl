@@ -25,6 +25,7 @@ module SceneWriterModule
             "isTextUpdated" => textBox.isTextUpdated,
             "isWorldEntity" => textBox.isWorldEntity,
             "name" => textBox.name,
+            "persistentBetweenScenes" => textBox.persistentBetweenScenes,
             "position" => Dict("x" => textBox.position.x, "y" => textBox.position.y),
             "size" => Dict("x" => textBox.size.x, "y" => textBox.size.y),
             "text" => textBox.text
@@ -42,7 +43,8 @@ module SceneWriterModule
             end
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+            rethrow(e)
         end
     end
 
@@ -54,7 +56,6 @@ module SceneWriterModule
             componentType = "$(typeof(component).name.wrapper)"
             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
             componentType = replace(componentType, "Internal" => "")
-            #Dict("b" => 1, "c" => 2)
             if componentType == "Transform"
                 serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
                 push!(componentsDict, serializedComponent)
@@ -82,6 +83,7 @@ module SceneWriterModule
                     "tag" => component.tag, 
                     "isTrigger" => component.isTrigger, 
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "enabled" => component.enabled,
                     "isPlatformerCollider" => component.isPlatformerCollider,
                     )
                 push!(componentsDict, serializedComponent)
@@ -89,6 +91,7 @@ module SceneWriterModule
                 serializedComponent = Dict(
                     "type" => componentType, 
                     "mass" => component.mass, 
+                    "drag" => component.drag,
                     "useGravity" => component.useGravity,
                     )
                 push!(componentsDict, serializedComponent)
@@ -109,7 +112,14 @@ module SceneWriterModule
                     "isFlipped" => component.isFlipped, 
                     "imagePath" => normalizePath(component.imagePath),
                     "layer" => component.layer,
+                    "isWorldEntity" => component.isWorldEntity,
                     "pixelsPerUnit" => component.pixelsPerUnit,
+                    "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "position" => Dict("x" => component.position.x, "y" => component.position.y),
+                    "rotation" => component.rotation,
+                    "center" => Dict("x" => component.center.x, "y" => component.center.y),
+                    "color" => Dict("x" => component.color.x, "y" => component.color.y, "z" => component.color.z),
+                    "size" => Dict("x" => component.size.x, "y" => component.size.y),
                     )
                 push!(componentsDict, serializedComponent)
             elseif "$componentType" != "Ptr"
@@ -128,7 +138,6 @@ module SceneWriterModule
         scriptsDict = []
 
         for script in scripts
-            # scriptName = "$(split("$(typeof(script))", '.')[length(split("$(typeof(script))", '.'))])"
             push!(scriptsDict, Dict("name" => script.name, "parameters" => script.parameters))
         end
 

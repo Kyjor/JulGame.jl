@@ -1,573 +1,381 @@
+# Reference: https://github.com/ocornut/imgui/tree/master/examples/example_sdl2_sdlrenderer2
 
 module Editor
     using CImGui
     using CImGui.CSyntax
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
-    using Dates
-    using ImGuiGLFWBackend #CImGui.GLFWBackend
-    using ImGuiOpenGLBackend #CImGui.OpenGLBackend
-    using ImGuiGLFWBackend.LibGLFW # #CImGui.OpenGLBackend.GLFW
-    using ImGuiOpenGLBackend.ModernGL
+    using CImGui.LibCImGui
+    using JulGame: MainLoop, Math, SceneLoaderModule, SDL2
     using NativeFileDialog
-    using JulGame
-    using JulGame.EntityModule
-    using JulGame.SceneWriterModule
-    using JulGame.SceneLoaderModule
-    using JulGame.TextBoxModule
-    using JulGame.MainLoop
+
+    global sdlVersion = "2.0.0"
+    global sdlRenderer = C_NULL
+    global const BackendPlatformUserData = Ref{Any}(C_NULL)
 
     include(joinpath("..","..","Macros.jl"))
-    include("MainMenuBar.jl")
-    include("EntityContextMenu.jl")
-    include("ComponentInputs.jl")
-    include("TextBoxFields.jl")
-    include("Utils.jl")
 
-    function scriptObj(name::String, parameters::Array)
-        () -> (name; parameters)
-    end
-
-    function LoadScene(scenePath)
-        game = C_NULL
-        try
-            game = SceneLoaderModule.LoadSceneFromEditor(scenePath);
-        catch e
-            rethrow(e)
-        end
-
-        return game
-    end
-
-    function CloseCurrentScene(game)
-        try
-            game
-        catch e
-            rethrow(e)
-        end
-    end
-    
-    function GetAllScenesFromFolder(projectPath)
-        sceneFiles = []
-        try
-            # search through projectpath and it's subdirectories for a scenes folder. If it exists, return all of the json files from it
-            for (root, dirs, files) in walkdir(projectPath)
-                if "scenes" in dirs
-                    for (root, dirs, files) in walkdir(joinpath(root, "scenes"))
-                        for file in files
-                            # println(file)
-                            if occursin(r".json$", file)
-                                push!(sceneFiles, joinpath(root, file))
-                            end
-                        end
-                    end
-                end
-            end
-        catch e
-            rethrow(e)
-        end
-
-        return sceneFiles
-    end
-
-    function ChooseFolderWithDialog()
-        dir = pick_folder()
-        # println("open_dialog returned $dir")
-        return dir
-    end
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "ImGuiSDLBackend"); join=true)))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
     function run()
-        @static if Sys.isapple()
-            # OpenGL 3.2 + GLSL 150
-            glsl_version = 150
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2)
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE) # 3.2+ only
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # required on Mac
-        else
-            # OpenGL 3.0 + GLSL 130
-            glsl_version = 130
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0)
+        info = initSDLAndImGui()
+        window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
+        startingSize = ImVec2(1920, 1080)
+        sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
+        sceneTextureSize = ImVec2(startingSize.x, startingSize.y)
+
+        styleImGui()
+        showDemoWindow = true
+        ##############################
+        # Project variables
+        currentSceneMain = nothing
+        currentSceneName = ""
+        currentSelectedProjectPath = ""
+        gameInfo = []
+        ##############################
+        # Hierarchy variables
+        filteredEntities = Entity[]
+        hierarchyFilterText::String = ""
+        hierarchyEntitySelections = Bool[]
+        ##############################
+        scenesLoadedFromFolder = Ref(String[])
+
+        sceneWindowPos = ImVec2(0, 0)
+        scenewindowSize = ImVec2(startingSize.x, startingSize.y)
+        quit = false
+            try
+                while !quit
+                    if currentSceneMain === nothing
+                        quit = PollEvents()
+                    end
+                        
+                    StartFrame()
+                    LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
+                    
+                    ################################## RENDER HERE
+                    
+                    ################################# MAIN MENU BAR
+                    events = [save_scene_event(), select_project_event(currentSceneMain, scenesLoadedFromFolder)]
+                    @c show_main_menu_bar(events)
+                    ################################# END MAIN MENU BAR
+
+                    # @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see avaialble widgets
+
+                    @cstatic begin
+                        CImGui.Begin("Project") 
+                        txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
+                        CImGui.Text(txt)
+
+                        for scene in scenesLoadedFromFolder[]
+                            if CImGui.Button("$(scene)")
+                                currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
+                                if currentSceneMain === nothing
+                                    currentSceneMain = load_scene(scene, renderer) 
+                                    JulGame.PIXELS_PER_UNIT = 16
+                                    currentSceneMain.autoScaleZoom = true
+                                    currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
+                                else
+                                    change_scene(String(currentSceneName))
+                                end
+                            end
+                            CImGui.NewLine()
+                        end
+
+                        CImGui.End()
+                    end
+
+                    @cstatic begin
+                        CImGui.Begin("Scene")  
+                        sceneWindowPos = CImGui.GetWindowPos()
+                        scenewindowSize = CImGui.GetWindowSize()
+                        # CImGui.Text("Window Size: x:$(scenewindowSize.x), y:$(scenewindowSize.y) ")
+                        # CImGui.SameLine()
+                        # currentSceneMain !== nothing && CImGui.Button("ResetCamera") && (currentSceneMain.resetCameraPosition())
+
+                        CImGui.SameLine()
+                        if scenewindowSize.x != sceneTextureSize.x || scenewindowSize.y != sceneTextureSize.y
+                            SDL2.SDL_DestroyTexture(sceneTexture)
+                            sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, scenewindowSize.x, scenewindowSize.y)
+                            sceneTextureSize = ImVec2(scenewindowSize.x, scenewindowSize.y)
+                        end
+
+                        CImGui.Image(sceneTexture, sceneTextureSize)
+                        if CImGui.BeginDragDropTarget()
+                            payload = CImGui.AcceptDragDropPayload("Scene")
+                            if payload != C_NULL
+                                payload = unsafe_load(payload)
+                                println("payload: ", payload)
+                                @assert payload.DataSize == sizeof(Cint)
+                            end
+                            CImGui.EndDragDropTarget()
+                        end
+                        CImGui.End()
+                    end
+
+                        CImGui.Begin("Hierarchy") 
+                        if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
+                            CImGui.SameLine()
+                            ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.--")
+                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
+
+                            currentHierarchyFilterText = hierarchyFilterText
+                            hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
+                            updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
+                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
+                            ShowHelpMarker("Hold CTRL and click to select multiple items.--")
+                            if length(hierarchyEntitySelections) == 0 || updateSelectionsBasedOnFilter
+                                hierarchyEntitySelections=fill(false, length(filteredEntities))
+                            end
+                            
+                            for n = eachindex(filteredEntities)
+                                CImGui.PushID(n)
+
+                                buf = "$(n): $(filteredEntities[n].name)"
+                                if CImGui.Selectable(buf, hierarchyEntitySelections[n])
+                                    # clear selection when CTRL is not held
+                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
+                                    hierarchyEntitySelections[n] ⊻= 1
+                                end
+                                
+                                # our entities are both drag sources and drag targets here!
+                                if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+                                    @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
+                                    CImGui.Text("Move $(filteredEntities[n].name)---")
+                                    CImGui.EndDragDropSource()
+                                end
+                                if CImGui.BeginDragDropTarget()
+                                    payload = CImGui.AcceptDragDropPayload("Entity")
+                                    if payload != C_NULL
+                                        payload = unsafe_load(payload)
+                                        println("payload: ", payload)
+                                        @assert payload.DataSize == sizeof(Cint)
+                                    end
+                                    CImGui.EndDragDropTarget()
+                                end
+
+                                # Reorder entities: We can only reorder entities if the entiities are not being filtered
+                                if length(filteredEntities) == length(currentSceneMain.scene.entities)
+                                    CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
+                                    if CImGui.BeginDragDropTarget()
+                                        payload = CImGui.AcceptDragDropPayload("Entity") 
+                                        if payload != C_NULL
+                                            payload = unsafe_load(payload)
+                                            @assert payload.DataSize == sizeof(Cint)
+                                            origin = unsafe_load(Ptr{Cint}(payload.Data))
+                                            destination = n
+                                            # Move the entity(origin) to the position after the entity at the destination index and adust the other entities accordingly. Use splicing to do this.
+                                            move_entity(currentSceneMain.scene.entities, origin, destination)
+                                        end
+                                        CImGui.EndDragDropTarget()
+                                    end
+                                end
+
+
+                                CImGui.PopID()
+                            end
+
+                            CImGui.PopStyleVar()
+                            CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
+                            CImGui.TreePop()
+                        end
+                    CImGui.End()
+
+                    show_debug_window(String[])
+                    
+                    CImGui.Begin("Entity Inspector") 
+                        for entityIndex = eachindex(hierarchyEntitySelections)
+                            if hierarchyEntitySelections[entityIndex]
+                                CImGui.PushID("AddMenu")
+                                if CImGui.BeginMenu("Add")
+                                    ShowEntityContextMenu(filteredEntities[entityIndex])
+                                    CImGui.EndMenu()
+                                end
+                                CImGui.PopID()
+                                CImGui.Separator()
+                                for entityField in fieldnames(Entity)
+                                    if length(filteredEntities) < entityIndex
+                                        break
+                                    end
+                                    show_field_editor(filteredEntities[entityIndex], entityField)
+                                end
+                                CImGui.Separator()
+                                CImGui.Text("Delete Entity: NO CONFIRMATION")
+                                if CImGui.Button("Delete")
+                                    MainLoop.DestroyEntity(currentSceneMain.scene.entities[entityIndex])
+                                    break
+                                end
+
+                                break # TODO: Remove this when we can select multiple entities and edit them all at once
+                            end
+                        end
+
+                    CImGui.End()
+
+
+                    SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
+                    SDL2.SDL_RenderClear(renderer)
+                    #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                    gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(scenewindowSize.x, scenewindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    SDL2.SDL_SetRenderTarget(renderer, C_NULL)
+                    SDL2.SDL_RenderClear(renderer)
+                    
+                    ShowGameControls()
+                    
+                    
+                    ################################# STOP RENDERING HERE
+                    CImGui.Render()
+                    SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
+                    SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
+                    SDL2.SDL_RenderClear(renderer);
+                    ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData())
+                    screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, scenewindowSize.x, scenewindowSize.y - 20))
+                    SDL2.SDL_RenderSetViewport(renderer, screenA)
+                    ################################################# Injecting game loop into editor
+                    if currentSceneMain !== nothing
+                        if currentSceneMain.input.editorCallback === nothing
+                            currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
+                        end
+                        currentSceneMain.input.pollInput()
+                        quit = currentSceneMain.input.quit
+                    end
+                    #################################################
+
+                    SDL2.SDL_RenderPresent(renderer);
+                end
+            catch e
+                @warn "Error in renderloop!" exception=e
+                Base.show_backtrace(stderr, catch_backtrace())
+            finally
+                ImGui_ImplSDLRenderer2_Shutdown();
+                ImGui_ImplSDL2_Shutdown();
+
+                CImGui.DestroyContext(ctx)
+                SDL2.SDL_DestroyTexture(sceneTexture)
+                SDL_DestroyRenderer(renderer);
+                SDL2.SDL_DestroyWindow(window);
+                SDL2.SDL_Quit()
         end
-    
-        # create window
-        game = C_NULL #Entry.run(true)
-        scenesLoadedFromFolder = []
-        window = glfwCreateWindow(1920, 1080, "JulGame v0.1.0", C_NULL, C_NULL)
-        @assert window != C_NULL
-        glfwMakeContextCurrent(window)
-        glfwSwapInterval(1)  # enable vsync
-    
-        # setup Dear ImGui context
+        # ================ CUT OFF
+        SDL2.SDL_Quit()
+        # ================ CUT OFF
+    end
+
+    function initSDLAndImGui()
+        if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
+            println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
+        end
+        SDL2.SDL_SetHint(SDL2.SDL_HINT_IME_SHOW_UI, "1")
+
+        window = SDL2.SDL_CreateWindow(
+        "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1920, 1080,
+        SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
+        )
+        if window == C_NULL 
+            println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))
+            return -1
+        end
+
+        renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+        global sdlRenderer = renderer
+        if (renderer == C_NULL)
+            println("Failed to create renderer: ", unsafe_string(SDL2.SDL_GetError()))
+        end
+
+        ver = pointer(SDL2.SDL_version[SDL2.SDL_version(0,0,0)])
+        SDL2.SDL_GetVersion(ver)
+        global sdlVersion = string(unsafe_load(ver).major, ".", unsafe_load(ver).minor, ".", unsafe_load(ver).patch)
+        println("SDL version: ", sdlVersion)
+        sdlVersion = parse(Int32, replace(sdlVersion, "." => ""))
+
         ctx = CImGui.CreateContext()
-    
+
         io = CImGui.GetIO()
-        io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable
-    
+        io.ConfigFlags = unsafe_load(io.ConfigFlags) | CImGui.ImGuiConfigFlags_DockingEnable #| CImGui.ImGuiConfigFlags_NavEnableKeyboard | CImGui.ImGuiConfigFlags_NavEnableGamepad
+        io.BackendPlatformUserData = C_NULL
+        ImGui_ImplSDL2_InitForSDLRenderer(window, renderer)
+        ImGui_ImplSDLRenderer2_Init(renderer)
+        clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
+
+        return [window, renderer, ctx, io, clear_color]
+    end
+
+    function styleImGui() 
         # setup Dear ImGui style #Todo: Make this a setting
         CImGui.StyleColorsDark()
         # CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
-    
-        # setup Platform/Renderer bindings
-        glfw_ctx = ImGuiGLFWBackend.create_context(window, install_callbacks = true)
-        ImGuiGLFWBackend.init(glfw_ctx)
-        opengl_ctx = ImGuiOpenGLBackend.create_context(glsl_version)
-        ImGuiOpenGLBackend.init(opengl_ctx)
-        try
-            cameraPositionX = 0.0
-            cameraPositionY = 0.0
-            currentEntitySelectedIndex = -1
-            currentEntityUpdated = false
-            currentTextBoxSelectedIndex = -1
-            currentTextBoxUpdated = false
-            editorWindowSizeX = 0
-            editorWindowSizeY = 0
-            entities = []
-            textBoxes = []
-            screenButtons = []
-            latest_exceptions = []
-            gameInfo = []
-            mousePosition = C_NULL
-            projectPath = ""
-            sceneName = 
-            relativeX = 0
-            relativeY = 0
-            isEditorWindowFocused = false
-            isSceneWindowFocused = false
-            isSceneWindowRestored = true
-            autoMinimize = false
-            isMinimized = false
-
-            clear_color = Cfloat[0.45, 0.55, 0.60, 0.01]
-            while glfwWindowShouldClose(window) == 0
-                try
-                    resetCamera = false
-                    update = []
-                    if (gameInfo !== nothing && length(gameInfo) > 0)
-                        entities = gameInfo[1][1]
-                        textBoxes = gameInfo[1][2]
-                        screenButtons = gameInfo[1][3]
-                        mousePosition = gameInfo[2]
-                        cameraPositionX = gameInfo[3].x
-                        cameraPositionY = gameInfo[3].y
-                        currentEntitySelectedIndex = gameInfo[4]
-                        isSceneWindowFocused = gameInfo[5]
-                    end 
-                    
-                    glfwPollEvents()
-                    # start the Dear ImGui frame
-                    ImGuiOpenGLBackend.new_frame(opengl_ctx) #ImGui_ImplOpenGL3_NewFrame()
-                    ImGuiGLFWBackend.new_frame(glfw_ctx) #ImGui_ImplGlfw_NewFrame()
-                    CImGui.NewFrame()
-        
-                    event = @event begin
-                        serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
-                    end
-                    events = [event]
-                    @c ShowMainMenuBar(Ref{Bool}(true), events)
-                    
-                    # Uncomment to see widgets that can be used.
-                    #@c CImGui.ShowDemoWindow(Ref{Bool}(true)) 
-                    testText = ""
-                    mousePositionText = "0,0"
-                    if currentEntitySelectedIndex != -1
-                        currentEntitySelectedIndex = min(max(0, currentEntitySelectedIndex), length(entities))
-                        if length(entities) > 0
-                            testText = entities[currentEntitySelectedIndex].name
-                        end
-                    end
-                    if mousePosition != C_NULL
-                        mousePositionText = "$(mousePosition.x),$(mousePosition.y)"
-                    end
-        
-
-                    LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
-
-                    # we use a Begin/End pair to created a named window.
-                    @cstatic f=Cfloat(0.0) counter=Cint(0) begin
-                        CImGui.Begin("Item")  # create a window called "Item" and append into it.
-
-                        if glfwGetWindowAttrib(window, GLFW_FOCUSED) != 0 && glfwGetWindowAttrib(window, GLFW_HOVERED) != 0
-                            isEditorWindowFocused = true
-                        elseif glfwGetWindowAttrib(window, GLFW_FOCUSED) == 0
-                            isEditorWindowFocused = false
-                        end
-                        if isEditorWindowFocused && !isSceneWindowFocused && gameInfo !== nothing && length(gameInfo) > 0 && !isSceneWindowRestored
-                            #println("Editor Window Focused")
-                            isSceneWindowRestored = true
-                            game.restoreWindow()
-                        elseif isSceneWindowFocused && !isEditorWindowFocused
-                            #println("Scene Window Focused")
-                        elseif !isEditorWindowFocused && !isSceneWindowFocused && isSceneWindowRestored && gameInfo !== nothing && length(gameInfo) > 0 && autoMinimize
-                            isSceneWindowRestored = false
-                            #println("Both Windows Not Focused")
-                            game.minimizeWindow()
-                        end
-
-                        CImGui.Text(testText)
-                        
-                        if currentEntityUpdated 
-                            currentEntityUpdated = false
-                        end
-                        if ((currentEntitySelectedIndex != -1 || currentTextBoxSelectedIndex != -1) && currentEntitySelectedIndex != currentTextBoxSelectedIndex)
-                            currentSelectedIndex = currentEntitySelectedIndex != -1 ? currentEntitySelectedIndex : currentTextBoxSelectedIndex
-                            structToUpdate = currentEntitySelectedIndex != -1 ? entities : textBoxes
-                            CImGui.Button("Delete") && (deleteat!(structToUpdate, currentSelectedIndex); currentEntitySelectedIndex = -1; currentTextBoxSelectedIndex = -1; continue;)
-                            CImGui.NewLine()
-                            CImGui.NewLine()
-                            CImGui.Button("Duplicate") && (push!(structToUpdate, deepcopy(structToUpdate[currentSelectedIndex])); currentEntitySelectedIndex = currentEntitySelectedIndex != -1 ? length(entities) : -1; currentTextBoxSelectedIndex != -1 ? length(textBoxes) : -1;)
-                            tempEntity = structToUpdate[currentSelectedIndex]
-                            CImGui.Button("Move Up") && currentSelectedIndex > 1 && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex - 1]; structToUpdate[currentSelectedIndex - 1] = tempEntity; currentEntitySelectedIndex -= currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex -= currentTextBoxSelectedIndex != -1 ? 1 : 0;)
-                            CImGui.Button("Move Down") && currentSelectedIndex < length(structToUpdate) && (structToUpdate[currentSelectedIndex] = structToUpdate[currentSelectedIndex + 1]; structToUpdate[currentSelectedIndex + 1] = tempEntity; currentEntitySelectedIndex += currentEntitySelectedIndex != -1 ? 1 : 0; currentTextBoxSelectedIndex += currentTextBoxSelectedIndex != -1 ? 1 : 0;)
-
-                            CImGui.PushID("foo")
-                            if CImGui.BeginMenu("Add")
-                                ShowEntityContextMenu(projectPath, structToUpdate[currentSelectedIndex], game)
-                                CImGui.EndMenu()
-                            end
-                            CImGui.PopID()
-                            CImGui.Separator()
-                            
-                            FieldsInStruct=fieldnames(currentEntitySelectedIndex != -1 ? JulGame.Entity : TextBoxModule.TextBox);
-                            for i = 1:length(FieldsInStruct)
-                                #Check field i
-                                try
-                                    Value=getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
-                                    
-                                    if currentTextBoxSelectedIndex > 0
-                                        ShowTextBoxField(structToUpdate[currentSelectedIndex], FieldsInStruct[i])
-                                    elseif typeof(Value) == Bool
-                                        @c CImGui.Checkbox("$(FieldsInStruct[i])", &Value)
-                                        setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i],Value)
-                                    elseif typeof(Value) == String
-                                        buf = "$(Value)"*"\0"^(64)
-                                        CImGui.InputText("$(FieldsInStruct[i])", buf, length(buf))
-                                        currentTextInTextBox = ""
-                                        for characterIndex = 1:length(buf)
-                                            if Int32(buf[characterIndex]) == 0 
-                                                if characterIndex != 1
-                                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                                end
-                                                break
-                                            end
-                                        end
-                                        setfield!(structToUpdate[currentSelectedIndex],FieldsInStruct[i], currentTextInTextBox)
-                                    elseif FieldsInStruct[i] in [:animator, :circleCollider, :collider, :shape, :soundSource, :sprite, :rigidbody, :transform]
-                                        if getfield(structToUpdate[currentSelectedIndex], FieldsInStruct[i]) != C_NULL
-                                            component = Value
-                                            componentType = "$(typeof(component).name.wrapper)"
-                                            componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
-                                            
-                                            if CImGui.TreeNode(replace(componentType, "Internal" => ""))
-                                                FieldsInStruct[i] != :transform && CImGui.Button("Delete") && (setfield!(structToUpdate[currentSelectedIndex], FieldsInStruct[i], C_NULL); break;)
-                                                ShowComponentProperties(structToUpdate[currentSelectedIndex], component, componentType)
-                                                CImGui.TreePop()
-                                            end
-                                        end
-                                    elseif FieldsInStruct[i] == :scripts
-                                        if CImGui.TreeNode("Scripts")
-                                            ShowHelpMarker("Add a script here to run it on the entity.")
-                                            CImGui.Button("Add Script") && (push!(structToUpdate[currentSelectedIndex].scripts, scriptObj("",[])); break;)
-                                            for i = 1:length(Value)
-                                                if CImGui.TreeNode("Script $(i)")
-                                                    buf = "$(Value[i].name)"*"\0"^(64)
-                                                    CImGui.Button("Delete $(i)") && (deleteat!(structToUpdate[currentSelectedIndex].scripts, i); break;)
-                                                    CImGui.InputText("Script $(i)", buf, length(buf))
-                                                    currentTextInTextBox = ""
-                                                    for characterIndex = 1:length(buf)
-                                                        if Int32(buf[characterIndex]) == 0 
-                                                            if characterIndex != 1
-                                                                currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                                            end
-                                                            break
-                                                        end
-                                                    end
-                                                    
-                                                    structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, structToUpdate[currentSelectedIndex].scripts[i].parameters)
-                                                    if CImGui.TreeNode("Script $(i) parameters")
-                                                        params = structToUpdate[currentSelectedIndex].scripts[i].parameters
-                                                        CImGui.Button("Add New Script Parameter") && (push!(params, ""); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
-
-                                                        for j = 1:length(structToUpdate[currentSelectedIndex].scripts[i].parameters)
-                                                            buf = "$(structToUpdate[currentSelectedIndex].scripts[i].parameters[j])"*"\0"^(64)
-                                                            CImGui.Button("Delete $(j)") && (deleteat!(params, j); structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(currentTextInTextBox, params); break;)
-                                                            CImGui.InputText("Parameter $(j)", buf, length(buf))
-                                                            currentTextInTextBox = ""
-                                                            for characterIndex = 1:length(buf)
-                                                                if Int32(buf[characterIndex]) == 0 
-                                                                    if characterIndex != 1
-                                                                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                                                    end
-                                                                    break
-                                                                end
-                                                            end
-                                                            params[j] = currentTextInTextBox
-                                                            structToUpdate[currentSelectedIndex].scripts[i] = scriptObj(structToUpdate[currentSelectedIndex].scripts[i].name, params)
-
-                                                        end
-                                                        CImGui.TreePop()
-                                                    end
-                                                    CImGui.TreePop()
-                                                end
-                                            end
-                                            CImGui.TreePop()
-                                        end
-                                    end
-                                catch e
-                                    rethrow(e)
-                                end
-                            end
-                        end
-        
-                        CImGui.Text(mousePositionText)
-                        entityToPush = C_NULL
-                        if currentEntitySelectedIndex != -1
-                            entityToPush = entities[currentEntitySelectedIndex]
-                        end
-                        push!(update, [entityToPush, 0])
-                        CImGui.End()
-                    end
-
-                    @cstatic begin
-                        CImGui.Begin("Debug")
-                        CImGui.Text("The latest 10 exceptions are:")
-                        # Todo: multiple errors and parse them to give hints. Also color code them.
-                        counter = 1
-                        for exception in latest_exceptions
-                            CImGui.Text("[$(counter)] $(exception[2]): $(exception[1])")
-                            CImGui.Button("Copy to clipboard") && (CImGui.SetClipboardText("[$(counter)] $(exception[2]): $(exception[1])");)
-                            counter += 1
-                        end
-                        CImGui.End()
-                    end
-
-                    @cstatic begin
-                        CImGui.Begin("Scene")  # create a window called "Scene"
-                        CImGui.Text("Window Size: x:$editorWindowSizeX, y:$editorWindowSizeY Camera Position: x:$cameraPositionX, y:$cameraPositionY")
-                        CImGui.SameLine()
-                        CImGui.Button("ResetCamera") && (resetCamera = true)
-                        CImGui.SameLine()
-                        @c CImGui.Checkbox("Auto Minimize When Losing Focus", &autoMinimize)
-                        CImGui.SameLine()
-                        CImGui.Button("Minimize/Restore") && gameInfo !== nothing && length(gameInfo) > 0 && (!isMinimized ? game.minimizeWindow() : game.restoreWindow(); isMinimized = !isMinimized)
-                        relativeX = CImGui.GetWindowPos().x + 3
-                        relativeY = CImGui.GetWindowPos().y + 45
-                        editorWindowSizeX = CImGui.GetWindowSize().x - 100
-                        editorWindowSizeY = CImGui.GetWindowSize().y - 100
-                        CImGui.End()
-                    end
-                    @cstatic begin
-                        CImGui.Begin("Play & Build") 
-                        entryPath = "$(joinpath(projectPath, "src"))"
-                        scriptPath = "$(joinpath(pwd(), "..", "EditorScripts", "RunScene.bat"))"
-
-                        try
-                            if gameInfo !== nothing && length(gameInfo) > 0  
-                                CImGui.Button("Play") && (Threads.@spawn Base.run(`cmd /c $scriptPath $entryPath`); println("Running $scriptPath $entryPath");)
-                            end
-                        catch e
-                            rethrow(e)
-                        end
-                        CImGui.End()
-                    end
-
-                    @cstatic begin
-                        CImGui.Begin("Load Project") 
-                        if gameInfo === nothing || length(gameInfo) < 1    
-                            CImGui.Text("Enter full path to root project folder")
-                            buf = "$(projectPath)"*"\0"^(128)
-                            CImGui.InputText("Project Root Folder", buf, length(buf))
-                            currentTextInTextBox = ""
-                            for characterIndex = 1:length(buf)
-                                if Int32(buf[characterIndex]) == 0 
-                                    if characterIndex != 1
-                                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                    end
-                                    break
-                                end
-                            end
-                            
-                            projectPath = currentTextInTextBox
-                            CImGui.Button("Load Project Using Folder Path") && (scenesLoadedFromFolder = GetAllScenesFromFolder(projectPath))
-                            CImGui.NewLine()
-                            CImGui.Button("Load Project using Dialog") && (ChooseFolderWithDialog() |> (dir) -> (scenesLoadedFromFolder = GetAllScenesFromFolder(dir)))
-
-                            CImGui.Text("Load Scene:")
-                            for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (game = LoadScene(scene); projectPath = SceneLoaderModule.GetProjectPathFromFullScenePath(scene); sceneName = GetSceneFileNameFromFullScenePath(scene);)
-                                CImGui.NewLine()
-                            end
-                        else 
-                            CImGui.Text("Scene loaded. Click 'Play' to run the game.")
-                            CImGui.NewLine()
-                            CImGui.Text("Change Scene:")
-                            for scene in scenesLoadedFromFolder
-                                CImGui.Button("$(scene)") && (sceneName = GetSceneFileNameFromFullScenePath(scene); ChangeScene(String(sceneName)))
-                                CImGui.NewLine()
-                            end
-                        end
-
-                        CImGui.End()
-                    end
-
-                    @cstatic begin
-                        CImGui.Begin("Controls")  
-                        CImGui.Text("Pan scene: Arrow keys/Hold middle mouse button and move mouse")
-                        CImGui.NewLine()
-                        CImGui.Text("Zoom in/out: Hold spacebar and left and right arrow keys")
-                        CImGui.NewLine()
-                        CImGui.Text("Select entity: Click on entity in scene window or in hierarchy window")
-                        CImGui.NewLine()
-                        CImGui.Text("Move entity: Hold left mouse button and drag entity")
-                        CImGui.NewLine()
-                        CImGui.Text("Duplicate entity: Select entity and click 'Duplicate' in hierarchy window or press 'LCTRL+D' keys")
-                        CImGui.NewLine()
-                        CImGui.End()
-                    end
-
-                    CImGui.Begin("Hierarchy") 
-                    if gameInfo !== nothing && length(gameInfo) > 0 
-                        try
-                            CImGui.Button("New entity") && (game.createNewEntity())
-                            CImGui.Button("New textbox") && (game.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")))                    
-                        catch e
-                            rethrow(e)
-                        end
-                    else
-                        CImGui.Text("Load a project in the 'Project Location' window to add entities and textboxes.")
-                    end 
-        
-                    ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
-                    CImGui.SameLine()
-                    if CImGui.TreeNode("Entities")
-                        CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-            
-                        @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
-                            node_clicked = currentEntitySelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
-                            CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
-                            for i = 0:5
-                                continue
-                                # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
-                                node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
-                                if i < 3
-                                    # Node
-                                    node_open = CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Node $i")
-                                    CImGui.IsItemClicked() && (node_clicked = i;)
-                                    node_open && (CImGui.Text("Blah blah\nBlah Blah"); CImGui.TreePop();)
-                                else
-                                    # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
-                                    node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                    CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Leaf $i")
-                                    CImGui.IsItemClicked() && (node_clicked = i;)
-                                end
-                            end
-                            for i in 1:length(entities)
-                                # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
-                                node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
-                                # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
-                                node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(entities[i].name)")
-                                CImGui.IsItemClicked() && (node_clicked = i; currentEntitySelectedIndex = i; currentEntityUpdated = true; currentTextBoxSelectedIndex = -1)
-                            end
-                            if node_clicked != -1
-                                selection_mask = 1 << node_clicked            # Click to single-select
-                            end
-                            CImGui.PopStyleVar()
-                        end # @cstatic
-                        CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
-                        CImGui.TreePop()
-                    end
-                    ShowHelpMarker("This is a list of all textboxes in the scene. Click on a textbox to select it.")
-                    CImGui.SameLine()
-                    if CImGui.TreeNode("Textbox")
-                        CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-            
-                        @cstatic selection_mask=Cint(1 << 2) begin  # dumb representation of what may be user-side selection state. You may carry selection state inside or outside your objects in whatever format you see fit.
-                            node_clicked = currentTextBoxSelectedIndex  # temporary storage of what node we have clicked to process selection at the end of the loop. May be a pointer to your own node type, etc.
-                            CImGui.PushStyleVar(CImGui.ImGuiStyleVar_IndentSpacing, CImGui.GetFontSize()*3) # increase spacing to differentiate leaves from expanded contents.
-                            for i = 0:5
-                                continue
-                                # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
-                                node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
-                                if i < 3
-                                    # Node
-                                    node_open = CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Node $i")
-                                    CImGui.IsItemClicked() && (node_clicked = i;)
-                                    node_open && (CImGui.Text("Blah blah\nBlah Blah"); CImGui.TreePop();)
-                                else
-                                    # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
-                                    node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                    CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "Selectable Leaf $i")
-                                    CImGui.IsItemClicked() && (node_clicked = i;)
-                                end
-                            end
-                            for i in 1:length(textBoxes)
-                                # disable the default open on single-click behavior and pass in Selected flag according to our selection state.
-                                node_flags = CImGui.ImGuiTreeNodeFlags_OpenOnArrow | CImGui.ImGuiTreeNodeFlags_OpenOnDoubleClick | ((selection_mask & (1 << i)) != 0 ? CImGui.ImGuiTreeNodeFlags_Selected : 0)
-                                # Leaf: The only reason we have a TreeNode at all is to allow selection of the leaf. Otherwise we can use BulletText() or TreeAdvanceToLabelPos()+Text().
-                                node_flags |= CImGui.ImGuiTreeNodeFlags_Leaf | CImGui.ImGuiTreeNodeFlags_NoTreePushOnOpen # CImGui.ImGuiTreeNodeFlags_Bullet
-                                CImGui.TreeNodeEx(Ptr{Cvoid}(i), node_flags, "$(i): $(textBoxes[i].name)")
-                                CImGui.IsItemClicked() && (node_clicked = i; currentTextBoxSelectedIndex = i; currentTextBoxUpdated = true; currentEntitySelectedIndex = -1)
-                            end
-                            if node_clicked != -1
-                                selection_mask = 1 << node_clicked            # Click to single-select
-                            end
-                            CImGui.PopStyleVar()
-                        end # @cstatic
-                        CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
-                        CImGui.TreePop()
-                    end
-                    CImGui.End()
-        
-                    x,y = Int32[1], Int32[1]
-                    glfwGetWindowPos(window, pointer(x), pointer(y))
-                    push!(update, x[1] + relativeX)
-                    push!(update, y[1] + relativeY)
-                    push!(update, editorWindowSizeX)
-                    push!(update, editorWindowSizeY)
-                    push!(update, resetCamera)
-                    push!(update, currentEntitySelectedIndex)
-                    # rendering
-                    CImGui.Render()
-                    glfwMakeContextCurrent(window)
-        
-                    width, height = Ref{Cint}(), Ref{Cint}() #! need helper fcn
-                    glfwGetFramebufferSize(window, width, height)
-                    display_w = width[]
-                    display_h = height[]
-                    
-                    glViewport(0, 0, display_w, display_h)
-                    glClearColor(clear_color...)
-                    glClear(GL_COLOR_BUFFER_BIT)
-                    ImGuiOpenGLBackend.render(opengl_ctx) #ImGui_ImplOpenGL3_RenderDrawData(CImGui.GetDrawData())
-        
-                    glfwMakeContextCurrent(window)
-                    glfwSwapBuffers(window)
-                    gameInfo = game == C_NULL ? [] : game.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, update)
-                catch e 
-                    push!(latest_exceptions, [e, Dates.now()])
-                    if length(latest_exceptions) > 10
-                        deleteat!(latest_exceptions, 1)
-                    end
-
-                    @error e
-                    Base.show_backtrace(stdout, catch_backtrace())
-                end
-            end
-        catch e
-            @warn "Error in renderloop!" exception=e
-            Base.show_backtrace(stderr, catch_backtrace())
-        finally
-            ImGuiOpenGLBackend.shutdown(opengl_ctx) #ImGui_ImplOpenGL3_Shutdown()
-            ImGuiGLFWBackend.shutdown(glfw_ctx) #ImGui_ImplGlfw_Shutdown()
-            CImGui.DestroyContext(ctx)
-            glfwDestroyWindow(window)
-            SDL2.Mix_Quit()
-            SDL2.SDL_Quit()
-        end
     end
 
-    julia_main() = run()
+    function PollEvents()
+        event_ref = Ref{SDL2.SDL_Event}()
+        quit = false
+        while Bool(SDL2.SDL_PollEvent(event_ref))
+            evt = event_ref[]
+            ImGui_ImplSDL2_ProcessEvent(evt)
+            evt_ty = evt.type
+            if evt_ty == SDL2.SDL_QUIT
+                quit = true
+                break
+            end
+        end
+
+        return quit
+    end
+
+    function StartFrame()
+        ImGui_ImplSDLRenderer2_NewFrame()
+        ImGui_ImplSDL2_NewFrame();
+        CImGui.NewFrame()
+    end
+
+    function save_scene_event()
+        event = @event begin
+            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+        end
+
+        return event
+    end
+    
+    """
+        select_project_event(currentSceneMain, scenesLoadedFromFolder)
+
+    This function creates an event that allows the user to select a project folder. If `currentSceneMain` is `nothing`, it prompts the user to choose a folder using a dialog box and updates `scenesLoadedFromFolder` with all the scenes found in the selected folder.
+
+    # Arguments
+    - `currentSceneMain`: The current main loop.
+    - `scenesLoadedFromFolder`: An array to store the scenes loaded from the selected folder.
+
+    # Returns
+    - `event`: The event that triggers the folder selection.
+
+    """
+    function select_project_event(currentSceneMain, scenesLoadedFromFolder)
+        event = @event begin
+            if currentSceneMain === nothing 
+                choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            end
+        end
+
+        return event
+    end
+
+    function move_entity(entities, origin, destination)
+        if origin == destination
+            return
+        end
+
+        originEntity = splice!(entities, origin)
+        if origin < destination
+            # We need to adjust the destination index because we removed the origin entity
+            # We only need to do this in the case where the origin index is less than the destination index, because the other way around, the destination index is already "adjusted" because the items before it are not shifted
+            destination -= 1 
+        end
+        updatedEntities = [entities[destination], originEntity]
+        
+        splice!(entities, destination : destination, updatedEntities)
+    end
 end
+Editor.run()

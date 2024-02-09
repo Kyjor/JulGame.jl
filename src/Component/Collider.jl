@@ -1,6 +1,8 @@
 module ColliderModule
     include("../Enums.jl")
     using ..Component.JulGame
+    import ..Component.JulGame: deprecated_get_property
+    import ..Component 
 
     export Collider
     struct Collider
@@ -50,166 +52,175 @@ module ColliderModule
     end
 
     function Base.getproperty(this::InternalCollider, s::Symbol)
-        if s == :getSize
-            function()
-                return this.size
-            end
-        elseif s == :setSize
-            function(size::Math.Vector2f)
-                this.size = size
-            end
-        elseif s == :getOffset
-            function()
-                return this.offset
-            end
-        elseif s == :setOffset
-            function(offset::Math.Vector2f)
-                this.offset = offset
-            end
-        elseif s == :getTag
-            function()
-                return this.tag
-            end
-        elseif s == :setTag
-            function(tag::String)
-                this.tag = tag
-            end
-        elseif s == :getParent
-            function()
-                return this.parent
-            end
-        elseif s == :setParent
-            function(parent::Any)
-                this.parent = parent
-            end
-        elseif s == :checkCollisions
-            function()
-                colliders = MAIN.scene.colliders
-                #Only check the player against other colliders
-                counter = 0
-                onGround = this.parent.rigidbody.grounded 
-                colliderSkipCount = 0
-                colliderCheckedCount = 0
-                
-                for collider in colliders
-                    #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
-                    if !collider.getParent().isActive || !collider.enabled
-                        if this.parent.rigidbody.grounded && i == length(colliders)
-                            this.parent.rigidbody.grounded = false
-                        end
-                        continue
-                    end
-                   
-                    if this != collider
-                        # check if other collider is within range of this collider, if it isn't then skip it
-                        if collider.getParent().transform.getPosition().x > this.getParent().transform.getPosition().x + this.getSize().x || collider.getParent().transform.getPosition().x + collider.getSize().x < this.getParent().transform.getPosition().x && MAIN.optimizeSpriteRendering
-                            colliderSkipCount += 1
-                            continue
-                        end
-
-                        colliderCheckedCount += 1
-                        collision = CheckCollision(this, collider)
-                        if CheckIfResting(this, collider)[1] == true && length(this.currentRests) > 0 && !(collider in this.currentRests)
-                            # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
-                            for j in 1:length(this.currentRests)
-                                if this.currentRests[j].getParent().transform.getPosition().y == collider.getParent().transform.getPosition().y && this.currentRests[j].getSize().y == collider.getSize().y
-                                    push!(this.currentRests, collider)
-                                    break
-                                end
-                            end
-                        end
-                        
-                        transform = this.getParent().transform
-                        if collision[1] == Top::CollisionDirection
-                            push!(this.currentCollisions, collider)
-                            for eventToCall in this.collisionEvents
-                                eventToCall(collider)
-                            end
-                            #Begin to overlap, correct position
-                            transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
-                        end
-                        if collision[1] == Left::CollisionDirection
-                            push!(this.currentCollisions, collider)
-                            for eventToCall in this.collisionEvents
-                                eventToCall(collider)
-                            end
-                            #Begin to overlap, correct position
-                            transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
-                        end
-                        if collision[1] == Right::CollisionDirection
-                            push!(this.currentCollisions, collider)
-                            for eventToCall in this.collisionEvents
-                                eventToCall(collider)
-                            end
-                            #Begin to overlap, correct position
-                            transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
-                        end
-                        if collision[1] == Bottom::CollisionDirection && this.parent.rigidbody.getVelocity().y >= 0
-                            push!(this.currentCollisions, collider)
-                            if !collider.isTrigger
-                                push!(this.currentRests, collider)
-                            end
-                            for eventToCall in this.collisionEvents
-                                try
-                                    eventToCall(collider)
-                                catch e
-                                    println(e)
-                                    Base.show_backtrace(stdout, catch_backtrace())
-                                end
-                            end
-                            #Begin to overlap, correct position
-                            transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
-                            if !collider.isTrigger
-                                onGround = true
-                            end
-                        end
-                        if collision[1] == Below::ColliderLocation
-                            push!(this.currentCollisions, collider)
-                            for eventToCall in this.collisionEvents
-                                eventToCall(collider)
-                            end
-                        end
-                    end
-                end
-
-                #println("Skipped $colliderSkipCount colliders, checked $colliderCheckedCount")
-
-                for i in 1:length(this.currentRests)
-                    if CheckIfResting(this, this.currentRests[i])[1] == false
-                        deleteat!(this.currentRests, i)
-                        break
-                    end
-                end
-
-                this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
-                this.currentCollisions = InternalCollider[]
-            end
-        elseif s == :update
-            function()
-                
-            end
-        elseif s == :addCollisionEvent
-            function(event)
-                push!(this.collisionEvents, event)
-            end        
-        elseif s == :setVector2fValue
-            function(field, x, y)
-                setfield!(this, field, Math.Vector2f(x,y))
-            end
-        elseif s == :getType
-            function()
-                return "Collider"
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-        end
+        method_props = (
+            getSize = Component.get_size,
+            setSize = Component.set_size,
+            getOffset = Component.get_offset,
+            setOffset = Component.set_offset,
+            getTag = Component.get_tag,
+            setTag = Component.set_tag,
+            getParent = Component.get_parent,
+            setParent = Component.set_parent,
+            checkCollisions = Component.check_collisions,
+            update = Component.update,
+            addCollisionEvent = Component.add_collision_event,
+            setVector2fValue = Component.set_vector2f_value,
+            getType = Component.get_type
+        )
+        deprecated_get_property(method_props, this, s)
+    end
+    
+    function Component.get_size(this::InternalCollider)
+        return this.size
     end
 
+    function Component.set_size(this::InternalCollider, size::Math.Vector2f)
+        this.size = size
+    end
+
+    function Component.get_offset(this::InternalCollider)
+        return this.offset
+    end
+
+    function Component.set_offset(this::InternalCollider, offset::Math.Vector2f)
+        this.offset = offset
+    end
+
+    function Component.get_tag(this::InternalCollider)
+        return this.tag
+    end
+
+    function Component.set_tag(this::InternalCollider, tag::String)
+        this.tag = tag
+    end
+
+    function Component.get_parent(this::InternalCollider)
+        return this.parent
+    end
+
+    function Component.set_parent(this::InternalCollider, parent::Any)
+        this.parent = parent
+    end
+
+    function Component.check_collisions(this::InternalCollider)
+        colliders = MAIN.scene.colliders
+        #Only check the player against other colliders
+        counter = 0
+        onGround = this.parent.rigidbody.grounded 
+        colliderSkipCount = 0
+        colliderCheckedCount = 0
+        
+        for collider in colliders
+            #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
+            if !collider.getParent().isActive || !collider.enabled
+                if this.parent.rigidbody.grounded && i == length(colliders)
+                    this.parent.rigidbody.grounded = false
+                end
+                continue
+            end
+            
+            if this != collider
+                # check if other collider is within range of this collider, if it isn't then skip it
+                if collider.getParent().transform.getPosition().x > this.getParent().transform.getPosition().x + this.getSize().x || collider.getParent().transform.getPosition().x + collider.getSize().x < this.getParent().transform.getPosition().x && MAIN.optimizeSpriteRendering
+                    colliderSkipCount += 1
+                    continue
+                end
+
+                colliderCheckedCount += 1
+                collision = CheckCollision(this, collider)
+                if CheckIfResting(this, collider)[1] == true && length(this.currentRests) > 0 && !(collider in this.currentRests)
+                    # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
+                    for j in eachindex(this.currentRests)
+                        if this.currentRests[j].getParent().transform.getPosition().y == collider.getParent().transform.getPosition().y && this.currentRests[j].getSize().y == collider.getSize().y
+                            push!(this.currentRests, collider)
+                            break
+                        end
+                    end
+                end
+                
+                transform = this.getParent().transform
+                if collision[1] == Top::CollisionDirection
+                    push!(this.currentCollisions, collider)
+                    for eventToCall in this.collisionEvents
+                        eventToCall(collider)
+                    end
+                    #Begin to overlap, correct position
+                    transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
+                end
+                if collision[1] == Left::CollisionDirection
+                    push!(this.currentCollisions, collider)
+                    for eventToCall in this.collisionEvents
+                        eventToCall(collider)
+                    end
+                    #Begin to overlap, correct position
+                    transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
+                end
+                if collision[1] == Right::CollisionDirection
+                    push!(this.currentCollisions, collider)
+                    for eventToCall in this.collisionEvents
+                        eventToCall(collider)
+                    end
+                    #Begin to overlap, correct position
+                    transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
+                end
+                if collision[1] == Bottom::CollisionDirection && this.parent.rigidbody.getVelocity().y >= 0
+                    push!(this.currentCollisions, collider)
+                    if !collider.isTrigger
+                        push!(this.currentRests, collider)
+                    end
+                    for eventToCall in this.collisionEvents
+                        try
+                            eventToCall(collider)
+                        catch e
+                            println(e)
+						    Base.show_backtrace(stdout, catch_backtrace())
+						    rethrow(e)
+                        end
+                    end
+                    #Begin to overlap, correct position
+                    transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
+                    if !collider.isTrigger
+                        onGround = true
+                    end
+                end
+                if collision[1] == Below::ColliderLocation
+                    push!(this.currentCollisions, collider)
+                    for eventToCall in this.collisionEvents
+                        eventToCall(collider)
+                    end
+                end
+            end
+        end
+
+        #println("Skipped $colliderSkipCount colliders, checked $colliderCheckedCount")
+
+        for i in eachindex(this.currentRests)
+            if CheckIfResting(this, this.currentRests[i])[1] == false
+                deleteat!(this.currentRests, i)
+                break
+            end
+        end
+
+        this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
+        this.currentCollisions = InternalCollider[]
+    end
+
+    function Component.update(this::InternalCollider)
+        
+    end
+
+    function Component.add_collision_event(this::InternalCollider, event)
+        push!(this.collisionEvents, event)
+    end        
+
+    function Component.set_vector2f_value(this::InternalCollider, field, x, y)
+        setfield!(this, field, Math.Vector2f(x,y))
+    end
+
+    function Component.get_type(this::InternalCollider)
+        return "Collider"
+    end
+    
     function CheckCollision(colliderA::InternalCollider, colliderB::InternalCollider)
         # nameA = colliderA.getParent().name
         # nameB = colliderB.getParent().name
