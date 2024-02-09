@@ -373,7 +373,7 @@ module Editor
     """
     function save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
         event = @event begin
-            SceneWriterModule.serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+            SceneWriterModule.serialize_entities(entities, textBoxes, projectPath, "$(sceneName)")
         end
 
         return event

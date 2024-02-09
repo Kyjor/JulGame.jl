@@ -1,15 +1,27 @@
 module SceneWriterModule
     using JSON3
 
-    export serializeEntities
-    function serializeEntities(entities::Array, textBoxes::Array, projectPath, sceneName)
+    export serialize_entities
+    """
+        serialize_entities(entities::Array, textBoxes::Array, projectPath, sceneName)
+
+    Serialize the entities and text boxes into a JSON file.
+
+    # Arguments
+    - `entities::Array`: An array of entities to be serialized.
+    - `textBoxes::Array`: An array of text boxes to be serialized.
+    - `projectPath`: The path to the project directory.
+    - `sceneName`: The name of the scene.
+
+    """
+    function serialize_entities(entities::Array, textBoxes::Array, projectPath, sceneName)
         
         entitiesDict = []
         textBoxesDict = []
 
         count = 1
         for entity in entities
-        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serializeEntityScripts(entity.scripts)))
+        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
         count += 1
         end
         count = 1
@@ -17,7 +29,7 @@ module SceneWriterModule
         push!(textBoxesDict, Dict(
             "id" => count, 
             "alpha" => textBox.alpha, 
-            "fontPath" => normalizePath(textBox.fontPath), 
+            "fontPath" => normalize_path(textBox.fontPath), 
             "fontSize" => textBox.fontSize, 
             "isCenteredX" => textBox.isCenteredX,
             "isCenteredY" => textBox.isCenteredY,
@@ -48,8 +60,20 @@ module SceneWriterModule
         end
     end
 
-    export serializeEntityComponents
-    function serializeEntityComponents(components)
+    export serialize_entity_components
+    """
+        serialize_entity_components(components)
+
+    Serialize the given entity components into a dictionary representation.
+
+    # Arguments
+    - `components`: An array of entity components.
+
+    # Returns
+    - `componentsDict`: A dictionary representation of the serialized components.
+
+    """
+    function serialize_entity_components(components)
 
         componentsDict = []
         for component in components
@@ -100,7 +124,7 @@ module SceneWriterModule
                     "type" => componentType, 
                     "channel" => component.channel, 
                     "isMusic" => component.isMusic, 
-                    "path" => normalizePath(component.path), 
+                    "path" => normalize_path(component.path), 
                     "sound" => component.sound, 
                     "volume" => component.volume, 
                     )
@@ -110,7 +134,7 @@ module SceneWriterModule
                     "type" => componentType, 
                     "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "z" => component.crop.z, "t" => component.crop.t), 
                     "isFlipped" => component.isFlipped, 
-                    "imagePath" => normalizePath(component.imagePath),
+                    "imagePath" => normalize_path(component.imagePath),
                     "layer" => component.layer,
                     "isWorldEntity" => component.isWorldEntity,
                     "pixelsPerUnit" => component.pixelsPerUnit,
@@ -129,12 +153,36 @@ module SceneWriterModule
         return componentsDict
     end
 
-    function normalizePath(path)
+    """
+        normalize_path(path)
+
+    Normalize the given path by replacing backslashes with forward slashes.
+
+    # Arguments
+    - `path`: The path to be normalized.
+
+    # Returns
+    The normalized path with forward slashes.
+
+    """
+    function normalize_path(path)
         return replace(joinpath(path), "\\" => "//")
     end
 
-    export serializeEntityScripts
-    function serializeEntityScripts(scripts)
+    export serialize_entity_scripts
+    """
+        serialize_entity_scripts(scripts)
+
+    Serialize a list of scripts into a dictionary format.
+
+    # Arguments
+    - `scripts`: A list of scripts to be serialized.
+
+    # Returns
+    - `scriptsDict`: A dictionary containing the serialized scripts.
+
+    """
+    function serialize_entity_scripts(scripts)
         scriptsDict = []
 
         for script in scripts
