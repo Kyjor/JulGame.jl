@@ -27,7 +27,7 @@ module Editor
         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
         sceneTextureSize = ImVec2(startingSize.x, startingSize.y)
 
-        styleImGui()
+        style_imGui()
         showDemoWindow = true
         ##############################
         # Project variables
@@ -49,10 +49,10 @@ module Editor
             try
                 while !quit
                     if currentSceneMain === nothing
-                        quit = PollEvents()
+                        quit = poll_events()
                     end
                         
-                    StartFrame()
+                    start_frame()
                     LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
                     
                     ################################## RENDER HERE
@@ -62,7 +62,7 @@ module Editor
                     @c show_main_menu_bar(events)
                     ################################# END MAIN MENU BAR
 
-                    # @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see avaialble widgets
+                    @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
 
                     @cstatic begin
                         CImGui.Begin("Project") 
@@ -302,14 +302,29 @@ module Editor
         return [window, renderer, ctx, io, clear_color]
     end
 
-    function styleImGui() 
+    """
+        style_imGui()
+
+    Sets up the Dear ImGui style.
+
+    """
+    function style_imGui() 
         # setup Dear ImGui style #Todo: Make this a setting
         CImGui.StyleColorsDark()
         # CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
     end
 
-    function PollEvents()
+    """
+        poll_events()
+
+    Process the events in the SDL event queue and check for a quit event.
+
+    # Returns
+    - `quit::Bool`: Whether a quit event has occurred.
+
+    """
+    function poll_events()
         event_ref = Ref{SDL2.SDL_Event}()
         quit = false
         while Bool(SDL2.SDL_PollEvent(event_ref))
@@ -325,13 +340,34 @@ module Editor
         return quit
     end
 
-    function StartFrame()
+    """
+        start_frame()
+
+    This function is responsible for starting a new frame in the editor.
+    It calls the necessary functions to prepare the ImGui library for rendering.
+    """
+    function start_frame()
         ImGui_ImplSDLRenderer2_NewFrame()
         ImGui_ImplSDL2_NewFrame();
         CImGui.NewFrame()
     end
 
-    function save_scene_event()
+  
+    """
+        save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
+
+    Save the scene by serializing the entities and text boxes to a file.
+
+    # Arguments
+    - `entities`: The entities to be serialized.
+    - `textBoxes`: The text boxes to be serialized.
+    - `projectPath`: The path of the project.
+    - `sceneName`: The name of the scene.
+
+    # Returns
+    - `event`: The event object representing the save scene event.
+    """
+    function save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
         event = @event begin
             serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
         end

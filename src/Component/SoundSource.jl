@@ -85,6 +85,7 @@ module SoundSourceModule
     
     function Component.load_sound(this::InternalSoundSource, soundPath::String, isMusic::Bool)
         this.isMusic = isMusic
+        SDL2.SDL_ClearError()
         this.sound =  this.isMusic ? SDL2.Mix_LoadMUS(joinpath(BasePath, "assets", "sounds", soundPath)) : SDL2.Mix_LoadWAV(joinpath(BasePath, "assets", "sounds", soundPath))
         error = unsafe_string(SDL2.SDL_GetError())
         if !isempty(error)
