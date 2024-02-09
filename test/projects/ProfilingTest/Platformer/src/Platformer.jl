@@ -13,6 +13,7 @@ module Platformer
             scene.init("JulGame Example", false, Vector2(1280, 720),Vector2(1280, 720), true, 1.0, true, 144)
         catch e
             @error e
+            Base.show_backtrace(stderr, catch_backtrace())
             return -1
         end
 

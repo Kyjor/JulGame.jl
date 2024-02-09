@@ -1,6 +1,7 @@
 ﻿module RigidbodyModule
     using ..Component.JulGame
     import ..Component.JulGame: deprecated_get_property
+    import ..Component
     export Rigidbody
     struct Rigidbody
         mass::Float64
@@ -41,16 +42,16 @@
     function Base.getproperty(this::InternalRigidbody, s::Symbol)
         # Todo: update this based on offset and scale
         method_props = (
-            update = update,
-            applyForces = apply_forces,
-            getVelocity = get_velocity,
-            getParent = get_parent,
-            setVector2fValue = set_vector2f_value
+            update = Component.update,
+            applyForces = Component.apply_forces,
+            getVelocity = Component.get_velocity,
+            getParent = Component.get_parent,
+            setVector2fValue = Component.set_vector2f_value
         )
         deprecated_get_property(method_props, this, s)
     end
 
-    function update(this::InternalRigidbody, dt)
+    function Component.update(this::InternalRigidbody, dt)
         velocityMultiplier = Math.Vector2f(1.0, 1.0)
         transform = this.parent.transform
         currentPosition = transform.getPosition()
@@ -72,22 +73,22 @@
         end
     end
 
-    function apply_forces(this::InternalRigidbody)
+    function Component.apply_forces(this::InternalRigidbody)
         gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? GRAVITY : 0.0)
         dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
         dragAcceleration = dragForce / this.mass
         return gravityAcceleration - dragAcceleration
     end
 
-    function get_velocity(this::InternalRigidbody)
+    function Component.get_velocity(this::InternalRigidbody)
         return this.velocity
     end
 
-    function get_parent(this::InternalRigidbody)
+    function Component.get_parent(this::InternalRigidbody)
         return this.parent
     end
 
-    function set_vector2f_value(this::InternalRigidbody, field, x, y)
+    function Component.set_vector2f_value(this::InternalRigidbody, field, x, y)
         setfield!(this, field, Math.Vector2f(x,y))
     end
 

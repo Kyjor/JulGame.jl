@@ -11,7 +11,7 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
         buf = "$(Value)"*"\0"^(64)
         CImGui.InputText("$(textBoxField)", buf, length(buf))
         currentTextInTextBox = ""
-        for characterIndex = 1:length(buf)
+        for characterIndex = eachindex(buf)
             if Int32(buf[characterIndex]) == 0 
                 if characterIndex != 1
                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))

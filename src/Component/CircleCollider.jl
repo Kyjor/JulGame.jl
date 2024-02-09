@@ -3,6 +3,7 @@ module CircleColliderModule
     using ..Component.JulGame
     using ..Component.ColliderModule
     import ..Component.JulGame: deprecated_get_property
+    import ..Component
 
     export CircleCollider
     struct CircleCollider
@@ -47,21 +48,21 @@ module CircleColliderModule
 
     function Base.getproperty(this::CircleCollider, s::Symbol)
         method_props = (
-            getSize = get_size,
-            checkCollisions = check_collisions,
-            setParent = set_parent,
-            getParent = get_parent,
-            addCollisionEvent = add_collision_event,
-            getType = get_type
+            getSize = Component.get_size,
+            checkCollisions = Component.check_collisions,
+            setParent = Component.set_parent,
+            getParent = Component.get_parent,
+            addCollisionEvent = Component.add_collision_event,
+            getType = Component.get_type
         )
         deprecated_get_property(method_props, this, s)
     end
     
-    function get_size(this::CircleCollider)
+    function Component.get_size(this::CircleCollider)
         return this.size
     end
 
-    function check_collisions(this::CircleCollider)
+    function Component.check_collisions(this::CircleCollider)
         colliders = MAIN.scene.colliders
         #Only check the player against other colliders
         counter = 0
@@ -69,7 +70,7 @@ module CircleColliderModule
         this.isGrounded = this.parent.rigidbody.grounded
         
 
-        for i in 1:length(colliders)
+        for i in eachindex(colliders)
             #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
             if !colliders[i].getParent().isActive || !colliders[i].enabled
                 if this.parent.rigidbody.grounded && i == length(colliders)
@@ -81,7 +82,7 @@ module CircleColliderModule
                 collision = CheckCollision(this, colliders[i])
                 if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
-                    for j in 1:length(this.currentRests)
+                    for j in eachindex(this.currentRests)
                         if this.currentRests[j].getParent().transform.getPosition().y == colliders[i].getParent().transform.getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
                             push!(this.currentRests, colliders[i])
                             break
@@ -134,7 +135,7 @@ module CircleColliderModule
                 # end
             end
         end
-        for i in 1:length(this.currentRests)
+        for i in eachindex(this.currentRests)
             if CheckIfResting(this, this.currentRests[i])[1] == false
                 deleteat!(this.currentRests, i)
                 break
@@ -145,19 +146,19 @@ module CircleColliderModule
         this.currentCollisions = []
     end
 
-    function set_parent(this::CircleCollider, parent::Any)
+    function Component.set_parent(this::CircleCollider, parent::Any)
         this.parent = parent
     end
 
-    function get_parent(this::CircleCollider)
+    function Component.get_parent(this::CircleCollider)
         return this.parent
     end
 
-    function add_collision_event(this::CircleCollider, event)
+    function Component.add_collision_event(this::CircleCollider, event)
         push!(this.collisionEvents, event)
     end   
 
-    function get_type(this::CircleCollider)
+    function Component.get_type(this::CircleCollider)
         return "CircleCollider"
     end
 
