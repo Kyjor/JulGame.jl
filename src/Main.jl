@@ -15,6 +15,7 @@ module MainLoop
 		close::Bool
 		currentTestTime::Float64
 		debugTextBoxes::Vector{UI.TextBoxModule.TextBox}
+		fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
 		globals::Vector{Any}
 		input::Input
 		isDraggingEntity::Bool
@@ -124,7 +125,7 @@ module MainLoop
 
             while !this.close
                 try
-                    GameLoop(this, startTime, lastPhysicsTime, false, C_NULL)
+                    GameLoop(this, startTime, lastPhysicsTime, false)
                 catch e
                     if this.testMode
                         throw(e)
@@ -166,13 +167,13 @@ module MainLoop
         end
     end
 
-    function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+    function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
         if this.shouldChangeScene
             this.shouldChangeScene = false
             this.initializeNewScene(true)
             return
         end
-        return GameLoop(this, startTime, lastPhysicsTime, isEditor, update, windowPos, windowSize)
+        return GameLoop(this, startTime, lastPhysicsTime, isEditor, windowPos, windowSize)
     end
 
     function handle_editor_inputs_camera(this::Main, windowPos::Math.Vector2)
@@ -373,6 +374,9 @@ module MainLoop
 		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 		SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
+		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
+		SDL2.SDL_initFramerate(this.fpsManager)
+		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
 	end
 
 function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
@@ -612,7 +616,7 @@ function CreateEntity(entity)
 end
 
 """
-GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL)
+GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
 
 Runs the game loop.
 
@@ -621,32 +625,16 @@ Parameters:
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 - `isEditor`: A boolean indicating whether the game loop is running in editor mode.
-- `update`: An array containing information to pass back to the editor.
 
 """
-function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, update::Union{Ptr{Nothing}, Vector{Any}} = C_NULL, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
         try
 			SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
-			x,y,w,h = Int32[1], Int32[1], Int32[1], Int32[1]
-			if isEditor && update != C_NULL
-				SDL2.SDL_GetWindowPosition(this.window, pointer(x), pointer(y))
-				SDL2.SDL_GetWindowSize(this.window, pointer(w), pointer(h))
-
-				if update[2] != x[1] || update[3] != y[1]
-					if (update[2] < 2147483648 && update[3] < 2147483648)
-						SDL2.SDL_SetWindowPosition(this.window, round(update[2]), round(update[3]))
-					end
-				end
-				if update[4] != w[1] || update[5] != h[1]
-					SDL2.SDL_SetWindowSize(this.window, round(update[4]), round(update[5]))
-					SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
-				end
-			end
-			if isEditor && update == C_NULL
+			if isEditor
 				this.scene.camera.dimensions = Math.Vector2(windowSize.x, windowSize.y)
 				# update_viewport_editor(this, windowSize.x, windowSize.y)
 			end
@@ -670,7 +658,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			#endregion ============= Input
 
-			if !isEditor || update != C_NULL
+			if !isEditor
 				SDL2.SDL_RenderClear(JulGame.Renderer)
 			end
 
@@ -731,31 +719,30 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			# Used for conditional rendering
 			cameraPosition = this.scene.camera.position
 			cameraSize = this.scene.camera.dimensions
-			if !isEditor || update == C_NULL
-				skipcount = 0
-				rendercount = 0
-				for layer in this.spriteLayers["sort"]
-					for sprite in this.spriteLayers["$(layer)"]
-						spritePosition = sprite.parent.transform.getPosition()
-						spriteSize = sprite.parent.transform.getScale()
-						
-						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (spritePosition.y - spriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
-							skipcount += 1
-							continue
-						end
-						rendercount += 1
-						try
-							Component.draw(sprite)
-						catch e
-							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-							println(e)
-							Base.show_backtrace(stdout, catch_backtrace())
-							rethrow(e)
-						end
+			
+			skipcount = 0
+			rendercount = 0
+			for layer in this.spriteLayers["sort"]
+				for sprite in this.spriteLayers["$(layer)"]
+					spritePosition = sprite.parent.transform.getPosition()
+					spriteSize = sprite.parent.transform.getScale()
+					
+					if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (spritePosition.y - spriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+						skipcount += 1
+						continue
+					end
+					rendercount += 1
+					try
+						Component.draw(sprite)
+					catch e
+						println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
+						println(e)
+						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
 					end
 				end
-				#println("Skipped $skipcount, rendered $rendercount")
 			end
+				#println("Skipped $skipcount, rendered $rendercount")
 
 			colliderSkipCount = 0
 			colliderRenderCount = 0
@@ -768,7 +755,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				if entityShape != C_NULL
 					entityShape.draw()
 				end
-
 				
 				if DEBUG && entity.collider != C_NULL
 					SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
@@ -881,22 +867,13 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			#endregion ============= Debug
 
-			if !isEditor || update != C_NULL
-				SDL2.SDL_RenderPresent(JulGame.Renderer)
-			end
 			endTime = SDL2.SDL_GetPerformanceCounter()
 			elapsedMS = (endTime - startTime[]) / SDL2.SDL_GetPerformanceFrequency() * 1000.0
-			targetFrameTime::Float64 = 1000/this.targetFrameRate
-
-			if elapsedMS < targetFrameTime && !isEditor
-				SDL2.SDL_Delay(round(targetFrameTime - elapsedMS))
+			
+			if !isEditor
+				SDL2.SDL_RenderPresent(JulGame.Renderer)
+				SDL2.SDL_framerateDelay(this.fpsManager)
 			end
-
-			if isEditor && update != C_NULL 
-				returnData = [[this.scene.entities, this.scene.textBoxes, this.scene.screenButtons], this.mousePositionWorld, cameraPosition, !this.selectedEntityUpdated ? update[7] : this.selectedEntityIndex, this.input.isWindowFocused] 
-				this.selectedEntityUpdated = false 
-				return returnData 
-			end 
 		catch e
 			println(e)
 			Base.show_backtrace(stdout, catch_backtrace())
