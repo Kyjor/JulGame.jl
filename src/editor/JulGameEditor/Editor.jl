@@ -58,8 +58,12 @@ module Editor
                     ################################## RENDER HERE
                     
                     ################################# MAIN MENU BAR
-                    events = [save_scene_event(), select_project_event(currentSceneMain, scenesLoadedFromFolder)]
-                    @c show_main_menu_bar(events)
+                    events = []
+                    if currentSceneMain !== nothing
+                        push!(events, save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.textBoxes, currentSelectedProjectPath, String(currentSceneName)))
+                    end
+                    push!(events, select_project_event(currentSceneMain, scenesLoadedFromFolder))
+                    show_main_menu_bar(events)
                     ################################# END MAIN MENU BAR
 
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
@@ -369,7 +373,7 @@ module Editor
     """
     function save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
         event = @event begin
-            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+            SceneWriterModule.serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
         end
 
         return event
