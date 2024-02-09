@@ -19,15 +19,15 @@ module EntityModule
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
+        isActive::Bool
+        name::String
+        persistentBetweenScenes::Bool
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
+        scripts::Vector{Any}
         shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
         transform::Transform
-        isActive::Bool
-        name::String
-        persistentBetweenScenes::Bool
-        scripts::Vector{Any}
         
         function Entity(name::String = "New entity", transform::Transform = Transform(), scripts::Vector = [])
             this = new()
@@ -79,6 +79,7 @@ module EntityModule
         catch e
             println(e)
             Base.show_backtrace(stdout, catch_backtrace())
+            rethrow(e)
         end
     end
 
@@ -89,6 +90,7 @@ module EntityModule
             catch e
                 println(e)
                 Base.show_backtrace(stdout, catch_backtrace())
+                rethrow(e)
             end
         end
     end
@@ -156,13 +158,13 @@ module EntityModule
         return newSoundSource
     end
 
-    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1))
+    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2(0,0)))
         if this.sprite != C_NULL
             println("Sprite already exists on entity named ", this.name)
             return
         end
 
-        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer)
+        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center)
         if this.animator != C_NULL
             Component.set_sprite(this.animator, this.sprite)
         end

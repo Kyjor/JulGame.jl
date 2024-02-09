@@ -23,25 +23,29 @@ function Base.getproperty(this::Title, s::Symbol)
         end
     elseif s == :update
         function(deltaTime)
+            try
+                if this.fade 
+                    this.textBox.alpha -= 1
+                    this.textBox.updateText(this.textBox.text)
+                    if this.textBox.alpha <= 25
+                        this.fade = false
+                    end
+                else
+                    this.textBox.alpha += 1
+                    this.textBox.updateText(this.textBox.text)
+                    if this.textBox.alpha >= 250
+                        this.fade = true
+                    end
+                end
 
-            if this.fade 
-                this.textBox.alpha -= 1
-                this.textBox.updateText(this.textBox.text)
-                if this.textBox.alpha <= 25
-                    this.fade = false
-                end
-            else
-                this.textBox.alpha += 1
-                this.textBox.updateText(this.textBox.text)
-                if this.textBox.alpha >= 250
-                    this.fade = true
-                end
+                sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
+                sound.toggleSound()
+                MainLoop.change_scene("level_1.json")
+            catch e
+                println(e)
+				Base.show_backtrace(stdout, catch_backtrace())
+				rethrow(e)
             end
-
-            sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
-            sound.toggleSound()
-            ChangeScene("level_1.json")
-
         end
     elseif s == :setParent 
         function(parent)
@@ -55,7 +59,8 @@ function Base.getproperty(this::Title, s::Symbol)
             getfield(this, s)
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 end
