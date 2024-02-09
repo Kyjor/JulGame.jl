@@ -376,7 +376,7 @@ module MainLoop
 		SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
 		SDL2.SDL_initFramerate(this.fpsManager)
-		SDL2.SDL_setFramerate(this.fpsManager, UInt32(144))
+		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
 	end
 
 function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
@@ -719,31 +719,30 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			# Used for conditional rendering
 			cameraPosition = this.scene.camera.position
 			cameraSize = this.scene.camera.dimensions
-			if !isEditor
-				skipcount = 0
-				rendercount = 0
-				for layer in this.spriteLayers["sort"]
-					for sprite in this.spriteLayers["$(layer)"]
-						spritePosition = sprite.parent.transform.getPosition()
-						spriteSize = sprite.parent.transform.getScale()
-						
-						if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (spritePosition.y - spriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
-							skipcount += 1
-							continue
-						end
-						rendercount += 1
-						try
-							Component.draw(sprite)
-						catch e
-							println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-							println(e)
-							Base.show_backtrace(stdout, catch_backtrace())
-							rethrow(e)
-						end
+			
+			skipcount = 0
+			rendercount = 0
+			for layer in this.spriteLayers["sort"]
+				for sprite in this.spriteLayers["$(layer)"]
+					spritePosition = sprite.parent.transform.getPosition()
+					spriteSize = sprite.parent.transform.getScale()
+					
+					if ((spritePosition.x + spriteSize.x) < cameraPosition.x || spritePosition.y < cameraPosition.y || spritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (spritePosition.y - spriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+						skipcount += 1
+						continue
+					end
+					rendercount += 1
+					try
+						Component.draw(sprite)
+					catch e
+						println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
+						println(e)
+						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
 					end
 				end
-				#println("Skipped $skipcount, rendered $rendercount")
 			end
+				#println("Skipped $skipcount, rendered $rendercount")
 
 			colliderSkipCount = 0
 			colliderRenderCount = 0
