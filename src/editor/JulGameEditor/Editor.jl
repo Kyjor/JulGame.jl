@@ -82,7 +82,7 @@ module Editor
                                     currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    change_scene(String(currentSceneName))
+                                    MainLoop.change_scene(String(currentSceneName))
                                 end
                             end
                             CImGui.NewLine()
@@ -118,11 +118,28 @@ module Editor
                         end
                         CImGui.End()
                     end
-
+                    itemSelected = false
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             CImGui.SameLine()
                             ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.--")
+                            CImGui.SameLine()
+                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
+                                CImGui.MenuItem("Add", C_NULL, false, false)
+                                if CImGui.BeginMenu("New")
+                                    if CImGui.MenuItem("Entity")
+                                        currentSceneMain.createNewEntity()
+                                    end
+                                    if CImGui.MenuItem("TextBox")
+                                        currentSceneMain.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")) 
+                                    end
+                                    if CImGui.MenuItem("Button---")
+                                    end
+                                    
+                                    CImGui.EndMenu()
+                                end
+                                CImGui.EndMenu()
+                            end
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
                             currentHierarchyFilterText = hierarchyFilterText
@@ -130,7 +147,7 @@ module Editor
                             updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
                             ShowHelpMarker("Hold CTRL and click to select multiple items.--")
-                            if length(hierarchyEntitySelections) == 0 || updateSelectionsBasedOnFilter
+                            if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
                             
@@ -142,6 +159,8 @@ module Editor
                                     # clear selection when CTRL is not held
                                     !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
                                     hierarchyEntitySelections[n] ⊻= 1
+                                    itemSelected = true
+                                    currentSceneMain.selectedEntity = filteredEntities[n]
                                 end
                                 
                                 # our entities are both drag sources and drag targets here!
@@ -190,8 +209,15 @@ module Editor
                     show_debug_window(String[])
                     
                     CImGui.Begin("Entity Inspector") 
+                        # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
+                        if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[begin]] == false
+                            fill!(hierarchyEntitySelections, false)
+                            hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
+                        elseif itemSelected
+                            currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
+                        end
                         for entityIndex = eachindex(hierarchyEntitySelections)
-                            if hierarchyEntitySelections[entityIndex]
+                            if hierarchyEntitySelections[entityIndex] || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                 CImGui.PushID("AddMenu")
                                 if CImGui.BeginMenu("Add")
                                     ShowEntityContextMenu(filteredEntities[entityIndex])
@@ -205,13 +231,20 @@ module Editor
                                     end
                                     show_field_editor(filteredEntities[entityIndex], entityField)
                                 end
+                                
+                                CImGui.Separator()
+                                if CImGui.Button("Duplicate") 
+                                    push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
+                                    # TODO: switch to duplicated entity
+                                end
+
                                 CImGui.Separator()
                                 CImGui.Text("Delete Entity: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
                                     MainLoop.DestroyEntity(currentSceneMain.scene.entities[entityIndex])
                                     break
                                 end
-
+                                
                                 break # TODO: Remove this when we can select multiple entities and edit them all at once
                             end
                         end

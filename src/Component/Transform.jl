@@ -5,16 +5,14 @@ module TransformModule
     
     export Transform
     mutable struct Transform
-        rotation::Float64
         position::Math.Vector2f
         scale::Math.Vector2f
             
-        function Transform(position::Math.Vector2f = Math.Vector2f(0.0, 0.0), scale::Math.Vector2f = Math.Vector2f(1.0, 1.0), rotation::Float64 = 0.0)
+        function Transform(position::Math.Vector2f = Math.Vector2f(0.0, 0.0), scale::Math.Vector2f = Math.Vector2f(1.0, 1.0))
             this = new()
             
             this.position = position
             this.scale = scale
-            this.rotation = rotation
             
             return this
         end   
@@ -26,8 +24,6 @@ module TransformModule
             setPosition = Component.set_position,
             getScale = Component.get_scale,
             setScale = Component.set_scale,
-            getRotation = Component.get_rotation,
-            setRotation = Component.set_rotation,
             update = Component.update,
             setVector2fValue = Component.set_vector2f_value
         )
@@ -49,14 +45,6 @@ module TransformModule
 
     function Component.set_scale(this::Transform, scale::Math.Vector2f)
         this.scale = scale
-    end
-
-    function Component.get_rotation(this::Transform)
-        return this.rotation
-    end
-
-    function Component.set_rotation(this::Transform, rotation::Float64)
-        this.rotation = rotation
     end
 
     function Component.update(this::Transform)

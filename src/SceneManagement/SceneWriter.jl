@@ -81,7 +81,7 @@ module SceneWriterModule
             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
             componentType = replace(componentType, "Internal" => "")
             if componentType == "Transform"
-                serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
+                serializedComponent = Dict("type" => componentType, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
                 push!(componentsDict, serializedComponent)
             elseif componentType == "Animation"
                 serializedComponent = Dict(
