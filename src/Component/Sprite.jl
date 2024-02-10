@@ -97,6 +97,12 @@ module SpriteModule
             this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
             this.setColor()
         end
+        colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+        SDL2.SDL_GetTextureColorMod(this.texture, colorRefs...)
+        if colorRefs[1] != this.color.x || colorRefs[2] != this.color.y || colorRefs[3] != this.color.z
+            this.setColor()
+        end
+       
 
         parentTransform = this.parent.transform
 
@@ -132,7 +138,9 @@ module SpriteModule
             convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
             convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
         )) : dstRect
-        
+        if this.center != Math.Vector2(0,0)
+            calculatedCenter = Math.Vector2f(-this.size.x/2 + this.center.x, -this.size.y/2 + this.center.y)
+        end
         if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0 && !this.isFloatPrecision
             ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
             dstRect = Ref(SDL2.SDL_Rect(
@@ -143,13 +151,19 @@ module SpriteModule
             ))     
         end
 
+         # Calculate center position on sprite using the center property. 
+         # The value is a pointer to a point indicating the point around which dstrect will be rotated 
+         # (if C_NULL, rotation will be done around dstrect.w / 2, dstrect.h / 2)
+         # Todo: don't allocate this every frame
+        calculatedCenter = Ref(SDL2.SDL_Point(round(dstRect[].w/2 + this.center.x), round(dstRect[].h/2 + this.center.y)))    
+
         if  this.isFloatPrecision && SDL2.SDL_RenderCopyExF(
             JulGame.Renderer, 
             this.texture, 
             srcRect, 
             dstRect,
             this.rotation,
-            C_NULL, # Ref(SDL2.SDL_Point(0,0)) CENTER
+            calculatedCenter, # Ref(SDL2.SDL_Point(0,0)) CENTER
             this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE) != 0
 
             error = unsafe_string(SDL2.SDL_GetError())
@@ -160,8 +174,8 @@ module SpriteModule
             this.texture, 
             srcRect, 
             dstRect,
-            this.rotation, # ROTATION
-            C_NULL, # Ref(SDL2.SDL_Point(0,0)) CENTER
+            this.rotation,
+            calculatedCenter, 
             this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE) != 0
 
             error = unsafe_string(SDL2.SDL_GetError())

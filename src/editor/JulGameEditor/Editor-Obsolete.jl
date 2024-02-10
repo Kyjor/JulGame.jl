@@ -563,7 +563,7 @@ module Editor
 
     function create_events(entities, textBoxes, projectPath, sceneName)
         event = @event begin
-            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+            serialize_entities(entities, textBoxes, projectPath, "$(sceneName)")
         end
 
         return [event]

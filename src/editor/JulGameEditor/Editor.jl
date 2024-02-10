@@ -27,7 +27,7 @@ module Editor
         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
         sceneTextureSize = ImVec2(startingSize.x, startingSize.y)
 
-        styleImGui()
+        style_imGui()
         showDemoWindow = true
         ##############################
         # Project variables
@@ -49,20 +49,24 @@ module Editor
             try
                 while !quit
                     if currentSceneMain === nothing
-                        quit = PollEvents()
+                        quit = poll_events()
                     end
                         
-                    StartFrame()
+                    start_frame()
                     LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
                     
                     ################################## RENDER HERE
                     
                     ################################# MAIN MENU BAR
-                    events = [save_scene_event(), select_project_event(currentSceneMain, scenesLoadedFromFolder)]
-                    @c show_main_menu_bar(events)
+                    events = []
+                    if currentSceneMain !== nothing
+                        push!(events, save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.textBoxes, currentSelectedProjectPath, String(currentSceneName)))
+                    end
+                    push!(events, select_project_event(currentSceneMain, scenesLoadedFromFolder))
+                    show_main_menu_bar(events)
                     ################################# END MAIN MENU BAR
 
-                    # @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see avaialble widgets
+                    @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
 
                     @cstatic begin
                         CImGui.Begin("Project") 
@@ -78,7 +82,7 @@ module Editor
                                     currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    change_scene(String(currentSceneName))
+                                    MainLoop.change_scene(String(currentSceneName))
                                 end
                             end
                             CImGui.NewLine()
@@ -114,11 +118,28 @@ module Editor
                         end
                         CImGui.End()
                     end
-
+                    itemSelected = false
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             CImGui.SameLine()
                             ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.--")
+                            CImGui.SameLine()
+                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
+                                CImGui.MenuItem("Add", C_NULL, false, false)
+                                if CImGui.BeginMenu("New")
+                                    if CImGui.MenuItem("Entity")
+                                        currentSceneMain.createNewEntity()
+                                    end
+                                    if CImGui.MenuItem("TextBox")
+                                        currentSceneMain.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")) 
+                                    end
+                                    if CImGui.MenuItem("Button---")
+                                    end
+                                    
+                                    CImGui.EndMenu()
+                                end
+                                CImGui.EndMenu()
+                            end
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
                             currentHierarchyFilterText = hierarchyFilterText
@@ -126,7 +147,7 @@ module Editor
                             updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
                             ShowHelpMarker("Hold CTRL and click to select multiple items.--")
-                            if length(hierarchyEntitySelections) == 0 || updateSelectionsBasedOnFilter
+                            if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
                             
@@ -138,6 +159,8 @@ module Editor
                                     # clear selection when CTRL is not held
                                     !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
                                     hierarchyEntitySelections[n] ⊻= 1
+                                    itemSelected = true
+                                    currentSceneMain.selectedEntity = filteredEntities[n]
                                 end
                                 
                                 # our entities are both drag sources and drag targets here!
@@ -186,8 +209,15 @@ module Editor
                     show_debug_window(String[])
                     
                     CImGui.Begin("Entity Inspector") 
+                        # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
+                        if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[begin]] == false
+                            fill!(hierarchyEntitySelections, false)
+                            hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
+                        elseif itemSelected
+                            currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
+                        end
                         for entityIndex = eachindex(hierarchyEntitySelections)
-                            if hierarchyEntitySelections[entityIndex]
+                            if hierarchyEntitySelections[entityIndex] || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                 CImGui.PushID("AddMenu")
                                 if CImGui.BeginMenu("Add")
                                     ShowEntityContextMenu(filteredEntities[entityIndex])
@@ -201,13 +231,20 @@ module Editor
                                     end
                                     show_field_editor(filteredEntities[entityIndex], entityField)
                                 end
+                                
+                                CImGui.Separator()
+                                if CImGui.Button("Duplicate") 
+                                    push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
+                                    # TODO: switch to duplicated entity
+                                end
+
                                 CImGui.Separator()
                                 CImGui.Text("Delete Entity: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
                                     MainLoop.DestroyEntity(currentSceneMain.scene.entities[entityIndex])
                                     break
                                 end
-
+                                
                                 break # TODO: Remove this when we can select multiple entities and edit them all at once
                             end
                         end
@@ -302,14 +339,29 @@ module Editor
         return [window, renderer, ctx, io, clear_color]
     end
 
-    function styleImGui() 
+    """
+        style_imGui()
+
+    Sets up the Dear ImGui style.
+
+    """
+    function style_imGui() 
         # setup Dear ImGui style #Todo: Make this a setting
         CImGui.StyleColorsDark()
         # CImGui.StyleColorsClassic()
         # CImGui.StyleColorsLight()
     end
 
-    function PollEvents()
+    """
+        poll_events()
+
+    Process the events in the SDL event queue and check for a quit event.
+
+    # Returns
+    - `quit::Bool`: Whether a quit event has occurred.
+
+    """
+    function poll_events()
         event_ref = Ref{SDL2.SDL_Event}()
         quit = false
         while Bool(SDL2.SDL_PollEvent(event_ref))
@@ -325,15 +377,36 @@ module Editor
         return quit
     end
 
-    function StartFrame()
+    """
+        start_frame()
+
+    This function is responsible for starting a new frame in the editor.
+    It calls the necessary functions to prepare the ImGui library for rendering.
+    """
+    function start_frame()
         ImGui_ImplSDLRenderer2_NewFrame()
         ImGui_ImplSDL2_NewFrame();
         CImGui.NewFrame()
     end
 
-    function save_scene_event()
+  
+    """
+        save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
+
+    Save the scene by serializing the entities and text boxes to a file.
+
+    # Arguments
+    - `entities`: The entities to be serialized.
+    - `textBoxes`: The text boxes to be serialized.
+    - `projectPath`: The path of the project.
+    - `sceneName`: The name of the scene.
+
+    # Returns
+    - `event`: The event object representing the save scene event.
+    """
+    function save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
         event = @event begin
-            serializeEntities(entities, textBoxes, projectPath, "$(sceneName)")
+            SceneWriterModule.serialize_entities(entities, textBoxes, projectPath, "$(sceneName)")
         end
 
         return event
