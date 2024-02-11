@@ -32,9 +32,9 @@ Show the file menu in the main menu bar.
 """
 function ShowMenuFile(events)
     if CImGui.MenuItem("Open...", "Ctrl+O")
-        events[2]()
+        events[end]()
     end
-    if CImGui.MenuItem("Save", "Ctrl+S--")
+    if length(events) > 1 && CImGui.MenuItem("Save", "Ctrl+S--")
         @info "Trigger Save | find me here: $(@__FILE__):$(@__LINE__)"
         events[1]()
     end

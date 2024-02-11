@@ -18,6 +18,7 @@ module ShapeModule
         dimensions::Math.Vector2f
         isFilled::Bool
         isWorldEntity::Bool
+        layer::Int32
         offset::Math.Vector2f
         position::Math.Vector2f
         parent::Any # Entity
@@ -29,6 +30,7 @@ module ShapeModule
             this.dimensions = dimensions
             this.isFilled = isFilled
             this.isWorldEntity = isWorldEntity
+            this.layer = 0
             this.offset = offset
             this.parent = parent
             this.position = position
