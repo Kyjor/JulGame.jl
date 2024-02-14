@@ -204,6 +204,11 @@ module Editor
                             CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                             CImGui.TreePop()
                         end
+
+                        CImGui.NewLine()
+                        if CImGui.TreeNode("UI Elements") &&  currentSceneMain !== nothing
+                            CImGui.TreePop()
+                        end
                     CImGui.End()
 
                     show_debug_window(String[])
@@ -231,7 +236,7 @@ module Editor
                                     end
                                     show_field_editor(filteredEntities[entityIndex], entityField)
                                 end
-                                
+              
                                 CImGui.Separator()
                                 if CImGui.Button("Duplicate") 
                                     push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
