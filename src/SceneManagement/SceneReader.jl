@@ -122,7 +122,7 @@ module SceneReaderModule
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
                 isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
-                enabled::Bool = !haskey(component, "enabled") ? true : component.isTrigger
+                enabled::Bool = !haskey(component, "enabled") ? true : component.enabled
                 isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
                 offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
                 newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)

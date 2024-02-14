@@ -109,8 +109,9 @@ module ColliderModule
         onGround = this.parent.rigidbody.grounded 
         colliderSkipCount = 0
         colliderCheckedCount = 0
-        
+        i = 0
         for collider in colliders
+            i += 1
             #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
             if !collider.getParent().isActive || !collider.enabled
                 if this.parent.rigidbody.grounded && i == length(colliders)

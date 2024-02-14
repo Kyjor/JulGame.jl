@@ -204,7 +204,10 @@ module Editor
                             CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                             CImGui.TreePop()
                         end
+
+                        CImGui.NewLine()
                         if CImGui.TreeNode("UI Elements") &&  currentSceneMain !== nothing
+                            CImGui.TreePop()
                         end
                     CImGui.End()
 
