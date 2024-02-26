@@ -20,6 +20,7 @@ struct _Vector2{T}
     end
 
     # Operator overloading
+    # +
     Base.:+(vec_a::_Vector2{T}, vec_b::_Vector2{L}) where {T,L} = _Vector2{T}(vec_a.x + vec_b.x, vec_a.y + vec_b.y)
     Base.:+(vec_a::_Vector2{T}, b::L) where {T,L} = _Vector2{T}(vec_a.x + b, vec_a.y + b)
     Base.:+(a::L, vec_b::_Vector2{T}) where {T,L} = _Vector2{T}(vec_b.x + a, vec_b.y + a)

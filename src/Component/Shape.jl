@@ -58,13 +58,13 @@ module ShapeModule
         Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
         position = this.isWorldEntity ?
-        parentTransform.getPosition() :
+        parentTransform.position :
         this.position
 
-        outlineRect = Ref(SDL2.SDL_FRect(convert(Int32,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-        convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)),
-        convert(Int32,round(1 * parentTransform.getScale().x * SCALE_UNITS)), 
-        convert(Int32,round(1 * parentTransform.getScale().y * SCALE_UNITS))))
+        outlineRect = Ref(SDL2.SDL_FRect(convert(Int32,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+        convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)),
+        convert(Int32,round(1 * parentTransform.scale.x * SCALE_UNITS)), 
+        convert(Int32,round(1 * parentTransform.scale.y * SCALE_UNITS))))
         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
 
         this.isFilled ? SDL2.SDL_RenderFillRectF( JulGame.Renderer, outlineRect) : SDL2.SDL_RenderDrawRectF( JulGame.Renderer, outlineRect);

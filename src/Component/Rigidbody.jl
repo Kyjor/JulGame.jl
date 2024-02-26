@@ -54,9 +54,9 @@
     function Component.update(this::InternalRigidbody, dt)
         velocityMultiplier = Math.Vector2f(1.0, 1.0)
         transform = this.parent.transform
-        currentPosition = transform.getPosition()
+        currentPosition = transform.position
         
-        newPosition = transform.getPosition() + this.velocity*dt + this.acceleration*(dt*dt*0.5)
+        newPosition = transform.position + this.velocity*dt + this.acceleration*(dt*dt*0.5)
         if this.grounded
             newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
             velocityMultiplier = Math.Vector2f(1.0, 0.0)

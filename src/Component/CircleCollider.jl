@@ -83,7 +83,7 @@ module CircleColliderModule
                 if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                     for j in eachindex(this.currentRests)
-                        if this.currentRests[j].getParent().transform.getPosition().y == colliders[i].getParent().transform.getPosition().y && this.currentRests[j].getSize().y == colliders[i].getSize().y
+                        if this.currentRests[j].getParent().transform.position.y == colliders[i].getParent().transform.position.y && this.currentRests[j].getSize().y == colliders[i].getSize().y
                             push!(this.currentRests, colliders[i])
                             break
                         end
@@ -96,7 +96,7 @@ module CircleColliderModule
                 #         eventToCall()
                 #     end
                 #     #Begin to overlap, correct position
-                #     transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y + collision[2]))
+                #     transform.setPosition(Math.Vector2f(transform.position.x, transform.position.y + collision[2]))
                 # end
                 # if collision[1] == Left::CollisionDirection
                 #     push!(this.currentCollisions, colliders[i])
@@ -104,7 +104,7 @@ module CircleColliderModule
                 #         eventToCall()
                 #     end
                 #     #Begin to overlap, correct position
-                #     transform.setPosition(Math.Vector2f(transform.getPosition().x + collision[2], transform.getPosition().y))
+                #     transform.setPosition(Math.Vector2f(transform.position.x + collision[2], transform.position.y))
                 # end
                 # if collision[1] == Right::CollisionDirection
                 #     push!(this.currentCollisions, colliders[i])
@@ -112,18 +112,18 @@ module CircleColliderModule
                 #         eventToCall()
                 #     end
                 #     #Begin to overlap, correct position
-                #     transform.setPosition(Math.Vector2f(transform.getPosition().x - collision[2], transform.getPosition().y))
+                #     transform.setPosition(Math.Vector2f(transform.position.x - collision[2], transform.position.y))
                 # end
                 # if collision[1] == Bottom::CollisionDirection
                 #this.isGrounded = collision[1]
                 if collision[1] == true
-                    println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().transform.getPosition())
+                    println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().transform.position)
                     push!(this.currentRests, colliders[i])
                     for eventToCall in this.collisionEvents
                         eventToCall()
                     end
                     #Begin to overlap, correct position
-                    transform.setPosition(Math.Vector2f(transform.getPosition().x, transform.getPosition().y - collision[2]))
+                    transform.setPosition(Math.Vector2f(transform.position.x, transform.position.y - collision[2]))
                     this.isGrounded = true
                 end
                 # end
@@ -178,8 +178,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX, cY = 0, 0
 
-        posA = a.getParent().transform.getPosition() + a.offset
-        posB = b.getParent().transform.getPosition() + b.offset
+        posA = a.getParent().transform.position + a.offset
+        posB = b.getParent().transform.position + b.offset
 
         # Find closest x offset
         if posA.x < posB.x
@@ -214,8 +214,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX = 0
 
-        posA = a.getParent().transform.getPosition() + a.offset
-        posB = b.getParent().transform.getPosition() + b.offset
+        posA = a.getParent().transform.position + a.offset
+        posB = b.getParent().transform.position + b.offset
         radius = a.diameter / 2
 
         # Find closest x offset

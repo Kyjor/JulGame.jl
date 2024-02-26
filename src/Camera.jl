@@ -1,7 +1,7 @@
 using JulGame
 using .Math
 import JulGame: deprecated_get_property
-import JulGame.Component: get_position, get_scale
+import JulGame.Component
 
 mutable struct Camera
     dimensions::Vector2
@@ -48,9 +48,9 @@ function update(this::Camera, newPosition = C_NULL)
     SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.dimensions.x, this.dimensions.y)))
 
     if this.target != C_NULL && newPosition == C_NULL
-        targetPos = get_position(this.target)
+        targetPos = this.target.position
         center =  Vector2f(this.dimensions.x/SCALE_UNITS/2, this.dimensions.y/SCALE_UNITS/2)
-        targetScale = get_scale(this.target)
+        targetScale = this.target.scale
         this.position = targetPos - center + 0.5 * targetScale + this.offset
         return
     end

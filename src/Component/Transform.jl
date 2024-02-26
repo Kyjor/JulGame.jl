@@ -20,31 +20,15 @@ module TransformModule
 
     function Base.getproperty(this::Transform, s::Symbol)
         method_props = (
-            getPosition = Component.get_position,
             setPosition = Component.set_position,
-            getScale = Component.get_scale,
-            setScale = Component.set_scale,
             update = Component.update,
             setVector2fValue = Component.set_vector2f_value
         )
         deprecated_get_property(method_props, this, s)
     end
 
-
-    function Component.get_position(this::Transform)
-        return this.position
-    end
-
     function Component.set_position(this::Transform, position::Math.Vector2f)
         this.position = position
-    end
-
-    function Component.get_scale(this::Transform)
-        return this.scale
-    end
-
-    function Component.set_scale(this::Transform, scale::Math.Vector2f)
-        this.scale = scale
     end
 
     function Component.update(this::Transform)
