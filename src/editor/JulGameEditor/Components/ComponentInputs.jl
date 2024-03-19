@@ -80,7 +80,6 @@ The function checks the type of the field value and displays the corresponding i
 
 """
 function show_component_field_input(component, componentField)
-    println("Showing component field input for $(componentField)")
     fieldValue = getfield(component, componentField)
     if isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
         isFloat::Bool = isa(fieldValue, Math._Vector2{Float64}) ? true : false
@@ -321,7 +320,6 @@ function is_a_julgame_component(field)
 end
 
 function show_script_editor(entity)
-    println("Showing script editor")
     if CImGui.TreeNode("Scripts")
         ShowHelpMarker("Add a script here to run it on the entity.")
         CImGui.Button("Add Script") && (push!(entity.scripts, scriptObj("",[])); return;)

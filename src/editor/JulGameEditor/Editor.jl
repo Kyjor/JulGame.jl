@@ -6,7 +6,7 @@ module Editor
     using CImGui.CSyntax.CStatic
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
     using CImGui.LibCImGui
-    using JulGame: MainLoop, Math, SceneLoaderModule, SDL2
+    using JulGame: MainLoop, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
 
     global sdlVersion = "2.0.0"
@@ -40,6 +40,7 @@ module Editor
         filteredEntities = Entity[]
         hierarchyFilterText::String = ""
         hierarchyEntitySelections = Bool[]
+        hierarchyUISelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
 
@@ -119,6 +120,8 @@ module Editor
                         CImGui.End()
                     end
                     itemSelected = false
+                    uiSelected = false
+
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             CImGui.SameLine()
@@ -129,11 +132,6 @@ module Editor
                                 if CImGui.BeginMenu("New")
                                     if CImGui.MenuItem("Entity")
                                         currentSceneMain.createNewEntity()
-                                    end
-                                    if CImGui.MenuItem("TextBox")
-                                        currentSceneMain.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")) 
-                                    end
-                                    if CImGui.MenuItem("Button---")
                                     end
                                     
                                     CImGui.EndMenu()
@@ -204,6 +202,45 @@ module Editor
                             CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
                             CImGui.TreePop()
                         end
+
+                        CImGui.NewLine()
+                        if CImGui.TreeNode("UI Elements") &&  currentSceneMain !== nothing
+                            CImGui.SameLine()
+                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
+                                CImGui.MenuItem("Add", C_NULL, false, false)
+                                if CImGui.BeginMenu("New")
+                                    if CImGui.MenuItem("TextBox")
+                                        currentSceneMain.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")) 
+                                    end
+                                    if CImGui.MenuItem("Screen Button")
+                                    end
+                                    
+                                    CImGui.EndMenu()
+                                end
+                                CImGui.EndMenu()
+                            end
+                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
+
+                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.textBoxes) # || updateUISelectionsBasedOnFilter
+                                hierarchyUISelections=fill(false, length(currentSceneMain.scene.textBoxes))
+                            end
+
+                            for n = eachindex(currentSceneMain.scene.textBoxes)
+                                CImGui.PushID(n)
+                                buf = "$(n): $(currentSceneMain.scene.textBoxes[n].name)"
+                                if CImGui.Selectable(buf, hierarchyUISelections[n])
+                                    # clear selection when CTRL is not held
+                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
+                                    hierarchyUISelections[n] ⊻= 1
+                                    uiSelected = true
+                                    # currentSceneMain.selectedEntity = currentSceneMain.scene.textBoxes[n]
+                                end
+                                CImGui.PopID()
+
+                            end
+
+                            CImGui.TreePop()
+                        end
                     CImGui.End()
 
                     show_debug_window(String[])
@@ -231,7 +268,7 @@ module Editor
                                     end
                                     show_field_editor(filteredEntities[entityIndex], entityField)
                                 end
-                                
+              
                                 CImGui.Separator()
                                 if CImGui.Button("Duplicate") 
                                     push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
@@ -249,6 +286,48 @@ module Editor
                             end
                         end
 
+                    CImGui.End()
+
+                    CImGui.Begin("UI Inspector") 
+                        # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
+                        #if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyUISelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing
+                            # fill!(hierarchyUISelections, false)
+                            #hierarchyUISelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
+                        #elseif uiSelected
+                            # currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyUISelections)[1]]
+                        #end
+                        for uiElementIndex = eachindex(hierarchyUISelections)
+                            if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
+                                CImGui.PushID("AddMenu")
+                                if CImGui.BeginMenu("Add")
+                                    ShowEntityContextMenu(currentSceneMain.scene.textBoxes[uiElementIndex])
+                                    CImGui.EndMenu()
+                                end
+                                CImGui.PopID()
+                                CImGui.Separator()
+                                for field in fieldnames(UI.TextBoxModule.TextBox)
+                                    if length(currentSceneMain.scene.textBoxes) < uiElementIndex
+                                        break
+                                    end
+                                    show_field_editor(currentSceneMain.scene.textBoxes[uiElementIndex], field)
+                                end
+
+                                CImGui.Separator()
+                                if CImGui.Button("Duplicate") 
+                                    push!(currentSceneMain.scene.textBoxes, deepcopy(currentSceneMain.scene.textBoxes[uiElementIndex]))
+                                    # TODO: switch to duplicated entity
+                                end
+
+                                CImGui.Separator()
+                                CImGui.Text("Delete UI Element: NO CONFIRMATION")
+                                if CImGui.Button("Delete")
+                                    #MainLoop.DestroyEntity(currentSceneMain.scene.textBoxes[uiElementIndex])
+                                    break
+                                end
+                                
+                                break # TODO: Remove this when we can select multiple entities and edit them all at once
+                            end
+                        end
                     CImGui.End()
 
 

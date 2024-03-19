@@ -220,12 +220,12 @@ module MainLoop
             entityToMoveTransform = this.selectedEntity.transform
             if this.panCounter.x > this.panThreshold || this.panCounter.x < -this.panThreshold
                 diff = this.panCounter.x > this.panThreshold ? -1 : 1
-                entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x + diff, entityToMoveTransform.getPosition().y)
+                entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.position.x + diff, entityToMoveTransform.position.y)
                 this.panCounter = Math.Vector2f(0, this.panCounter.y)
             end
             if this.panCounter.y > this.panThreshold || this.panCounter.y < -this.panThreshold
                 diff = this.panCounter.y > this.panThreshold ? -1 : 1
-                entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.getPosition().x, entityToMoveTransform.getPosition().y + diff)
+                entityToMoveTransform.position = Math.Vector2f(entityToMoveTransform.position.x, entityToMoveTransform.position.y + diff)
                 this.panCounter = Math.Vector2f(this.panCounter.x, 0)
             end
         elseif !this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntity !== nothing)
@@ -273,8 +273,8 @@ module MainLoop
 
     function select_entity_with_click(this::Main)
         for entity in this.scene.entities
-            size = entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.getScale()
-            if this.mousePositionWorldRaw.x >= entity.transform.getPosition().x && this.mousePositionWorldRaw.x <= entity.transform.getPosition().x + size.x && this.mousePositionWorldRaw.y >= entity.transform.getPosition().y && this.mousePositionWorldRaw.y <= entity.transform.getPosition().y + size.y
+            size = entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.scale
+            if this.mousePositionWorldRaw.x >= entity.transform.position.x && this.mousePositionWorldRaw.x <= entity.transform.position.x + size.x && this.mousePositionWorldRaw.y >= entity.transform.position.y && this.mousePositionWorldRaw.y <= entity.transform.position.y + size.y
                 if this.selectedEntity == entity
                     continue
                 end
@@ -731,8 +731,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				end
 
 				shapeOrSprite = entity.sprite != C_NULL ? entity.sprite : entity.shape
-				shapeOrSpritePosition = shapeOrSprite.parent.transform.getPosition()
-				shapeOrSpriteSize = shapeOrSprite.parent.transform.getScale()
+				shapeOrSpritePosition = shapeOrSprite.parent.transform.position
+				shapeOrSpriteSize = shapeOrSprite.parent.transform.scale
 
 				if ((shapeOrSpritePosition.x + shapeOrSpriteSize.x) < cameraPosition.x || shapeOrSpritePosition.y < cameraPosition.y || shapeOrSpritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (shapeOrSpritePosition.y - shapeOrSpriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shapeOrSprite.isWorldEntity && this.optimizeSpriteRendering 
 					skipcount += 1
@@ -772,8 +772,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				
 				if DEBUG && entity.collider != C_NULL
 					SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-					pos = entity.transform.getPosition()
-					scale = entity.transform.getScale()
+					pos = entity.transform.position
+					scale = entity.transform.scale
 
 					if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
 						colliderSkipCount += 1
@@ -783,8 +783,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					collider = entity.collider
 					if JulGame.get_type(collider) == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
-							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int32, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 							round(Int32, collider.diameter/2 * SCALE_UNITS))
 					else
 						colSize = JulGame.get_size(collider)
@@ -793,8 +793,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
 
 						SDL2.SDL_RenderDrawRectF(JulGame.Renderer, 
-						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.getScale().x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						(pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.getScale().y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						(pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
 						colSize.x * SCALE_UNITS, 
 						colSize.y * SCALE_UNITS)))
 					end
@@ -827,9 +827,9 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
 						end
 
-						pos = selectedEntity.transform.getPosition()
+						pos = selectedEntity.transform.position
                         
-						size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.getScale()
+						size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
 						size = Math.Vector2f(size.x, size.y)
 						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
 						offset = Math.Vector2f(offset.x, offset.y)
