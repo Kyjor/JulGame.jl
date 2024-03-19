@@ -40,6 +40,7 @@ module MainLoop
 		window::Ptr{SDL2.SDL_Window}
 		windowName::String
 		zoom::Float64
+		dot
 
 		function Main(zoom::Float64)
 			this = new()
@@ -811,6 +812,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			for textBox in this.scene.textBoxes
                 JulGame.render(textBox, DEBUG)
 			end
+
+			this.dot.draw()
 			#endregion ============= UI
 
 			if isEditor

@@ -41,8 +41,16 @@ module JulGame
     include("UI/UI.jl")
     using .UI
     export ScreenButtonModule, TextBoxModule
+    
+    include("Particle/Particle.jl") 
+    using .ParticleModule
+    export ParticleModule
 
     
+    include("Particle/Dot.jl")
+    using .DotModule
+    export DotModule
+
     include("Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
