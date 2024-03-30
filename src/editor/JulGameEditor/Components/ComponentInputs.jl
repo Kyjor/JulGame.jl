@@ -3,6 +3,7 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 using JulGame
 using JulGame.Math
+using JulGame.UI
 
 """
 show_field_editor(entity, field)
@@ -265,6 +266,41 @@ function show_sprite_fields(sprite)
             CImGui.Button("Load Image") && (sprite.loadImage(currentTextInTextBox))
         else 
             show_component_field_input(sprite, field)
+        end  
+    end
+end
+
+"""
+    show_textbox_fields(textbox)
+
+Iterates over the fields of the `textbox` object and displays input fields for each field.
+If the field is `fontPath`, it displays an input text field for the font path, a button to load the font,
+and updates the `sprite.fontPath` field with the current text in the text box.
+
+# Arguments
+- `textbox`: The textbox component to display the fields for.
+
+"""
+function show_textbox_fields(textbox)
+    for field in fieldnames(typeof(textbox))
+        fieldString = "$(field)"
+
+        if fieldString == "fontPath"
+            buf = "$(textbox.fontPath)"*"\0"^(64)
+            CImGui.InputText("Font Path Input", buf, length(buf))
+            currentTextInTextBox = ""
+            for characterIndex = eachindex(buf)
+                if Int32(buf[characterIndex]) == 0 
+                    if characterIndex != 1
+                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                    end
+                    break
+                end
+            end
+            textbox.fontPath = currentTextInTextBox
+            CImGui.Button("Load Font") && (UI.initialize(textbox))
+        else 
+            show_component_field_input(textbox, field)
         end  
     end
 end

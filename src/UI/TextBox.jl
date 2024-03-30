@@ -53,13 +53,12 @@ module TextBoxModule
         method_props = (
             render = UI.render,
             initialize = UI.initialize,
-            setPosition = UI.set_position,
             setParent = UI.set_parent,
             updateText = UI.update_text,
             setVector2Value = UI.set_vector2_value,
             setColor = UI.set_color,
             centerText = UI.center_text,
-            destroy = UI.destroy
+            destroy = UI.destroy,
         )
         deprecated_get_property(method_props, this, s)
     end
@@ -116,13 +115,21 @@ module TextBoxModule
         this.isInitialized = true
     end
 
-    function UI.set_position(this::TextBox, position::Math.Vector2)
-    end
-
     function UI.set_parent(this::TextBox, parent)
         this.parent = parent
     end
 
+    """
+        update_text(this::TextBox, newText)
+
+    Update the text of the TextBox with the given `newText`. This function updates the `text` field of the TextBox, renders the new text using the specified font, and creates a texture from the rendered text. If the TextBox is not a world entity, it centers the text.
+
+    # Arguments
+    - `this::TextBox`: The TextBox object to update.
+    - `newText`: The new text to set for the TextBox.
+
+    # Examples
+    """
     function UI.update_text(this::TextBox, newText)
         this.text = newText
         SDL2.SDL_FreeSurface(this.renderText)
@@ -164,5 +171,4 @@ module TextBoxModule
         SDL2.SDL_DestroyTexture(this.textTexture)
         this.textTexture = C_NULL
     end
-
 end
