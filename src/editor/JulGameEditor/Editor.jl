@@ -305,12 +305,11 @@ module Editor
                                 end
                                 CImGui.PopID()
                                 CImGui.Separator()
-                                for field in fieldnames(UI.TextBoxModule.TextBox)
-                                    if length(currentSceneMain.scene.textBoxes) < uiElementIndex
-                                        break
-                                    end
-                                    show_field_editor(currentSceneMain.scene.textBoxes[uiElementIndex], field)
+
+                                if length(currentSceneMain.scene.textBoxes) < uiElementIndex
+                                    break
                                 end
+                                show_textbox_fields(currentSceneMain.scene.textBoxes[uiElementIndex])
 
                                 CImGui.Separator()
                                 if CImGui.Button("Duplicate") 
