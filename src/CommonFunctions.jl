@@ -28,6 +28,7 @@ function get_type end
 function get_velocity end
 function handle_event end
 function initialize end
+function load_font end
 function load_image end
 function load_sound end
 function render end

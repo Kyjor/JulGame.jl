@@ -6,6 +6,7 @@ module UI
         destroy,
         handle_event,
         initialize,
+        load_font,
         render,
         set_color,
         set_parent,

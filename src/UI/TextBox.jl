@@ -6,16 +6,12 @@ module TextBoxModule
     export TextBox      
     mutable struct TextBox
         alpha
-        basePath::String
         font
         fontPath::String
         fontSize::Int32
         id::Int32
         isCenteredX::Bool
         isCenteredY::Bool
-        isInitialized::Bool
-        isDefaultFont::Bool
-        isTextUpdated::Bool
         isWorldEntity::Bool
         name::String
         persistentBetweenScenes::Bool
@@ -25,25 +21,28 @@ module TextBoxModule
         text::String
         textTexture
 
-        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false, isDefaultFont::Bool = false, isEditor::Bool = false; isWorldEntity::Bool=false) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; isWorldEntity::Bool=false) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.alpha = 255
-            this.basePath = isDefaultFont ? ( isEditor ? joinpath(pwd(), "..", "Fonts") : joinpath(pwd(), "..", "assets", "fonts")) : JulGame.BasePath
-            this.fontPath = (isEditor && isDefaultFont) ? joinpath("FiraCode", "ttf", "FiraCode-Medium.ttf") : fontPath
+            this.fontPath = fontPath
             this.fontSize = fontSize
             this.id = 0
             this.isCenteredX = isCenteredX
             this.isCenteredY = isCenteredY
-            this.isDefaultFont = isDefaultFont
-            this.isTextUpdated = false
             this.name = name
             this.position = position
             this.text = text
             this.isWorldEntity = isWorldEntity
             this.textTexture = C_NULL
-            this.isInitialized = false
             this.persistentBetweenScenes = false
+            
+            basePath = fontPath != "" ? joinpath(BasePath, "assets", "fonts") : joinpath(pwd(), "..", "Fonts")
+            if fontPath == ""
+                fontPath = joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")
+            end
+
+            UI.load_font(this, basePath, fontPath)
 
             return this
         end
@@ -52,9 +51,7 @@ module TextBoxModule
     function Base.getproperty(this::TextBox, s::Symbol)
         method_props = (
             render = UI.render,
-            initialize = UI.initialize,
             setParent = UI.set_parent,
-            updateText = UI.update_text,
             setVector2Value = UI.set_vector2_value,
             setColor = UI.set_color,
             centerText = UI.center_text,
@@ -64,10 +61,6 @@ module TextBoxModule
     end
 
     function UI.render(this::TextBox, DEBUG)
-        if !this.isInitialized
-            UI.initialize(this)
-        end
-
         if this.textTexture == C_NULL
             return
         end
@@ -81,11 +74,6 @@ module TextBoxModule
                 SDL2.SDL_Point(this.position.x, this.position.y)], 5)
         end
 
-        if this.isTextUpdated
-            this.updateText(this.text)
-            this.isTextUpdated = false
-        end
-
         cameraDiff = this.isWorldEntity ? 
         Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
@@ -93,12 +81,14 @@ module TextBoxModule
         @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
-    function UI.initialize(this::TextBox)
-        path = this.isDefaultFont ? joinpath(this.basePath, this.fontPath) : joinpath(this.basePath, "assets", "fonts", this.fontPath)
-        # println("loading font from $(path)")
-        this.font = CallSDLFunction(SDL2.TTF_OpenFont, path, this.fontSize)
+    function UI.load_font(this::TextBox, basePath::String, fontPath::String)
+        println("loading font from $(fontPath)")
+        this.font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), this.fontSize)
         if this.font == C_NULL
             return
+        end
+        if fontPath != joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")
+            this.fontPath = fontPath
         end
 
         this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
@@ -107,12 +97,12 @@ module TextBoxModule
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
+    end
 
+    function UI.initialize(this::TextBox)
         if !this.isWorldEntity
             this.centerText()
         end
-
-        this.isInitialized = true
     end
 
     function UI.set_parent(this::TextBox, parent)
@@ -131,6 +121,10 @@ module TextBoxModule
     # Examples
     """
     function UI.update_text(this::TextBox, newText)
+        if length(newText) == 0
+            newText = " " # prevents segfault when text is empty
+        end
+
         this.text = newText
         SDL2.SDL_FreeSurface(this.renderText)
         SDL2.SDL_DestroyTexture(this.textTexture)
