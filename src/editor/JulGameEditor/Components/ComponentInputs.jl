@@ -7,6 +7,7 @@ using JulGame.UI
 
 include("TextBoxFields.jl")
 
+
 """
 show_field_editor(entity, field)
 Creates inputs based on the component type and populates them.
@@ -300,6 +301,7 @@ function show_textbox_fields(textbox)
                 end
             end
             textbox.fontPath = currentTextInTextBox
+
             CImGui.Button("Load Font") && (UI.load_font(textbox, joinpath(pwd()), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
         else 
             show_textbox_fields(textbox, field)
