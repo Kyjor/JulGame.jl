@@ -225,9 +225,9 @@ module SceneBuilderModule
         push!(MAIN.scene.entities, Entity("New entity"))
     end
 
-    function create_new_text_box(this::Scene, fontPath)
-        textBox = TextBox("TextBox", fontPath, 40, Vector2(0, 200), "TextBox", true, true, true, true)
-        textBox.initialize()
+    function create_new_text_box(this::Scene)
+        textBox = TextBox("TextBox", "", 40, Vector2(0, 200), "TextBox", true, true)
+        JulGame.initialize(textBox)
         push!(MAIN.scene.textBoxes, textBox)
     end
 end

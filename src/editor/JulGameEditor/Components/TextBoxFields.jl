@@ -1,9 +1,4 @@
-using CImGui
-using CImGui.CSyntax
-using CImGui.CSyntax.CStatic
-using JulGame
-
-function ShowTextBoxField(selectedTextBox, textBoxField)
+function show_textbox_fields(selectedTextBox, textBoxField)
     fieldName = getFieldName(textBoxField)
     Value = getfield(selectedTextBox, textBoxField)
 
@@ -20,8 +15,9 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
             end
         end
         setfield!(selectedTextBox, textBoxField, currentTextInTextBox)
+        
         if currentTextInTextBox != Value
-            selectedTextBox.isTextUpdated = true
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
 
     elseif fieldName == "alpha"
@@ -30,7 +26,7 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
         setfield!(selectedTextBox, textBoxField, convert(Int32, round(x)))
 
         if x != Value
-            selectedTextBox.isTextUpdated = true
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
 
     elseif fieldName == "color"
@@ -42,7 +38,7 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
         setfield!(selectedTextBox, textBoxField, Color(convert(Int32, round(x)), convert(Int32, round(y)), convert(Int32, round(z)), convert(Int32, round(w))))
 
         if x != Value.r || y != Value.g || z != Value.b || w != Value.a
-            selectedTextBox.isTextUpdated = true
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     elseif fieldName == "position" || fieldName == "size"
         x = Cint(Value.x)
@@ -52,14 +48,14 @@ function ShowTextBoxField(selectedTextBox, textBoxField)
         
         if x != Value.x || y != Value.y
             selectedTextBox.setVector2Value(textBoxField, convert(Float64, x), convert(Float64, y))
-            selectedTextBox.isTextUpdated = true
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     elseif fieldName == "autoSizeText" || fieldName == "isCentered"
         @c CImGui.Checkbox("$(textBoxField)", &Value)
 
         if Value != getfield(selectedTextBox, textBoxField)
-            selectedTextBox.isTextUpdated = true
             setfield!(selectedTextBox, textBoxField, Value)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     end
 end

@@ -266,8 +266,8 @@ module MainLoop
         SceneBuilderModule.create_new_entity(this.level)
     end
 
-    function create_new_text_box(this::Main, fontPath)
-        SceneBuilderModule.create_new_text_box(this.level, fontPath)
+    function create_new_text_box(this::Main)
+        SceneBuilderModule.create_new_text_box(this.level)
     end
 
     function select_entity_with_click(this::Main)
@@ -865,7 +865,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
 
 					for i = eachindex(statTexts)
-						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false, true)
+						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
 						push!(this.debugTextBoxes, textBox)
                         JulGame.initialize(textBox)
 					end
