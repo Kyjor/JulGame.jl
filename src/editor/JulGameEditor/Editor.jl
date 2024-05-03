@@ -210,7 +210,7 @@ module Editor
                                 CImGui.MenuItem("Add", C_NULL, false, false)
                                 if CImGui.BeginMenu("New")
                                     if CImGui.MenuItem("TextBox")
-                                        currentSceneMain.createNewTextBox(joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")) 
+                                        currentSceneMain.createNewTextBox() 
                                     end
                                     if CImGui.MenuItem("Screen Button")
                                     end
@@ -305,18 +305,17 @@ module Editor
                                 end
                                 CImGui.PopID()
                                 CImGui.Separator()
-                                for field in fieldnames(UI.TextBoxModule.TextBox)
-                                    if length(currentSceneMain.scene.textBoxes) < uiElementIndex
-                                        break
-                                    end
-                                    show_field_editor(currentSceneMain.scene.textBoxes[uiElementIndex], field)
-                                end
 
-                                CImGui.Separator()
-                                if CImGui.Button("Duplicate") 
-                                    push!(currentSceneMain.scene.textBoxes, deepcopy(currentSceneMain.scene.textBoxes[uiElementIndex]))
-                                    # TODO: switch to duplicated entity
+                                if length(currentSceneMain.scene.textBoxes) < uiElementIndex
+                                    break
                                 end
+                                show_textbox_fields(currentSceneMain.scene.textBoxes[uiElementIndex])
+
+                                # CImGui.Separator()
+                                # if CImGui.Button("Duplicate") 
+                                #     push!(currentSceneMain.scene.textBoxes, deepcopy(currentSceneMain.scene.textBoxes[uiElementIndex]))
+                                #     # TODO: switch to duplicated entity
+                                # end
 
                                 CImGui.Separator()
                                 CImGui.Text("Delete UI Element: NO CONFIRMATION")

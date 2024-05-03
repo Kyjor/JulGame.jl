@@ -76,7 +76,7 @@ module SceneReaderModule
                 
                 push!(entities, newEntity)
             end
-            textBoxes = deserializeTextBoxes(json.TextBoxes, isEditor)
+            textBoxes = deserializeTextBoxes(json.TextBoxes)
     
             push!(res, entities)
             push!(res, textBoxes)
@@ -88,12 +88,12 @@ module SceneReaderModule
         end
     end
 
-    function deserializeTextBoxes(jsonTextBoxes, isEditor = false)
+    function deserializeTextBoxes(jsonTextBoxes)
         res = []
 
         for textBox in jsonTextBoxes
             try
-                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), textBox.text, textBox.isCenteredX, textBox.isCenteredY, textBox.isDefaultFont, isEditor)        
+                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), textBox.text, textBox.isCenteredX, textBox.isCenteredY)        
                 push!(res, newTextBox)
             catch e 
                 println(e)

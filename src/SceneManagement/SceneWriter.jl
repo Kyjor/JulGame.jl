@@ -33,8 +33,6 @@ module SceneWriterModule
             "fontSize" => textBox.fontSize, 
             "isCenteredX" => textBox.isCenteredX,
             "isCenteredY" => textBox.isCenteredY,
-            "isDefaultFont" => textBox.isDefaultFont,
-            "isTextUpdated" => textBox.isTextUpdated,
             "isWorldEntity" => textBox.isWorldEntity,
             "name" => textBox.name,
             "persistentBetweenScenes" => textBox.persistentBetweenScenes,
