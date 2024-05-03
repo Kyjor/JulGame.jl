@@ -82,7 +82,7 @@ module TextBoxModule
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
-        println("loading font from $(fontPath)")
+        # println("loading font from $(fontPath)")
         this.font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), this.fontSize)
         if this.font == C_NULL
             return
@@ -120,7 +120,7 @@ module TextBoxModule
 
     # Examples
     """
-    function UI.update_text(this::TextBox, newText)
+    function UI.update_text(this::TextBox, newText::String)
         if length(newText) == 0
             newText = " " # prevents segfault when text is empty
         end

@@ -805,7 +805,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			#region ============= UI
 			for screenButton in this.scene.screenButtons
-				screenButton.render()
+				JulGame.render(screenButton)
 			end
 
 			for textBox in this.scene.textBoxes

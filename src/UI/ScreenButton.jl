@@ -47,7 +47,6 @@ module ScreenButtonModule
 
     function Base.getproperty(this::ScreenButton, s::Symbol)
         method_props = (
-            render = UI.render,
             initialize = UI.initialize,
             addClickEvent = UI.add_click_event,
             handleEvent = UI.handle_event,
