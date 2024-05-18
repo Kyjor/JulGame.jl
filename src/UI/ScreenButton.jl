@@ -55,7 +55,7 @@ module ScreenButtonModule
         deprecated_get_property(method_props, this, s)
     end
     
-    function UI.render(this::ScreenButton)
+    function UI.render(this::ScreenButton, debug=false)
         if !this.isInitialized
             this.initialize()
         end

@@ -209,10 +209,11 @@ module Editor
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
                                 CImGui.MenuItem("Add", C_NULL, false, false)
                                 if CImGui.BeginMenu("New")
-                                    if CImGui.MenuItem("TextBox")
+                                    if CImGui.MenuItem("TextBox---")
                                         currentSceneMain.createNewTextBox() 
                                     end
-                                    if CImGui.MenuItem("Screen Button")
+                                    if CImGui.MenuItem("Screen Button---")
+                                        currentSceneMain.createNewScreenButton()
                                     end
                                     
                                     CImGui.EndMenu()

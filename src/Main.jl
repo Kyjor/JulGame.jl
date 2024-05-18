@@ -392,9 +392,6 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	for textBox in this.scene.textBoxes
         JulGame.initialize(textBox)
 	end
-	for screenButton in this.scene.screenButtons
-        JulGame.initialize(screenButton)
-	end
 
 	this.lastMousePosition = Math.Vector2(0, 0)
 	this.panCounter = Math.Vector2f(0, 0)
@@ -476,25 +473,11 @@ function change_scene(sceneFileName::String)
         JulGame.destroy(textBox)
 	end
 	
-	persistentScreenButtons = []
-	# delete all screen buttons
-	for screenButton in MAIN.scene.screenButtons
-		if screenButton.persistentBetweenScenes
-			#println("Persistent screenButton: ", screenButton.name)
-			push!(persistentScreenButtons, screenButton)
-			skipcount += 1
-			continue
-		end
-
-		screenButton.destroy()
-	end
-	
 	#load new scene 
 	camera = MAIN.scene.camera
 	MAIN.scene = Scene()
 	MAIN.scene.entities = persistentEntities
 	MAIN.scene.textBoxes = persistentTextBoxes
-	MAIN.scene.screenButtons = persistentScreenButtons
 	MAIN.scene.camera = camera
 	MAIN.level.scene = sceneFileName
 end
@@ -804,10 +787,6 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#endregion ============= Rendering
 
 			#region ============= UI
-			for screenButton in this.scene.screenButtons
-				JulGame.render(screenButton)
-			end
-
 			for textBox in this.scene.textBoxes
                 JulGame.render(textBox, DEBUG)
 			end

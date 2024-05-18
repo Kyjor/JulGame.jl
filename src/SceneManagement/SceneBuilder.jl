@@ -60,7 +60,8 @@ module SceneBuilderModule
             init = init,
             changeScene = change_scene,
             createNewEntity = create_new_entity,
-            createNewTextBox = create_new_text_box
+            createNewTextBox = create_new_text_box,
+            createNewScreenButton = create_new_screen_button
         )
         deprecated_get_property(method_props, this, s)
     end
@@ -221,6 +222,15 @@ module SceneBuilderModule
         end 
     end
 
+    """
+    create_new_entity(this::Scene)
+
+    Create a new entity and add it to the scene.
+
+    # Arguments
+    - `this::Scene`: The scene object to which the entity will be added.
+
+    """
     function create_new_entity(this::Scene)
         push!(MAIN.scene.entities, Entity("New entity"))
     end
@@ -228,6 +238,13 @@ module SceneBuilderModule
     function create_new_text_box(this::Scene)
         textBox = TextBox("TextBox", "", 40, Vector2(0, 200), "TextBox", true, true)
         JulGame.initialize(textBox)
+        push!(MAIN.scene.textBoxes, textBox)
+    end
+    
+    function create_new_screen_button(this::Scene)
+        screenButton = ScreenButton("ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+        JulGame.initialize(screenButton)
+        push!(MAIN.scene.screenButtons, textBox)
         push!(MAIN.scene.textBoxes, textBox)
     end
 end
