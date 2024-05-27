@@ -61,7 +61,7 @@ module Editor
                     ################################# MAIN MENU BAR
                     events = []
                     if currentSceneMain !== nothing
-                        push!(events, save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.textBoxes, currentSelectedProjectPath, String(currentSceneName)))
+                        push!(events, save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, String(currentSceneName)))
                     end
                     push!(events, select_project_event(currentSceneMain, scenesLoadedFromFolder))
                     show_main_menu_bar(events)
@@ -222,19 +222,19 @@ module Editor
                             end
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
-                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.textBoxes) # || updateUISelectionsBasedOnFilter
-                                hierarchyUISelections=fill(false, length(currentSceneMain.scene.textBoxes))
+                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.uiElements) # || updateUISelectionsBasedOnFilter
+                                hierarchyUISelections=fill(false, length(currentSceneMain.scene.uiElements))
                             end
 
-                            for n = eachindex(currentSceneMain.scene.textBoxes)
+                            for n = eachindex(currentSceneMain.scene.uiElements)
                                 CImGui.PushID(n)
-                                buf = "$(n): $(currentSceneMain.scene.textBoxes[n].name)"
+                                buf = "$(n): $(currentSceneMain.scene.uiElements[n].name)"
                                 if CImGui.Selectable(buf, hierarchyUISelections[n])
                                     # clear selection when CTRL is not held
                                     !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
                                     hierarchyUISelections[n] ⊻= 1
                                     uiSelected = true
-                                    # currentSceneMain.selectedEntity = currentSceneMain.scene.textBoxes[n]
+                                    # currentSceneMain.selectedEntity = currentSceneMain.scene.uiElements[n]
                                 end
                                 CImGui.PopID()
 
@@ -301,27 +301,27 @@ module Editor
                             if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                 CImGui.PushID("AddMenu")
                                 if CImGui.BeginMenu("Add")
-                                    ShowEntityContextMenu(currentSceneMain.scene.textBoxes[uiElementIndex])
+                                    ShowEntityContextMenu(currentSceneMain.scene.uiElements[uiElementIndex])
                                     CImGui.EndMenu()
                                 end
                                 CImGui.PopID()
                                 CImGui.Separator()
 
-                                if length(currentSceneMain.scene.textBoxes) < uiElementIndex
+                                if length(currentSceneMain.scene.uiElements) < uiElementIndex
                                     break
                                 end
-                                show_textbox_fields(currentSceneMain.scene.textBoxes[uiElementIndex])
+                                show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
 
                                 # CImGui.Separator()
                                 # if CImGui.Button("Duplicate") 
-                                #     push!(currentSceneMain.scene.textBoxes, deepcopy(currentSceneMain.scene.textBoxes[uiElementIndex]))
+                                #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
                                 #     # TODO: switch to duplicated entity
                                 # end
 
                                 CImGui.Separator()
                                 CImGui.Text("Delete UI Element: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
-                                    #MainLoop.DestroyEntity(currentSceneMain.scene.textBoxes[uiElementIndex])
+                                    #MainLoop.DestroyEntity(currentSceneMain.scene.uiElements[uiElementIndex])
                                     break
                                 end
                                 
@@ -470,22 +470,22 @@ module Editor
 
   
     """
-        save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
+        save_scene_event(entities, uiElements, projectPath::String, sceneName::String)
 
     Save the scene by serializing the entities and text boxes to a file.
 
     # Arguments
     - `entities`: The entities to be serialized.
-    - `textBoxes`: The text boxes to be serialized.
+    - `uiElements`: The text boxes to be serialized.
     - `projectPath`: The path of the project.
     - `sceneName`: The name of the scene.
 
     # Returns
     - `event`: The event object representing the save scene event.
     """
-    function save_scene_event(entities, textBoxes, projectPath::String, sceneName::String)
+    function save_scene_event(entities, uiElements, projectPath::String, sceneName::String)
         event = @event begin
-            SceneWriterModule.serialize_entities(entities, textBoxes, projectPath, "$(sceneName)")
+            SceneWriterModule.serialize_entities(entities, uiElements, projectPath, "$(sceneName)")
         end
 
         return event

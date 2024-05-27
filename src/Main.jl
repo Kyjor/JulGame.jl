@@ -30,8 +30,8 @@ module MainLoop
 		panThreshold::Float64
 		scene::Scene
 		selectedEntity::Union{Entity, Nothing}
-		selectedTextBoxIndex::Int64
-		screenDimensions::Math.Vector2
+		selectedUIElementIndex::Int64
+		screenSize::Math.Vector2
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		targetFrameRate::Int32
@@ -58,8 +58,8 @@ module MainLoop
 			this.lastMousePositionWorld = Math.Vector2f()
 			this.optimizeSpriteRendering = false
 			this.selectedEntity = nothing
-			this.selectedTextBoxIndex = -1
-			this.screenDimensions = Math.Vector2(0,0)
+			this.selectedUIElementIndex = -1
+			this.screenSize = Math.Vector2(0,0)
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
@@ -81,6 +81,7 @@ module MainLoop
             gameLoop = game_loop,
             createNewEntity = create_new_entity,
             createNewTextBox = create_new_text_box,
+			createNewScreenButton = create_new_screen_button,
             minimizeWindow = minimize_window,
             restoreWindow = restore_window,
             updateViewport = update_viewport,
@@ -89,9 +90,9 @@ module MainLoop
 		deprecated_get_property(method_props, this, s)
 	end
 
-    function init(this::Main, isUsingEditor = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
+    function init(this::Main, isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
         if !isNewEditor
-            PrepareWindow(this, isUsingEditor, dimensions, isResizable, autoScaleZoom)
+            PrepareWindow(this, isUsingEditor, size, isResizable, autoScaleZoom)
         end
         InitializeScriptsAndComponents(this, isUsingEditor)
 
@@ -205,7 +206,7 @@ module MainLoop
 			else
 				this.isWindowFocused = false
 			end
-        elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntity !== nothing || this.selectedTextBoxIndex != -1) && this.isWindowFocused  # TODO: figure out what this meant && this.selectedEntityIndex != this.selectedTextBoxIndex
+        elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntity !== nothing || this.selectedUIElementIndex != -1) && this.isWindowFocused  # TODO: figure out what this meant && this.selectedEntityIndex != this.selectedUIElementIndex
             # TODO: Make this work for textboxes
             snapping = false
             if this.input.getButtonHeldDown("LCTRL")
@@ -270,6 +271,10 @@ module MainLoop
         SceneBuilderModule.create_new_text_box(this.level)
     end
 
+	function create_new_screen_button(this::Main)
+		SceneBuilderModule.create_new_screen_button(this.level)
+	end
+
     function select_entity_with_click(this::Main)
         for entity in this.scene.entities
             size = entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.scale
@@ -282,14 +287,14 @@ module MainLoop
                 return
             end
         end
-        textBoxIndex = 1
-        for textBox in this.scene.textBoxes
-            if this.mousePositionWorld.x >= textBox.position.x && this.mousePositionWorld.x <= textBox.position.x + textBox.size.x && this.mousePositionWorld.y >= textBox.position.y && this.mousePositionWorld.y <= textBox.position.y + textBox.size.y
-                this.selectedTextBoxIndex = textBoxIndex
+        uiElementIndex = 1
+        for uiElement in this.scene.uiElements
+            if this.mousePositionWorld.x >= uiElement.position.x && this.mousePositionWorld.x <= uiElement.position.x + uiElement.size.x && this.mousePositionWorld.y >= uiElement.position.y && this.mousePositionWorld.y <= uiElement.position.y + uiElement.size.y
+                this.selectedUIElementIndex = uiElementIndex
 
                 return
             end
-            textBoxIndex += 1
+            uiElementIndex += 1
         end
     end
 
@@ -308,8 +313,8 @@ module MainLoop
         this.scaleZoom(x,y)
         SDL2.SDL_RenderClear(JulGame.Renderer)
         SDL2.SDL_RenderSetScale(JulGame.Renderer, 1.0, 1.0)	
-        this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-        SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+        this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.size.x/2*this.zoom), round(y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
+        SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
         SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
     end
 
@@ -320,8 +325,8 @@ module MainLoop
         this.scaleZoom(x,y)
         SDL2.SDL_RenderClear(JulGame.Renderer)
         SDL2.SDL_RenderSetScale(JulGame.Renderer, 1.0, 1.0)	
-        this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-        SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+        this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.size.x/2*this.zoom), round(y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
+        SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
         SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 		println("Zoom: ", this.zoom)
     end
@@ -329,22 +334,22 @@ module MainLoop
 
     function scale_zoom(this::Main, x,y)
         if this.autoScaleZoom
-            targetRatio = this.scene.camera.dimensions.x/this.scene.camera.dimensions.y
-            if this.scene.camera.dimensions.x == max(this.scene.camera.dimensions.x, this.scene.camera.dimensions.y)
-                for i in x:-1:this.scene.camera.dimensions.x
+            targetRatio = this.scene.camera.size.x/this.scene.camera.size.y
+            if this.scene.camera.size.x == max(this.scene.camera.size.x, this.scene.camera.size.y)
+                for i in x:-1:this.scene.camera.size.x
                     value = i/targetRatio
                     isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
                     if isInt && value <= y
-                        this.zoom = i/this.scene.camera.dimensions.x
+                        this.zoom = i/this.scene.camera.size.x
                         break
                     end
                 end
             else
-                for i in y:-1:this.scene.camera.dimensions.y
+                for i in y:-1:this.scene.camera.size.y
                     value = i*targetRatio
                     isInt = isinteger(value) || (isa(value, AbstractFloat) && trunc(value) == value)
                     if isInt && value <= x
-                        this.zoom = i/this.scene.camera.dimensions.y
+                        this.zoom = i/this.scene.camera.size.y
                         break
                     end
                 end
@@ -352,27 +357,27 @@ module MainLoop
         end
     end
     
-	function PrepareWindow(this::Main, isUsingEditor::Bool = false, dimensions = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
-		if dimensions == Math.Vector2()
+	function PrepareWindow(this::Main, isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+		if size == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
-			dimensions = Math.Vector2(displayMode[1].w, displayMode[1].h)
+			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
 		end
 		this.autoScaleZoom = autoScaleZoom
-		this.scaleZoom(dimensions.x,dimensions.y)
+		this.scaleZoom(size.x,size.y)
 
-		this.screenDimensions = dimensions != C_NULL ? dimensions : this.scene.camera.dimensions
+		this.screenSize = size != C_NULL ? size : this.scene.camera.size
 
 		flags = SDL2.SDL_RENDERER_ACCELERATED |
 		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
 		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-		(dimensions == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
 
-		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenDimensions.x, this.screenDimensions.y, flags)
+		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenSize.x, this.screenSize.y, flags)
 
 		JulGame.Renderer = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-		this.scene.camera.startingCoordinates = Math.Vector2f(round(dimensions.x/2) - round(this.scene.camera.dimensions.x/2*this.zoom), round(dimensions.y/2) - round(this.scene.camera.dimensions.y/2*this.zoom))																																				
-		SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.dimensions.x*this.zoom), round(this.scene.camera.dimensions.y*this.zoom))))
+		this.scene.camera.startingCoordinates = Math.Vector2f(round(size.x/2) - round(this.scene.camera.size.x/2*this.zoom), round(size.y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
+		SDL2.SDL_RenderSetViewport(JulGame.Renderer, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
 		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
 		SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
@@ -389,8 +394,8 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 		end
 	end
 
-	for textBox in this.scene.textBoxes
-        JulGame.initialize(textBox)
+	for uiElement in this.scene.uiElements
+        JulGame.initialize(uiElement)
 	end
 
 	this.lastMousePosition = Math.Vector2(0, 0)
@@ -461,23 +466,23 @@ function change_scene(sceneFileName::String)
 
 	# println("Entities left after destroying: ", length(persistentEntities))
 
-	persistentTextBoxes = []
-	# delete all textboxes
-	for textBox in MAIN.scene.textBoxes
-		if textBox.persistentBetweenScenes
-			#println("Persistent textBox: ", textBox.name)
-			push!(persistentTextBoxes, textBox)
+	persistentUIElements = []
+	# delete all UIElements
+	for uiElement in MAIN.scene.uiElements
+		if uiElement.persistentBetweenScenes
+			#println("Persistent uiElement: ", uiElement.name)
+			push!(persistentUIElements, uiElement)
 			skipcount += 1
 			continue
 		end
-        JulGame.destroy(textBox)
+        JulGame.destroy(uiElement)
 	end
 	
 	#load new scene 
 	camera = MAIN.scene.camera
 	MAIN.scene = Scene()
 	MAIN.scene.entities = persistentEntities
-	MAIN.scene.textBoxes = persistentTextBoxes
+	MAIN.scene.uiElements = persistentUIElements
 	MAIN.scene.camera = camera
 	MAIN.level.scene = sceneFileName
 end
@@ -620,7 +625,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
 			if isEditor
-				this.scene.camera.dimensions = Math.Vector2(windowSize.x, windowSize.y)
+				this.scene.camera.size = Math.Vector2(windowSize.x, windowSize.y)
 				# update_viewport_editor(this, windowSize.x, windowSize.y)
 			end
 
@@ -702,7 +707,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			end
 
 			cameraPosition = this.scene.camera.position
-			cameraSize = this.scene.camera.dimensions
+			cameraSize = this.scene.camera.size
 			
 			skipcount = 0
 			rendercount = 0
@@ -787,8 +792,8 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#endregion ============= Rendering
 
 			#region ============= UI
-			for textBox in this.scene.textBoxes
-                JulGame.render(textBox, DEBUG)
+			for uiElement in this.scene.uiElements
+                JulGame.render(uiElement, DEBUG)
 			end
 			#endregion ============= UI
 

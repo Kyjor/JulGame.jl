@@ -50,7 +50,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
             this.currentMusic = this.parent.createSoundSource(SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
             this.currentMusic.toggleSound()
 
-            MAIN.scene.textBoxes[2].updateText(string(this.starCount))
+            MAIN.scene.uiElements[2].updateText(string(this.starCount))
         end
     elseif s == :update
         function(deltaTime)

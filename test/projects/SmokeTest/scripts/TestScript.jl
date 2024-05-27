@@ -134,7 +134,7 @@ newEntity.shape != C_NULL && newEntity.shape !== nothing
 
                 # @testset "TextBox constructor" begin
                     newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
-                    push!(MAIN.scene.textBoxes, newTextBox)
+                    push!(MAIN.scene.uiElements, newTextBox)
                     # # @test 
 
                     newTextBox != C_NULL && newTextBox !== nothing

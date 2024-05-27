@@ -128,11 +128,11 @@ module InputModule
                         eventWasInsideThisButton = true
                         if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x
                             eventWasInsideThisButton = false
-                        elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.dimensions.x * MAIN.zoom
+                        elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.size.x * MAIN.zoom
                             eventWasInsideThisButton = false
                         elseif y[1] < screenButton.position.y + MAIN.scene.camera.startingCoordinates.y
                             eventWasInsideThisButton = false
-                        elseif y[1] > MAIN.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.dimensions.y * MAIN.zoom
+                        elseif y[1] > MAIN.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.size.y * MAIN.zoom
                             eventWasInsideThisButton = false
                         end
 

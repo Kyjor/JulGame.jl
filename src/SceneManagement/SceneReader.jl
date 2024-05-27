@@ -24,7 +24,7 @@ module SceneReaderModule
 
             json = JSON3.read(entitiesJson)
             entities =[]
-            textBoxes = []
+            uiElements = []
             res = []
     
             for entity in json.Entities
@@ -76,10 +76,10 @@ module SceneReaderModule
                 
                 push!(entities, newEntity)
             end
-            textBoxes = deserializeTextBoxes(json.TextBoxes)
+            uiElements = deserializeUIElements(json.UIElements)
     
             push!(res, entities)
-            push!(res, textBoxes)
+            push!(res, uiElements)
             return res
         catch e 
             println(e)
@@ -88,13 +88,19 @@ module SceneReaderModule
         end
     end
 
-    function deserializeTextBoxes(jsonTextBoxes)
+    function deserializeUIElements(jsonUIElements)
         res = []
 
-        for textBox in jsonTextBoxes
+        for uiElement in jsonUIElements
             try
-                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), textBox.text, textBox.isCenteredX, textBox.isCenteredY)        
-                push!(res, newTextBox)
+                newUIElement = nothing
+                if uiElement.type == "TextBox"
+                    newUIElement = TextBox(uiElement.name, uiElement.fontPath, uiElement.fontSize, Vector2(uiElement.position.x, uiElement.position.y), uiElement.text, uiElement.isCenteredX, uiElement.isCenteredY)        
+                else
+                    newUIElement = ScreenButton(uiElement.name, uiElement.buttonUpSpritePath, uiElement.buttonDownSpritePath, Vector2(uiElement.size.x, uiElement.size.y), Vector2(uiElement.position.x, uiElement.position.y), uiElement.fontPath, uiElement.text, Vector2(uiElement.textOffset.x, uiElement.textOffset.y))
+                end
+                
+                push!(res, newUIElement)
             catch e 
                 println(e)
 				Base.show_backtrace(stdout, catch_backtrace())

@@ -13,27 +13,29 @@ module ScreenButtonModule
         #TODO: add buttonHoverSprite/Color Mod 
         buttonUpSprite
         buttonUpTexture
-        dimensions
         fontPath::Union{String, Ptr{Nothing}}
         isInitialized::Bool
         mouseOverSprite
+        name::String
         persistentBetweenScenes::Bool
         position::Math.Vector2
+        size::Math.Vector2
         text::String
         textOffset::Math.Vector2
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(buttonUpSpritePath::String, buttonDownSpritePath::String, dimensions::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); isCreatedInEditor::Bool=false)
+        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); isCreatedInEditor::Bool=false)
             this = new()
             
             this.buttonDownSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonDownSpritePath))
             this.buttonUpSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonUpSpritePath))
             this.clickEvents = []
             this.currentTexture = C_NULL
-            this.dimensions = dimensions
+            this.size = size
             this.fontPath = fontPath
             this.mouseOverSprite = false
+            this.name = name
             this.position = position
             this.text = text
             this.textOffset = textOffset
@@ -71,7 +73,7 @@ module ScreenButtonModule
             JulGame.Renderer, 
             this.currentTexture, 
             C_NULL, 
-            Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.dimensions.x,this.dimensions.y)), 
+            Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
             0.0, 
             C_NULL, 
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"

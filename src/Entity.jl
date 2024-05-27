@@ -179,7 +179,7 @@ module EntityModule
             return
         end
 
-        this.shape = InternalShape(this::Entity, shape.dimensions, shape.color, shape.isFilled, shape.offset; isWorldEntity = shape.isWorldEntity, position = shape.position)
+        this.shape = InternalShape(this::Entity, shape.size, shape.color, shape.isFilled, shape.offset; isWorldEntity = shape.isWorldEntity, position = shape.position)
         
         return this.shape
     end
