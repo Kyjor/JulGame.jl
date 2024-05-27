@@ -800,7 +800,11 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				try
 					if selectedEntity != nothing
 						if this.input.getButtonPressed("DELETE")
-							println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
+							# println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
+							index = findfirst(x -> x == selectedEntity, this.scene.entities)
+							if index !== nothing
+								MainLoop.DestroyEntity(this.scene.entities[index])
+							end
 						end
 
 						pos = selectedEntity.transform.position
