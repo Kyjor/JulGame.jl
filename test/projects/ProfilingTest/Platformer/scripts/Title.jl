@@ -19,7 +19,7 @@ end
 function Base.getproperty(this::Title, s::Symbol)
     if s == :initialize
         function()
-            this.textBox = MAIN.scene.textBoxes[1]
+            this.textBox = MAIN.scene.uiElements[1]
         end
     elseif s == :update
         function(deltaTime)

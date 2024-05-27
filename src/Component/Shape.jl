@@ -5,7 +5,7 @@ module ShapeModule
     export Shape
     struct Shape
         color::Math.Vector3
-        dimensions::Math.Vector2f
+        size::Math.Vector2f
         isFilled::Bool
         isWorldEntity::Bool
         offset::Math.Vector2f
@@ -15,19 +15,19 @@ module ShapeModule
     export InternalShape
     mutable struct InternalShape
         color::Math.Vector3
-        dimensions::Math.Vector2f
         isFilled::Bool
         isWorldEntity::Bool
         layer::Int32
         offset::Math.Vector2f
         position::Math.Vector2f
         parent::Any # Entity
+        size::Math.Vector2f
         
-        function InternalShape(parent::Any, dimensions::Math.Vector2f = Math.Vector2f(1,1), color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2f = Math.Vector2f(0,0); isWorldEntity::Bool = true, position::Math.Vector2f = Math.Vector2f(0,0))
+        function InternalShape(parent::Any, size::Math.Vector2f = Math.Vector2f(1,1), color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2f = Math.Vector2f(0,0); isWorldEntity::Bool = true, position::Math.Vector2f = Math.Vector2f(0,0))
             this = new()
             
             this.color = color
-            this.dimensions = dimensions
+            this.size = size
             this.isFilled = isFilled
             this.isWorldEntity = isWorldEntity
             this.layer = 0

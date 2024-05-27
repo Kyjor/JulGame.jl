@@ -1,50 +1,70 @@
 module SceneWriterModule
     using JSON3
-
+    
     export serialize_entities
     """
-        serialize_entities(entities::Array, textBoxes::Array, projectPath, sceneName)
+        serialize_entities(entities::Array, uiElements::Array, projectPath, sceneName)
 
     Serialize the entities and text boxes into a JSON file.
 
     # Arguments
     - `entities::Array`: An array of entities to be serialized.
-    - `textBoxes::Array`: An array of text boxes to be serialized.
+    - `uiElements::Array`: An array of text boxes to be serialized.
     - `projectPath`: The path to the project directory.
     - `sceneName`: The name of the scene.
 
     """
-    function serialize_entities(entities::Array, textBoxes::Array, projectPath, sceneName)
+    function serialize_entities(entities::Array, uiElements::Array, projectPath, sceneName)
         
         entitiesDict = []
-        textBoxesDict = []
-
+        uiElementsDict = []
+        
         count = 1
         for entity in entities
-        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
-        count += 1
+            push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
+            count += 1
         end
+
         count = 1
-        for textBox in textBoxes
-        push!(textBoxesDict, Dict(
-            "id" => count, 
-            "alpha" => textBox.alpha, 
-            "fontPath" => normalize_path(textBox.fontPath), 
-            "fontSize" => textBox.fontSize, 
-            "isCenteredX" => textBox.isCenteredX,
-            "isCenteredY" => textBox.isCenteredY,
-            "isWorldEntity" => textBox.isWorldEntity,
-            "name" => textBox.name,
-            "persistentBetweenScenes" => textBox.persistentBetweenScenes,
-            "position" => Dict("x" => textBox.position.x, "y" => textBox.position.y),
-            "size" => Dict("x" => textBox.size.x, "y" => textBox.size.y),
-            "text" => textBox.text
-            ))
-        count += 1
+        for uiElement in uiElements
+            if "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    # TODO: "alpha" => uiElement.alpha, 
+                    "buttonDownSpritePath" => normalize_path(uiElement.buttonDownSpritePath), 
+                    "buttonUpSpritePath" => normalize_path(uiElement.buttonUpSpritePath), 
+                    "fontPath" => normalize_path(uiElement.fontPath), 
+                    # TODO: "fontSize" => uiElement.fontSize, 
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "text" => uiElement.text,
+                    "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
+                    "type" => "ScreenButton"
+                    ))
+            else
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    "alpha" => uiElement.alpha, 
+                    "fontPath" => normalize_path(uiElement.fontPath), 
+                    "fontSize" => uiElement.fontSize, 
+                    "isCenteredX" => uiElement.isCenteredX,
+                    "isCenteredY" => uiElement.isCenteredY,
+                    "isWorldEntity" => uiElement.isWorldEntity,
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "text" => uiElement.text,
+                    "type" => "TextBox"
+                    ))
+            end
+            count += 1
         end
         entitiesJson = Dict( 
             "Entities" => entitiesDict,
-            "TextBoxes" => textBoxesDict
+            "UIElements" => uiElementsDict
             )
         try
             println("writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))")

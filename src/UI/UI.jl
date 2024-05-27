@@ -6,6 +6,7 @@ module UI
         destroy,
         handle_event,
         initialize,
+        load_button_sprite_editor,
         load_font,
         render,
         set_color,

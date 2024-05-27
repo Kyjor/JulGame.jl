@@ -4,7 +4,7 @@
     entities::Vector{Any}
     rigidbodies::Vector{Any}
     screenButtons::Vector{Any}
-    textBoxes::Vector{Any}
+    uiElements::Vector{Any}
 
     function Scene()
         this = new()
@@ -14,7 +14,7 @@
         this.entities = []
         this.rigidbodies = []
         this.screenButtons = []
-        this.textBoxes = []
+        this.uiElements = []
 
         return this
     end
