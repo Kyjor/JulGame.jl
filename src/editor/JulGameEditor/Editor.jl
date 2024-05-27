@@ -310,11 +310,11 @@ module Editor
                                 if length(currentSceneMain.scene.uiElements) < uiElementIndex
                                     break
                                 end
+                                
                                 if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
                                     show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                 else
-                                    println("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))")
-                                    println("UI Element type not supported yet.")
+                                    show_screenbutton_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                 end
 
                                 # CImGui.Separator()

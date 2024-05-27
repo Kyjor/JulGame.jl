@@ -6,6 +6,7 @@ using JulGame.Math
 using JulGame.UI
 
 include("TextBoxFields.jl")
+include("ScreenButtonFields.jl")
 
 
 """
@@ -305,6 +306,38 @@ function show_textbox_fields(textbox)
             CImGui.Button("Load Font") && (UI.load_font(textbox, joinpath(pwd()), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
         else 
             show_textbox_fields(textbox, field)
+        end  
+    end
+end
+
+function show_screenbutton_fields(screenButton)
+    for field in fieldnames(typeof(screenButton))
+        fieldString = "$(field)"
+
+        # TODO: if fieldString == "fontPath" || 
+        if fieldString == "buttonUpSpritePath" || fieldString == "buttonDownSpritePath"
+            buf = "$(getfield(screenButton, Symbol(fieldString)))"*"\0"^(64)
+            CImGui.InputText("$(fieldString) Path Input", buf, length(buf))
+            currentTextInScreenButton = ""
+            for characterIndex = eachindex(buf)
+                if Int32(buf[characterIndex]) == 0 
+                    if characterIndex != 1
+                        currentTextInScreenButton = String(SubString(buf, 1, characterIndex-1))
+                    end
+                    break
+                end
+            end
+            setfield!(screenButton, Symbol(fieldString), currentTextInScreenButton)
+
+            if fieldString == "fontPath"
+                # TODO: CImGui.Button("Load Font") && (UI.load_font(screenButton, joinpath(pwd()), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
+            elseif fieldString == "buttonUpSpritePath"
+                CImGui.Button("Load Button Up Sprite") && (screenButton.loadSprite(currentTextInScreenButton, true))
+            elseif fieldString == "buttonDownSpritePath"
+                CImGui.Button("Load Button Down Sprite") && (screenButton.loadSprite(currentTextInScreenButton, false))
+            end
+        else 
+            show_screenbutton_fields(screenButton, field)
         end  
     end
 end

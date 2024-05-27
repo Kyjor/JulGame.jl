@@ -141,7 +141,7 @@ module TextBoxModule
 
     function UI.set_vector2_value(this::TextBox, field, x, y)
         setfield!(this, field, Math.Vector2(x,y))
-        println("set $(field) to $(getfield(this, field))")
+        # println("set $(field) to $(getfield(this, field))")
     end
 
     function UI.set_color(this::TextBox, r,g,b)

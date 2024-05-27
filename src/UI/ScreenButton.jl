@@ -57,6 +57,8 @@ module ScreenButtonModule
             initialize = UI.initialize,
             addClickEvent = UI.add_click_event,
             handleEvent = UI.handle_event,
+            setVector2Value = UI.set_vector2_value,
+            loadSprite = UI.load_button_sprite_editor,
             destroy = UI.destroy
         )
         deprecated_get_property(method_props, this, s)
@@ -72,8 +74,11 @@ module ScreenButtonModule
         end
 
         if !this.mouseOverSprite && this.currentTexture == this.buttonDownTexture
-            this.currentTexture = this.buttonUpTexture
+            #TODO: this.currentTexture = this.buttonUpTexture
         end    
+        if this.currentTexture == C_NULL || this.textTexture == C_NULL || this.currentTexture === nothing || this.textTexture === nothing
+            return
+        end
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer, 
             this.currentTexture, 
@@ -104,8 +109,29 @@ module ScreenButtonModule
         this.isInitialized = true
     end
 
+    function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
+        sprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", path))
+        texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, sprite)
+        if up
+            this.buttonUpSpritePath = path
+            this.buttonUpSprite = sprite
+            this.buttonUpTexture = texture
+        else
+            this.buttonDownSpritePath = path
+            this.buttonDownSprite = sprite
+            this.buttonDownTexture = texture
+        end
+
+        this.currentTexture = texture
+    end
+
     function UI.add_click_event(this::ScreenButton, event)
         push!(this.clickEvents, event)
+    end
+
+    function UI.set_vector2_value(this::ScreenButton, field, x, y)
+        setfield!(this, field, Math.Vector2(x,y))
+        # println("set $(field) to $(getfield(this, field))")
     end
 
     function UI.handle_event(this::ScreenButton, evt, x, y)
