@@ -125,8 +125,9 @@ newEntity.shape != C_NULL && newEntity.shape !== nothing
             #@testset "UI Tests" begin
                 #@testset "ScreenButton constructor" begin
                     
-                    newScreenButton = ScreenButtonModule.ScreenButton("ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
                     push!(MAIN.scene.screenButtons, newScreenButton)
+                    push!(MAIN.scene.uiElements, newScreenButton)
                     # # @test 
 
                     newScreenButton != C_NULL && newScreenButton !== nothing
