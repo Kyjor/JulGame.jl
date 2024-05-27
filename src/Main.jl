@@ -208,6 +208,9 @@ module MainLoop
 			end
         elseif this.input.getMouseButton(SDL2.SDL_BUTTON_LEFT) && (this.selectedEntity !== nothing || this.selectedUIElementIndex != -1) && this.isWindowFocused  # TODO: figure out what this meant && this.selectedEntityIndex != this.selectedUIElementIndex
             # TODO: Make this work for textboxes
+			if "$(typeof(this.selectedEntity))" != "JulGame.EntityModule.Entity"
+				return
+			end
             snapping = false
             if this.input.getButtonHeldDown("LCTRL")
                 snapping = true

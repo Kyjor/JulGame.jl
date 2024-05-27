@@ -21,30 +21,45 @@ module SceneWriterModule
         
         count = 1
         for entity in entities
-        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
-        count += 1
+            push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
+            count += 1
         end
+
         count = 1
         for uiElement in uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
-                println("skipping screenButton")
-                continue
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    # TODO: "alpha" => uiElement.alpha, 
+                    "buttonDownSpritePath" => normalize_path(uiElement.buttonDownSpritePath), 
+                    "buttonUpSpritePath" => normalize_path(uiElement.buttonUpSpritePath), 
+                    "fontPath" => normalize_path(uiElement.fontPath), 
+                    # TODO: "fontSize" => uiElement.fontSize, 
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "text" => uiElement.text,
+                    "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
+                    "type" => "ScreenButton"
+                    ))
+            else
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    "alpha" => uiElement.alpha, 
+                    "fontPath" => normalize_path(uiElement.fontPath), 
+                    "fontSize" => uiElement.fontSize, 
+                    "isCenteredX" => uiElement.isCenteredX,
+                    "isCenteredY" => uiElement.isCenteredY,
+                    "isWorldEntity" => uiElement.isWorldEntity,
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "text" => uiElement.text,
+                    "type" => "TextBox"
+                    ))
             end
-            push!(uiElementsDict, Dict(
-                "id" => count, 
-                "alpha" => uiElement.alpha, 
-                "fontPath" => normalize_path(uiElement.fontPath), 
-                "fontSize" => uiElement.fontSize, 
-                "isCenteredX" => uiElement.isCenteredX,
-                "isCenteredY" => uiElement.isCenteredY,
-                "isWorldEntity" => uiElement.isWorldEntity,
-                "name" => uiElement.name,
-                "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
-                "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
-                "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
-                "text" => uiElement.text,
-                "type" => "TextBox"
-                ))
             count += 1
         end
         entitiesJson = Dict( 

@@ -6,12 +6,15 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton
+        alpha
         clickEvents::Vector{Function}
         currentTexture
         buttonDownSprite
+        buttonDownSpritePath::String
         buttonDownTexture
         #TODO: add buttonHoverSprite/Color Mod 
         buttonUpSprite
+        buttonUpSpritePath::String
         buttonUpTexture
         fontPath::Union{String, Ptr{Nothing}}
         isInitialized::Bool
@@ -25,9 +28,11 @@ module ScreenButtonModule
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); isCreatedInEditor::Bool=false)
+        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0))
             this = new()
             
+            this.buttonDownSpritePath = buttonDownSpritePath
+            this.buttonUpSpritePath = buttonUpSpritePath
             this.buttonDownSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonDownSpritePath))
             this.buttonUpSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonUpSpritePath))
             this.clickEvents = []
@@ -78,7 +83,7 @@ module ScreenButtonModule
             C_NULL, 
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+        # @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
     function UI.initialize(this::ScreenButton)

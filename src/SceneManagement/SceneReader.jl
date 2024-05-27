@@ -10,6 +10,7 @@ module SceneReaderModule
     using ...SoundSourceModule
     using ...SpriteModule
     using ...UI.TextBoxModule
+    using ...UI.ScreenButtonModule
     using ...TransformModule
 
 
