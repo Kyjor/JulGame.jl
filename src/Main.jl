@@ -537,6 +537,16 @@ function DestroyEntity(entity)
 	end
 end
 
+function DestroyUIElement(uiElement)
+	for i = eachindex(MAIN.scene.uiElements)
+		if MAIN.scene.uiElements[i] == uiElement
+			deleteat!(MAIN.scene.uiElements, i)
+			JulGame.destroy(uiElement)
+			break
+		end
+	end
+end
+
 function destroy_entity_components(entity)
 	entitySprite = entity.sprite
 	if entitySprite != C_NULL
