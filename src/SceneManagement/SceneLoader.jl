@@ -40,7 +40,7 @@ module SceneLoaderModule
 
     """
     function load_scene_from_editor(scenePath::String, renderer = nothing, isNewEditor::Bool=false) 
-        println("Loading scene from editor")
+
         projectPath = get_project_path_from_full_scene_path(scenePath)
         sceneFileName = get_scene_file_name_from_full_scene_path(scenePath)
 
@@ -82,6 +82,10 @@ module SceneLoaderModule
             counter += 1
         end
 
+        if startswith(projectPath, "\\/")
+            projectPath = projectPath[2:end]
+        end
+
         return projectPath
     end
 
@@ -99,7 +103,8 @@ module SceneLoaderModule
     """
     function get_scene_file_name_from_full_scene_path(scenePath::String)
         sceneFileName = split(scenePath, "/")[end]
-        sceneFileName = split(scenePath, "\\")[end]
+        sceneFileName = split(sceneFileName, "\\")[end]
+
         return sceneFileName
     end
 end
