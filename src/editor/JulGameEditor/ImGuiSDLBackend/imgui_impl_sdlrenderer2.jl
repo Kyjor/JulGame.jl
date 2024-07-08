@@ -94,7 +94,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
 
     # will project scissor/clipping rectangles into framebuffer space
     clip_off = unsafe_load(draw_data.DisplayPos)         # (0,0) unless using multi-viewports
-    clip_scale = unsafe_load(draw_data.FramebufferScale) # (1,1) unless using retina display which are often (2,2)
+    clip_scale = render_scale
 
     # Render command lists
     ImGui_ImplSDLRenderer2_SetupRenderState()
