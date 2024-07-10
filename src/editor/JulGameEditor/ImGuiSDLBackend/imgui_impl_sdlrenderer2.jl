@@ -20,11 +20,10 @@ function ImGui_ImplSDLRenderer2_Init(renderer::Ptr{SDL2.SDL_Renderer})
     @assert renderer !== C_NULL && renderer != C_NULL "SDL2.SDL_Renderer not initialized!"
 
     # Setup backend capabilities flags
-    println(unsafe_load(io.BackendRendererUserData))
     bd = ImGui_ImplSDLRenderer2_Data(renderer, C_NULL)
     io.BackendRendererUserData = pointer_from_objref(bd)
     io.BackendRendererName = pointer("imgui_impl_sdlrenderer2")
-    io.BackendFlags = unsafe_load(io.BackendFlags) #| ImGuiBackendFlags_RendererHasVtxOffset  # We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+    io.BackendFlags = unsafe_load(io.BackendFlags) | ImGuiBackendFlags_RendererHasVtxOffset # We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
     ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
     return true
 end
@@ -101,7 +100,6 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
     data = unsafe_load(draw_data)
     cmd_lists = unsafe_wrap(Vector{Ptr{ImDrawList}}, data.CmdLists, data.CmdListsCount)
     
-    innercount = 0
     for cmd_list in cmd_lists
         # cmd_list is of type IMDrawList
         # struct ImDrawList
@@ -187,11 +185,11 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
 
                 res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
                 tex,
-                xy, Int(sizeof(ImDrawVert)),
-                color, Int(sizeof(ImDrawVert)),
-                uv, Int(sizeof(ImDrawVert)),
+                xy, Cint(sizeof(ImDrawVert)),
+                color, Cint(sizeof(ImDrawVert)),
+                uv, Cint(sizeof(ImDrawVert)),
                 vtx_buffer.Size-unsafe_load(pcmd.VtxOffset),
-                Ptr{Cvoid}(idx_buffer.Data + offset), unsafe_load(pcmd.ElemCount), sizeof(ImDrawIdx))
+                Ptr{ImDrawIdx}(idx_buffer.Data + offset), unsafe_load(pcmd.ElemCount), sizeof(ImDrawIdx))
                 if owner_name ==  "Project"
                     #println("offset ", unsafe_load(pcmd.IdxOffset))
                 end
@@ -212,7 +210,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
 end
 
 function ImGui_ImplSDLRenderer2_CreateFontsTexture()
-    io = ImGui.GetIO()
+    io = CImGui.GetIO()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
 
     # Build texture atlas
@@ -223,6 +221,7 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture()
     bd.FontTexture = SDL2.SDL_CreateTexture(sdlRenderer, SDL2.SDL_PIXELFORMAT_ABGR8888, SDL2.SDL_TEXTUREACCESS_STATIC, width, height)
     if bd.FontTexture == C_NULL
         SDL2.SDL_Log("error creating texture")
+        println("error creating texture")
         return false
     end
     SDL2.SDL_UpdateTexture(bd.FontTexture, C_NULL, pixels, 4 * width)
@@ -234,15 +233,18 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture()
 
     return true
 end
+
 function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
+    io = CImGui.GetIO()
     # Build texture atlas
-    fonts = unsafe_load(igGetIO().Fonts)
+    fonts = unsafe_load(io.Fonts)
     pixels = Ptr{Cuchar}(C_NULL)
     width, height = Cint(0), Cint(0)
     @c ImFontAtlas_GetTexDataAsRGBA32(fonts, &pixels, &width, &height, C_NULL)
 
     # Upload texture to graphics system
     # (Bilinear sampling is required by default. Set 'io.Fonts.Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
+    fonts.Flags = ImFontAtlasFlags_NoBakedLines
     bd.FontTexture = SDL2.SDL_CreateTexture(bd.SDLRenderer, SDL2.SDL_PIXELFORMAT_ABGR8888, SDL2.SDL_TEXTUREACCESS_STATIC, width, height)
     if bd.FontTexture == C_NULL
         println("error creating texture")

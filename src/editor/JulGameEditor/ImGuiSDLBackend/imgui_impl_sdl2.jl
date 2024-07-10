@@ -151,7 +151,7 @@ end
 
 function ImGui_ImplSDL2_NewFrame()
     bd = ImGui_ImplSDL2_GetBackendData()
-    @assert bd != C_NULL# && "Did you call ImGui_ImplSDL2_Init()?"
+    @assert bd != C_NULL "Did you call ImGui_ImplSDL2_Init()?"
     io = CImGui.GetIO()
     # Setup display size (every frame to accommodate for window resizing)
     w, h = Cint(0), Cint(0)
@@ -162,10 +162,8 @@ function ImGui_ImplSDL2_NewFrame()
     end
     if bd.Renderer != C_NULL
         @c SDL2.SDL_GetRendererOutputSize(bd.Renderer, &display_w, &display_h)
-        #SDL2.SDL_GetRendererOutputSize(bd.Renderer, 1280, 720)
     else
         @c SDL2.SDL_GL_GetDrawableSize(bd.Window, &display_w, &display_h)
-        #SDL2.SDL_GL_GetDrawableSize(bd.Window, 1280, 720)
     end
     
     io.DisplaySize = ImVec2(Cfloat(w), Cfloat(h))
