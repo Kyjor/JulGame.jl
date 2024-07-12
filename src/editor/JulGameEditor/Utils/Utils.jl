@@ -1,7 +1,6 @@
 using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
-using CImGui.ImGuiGLFWBackend.LibCImGui
 
 """
 ShowDrag()

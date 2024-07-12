@@ -4,8 +4,8 @@ module Editor
     using CImGui
     using CImGui.CSyntax
     using CImGui.CSyntax.CStatic
-    using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64, LibCImGui
-    using CImGui.LibCImGui
+    using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64
+    using CImGui.CImGui
     using JulGame: MainLoop, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
 
@@ -51,10 +51,10 @@ module Editor
                 while !quit
                     if currentSceneMain === nothing
                         quit = poll_events()
-                    end
+                    end   
                         
                     start_frame()
-                    LibCImGui.igDockSpaceOverViewport(C_NULL, ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
+                    CImGui.igDockSpaceOverViewport(C_NULL, C_NULL, CImGui.ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
                     
                     ################################## RENDER HERE
                     
@@ -70,7 +70,7 @@ module Editor
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
 
                     @cstatic begin
-                        CImGui.Begin("Project") 
+                        CImGui.Begin("Scene List") 
                         txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
                         CImGui.Text(txt)
 
@@ -125,7 +125,7 @@ module Editor
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             CImGui.SameLine()
-                            ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.--")
+                            ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
                             CImGui.SameLine()
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
                                 CImGui.MenuItem("Add", C_NULL, false, false)
@@ -144,7 +144,7 @@ module Editor
                             hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
                             updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
-                            ShowHelpMarker("Hold CTRL and click to select multiple items.--")
+                            ShowHelpMarker("Hold CTRL and click to select multiple items.")
                             if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
@@ -164,7 +164,7 @@ module Editor
                                 # our entities are both drag sources and drag targets here!
                                 if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
                                     @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
-                                    CImGui.Text("Move $(filteredEntities[n].name)---")
+                                    CImGui.Text("Move $(filteredEntities[n].name)")
                                     CImGui.EndDragDropSource()
                                 end
                                 if CImGui.BeginDragDropTarget()
@@ -209,10 +209,10 @@ module Editor
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
                                 CImGui.MenuItem("Add", C_NULL, false, false)
                                 if CImGui.BeginMenu("New")
-                                    if CImGui.MenuItem("TextBox---")
+                                    if CImGui.MenuItem("TextBox")
                                         currentSceneMain.createNewTextBox() 
                                     end
-                                    if CImGui.MenuItem("Screen Button---")
+                                    if CImGui.MenuItem("Screen Button")
                                         currentSceneMain.createNewScreenButton()
                                     end
                                     
