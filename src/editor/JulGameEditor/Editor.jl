@@ -326,7 +326,7 @@ module Editor
                                 CImGui.Separator()
                                 CImGui.Text("Delete UI Element: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
-                                    #MainLoop.DestroyEntity(currentSceneMain.scene.uiElements[uiElementIndex])
+                                    MainLoop.DestroyUIElement(currentSceneMain.scene.uiElements[uiElementIndex])
                                     break
                                 end
                                 
