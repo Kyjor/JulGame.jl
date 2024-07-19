@@ -35,10 +35,7 @@
 
     function Base.getproperty(this::InternalAnimator, s::Symbol)
         method_props = (
-            getLastUpdate = Component.get_last_update,
-            setLastUpdate = Component.set_last_update,
             update = Component.update,
-            setSprite = Component.set_sprite,
             setParent = Component.set_parent,
             appendArray = Component.append_array
         )
@@ -112,11 +109,11 @@
         if this.currentAnimation.animatedFPS < 1
             return
         end
-        deltaTime = (currentRenderTime - this.getLastUpdate()) / 1000.0
+        deltaTime = (currentRenderTime - Component.get_last_update(this)) / 1000.0
         framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
         if framesToUpdate > 0
             this.lastFrame = this.lastFrame + framesToUpdate
-            this.setLastUpdate(currentRenderTime)
+            Component.set_last_update(this, currentRenderTime)
         end
         this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
     end

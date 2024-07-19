@@ -82,7 +82,7 @@ module TextBoxModule
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
-        println("loading font from $(fontPath)")
+        # println("loading font from $(fontPath)")
         this.font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), this.fontSize)
         if this.font == C_NULL
             return
@@ -120,7 +120,7 @@ module TextBoxModule
 
     # Examples
     """
-    function UI.update_text(this::TextBox, newText)
+    function UI.update_text(this::TextBox, newText::String)
         if length(newText) == 0
             newText = " " # prevents segfault when text is empty
         end
@@ -141,7 +141,7 @@ module TextBoxModule
 
     function UI.set_vector2_value(this::TextBox, field, x, y)
         setfield!(this, field, Math.Vector2(x,y))
-        println("set $(field) to $(getfield(this, field))")
+        # println("set $(field) to $(getfield(this, field))")
     end
 
     function UI.set_color(this::TextBox, r,g,b)
@@ -150,10 +150,10 @@ module TextBoxModule
 
     function UI.center_text(this::TextBox)
         if this.isCenteredX
-            this.position = Math.Vector2(max(MAIN.scene.camera.dimensions.x/2 - this.size.x/2, 0), this.position.y)
+            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0), this.position.y)
         end
         if this.isCenteredY
-            this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.dimensions.y/2 - this.size.y/2, 0))
+            this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0))
         end
     end
 

@@ -5,6 +5,7 @@ module SceneBuilderModule
     using ...EntityModule
     using ...RigidbodyModule
     using ...TextBoxModule
+    using ...ScreenButtonModule
     using ..SceneReaderModule
     import ...JulGame: deprecated_get_property
 
@@ -60,14 +61,15 @@ module SceneBuilderModule
             init = init,
             changeScene = change_scene,
             createNewEntity = create_new_entity,
-            createNewTextBox = create_new_text_box
+            createNewTextBox = create_new_text_box,
+            createNewScreenButton = create_new_screen_button
         )
         deprecated_get_property(method_props, this, s)
     end
 
     
 
-    function init(this::Scene, windowName::String = "Game", isUsingEditor = false, dimensions::Vector2 = Vector2(800, 800), camDimensions::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
+    function init(this::Scene, windowName::String = "Game", isUsingEditor = false, size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
         #file loading
         if autoScaleZoom 
             zoom = 1.0
@@ -80,18 +82,18 @@ module SceneBuilderModule
         MAIN.targetFrameRate = targetFrameRate
         scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
         MAIN.scene.entities = scene[1]
-        MAIN.scene.textBoxes = scene[2]
-        if dimensions.x < camDimensions.x && dimensions.x > 0
-            camDimensions = Vector2(dimensions.x, camDimensions.y)
+        MAIN.scene.uiElements = scene[2]
+        if size.x < camSize.x && size.x > 0
+            camSize = Vector2(size.x, camSize.y)
         end
-        if dimensions.y < camDimensions.y && dimensions.y > 0
-            camDimensions = Vector2(camDimensions.x, dimensions.y)
+        if size.y < camSize.y && size.y > 0
+            camSize = Vector2(camSize.x, size.y)
         end
-        MAIN.scene.camera = Camera(camDimensions, Vector2f(),Vector2f(), C_NULL)
+        MAIN.scene.camera = Camera(camSize, Vector2f(),Vector2f(), C_NULL)
         
-        for textBox in MAIN.scene.textBoxes
-            if textBox.isWorldEntity
-                textBox.centerText()
+        for uiElement in MAIN.scene.uiElements
+            if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
+                uiElement.centerText()
             end
         end
 
@@ -143,7 +145,7 @@ module SceneBuilderModule
         end
 
         MAIN.assets = joinpath(BasePath, "assets")
-        MAIN.init(isUsingEditor, dimensions, isResizable, autoScaleZoom, isNewEditor)
+        MAIN.init(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
 
         return MAIN
     end
@@ -158,11 +160,11 @@ module SceneBuilderModule
             push!(MAIN.scene.entities, entity)
         end
 
-        MAIN.scene.textBoxes = scene[2]
+        MAIN.scene.uiElements = scene[2]
 
-        for textBox in MAIN.scene.textBoxes
-            if textBox.isWorldEntity
-                textBox.centerText()
+        for uiElement in MAIN.scene.uiElements
+            if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
+                uiElement.centerText()
             end
         end
 
@@ -221,6 +223,15 @@ module SceneBuilderModule
         end 
     end
 
+    """
+    create_new_entity(this::Scene)
+
+    Create a new entity and add it to the scene.
+
+    # Arguments
+    - `this::Scene`: The scene object to which the entity will be added.
+
+    """
     function create_new_entity(this::Scene)
         push!(MAIN.scene.entities, Entity("New entity"))
     end
@@ -228,6 +239,13 @@ module SceneBuilderModule
     function create_new_text_box(this::Scene)
         textBox = TextBox("TextBox", "", 40, Vector2(0, 200), "TextBox", true, true)
         JulGame.initialize(textBox)
-        push!(MAIN.scene.textBoxes, textBox)
+        push!(MAIN.scene.uiElements, textBox)
+    end
+    
+    function create_new_screen_button(this::Scene)
+        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+        JulGame.initialize(screenButton)
+        push!(MAIN.scene.screenButtons, screenButton)
+        push!(MAIN.scene.uiElements, screenButton)
     end
 end

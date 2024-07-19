@@ -102,12 +102,12 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                     MainLoop.change_scene("level_3.json")
                 else 
                     # you win text
-                    MAIN.scene.textBoxes[1].isCenteredX, MAIN.scene.textBoxes[1].isCenteredY = true, true
-                    MAIN.scene.textBoxes[1].updateText("You Win!")
-                    MAIN.scene.textBoxes[1].setColor(0,0,0)
+                    MAIN.scene.uiElements[1].isCenteredX, MAIN.scene.uiElements[1].isCenteredY = true, true
+                    MAIN.scene.uiElements[1].updateText("You Win!")
+                    MAIN.scene.uiElements[1].setColor(0,0,0)
                     if this.deathsThisLevel == 0
                         this.gameManager.starCount = this.gameManager.starCount + 1
-                        MAIN.scene.textBoxes[2].updateText(string(this.gameManager.starCount))
+                        MAIN.scene.uiElements[2].updateText(string(this.gameManager.starCount))
                     end
                 end
             end
@@ -130,12 +130,12 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             if otherCollider.tag == "Coin"
                 DestroyEntity(otherCollider.parent)
                 this.coinSound.toggleSound()
-                MAIN.scene.textBoxes[1].updateText(string(parse(Int32, split(MAIN.scene.textBoxes[1].text, "/")[1]) + 1, "/", parse(Int32, split(MAIN.scene.textBoxes[1].text, "/")[2])))
+                MAIN.scene.uiElements[1].updateText(string(parse(Int32, split(MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(MAIN.scene.uiElements[1].text, "/")[2])))
             elseif otherCollider.tag == "Star"
                 this.starSound.toggleSound()
                 DestroyEntity(otherCollider.parent)
                 this.gameManager.starCount = this.gameManager.starCount + 1
-                MAIN.scene.textBoxes[2].updateText(string(this.gameManager.starCount))
+                MAIN.scene.uiElements[2].updateText(string(this.gameManager.starCount))
             end
         end
     elseif s == :respawn
@@ -143,7 +143,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             this.hurtSound.toggleSound()
             this.parent.transform.position = Vector2f(1, 4)
             this.gameManager.starCount = max(this.gameManager.starCount - 1, 0)
-            MAIN.scene.textBoxes[2].updateText(string(this.gameManager.starCount))
+            MAIN.scene.uiElements[2].updateText(string(this.gameManager.starCount))
             this.deathsThisLevel += 1
         end
     else
