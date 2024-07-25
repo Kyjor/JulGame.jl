@@ -138,6 +138,9 @@ newEntity.shape != C_NULL && newEntity.shape !== nothing
         function(parent)
             this.parent = parent
         end
+    elseif s == :onShutDown
+        function()
+        end
     else
         getfield(this, s)
     end
