@@ -1,17 +1,3 @@
-#using Test 
-using JulGame.AnimationModule
-using JulGame.CircleColliderModule
-using JulGame.ColliderModule
-using JulGame.EntityModule
-using JulGame.RigidbodyModule
-using JulGame.ShapeModule
-using JulGame.SoundSourceModule
-using JulGame.SpriteModule
-using JulGame.TransformModule 
-using JulGame.MainLoop 
-using JulGame.Math
-using JulGame.UI
-
 mutable struct TestScript
     parent
 
