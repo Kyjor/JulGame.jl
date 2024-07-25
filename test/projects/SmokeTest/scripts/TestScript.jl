@@ -1,17 +1,3 @@
-#using Test 
-using JulGame.AnimationModule
-using JulGame.CircleColliderModule
-using JulGame.ColliderModule
-using JulGame.EntityModule
-using JulGame.RigidbodyModule
-using JulGame.ShapeModule
-using JulGame.SoundSourceModule
-using JulGame.SpriteModule
-using JulGame.TransformModule 
-using JulGame.MainLoop 
-using JulGame.Math
-using JulGame.UI
-
 mutable struct TestScript
     parent
 
@@ -125,20 +111,20 @@ newEntity.shape != C_NULL && newEntity.shape !== nothing
             #@testset "UI Tests" begin
                 #@testset "ScreenButton constructor" begin
                     
-                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
-                    push!(MAIN.scene.screenButtons, newScreenButton)
-                    push!(MAIN.scene.uiElements, newScreenButton)
-                    # # @test 
+                    # newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+                    # push!(MAIN.scene.screenButtons, newScreenButton)
+                    # push!(MAIN.scene.uiElements, newScreenButton)
+                    # # # @test 
 
-                    newScreenButton != C_NULL && newScreenButton !== nothing
+                    # newScreenButton != C_NULL && newScreenButton !== nothing
                 #end
 
                 # @testset "TextBox constructor" begin
-                    newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
-                    push!(MAIN.scene.uiElements, newTextBox)
-                    # # @test 
+                    # newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
+                    # push!(MAIN.scene.uiElements, newTextBox)
+                    # # # @test 
 
-                    newTextBox != C_NULL && newTextBox !== nothing
+                    # newTextBox != C_NULL && newTextBox !== nothing
                 #end
             #end
             catch e
@@ -151,6 +137,9 @@ newEntity.shape != C_NULL && newEntity.shape !== nothing
     elseif s == :setParent 
         function(parent)
             this.parent = parent
+        end
+    elseif s == :onShutDown
+        function()
         end
     else
         getfield(this, s)

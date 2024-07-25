@@ -50,4 +50,5 @@ function toggle_sound end
 function unload_sound end
 function update end
 function update_array_value end
+function update_font_size end
 function update_text end

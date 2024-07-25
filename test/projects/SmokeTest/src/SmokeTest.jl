@@ -11,7 +11,7 @@ module SmokeTest
         
         scene = SceneBuilderModule.Scene("scene.json", SMOKETESTDIR)
         try
-            main = scene.init("JulGame Example", false, Math.Vector2(1920, 1080),Math.Vector2(576, 576), false, 1.0, true)
+            main = SceneBuilderModule.init(scene, "JulGame Example", false, Math.Vector2(1920, 1080),Math.Vector2(576, 576), false, 1.0, true)
         catch e
             @error e
             Base.show_backtrace(stderr, catch_backtrace())
