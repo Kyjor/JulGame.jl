@@ -145,7 +145,7 @@ module SceneBuilderModule
         end
 
         MAIN.assets = joinpath(BasePath, "assets")
-        MAIN.init(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
+        JulGame.MainLoop.init(MAIN, isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
 
         return MAIN
     end
