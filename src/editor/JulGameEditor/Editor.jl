@@ -45,7 +45,7 @@ module Editor
         scenesLoadedFromFolder = Ref(String[])
 
         sceneWindowPos = ImVec2(0, 0)
-        scenewindowSize = ImVec2(startingSize.x, startingSize.y)
+        sceneWindowSize = ImVec2(startingSize.x, startingSize.y)
         quit = false
             try
                 while !quit
@@ -94,29 +94,27 @@ module Editor
 
                     @cstatic begin
                         CImGui.Begin("Scene")  
-                        sceneWindowPos = CImGui.GetWindowPos()
-                        scenewindowSize = CImGui.GetWindowSize()
-                        # CImGui.Text("Window Size: x:$(scenewindowSize.x), y:$(scenewindowSize.y) ")
-                        # CImGui.SameLine()
-                        # currentSceneMain !== nothing && CImGui.Button("ResetCamera") && (currentSceneMain.resetCameraPosition())
+                            sceneWindowPos = CImGui.GetWindowPos()
+                            sceneWindowSize = CImGui.GetWindowSize()
+                            sceneWindowSize = ImVec2(sceneWindowSize.x - 30, sceneWindowSize.y - 35) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
 
-                        CImGui.SameLine()
-                        if scenewindowSize.x != sceneTextureSize.x || scenewindowSize.y != sceneTextureSize.y
-                            SDL2.SDL_DestroyTexture(sceneTexture)
-                            sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, scenewindowSize.x, scenewindowSize.y)
-                            sceneTextureSize = ImVec2(scenewindowSize.x, scenewindowSize.y)
-                        end
-
-                        CImGui.Image(sceneTexture, sceneTextureSize)
-                        if CImGui.BeginDragDropTarget()
-                            payload = CImGui.AcceptDragDropPayload("Scene")
-                            if payload != C_NULL
-                                payload = unsafe_load(payload)
-                                println("payload: ", payload)
-                                @assert payload.DataSize == sizeof(Cint)
+                            CImGui.SameLine()
+                            if sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
+                                SDL2.SDL_DestroyTexture(sceneTexture)
+                                sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, sceneWindowSize.x, sceneWindowSize.y)
+                                sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
                             end
-                            CImGui.EndDragDropTarget()
-                        end
+
+                            CImGui.Image(sceneTexture, sceneTextureSize)
+                            if CImGui.BeginDragDropTarget()
+                                payload = CImGui.AcceptDragDropPayload("Scene")
+                                if payload != C_NULL
+                                    payload = unsafe_load(payload)
+                                    println("payload: ", payload)
+                                    @assert payload.DataSize == sizeof(Cint)
+                                end
+                                CImGui.EndDragDropTarget()
+                            end
                         CImGui.End()
                     end
                     itemSelected = false
@@ -339,7 +337,7 @@ module Editor
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(scenewindowSize.x, scenewindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     
@@ -352,7 +350,7 @@ module Editor
                     SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
                     SDL2.SDL_RenderClear(renderer);
                     ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData())
-                    screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, scenewindowSize.x, scenewindowSize.y - 20))
+                    screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, sceneWindowSize.x, sceneWindowSize.y - 20))
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
                     ################################################# Injecting game loop into editor
                     if currentSceneMain !== nothing

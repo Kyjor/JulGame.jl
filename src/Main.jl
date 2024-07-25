@@ -812,8 +812,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			if isEditor
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
-			end
-			if isEditor
+				
 				selectedEntity = this.selectedEntity !== nothing ? this.selectedEntity : nothing
 				try
 					if selectedEntity != nothing
@@ -842,8 +841,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					Base.show_backtrace(stdout, catch_backtrace())
 					rethrow(e)
 				end
-			end
-			if isEditor
+
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
 			end
 
