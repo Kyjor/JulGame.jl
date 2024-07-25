@@ -331,43 +331,43 @@ module InputModule
         this.mouseButtonsReleased = mouseButtonsUp
     end
 
-    function get_button_held_down(this::Input, button)
-        if button in this.buttonsHeldDown
+    function get_button_held_down(this::Input, button::String)
+        if uppercase(button) in this.buttonsHeldDown
             return true
         end
         return false
     end
 
-    function get_button_pressed(this::Input, button)
-        if button in this.buttonsPressedDown
+    function get_button_pressed(this::Input, button::String)
+        if uppercase(button) in this.buttonsPressedDown
             return true
         end
         return false
     end
 
-    function get_button_released(this::Input, button)
-        if button in this.buttonsReleased
+    function get_button_released(this::Input, button::String)
+        if uppercase(button) in this.buttonsReleased
             return true
         end
         return false
     end
 
-    function get_mouse_button(this::Input, button)
-        if button in this.mouseButtonsHeldDown
+    function get_mouse_button(this::Input, button::String)
+        if uppercase(button) in this.mouseButtonsHeldDown
             return true
         end
         return false
     end
 
-    function get_mouse_button_pressed(this::Input, button)
-        if button in this.mouseButtonsPressedDown
+    function get_mouse_button_pressed(this::Input, button::String)
+        if uppercase(button) in this.mouseButtonsPressedDown
             return true
         end
         return false
     end
 
-    function get_mouse_button_released(this::Input, button)
-        if button in this.mouseButtonsReleased
+    function get_mouse_button_released(this::Input, button::String)
+        if uppercase(button) in this.mouseButtonsReleased
             return true
         end
         return false
