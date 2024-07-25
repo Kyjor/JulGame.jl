@@ -120,7 +120,7 @@ module TextBoxModule
 
     # Examples
     """
-    function UI.update_text(this::TextBox, newText::String, isEdit::Bool = false)
+    function UI.update_text(this::TextBox, newText::String)
         if length(newText) == 0
             newText = " " # prevents segfault when text is empty
         end
@@ -134,14 +134,13 @@ module TextBoxModule
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
         
-        if !this.isWorldEntity && isEdit
+        if !this.isWorldEntity
             this.centerText()
         end
     end
 
     function UI.set_vector2_value(this::TextBox, field, x, y)
         setfield!(this, field, Math.Vector2(x,y))
-        # println("set $(field) to $(getfield(this, field))")
     end
 
     function UI.set_color(this::TextBox, r,g,b)
@@ -155,6 +154,14 @@ module TextBoxModule
         if this.isCenteredY
             this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0))
         end
+    end
+    
+    function UI.update_font_size(this::TextBox, newSize::Int32)
+        this.fontSize = newSize
+        # TODO: SDL2.TTF_SetFontSize(this.font, newSize)
+        # close font, reopen with new size
+        SDL2.TTF_CloseFont(this.font)
+        UI.load_font(this, joinpath(BasePath, "assets", "fonts"), joinpath(this.fontPath))
     end
 
     function UI.destroy(this::TextBox)

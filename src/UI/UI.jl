@@ -13,8 +13,8 @@ module UI
         set_parent,
         set_position,
         set_vector2_value,
+        update_font_size,
         update_text
-
 
     include("ScreenButton.jl")
     include("TextBox.jl")
