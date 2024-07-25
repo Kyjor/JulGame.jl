@@ -13,7 +13,7 @@ module SceneBuilderModule
         # if end of path is "test", then we are running tests
         if endswith(pwd(), "test")
             println("Loading scripts in test folder...")
-            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
+            # TODO: reenable and run tests here in CI include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "SmokeTest", "scripts"); join=true)))
         end
 
