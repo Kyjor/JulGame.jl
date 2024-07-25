@@ -120,7 +120,7 @@ module TextBoxModule
 
     # Examples
     """
-    function UI.update_text(this::TextBox, newText::String)
+    function UI.update_text(this::TextBox, newText::String, isEdit::Bool = false)
         if length(newText) == 0
             newText = " " # prevents segfault when text is empty
         end
@@ -134,7 +134,7 @@ module TextBoxModule
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
         
-        if !this.isWorldEntity
+        if !this.isWorldEntity && isEdit
             this.centerText()
         end
     end

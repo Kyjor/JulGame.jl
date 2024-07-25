@@ -17,7 +17,7 @@ function show_textbox_fields(selectedTextBox, textBoxField)
         setfield!(selectedTextBox, textBoxField, currentTextInTextBox)
         
         if currentTextInTextBox != Value
-            JulGame.update_text(selectedTextBox, selectedTextBox.text)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text, true)
         end
 
     elseif fieldName == "alpha"
@@ -38,9 +38,9 @@ function show_textbox_fields(selectedTextBox, textBoxField)
         setfield!(selectedTextBox, textBoxField, Color(convert(Int32, round(x)), convert(Int32, round(y)), convert(Int32, round(z)), convert(Int32, round(w))))
 
         if x != Value.r || y != Value.g || z != Value.b || w != Value.a
-            JulGame.update_text(selectedTextBox, selectedTextBox.text)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text, true)
         end
-    elseif fieldName == "position" || fieldName == "size"
+    elseif fieldName == "position" # || fieldName == "size"
         x = Cint(Value.x)
         y = Cint(Value.y)
         @c CImGui.InputInt("$(textBoxField) x", &x, 1)
@@ -55,7 +55,7 @@ function show_textbox_fields(selectedTextBox, textBoxField)
 
         if Value != getfield(selectedTextBox, textBoxField)
             setfield!(selectedTextBox, textBoxField, Value)
-            JulGame.update_text(selectedTextBox, selectedTextBox.text)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text, true)
         end
     end
 end
