@@ -25,7 +25,7 @@ module Platformer
     julia_main() = run()
 end
 # comment when building
-Platformer.run()
+#Platformer.run()
 # using Profile
 
 # @profile Platformer.run()
