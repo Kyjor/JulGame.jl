@@ -69,42 +69,42 @@ module SceneBuilderModule
 
     
 
-    function init(this::Scene, windowName::String = "Game", isUsingEditor = false, size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
+    function init(this::Scene, main, windowName::String = "Game", isUsingEditor = false, size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
         #file loading
         if autoScaleZoom 
             zoom = 1.0
         end
         
-        MAIN.windowName = windowName
-        MAIN.zoom = zoom
-        MAIN.globals = globals
-        MAIN.level = this
-        MAIN.targetFrameRate = targetFrameRate
+        main.windowName = windowName
+        main.zoom = zoom
+        main.globals = globals
+        main.level = this
+        main.targetFrameRate = targetFrameRate
         scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
-        MAIN.scene.entities = scene[1]
-        MAIN.scene.uiElements = scene[2]
+        main.scene.entities = scene[1]
+        main.scene.uiElements = scene[2]
         if size.x < camSize.x && size.x > 0
             camSize = Vector2(size.x, camSize.y)
         end
         if size.y < camSize.y && size.y > 0
             camSize = Vector2(camSize.x, size.y)
         end
-        MAIN.scene.camera = Camera(camSize, Vector2f(),Vector2f(), C_NULL)
+        main.scene.camera = Camera(camSize, Vector2f(),Vector2f(), C_NULL)
         
-        for uiElement in MAIN.scene.uiElements
+        for uiElement in main.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
                 uiElement.centerText()
             end
         end
 
-        MAIN.scene.rigidbodies = InternalRigidbody[]
-        MAIN.scene.colliders = InternalCollider[]
-        for entity in MAIN.scene.entities
+        main.scene.rigidbodies = InternalRigidbody[]
+        main.scene.colliders = InternalCollider[]
+        for entity in main.scene.entities
             if entity.rigidbody != C_NULL
-                push!(MAIN.scene.rigidbodies, entity.rigidbody)
+                push!(main.scene.rigidbodies, entity.rigidbody)
             end
             if entity.collider != C_NULL
-                push!(MAIN.scene.colliders, entity.collider)
+                push!(main.scene.colliders, entity.collider)
             end
 
             if !isUsingEditor
@@ -144,40 +144,40 @@ module SceneBuilderModule
             end
         end
 
-        MAIN.assets = joinpath(BasePath, "assets")
-        JulGame.MainLoop.init(MAIN, isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
+        main.assets = joinpath(BasePath, "assets")
+        JulGame.MainLoop.init(main, isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
 
-        return MAIN
+        return main
     end
 
-    function change_scene(this::Scene, isUsingEditor::Bool = false)
+    function change_scene(this::Scene, main, isUsingEditor::Bool = false)
         scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
         
         # println("Changing scene to $this.scene")
-        # println("Entities in main scene: ", length(MAIN.scene.entities))
+        # println("Entities in main scene: ", length(main.scene.entities))
 
         for entity in scene[1]
-            push!(MAIN.scene.entities, entity)
+            push!(main.scene.entities, entity)
         end
 
-        MAIN.scene.uiElements = scene[2]
+        main.scene.uiElements = scene[2]
 
-        for uiElement in MAIN.scene.uiElements
+        for uiElement in main.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
                 uiElement.centerText()
             end
         end
 
-        for entity in MAIN.scene.entities
+        for entity in main.scene.entities
             if entity.persistentBetweenScenes
                 continue
             end
             
             if entity.rigidbody != C_NULL
-                push!(MAIN.scene.rigidbodies, entity.rigidbody)
+                push!(main.scene.rigidbodies, entity.rigidbody)
             end
             if entity.collider != C_NULL
-                push!(MAIN.scene.colliders, entity.collider)
+                push!(main.scene.colliders, entity.collider)
             end
 
             if !isUsingEditor
@@ -232,20 +232,20 @@ module SceneBuilderModule
     - `this::Scene`: The scene object to which the entity will be added.
 
     """
-    function create_new_entity(this::Scene)
-        push!(MAIN.scene.entities, Entity("New entity"))
+    function create_new_entity(this::Scene, main)
+        push!(main.scene.entities, Entity("New entity"))
     end
 
-    function create_new_text_box(this::Scene)
+    function create_new_text_box(this::Scene, main)
         textBox = TextBox("TextBox", "", 40, Vector2(0, 200), "TextBox", true, true)
         JulGame.initialize(textBox)
-        push!(MAIN.scene.uiElements, textBox)
+        push!(main.scene.uiElements, textBox)
     end
     
-    function create_new_screen_button(this::Scene)
+    function create_new_screen_button(this::Scene, main)
         screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
         JulGame.initialize(screenButton)
-        push!(MAIN.scene.screenButtons, screenButton)
-        push!(MAIN.scene.uiElements, screenButton)
+        push!(main.scene.screenButtons, screenButton)
+        push!(main.scene.uiElements, screenButton)
     end
 end

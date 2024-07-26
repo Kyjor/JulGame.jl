@@ -3,10 +3,6 @@ module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
 
-    function __init__()
-        SDL2.init()
-    end
-
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
     export SDL2, SDL2E
@@ -56,7 +52,6 @@ module JulGame
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
     
     include("Main.jl") 
-    using .MainLoop: Main   
-    const MAIN = Main(Float64(1.0))
-    export MAIN
+    using .MainLoop: Main
+    export Main   
 end

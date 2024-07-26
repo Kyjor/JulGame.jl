@@ -60,12 +60,12 @@ module TextBoxModule
         deprecated_get_property(method_props, this, s)
     end
 
-    function UI.render(this::TextBox, DEBUG)
+    function UI.render(this::TextBox, debug::Bool, main)
         if this.textTexture == C_NULL
             return
         end
 
-        if DEBUG
+        if debug
             SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
                 SDL2.SDL_Point(this.position.x, this.position.y), 
                 SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
@@ -75,7 +75,7 @@ module TextBoxModule
         end
 
         cameraDiff = this.isWorldEntity ? 
-        Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+        Math.Vector2(main.scene.camera.position.x * SCALE_UNITS, main.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
 
         @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
@@ -99,9 +99,9 @@ module TextBoxModule
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
     end
 
-    function UI.initialize(this::TextBox)
+    function UI.initialize(this::TextBox, main)
         if !this.isWorldEntity
-            this.centerText()
+            this.centerText(main)
         end
     end
 
@@ -120,7 +120,7 @@ module TextBoxModule
 
     # Examples
     """
-    function UI.update_text(this::TextBox, newText::String)
+    function UI.update_text(this::TextBox, newText::String, main)
         if length(newText) == 0
             newText = " " # prevents segfault when text is empty
         end
@@ -135,7 +135,7 @@ module TextBoxModule
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
         
         if !this.isWorldEntity
-            this.centerText()
+            this.centerText(main)
         end
     end
 
@@ -147,12 +147,12 @@ module TextBoxModule
         SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
     end
 
-    function UI.center_text(this::TextBox)
+    function UI.center_text(this::TextBox, main)
         if this.isCenteredX
-            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0), this.position.y)
+            this.position = Math.Vector2(max(main.scene.camera.size.x/2 - this.size.x/2, 0), this.position.y)
         end
         if this.isCenteredY
-            this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0))
+            this.position = Math.Vector2(this.position.x, max(main.scene.camera.size.y/2 - this.size.y/2, 0))
         end
     end
     

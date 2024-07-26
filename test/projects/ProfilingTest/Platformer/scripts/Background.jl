@@ -17,8 +17,8 @@ function Base.getproperty(this::Background, s::Symbol)
         function()
         end
     elseif s == :update
-        function(deltaTime)
-            this.parent.transform.position = JulGame.Math.Vector2f(MAIN.scene.camera.position.x + 9.5, 0)
+        function(deltaTime, main)
+            this.parent.transform.position = JulGame.Math.Vector2f(main.scene.camera.position.x + 9.5, 0)
         end
     elseif s == :setParent 
         function(parent)

@@ -44,6 +44,8 @@ module MainLoop
 		function Main(zoom::Float64)
 			this = new()
 
+			SDL2.init()
+
 			this.zoom = zoom
 			this.scene = Scene()
 			this.input = Input()
@@ -92,9 +94,9 @@ module MainLoop
 
     function init(this::Main, isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
         if !isNewEditor
-            PrepareWindow(this, isUsingEditor, size, isResizable, autoScaleZoom)
+            prepare_window(this, isUsingEditor, size, isResizable, autoScaleZoom)
         end
-        InitializeScriptsAndComponents(this, isUsingEditor)
+        initialize_scripts_and_components(this, isUsingEditor)
 
         if !isUsingEditor
             this.fullLoop()
@@ -104,7 +106,7 @@ module MainLoop
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
         SceneBuilderModule.change_scene(this.level, isUsingEditor)
-        InitializeScriptsAndComponents(this, false)
+        initialize_scripts_and_components(this, false)
 
         if !isUsingEditor
             this.fullLoop()
@@ -114,12 +116,11 @@ module MainLoop
 
     function reset_camera_position(this::Main)
         cameraPosition = Math.Vector2f()
-        this.scene.camera.update(cameraPosition)
+        this.scene.camera.update(cameraPosition, this)
     end
 	
     function full_loop(this::Main)
         try
-            DEBUG = false
             this.close = false
             startTime = Ref(UInt64(0))
             lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
@@ -157,6 +158,9 @@ module MainLoop
             if !this.shouldChangeScene
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer)
                 SDL2.SDL_DestroyWindow(this.window)
+                SDL2.Mix_Quit()
+                SDL2.Mix_CloseAudio()
+                SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
                 SDL2.SDL_Quit()
 			elseif !this.shouldChangeScene && this.testMode
 				SDL2.SDL_DestroyRenderer(JulGame.Renderer)
@@ -262,7 +266,7 @@ module MainLoop
 			end
 		end
 
-        this.scene.camera.update(cameraPosition)
+        this.scene.camera.update(cameraPosition, this)
         return cameraPosition
     end
 
@@ -360,7 +364,7 @@ module MainLoop
         end
     end
     
-	function PrepareWindow(this::Main, isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+	function prepare_window(this::Main, isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 		if size == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
@@ -389,7 +393,7 @@ module MainLoop
 		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
 	end
 
-function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
+function initialize_scripts_and_components(this::Main, isUsingEditor::Bool = false)
 	scripts = []
 	for entity in this.scene.entities
 		for script in entity.scripts
@@ -398,7 +402,7 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	end
 
 	for uiElement in this.scene.uiElements
-        JulGame.initialize(uiElement)
+        JulGame.initialize(uiElement, this)
 	end
 
 	this.lastMousePosition = Math.Vector2(0, 0)
@@ -410,7 +414,7 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	if !isUsingEditor
 		for script in scripts
 			try
-				script.initialize()
+				script.initialize(this)
 			catch e
 				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
 					println(e)
@@ -432,16 +436,16 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 - `sceneFileName::String`: The name of the scene file to load.
 
 """
-function change_scene(sceneFileName::String)
+function change_scene(this::Main, sceneFileName::String)
 	# println("Changing scene to: ", sceneFileName)
-	MAIN.close = true
-	MAIN.shouldChangeScene = true
+	this.close = true
+	this.shouldChangeScene = true
 	#destroy current scene 
-	#println("Entities before destroying: ", length(MAIN.scene.entities))
+	#println("Entities before destroying: ", length(this.scene.entities))
 	count = 0
 	skipcount = 0
 	persistentEntities = []	
-	for entity in MAIN.scene.entities
+	for entity in this.scene.entities
 		if entity.persistentBetweenScenes
 			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
@@ -471,7 +475,7 @@ function change_scene(sceneFileName::String)
 
 	persistentUIElements = []
 	# delete all UIElements
-	for uiElement in MAIN.scene.uiElements
+	for uiElement in this.scene.uiElements
 		if uiElement.persistentBetweenScenes
 			#println("Persistent uiElement: ", uiElement.name)
 			push!(persistentUIElements, uiElement)
@@ -482,27 +486,27 @@ function change_scene(sceneFileName::String)
 	end
 	
 	#load new scene 
-	camera = MAIN.scene.camera
-	MAIN.scene = Scene()
-	MAIN.scene.entities = persistentEntities
-	MAIN.scene.uiElements = persistentUIElements
-	MAIN.scene.camera = camera
-	MAIN.level.scene = sceneFileName
+	camera = this.scene.camera
+	this.scene = Scene()
+	this.scene.entities = persistentEntities
+	this.scene.uiElements = persistentUIElements
+	this.scene.camera = camera
+	this.level.scene = sceneFileName
 end
 
 """
-BuildSpriteLayers(main::Main)
+BuildSpriteLayers(this::Main)
 
 Builds the sprite layers for the main game.
 
 # Arguments
-- `main::Main`: The main game object.
+- `this::Main`: The main game object.
 
 """
-function BuildSpriteLayers(main::Main)
+function BuildSpriteLayers(this::Main)
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
-	for entity in main.scene.entities
+	for entity in this.scene.entities
 		entitySprite = entity.sprite
 		if entitySprite != C_NULL
 			if !haskey(layerDict, "$(entitySprite.layer)")
@@ -527,33 +531,33 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 # Arguments
 - `entity`: The entity to be destroyed.
 """
-function DestroyEntity(entity)
-	for i = eachindex(MAIN.scene.entities)
-		if MAIN.scene.entities[i] == entity
+function DestroyEntity(this::Main, entity)
+	for i = eachindex(this.scene.entities)
+		if this.scene.entities[i] == entity
 			destroy_entity_components(entity)
-			deleteat!(MAIN.scene.entities, i)
+			deleteat!(this.scene.entities, i)
 			break
 		end
 	end
 end
 
-function DestroyUIElement(uiElement)
-	for i = eachindex(MAIN.scene.uiElements)
-		if MAIN.scene.uiElements[i] == uiElement
-			deleteat!(MAIN.scene.uiElements, i)
+function DestroyUIElement(this::Main, uiElement)
+	for i = eachindex(this.scene.uiElements)
+		if this.scene.uiElements[i] == uiElement
+			deleteat!(this.scene.uiElements, i)
 			JulGame.destroy(uiElement)
 			break
 		end
 	end
 end
 
-function destroy_entity_components(entity)
+function destroy_entity_components(this::Main, entity)
 	entitySprite = entity.sprite
 	if entitySprite != C_NULL
-		for j = eachindex(MAIN.spriteLayers["$(entitySprite.layer)"])
-			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
+		for j = eachindex(this.spriteLayers["$(entitySprite.layer)"])
+			if this.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
 				entitySprite.destroy()
-				deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
+				deleteat!(this.spriteLayers["$(entitySprite.layer)"], j)
 				break
 			end
 		end
@@ -561,9 +565,9 @@ function destroy_entity_components(entity)
 
 	entityRigidbody = entity.rigidbody
 	if entityRigidbody != C_NULL
-		for j = eachindex(MAIN.scene.rigidbodies)
-			if MAIN.scene.rigidbodies[j] == entityRigidbody
-				deleteat!(MAIN.scene.rigidbodies, j)
+		for j = eachindex(this.scene.rigidbodies)
+			if this.scene.rigidbodies[j] == entityRigidbody
+				deleteat!(this.scene.rigidbodies, j)
 				break
 			end
 		end
@@ -571,9 +575,9 @@ function destroy_entity_components(entity)
 
 	entityCollider = entity.collider
 	if entityCollider != C_NULL
-		for j = eachindex(MAIN.scene.colliders)
-			if MAIN.scene.colliders[j] == entityCollider
-				deleteat!(MAIN.scene.colliders, j)
+		for j = eachindex(this.scene.colliders)
+			if this.scene.colliders[j] == entityCollider
+				deleteat!(this.scene.colliders, j)
 				break
 			end
 		end
@@ -595,24 +599,24 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 - `entity`: The entity to create.
 
 """
-function CreateEntity(entity)
-	push!(MAIN.scene.entities, entity)
+function CreateEntity(this::Main, entity)
+	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
-		if !haskey(MAIN.spriteLayers, "$(entity.sprite.layer)")
-			push!(MAIN.spriteLayers["sort"], entity.sprite.layer)
-			MAIN.spriteLayers["$(entity.sprite.layer)"] = [entity.sprite]
-			sort!(MAIN.spriteLayers["sort"])
+		if !haskey(this.spriteLayers, "$(entity.sprite.layer)")
+			push!(this.spriteLayers["sort"], entity.sprite.layer)
+			this.spriteLayers["$(entity.sprite.layer)"] = [entity.sprite]
+			sort!(this.spriteLayers["sort"])
 		else
-			push!(MAIN.spriteLayers["$(entity.sprite.layer)"], entity.sprite)
+			push!(this.spriteLayers["$(entity.sprite.layer)"], entity.sprite)
 		end
 	end
 
 	if entity.rigidbody != C_NULL
-		push!(MAIN.scene.rigidbodies, entity.rigidbody)
+		push!(this.scene.rigidbodies, entity.rigidbody)
 	end
 
 	if entity.collider != C_NULL
-		push!(MAIN.scene.colliders, entity.collider)
+		push!(this.scene.colliders, entity.collider)
 	end
 
 	return entity
@@ -646,7 +650,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#region =============    Input
 			this.lastMousePosition = this.input.mousePosition
 			if !isEditor
-				this.input.pollInput()
+				this.input.pollInput(this)
 			end
 
 			if this.input.quit && !isEditor
@@ -677,7 +681,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						JulGame.update(rigidbody, deltaTime)
+						JulGame.update(rigidbody, deltaTime, this)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
 						println(e)
@@ -693,7 +697,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#region =============    Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
 			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			this.scene.camera.update()
+			this.scene.camera.update(C_NULL, this)
 
 			for entity in this.scene.entities
 				if !entity.isActive
@@ -747,7 +751,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			for i = eachindex(renderOrder)
 				try
 					rendercount += 1
-					Component.draw(renderOrder[i][2])
+					Component.draw(renderOrder[i][2], this)
 				catch e
 					println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
 					println(e)
@@ -767,7 +771,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 				entityShape = entity.shape
 				if entityShape != C_NULL
-					entityShape.draw()
+					entityShape.draw(this)
 				end
 				
 				if DEBUG && entity.collider != C_NULL
@@ -806,7 +810,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			#region ============= UI
 			for uiElement in this.scene.uiElements
-                JulGame.render(uiElement, DEBUG)
+                JulGame.render(uiElement, DEBUG, this)
 			end
 			#endregion ============= UI
 
@@ -866,13 +870,13 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					for i = eachindex(statTexts)
 						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
 						push!(this.debugTextBoxes, textBox)
-                        JulGame.initialize(textBox)
+                        JulGame.initialize(textBox, this)
 					end
 				else
 					for i = eachindex(this.debugTextBoxes)
                         db_textbox = this.debugTextBoxes[i]
-                        JulGame.update_text(db_textbox, statTexts[i])
-                        JulGame.render(db_textbox, false)
+                        JulGame.update_text(db_textbox, statTexts[i], this)
+                        JulGame.render(db_textbox, false, this)
 					end
 				end
 			end

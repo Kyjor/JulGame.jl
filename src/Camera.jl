@@ -43,8 +43,8 @@ end
 function initialize(this::Camera)
 end
 
-function update(this::Camera, newPosition = C_NULL)
-    SDL2.SDL_SetRenderDrawColor(Renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
+function update(this::Camera, newPosition, main)
+    SDL2.SDL_SetRenderDrawColor(Renderer, main.cameraBackgroundColor[1], main.cameraBackgroundColor[2], main.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
     SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
 
     if this.target != C_NULL && newPosition == C_NULL
