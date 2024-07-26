@@ -48,10 +48,11 @@ module SceneLoaderModule
         if renderer !== nothing
             JulGame.Renderer = renderer
         end
+        main = JulGame.Main(Float64(1.0))
         #println("Loading scene $sceneFileName from $projectPath")
-        main = Scene("$sceneFileName", "$projectPath")
+        scene = Scene("$sceneFileName", "$projectPath")
 
-        return main.init("Editor", true; isNewEditor=isNewEditor)
+        return scene.init(main, "Editor", true; isNewEditor=isNewEditor)
     end
 
     export get_project_path_from_full_scene_path

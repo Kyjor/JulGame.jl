@@ -352,22 +352,22 @@ module InputModule
         return false
     end
 
-    function get_mouse_button(this::Input, button::String)
-        if uppercase(button) in this.mouseButtonsHeldDown
+    function get_mouse_button(this::Input, button::Any)
+        if button in this.mouseButtonsHeldDown
             return true
         end
         return false
     end
 
-    function get_mouse_button_pressed(this::Input, button::String)
-        if uppercase(button) in this.mouseButtonsPressedDown
+    function get_mouse_button_pressed(this::Input, button::Any)
+        if button in this.mouseButtonsPressedDown
             return true
         end
         return false
     end
 
-    function get_mouse_button_released(this::Input, button::String)
-        if uppercase(button) in this.mouseButtonsReleased
+    function get_mouse_button_released(this::Input, button::Any)
+        if button in this.mouseButtonsReleased
             return true
         end
         return false

@@ -310,7 +310,7 @@ module Editor
                                 end
                                 
                                 if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
-                                    show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                                    show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex], currentSceneMain)
                                 else
                                     show_screenbutton_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                 end
@@ -357,7 +357,7 @@ module Editor
                         if currentSceneMain.input.editorCallback === nothing
                             currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
                         end
-                        currentSceneMain.input.pollInput()
+                        currentSceneMain.input.pollInput(currentSceneMain)
                         quit = currentSceneMain.input.quit
                     end
                     #################################################
