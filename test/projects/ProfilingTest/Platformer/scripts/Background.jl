@@ -1,6 +1,7 @@
 using JulGame 
 
 mutable struct Background
+    main
     parent
 
     function Background()
@@ -14,11 +15,12 @@ end
 
 function Base.getproperty(this::Background, s::Symbol)
     if s == :initialize
-        function()
+        function(main)
+            this.main = main
         end
     elseif s == :update
-        function(deltaTime, main)
-            this.parent.transform.position = JulGame.Math.Vector2f(main.scene.camera.position.x + 9.5, 0)
+        function(deltaTime)
+            this.parent.transform.position = JulGame.Math.Vector2f(this.main.scene.camera.position.x + 9.5, 0)
         end
     elseif s == :setParent 
         function(parent)

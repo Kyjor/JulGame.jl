@@ -223,10 +223,14 @@ module ColliderModule
     end
     
     function CheckCollision(colliderA::InternalCollider, colliderB::InternalCollider)
-        # nameA = colliderA.getParent().name
-        # nameB = colliderB.getParent().name
-        posA = colliderA.getParent().transform.position * SCALE_UNITS - ((colliderA.getParent().transform.scale * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
-        posB = colliderB.getParent().transform.position * SCALE_UNITS - ((colliderB.getParent().transform.scale * SCALE_UNITS - SCALE_UNITS) / 2) - ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posA = colliderA.getParent().transform.position * SCALE_UNITS
+        # colliderA.getParent().transform.position * SCALE_UNITS - 
+        #        ((colliderA.getParent().transform.scale * SCALE_UNITS - SCALE_UNITS) / 2) - 
+        #        ((colliderA.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
+        posB = colliderB.getParent().transform.position * SCALE_UNITS
+        # colliderB.getParent().transform.position * SCALE_UNITS - 
+        #        ((colliderB.getParent().transform.scale * SCALE_UNITS - SCALE_UNITS) / 2) - 
+        #        ((colliderB.getSize() * SCALE_UNITS - SCALE_UNITS) / 2)
         offsetAX = colliderA.offset.x * SCALE_UNITS
         offsetAY = colliderA.offset.y * SCALE_UNITS
         offsetBX = colliderB.offset.x * SCALE_UNITS
@@ -235,77 +239,50 @@ module ColliderModule
         colliderAYSize = colliderA.getSize().y * SCALE_UNITS
         colliderBXSize = colliderB.getSize().x * SCALE_UNITS
         colliderBYSize = colliderB.getSize().y * SCALE_UNITS
-
-        #Calculate the sides of rect A
+    
+        # Calculate the sides of rect A
         leftA = posA.x + offsetAX
         rightA = posA.x + colliderAXSize + offsetAX
         topA = posA.y + offsetAY
         bottomA = posA.y + colliderAYSize + offsetAY
-        #Calculate the sides of rect B
+        # Calculate the sides of rect B
         leftB = posB.x + offsetBX
         rightB = posB.x + colliderBXSize + offsetBX
         topB = posB.y + offsetBY
         bottomB = posB.y + colliderBYSize + offsetBY
-        
-         #If any of the sides from A are outside of B
-        depthBottom = 0.0
-        depthTop = 0.0
-        depthRight = 0.0
-        depthLeft = 0.0
-        if bottomA <= topB
-            dist = topB - bottomA 
-            below = dist == 0.0 && rightA > leftB && leftA < rightB
-            return (below ? Below::ColliderLocation : None::CollisionDirection, dist)
-        elseif bottomA > topB
-            depthBottom = bottomA - topB
-        end
-        if topA >= bottomB
-            dist = topA - bottomB
-            above = dist == 0.0 && rightA > leftB && leftA < rightB
-            return (above ? Above::ColliderLocation : None::CollisionDirection, dist)
-        elseif topA < bottomB
-            depthTop = bottomB - topA
+    
+        # If any of the sides from A are outside of B
+        if bottomA <= topB || topA >= bottomB || rightA <= leftB || leftA >= rightB
+            return (None::CollisionDirection, 0.0)
         end
     
-        if rightA <= leftB
-            dist = leftB - rightA
-            left = dist == 0.0 && rightA > leftB && leftA < rightB
-            return (left == 0.0 ? LeftSide::ColliderLocation : None::CollisionDirection, dist)
-        elseif rightA > leftB
-            depthRight = rightA - leftB
-        end
-        
-        if leftA >= rightB
-            dist = leftA - rightB
-            right = dist == 0.0 && rightA > leftB && leftA < rightB
-            return (right == 0.0 ? RightSide::ColliderLocation : None::CollisionDirection, dist)
-        elseif leftA < rightB
-            depthLeft = rightB - leftA
-        end
+        # Calculate depths of collision
+        depthBottom = bottomA - topB
+        depthTop = bottomB - topA
+        depthRight = rightA - leftB
+        depthLeft = rightB - leftA
     
-        #If none of the sides from A are outside B
+        # Determine the smallest depth
         collisionSide = min(depthBottom, depthTop, depthLeft, depthRight)
-        collisionDistance = colliderB.isTrigger ? 0.0 : collisionSide/SCALE_UNITS
 
+        collisionDistance = colliderB.isTrigger ? 0.0 : collisionSide / SCALE_UNITS
+    
         if collisionSide == depthBottom
-            # println("Collision from below ", collisionDistance)
-            if colliderB.isPlatformerCollider && collisionDistance > 0.25 #todo: make this a variable based on collider size. It's a magic number right now.
+            if colliderB.isPlatformerCollider && collisionDistance > 0.25
                 return (None::CollisionDirection, 0.0)
             end
             return (Bottom::CollisionDirection, collisionDistance)
         elseif collisionSide == depthTop && !colliderB.isPlatformerCollider
-            # println("Collision from above ", collisionDistance)
             return (Top::CollisionDirection, collisionDistance)
         elseif collisionSide == depthLeft && !colliderB.isPlatformerCollider
-            # println("Collision from the left ", collisionDistance)
             return (Left::CollisionDirection, collisionDistance)
         elseif collisionSide == depthRight && !colliderB.isPlatformerCollider
-            # println("Collision from the right ", collisionDistance)
             return (Right::CollisionDirection, collisionDistance)
-        end 
-        
+        end
+    
         return (None::CollisionDirection, 0.0)
     end
+    
 
     function CheckIfResting(colliderA::InternalCollider, colliderB::InternalCollider)
         if colliderB.isTrigger

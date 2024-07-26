@@ -105,7 +105,7 @@ module MainLoop
     end
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        SceneBuilderModule.change_scene(this.level, isUsingEditor)
+        SceneBuilderModule.change_scene(this.level, this, isUsingEditor)
         initialize_scripts_and_components(this, false)
 
         if !isUsingEditor
@@ -453,7 +453,7 @@ function change_scene(this::Main, sceneFileName::String)
 			continue
 		end
 
-		destroy_entity_components(entity)
+		destroy_entity_components(this, entity)
 		for script in entity.scripts
 			try
 				script.onShutDown()
@@ -522,19 +522,19 @@ function BuildSpriteLayers(this::Main)
 	return layerDict
 end
 
-export DestroyEntity
+export destroy_entity
 """
-DestroyEntity(entity)
+destroy_entity(entity)
 
 Destroy the specified entity. This removes the entity's sprite from the sprite layers so that it is no longer rendered. It also removes the entity's rigidbody from the main game's rigidbodies array.
 
 # Arguments
 - `entity`: The entity to be destroyed.
 """
-function DestroyEntity(this::Main, entity)
+function destroy_entity(this::Main, entity)
 	for i = eachindex(this.scene.entities)
 		if this.scene.entities[i] == entity
-			destroy_entity_components(entity)
+			destroy_entity_components(this, entity)
 			deleteat!(this.scene.entities, i)
 			break
 		end
@@ -824,7 +824,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							# println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
 							index = findfirst(x -> x == selectedEntity, this.scene.entities)
 							if index !== nothing
-								MainLoop.DestroyEntity(this.scene.entities[index])
+								MainLoop.destroy_entity(this, this.scene.entities[index])
 							end
 						end
 

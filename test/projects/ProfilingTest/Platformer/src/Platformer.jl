@@ -4,13 +4,14 @@ module Platformer
     using JulGame.SceneBuilderModule
     
     function run()
-        JulGame.MAIN.testMode = true
-        JulGame.MAIN.testLength = 30.0
-        JulGame.MAIN.currentTestTime = 0.0
+        main = JulGame.Main(Float64(1.0))
+        main.testMode = true
+        main.testLength = 30.0
+        main.currentTestTime = 0.0
         JulGame.PIXELS_PER_UNIT = 16
         scene = Scene("level_0.json")
         try
-            scene.init("JulGame Example", false, Vector2(1280, 720),Vector2(1280, 720), true, 1.0, true, 144)
+            SceneBuilderModule.init(scene, main, "JulGame Example", false, Vector2(1920, 1080),Vector2(1280, 720), true, 1.0, true, 120)
         catch e
             @error e
             Base.show_backtrace(stderr, catch_backtrace())
@@ -24,7 +25,7 @@ module Platformer
     julia_main() = run()
 end
 # comment when building
-#Platformer.run()
+Platformer.run()
 # using Profile
 
 # @profile Platformer.run()

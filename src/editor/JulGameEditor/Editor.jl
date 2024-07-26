@@ -277,7 +277,7 @@ module Editor
                                 CImGui.Separator()
                                 CImGui.Text("Delete Entity: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
-                                    MainLoop.DestroyEntity(currentSceneMain.scene.entities[entityIndex])
+                                    MainLoop.destroy_entity(currentSceneMain, currentSceneMain.scene.entities[entityIndex])
                                     break
                                 end
                                 

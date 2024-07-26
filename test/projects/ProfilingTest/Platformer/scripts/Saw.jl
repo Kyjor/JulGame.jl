@@ -32,7 +32,7 @@ end
 
 function Base.getproperty(this::Saw, s::Symbol)
     if s == :initialize
-        function()
+        function(main)
         end
     elseif s == :update
         function(deltaTime)

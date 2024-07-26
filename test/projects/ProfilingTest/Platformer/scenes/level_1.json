@@ -16466,8 +16466,9 @@
             ]
         }
     ],
-    "TextBoxes": [
+    "UIElements": [
         {
+            "type": "TextBox",
             "fontSize": 40,
             "name": "TextBox",
             "id": 1,
@@ -16489,6 +16490,7 @@
             "text": "0/17"
         },
         {
+            "type": "TextBox",
             "fontSize": 40,
             "name": "TextBox",
             "id": 2,
