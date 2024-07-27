@@ -250,7 +250,7 @@ module InputModule
             @info(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
             @info(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-            this.main.updateViewport(event.window.data1, event.window.data2)
+            MAIN.updateViewport(event.window.data1, event.window.data2)
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
             @info(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
@@ -352,22 +352,22 @@ module InputModule
         return false
     end
 
-    function get_mouse_button(this::Input, button::String)
-        if uppercase(button) in this.mouseButtonsHeldDown
+    function get_mouse_button(this::Input, button::Any)
+        if button in this.mouseButtonsHeldDown
             return true
         end
         return false
     end
 
-    function get_mouse_button_pressed(this::Input, button::String)
-        if uppercase(button) in this.mouseButtonsPressedDown
+    function get_mouse_button_pressed(this::Input, button::Any)
+        if button in this.mouseButtonsPressedDown
             return true
         end
         return false
     end
 
-    function get_mouse_button_released(this::Input, button::String)
-        if uppercase(button) in this.mouseButtonsReleased
+    function get_mouse_button_released(this::Input, button::Any)
+        if button in this.mouseButtonsReleased
             return true
         end
         return false

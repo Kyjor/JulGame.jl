@@ -145,9 +145,7 @@ module SceneBuilderModule
         end
 
         MAIN.assets = joinpath(BasePath, "assets")
-        JulGame.MainLoop.init(MAIN, isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
-
-        return MAIN
+        JulGame.MainLoop.init(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
     end
 
     function change_scene(this::Scene, isUsingEditor::Bool = false)

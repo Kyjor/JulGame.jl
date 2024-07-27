@@ -42,7 +42,9 @@ module MainLoop
 		zoom::Float64
 
 		function Main(zoom::Float64)
-			this = new()
+			this::Main = new()
+
+			SDL2.init()
 
 			this.zoom = zoom
 			this.scene = Scene()
@@ -75,9 +77,6 @@ module MainLoop
 	function Base.getproperty(this::Main, s::Symbol)
         method_props = (
             init = init,
-            initializeNewScene = initialize_new_scene,
-            resetCameraPosition = reset_camera_position,
-            fullLoop = full_loop,
             gameLoop = game_loop,
             createNewEntity = create_new_entity,
             createNewTextBox = create_new_text_box,
@@ -90,43 +89,42 @@ module MainLoop
 		deprecated_get_property(method_props, this, s)
 	end
 
-    function init(this::Main, isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
+    function init(isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
         if !isNewEditor
-            PrepareWindow(this, isUsingEditor, size, isResizable, autoScaleZoom)
+            prepare_window(isUsingEditor, size, isResizable, autoScaleZoom)
         end
-        InitializeScriptsAndComponents(this, isUsingEditor)
+        initialize_scripts_and_components(isUsingEditor)
 
         if !isUsingEditor
-            this.fullLoop()
+            full_loop(MAIN)
             return
         end
     end
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
+		println("Initializing new scene")
         SceneBuilderModule.change_scene(this.level, isUsingEditor)
-        InitializeScriptsAndComponents(this, false)
+        initialize_scripts_and_components(false)
 
         if !isUsingEditor
-            this.fullLoop()
+            full_loop(this)
             return
         end
     end
 
     function reset_camera_position(this::Main)
         cameraPosition = Math.Vector2f()
-        this.scene.camera.update(cameraPosition)
+        this.scene.camera.update(cameraPosition, this)
     end
 	
     function full_loop(this::Main)
         try
-            DEBUG = false
-            this.close = false
+			this.close = false
             startTime = Ref(UInt64(0))
             lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
-
             while !this.close
                 try
-                    GameLoop(this, startTime, lastPhysicsTime, false)
+                    game_loop(this, startTime, lastPhysicsTime, false)
                 catch e
                     if this.testMode
                         throw(e)
@@ -154,16 +152,20 @@ module MainLoop
                     end
                 end
             end
+			
             if !this.shouldChangeScene
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer)
                 SDL2.SDL_DestroyWindow(this.window)
+                SDL2.Mix_Quit()
+                SDL2.Mix_CloseAudio()
+                SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
                 SDL2.SDL_Quit()
 			elseif !this.shouldChangeScene && this.testMode
 				SDL2.SDL_DestroyRenderer(JulGame.Renderer)
                 SDL2.SDL_DestroyWindow(this.window)
             else
                 this.shouldChangeScene = false
-                this.initializeNewScene(false)
+                initialize_new_scene(this, false)
             end
         end
     end
@@ -174,7 +176,7 @@ module MainLoop
             this.initializeNewScene(true)
             return
         end
-        return GameLoop(this, startTime, lastPhysicsTime, isEditor, windowPos, windowSize)
+        return game_loop(this, startTime, lastPhysicsTime, isEditor, windowPos, windowSize)
     end
 
     function handle_editor_inputs_camera(this::Main, windowPos::Math.Vector2, windowSize::Math.Vector2)
@@ -360,7 +362,8 @@ module MainLoop
         end
     end
     
-	function PrepareWindow(this::Main, isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+	function prepare_window(isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+		this::Main = MAIN
 		if size == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
@@ -389,7 +392,8 @@ module MainLoop
 		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
 	end
 
-function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
+function initialize_scripts_and_components(isUsingEditor::Bool = false)
+	this::Main = MAIN
 	scripts = []
 	for entity in this.scene.entities
 		for script in entity.scripts
@@ -405,7 +409,7 @@ function InitializeScriptsAndComponents(this::Main, isUsingEditor::Bool = false)
 	this.panCounter = Math.Vector2f(0, 0)
 	this.panThreshold = .1
 
-	this.spriteLayers = BuildSpriteLayers(this)
+	this.spriteLayers = build_sprite_layers()
 	
 	if !isUsingEditor
 		for script in scripts
@@ -424,24 +428,26 @@ end
 
 export change_scene
 """
-	change_scene(sceneFileName::String)
+	change_scene(sceneFileName::String, isEditor::Bool = false)
 
 Change the scene to the specified `sceneFileName`. This function destroys the current scene, including all entities, textboxes, and screen buttons, except for the ones marked as persistent. It then loads the new scene and sets the camera and persistent entities, textboxes, and screen buttons.
 
 # Arguments
 - `sceneFileName::String`: The name of the scene file to load.
+- `isEditor::Bool`: Whether the scene is being loaded in the editor. Default is `false`.
 
 """
-function change_scene(sceneFileName::String)
+function change_scene(sceneFileName::String, isEditor::Bool = false)
+	this::Main = MAIN
 	# println("Changing scene to: ", sceneFileName)
-	MAIN.close = true
-	MAIN.shouldChangeScene = true
+	this.close = true
+	this.shouldChangeScene = true
 	#destroy current scene 
-	#println("Entities before destroying: ", length(MAIN.scene.entities))
+	#println("Entities before destroying: ", length(this.scene.entities))
 	count = 0
 	skipcount = 0
 	persistentEntities = []	
-	for entity in MAIN.scene.entities
+	for entity in this.scene.entities
 		if entity.persistentBetweenScenes
 			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
@@ -449,7 +455,7 @@ function change_scene(sceneFileName::String)
 			continue
 		end
 
-		destroy_entity_components(entity)
+		destroy_entity_components(this, entity)
 		for script in entity.scripts
 			try
 				script.onShutDown()
@@ -471,7 +477,7 @@ function change_scene(sceneFileName::String)
 
 	persistentUIElements = []
 	# delete all UIElements
-	for uiElement in MAIN.scene.uiElements
+	for uiElement in this.scene.uiElements
 		if uiElement.persistentBetweenScenes
 			#println("Persistent uiElement: ", uiElement.name)
 			push!(persistentUIElements, uiElement)
@@ -482,27 +488,28 @@ function change_scene(sceneFileName::String)
 	end
 	
 	#load new scene 
-	camera = MAIN.scene.camera
-	MAIN.scene = Scene()
-	MAIN.scene.entities = persistentEntities
-	MAIN.scene.uiElements = persistentUIElements
-	MAIN.scene.camera = camera
-	MAIN.level.scene = sceneFileName
+	camera = this.scene.camera
+	this.scene = Scene()
+	this.scene.entities = persistentEntities
+	this.scene.uiElements = persistentUIElements
+	this.scene.camera = camera
+	this.level.scene = sceneFileName
+	
+	if isEditor
+		initialize_new_scene(this, true)
+	end
 end
 
 """
-BuildSpriteLayers(main::Main)
+build_sprite_layers()
 
 Builds the sprite layers for the main game.
 
-# Arguments
-- `main::Main`: The main game object.
-
 """
-function BuildSpriteLayers(main::Main)
+function build_sprite_layers()
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
-	for entity in main.scene.entities
+	for entity in MAIN.scene.entities
 		entitySprite = entity.sprite
 		if entitySprite != C_NULL
 			if !haskey(layerDict, "$(entitySprite.layer)")
@@ -518,42 +525,42 @@ function BuildSpriteLayers(main::Main)
 	return layerDict
 end
 
-export DestroyEntity
+export destroy_entity
 """
-DestroyEntity(entity)
+destroy_entity(entity)
 
 Destroy the specified entity. This removes the entity's sprite from the sprite layers so that it is no longer rendered. It also removes the entity's rigidbody from the main game's rigidbodies array.
 
 # Arguments
 - `entity`: The entity to be destroyed.
 """
-function DestroyEntity(entity)
-	for i = eachindex(MAIN.scene.entities)
-		if MAIN.scene.entities[i] == entity
-			destroy_entity_components(entity)
-			deleteat!(MAIN.scene.entities, i)
+function destroy_entity(this::Main, entity)
+	for i = eachindex(this.scene.entities)
+		if this.scene.entities[i] == entity
+			destroy_entity_components(this, entity)
+			deleteat!(this.scene.entities, i)
 			break
 		end
 	end
 end
 
-function DestroyUIElement(uiElement)
-	for i = eachindex(MAIN.scene.uiElements)
-		if MAIN.scene.uiElements[i] == uiElement
-			deleteat!(MAIN.scene.uiElements, i)
+function DestroyUIElement(this::Main, uiElement)
+	for i = eachindex(this.scene.uiElements)
+		if this.scene.uiElements[i] == uiElement
+			deleteat!(this.scene.uiElements, i)
 			JulGame.destroy(uiElement)
 			break
 		end
 	end
 end
 
-function destroy_entity_components(entity)
+function destroy_entity_components(this::Main, entity)
 	entitySprite = entity.sprite
 	if entitySprite != C_NULL
-		for j = eachindex(MAIN.spriteLayers["$(entitySprite.layer)"])
-			if MAIN.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
+		for j = eachindex(this.spriteLayers["$(entitySprite.layer)"])
+			if this.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
 				entitySprite.destroy()
-				deleteat!(MAIN.spriteLayers["$(entitySprite.layer)"], j)
+				deleteat!(this.spriteLayers["$(entitySprite.layer)"], j)
 				break
 			end
 		end
@@ -561,9 +568,9 @@ function destroy_entity_components(entity)
 
 	entityRigidbody = entity.rigidbody
 	if entityRigidbody != C_NULL
-		for j = eachindex(MAIN.scene.rigidbodies)
-			if MAIN.scene.rigidbodies[j] == entityRigidbody
-				deleteat!(MAIN.scene.rigidbodies, j)
+		for j = eachindex(this.scene.rigidbodies)
+			if this.scene.rigidbodies[j] == entityRigidbody
+				deleteat!(this.scene.rigidbodies, j)
 				break
 			end
 		end
@@ -571,9 +578,9 @@ function destroy_entity_components(entity)
 
 	entityCollider = entity.collider
 	if entityCollider != C_NULL
-		for j = eachindex(MAIN.scene.colliders)
-			if MAIN.scene.colliders[j] == entityCollider
-				deleteat!(MAIN.scene.colliders, j)
+		for j = eachindex(this.scene.colliders)
+			if this.scene.colliders[j] == entityCollider
+				deleteat!(this.scene.colliders, j)
 				break
 			end
 		end
@@ -585,9 +592,9 @@ function destroy_entity_components(entity)
 	end
 end
 
-export CreateEntity
+export create_entity
 """
-CreateEntity(entity)
+create_entity(entity)
 
 Create a new entity. Adds the entity to the main game's entities array and adds the entity's sprite to the sprite layers so that it is rendered.
 
@@ -595,31 +602,32 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 - `entity`: The entity to create.
 
 """
-function CreateEntity(entity)
-	push!(MAIN.scene.entities, entity)
+function create_entity(entity)
+	this::Main = MAIN
+	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
-		if !haskey(MAIN.spriteLayers, "$(entity.sprite.layer)")
-			push!(MAIN.spriteLayers["sort"], entity.sprite.layer)
-			MAIN.spriteLayers["$(entity.sprite.layer)"] = [entity.sprite]
-			sort!(MAIN.spriteLayers["sort"])
+		if !haskey(this.spriteLayers, "$(entity.sprite.layer)")
+			push!(this.spriteLayers["sort"], entity.sprite.layer)
+			this.spriteLayers["$(entity.sprite.layer)"] = [entity.sprite]
+			sort!(this.spriteLayers["sort"])
 		else
-			push!(MAIN.spriteLayers["$(entity.sprite.layer)"], entity.sprite)
+			push!(this.spriteLayers["$(entity.sprite.layer)"], entity.sprite)
 		end
 	end
 
 	if entity.rigidbody != C_NULL
-		push!(MAIN.scene.rigidbodies, entity.rigidbody)
+		push!(this.scene.rigidbodies, entity.rigidbody)
 	end
 
 	if entity.collider != C_NULL
-		push!(MAIN.scene.colliders, entity.collider)
+		push!(this.scene.colliders, entity.collider)
 	end
 
 	return entity
 end
 
 """
-GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
+game_loop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
 
 Runs the game loop.
 
@@ -630,7 +638,7 @@ Parameters:
 - `isEditor`: A boolean indicating whether the game loop is running in editor mode.
 
 """
-function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
         try
 			SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 
@@ -693,7 +701,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#region =============    Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
 			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			this.scene.camera.update()
+			this.scene.camera.update(C_NULL)
 
 			for entity in this.scene.entities
 				if !entity.isActive
@@ -820,7 +828,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 							# println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
 							index = findfirst(x -> x == selectedEntity, this.scene.entities)
 							if index !== nothing
-								MainLoop.DestroyEntity(this.scene.entities[index])
+								MainLoop.destroy_entity(this, this.scene.entities[index])
 							end
 						end
 

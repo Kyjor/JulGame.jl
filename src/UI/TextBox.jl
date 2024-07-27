@@ -60,12 +60,12 @@ module TextBoxModule
         deprecated_get_property(method_props, this, s)
     end
 
-    function UI.render(this::TextBox, DEBUG)
+    function UI.render(this::TextBox, debug::Bool)
         if this.textTexture == C_NULL
             return
         end
 
-        if DEBUG
+        if debug
             SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
                 SDL2.SDL_Point(this.position.x, this.position.y), 
                 SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),

@@ -26,13 +26,13 @@ function Base.getproperty(this::Title, s::Symbol)
             try
                 if this.fade 
                     this.textBox.alpha -= 1
-                    this.textBox.updateText(this.textBox.text)
+                    JulGame.UI.update_text(this.textBox, this.textBox.text)
                     if this.textBox.alpha <= 25
                         this.fade = false
                     end
                 else
                     this.textBox.alpha += 1
-                    this.textBox.updateText(this.textBox.text)
+                    JulGame.UI.update_text(this.textBox, this.textBox.text)
                     if this.textBox.alpha >= 250
                         this.fade = true
                     end

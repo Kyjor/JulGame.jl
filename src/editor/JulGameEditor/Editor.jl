@@ -83,7 +83,7 @@ module Editor
                                     currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    MainLoop.change_scene(String(currentSceneName))
+                                    MainLoop.change_scene(String(currentSceneName), true)
                                 end
                             end
                             CImGui.NewLine()
@@ -277,7 +277,7 @@ module Editor
                                 CImGui.Separator()
                                 CImGui.Text("Delete Entity: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
-                                    MainLoop.DestroyEntity(currentSceneMain.scene.entities[entityIndex])
+                                    MainLoop.destroy_entity(currentSceneMain, currentSceneMain.scene.entities[entityIndex])
                                     break
                                 end
                                 
