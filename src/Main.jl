@@ -438,7 +438,8 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 - `sceneFileName::String`: The name of the scene file to load.
 
 """
-function change_scene(this::Main, sceneFileName::String)
+function change_scene(sceneFileName::String)
+	this::Main = MAIN
 	# println("Changing scene to: ", sceneFileName)
 	this.close = true
 	this.shouldChangeScene = true
