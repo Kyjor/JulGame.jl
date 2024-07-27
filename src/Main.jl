@@ -42,7 +42,7 @@ module MainLoop
 		zoom::Float64
 
 		function Main(zoom::Float64)
-			this = new()
+			this::Main = new()
 
 			SDL2.init()
 
@@ -92,21 +92,21 @@ module MainLoop
 		deprecated_get_property(method_props, this, s)
 	end
 
-    function init(this::Main, isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
+    function init(isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
         if !isNewEditor
-            prepare_window(this, isUsingEditor, size, isResizable, autoScaleZoom)
+            prepare_window(isUsingEditor, size, isResizable, autoScaleZoom)
         end
-        initialize_scripts_and_components(this, isUsingEditor)
+        initialize_scripts_and_components(isUsingEditor)
 
         if !isUsingEditor
-            this.fullLoop()
+            MAIN.fullLoop()
             return
         end
     end
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        SceneBuilderModule.change_scene(this.level, this, isUsingEditor)
-        initialize_scripts_and_components(this, false)
+        SceneBuilderModule.change_scene(this.level, isUsingEditor)
+        initialize_scripts_and_components(false)
 
         if !isUsingEditor
             this.fullLoop()
@@ -127,7 +127,7 @@ module MainLoop
 
             while !this.close
                 try
-                    GameLoop(this, startTime, lastPhysicsTime, false)
+                    game_loop(this, startTime, lastPhysicsTime, false)
                 catch e
                     if this.testMode
                         throw(e)
@@ -178,7 +178,7 @@ module MainLoop
             this.initializeNewScene(true)
             return
         end
-        return GameLoop(this, startTime, lastPhysicsTime, isEditor, windowPos, windowSize)
+        return game_loop(this, startTime, lastPhysicsTime, isEditor, windowPos, windowSize)
     end
 
     function handle_editor_inputs_camera(this::Main, windowPos::Math.Vector2, windowSize::Math.Vector2)
@@ -364,7 +364,8 @@ module MainLoop
         end
     end
     
-	function prepare_window(this::Main, isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+	function prepare_window(isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+		this::Main = MAIN
 		if size == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
@@ -393,7 +394,8 @@ module MainLoop
 		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
 	end
 
-function initialize_scripts_and_components(this::Main, isUsingEditor::Bool = false)
+function initialize_scripts_and_components(isUsingEditor::Bool = false)
+	this::Main = MAIN
 	scripts = []
 	for entity in this.scene.entities
 		for script in entity.scripts
@@ -402,19 +404,19 @@ function initialize_scripts_and_components(this::Main, isUsingEditor::Bool = fal
 	end
 
 	for uiElement in this.scene.uiElements
-        JulGame.initialize(uiElement, this)
+        JulGame.initialize(uiElement)
 	end
 
 	this.lastMousePosition = Math.Vector2(0, 0)
 	this.panCounter = Math.Vector2f(0, 0)
 	this.panThreshold = .1
 
-	this.spriteLayers = BuildSpriteLayers(this)
+	this.spriteLayers = build_sprite_layers()
 	
 	if !isUsingEditor
 		for script in scripts
 			try
-				script.initialize(this)
+				script.initialize()
 			catch e
 				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
 					println(e)
@@ -495,18 +497,15 @@ function change_scene(this::Main, sceneFileName::String)
 end
 
 """
-BuildSpriteLayers(this::Main)
+build_sprite_layers()
 
 Builds the sprite layers for the main game.
 
-# Arguments
-- `this::Main`: The main game object.
-
 """
-function BuildSpriteLayers(this::Main)
+function build_sprite_layers()
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
-	for entity in this.scene.entities
+	for entity in MAIN.scene.entities
 		entitySprite = entity.sprite
 		if entitySprite != C_NULL
 			if !haskey(layerDict, "$(entitySprite.layer)")
@@ -589,9 +588,9 @@ function destroy_entity_components(this::Main, entity)
 	end
 end
 
-export CreateEntity
+export create_entity
 """
-CreateEntity(entity)
+create_entity(entity)
 
 Create a new entity. Adds the entity to the main game's entities array and adds the entity's sprite to the sprite layers so that it is rendered.
 
@@ -599,7 +598,8 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 - `entity`: The entity to create.
 
 """
-function CreateEntity(this::Main, entity)
+function create_entity(entity)
+	this::Main = MAIN
 	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
 		if !haskey(this.spriteLayers, "$(entity.sprite.layer)")
@@ -623,7 +623,7 @@ function CreateEntity(this::Main, entity)
 end
 
 """
-GameLoop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
+game_loop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
 
 Runs the game loop.
 
@@ -634,7 +634,7 @@ Parameters:
 - `isEditor`: A boolean indicating whether the game loop is running in editor mode.
 
 """
-function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
         try
 			SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 
@@ -650,7 +650,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#region =============    Input
 			this.lastMousePosition = this.input.mousePosition
 			if !isEditor
-				this.input.pollInput(this)
+				this.input.pollInput()
 			end
 
 			if this.input.quit && !isEditor
@@ -681,7 +681,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						JulGame.update(rigidbody, deltaTime, this)
+						JulGame.update(rigidbody, deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
 						println(e)
@@ -697,7 +697,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			#region =============    Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
 			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			this.scene.camera.update(C_NULL, this)
+			this.scene.camera.update(C_NULL)
 
 			for entity in this.scene.entities
 				if !entity.isActive
@@ -751,7 +751,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 			for i = eachindex(renderOrder)
 				try
 					rendercount += 1
-					Component.draw(renderOrder[i][2], this)
+					Component.draw(renderOrder[i][2])
 				catch e
 					println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
 					println(e)
@@ -771,7 +771,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 				entityShape = entity.shape
 				if entityShape != C_NULL
-					entityShape.draw(this)
+					entityShape.draw()
 				end
 				
 				if DEBUG && entity.collider != C_NULL
@@ -810,7 +810,7 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 
 			#region ============= UI
 			for uiElement in this.scene.uiElements
-                JulGame.render(uiElement, DEBUG, this)
+                JulGame.render(uiElement, DEBUG)
 			end
 			#endregion ============= UI
 
@@ -870,13 +870,13 @@ function GameLoop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysi
 					for i = eachindex(statTexts)
 						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
 						push!(this.debugTextBoxes, textBox)
-                        JulGame.initialize(textBox, this)
+                        JulGame.initialize(textBox)
 					end
 				else
 					for i = eachindex(this.debugTextBoxes)
                         db_textbox = this.debugTextBoxes[i]
-                        JulGame.update_text(db_textbox, statTexts[i], this)
-                        JulGame.render(db_textbox, false, this)
+                        JulGame.update_text(db_textbox, statTexts[i])
+                        JulGame.render(db_textbox, false)
 					end
 				end
 			end

@@ -47,7 +47,7 @@ module ShapeModule
         deprecated_get_property(method_props, this, s)
     end
 
-    function Component.draw(this::InternalShape, main)
+    function Component.draw(this::InternalShape)
         if JulGame.Renderer == C_NULL
             return                    
         end
@@ -55,7 +55,7 @@ module ShapeModule
         parentTransform = this.parent.transform
 
         cameraDiff = this.isWorldEntity ? 
-        Math.Vector2(main.scene.camera.position.x * SCALE_UNITS, main.scene.camera.position.y * SCALE_UNITS) : 
+        Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
         position = this.isWorldEntity ?
         parentTransform.position :

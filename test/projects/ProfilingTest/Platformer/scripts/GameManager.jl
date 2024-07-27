@@ -3,7 +3,6 @@ using JulGame
 mutable struct GameManager
     currentLevel::Int32
     currentMusic
-    main
     soundBank
     starCount::Int32
     parent
@@ -26,15 +25,14 @@ end
 
 function Base.getproperty(this::GameManager, s::Symbol)
     if s == :initialize
-        function(main)
-            this.main = main
-            this.main.scene.camera.offset = JulGame.Math.Vector2f(0, -2.75)
-            this.main.cameraBackgroundColor = (30, 111, 80)
-            this.main.optimizeSpriteRendering = true
+        function()
+            MAIN.scene.camera.offset = JulGame.Math.Vector2f(0, -2.75)
+            MAIN.cameraBackgroundColor = (30, 111, 80)
+            MAIN.optimizeSpriteRendering = true
 
             this.parent.addShape(ShapeModule.Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))
-            coinUI = this.main.scene.getEntityByName("CoinUI")
-            livesUI = this.main.scene.getEntityByName("LivesUI")
+            coinUI = MAIN.scene.getEntityByName("CoinUI")
+            livesUI = MAIN.scene.getEntityByName("LivesUI")
 
             coinUI.persistentBetweenScenes = true
             coinUI.sprite.isWorldEntity = false
@@ -52,7 +50,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
             this.currentMusic = this.parent.createSoundSource(SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
             this.currentMusic.toggleSound()
 
-            JulGame.UI.update_text(this.main.scene.uiElements[2], string(this.starCount), this.main)
+            JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.starCount))
         end
     elseif s == :update
         function(deltaTime)

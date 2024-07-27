@@ -64,7 +64,7 @@ module ScreenButtonModule
         deprecated_get_property(method_props, this, s)
     end
     
-    function UI.render(this::ScreenButton, debug, main)
+    function UI.render(this::ScreenButton, debug)
         if !this.isInitialized
             this.initialize()
         end
@@ -91,7 +91,7 @@ module ScreenButtonModule
         # @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
-    function UI.initialize(this::ScreenButton, main)
+    function UI.initialize(this::ScreenButton)
         this.buttonDownTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonDownSprite)
         this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonUpSprite)
         this.currentTexture = this.buttonUpTexture

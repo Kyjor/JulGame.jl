@@ -2,7 +2,6 @@ using JulGame
 
 mutable struct Title
     fade
-    main
     parent
     textBox
 
@@ -19,22 +18,21 @@ end
 
 function Base.getproperty(this::Title, s::Symbol)
     if s == :initialize
-        function(main)
-            this.textBox = main.scene.uiElements[1]
-            this.main = main
+        function()
+            this.textBox = MAIN.scene.uiElements[1]
         end
     elseif s == :update
         function(deltaTime)
             try
                 if this.fade 
                     this.textBox.alpha -= 1
-                    JulGame.UI.update_text(this.textBox, this.textBox.text, this.main)
+                    JulGame.UI.update_text(this.textBox, this.textBox.text)
                     if this.textBox.alpha <= 25
                         this.fade = false
                     end
                 else
                     this.textBox.alpha += 1
-                    JulGame.UI.update_text(this.textBox, this.textBox.text, this.main)
+                    JulGame.UI.update_text(this.textBox, this.textBox.text)
                     if this.textBox.alpha >= 250
                         this.fade = true
                     end
@@ -42,7 +40,7 @@ function Base.getproperty(this::Title, s::Symbol)
 
                 sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
                 sound.toggleSound()
-                MainLoop.change_scene(this.main, "level_1.json")
+                MainLoop.change_scene(MAIN, "level_1.json")
             catch e
                 println(e)
 				Base.show_backtrace(stdout, catch_backtrace())

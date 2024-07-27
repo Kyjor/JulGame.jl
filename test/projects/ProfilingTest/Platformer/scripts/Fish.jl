@@ -32,7 +32,7 @@ end
 
 function Base.getproperty(this::Fish, s::Symbol)
     if s == :initialize
-        function(main)
+        function()
             this.animator = this.parent.animator
             this.parent.sprite.rotation = 90
         end

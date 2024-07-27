@@ -17,13 +17,12 @@ end
 
 function Base.getproperty(this::Water, s::Symbol)
     if s == :initialize
-        function(main)
+        function()
             this.offset = JulGame.Math.Vector2f(this.parent.transform.position.x + 9, 5.5)
-            this.main = main
         end
     elseif s == :update
         function(deltaTime)
-            this.parent.transform.position = JulGame.Math.Vector2f(this.main.scene.camera.position.x, 0) + this.offset
+            this.parent.transform.position = JulGame.Math.Vector2f(MAIN.scene.camera.position.x, 0) + this.offset
         end
     elseif s == :setParent 
         function(parent)

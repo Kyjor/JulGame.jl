@@ -38,7 +38,6 @@ module JulGame
     using .UI
     export ScreenButtonModule, TextBoxModule
 
-    
     include("Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
@@ -53,5 +52,6 @@ module JulGame
     
     include("Main.jl") 
     using .MainLoop: Main
-    export Main   
+    MAIN::Union{Main, Nothing} = nothing
+    export Main, MAIN
 end

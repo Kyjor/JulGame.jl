@@ -51,7 +51,7 @@
         deprecated_get_property(method_props, this, s)
     end
 
-    function Component.update(this::InternalRigidbody, dt, main)
+    function Component.update(this::InternalRigidbody, dt)
         velocityMultiplier = Math.Vector2f(1.0, 1.0)
         transform = this.parent.transform
         currentPosition = transform.position
@@ -69,7 +69,7 @@
         this.acceleration = newAcceleration
 
         if this.parent.collider != C_NULL
-            this.parent.collider.checkCollisions(main)
+            this.parent.collider.checkCollisions()
         end
     end
 

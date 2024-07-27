@@ -285,7 +285,7 @@ and updates the `sprite.fontPath` field with the current text in the text box.
 - `textbox`: The textbox component to display the fields for.
 
 """
-function show_textbox_fields(textbox, main)
+function show_textbox_fields(textbox)
     for field in fieldnames(typeof(textbox))
         fieldString = "$(field)"
 
@@ -305,7 +305,7 @@ function show_textbox_fields(textbox, main)
 
             CImGui.Button("Load Font") && (UI.load_font(textbox, joinpath(BasePath), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
         else 
-            show_textbox_fields(textbox, field, main)
+            show_textbox_fields(textbox, field)
         end  
     end
 end

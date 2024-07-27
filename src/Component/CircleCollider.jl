@@ -62,8 +62,8 @@ module CircleColliderModule
         return this.size
     end
 
-    function Component.check_collisions(this::CircleCollider, main)
-        colliders = main.scene.colliders
+    function Component.check_collisions(this::CircleCollider)
+        colliders = MAIN.scene.colliders
         #Only check the player against other colliders
         counter = 0
         

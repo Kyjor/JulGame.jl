@@ -1,4 +1,4 @@
-function show_textbox_fields(selectedTextBox, textBoxField, main)
+function show_textbox_fields(selectedTextBox, textBoxField)
     fieldName = getFieldName(textBoxField)
     Value = getfield(selectedTextBox, textBoxField)
 
@@ -38,7 +38,7 @@ function show_textbox_fields(selectedTextBox, textBoxField, main)
         setfield!(selectedTextBox, textBoxField, Color(convert(Int32, round(x)), convert(Int32, round(y)), convert(Int32, round(z)), convert(Int32, round(w))))
 
         if x != Value.r || y != Value.g || z != Value.b || w != Value.a
-            JulGame.update_text(selectedTextBox, selectedTextBox.text, main)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     elseif fieldName == "position"
         x = Cint(Value.x)
@@ -48,14 +48,14 @@ function show_textbox_fields(selectedTextBox, textBoxField, main)
         
         if x != Value.x || y != Value.y
             selectedTextBox.setVector2Value(textBoxField, convert(Float64, x), convert(Float64, y))
-            JulGame.update_text(selectedTextBox, selectedTextBox.text, main)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     elseif fieldName == "autoSizeText" || fieldName == "isCenteredX" || fieldName == "isCenteredY" || fieldName == "isWorldEntity"
         @c CImGui.Checkbox("$(textBoxField)", &Value)
 
         if Value != getfield(selectedTextBox, textBoxField)
             setfield!(selectedTextBox, textBoxField, Value)
-            JulGame.update_text(selectedTextBox, selectedTextBox.text, main)
+            JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     elseif fieldName == "fontSize"
         newSize = Cint(Value)

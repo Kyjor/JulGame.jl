@@ -102,8 +102,8 @@ module ColliderModule
         this.parent = parent
     end
 
-    function Component.check_collisions(this::InternalCollider, main)
-        colliders = main.scene.colliders
+    function Component.check_collisions(this::InternalCollider)
+        colliders = MAIN.scene.colliders
         #Only check the player against other colliders
         counter = 0
         onGround = this.parent.rigidbody.grounded 
@@ -122,7 +122,7 @@ module ColliderModule
             
             if this != collider
                 # check if other collider is within range of this collider, if it isn't then skip it
-                if collider.getParent().transform.position.x > this.getParent().transform.position.x + this.getSize().x || collider.getParent().transform.position.x + collider.getSize().x < this.getParent().transform.position.x && main.optimizeSpriteRendering
+                if collider.getParent().transform.position.x > this.getParent().transform.position.x + this.getSize().x || collider.getParent().transform.position.x + collider.getSize().x < this.getParent().transform.position.x && MAIN.optimizeSpriteRendering
                     colliderSkipCount += 1
                     continue
                 end

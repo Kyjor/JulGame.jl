@@ -106,7 +106,7 @@ module InputModule
         deprecated_get_property(method_props, this, s)
     end
 
-    function poll_input(this::Input, main)
+    function poll_input(this::Input)
         this.buttonsPressedDown = []
         didMouseEventOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
@@ -126,13 +126,13 @@ module InputModule
                     for screenButton in this.scene.screenButtons
                         # Check position of button to see which we are interacting with
                         eventWasInsideThisButton = true
-                        if x[1] < screenButton.position.x + main.scene.camera.startingCoordinates.x
+                        if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x
                             eventWasInsideThisButton = false
-                        elseif x[1] > main.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.size.x * main.zoom
+                        elseif x[1] > MAIN.scene.camera.startingCoordinates.x + screenButton.position.x + screenButton.size.x * MAIN.zoom
                             eventWasInsideThisButton = false
-                        elseif y[1] < screenButton.position.y + main.scene.camera.startingCoordinates.y
+                        elseif y[1] < screenButton.position.y + MAIN.scene.camera.startingCoordinates.y
                             eventWasInsideThisButton = false
-                        elseif y[1] > main.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.size.y * main.zoom
+                        elseif y[1] > MAIN.scene.camera.startingCoordinates.y + screenButton.position.y + screenButton.size.y * MAIN.zoom
                             eventWasInsideThisButton = false
                         end
 
@@ -250,7 +250,7 @@ module InputModule
             @info(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
             @info(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-            this.main.updateViewport(event.window.data1, event.window.data2)
+            MAIN.updateViewport(event.window.data1, event.window.data2)
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
             @info(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED

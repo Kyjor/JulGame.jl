@@ -30,7 +30,7 @@ end
 
 function Base.getproperty(this::Spider, s::Symbol)
     if s == :initialize
-        function(main)
+        function()
             this.animator = this.parent.animator
         end
     elseif s == :update
