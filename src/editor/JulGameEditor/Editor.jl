@@ -83,7 +83,7 @@ module Editor
                                     currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    MainLoop.change_scene(String(currentSceneName))
+                                    MainLoop.change_scene(String(currentSceneName), true)
                                 end
                             end
                             CImGui.NewLine()

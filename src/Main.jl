@@ -77,9 +77,6 @@ module MainLoop
 	function Base.getproperty(this::Main, s::Symbol)
         method_props = (
             init = init,
-            initializeNewScene = initialize_new_scene,
-            resetCameraPosition = reset_camera_position,
-            fullLoop = full_loop,
             gameLoop = game_loop,
             createNewEntity = create_new_entity,
             createNewTextBox = create_new_text_box,
@@ -99,17 +96,18 @@ module MainLoop
         initialize_scripts_and_components(isUsingEditor)
 
         if !isUsingEditor
-            MAIN.fullLoop()
+            full_loop(MAIN)
             return
         end
     end
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
+		println("Initializing new scene")
         SceneBuilderModule.change_scene(this.level, isUsingEditor)
         initialize_scripts_and_components(false)
 
         if !isUsingEditor
-            this.fullLoop()
+            full_loop(this)
             return
         end
     end
@@ -121,10 +119,9 @@ module MainLoop
 	
     function full_loop(this::Main)
         try
-            this.close = false
+			this.close = false
             startTime = Ref(UInt64(0))
             lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
-
             while !this.close
                 try
                     game_loop(this, startTime, lastPhysicsTime, false)
@@ -155,6 +152,7 @@ module MainLoop
                     end
                 end
             end
+			
             if !this.shouldChangeScene
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer)
                 SDL2.SDL_DestroyWindow(this.window)
@@ -167,7 +165,7 @@ module MainLoop
                 SDL2.SDL_DestroyWindow(this.window)
             else
                 this.shouldChangeScene = false
-                this.initializeNewScene(false)
+                initialize_new_scene(this, false)
             end
         end
     end
@@ -430,15 +428,16 @@ end
 
 export change_scene
 """
-	change_scene(sceneFileName::String)
+	change_scene(sceneFileName::String, isEditor::Bool = false)
 
 Change the scene to the specified `sceneFileName`. This function destroys the current scene, including all entities, textboxes, and screen buttons, except for the ones marked as persistent. It then loads the new scene and sets the camera and persistent entities, textboxes, and screen buttons.
 
 # Arguments
 - `sceneFileName::String`: The name of the scene file to load.
+- `isEditor::Bool`: Whether the scene is being loaded in the editor. Default is `false`.
 
 """
-function change_scene(sceneFileName::String)
+function change_scene(sceneFileName::String, isEditor::Bool = false)
 	this::Main = MAIN
 	# println("Changing scene to: ", sceneFileName)
 	this.close = true
@@ -495,6 +494,10 @@ function change_scene(sceneFileName::String)
 	this.scene.uiElements = persistentUIElements
 	this.scene.camera = camera
 	this.level.scene = sceneFileName
+	
+	if isEditor
+		initialize_new_scene(this, true)
+	end
 end
 
 """
