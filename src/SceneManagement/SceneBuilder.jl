@@ -167,7 +167,7 @@ module SceneBuilderModule
         end
 
         for entity in MAIN.scene.entities
-            if entity.persistentBetweenScenes
+            if entity.persistentBetweenScenes #TODO: Verify if the entity is in it's first scene. If it is, don't skip the scripts.
                 continue
             end
             
@@ -182,9 +182,7 @@ module SceneBuilderModule
                 scriptCounter = 1
                 for script in entity.scripts
                     params = []
-                    if isa(script, Dict)
                         for param in script.parameters
-                            
                             if lowercase(param) == "true"
                                 param = true
                             elseif lowercase(param) == "false"
@@ -200,7 +198,6 @@ module SceneBuilderModule
                             end
                             push!(params, param)
                         end
-                    end
 
                     newScript = C_NULL
                     try
