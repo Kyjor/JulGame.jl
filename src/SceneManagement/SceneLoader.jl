@@ -52,7 +52,9 @@ module SceneLoaderModule
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene("$sceneFileName", "$projectPath")
 
-        return scene.init("Editor", true; isNewEditor=isNewEditor)
+        scene.init("Editor", true; isNewEditor=isNewEditor)
+
+        return MAIN
     end
 
     export get_project_path_from_full_scene_path

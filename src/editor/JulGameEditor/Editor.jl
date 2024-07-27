@@ -141,7 +141,7 @@ module Editor
                             currentHierarchyFilterText = hierarchyFilterText
                             hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
                             updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
-                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMAINscene.entities)
+                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
                             ShowHelpMarker("Hold CTRL and click to select multiple items.")
                             if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
@@ -156,7 +156,7 @@ module Editor
                                     !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
                                     hierarchyEntitySelections[n] ⊻= 1
                                     itemSelected = true
-                                    currentSceneMAINselectedEntity = filteredEntities[n]
+                                    currentSceneMain.selectedEntity = filteredEntities[n]
                                 end
                                 
                                 # our entities are both drag sources and drag targets here!
@@ -176,7 +176,7 @@ module Editor
                                 end
 
                                 # Reorder entities: We can only reorder entities if the entiities are not being filtered
-                                if length(filteredEntities) == length(currentSceneMAINscene.entities)
+                                if length(filteredEntities) == length(currentSceneMain.scene.entities)
                                     CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
                                     if CImGui.BeginDragDropTarget()
                                         payload = CImGui.AcceptDragDropPayload("Entity") 
@@ -186,7 +186,7 @@ module Editor
                                             origin = unsafe_load(Ptr{Cint}(payload.Data))
                                             destination = n
                                             # Move the entity(origin) to the position after the entity at the destination index and adust the other entities accordingly. Use splicing to do this.
-                                            move_entity(currentSceneMAINscene.entities, origin, destination)
+                                            move_entity(currentSceneMain.scene.entities, origin, destination)
                                         end
                                         CImGui.EndDragDropTarget()
                                     end
@@ -208,10 +208,10 @@ module Editor
                                 CImGui.MenuItem("Add", C_NULL, false, false)
                                 if CImGui.BeginMenu("New")
                                     if CImGui.MenuItem("TextBox")
-                                        currentSceneMAINcreateNewTextBox() 
+                                        currentSceneMain.createNewTextBox() 
                                     end
                                     if CImGui.MenuItem("Screen Button")
-                                        currentSceneMAINcreateNewScreenButton()
+                                        currentSceneMain.createNewScreenButton()
                                     end
                                     
                                     CImGui.EndMenu()
@@ -220,19 +220,19 @@ module Editor
                             end
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
-                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMAINscene.uiElements) # || updateUISelectionsBasedOnFilter
-                                hierarchyUISelections=fill(false, length(currentSceneMAINscene.uiElements))
+                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.uiElements) # || updateUISelectionsBasedOnFilter
+                                hierarchyUISelections=fill(false, length(currentSceneMain.scene.uiElements))
                             end
 
-                            for n = eachindex(currentSceneMAINscene.uiElements)
+                            for n = eachindex(currentSceneMain.scene.uiElements)
                                 CImGui.PushID(n)
-                                buf = "$(n): $(currentSceneMAINscene.uiElements[n].name)"
+                                buf = "$(n): $(currentSceneMain.scene.uiElements[n].name)"
                                 if CImGui.Selectable(buf, hierarchyUISelections[n])
                                     # clear selection when CTRL is not held
                                     !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
                                     hierarchyUISelections[n] ⊻= 1
                                     uiSelected = true
-                                    # currentSceneMAINselectedEntity = currentSceneMAINscene.uiElements[n]
+                                    # currentSceneMain.selectedEntity = currentSceneMain.scene.uiElements[n]
                                 end
                                 CImGui.PopID()
 
@@ -246,14 +246,14 @@ module Editor
                     
                     CImGui.Begin("Entity Inspector") 
                         # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
-                        if currentSceneMain !== nothing && currentSceneMAINselectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMAINselectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMAINselectedEntity], filteredEntities)[begin]] == false
+                        if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[begin]] == false
                             fill!(hierarchyEntitySelections, false)
-                            hierarchyEntitySelections[indexin([currentSceneMAINselectedEntity], filteredEntities)[1]] = true
+                            hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
                         elseif itemSelected
-                            currentSceneMAINselectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
+                            currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
                         end
                         for entityIndex = eachindex(hierarchyEntitySelections)
-                            if hierarchyEntitySelections[entityIndex] || currentSceneMAINselectedEntity == filteredEntities[entityIndex]
+                            if hierarchyEntitySelections[entityIndex] || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                 CImGui.PushID("AddMenu")
                                 if CImGui.BeginMenu("Add")
                                     ShowEntityContextMenu(filteredEntities[entityIndex])
@@ -270,14 +270,14 @@ module Editor
               
                                 CImGui.Separator()
                                 if CImGui.Button("Duplicate") 
-                                    push!(currentSceneMAINscene.entities, deepcopy(currentSceneMAINscene.entities[entityIndex]))
+                                    push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
                                     # TODO: switch to duplicated entity
                                 end
 
                                 CImGui.Separator()
                                 CImGui.Text("Delete Entity: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
-                                    MainLoop.destroy_entity(currentSceneMain, currentSceneMAINscene.entities[entityIndex])
+                                    MainLoop.destroy_entity(currentSceneMain, currentSceneMain.scene.entities[entityIndex])
                                     break
                                 end
                                 
@@ -289,42 +289,42 @@ module Editor
 
                     CImGui.Begin("UI Inspector") 
                         # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
-                        #if currentSceneMain !== nothing && currentSceneMAINselectedEntity !== nothing && filteredEntities !== nothing && hierarchyUISelections !== nothing && indexin([currentSceneMAINselectedEntity], filteredEntities)[1] !== nothing
+                        #if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyUISelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing
                             # fill!(hierarchyUISelections, false)
-                            #hierarchyUISelections[indexin([currentSceneMAINselectedEntity], filteredEntities)[1]] = true
+                            #hierarchyUISelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
                         #elseif uiSelected
-                            # currentSceneMAINselectedEntity = filteredEntities[indexin([true], hierarchyUISelections)[1]]
+                            # currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyUISelections)[1]]
                         #end
                         for uiElementIndex = eachindex(hierarchyUISelections)
-                            if hierarchyUISelections[uiElementIndex] # || currentSceneMAINselectedEntity == filteredEntities[entityIndex]
+                            if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                 CImGui.PushID("AddMenu")
                                 if CImGui.BeginMenu("Add")
-                                    ShowEntityContextMenu(currentSceneMAINscene.uiElements[uiElementIndex])
+                                    ShowEntityContextMenu(currentSceneMain.scene.uiElements[uiElementIndex])
                                     CImGui.EndMenu()
                                 end
                                 CImGui.PopID()
                                 CImGui.Separator()
 
-                                if length(currentSceneMAINscene.uiElements) < uiElementIndex
+                                if length(currentSceneMain.scene.uiElements) < uiElementIndex
                                     break
                                 end
                                 
-                                if contains("$(typeof(currentSceneMAINscene.uiElements[uiElementIndex]))", "TextBox")
-                                    show_textbox_fields(currentSceneMAINscene.uiElements[uiElementIndex], currentSceneMain)
+                                if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
+                                    show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                 else
-                                    show_screenbutton_fields(currentSceneMAINscene.uiElements[uiElementIndex])
+                                    show_screenbutton_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                 end
 
                                 # CImGui.Separator()
                                 # if CImGui.Button("Duplicate") 
-                                #     push!(currentSceneMAINscene.uiElements, deepcopy(currentSceneMAINscene.uiElements[uiElementIndex]))
+                                #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
                                 #     # TODO: switch to duplicated entity
                                 # end
 
                                 CImGui.Separator()
                                 CImGui.Text("Delete UI Element: NO CONFIRMATION")
                                 if CImGui.Button("Delete")
-                                    MainLoop.DestroyUIElement(currentSceneMAINscene.uiElements[uiElementIndex])
+                                    MainLoop.DestroyUIElement(currentSceneMain.scene.uiElements[uiElementIndex])
                                     break
                                 end
                                 
@@ -337,7 +337,7 @@ module Editor
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     #SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    gameInfo = currentSceneMain === nothing ? [] : currentSceneMAINgameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     
@@ -354,11 +354,11 @@ module Editor
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
                     ################################################# Injecting game loop into editor
                     if currentSceneMain !== nothing
-                        if currentSceneMAINinput.editorCallback === nothing
-                            currentSceneMAINinput.editorCallback = ImGui_ImplSDL2_ProcessEvent
+                        if currentSceneMain.input.editorCallback === nothing
+                            currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
                         end
-                        currentSceneMAINinput.pollInput(currentSceneMain)
-                        quit = currentSceneMAINinput.quit
+                        currentSceneMain.input.pollInput()
+                        quit = currentSceneMain.input.quit
                     end
                     #################################################
 

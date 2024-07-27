@@ -266,7 +266,7 @@ module MainLoop
 			end
 		end
 
-        this.scene.camera.update(cameraPosition, this)
+        this.scene.camera.update(cameraPosition)
         return cameraPosition
     end
 
