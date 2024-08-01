@@ -1,4 +1,4 @@
-function ShowGameControls()
+function show_game_controls()
     @cstatic begin
         CImGui.Begin("Controls")  
             CImGui.Text("Pan scene: Arrow keys/Hold middle mouse button and move mouse")

@@ -11,7 +11,6 @@ mutable struct Camera
 
     target::Union{
         Ptr{Nothing}, 
-        # JulGame.EntityModule.Entity,
         JulGame.TransformModule.Transform
         }
     windowPos::Vector2

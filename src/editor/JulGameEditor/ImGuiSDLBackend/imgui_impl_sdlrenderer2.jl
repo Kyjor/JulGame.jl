@@ -221,7 +221,7 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
         println("error creating texture")
         return false
     end
-    println("font texture: ", bd.FontTexture)
+    
     SDL2.SDL_UpdateTexture(bd.FontTexture, C_NULL, pixels, 4 * width)
     SDL2.SDL_SetTextureBlendMode(bd.FontTexture, SDL2.SDL_BLENDMODE_BLEND)
     SDL2.SDL_SetTextureScaleMode(bd.FontTexture, SDL2.SDL_ScaleModeLinear)
