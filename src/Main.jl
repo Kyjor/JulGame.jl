@@ -27,7 +27,7 @@ module MainLoop
 		optimizeSpriteRendering::Bool
 		panCounter::Union{Math.Vector2, Math.Vector2f}
 		panThreshold::Float64
-		scene::Scene
+		scene::SceneModule.Scene
 		selectedEntity::Union{Entity, Nothing}
 		selectedUIElementIndex::Int64
 		screenSize::Math.Vector2

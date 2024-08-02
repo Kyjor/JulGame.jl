@@ -1,5 +1,6 @@
 ﻿module SceneModule
-
+    using ..JulGame
+    
     export Scene
     mutable struct Scene
         camera::Union{Nothing, JulGame.CameraModule.Camera}

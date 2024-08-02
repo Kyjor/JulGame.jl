@@ -75,7 +75,7 @@ newEntity != C_NULL && newEntity !== nothing
                 #end
 
                 #@testset "Entity addAnimator" begin
-                    newEntity.addAnimator(newAnimator)
+                    JulGame.add_animator(newEntity, newAnimator)
                     # @test 
 newEntity.animator != C_NULL && newEntity.animator !== nothing
                 #end

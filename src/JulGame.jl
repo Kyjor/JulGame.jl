@@ -34,12 +34,6 @@ module JulGame
     using .InputModule: Input
     export Input
 
-    include("Camera/Camera.jl")
-    using .CameraModule: Camera
-    
-    include("Scene.jl")
-    using .SceneModule: Scene
-
     include("UI/UI.jl")
     using .UI
     export ScreenButtonModule, TextBoxModule
@@ -48,9 +42,15 @@ module JulGame
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
     
+    include("Camera/Camera.jl")
+    using .CameraModule: Camera
+    
     include("Entity.jl") 
     using .EntityModule   
     export Entity
+
+    include("Scene.jl")
+    using .SceneModule: Scene
 
     include("SceneManagement/SceneManagement.jl")
     using .SceneManagement

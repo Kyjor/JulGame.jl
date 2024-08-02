@@ -12,6 +12,7 @@ module SceneReaderModule
     using ...UI.TextBoxModule
     using ...UI.ScreenButtonModule
     using ...TransformModule
+    using ...JulGame
 
 
     function scriptObj(name::String, parameters::Array)
@@ -52,23 +53,26 @@ module SceneReaderModule
 
                 for component in components
                     if typeof(component) == Animator
-                        add_animator(newEntity, component::Animator)
+                        JulGame.add_animator(newEntity, component::Animator)
                         continue
                     elseif typeof(component) == Collider
-                        add_collider(newEntity, component::Collider)
+                        JulGame.add_collider(newEntity, component::Collider)
                         continue
                     elseif typeof(component) == CircleCollider
-                        add_circle_collider(newEntity, component::CircleCollider)
+                        JulGame.add_circle_collider(newEntity, component::CircleCollider)
                         continue
                     elseif typeof(component) == Rigidbody
-                        add_rigidbody(newEntity, component::Rigidbody)
+                        JulGame.add_rigidbody(newEntity, component::Rigidbody)
                         continue
                     elseif typeof(component) == SoundSource
-                        add_sound_source(newEntity, component::SoundSource)
+                        JulGame.add_sound_source(newEntity, component::SoundSource)
                         continue
                     elseif typeof(component) == Sprite
-                        add_sprite(newEntity, component::Sprite)
+                        JulGame.add_sprite(newEntity, false, component::Sprite)
                         continue
+                    elseif typeof(component) == Transform 
+                        newEntity.transform = component::Transform 
+                        continue 
                     end
                 end
                 
