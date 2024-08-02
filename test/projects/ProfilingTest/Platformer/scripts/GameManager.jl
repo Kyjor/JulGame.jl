@@ -30,9 +30,9 @@ function Base.getproperty(this::GameManager, s::Symbol)
             MAIN.cameraBackgroundColor = (30, 111, 80)
             MAIN.optimizeSpriteRendering = true
 
-            this.parent.addShape(ShapeModule.Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))
-            coinUI = MAIN.scene.getEntityByName("CoinUI")
-            livesUI = MAIN.scene.getEntityByName("LivesUI")
+            JulGame.add_shape(this.parent, Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))
+            coinUI = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "CoinUI")
+            livesUI = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "LivesUI")
 
             coinUI.persistentBetweenScenes = true
             coinUI.sprite.isWorldEntity = false
@@ -44,11 +44,11 @@ function Base.getproperty(this::GameManager, s::Symbol)
             
             this.parent.persistentBetweenScenes = true
             if this.currentLevel > 1
-                this.currentMusic.unloadSound()
+                Component.unload_sound(this.currentMusic)
             end
 
-            this.currentMusic = this.parent.createSoundSource(SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
-            this.currentMusic.toggleSound()
+            this.currentMusic = JulGame.create_sound_source(this.parent, SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
+            Component.toggle_sound(this.currentMusic)
 
             JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.starCount))
         end

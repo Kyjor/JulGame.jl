@@ -1,13 +1,13 @@
 module SceneBuilderModule
     using ...JulGame
-    using ...Math
+    using ...CameraModule
     using ...ColliderModule
     using ...EntityModule
+    using ...Math
     using ...RigidbodyModule
     using ...TextBoxModule
     using ...ScreenButtonModule
     using ..SceneReaderModule
-    import ...JulGame: deprecated_get_property
 
     function __init__()
         # if end of path is "test", then we are running tests
@@ -39,8 +39,6 @@ module SceneBuilderModule
         end
     end
         
-    include("../Camera.jl")
-    
     export Scene
     mutable struct Scene
         scene
@@ -56,20 +54,7 @@ module SceneBuilderModule
         end    
     end
     
-    function Base.getproperty(this::Scene, s::Symbol)
-        method_props = (
-            init = init,
-            changeScene = change_scene,
-            createNewEntity = create_new_entity,
-            createNewTextBox = create_new_text_box,
-            createNewScreenButton = create_new_screen_button
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-
-    
-
-    function init(this::Scene, windowName::String = "Game", isUsingEditor = false, size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
+    function load_and_prepare_scene(this::Scene, windowName::String = "Game", isUsingEditor = false, size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
         #file loading
         if autoScaleZoom 
             zoom = 1.0
@@ -89,11 +74,11 @@ module SceneBuilderModule
         if size.y < camSize.y && size.y > 0
             camSize = Vector2(camSize.x, size.y)
         end
-        MAIN.scene.camera = Camera(camSize, Vector2f(),Vector2f(), C_NULL)
+        MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
         
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
-                uiElement.centerText()
+                UI.center_text(uiElement)
             end
         end
 
@@ -145,7 +130,7 @@ module SceneBuilderModule
         end
 
         MAIN.assets = joinpath(BasePath, "assets")
-        JulGame.MainLoop.init(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
+        JulGame.MainLoop.prepare_window_scripts_and_start_loop(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
     end
 
     function change_scene(this::Scene, isUsingEditor::Bool = false)
@@ -162,7 +147,7 @@ module SceneBuilderModule
 
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
-                uiElement.centerText()
+                UI.center_text(uiElement)
             end
         end
 

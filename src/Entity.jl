@@ -9,7 +9,6 @@ module EntityModule
     using ..JulGame.SoundSourceModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
-    import ..JulGame: deprecated_get_property
     import ..JulGame: Component
     import ..JulGame
 
@@ -41,7 +40,7 @@ module EntityModule
             this.scripts = []
             this.transform = transform
             for script in scripts
-                this.addScript(script)
+                add_script(this, script)
             end
             this.shape = C_NULL
             this.soundSource = C_NULL
@@ -52,23 +51,6 @@ module EntityModule
             return this
         end
     end
-
-    function Base.getproperty(this::Entity, s::Symbol)
-        method_props = (
-            addScript = JulGame.add_script,
-            update = JulGame.update,
-            addAnimator = JulGame.add_animator,
-            addCollider = JulGame.add_collider,
-            addCircleCollider = JulGame.add_circle_collider,
-            addRigidbody = JulGame.add_rigidbody,
-            addSoundSource = JulGame.add_sound_source,
-            createSoundSource = JulGame.create_sound_source,
-            addSprite = JulGame.add_sprite,
-            addShape = JulGame.add_shape
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-
 
     function JulGame.add_script(this::Entity, script)
         #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
@@ -168,7 +150,7 @@ module EntityModule
         if this.animator != C_NULL
             Component.set_sprite(this.animator, this.sprite)
         end
-        this.sprite.initialize()
+        Component.initialize(this.sprite)
 
         return this.sprite
     end

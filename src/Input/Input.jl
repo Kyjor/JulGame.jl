@@ -2,7 +2,6 @@
 module InputModule
     using ..JulGame
     using ..JulGame.Math
-    import ..JulGame: deprecated_get_property
     
     export Input
     mutable struct Input
@@ -89,30 +88,13 @@ module InputModule
         end
     end
 
-    function Base.getproperty(this::Input, s::Symbol)
-        method_props = (
-            pollInput = poll_input,
-            checkScanCode = check_scan_code,
-            handleWindowEvents = handle_window_events,
-            handleKeyEvent = handle_key_event,
-            handleMouseEvent = handle_mouse_event,
-            getButtonHeldDown = get_button_held_down,
-            getButtonPressed = get_button_pressed,
-            getButtonReleased = get_button_released,
-            getMouseButton = get_mouse_button,
-            getMouseButtonPressed = get_mouse_button_pressed,
-            getMouseButtonReleased = get_mouse_button_released
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-
     function poll_input(this::Input)
         this.buttonsPressedDown = []
         didMouseEventOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
         while Bool(SDL2.SDL_PollEvent(event_ref))
             evt = event_ref[]
-            this.handleWindowEvents(evt)
+            handle_window_events(this, evt)
             if this.editorCallback !== nothing
                 this.editorCallback(evt)
             end
@@ -141,11 +123,11 @@ module InputModule
                             continue
                         end
                         
-                        screenButton.handleEvent(evt, x, y)
+                        UI.handle_event(screenButton, evt, x[1], y[1])
                     end
                 end
 
-                this.handleMouseEvent(evt)
+                handle_mouse_event(this, evt)
             end 
 
             #if evt.type == SDL2.SDL_JOYAXISMOTION
@@ -217,7 +199,7 @@ module InputModule
             this.mouseButtonsReleased = []
         end
         keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
-        this.handleKeyEvent(keyboardState)
+        handle_key_event(this, keyboardState)
     end
 
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
@@ -250,7 +232,7 @@ module InputModule
             @info(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
             @info(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-            MAIN.updateViewport(event.window.data1, event.window.data2)
+            JulGame.MainLoop.update_viewport(MAIN, event.window.data1, event.window.data2)
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
             @info(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
@@ -287,10 +269,10 @@ module InputModule
         count = 1
         for scanCode in this.scanCodes
             button = scanCode[2]
-            if this.checkScanCode(keyboardState, 1, [scanCode[1]]) && !(button in this.buttonsHeldDown)
+            if check_scan_code(this, keyboardState, 1, [scanCode[1]]) && !(button in this.buttonsHeldDown)
                 push!(buttonsPressedDown, button)
                 push!(this.buttonsHeldDown, button)
-            elseif this.checkScanCode(keyboardState, 0, [scanCode[1]])
+            elseif check_scan_code(this, keyboardState, 0, [scanCode[1]])
                 if button in this.buttonsHeldDown
                     deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
                 end

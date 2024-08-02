@@ -14,7 +14,6 @@ function Base.getproperty(this::TestScript, s::Symbol)
 
             try
                 
-            
             newAnimation = C_NULL
             newAnimator = C_NULL
             #@testset "Engine Animation Tests" begin
@@ -82,27 +81,26 @@ newEntity.animator != C_NULL && newEntity.animator !== nothing
                 #end
 
                 # @testset "Entity addCircleCollider" begin
-                    newEntity.addCircleCollider(newCircleCollider)
+                    JulGame.add_circle_collider(newEntity, newCircleCollider)
                     # @test 
 newEntity.circleCollider != C_NULL && newEntity.circleCollider !== nothing
                     newEntity.circleCollider = C_NULL # Reset for next test
                 #end
 
                 #@testset "Entity addCollider" begin
-                    println(typeof(newCollider))
-                    newEntity.addCollider(newCollider)
+                    JulGame.add_collider(newEntity, newCollider)
                     # @test 
 newEntity.collider != C_NULL && newEntity.collider !== nothing
                 #end
 
                 #@testset "Entity addRigidbody" begin
-                    newEntity.addRigidbody(newRigidbody)
+                    JulGame.add_rigidbody(newEntity, newRigidbody)
                     # @test 
 newEntity.rigidbody != C_NULL && newEntity.rigidbody !== nothing
                 #end
 
                 #@testset "Entity addShape" begin
-                    newEntity.addShape(newShape)
+                    JulGame.add_shape(newEntity, newShape)
                     # @test 
 newEntity.shape != C_NULL && newEntity.shape !== nothing
                 #end

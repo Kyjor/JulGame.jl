@@ -7,7 +7,7 @@ module Editor
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64
     using CImGui.CImGui
     using Dates
-    using JulGame: MainLoop, Math, SceneLoaderModule, SDL2, UI
+    using JulGame: Component, MainLoop, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
 
     global sdlVersion = "2.0.0"
@@ -132,7 +132,7 @@ module Editor
                                     CImGui.MenuItem("Add", C_NULL, false, false)
                                     if CImGui.BeginMenu("New")
                                         if CImGui.MenuItem("Entity")
-                                            currentSceneMain.createNewEntity()
+                                            JulGame.MainLoop.create_new_entity(currentSceneMain)
                                         end
                                         
                                         CImGui.EndMenu()
@@ -194,8 +194,6 @@ module Editor
                                             CImGui.EndDragDropTarget()
                                         end
                                     end
-
-
                                     CImGui.PopID()
                                 end
 
@@ -211,10 +209,10 @@ module Editor
                                     CImGui.MenuItem("Add", C_NULL, false, false)
                                     if CImGui.BeginMenu("New")
                                         if CImGui.MenuItem("TextBox")
-                                            currentSceneMain.createNewTextBox() 
+                                            JulGame.MainLoop.create_new_text_box(currentSceneMain) 
                                         end
                                         if CImGui.MenuItem("Screen Button")
-                                            currentSceneMain.createNewScreenButton()
+                                            JulGame.MainLoop.create_new_screen_button(currentSceneMain)
                                         end
                                         
                                         CImGui.EndMenu()
@@ -339,7 +337,7 @@ module Editor
 
                         SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                         SDL2.SDL_RenderClear(renderer)
-                        gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                         SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                         SDL2.SDL_RenderClear(renderer)
                         
@@ -358,7 +356,7 @@ module Editor
                             if currentSceneMain.input.editorCallback === nothing
                                 currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
                             end
-                            currentSceneMain.input.pollInput()
+                            JulGame.InputModule.poll_input(currentSceneMain.input)
                             quit = currentSceneMain.input.quit
                         end
                         #################################################

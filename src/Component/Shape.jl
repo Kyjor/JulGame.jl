@@ -1,6 +1,5 @@
 module ShapeModule
     using ..Component.JulGame
-    import ..Component.JulGame: deprecated_get_property
     import ..Component
     export Shape
     struct Shape
@@ -37,14 +36,6 @@ module ShapeModule
 
             return this
         end
-    end
-
-    function Base.getproperty(this::InternalShape, s::Symbol)
-        method_props = (
-            draw = Component.draw,
-            setParent = Component.set_parent
-        )
-        deprecated_get_property(method_props, this, s)
     end
 
     function Component.draw(this::InternalShape)

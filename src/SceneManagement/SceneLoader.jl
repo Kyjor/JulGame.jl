@@ -20,8 +20,8 @@ module SceneLoaderModule
     function load_scene(projectPath::String, sceneFileName::String, isUsingEditor::Bool = false) 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
         #println("Loading scene $sceneFileName from $projectPath")
-        main = Scene(sceneFileName, projectPath)
-        return MAIN.init("Editor", isUsingEditor)
+        scene = Scene(sceneFileName, projectPath)
+        return SceneBuilderModule.load_and_prepare_scene(scene, "Editor", isUsingEditor)
     end
     
     export load_scene_from_editor
@@ -52,7 +52,7 @@ module SceneLoaderModule
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene("$sceneFileName", "$projectPath")
 
-        scene.init("Editor", true; isNewEditor=isNewEditor)
+        SceneBuilderModule.load_and_prepare_scene(scene, "Editor", true; isNewEditor=isNewEditor)
 
         return MAIN
     end

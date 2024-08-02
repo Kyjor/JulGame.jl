@@ -1,7 +1,6 @@
 module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
-    import ..UI.JulGame: deprecated_get_property
     import ..UI
     export TextBox      
     mutable struct TextBox
@@ -48,18 +47,6 @@ module TextBoxModule
         end
     end
 
-    function Base.getproperty(this::TextBox, s::Symbol)
-        method_props = (
-            render = UI.render,
-            setParent = UI.set_parent,
-            setVector2Value = UI.set_vector2_value,
-            setColor = UI.set_color,
-            centerText = UI.center_text,
-            destroy = UI.destroy,
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-
     function UI.render(this::TextBox, debug::Bool)
         if this.textTexture == C_NULL
             return
@@ -101,7 +88,7 @@ module TextBoxModule
 
     function UI.initialize(this::TextBox)
         if !this.isWorldEntity
-            this.centerText()
+            UI.center_text(this)
         end
     end
 
@@ -135,12 +122,8 @@ module TextBoxModule
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
         
         if !this.isWorldEntity
-            this.centerText()
+            UI.center_text(this)
         end
-    end
-
-    function UI.set_vector2_value(this::TextBox, field, x, y)
-        setfield!(this, field, Math.Vector2(x,y))
     end
 
     function UI.set_color(this::TextBox, r,g,b)

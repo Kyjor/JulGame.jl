@@ -11,7 +11,7 @@ module Platformer
         JulGame.PIXELS_PER_UNIT = 16
         scene = Scene("level_0.json")
         try
-            SceneBuilderModule.init(scene, "JulGame Example", false, Vector2(1920, 1080),Vector2(1280, 720), true, 1.0, true, 120)
+            SceneBuilderModule.load_and_prepare_scene(scene, "JulGame Example", false, Vector2(1920, 1080),Vector2(1280, 720), true, 1.0, true, 120)
         catch e
             @error e
             Base.show_backtrace(stderr, catch_backtrace())

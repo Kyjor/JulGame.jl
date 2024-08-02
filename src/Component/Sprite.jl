@@ -1,6 +1,5 @@
 module SpriteModule
     using ..Component.JulGame
-    import ..Component.JulGame: deprecated_get_property
     import ..Component
 
     export Sprite
@@ -77,17 +76,6 @@ module SpriteModule
             return this
         end
     end
-
-    function Base.getproperty(this::InternalSprite, s::Symbol)
-        method_props = (
-            initialize = Component.initialize,
-            flip = Component.flip,
-            loadImage = Component.load_image,
-            destroy = Component.destroy,
-            setColor = Component.set_color
-        )
-        deprecated_get_property(method_props, this, s)
-    end
     
     function Component.draw(this::InternalSprite)
         if this.image == C_NULL || JulGame.Renderer == C_NULL
@@ -95,12 +83,12 @@ module SpriteModule
         end
         if this.texture == C_NULL
             this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
-            this.setColor()
+            Component.set_color(this)
         end
         colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
         SDL2.SDL_GetTextureColorMod(this.texture, colorRefs...)
         if colorRefs[1] != this.color.x || colorRefs[2] != this.color.y || colorRefs[3] != this.color.z
-            this.setColor()
+            Component.set_color(this)
         end
        
 
@@ -214,7 +202,7 @@ module SpriteModule
         
         this.imagePath = imagePath
         this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.image)
-        this.setColor()
+        Component.set_color(this)
     end
 
     function Component.destroy(this::InternalSprite)

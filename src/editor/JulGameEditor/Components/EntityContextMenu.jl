@@ -10,19 +10,19 @@ function ShowEntityContextMenu(currentEntitySelected)
     CImGui.MenuItem("Add", C_NULL, false, false)
     if CImGui.BeginMenu("New")
         if CImGui.MenuItem("Animator")
-            currentEntitySelected.addAnimator()
+            Component.add_animator(currentEntitySelected)
         end
         if CImGui.MenuItem("Collider")
-            currentEntitySelected.addCollider()
+            Component.add_collider(currentEntitySelected)
         end
         if CImGui.MenuItem("Rigidbody")
-            currentEntitySelected.addRigidbody()
+            Component.add_rigidbody(currentEntitySelected)
         end
         if CImGui.MenuItem("SoundSource")
-            currentEntitySelected.addSoundSource()
+            Component.add_sound_source(currentEntitySelected)
         end
         if CImGui.MenuItem("Sprite")
-            currentEntitySelected.addSprite(true)
+            Component.add_sprite(currentEntitySelected, true)
         end
         
         CImGui.EndMenu()

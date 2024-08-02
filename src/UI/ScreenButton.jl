@@ -1,7 +1,6 @@
 module ScreenButtonModule    
     using ..UI.JulGame
     using ..UI.JulGame.Math
-    import ..UI.JulGame: deprecated_get_property
     import ..UI
 
     export ScreenButton
@@ -52,21 +51,9 @@ module ScreenButtonModule
         end
     end
 
-    function Base.getproperty(this::ScreenButton, s::Symbol)
-        method_props = (
-            initialize = UI.initialize,
-            addClickEvent = UI.add_click_event,
-            handleEvent = UI.handle_event,
-            setVector2Value = UI.set_vector2_value,
-            loadSprite = UI.load_button_sprite_editor,
-            destroy = UI.destroy
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-    
     function UI.render(this::ScreenButton, debug)
         if !this.isInitialized
-            this.initialize()
+            UI.initialize(this)
         end
 
         if this.currentTexture == C_NULL || this.textTexture == C_NULL
@@ -127,11 +114,6 @@ module ScreenButtonModule
 
     function UI.add_click_event(this::ScreenButton, event)
         push!(this.clickEvents, event)
-    end
-
-    function UI.set_vector2_value(this::ScreenButton, field, x, y)
-        setfield!(this, field, Math.Vector2(x,y))
-        # println("set $(field) to $(getfield(this, field))")
     end
 
     function UI.handle_event(this::ScreenButton, evt, x, y)

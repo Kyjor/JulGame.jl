@@ -43,8 +43,6 @@ function set_scale end
 function set_size end
 function set_sprite end
 function set_tag end
-function set_vector2_value end
-function set_vector2f_value end
 function stop_music end
 function toggle_sound end
 function unload_sound end

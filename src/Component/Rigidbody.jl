@@ -1,6 +1,5 @@
 ﻿module RigidbodyModule
     using ..Component.JulGame
-    import ..Component.JulGame: deprecated_get_property
     import ..Component
     export Rigidbody
     struct Rigidbody
@@ -39,18 +38,6 @@
         end
     end
 
-    function Base.getproperty(this::InternalRigidbody, s::Symbol)
-        # Todo: update this based on offset and scale
-        method_props = (
-            update = Component.update,
-            applyForces = Component.apply_forces,
-            getVelocity = Component.get_velocity,
-            getParent = Component.get_parent,
-            setVector2fValue = Component.set_vector2f_value
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-
     function Component.update(this::InternalRigidbody, dt)
         velocityMultiplier = Math.Vector2f(1.0, 1.0)
         transform = this.parent.transform
@@ -61,15 +48,15 @@
             newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
             velocityMultiplier = Math.Vector2f(1.0, 0.0)
         end
-        newAcceleration = this.applyForces()
+        newAcceleration = Component.apply_forces(this)
         newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
-        transform.setPosition(newPosition)
+        Component.set_position(transform, newPosition)
         SetVelocity(this, newVelocity * velocityMultiplier)
         this.acceleration = newAcceleration
 
         if this.parent.collider != C_NULL
-            this.parent.collider.checkCollisions()
+            Component.check_collisions(this.parent.collider)
         end
     end
 
@@ -87,11 +74,6 @@
     function Component.get_parent(this::InternalRigidbody)
         return this.parent
     end
-
-    function Component.set_vector2f_value(this::InternalRigidbody, field, x, y)
-        setfield!(this, field, Math.Vector2f(x,y))
-    end
-
 
     """
     AddVelocity(this::Rigidbody, velocity::Math.Vector2f)

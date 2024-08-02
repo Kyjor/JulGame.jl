@@ -36,10 +36,10 @@ function Base.getproperty(this::Spider, s::Symbol)
     elseif s == :update
         function(deltaTime)
             if this.parent.transform.position.x <= this.startingX && !this.isMovingRight
-                this.parent.sprite.flip()
+                Component.flip(this.parent.sprite)
                 this.isMovingRight = true
             elseif this.parent.transform.position.x >= this.endingX && this.isMovingRight
-                this.parent.sprite.flip()
+                Component.flip(this.parent.sprite)
                 this.isMovingRight = false
             end
 

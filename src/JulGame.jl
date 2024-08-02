@@ -34,6 +34,12 @@ module JulGame
     using .InputModule: Input
     export Input
 
+    include("Camera/Camera.jl")
+    using .CameraModule: Camera
+    
+    include("Scene.jl")
+    using .SceneModule: Scene
+
     include("UI/UI.jl")
     using .UI
     export ScreenButtonModule, TextBoxModule

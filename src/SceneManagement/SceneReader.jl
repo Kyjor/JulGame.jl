@@ -52,25 +52,22 @@ module SceneReaderModule
 
                 for component in components
                     if typeof(component) == Animator
-                        newEntity.addAnimator(component::Animator)
+                        add_animator(newEntity, component::Animator)
                         continue
                     elseif typeof(component) == Collider
-                        newEntity.addCollider(component::Collider)
+                        add_collider(newEntity, component::Collider)
                         continue
                     elseif typeof(component) == CircleCollider
-                        newEntity.addCircleCollider(component::CircleCollider)
+                        add_circle_collider(newEntity, component::CircleCollider)
                         continue
                     elseif typeof(component) == Rigidbody
-                        newEntity.addRigidbody(component::Rigidbody)
+                        add_rigidbody(newEntity, component::Rigidbody)
                         continue
                     elseif typeof(component) == SoundSource
-                        newEntity.addSoundSource(component::SoundSource)
+                        add_sound_source(newEntity, component::SoundSource)
                         continue
                     elseif typeof(component) == Sprite
-                        newEntity.addSprite(false, component::Sprite)
-                        continue
-                    elseif typeof(component) == Transform
-                        newEntity.transform = component::Transform
+                        add_sprite(newEntity, component::Sprite)
                         continue
                     end
                 end

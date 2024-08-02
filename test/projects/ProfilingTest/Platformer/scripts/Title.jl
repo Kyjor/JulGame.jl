@@ -38,8 +38,9 @@ function Base.getproperty(this::Title, s::Symbol)
                     end
                 end
 
-                sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
-                sound.toggleSound()
+                sound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
+                Component.toggle_sound(sound)
+
                 MainLoop.change_scene("level_1.json")
             catch e
                 println(e)

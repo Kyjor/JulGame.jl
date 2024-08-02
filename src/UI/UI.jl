@@ -12,7 +12,6 @@ module UI
         set_color,
         set_parent,
         set_position,
-        set_vector2_value,
         update_font_size,
         update_text
 
