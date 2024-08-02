@@ -39,7 +39,7 @@ module ShapeModule
     end
 
     function Component.draw(this::InternalShape)
-        if JulGame.Renderer == C_NULL
+        if JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
             return                    
         end
 
@@ -56,9 +56,9 @@ module ShapeModule
         convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)),
         convert(Int32,round(1 * parentTransform.scale.x * SCALE_UNITS)), 
         convert(Int32,round(1 * parentTransform.scale.y * SCALE_UNITS))))
-        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
+        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.color.x, this.color.y, this.color.z, SDL2.SDL_ALPHA_OPAQUE );      
 
-        this.isFilled ? SDL2.SDL_RenderFillRectF( JulGame.Renderer, outlineRect) : SDL2.SDL_RenderDrawRectF( JulGame.Renderer, outlineRect);
+        this.isFilled ? SDL2.SDL_RenderFillRectF( JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, outlineRect) : SDL2.SDL_RenderDrawRectF( JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, outlineRect);
         
     end
 

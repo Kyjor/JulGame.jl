@@ -47,7 +47,9 @@ function Base.getproperty(this::GameManager, s::Symbol)
                 Component.unload_sound(this.currentMusic)
             end
 
-            this.currentMusic = ("")
+            this.currentMusic = JulGame.create_sound_source(this.parent, SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
+            Component.toggle_sound(this.currentMusic)
+            
             JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.starCount))
         end
     elseif s == :update

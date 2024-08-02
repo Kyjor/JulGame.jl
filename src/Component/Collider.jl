@@ -122,7 +122,7 @@ module ColliderModule
                 transform = Component.get_parent(this).transform
                 if collision[1] == Top::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
+                    for eventToCall::Function in this.collisionEvents
                         eventToCall(collider)
                     end
                     #Begin to overlap, correct position
@@ -130,7 +130,7 @@ module ColliderModule
                 end
                 if collision[1] == Left::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
+                    for eventToCall::Function in this.collisionEvents
                         eventToCall(collider)
                     end
                     #Begin to overlap, correct position
@@ -138,7 +138,7 @@ module ColliderModule
                 end
                 if collision[1] == Right::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
+                    for eventToCall::Function in this.collisionEvents
                         eventToCall(collider)
                     end
                     #Begin to overlap, correct position
@@ -149,7 +149,7 @@ module ColliderModule
                     if !collider.isTrigger
                         push!(this.currentRests, collider)
                     end
-                    for eventToCall in this.collisionEvents
+                    for eventToCall::Function in this.collisionEvents
                         try
                             eventToCall(collider)
                         catch e

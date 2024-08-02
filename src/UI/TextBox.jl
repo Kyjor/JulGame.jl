@@ -53,7 +53,7 @@ module TextBoxModule
         end
 
         if debug
-            SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
+            SDL2.SDL_RenderDrawLines(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, [
                 SDL2.SDL_Point(this.position.x, this.position.y), 
                 SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
                 SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
@@ -65,7 +65,7 @@ module TextBoxModule
         Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
 
-        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
@@ -83,7 +83,7 @@ module TextBoxModule
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
     end
 
     function UI.initialize(this::TextBox)
@@ -119,7 +119,7 @@ module TextBoxModule
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
         this.size = Math.Vector2(surface[1].w, surface[1].h)
-        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
+        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
         
         if !this.isWorldEntity
             UI.center_text(this)

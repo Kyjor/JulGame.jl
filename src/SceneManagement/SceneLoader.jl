@@ -46,7 +46,7 @@ module SceneLoaderModule
 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
         if renderer !== nothing
-            JulGame.Renderer = renderer
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = renderer
         end
         JulGame.MAIN = JulGame.Main(Float64(1.0))
         #println("Loading scene $sceneFileName from $projectPath")
