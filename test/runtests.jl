@@ -1,4 +1,3 @@
-using JulGame
 using Test
 
 ROOTDIR = joinpath(@__DIR__, "..")
