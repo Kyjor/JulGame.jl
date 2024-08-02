@@ -45,9 +45,9 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             MAIN.scene.camera.target = this.cameraTarget
             this.gameManager = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "Game Manager").scripts[1]
             this.deathsThisLevel = 0
-            this.coinSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "coin.wav", Int32(50)))
-            this.hurtSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "hit.wav", Int32(50)))
-            this.starSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "power-up.wav", Int32(50)))
+            # this.coinSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "coin.wav", Int32(50)))
+            # this.hurtSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "hit.wav", Int32(50)))
+            # this.starSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "power-up.wav", Int32(50)))
         end
     elseif s == :update
         function(deltaTime)
@@ -60,7 +60,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             # https://wiki.libsdl.org/SDL2/SDL_Scancode
             # Spaces full scancode is "SDL_SCANCODE_SPACE" so we use "SPACE". Every other key is the same.
             if this.parent.rigidbody.grounded
-                JulGame.Component.toggle_sound(this.jumpSound)
+                # JulGame.Component.toggle_sound(this.jumpSound)
 
                 JulGame.RigidbodyModule.SetVelocity(this.parent.rigidbody, Vector2f(JulGame.Component.get_velocity(this.parent.rigidbody).x, 0))
                 JulGame.RigidbodyModule.AddVelocity(this.parent.rigidbody, Vector2f(0, this.jumpVelocity))
@@ -121,10 +121,10 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         function(otherCollider)
             if otherCollider.tag == "Coin"
                 JulGame.MainLoop.destroy_entity(MAIN, otherCollider.parent)
-                JulGame.Component.toggle_sound(this.coinSound)
+                # JulGame.Component.toggle_sound(this.coinSound)
                 JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[1], string(parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[2])))
             elseif otherCollider.tag == "Star"
-                JulGame.Component.toggle_sound(this.starSound)
+                # JulGame.Component.toggle_sound(this.starSound)
                 JulGame.MainLoop.destroy_entity(JulGame.MAIN, otherCollider.parent)
                 this.gameManager.starCount = this.gameManager.starCount + 1
                 JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[2], string(this.gameManager.starCount))
@@ -132,7 +132,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
         end
     elseif s == :respawn
         function()
-            JulGame.Component.toggle_sound(this.hurtSound)
+            # JulGame.Component.toggle_sound(this.hurtSound)
             this.parent.transform.position = Vector2f(1, 4)
             this.gameManager.starCount = max(this.gameManager.starCount - 1, 0)
             JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
