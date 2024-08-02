@@ -1,5 +1,6 @@
 using JulGame.AnimationModule
 using JulGame.AnimatorModule
+using JulGame.Component
 using JulGame.RigidbodyModule
 using JulGame.Macros
 using JulGame.Math

@@ -154,15 +154,6 @@ module MainLoop
         end
     end
 
-    function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
-        if this.shouldChangeScene
-            this.shouldChangeScene = false
-            this.initializeNewScene(true)
-            return
-        end
-        return game_loop(this, startTime, lastPhysicsTime, isEditor, windowPos, windowSize)
-    end
-
     function handle_editor_inputs_camera(this::Main, windowPos::Math.Vector2, windowSize::Math.Vector2)
         #Rendering
         cameraPosition = this.scene.camera.position
@@ -603,7 +594,7 @@ function create_entity(entity)
 end
 
 """
-game_loop(this, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
+game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
 
 Runs the game loop.
 
@@ -615,7 +606,12 @@ Parameters:
 
 """
 function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
-        try
+	if this.shouldChangeScene
+		this.shouldChangeScene = false
+		initialize_new_scene(this, isEditor)
+		return
+	end
+	try
 			SDL2.SDL_RenderSetScale(JulGame.Renderer, this.zoom, this.zoom)
 
 			lastStartTime = startTime[]
