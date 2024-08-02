@@ -10,10 +10,17 @@ include(joinpath(PROFILINGTESTDIR, "Platformer", "src", "Platformer.jl"))
 
 @testset "All tests" begin
     cd(joinpath(SMOKETESTDIR, "src"))
-    @test SmokeTest.run(SMOKETESTDIR) == 0
+    @test SmokeTest.run(SMOKETESTDIR, Test) == 0
     include("math/mathtests.jl")
-    #cd(joinpath(@__DIR__, "projects", "ProfilingTest", "Platformer", "src"))
-    # @testset "Platformer" begin
-    #     @test Platformer.run() == 0
-    # end
+
+    cd(joinpath(@__DIR__, "projects", "ProfilingTest", "Platformer", "src"))
+    @testset "Platformer" begin
+        @test Platformer.run() == 0
+    end
+
+    cd(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src"))
+    include(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src", "../Editor.jl"))
+    @testset "Editor" begin
+        @test Editor.run(true) == 0
+    end
 end

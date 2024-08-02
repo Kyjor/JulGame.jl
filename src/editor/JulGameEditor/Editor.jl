@@ -21,7 +21,7 @@ module Editor
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
-    function run()
+    function run(isTestMode::Bool=false)
         info = init_sdl_and_imgui()
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
         startingSize = ImVec2(1920, 1080)
@@ -48,9 +48,11 @@ module Editor
 
         sceneWindowPos = ImVec2(0, 0)
         sceneWindowSize = ImVec2(startingSize.x, startingSize.y)
+        testFrameCount = 0
+        testFrameLimit = 100
         quit = false
             try
-                while !quit
+                while !quit                    
                     try
                         if currentSceneMain === nothing
                             quit = poll_events()
@@ -362,6 +364,11 @@ module Editor
                         #################################################
 
                         SDL2.SDL_RenderPresent(renderer);
+                        if isTestMode && testFrameCount < testFrameLimit
+                            testFrameCount += 1
+                        elseif isTestMode
+                            quit = true
+                        end
                     catch e 
                         push!(latest_exceptions, [e, "$(Dates.now())"])
                         if length(latest_exceptions) > 10
@@ -386,7 +393,7 @@ module Editor
                 SDL2.SDL_DestroyRenderer(renderer);
                 SDL2.SDL_DestroyWindow(window);
                 SDL2.SDL_Quit()
-                exit()
+                return 0
         end
     end
 
@@ -541,4 +548,3 @@ module Editor
         splice!(entities, destination : destination, updatedEntities)
     end
 end
-Editor.run()
