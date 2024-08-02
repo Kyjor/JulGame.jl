@@ -143,7 +143,6 @@ module MainLoop
                 SDL2.Mix_CloseAudio()
                 SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
                 SDL2.SDL_Quit()
-				println("Quitting")
             else
                 this.shouldChangeScene = false
                 initialize_new_scene(this, false)

@@ -138,6 +138,9 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
             this.deathsThisLevel += 1
         end
+    elseif s == :onShutDown
+        function()
+        end
     else
         getfield(this, s)
     end

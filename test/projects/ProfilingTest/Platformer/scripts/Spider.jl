@@ -47,6 +47,9 @@ function Base.getproperty(this::Spider, s::Symbol)
     elseif s == :handleCollisions
         function()
         end
+    elseif s == :onShutDown
+        function()
+        end
     else
         getfield(this, s)
     end

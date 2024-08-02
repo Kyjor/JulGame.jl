@@ -13,7 +13,6 @@
             return -1
         end
 
-        println("Running")
         return 0
     end
 
