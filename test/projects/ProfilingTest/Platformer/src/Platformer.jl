@@ -1,9 +1,8 @@
-module Platformer
     using JulGame
     using JulGame.Math
     using JulGame.SceneBuilderModule
     
-    function run()
+    function run_platformer()
         JulGame.MAIN = JulGame.Main(Float64(1.0))
         MAIN.testMode = true
         MAIN.testLength = 30.0
@@ -22,8 +21,6 @@ module Platformer
         return 0
     end
 
-    julia_main() = run()
-end
 # comment when building
 # Platformer.run()
 # using Profile

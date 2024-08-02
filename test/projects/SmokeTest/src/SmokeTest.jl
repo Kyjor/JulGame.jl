@@ -1,8 +1,3 @@
-module SmokeTest
-    using JulGame
-    using JulGame.Math
-    using JulGame.SceneBuilderModule
-    
     function run(SMOKETESTDIR, Test)
         JulGame.MAIN = JulGame.Main(Float64(1.0))
         MAIN.testMode = true
@@ -22,6 +17,3 @@ module SmokeTest
         println("Running")
         return 0
     end
-
-    julia_main() = run()
-end
