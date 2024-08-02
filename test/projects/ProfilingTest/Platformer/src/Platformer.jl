@@ -1,7 +1,3 @@
-    using JulGame
-    using JulGame.Math
-    using JulGame.SceneBuilderModule
-    
     function run_platformer()
         JulGame.MAIN = JulGame.Main(Float64(1.0))
         MAIN.testMode = true
