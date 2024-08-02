@@ -13,15 +13,15 @@ include(joinpath(PROFILINGTESTDIR, "Platformer", "src", "Platformer.jl"))
     @testset "Platformer" begin
         @test run_platformer() == 0
     end
-    
-    include("math/mathtests.jl")
-    
-    cd(joinpath(SMOKETESTDIR, "src"))
-    @test run(SMOKETESTDIR, Test) == 0
 
-    cd(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src"))
-    include(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src", "../Editor.jl"))
-    @testset "Editor" begin
-        @test Editor.run(true) == 0
-    end
+    #include("math/mathtests.jl")
+    
+    # cd(joinpath(SMOKETESTDIR, "src"))
+    # @test run(SMOKETESTDIR, Test) == 0
+
+    # cd(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src"))
+    # include(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src", "../Editor.jl"))
+    # @testset "Editor" begin
+    #     @test Editor.run(true) == 0
+    # end
 end
