@@ -1,18 +1,9 @@
-using JulGame.AnimationModule
-using JulGame.AnimatorModule
-using JulGame.RigidbodyModule
-using JulGame.Macros
-using JulGame.Math
-using JulGame.MainLoop
-using JulGame.SoundSourceModule
-using JulGame.TransformModule
-
 mutable struct Spider
     animator
     endingX::Int32
     isMovingRight::Bool
     parent::JulGame.EntityModule.Entity
-    sound::SoundSourceModule.SoundSource
+    sound::JulGame.SoundSourceModule.SoundSource
     speed::Number
     startingX::Int32
 
@@ -36,17 +27,17 @@ function Base.getproperty(this::Spider, s::Symbol)
     elseif s == :update
         function(deltaTime)
             if this.parent.transform.position.x <= this.startingX && !this.isMovingRight
-                Component.flip(this.parent.sprite)
+                JulGame.Component.flip(this.parent.sprite)
                 this.isMovingRight = true
             elseif this.parent.transform.position.x >= this.endingX && this.isMovingRight
-                Component.flip(this.parent.sprite)
+                JulGame.Component.flip(this.parent.sprite)
                 this.isMovingRight = false
             end
 
             if this.isMovingRight
-                this.parent.transform.position = Vector2f(this.parent.transform.position.x + this.speed*deltaTime, this.parent.transform.position.y)
+                this.parent.transform.position = JulGame.Math.Vector2f(this.parent.transform.position.x + this.speed*deltaTime, this.parent.transform.position.y)
             else
-                this.parent.transform.position = Vector2f(this.parent.transform.position.x - this.speed*deltaTime, this.parent.transform.position.y)
+                this.parent.transform.position = JulGame.Math.Vector2f(this.parent.transform.position.x - this.speed*deltaTime, this.parent.transform.position.y)
             end
         end
     elseif s == :setParent

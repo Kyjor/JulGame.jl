@@ -1,12 +1,3 @@
-using JulGame.AnimationModule
-using JulGame.AnimatorModule
-using JulGame.RigidbodyModule
-using JulGame.Macros
-using JulGame.Math
-using JulGame.MainLoop
-using JulGame.SoundSourceModule
-using JulGame.TransformModule
-
 mutable struct Saw
     animator::AnimatorModule.Animator
     endingY::Int32

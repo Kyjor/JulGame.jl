@@ -1,5 +1,3 @@
-using JulGame 
-
 mutable struct Title
     fade
     parent
@@ -41,7 +39,7 @@ function Base.getproperty(this::Title, s::Symbol)
                 sound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
                 JulGame.Component.toggle_sound(sound)
 
-                MainLoop.change_scene("level_1.json")
+                JulGame.MainLoop.change_scene("level_1.json")
             catch e
                 println(e)
 				Base.show_backtrace(stdout, catch_backtrace())

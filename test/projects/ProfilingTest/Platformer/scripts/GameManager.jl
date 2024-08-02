@@ -1,5 +1,3 @@
-using JulGame 
-
 mutable struct GameManager
     currentLevel::Int32
     currentMusic
@@ -44,11 +42,11 @@ function Base.getproperty(this::GameManager, s::Symbol)
             
             this.parent.persistentBetweenScenes = true
             if this.currentLevel > 1
-                Component.unload_sound(this.currentMusic)
+                JulGame.Component.unload_sound(this.currentMusic)
             end
 
-            this.currentMusic = JulGame.create_sound_source(this.parent, SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
-            Component.toggle_sound(this.currentMusic)
+            this.currentMusic = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
+            JulGame.Component.toggle_sound(this.currentMusic)
             
             JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.starCount))
         end
