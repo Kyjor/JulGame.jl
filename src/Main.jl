@@ -44,6 +44,7 @@ module MainLoop
 			this::Main = new()
 
 			SDL2.init()
+			println("SDL2 initialized")
 
 			this.zoom = zoom
 			this.scene = SceneModule.Scene()
