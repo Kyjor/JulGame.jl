@@ -1,4 +1,4 @@
-function show_debug_window(latestExceptions::Vector{String} = String[])
+function show_debug_window(latestExceptions)
     @cstatic begin
         CImGui.Begin("Debug")
         CImGui.Text("The latest 10 exceptions are:")

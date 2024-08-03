@@ -47,7 +47,8 @@ function show_textbox_fields(selectedTextBox, textBoxField)
         @c CImGui.InputInt("$(textBoxField) y", &y, 1)
         
         if x != Value.x || y != Value.y
-            selectedTextBox.setVector2Value(textBoxField, convert(Float64, x), convert(Float64, y))
+            #selectedTextBox.setVector2Value(textBoxField, convert(Float64, x), convert(Float64, y))
+            setfield!(selectedTextBox, textBoxField, Vector2(x, y))
             JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
     elseif fieldName == "autoSizeText" || fieldName == "isCenteredX" || fieldName == "isCenteredY" || fieldName == "isWorldEntity"

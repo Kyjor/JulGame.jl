@@ -53,7 +53,8 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
         @c CImGui.InputInt("$(screenButtonField) y", &y, 1)
         
         if x != Value.x || y != Value.y
-            selectedScreenButton.setVector2Value(screenButtonField, convert(Float64, x), convert(Float64, y))
+            #selectedScreenButton.setVector2Value(screenButtonField, convert(Float64, x), convert(Float64, y))
+            setfield!(selectedScreenButton, screenButtonField, Vector2(x, y))
             # JulGame.update_text(selectedScreenButton, selectedScreenButton.text)
         end
     elseif fieldName == "autoSizeText" || fieldName == "isCentered"

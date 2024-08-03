@@ -16,6 +16,7 @@ module SceneWriterModule
     """
     function serialize_entities(entities::Array, uiElements::Array, projectPath, sceneName)
         
+        println("Serializing entities")
         entitiesDict = []
         uiElementsDict = []
         

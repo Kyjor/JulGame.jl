@@ -44,7 +44,7 @@ module Editor
         hierarchyUISelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
-        latest_exceptions = String[]
+        latest_exceptions = []
 
         sceneWindowPos = ImVec2(0, 0)
         sceneWindowSize = ImVec2(startingSize.x, startingSize.y)
@@ -125,6 +125,7 @@ module Editor
                         itemSelected = false
                         uiSelected = false
 
+                        try
                             CImGui.Begin("Hierarchy") 
                             if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                                 CImGui.SameLine()
@@ -244,98 +245,109 @@ module Editor
                                 CImGui.TreePop()
                             end
                         CImGui.End()
+                    catch e
+                        log_exceptions("Hierarchy Window Error:", latest_exceptions, e, is_test_mode)
+                    end
 
                         show_debug_window(latest_exceptions)
                         
-                        CImGui.Begin("Entity Inspector") 
-                            # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
-                            if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[begin]] == false
-                                fill!(hierarchyEntitySelections, false)
-                                hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
-                            elseif itemSelected
-                                currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
-                            end
-                            for entityIndex = eachindex(hierarchyEntitySelections)
-                                if hierarchyEntitySelections[entityIndex] || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
-                                    CImGui.PushID("AddMenu")
-                                    if CImGui.BeginMenu("Add")
-                                        ShowEntityContextMenu(filteredEntities[entityIndex])
-                                        CImGui.EndMenu()
-                                    end
-                                    CImGui.PopID()
-                                    CImGui.Separator()
-                                    for entityField in fieldnames(Entity)
-                                        if length(filteredEntities) < entityIndex
+                        try
+                            CImGui.Begin("Entity Inspector") 
+                                # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
+                                if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[begin]] == false
+                                    fill!(hierarchyEntitySelections, false)
+                                    hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
+                                elseif itemSelected
+                                    currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
+                                end
+                                for entityIndex = eachindex(hierarchyEntitySelections)
+                                    if hierarchyEntitySelections[entityIndex] || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
+                                        CImGui.PushID("AddMenu")
+                                        if CImGui.BeginMenu("Add")
+                                            ShowEntityContextMenu(filteredEntities[entityIndex])
+                                            CImGui.EndMenu()
+                                        end
+                                        CImGui.PopID()
+                                        CImGui.Separator()
+                                        for entityField in fieldnames(Entity)
+                                            if length(filteredEntities) < entityIndex
+                                                break
+                                            end
+                                            show_field_editor(filteredEntities[entityIndex], entityField)
+                                        end
+                    
+                                        CImGui.Separator()
+                                        if CImGui.Button("Duplicate") 
+                                            push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
+                                            # TODO: switch to duplicated entity
+                                        end
+    
+                                        CImGui.Separator()
+                                        CImGui.Text("Delete Entity: NO CONFIRMATION")
+                                        if CImGui.Button("Delete")
+                                            MainLoop.destroy_entity(currentSceneMain, currentSceneMain.scene.entities[entityIndex])
                                             break
                                         end
-                                        show_field_editor(filteredEntities[entityIndex], entityField)
+                                        
+                                        break # TODO: Remove this when we can select multiple entities and edit them all at once
                                     end
-                
-                                    CImGui.Separator()
-                                    if CImGui.Button("Duplicate") 
-                                        push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
-                                        # TODO: switch to duplicated entity
-                                    end
-
-                                    CImGui.Separator()
-                                    CImGui.Text("Delete Entity: NO CONFIRMATION")
-                                    if CImGui.Button("Delete")
-                                        MainLoop.destroy_entity(currentSceneMain, currentSceneMain.scene.entities[entityIndex])
-                                        break
-                                    end
-                                    
-                                    break # TODO: Remove this when we can select multiple entities and edit them all at once
                                 end
-                            end
+                            CImGui.End()
+                        catch e
+                            log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, is_test_mode)
+                        end
 
-                        CImGui.End()
+                        try
+                            
+                       
+                            CImGui.Begin("UI Inspector") 
+                                # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
+                                #if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyUISelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing
+                                    # fill!(hierarchyUISelections, false)
+                                    #hierarchyUISelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
+                                #elseif uiSelected
+                                    # currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyUISelections)[1]]
+                                #end
+                                for uiElementIndex = eachindex(hierarchyUISelections)
+                                    if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
+                                        CImGui.PushID("AddMenu")
+                                        if CImGui.BeginMenu("Add")
+                                            ShowEntityContextMenu(currentSceneMain.scene.uiElements[uiElementIndex])
+                                            CImGui.EndMenu()
+                                        end
+                                        CImGui.PopID()
+                                        CImGui.Separator()
 
-                        CImGui.Begin("UI Inspector") 
-                            # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
-                            #if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyUISelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing
-                                # fill!(hierarchyUISelections, false)
-                                #hierarchyUISelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
-                            #elseif uiSelected
-                                # currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyUISelections)[1]]
-                            #end
-                            for uiElementIndex = eachindex(hierarchyUISelections)
-                                if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
-                                    CImGui.PushID("AddMenu")
-                                    if CImGui.BeginMenu("Add")
-                                        ShowEntityContextMenu(currentSceneMain.scene.uiElements[uiElementIndex])
-                                        CImGui.EndMenu()
+                                        if length(currentSceneMain.scene.uiElements) < uiElementIndex
+                                            break
+                                        end
+                                        
+                                        if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
+                                            show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                                        else
+                                            show_screenbutton_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                                        end
+
+                                        # CImGui.Separator()
+                                        # if CImGui.Button("Duplicate") 
+                                        #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
+                                        #     # TODO: switch to duplicated entity
+                                        # end
+
+                                        CImGui.Separator()
+                                        CImGui.Text("Delete UI Element: NO CONFIRMATION")
+                                        if CImGui.Button("Delete")
+                                            MainLoop.DestroyUIElement(currentSceneMain.scene.uiElements[uiElementIndex])
+                                            break
+                                        end
+                                        
+                                        break # TODO: Remove this when we can select multiple entities and edit them all at once
                                     end
-                                    CImGui.PopID()
-                                    CImGui.Separator()
-
-                                    if length(currentSceneMain.scene.uiElements) < uiElementIndex
-                                        break
-                                    end
-                                    
-                                    if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
-                                        show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    else
-                                        show_screenbutton_fields(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    end
-
-                                    # CImGui.Separator()
-                                    # if CImGui.Button("Duplicate") 
-                                    #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
-                                    #     # TODO: switch to duplicated entity
-                                    # end
-
-                                    CImGui.Separator()
-                                    CImGui.Text("Delete UI Element: NO CONFIRMATION")
-                                    if CImGui.Button("Delete")
-                                        MainLoop.DestroyUIElement(currentSceneMain.scene.uiElements[uiElementIndex])
-                                        break
-                                    end
-                                    
-                                    break # TODO: Remove this when we can select multiple entities and edit them all at once
                                 end
-                            end
-                        CImGui.End()
-
+                            CImGui.End()
+                        catch e
+                            log_exceptions("UI Inspector Window Error:", latest_exceptions, e, isTestMode)
+                        end
 
                         SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                         SDL2.SDL_RenderClear(renderer)
@@ -370,20 +382,15 @@ module Editor
                             quit = true
                         end
                     catch e 
-                        push!(latest_exceptions, [e, "$(Dates.now())"])
-                        if length(latest_exceptions) > 10
-                            deleteat!(latest_exceptions, 1)
-                        end
-    
-                        @error e
-                        Base.show_backtrace(stdout, catch_backtrace())
+                        @error "Error in renderloop!" exception=e
                     end
                 end
             catch e
-                @warn "Error in renderloop!" exception=e
+                backup_file_name = backup_file_name = "$(replace(currentSceneName, ".json" => ""))-backup-$(replace(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"), ":" => "-")).json"
+                println("Backup file name: ", backup_file_name)
+                SceneWriterModule.serialize_entities(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, backup_file_name)
                 Base.show_backtrace(stderr, catch_backtrace())
-                save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, String(currentSceneName +"-backup-$(Dates.now())"))
-                println("Scene saved as backup")
+                @warn "Error in renderloop!" exception=e
             finally
                 #TODO: fix these: ImGui_ImplSDLRenderer2_Shutdown();
                 # ImGui_ImplSDL2_Shutdown();
@@ -546,5 +553,16 @@ module Editor
         updatedEntities = [entities[destination], originEntity]
         
         splice!(entities, destination : destination, updatedEntities)
+    end
+
+    function log_exceptions(error_type, latest_exceptions, e, is_test_mode)
+        println("Error: $(is_test_mode): ", e)
+        push!(latest_exceptions, [e, String("$(Dates.now())")])
+        if length(latest_exceptions) > 10
+            deleteat!(latest_exceptions, 1)
+        end
+        if is_test_mode
+            @warn "Error in renderloop!" exception=e
+        end
     end
 end

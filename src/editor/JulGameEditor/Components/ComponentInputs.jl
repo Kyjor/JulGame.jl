@@ -303,7 +303,13 @@ function show_textbox_fields(textbox)
             end
             textbox.fontPath = currentTextInTextBox
 
-            CImGui.Button("Load Font") && (UI.load_font(textbox, joinpath(BasePath), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
+            basePath = joinpath(BasePath, "assets", "fonts")
+            fontPath = joinpath(strip(String(textbox.fontPath)))
+            if strip(String(currentTextInTextBox)) == "" || joinpath(strip(String(currentTextInTextBox))) == joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+                basePath = joinpath(pwd(), "..")
+                fontPath = joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+            end
+            CImGui.Button("Load Font") && (UI.load_font(textbox, basePath, fontPath))
         else 
             show_textbox_fields(textbox, field)
         end  
