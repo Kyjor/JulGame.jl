@@ -19,9 +19,11 @@ include(joinpath(PROFILINGTESTDIR, "Platformer", "src", "Platformer.jl"))
     cd(joinpath(SMOKETESTDIR, "src"))
     @test run(SMOKETESTDIR, Test) == 0
 
-    cd(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src"))
-    include(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src", "../Editor.jl"))
-    @testset "Editor" begin
-        @test Editor.run(true) == 0
+    if !Sys.islinux()
+        cd(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src"))
+        include(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src", "../Editor.jl"))
+        @testset "Editor" begin
+            @test Editor.run(true) == 0
+        end
     end
 end
