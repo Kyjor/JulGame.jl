@@ -200,7 +200,7 @@ function show_animator_properties(animator)
                 animationFields=fieldnames(JulGame.AnimationModule.Animation);
                 animations = animator.animations
 
-                CImGui.Button("Add Animation") && animator.appendArray()
+                CImGui.Button("Add Animation") && Component.append_array(animator)
                 for i = eachindex(animations) 
                     if CImGui.TreeNode("animation $(i)")
                         for j = eachindex(animationFields)
@@ -211,14 +211,14 @@ function show_animator_properties(animator)
                                 animator.animations[i].animatedFPS = x
                             elseif animationFieldString == "frames"
                                 try
-                                    CImGui.Button("Add Frame") && animations[i].appendArray()
+                                    CImGui.Button("Add Frame") && Component.append_array(animations[i])
                                     CImGui.Button("Delete") && (deleteat!(animations, i); break;)
                                     for k = eachindex(animations[i].frames)
                                         if CImGui.TreeNode("frame $(k)")
                                             vec = animations[i].frames[k]
                                             vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
-                                            animator.animations[i].updateArrayValue(JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
+                                            Component.update_array_value(animations[i], JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
                                             CImGui.TreePop()
                                         end
                                     end
@@ -267,7 +267,7 @@ function show_sprite_fields(sprite)
                 end
             end
             sprite.imagePath = currentTextInTextBox
-            CImGui.Button("Load Image") && (sprite.loadImage(currentTextInTextBox))
+            CImGui.Button("Load Image") && (Component.load_image(sprite, currentTextInTextBox))
         else 
             show_component_field_input(sprite, field)
         end  
@@ -332,9 +332,9 @@ function show_screenbutton_fields(screenButton)
             if fieldString == "fontPath"
                 # TODO: CImGui.Button("Load Font") && (UI.load_font(screenButton, joinpath(pwd()), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
             elseif fieldString == "buttonUpSpritePath"
-                CImGui.Button("Load Button Up Sprite") && (screenButton.loadSprite(currentTextInScreenButton, true))
+                CImGui.Button("Load Button Up Sprite") && (UI.load_sprite(screenButton, currentTextInScreenButton, true))
             elseif fieldString == "buttonDownSpritePath"
-                CImGui.Button("Load Button Down Sprite") && (screenButton.loadSprite(currentTextInScreenButton, false))
+                CImGui.Button("Load Button Down Sprite") && (UI.load_sprite(screenButton, currentTextInScreenButton, false))
             end
         else 
             show_screenbutton_fields(screenButton, field)
@@ -369,8 +369,8 @@ function show_sound_source_fields(soundSource)
                 end
             end
             soundSource.path = currentTextInTextBox
-            CImGui.Button("Load Sound") && (soundSource.loadSound(currentTextInTextBox, false))
-            CImGui.Button("Load Music") && (soundSource.loadSound(currentTextInTextBox, true))
+            CImGui.Button("Load Sound") && (Component.load_sound(soundSource, currentTextInTextBox, false))
+            CImGui.Button("Load Music") && (Component.load_sound(soundSource, currentTextInTextBox, true))
         else
             show_component_field_input(soundSource, field)
         end  

@@ -2,7 +2,6 @@
 module CircleColliderModule
     using ..Component.JulGame
     using ..Component.ColliderModule
-    import ..Component.JulGame: deprecated_get_property
     import ..Component
 
     export CircleCollider
@@ -44,19 +43,6 @@ module CircleColliderModule
             return this
         end
     end
-
-
-    function Base.getproperty(this::CircleCollider, s::Symbol)
-        method_props = (
-            getSize = Component.get_size,
-            checkCollisions = Component.check_collisions,
-            setParent = Component.set_parent,
-            getParent = Component.get_parent,
-            addCollisionEvent = Component.add_collision_event,
-            getType = Component.get_type
-        )
-        deprecated_get_property(method_props, this, s)
-    end
     
     function Component.get_size(this::CircleCollider)
         return this.size
@@ -68,28 +54,27 @@ module CircleColliderModule
         counter = 0
         
         this.isGrounded = this.parent.rigidbody.grounded
-        
 
         for i in eachindex(colliders)
             #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
-            if !colliders[i].getParent().isActive || !colliders[i].enabled
+            if !Component.get_parent(colliders[i]).isActive || !colliders[i].enabled
                 if this.parent.rigidbody.grounded && i == length(colliders)
                     this.parent.rigidbody.grounded = false
                 end
                 continue
             end
-            if this != colliders[i] && this.parent.rigidbody.getVelocity().y >= 0
+            if this != colliders[i] && Component.get_velocity(this.parent.rigidbody).y >= 0
                 collision = CheckCollision(this, colliders[i])
                 if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                     for j in eachindex(this.currentRests)
-                        if this.currentRests[j].getParent().transform.position.y == colliders[i].getParent().transform.position.y && this.currentRests[j].getSize().y == colliders[i].getSize().y
+                        if Component.get_parent(this.currentRests[j]).transform.position.y == Component.get_parent(colliders[i]).transform.position.y && Component.get_size(this.currentRests[j]).y == Component.get_size(colliders[i]).y
                             push!(this.currentRests, colliders[i])
                             break
                         end
                     end
                 end
-                transform = this.getParent().transform
+                transform = Component.get_parent(this).transform
                 # if collision[1] == Top::CollisionDirection
                 #     push!(this.currentCollisions, colliders[i])
                 #     for eventToCall in this.collisionEvents
@@ -117,13 +102,12 @@ module CircleColliderModule
                 # if collision[1] == Bottom::CollisionDirection
                 #this.isGrounded = collision[1]
                 if collision[1] == true
-                    println("Collided with: ", colliders[i].getParent().name, " at ", colliders[i].getParent().transform.position)
                     push!(this.currentRests, colliders[i])
                     for eventToCall in this.collisionEvents
                         eventToCall()
                     end
                     #Begin to overlap, correct position
-                    transform.setPosition(Math.Vector2f(transform.position.x, transform.position.y - collision[2]))
+                    Component.set_position(transform, Math.Vector2f(transform.position.x, transform.position.y - collision[2]))
                     this.isGrounded = true
                 end
                 # end
@@ -142,7 +126,7 @@ module CircleColliderModule
             end
         end
    
-        this.parent.rigidbody.grounded = length(this.currentRests) > 0 && this.parent.rigidbody.getVelocity().y >= 0
+        this.parent.rigidbody.grounded = length(this.currentRests) > 0 && Component.get_velocity(this.parent.rigidbody).y >= 0
         this.currentCollisions = []
     end
 
@@ -178,8 +162,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX, cY = 0, 0
 
-        posA = a.getParent().transform.position + a.offset
-        posB = b.getParent().transform.position + b.offset
+        posA = Component.get_parent(a).transform.position + a.offset
+        posB = Component.get_parent(b).transform.position + b.offset
 
         # Find closest x offset
         if posA.x < posB.x
@@ -214,8 +198,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX = 0
 
-        posA = a.getParent().transform.position + a.offset
-        posB = b.getParent().transform.position + b.offset
+        posA = Component.get_parent(a).transform.position + a.offset
+        posB = Component.get_parent(b).transform.position + b.offset
         radius = a.diameter / 2
 
         # Find closest x offset

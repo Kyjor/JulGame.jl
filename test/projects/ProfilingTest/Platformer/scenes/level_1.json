@@ -120,15 +120,6 @@
                     "isTrigger": false
                 },
                 {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
-                {
                     "animations": [
                         {
                             "animatedFPS": 6,
@@ -15181,15 +15172,6 @@
                     "isTrigger": false
                 },
                 {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
-                {
                     "animations": [
                         {
                             "animatedFPS": 5,
@@ -15266,15 +15248,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15358,15 +15332,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15450,15 +15416,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15542,15 +15500,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15728,15 +15678,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15820,15 +15762,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15906,15 +15840,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -15992,15 +15918,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -16078,15 +15996,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {
@@ -16164,15 +16074,7 @@
                     "isPlatformerCollider": false,
                     "isTrigger": false
                 },
-                {
-                    "channel": -1,
-                    "volume": 100,
-                    "sound": {
-                    },
-                    "isMusic": false,
-                    "type": "SoundSource",
-                    "path": "jump.wav"
-                },
+                
                 {
                     "animations": [
                         {

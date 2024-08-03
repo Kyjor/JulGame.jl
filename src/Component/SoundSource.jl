@@ -1,6 +1,5 @@
 module SoundSourceModule
     using ..JulGame
-    import ..JulGame: deprecated_get_property
     import ..Component
     
     export SoundSource
@@ -50,17 +49,6 @@ module SoundSourceModule
 
             return this
         end
-    end
-    
-    function Base.getproperty(this::InternalSoundSource, s::Symbol)
-        method_props = (
-            toggleSound = Component.toggle_sound,
-            stopMusic = Component.stop_music,
-            loadSound = Component.load_sound,
-            unloadSound = Component.unload_sound,
-            setParent = Component.set_parent
-        )
-        deprecated_get_property(method_props, this, s)
     end
 
     function Component.toggle_sound(this::InternalSoundSource, loops = 0)

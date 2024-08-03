@@ -3,7 +3,6 @@
     using ..Component.JulGame
     using ..Component.JulGame.Math
     using ..Component.SpriteModule
-    import ..Component.JulGame: deprecated_get_property
     import ..Component
     export Animator
     struct Animator
@@ -33,17 +32,6 @@
         end
     end
 
-    function Base.getproperty(this::InternalAnimator, s::Symbol)
-        method_props = (
-            update = Component.update,
-            setParent = Component.set_parent,
-            appendArray = Component.append_array
-        )
-
-        deprecated_get_property(method_props, this, s)
-    end
-
-    
     function Component.get_last_update(this::InternalAnimator)
         return this.lastUpdate
     end

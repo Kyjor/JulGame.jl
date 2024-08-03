@@ -7,7 +7,7 @@ module Editor
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64
     using CImGui.CImGui
     using Dates
-    using JulGame: MainLoop, Math, SceneLoaderModule, SDL2, UI
+    using JulGame: Component, MainLoop, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
 
     global sdlVersion = "2.0.0"
@@ -21,7 +21,7 @@ module Editor
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
-    function run()
+    function run(isTestMode::Bool=false)
         info = init_sdl_and_imgui()
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
         startingSize = ImVec2(1920, 1080)
@@ -48,9 +48,11 @@ module Editor
 
         sceneWindowPos = ImVec2(0, 0)
         sceneWindowSize = ImVec2(startingSize.x, startingSize.y)
+        testFrameCount = 0
+        testFrameLimit = 100
         quit = false
             try
-                while !quit
+                while !quit                    
                     try
                         if currentSceneMain === nothing
                             quit = poll_events()
@@ -132,7 +134,7 @@ module Editor
                                     CImGui.MenuItem("Add", C_NULL, false, false)
                                     if CImGui.BeginMenu("New")
                                         if CImGui.MenuItem("Entity")
-                                            currentSceneMain.createNewEntity()
+                                            JulGame.MainLoop.create_new_entity(currentSceneMain)
                                         end
                                         
                                         CImGui.EndMenu()
@@ -194,8 +196,6 @@ module Editor
                                             CImGui.EndDragDropTarget()
                                         end
                                     end
-
-
                                     CImGui.PopID()
                                 end
 
@@ -211,10 +211,10 @@ module Editor
                                     CImGui.MenuItem("Add", C_NULL, false, false)
                                     if CImGui.BeginMenu("New")
                                         if CImGui.MenuItem("TextBox")
-                                            currentSceneMain.createNewTextBox() 
+                                            JulGame.MainLoop.create_new_text_box(currentSceneMain) 
                                         end
                                         if CImGui.MenuItem("Screen Button")
-                                            currentSceneMain.createNewScreenButton()
+                                            JulGame.MainLoop.create_new_screen_button(currentSceneMain)
                                         end
                                         
                                         CImGui.EndMenu()
@@ -339,7 +339,7 @@ module Editor
 
                         SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                         SDL2.SDL_RenderClear(renderer)
-                        gameInfo = currentSceneMain === nothing ? [] : currentSceneMain.gameLoop(Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                         SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                         SDL2.SDL_RenderClear(renderer)
                         
@@ -358,12 +358,17 @@ module Editor
                             if currentSceneMain.input.editorCallback === nothing
                                 currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
                             end
-                            currentSceneMain.input.pollInput()
+                            JulGame.InputModule.poll_input(currentSceneMain.input)
                             quit = currentSceneMain.input.quit
                         end
                         #################################################
 
                         SDL2.SDL_RenderPresent(renderer);
+                        if isTestMode && testFrameCount < testFrameLimit
+                            testFrameCount += 1
+                        elseif isTestMode
+                            quit = true
+                        end
                     catch e 
                         push!(latest_exceptions, [e, "$(Dates.now())"])
                         if length(latest_exceptions) > 10
@@ -388,7 +393,7 @@ module Editor
                 SDL2.SDL_DestroyRenderer(renderer);
                 SDL2.SDL_DestroyWindow(window);
                 SDL2.SDL_Quit()
-                exit()
+                return 0
         end
     end
 
@@ -543,4 +548,3 @@ module Editor
         splice!(entities, destination : destination, updatedEntities)
     end
 end
-Editor.run()

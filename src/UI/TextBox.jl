@@ -1,7 +1,6 @@
 module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
-    import ..UI.JulGame: deprecated_get_property
     import ..UI
     export TextBox      
     mutable struct TextBox
@@ -48,25 +47,13 @@ module TextBoxModule
         end
     end
 
-    function Base.getproperty(this::TextBox, s::Symbol)
-        method_props = (
-            render = UI.render,
-            setParent = UI.set_parent,
-            setVector2Value = UI.set_vector2_value,
-            setColor = UI.set_color,
-            centerText = UI.center_text,
-            destroy = UI.destroy,
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-
     function UI.render(this::TextBox, debug::Bool)
         if this.textTexture == C_NULL
             return
         end
 
         if debug
-            SDL2.SDL_RenderDrawLines(JulGame.Renderer, [
+            SDL2.SDL_RenderDrawLines(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, [
                 SDL2.SDL_Point(this.position.x, this.position.y), 
                 SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
                 SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
@@ -78,7 +65,7 @@ module TextBoxModule
         Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
 
-        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
@@ -96,12 +83,12 @@ module TextBoxModule
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.renderText)
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
     end
 
     function UI.initialize(this::TextBox)
         if !this.isWorldEntity
-            this.centerText()
+            UI.center_text(this)
         end
     end
 
@@ -132,15 +119,11 @@ module TextBoxModule
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
         this.size = Math.Vector2(surface[1].w, surface[1].h)
-        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, this.renderText)
+        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
         
         if !this.isWorldEntity
-            this.centerText()
+            UI.center_text(this)
         end
-    end
-
-    function UI.set_vector2_value(this::TextBox, field, x, y)
-        setfield!(this, field, Math.Vector2(x,y))
     end
 
     function UI.set_color(this::TextBox, r,g,b)

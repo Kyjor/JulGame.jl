@@ -1,7 +1,6 @@
 module ScreenButtonModule    
     using ..UI.JulGame
     using ..UI.JulGame.Math
-    import ..UI.JulGame: deprecated_get_property
     import ..UI
 
     export ScreenButton
@@ -52,21 +51,9 @@ module ScreenButtonModule
         end
     end
 
-    function Base.getproperty(this::ScreenButton, s::Symbol)
-        method_props = (
-            initialize = UI.initialize,
-            addClickEvent = UI.add_click_event,
-            handleEvent = UI.handle_event,
-            setVector2Value = UI.set_vector2_value,
-            loadSprite = UI.load_button_sprite_editor,
-            destroy = UI.destroy
-        )
-        deprecated_get_property(method_props, this, s)
-    end
-    
     function UI.render(this::ScreenButton, debug)
         if !this.isInitialized
-            this.initialize()
+            UI.initialize(this)
         end
 
         if this.currentTexture == C_NULL || this.textTexture == C_NULL
@@ -80,7 +67,7 @@ module ScreenButtonModule
             return
         end
         @assert SDL2.SDL_RenderCopyExF(
-            JulGame.Renderer, 
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             this.currentTexture, 
             C_NULL, 
             Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
@@ -88,12 +75,12 @@ module ScreenButtonModule
             C_NULL, 
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-        # @assert SDL2.SDL_RenderCopyF(JulGame.Renderer, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+        # @assert SDL2.SDL_RenderCopyF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
     function UI.initialize(this::ScreenButton)
-        this.buttonDownTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonDownSprite)
-        this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, this.buttonUpSprite)
+        this.buttonDownTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonDownSprite)
+        this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonUpSprite)
         this.currentTexture = this.buttonUpTexture
 
         if this.fontPath == C_NULL
@@ -105,13 +92,13 @@ module ScreenButtonModule
         text = font != C_NULL ? CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255,255,255,255)) : C_NULL
         surface = unsafe_wrap(Array, text, 10; own = false)
         this.textSize = Math.Vector2(surface[1].w, surface[1].h)
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, text)
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, text)
         this.isInitialized = true
     end
 
     function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
         sprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", path))
-        texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, sprite)
+        texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, sprite)
         if up
             this.buttonUpSpritePath = path
             this.buttonUpSprite = sprite
@@ -127,11 +114,6 @@ module ScreenButtonModule
 
     function UI.add_click_event(this::ScreenButton, event)
         push!(this.clickEvents, event)
-    end
-
-    function UI.set_vector2_value(this::ScreenButton, field, x, y)
-        setfield!(this, field, Math.Vector2(x,y))
-        # println("set $(field) to $(getfield(this, field))")
     end
 
     function UI.handle_event(this::ScreenButton, evt, x, y)
