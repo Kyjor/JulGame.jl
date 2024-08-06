@@ -3,7 +3,7 @@
     using ..Component.JulGame
     using ..Component.JulGame.Math
     using ..Component.SpriteModule
-
+    import ..Component
     export Animator
     struct Animator
         animations::Vector{Animation}
@@ -32,41 +32,30 @@
         end
     end
 
-    function Base.getproperty(this::InternalAnimator, s::Symbol)
-        if s == :getLastUpdate
-            function()
-                return this.lastUpdate
-            end
-        elseif s == :setLastUpdate
-            function(value)
-                this.lastUpdate = value
-            end
-        elseif s == :update
-            function(currentRenderTime, deltaTime)
-                Update(this, currentRenderTime, deltaTime)
-            end
-        elseif s == :setSprite
-            function(sprite)
-                this.sprite = sprite
-            end
-        elseif s == :setParent
-            function(parent)
-                this.parent = parent
-            end
-        elseif s == :appendArray
-            function()
-                push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-        end
+    function Component.get_last_update(this::InternalAnimator)
+        return this.lastUpdate
     end
 
+    function Component.set_last_update(this::InternalAnimator, value)
+        this.lastUpdate = value
+    end
+
+    function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
+        Update(this, currentRenderTime, deltaTime)
+    end
+
+    function Component.set_sprite(this::InternalAnimator, sprite)
+        this.sprite = sprite
+    end
+
+    function Component.set_parent(this::InternalAnimator, parent)
+        this.parent = parent
+    end
+
+    function Component.append_array(this::InternalAnimator)
+        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
+    end
+    
     
     """
     ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
@@ -108,11 +97,11 @@
         if this.currentAnimation.animatedFPS < 1
             return
         end
-        deltaTime = (currentRenderTime - this.getLastUpdate()) / 1000.0
+        deltaTime = (currentRenderTime - Component.get_last_update(this)) / 1000.0
         framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
         if framesToUpdate > 0
             this.lastFrame = this.lastFrame + framesToUpdate
-            this.setLastUpdate(currentRenderTime)
+            Component.set_last_update(this, currentRenderTime)
         end
         this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
     end

@@ -1,51 +1,38 @@
-﻿mutable struct Scene
-    camera
-    colliders::Vector{Any}
-    entities::Vector{Any}
-    rigidbodies::Vector{Any}
-    screenButtons::Vector{Any}
-    textBoxes::Vector{Any}
+﻿module SceneModule
+    using ..JulGame
+    
+    export Scene
+    mutable struct Scene
+        camera::Union{Nothing, JulGame.CameraModule.Camera}
+        colliders::Vector{Any}
+        entities::Vector{Any}
+        rigidbodies::Vector{Any}
+        screenButtons::Vector{Any}
+        uiElements::Vector{Any}
 
-    function Scene()
-        this = new()
+        function Scene()
+            this = new()
 
-        this.camera = C_NULL
-        this.colliders = []
-        this.entities = []
-        this.rigidbodies = []
-        this.screenButtons = []
-        this.textBoxes = []
+            this.camera = nothing
+            this.colliders = []
+            this.entities = []
+            this.rigidbodies = []
+            this.screenButtons = []
+            this.uiElements = []
 
-        return this
+            return this
+        end
     end
-end
 
-function Base.getproperty(this::Scene, s::Symbol)
-    if s == :update
-        function()
-            # update here
-        end
-    elseif s == :getCollidersInRange
-        function(originCollider)
-            # search for colliders in colliders that could possibly touch origin collider and return as array
-        end
-    elseif s == :getEntityByName
-        function(name)
-            for entity in this.entities
-                if entity.name == name
-                    return entity
-                end
+    function get_entity_by_name(this::Scene, name)
+        for entity in this.entities
+            if entity.name == name
+                return entity
             end
+        end
 
-            @warn "No entity with name $name found"
-            return C_NULL
-        end
-    else
-        try
-            getfield(this, s)
-        catch e
-            println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
-        end
+        @warn "No entity with name $name found"
+        return C_NULL
     end
 end
+

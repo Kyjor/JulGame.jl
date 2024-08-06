@@ -1,6 +1,6 @@
 module AnimationModule 
     using ..Component.JulGame
-
+    import ..Component
     export Animation
     mutable struct Animation
         animatedFPS::Int32
@@ -16,30 +16,19 @@ module AnimationModule
         end
     end
 
-    function Base.getproperty(this::Animation, s::Symbol)
-        if s == :updateArrayValue
-            function(value, field, index::Int32)
-                fieldToUpdate = getfield(this, field)
-                if this.getType(value) == "_Vector4"
-                    fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.z, value.t)
-                end
-            end
-        elseif s == :appendArray
-            function()
-                push!(this.frames, Math.Vector4(0,0,0,0))
-            end
-        elseif s == :getType
-            function(item)
-                componentFieldType = "$(typeof(item).name.wrapper)"
-                return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
+    function Component.update_array_value(this::Animation, value, field, index::Int32)
+        fieldToUpdate = getfield(this, field)
+        if get_type(this, value) == "_Vector4"
+            fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.z, value.t)
         end
+    end
+    
+    function Component.append_array(this::Animation)
+        push!(this.frames, Math.Vector4(0,0,0,0))
+    end
+    
+    function Component.get_type(this::Animation, item)
+        componentFieldType = "$(typeof(item).name.wrapper)"
+        return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
     end
 end

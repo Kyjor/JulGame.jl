@@ -284,9 +284,9 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
-"reference/Shape/properties/dimensions.md": {
-	id: "reference/Shape/properties/dimensions.md";
-  slug: "reference/shape/properties/dimensions";
+"reference/Shape/properties/size.md": {
+	id: "reference/Shape/properties/size.md";
+  slug: "reference/shape/properties/size";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">

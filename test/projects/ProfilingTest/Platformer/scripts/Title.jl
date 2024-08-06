@@ -1,5 +1,3 @@
-using JulGame 
-
 mutable struct Title
     fade
     parent
@@ -19,29 +17,34 @@ end
 function Base.getproperty(this::Title, s::Symbol)
     if s == :initialize
         function()
-            this.textBox = MAIN.scene.textBoxes[1]
+            this.textBox = MAIN.scene.uiElements[1]
         end
     elseif s == :update
         function(deltaTime)
+            try
+                if this.fade 
+                    this.textBox.alpha -= 1
+                    JulGame.UI.update_text(this.textBox, this.textBox.text)
+                    if this.textBox.alpha <= 25
+                        this.fade = false
+                    end
+                else
+                    this.textBox.alpha += 1
+                    JulGame.UI.update_text(this.textBox, this.textBox.text)
+                    if this.textBox.alpha >= 250
+                        this.fade = true
+                    end
+                end
 
-            if this.fade 
-                this.textBox.alpha -= 1
-                this.textBox.updateText(this.textBox.text)
-                if this.textBox.alpha <= 25
-                    this.fade = false
-                end
-            else
-                this.textBox.alpha += 1
-                this.textBox.updateText(this.textBox.text)
-                if this.textBox.alpha >= 250
-                    this.fade = true
-                end
+                # sound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
+                # JulGame.Component.toggle_sound(sound)
+
+                JulGame.MainLoop.change_scene("level_1.json")
+            catch e
+                println(e)
+				Base.show_backtrace(stdout, catch_backtrace())
+				rethrow(e)
             end
-
-            sound = this.parent.createSoundSource(JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
-            sound.toggleSound()
-            ChangeScene("level_1.json")
-
         end
     elseif s == :setParent 
         function(parent)
@@ -55,7 +58,8 @@ function Base.getproperty(this::Title, s::Symbol)
             getfield(this, s)
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 end

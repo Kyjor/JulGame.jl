@@ -1,39 +1,71 @@
 module SceneWriterModule
     using JSON3
+    
+    export serialize_entities
+    """
+        serialize_entities(entities::Array, uiElements::Array, projectPath, sceneName)
 
-    export serializeEntities
-    function serializeEntities(entities::Array, textBoxes::Array, projectPath, sceneName)
+    Serialize the entities and text boxes into a JSON file.
+
+    # Arguments
+    - `entities::Array`: An array of entities to be serialized.
+    - `uiElements::Array`: An array of text boxes to be serialized.
+    - `projectPath`: The path to the project directory.
+    - `sceneName`: The name of the scene.
+
+    """
+    function serialize_entities(entities::Array, uiElements::Array, projectPath, sceneName)
         
+        println("Serializing entities")
         entitiesDict = []
-        textBoxesDict = []
-
+        uiElementsDict = []
+        
         count = 1
         for entity in entities
-        push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serializeEntityComponents([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serializeEntityScripts(entity.scripts)))
-        count += 1
+            push!(entitiesDict, Dict("id" => count, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
+            count += 1
         end
+
         count = 1
-        for textBox in textBoxes
-        push!(textBoxesDict, Dict(
-            "id" => count, 
-            "alpha" => textBox.alpha, 
-            "fontPath" => normalizePath(textBox.fontPath), 
-            "fontSize" => textBox.fontSize, 
-            "isCenteredX" => textBox.isCenteredX,
-            "isCenteredY" => textBox.isCenteredY,
-            "isDefaultFont" => textBox.isDefaultFont,
-            "isTextUpdated" => textBox.isTextUpdated,
-            "isWorldEntity" => textBox.isWorldEntity,
-            "name" => textBox.name,
-            "position" => Dict("x" => textBox.position.x, "y" => textBox.position.y),
-            "size" => Dict("x" => textBox.size.x, "y" => textBox.size.y),
-            "text" => textBox.text
-            ))
-        count += 1
+        for uiElement in uiElements
+            if "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    # TODO: "alpha" => uiElement.alpha, 
+                    "buttonDownSpritePath" => normalize_path(uiElement.buttonDownSpritePath), 
+                    "buttonUpSpritePath" => normalize_path(uiElement.buttonUpSpritePath), 
+                    "fontPath" => normalize_path(uiElement.fontPath), 
+                    # TODO: "fontSize" => uiElement.fontSize, 
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "text" => uiElement.text,
+                    "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
+                    "type" => "ScreenButton"
+                    ))
+            else
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    "alpha" => uiElement.alpha, 
+                    "fontPath" => normalize_path(uiElement.fontPath), 
+                    "fontSize" => uiElement.fontSize, 
+                    "isCenteredX" => uiElement.isCenteredX,
+                    "isCenteredY" => uiElement.isCenteredY,
+                    "isWorldEntity" => uiElement.isWorldEntity,
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "text" => uiElement.text,
+                    "type" => "TextBox"
+                    ))
+            end
+            count += 1
         end
         entitiesJson = Dict( 
             "Entities" => entitiesDict,
-            "TextBoxes" => textBoxesDict
+            "UIElements" => uiElementsDict
             )
         try
             println("writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))")
@@ -42,21 +74,33 @@ module SceneWriterModule
             end
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+            rethrow(e)
         end
     end
 
-    export serializeEntityComponents
-    function serializeEntityComponents(components)
+    export serialize_entity_components
+    """
+        serialize_entity_components(components)
+
+    Serialize the given entity components into a dictionary representation.
+
+    # Arguments
+    - `components`: An array of entity components.
+
+    # Returns
+    - `componentsDict`: A dictionary representation of the serialized components.
+
+    """
+    function serialize_entity_components(components)
 
         componentsDict = []
         for component in components
             componentType = "$(typeof(component).name.wrapper)"
             componentType = String(split(componentType, '.')[length(split(componentType, '.'))])
             componentType = replace(componentType, "Internal" => "")
-            #Dict("b" => 1, "c" => 2)
             if componentType == "Transform"
-                serializedComponent = Dict("type" => componentType, "rotation" => component.rotation, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
+                serializedComponent = Dict("type" => componentType, "position" => Dict("x" => component.position.x, "y" => component.position.y), "scale" => Dict("x" => component.scale.x, "y" => component.scale.y))
                 push!(componentsDict, serializedComponent)
             elseif componentType == "Animation"
                 serializedComponent = Dict(
@@ -82,6 +126,7 @@ module SceneWriterModule
                     "tag" => component.tag, 
                     "isTrigger" => component.isTrigger, 
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "enabled" => component.enabled,
                     "isPlatformerCollider" => component.isPlatformerCollider,
                     )
                 push!(componentsDict, serializedComponent)
@@ -89,6 +134,7 @@ module SceneWriterModule
                 serializedComponent = Dict(
                     "type" => componentType, 
                     "mass" => component.mass, 
+                    "drag" => component.drag,
                     "useGravity" => component.useGravity,
                     )
                 push!(componentsDict, serializedComponent)
@@ -97,7 +143,7 @@ module SceneWriterModule
                     "type" => componentType, 
                     "channel" => component.channel, 
                     "isMusic" => component.isMusic, 
-                    "path" => normalizePath(component.path), 
+                    "path" => normalize_path(component.path), 
                     "sound" => component.sound, 
                     "volume" => component.volume, 
                     )
@@ -107,8 +153,16 @@ module SceneWriterModule
                     "type" => componentType, 
                     "crop" => component.crop == C_NULL ? C_NULL : Dict("x" => component.crop.x, "y" => component.crop.y, "z" => component.crop.z, "t" => component.crop.t), 
                     "isFlipped" => component.isFlipped, 
-                    "imagePath" => normalizePath(component.imagePath),
+                    "imagePath" => normalize_path(component.imagePath),
                     "layer" => component.layer,
+                    "isWorldEntity" => component.isWorldEntity,
+                    "pixelsPerUnit" => component.pixelsPerUnit,
+                    "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "position" => Dict("x" => component.position.x, "y" => component.position.y),
+                    "rotation" => component.rotation,
+                    "center" => Dict("x" => component.center.x, "y" => component.center.y),
+                    "color" => Dict("x" => component.color.x, "y" => component.color.y, "z" => component.color.z),
+                    "size" => Dict("x" => component.size.x, "y" => component.size.y),
                     )
                 push!(componentsDict, serializedComponent)
             elseif "$componentType" != "Ptr"
@@ -118,16 +172,39 @@ module SceneWriterModule
         return componentsDict
     end
 
-    function normalizePath(path)
+    """
+        normalize_path(path)
+
+    Normalize the given path by replacing backslashes with forward slashes.
+
+    # Arguments
+    - `path`: The path to be normalized.
+
+    # Returns
+    The normalized path with forward slashes.
+
+    """
+    function normalize_path(path)
         return replace(joinpath(path), "\\" => "//")
     end
 
-    export serializeEntityScripts
-    function serializeEntityScripts(scripts)
+    export serialize_entity_scripts
+    """
+        serialize_entity_scripts(scripts)
+
+    Serialize a list of scripts into a dictionary format.
+
+    # Arguments
+    - `scripts`: A list of scripts to be serialized.
+
+    # Returns
+    - `scriptsDict`: A dictionary containing the serialized scripts.
+
+    """
+    function serialize_entity_scripts(scripts)
         scriptsDict = []
 
         for script in scripts
-            # scriptName = "$(split("$(typeof(script))", '.')[length(split("$(typeof(script))", '.'))])"
             push!(scriptsDict, Dict("name" => script.name, "parameters" => script.parameters))
         end
 

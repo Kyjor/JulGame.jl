@@ -230,8 +230,9 @@
             ]
         }
     ],
-    "TextBoxes": [
+    "UIElements": [
         {
+            "type": "TextBox",
             "fontSize": 40,
             "name": "TextBox",
             "id": 1,
@@ -253,6 +254,7 @@
             "text": "Press [ENTER] To Start Game"
         },
         {
+            "type": "TextBox",
             "fontSize": 40,
             "name": "TextBox",
             "id": 2,
@@ -274,6 +276,7 @@
             "text": "Move"
         },
         {
+            "type": "TextBox",
             "fontSize": 40,
             "name": "TextBox",
             "id": 2,

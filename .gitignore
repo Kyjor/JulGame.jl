@@ -34,3 +34,5 @@ src/editor/EditorBuild/
 test/projects/ProfilingTest/Platformer/.vscode/settings.json
 
 .vscode/settings.json
+
+playground.jl

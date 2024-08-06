@@ -1,6 +1,6 @@
 ﻿module RigidbodyModule
     using ..Component.JulGame
-
+    import ..Component
     export Rigidbody
     struct Rigidbody
         mass::Float64
@@ -38,57 +38,41 @@
         end
     end
 
-    function Base.getproperty(this::InternalRigidbody, s::Symbol)
-        # Todo: update this based on offset and scale
-        if s == :update
-            function(dt)
-                velocityMultiplier = Math.Vector2f(1.0, 1.0)
-                transform = this.parent.transform
-                currentPosition = transform.getPosition()
-                
-                newPosition = transform.getPosition() + this.velocity*dt + this.acceleration*(dt*dt*0.5)
-                if this.grounded
-                    newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
-                    velocityMultiplier = Math.Vector2f(1.0, 0.0)
-                end
-                newAcceleration = this.applyForces()
-                newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
-
-                transform.setPosition(newPosition)
-                SetVelocity(this, newVelocity * velocityMultiplier)
-                this.acceleration = newAcceleration
-
-                if this.parent.collider != C_NULL
-                    this.parent.collider.checkCollisions()
-                end
-            end
-        elseif s == :applyForces
-            function()
-                gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? GRAVITY : 0.0)
-                dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
-                dragAcceleration = dragForce / this.mass
-                return gravityAcceleration - dragAcceleration
-            end
-        elseif s == :getVelocity
-            function()
-                return this.velocity
-            end
-        elseif s == :getParent
-            function()
-                return this.parent
-            end
-        elseif s == :setVector2fValue
-            function(field, x, y)
-                setfield!(this, field, Math.Vector2f(x,y))
-            end
-        else
-            try
-                getfield(this, s)
-            catch e
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
+    function Component.update(this::InternalRigidbody, dt)
+        velocityMultiplier = Math.Vector2f(1.0, 1.0)
+        transform = this.parent.transform
+        currentPosition = transform.position
+        
+        newPosition = transform.position + this.velocity*dt + this.acceleration*(dt*dt*0.5)
+        if this.grounded
+            newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
+            velocityMultiplier = Math.Vector2f(1.0, 0.0)
         end
+        newAcceleration = Component.apply_forces(this)
+        newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
+
+        Component.set_position(transform, newPosition)
+        SetVelocity(this, newVelocity * velocityMultiplier)
+        this.acceleration = newAcceleration
+
+        if this.parent.collider != C_NULL
+            Component.check_collisions(this.parent.collider)
+        end
+    end
+
+    function Component.apply_forces(this::InternalRigidbody)
+        gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? GRAVITY : 0.0)
+        dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
+        dragAcceleration = dragForce / this.mass
+        return gravityAcceleration - dragAcceleration
+    end
+
+    function Component.get_velocity(this::InternalRigidbody)
+        return this.velocity
+    end
+
+    function Component.get_parent(this::InternalRigidbody)
+        return this.parent
     end
 
     """

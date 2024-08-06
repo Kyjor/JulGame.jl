@@ -1,6 +1,5 @@
-using JulGame 
-
 mutable struct Water
+    main
     offset
     parent
     

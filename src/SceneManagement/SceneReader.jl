@@ -1,16 +1,18 @@
 module SceneReaderModule
     using JSON3
-    using ..SceneManagement.JulGame.AnimatorModule
-    using ..SceneManagement.JulGame.AnimationModule
-    using ..SceneManagement.JulGame.ColliderModule
-    using ..SceneManagement.JulGame.CircleColliderModule
-    using ..SceneManagement.JulGame.EntityModule
-    using ..SceneManagement.JulGame.Math
-    using ..SceneManagement.JulGame.RigidbodyModule
-    using ..SceneManagement.JulGame.SoundSourceModule
-    using ..SceneManagement.JulGame.SpriteModule
-    using ..SceneManagement.JulGame.UI.TextBoxModule
-    using ..SceneManagement.JulGame.TransformModule
+    using ...AnimatorModule
+    using ...AnimationModule
+    using ...ColliderModule
+    using ...CircleColliderModule
+    using ...EntityModule
+    using ...Math
+    using ...RigidbodyModule
+    using ...SoundSourceModule
+    using ...SpriteModule
+    using ...UI.TextBoxModule
+    using ...UI.ScreenButtonModule
+    using ...TransformModule
+    using ...JulGame
 
 
     function scriptObj(name::String, parameters::Array)
@@ -24,7 +26,7 @@ module SceneReaderModule
 
             json = JSON3.read(entitiesJson)
             entities =[]
-            textBoxes = []
+            uiElements = []
             res = []
     
             for entity in json.Entities
@@ -51,56 +53,60 @@ module SceneReaderModule
 
                 for component in components
                     if typeof(component) == Animator
-                        newEntity.addAnimator(component::Animator)
+                        JulGame.add_animator(newEntity, component::Animator)
                         continue
                     elseif typeof(component) == Collider
-                        newEntity.addCollider(component::Collider)
+                        JulGame.add_collider(newEntity, component::Collider)
                         continue
                     elseif typeof(component) == CircleCollider
-                        newEntity.addCircleCollider(component::CircleCollider)
+                        JulGame.add_circle_collider(newEntity, component::CircleCollider)
                         continue
                     elseif typeof(component) == Rigidbody
-                        newEntity.addRigidbody(component::Rigidbody)
+                        JulGame.add_rigidbody(newEntity, component::Rigidbody)
                         continue
                     elseif typeof(component) == SoundSource
-                        newEntity.addSoundSource(component::SoundSource)
+                        JulGame.add_sound_source(newEntity, component::SoundSource)
                         continue
                     elseif typeof(component) == Sprite
-                        newEntity.addSprite(false, component::Sprite)
+                        JulGame.add_sprite(newEntity, false, component::Sprite)
                         continue
-                    elseif typeof(component) == Transform
-                        newEntity.transform = component::Transform
-                        continue
+                    elseif typeof(component) == Transform 
+                        newEntity.transform = component::Transform 
+                        continue 
                     end
                 end
                 
                 push!(entities, newEntity)
             end
-            textBoxes = deserializeTextBoxes(json.TextBoxes, isEditor)
+            uiElements = deserializeUIElements(json.UIElements)
     
             push!(res, entities)
-            push!(res, textBoxes)
+            push!(res, uiElements)
             return res
         catch e 
-            if !isEditor
-                println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            else
-                rethrow(e)
-            end
+            println(e)
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 
-    function deserializeTextBoxes(jsonTextBoxes, isEditor = false)
+    function deserializeUIElements(jsonUIElements)
         res = []
 
-        for textBox in jsonTextBoxes
+        for uiElement in jsonUIElements
             try
-                newTextBox = TextBox(textBox.name, textBox.fontPath, textBox.fontSize, Vector2(textBox.position.x, textBox.position.y), textBox.text, textBox.isCenteredX, textBox.isCenteredY, textBox.isDefaultFont, isEditor)        
-                push!(res, newTextBox)
+                newUIElement = nothing
+                if uiElement.type == "TextBox"
+                    newUIElement = TextBox(uiElement.name, uiElement.fontPath, uiElement.fontSize, Vector2(uiElement.position.x, uiElement.position.y), uiElement.text, uiElement.isCenteredX, uiElement.isCenteredY)        
+                else
+                    newUIElement = ScreenButton(uiElement.name, uiElement.buttonUpSpritePath, uiElement.buttonDownSpritePath, Vector2(uiElement.size.x, uiElement.size.y), Vector2(uiElement.position.x, uiElement.position.y), uiElement.fontPath, uiElement.text, Vector2(uiElement.textOffset.x, uiElement.textOffset.y))
+                end
+                
+                push!(res, newUIElement)
             catch e 
                 println(e)
-                Base.show_backtrace(stdout, catch_backtrace())
+				Base.show_backtrace(stdout, catch_backtrace())
+				rethrow(e)
             end
         end
 
@@ -111,7 +117,7 @@ module SceneReaderModule
     function deserializeComponent(component, isEditor)
         try
             if component.type == "Transform"
-                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y), Float64(component.rotation))
+                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y))
             elseif component.type == "Animator"
                 newAnimations = Animation[]
                 for animation in component.animations
@@ -124,7 +130,7 @@ module SceneReaderModule
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
                 isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
-                enabled::Bool = !haskey(component, "enabled") ? true : component.isTrigger
+                enabled::Bool = !haskey(component, "enabled") ? true : component.enabled
                 isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
                 offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
                 newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
@@ -143,13 +149,15 @@ module SceneReaderModule
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
                 rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit))
+                center = !haskey(component, "center") ? Vector2(0,0) : Vector2(component.center.x, component.center.y)
+                newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit), center::Vector2)
             end
             
             return newComponent
         catch e
             println(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+			Base.show_backtrace(stdout, catch_backtrace())
+			rethrow(e)
         end
     end
 end

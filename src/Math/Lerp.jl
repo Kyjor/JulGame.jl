@@ -24,3 +24,14 @@ function SmoothLerp(start::Real, stop::Real, t::Real)
     t = 0.5 - 0.5 * cos(pi * t)  # Apply quadratic easing-in-out
     return (1.0 - t) * start + t * stop
 end
+
+"""
+# Overflowing Linear Interpolation
+--- Argument list
+- `a::Real` from
+- `b::Real` to
+- `t::Real` Earring
+"""
+function overflow_lerp(a::Real, b::Real, t::Real)
+    return a + t * (b - a)
+end

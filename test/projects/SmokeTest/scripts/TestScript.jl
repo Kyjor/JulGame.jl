@@ -1,20 +1,6 @@
-using JulGame.AnimationModule
-using JulGame.CircleColliderModule
-using JulGame.ColliderModule
-using JulGame.EntityModule
-using JulGame.RigidbodyModule
-using JulGame.ShapeModule
-using JulGame.SoundSourceModule
-using JulGame.SpriteModule
-using JulGame.TransformModule 
-using JulGame.MainLoop 
-using JulGame.Math
-using JulGame.UI
-using Test 
-
+using Test
 mutable struct TestScript
     parent
-
     function TestScript()
         this = new()
         
@@ -25,7 +11,8 @@ end
 function Base.getproperty(this::TestScript, s::Symbol)
     if s == :initialize
         function()
-
+            try
+                
             newAnimation = C_NULL
             newAnimator = C_NULL
             @testset "Engine Animation Tests" begin
@@ -77,33 +64,51 @@ function Base.getproperty(this::TestScript, s::Symbol)
                     newEntity = EntityModule.Entity()
                     @test newEntity != C_NULL && newEntity !== nothing
                 end
-
+                    
                 @testset "Entity addAnimator" begin
-                    newEntity.addAnimator(newAnimator)
+                    JulGame.add_animator(newEntity, newAnimator)
                     @test newEntity.animator != C_NULL && newEntity.animator !== nothing
                 end
 
                 @testset "Entity addCircleCollider" begin
-                    newEntity.addCircleCollider(newCircleCollider)
+                    JulGame.add_circle_collider(newEntity, newCircleCollider)
                     @test newEntity.circleCollider != C_NULL && newEntity.circleCollider !== nothing
                     newEntity.circleCollider = C_NULL # Reset for next test
                 end
 
                 @testset "Entity addCollider" begin
-                    println(typeof(newCollider))
-                    newEntity.addCollider(newCollider)
+                    JulGame.add_collider(newEntity, newCollider)
                     @test newEntity.collider != C_NULL && newEntity.collider !== nothing
                 end
 
                 @testset "Entity addRigidbody" begin
-                    newEntity.addRigidbody(newRigidbody)
+                    JulGame.add_rigidbody(newEntity, newRigidbody)
                     @test newEntity.rigidbody != C_NULL && newEntity.rigidbody !== nothing
                 end
 
                 @testset "Entity addShape" begin
-                    newEntity.addShape(newShape)
+                    JulGame.add_shape(newEntity, newShape)
                     @test newEntity.shape != C_NULL && newEntity.shape !== nothing
                 end
+            end
+
+            @testset "UI Tests" begin
+                @testset "ScreenButton constructor" begin
+                    
+                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+                    push!(MAIN.scene.screenButtons, newScreenButton)
+                    push!(MAIN.scene.uiElements, newScreenButton)
+                    @test newScreenButton != C_NULL && newScreenButton !== nothing
+                end
+
+                @testset "TextBox constructor" begin
+                    newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
+                    push!(MAIN.scene.uiElements, newTextBox)
+                    @test newTextBox != C_NULL && newTextBox !== nothing
+                end
+            end
+            catch e
+                rethrow(e)
             end
         end
     elseif s == :update
@@ -112,6 +117,9 @@ function Base.getproperty(this::TestScript, s::Symbol)
     elseif s == :setParent 
         function(parent)
             this.parent = parent
+        end
+    elseif s == :onShutDown
+        function()
         end
     else
         getfield(this, s)

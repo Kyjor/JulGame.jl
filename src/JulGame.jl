@@ -1,10 +1,7 @@
 module JulGame
+    include("CommonFunctions.jl")
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
-
-    function __init__()
-        SDL2.init()
-    end
 
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
@@ -15,6 +12,9 @@ module JulGame
 
     include("Constants.jl")
     export SCALE_UNITS, GRAVITY
+
+    PIXELS_PER_UNIT = -1
+    export PIXELS_PER_UNIT
     
     BasePath = ""
     export BasePath
@@ -38,24 +38,26 @@ module JulGame
     using .UI
     export ScreenButtonModule, TextBoxModule
 
-    include("Main.jl") 
-    using .MainLoop: Main   
-    const MAIN = Main(Float64(1.0))
-    export MAIN
-
     include("Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
-
+    
+    include("Camera/Camera.jl")
+    using .CameraModule: Camera
+    
     include("Entity.jl") 
     using .EntityModule   
     export Entity
 
+    include("Scene.jl")
+    using .SceneModule: Scene
+
     include("SceneManagement/SceneManagement.jl")
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
-
-    include("editor/Editor/Editor.jl")
-    using .Editor
-    export Editor 
+    
+    include("Main.jl") 
+    using .MainLoop: Main
+    MAIN::Union{Main, Nothing} = nothing
+    export Main, MAIN
 end
