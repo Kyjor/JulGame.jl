@@ -9,7 +9,6 @@ module Editor
     using Dates
     using JulGame: Component, MainLoop, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
-    using STBImage
 
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
@@ -82,10 +81,9 @@ module Editor
         my_image_height = Ref{Cint}()
         my_texture = Ref{Ptr{SDL2.SDL_Texture}}()
         data = nothing
-        ret, my_texture[], my_image_width[], my_image_height[], data = load_texture_from_file(joinpath("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\assets\\images\\Bee.png"), renderer)
-        println("data = ", data)
+        ret, my_texture[], my_image_width[], my_image_height[] = load_texture_from_file(joinpath("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\assets\\images\\Bee.png"), renderer)
         # unwrap data into array
-        data = unsafe_wrap(Array, data, 10000; own=false)
+        #data = unsafe_wrap(Array, data, 10000; own=false)
         try
             while !quit                    
                 try
@@ -131,28 +129,28 @@ module Editor
 
                         CImGui.End()
                     end
-
-                    
-                    
                     
                     if unsafe_load(io.KeyShift) # && unsafe_load(io.MouseDown)[1] && mouseUVCoord.x >= 0.0 && mouseUVCoord.y >= 0.0
                         try
+                            show_app_custom_rendering = true
+                            @c ShowExampleAppCustomRendering(&show_app_custom_rendering)
                             CImGui.Begin("SDL2/SDL_Renderer Texture Test")
-                            CImGui.Text(string("pointer = %p", my_texture))
-                            CImGui.Text(string("size = %d x %d", my_image_width[], my_image_height[]))
+                            CImGui.Text(string("pointer = ", my_texture))
+                            CImGui.Text(string("size = $(my_image_width[]) x $(my_image_height[])"))
                             CImGui.Image(my_texture[], ImVec2(my_image_width[], my_image_height[]))
+
                             # CImGui.ImageButton(pickerImage.textureID, ImVec2(pickerImage.mWidth, pickerImage.mHeight))
                             rc = CImGui.ImRect(CImGui.GetItemRectMin(), CImGui.GetItemRectMax())
                             mouseUVCoord = ImVec2(unsafe_load(io.MousePos).x - rc.Min.x / get_size(rc).x, unsafe_load(io.MousePos).y - rc.Min.y / get_size(rc).y) 
                             mouseUVCoord = ImVec2(mouseUVCoord.x, 1.0 - mouseUVCoord.y)
                             CImGui.Text("Mouse Position:")
                             CImGui.SameLine()
-                            CImGui.Text(string("x = %d, y = %d", unsafe_load(io.MousePos).x, unsafe_load(io.MousePos).y))
+                            CImGui.Text(string("x = $(unsafe_load(io.MousePos).x), y = $(unsafe_load(io.MousePos).y)"))
                             # mouseUVCoord = ImVec2(unsafe_load(io.MousePos).x, unsafe_load(io.MousePos).y)
                             #mouseUVCoord = ImVec2(1, 1)
+                            println("mouseUVCoord = ", mouseUVCoord)
                             displayedTextureSize = ImVec2(unsafe_load(io.DisplaySize).x, unsafe_load(io.DisplaySize).y)
-                            inspect(Int64(my_image_width[]), Int64(my_image_height[]), data, mouseUVCoord::ImVec2, displayedTextureSize::ImVec2)
-                            println("test: ", my_texture[])
+                            #inspect(Int64(my_image_width[]), Int64(my_image_height[]), data, mouseUVCoord::ImVec2, displayedTextureSize::ImVec2)
                         CImGui.End()
                     catch e 
                         @error "Error" exception=e
@@ -628,175 +626,5 @@ module Editor
         if is_test_mode
             @warn "Error in renderloop!" exception=e
         end
-    end
-
-    function load_texture_from_file(filename::String, renderer::Ptr{SDL2.SDL_Renderer})
-        width = Ref{Cint}()
-        height = Ref{Cint}()
-        channels = Ref{Cint}()
-        
-        data = STBImage.stbi_load(filename, width, height, channels, 0)
-        
-        if data == C_NULL
-            @error "Failed to load image: $(STBImage.stbi_failure_reason())"
-            return false, C_NULL, 0, 0
-        end
-        
-        surface = SDL2.SDL_CreateRGBSurfaceFrom(data, width[], height[], channels[] * 8, channels[] * width[],
-                                           0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000)
-        
-        if surface == C_NULL
-            @error "Failed to create SDL surface: $(unsafe_string(SDL2.SDL_GetError()))"
-            STBImage.stbi_image_free(data)
-            return false, C_NULL, 0, 0
-        end
-        
-        texture_ptr = SDL2.SDL_CreateTextureFromSurface(renderer, surface)
-        
-        if texture_ptr == C_NULL
-            @error "Failed to create SDL texture: $(unsafe_string(SDL2.SDL_GetError()))"
-        end
-        
-        SDL2.SDL_FreeSurface(surface)
-        STBImage.stbi_image_free(data)
-        
-        return true, texture_ptr, width[], height[], data
-    end
-
-    function histogram(width::Int, height::Int, bits::Vector{UInt8})
-        count = fill(0, 4, 256)
-    
-        ptrCols = 1
-        CImGui.InvisibleButton("histogram", ImVec2(512, 256))
-        for l in 1:(height * width)
-            count[1, bits[ptrCols] + 1] += 1
-            ptrCols += 1
-            count[2, bits[ptrCols] + 1] += 1
-            ptrCols += 1
-            count[3, bits[ptrCols] + 1] += 1
-            ptrCols += 1
-            count[4, bits[ptrCols] + 1] += 1
-            ptrCols += 1
-        end
-    
-        maxv = maximum(count[1, :])
-    
-        drawList = CImGui.GetWindowDrawList()
-        rmin = CImGui.GetItemRectMin()
-        rmax = CImGui.GetItemRectMax()
-        size = CImGui.GetItemRectSize()
-        hFactor = size.y / float(maxv)
-    
-        for i in 0:10
-            ax = rmin.x + (size.x / 10.0) * float(i)
-            ay = rmin.y + (size.y / 10.0) * float(i)
-            CImGui.AddLine(drawList, ImVec2(rmin.x, ay), ImVec2(rmax.x, ay), 0x80808080)
-            CImGui.AddLine(drawList, ImVec2(ax, rmin.y), ImVec2(ax, rmax.y), 0x80808080)
-        end
-    
-        barWidth = size.x / 256.0
-        for j in 1:256
-            cols = [(count[1, j] << 2), (count[2, j] << 2) + 1, (count[3, j] << 2) + 2]
-            sort!(cols)
-            heights = [rmax.y - (cols[i] >> 2) * hFactor for i in 1:3]
-            colors = [0xFFFFFFFF, 0xFFFFFFFF - 0xFF << ((cols[i] & 3) * 8) for i in 1:3]
-    
-            currentHeight = rmax.y
-            left = rmin.x + barWidth * float(j)
-            right = left + barWidth
-            for i in 1:3
-                if heights[i] >= currentHeight
-                    continue
-                end
-                CImGui.AddRectFilled(drawList, ImVec2(left, currentHeight), ImVec2(right, heights[i]), colors[i])
-                currentHeight = heights[i]
-            end
-        end
-    end
-    
-    function drawNormal(draw_list, rc, x, y)
-        center = get_center(rc)
-        width = get_width(rc)
-
-        CImGui.AddCircle(draw_list, center, width / 2.0, 0x20AAAAAA, 24, 1.0)
-        CImGui.AddCircle(draw_list, center, width / 4.0, 0x20AAAAAA, 24, 1.0)
-        CImGui.AddLine(draw_list, center, ImVec2(center.x + x * width / 2.0, center.y + y * width / 2.0), 0xFF0000FF, 2.0)
-    end
-    
-    function inspect(width::Int, height::Int, bits::Vector{UInt8}, mouseUVCoord::ImVec2, displayedTextureSize::ImVec2)
-        CImGui.BeginTooltip()
-        CImGui.BeginGroup()
-        draw_list = CImGui.GetWindowDrawList()
-        zoomRectangleWidth = 160.0
-    
-        CImGui.InvisibleButton("AnotherInvisibleMan", ImVec2(zoomRectangleWidth, zoomRectangleWidth))
-        pickRc = CImGui.ImRect(CImGui.GetItemRectMin(), CImGui.GetItemRectMax())
-        CImGui.AddRectFilled(draw_list, pickRc.Min, pickRc.Max, 0xFF000000)
-        zoomSize = 4
-        quadWidth = zoomRectangleWidth / float(zoomSize * 2 + 1)
-        quadSize = ImVec2(quadWidth, quadWidth)
-        basex = clamp(Int(mouseUVCoord.x * width), zoomSize, width - zoomSize)
-        basey = clamp(Int(mouseUVCoord.y * height), zoomSize, height - zoomSize)
-        for y in -zoomSize:zoomSize
-            for x in -zoomSize:zoomSize
-                texel = Int32(bits[(basey - y) * width + x + basex])
-                pos =  ImVec2(pickRc.Min.x + float(x + zoomSize) * quadSize.x, pickRc.Min.y + float(y + zoomSize) * quadSize.y)
-                CImGui.AddRectFilled(draw_list, pos, ImVec2(pos.x + quadSize.x, pos.y + quadSize.y), texel)
-            end
-        end
-        CImGui.SameLine()
-    
-        pos = ImVec2(pickRc.Min.x + float(zoomSize) * quadSize.x, pickRc.Min.y + float(zoomSize) * quadSize.y)
-        CImGui.AddRect(draw_list, pos, ImVec2(pos.x + quadSize.x, pos.y + quadSize.y), 0xFF0000FF, 0.0, 15, 2.0)
-    
-        CImGui.InvisibleButton("AndOneMore", ImVec2(zoomRectangleWidth, zoomRectangleWidth))
-        normRc = CImGui.ImRect(CImGui.GetItemRectMin(), CImGui.GetItemRectMax())
-        for y in -zoomSize:zoomSize
-            for x in -zoomSize:zoomSize
-                texel = Int32(bits[(basey - y) * width + x + basex])
-                posQuad = ImVec2(normRc.Min.x + float(x + zoomSize) * quadSize.x, normRc.Min.y + float(y + zoomSize) * quadSize.y) 
-                nx = float(texel & 0xFF) / 128.0 - 1.0
-                ny = float((texel & 0xFF00) >> 8) / 128.0 - 1.0
-                rc = CImGui.ImRect(posQuad, ImVec2(posQuad.x + quadSize.x, posQuad.y + quadSize.y))
-                drawNormal(draw_list, rc, nx, ny)
-            end
-        end
-    
-        CImGui.EndGroup()
-        CImGui.SameLine()
-        CImGui.BeginGroup()
-        texel = UInt32(bits[(basey - zoomSize * 2 - 1) * width + basex])
-        color = CImGui.ImColor(texel)
-        colHSV = ImVec4(0,0,0,0)
-
-        CImGui.ColorConvertRGBtoHSV(color.Value.x, color.Value.y, color.Value.z, Ref{Float32}(colHSV.x), Ref{Float32}(colHSV.y), Ref{Float32}(colHSV.z))
-        CImGui.Text(string("U %1.3f V %1.3f", mouseUVCoord.x, mouseUVCoord.y))
-        CImGui.Text(string("Coord %d %d", Int(mouseUVCoord.x * width), Int(mouseUVCoord.y * height)))
-        CImGui.Separator()
-        CImGui.Text(string("R 0x%02x  G 0x%02x  B 0x%02x", Int(color.Value.x * 255.0), Int(color.Value.y * 255.0), Int(color.Value.z * 255.0)))
-        CImGui.Text(string("R %1.3f G %1.3f B %1.3f", color.Value.x, color.Value.y, color.Value.z))
-        CImGui.Separator()
-        CImGui.Text(string("H 0x%02x  S 0x%02x  V 0x%02x", Int(colHSV.x * 255.0), Int(colHSV.y * 255.0), Int(colHSV.z * 255.0)))
-        CImGui.Text(string("H %1.3f S %1.3f V %1.3f", colHSV.x, colHSV.y, colHSV.z))
-        CImGui.Separator()
-        CImGui.Text(string("Alpha 0x%02x", Int(color.Value.w * 255.0)))
-        CImGui.Text(string("Alpha %1.3f", color.Value.w))
-        CImGui.Separator()
-        CImGui.Text(string("Size %d, %d", Int(displayedTextureSize.x), Int(displayedTextureSize.y)))
-        CImGui.EndGroup()
-        histogram(width, height, bits)
-        CImGui.EndTooltip()
-    end
-
-    function get_center(rc::CImGui.ImRect)
-        return ImVec2((rc.Min.x + rc.Max.x) * 0.5, (rc.Min.y + rc.Max.y) * 0.5)
-    end
-
-    function get_width(rc::CImGui.ImRect)
-        return rc.Max.x - rc.Min.x
-    end
-
-    function get_size(rc::CImGui.ImRect)
-        return ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y)
     end
 end
