@@ -267,6 +267,18 @@ function show_sprite_fields(sprite)
                 end
             end
             sprite.imagePath = currentTextInTextBox
+            imageMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "images"), "images")
+            if imageMenuValue != ""
+                println("imageMenuValue: $imageMenuValue")
+                # remove joinpath("assets", "images") from imageMenuValue and set it to imagePath
+                imagePath = replace(imageMenuValue, joinpath(JulGame.BasePath, "assets", "images") => "")
+                # remove leading / or \\ from imagePath
+                if imagePath[1] == '/' || imagePath[1] == '\\'
+                    imagePath = imagePath[2:end]
+                end
+
+                sprite.imagePath = imagePath
+            end 
             CImGui.Button("Load Image") && (Component.load_image(sprite, currentTextInTextBox))
         else 
             show_component_field_input(sprite, field)
@@ -309,6 +321,17 @@ function show_textbox_fields(textbox)
                 basePath = joinpath(pwd(), "..")
                 fontPath = joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
             end
+            fontMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "fonts"), "fonts")
+            if fontMenuValue != ""
+                # remove joinpath("assets", "fonts") from fontMenuValue and set it to fontPath
+                fontPath = replace(fontMenuValue, joinpath(JulGame.BasePath, "assets", "fonts") => "")
+                # remove leading / or \\ from fontPath
+                if fontPath[1] == '/' || fontPath[1] == '\\'
+                    fontPath = fontPath[2:end]
+                end
+
+                textbox.fontPath = fontPath
+            end 
             CImGui.Button("Load Font") && (UI.load_font(textbox, basePath, fontPath))
         else 
             show_textbox_fields(textbox, field)
@@ -338,9 +361,9 @@ function show_screenbutton_fields(screenButton)
             if fieldString == "fontPath"
                 # TODO: CImGui.Button("Load Font") && (UI.load_font(screenButton, joinpath(pwd()), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
             elseif fieldString == "buttonUpSpritePath"
-                CImGui.Button("Load Button Up Sprite") && (UI.load_sprite(screenButton, currentTextInScreenButton, true))
+                CImGui.Button("Load Button Up Sprite") && (UI.load_button_sprite_editor(screenButton, currentTextInScreenButton, true))
             elseif fieldString == "buttonDownSpritePath"
-                CImGui.Button("Load Button Down Sprite") && (UI.load_sprite(screenButton, currentTextInScreenButton, false))
+                CImGui.Button("Load Button Down Sprite") && (UI.load_button_sprite_editor(screenButton, currentTextInScreenButton, false))
             end
         else 
             show_screenbutton_fields(screenButton, field)
@@ -375,6 +398,17 @@ function show_sound_source_fields(soundSource)
                 end
             end
             soundSource.path = currentTextInTextBox
+            soundMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "sounds"), "sounds")
+            if soundMenuValue != ""
+                # remove joinpath("assets", "sounds") from soundMenuValue and set it to soundPath
+                soundPath = replace(soundMenuValue, joinpath(JulGame.BasePath, "assets", "sounds") => "")
+                # remove leading / or \\ from soundPath
+                if soundPath[1] == '/' || soundPath[1] == '\\'
+                    soundPath = soundPath[2:end]
+                end
+
+                soundSource.path = soundPath
+            end
             CImGui.Button("Load Sound") && (Component.load_sound(soundSource, currentTextInTextBox, false))
             CImGui.Button("Load Music") && (Component.load_sound(soundSource, currentTextInTextBox, true))
         else
