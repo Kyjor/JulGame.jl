@@ -21,29 +21,6 @@ module Editor
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
-    mutable struct ImageHolder
-        animator::AnimatorModule.Animator
-        endingY::Int32
-        isMovingUp::Bool
-        rotation::Int32
-        parent::JulGame.EntityModule.Entity
-        sound::SoundSourceModule.SoundSource
-        speed::Number
-        startingY::Int32
-    
-        function Saw(speed::Number = 5, startingY::Int32 = Int32(0), endingY::Int32 = Int32(0))
-            this = new()
-    
-            this.endingY = endingY
-            this.isMovingUp = false
-            this.rotation = 0
-            this.speed = speed
-            this.startingY = startingY
-    
-            return this
-        end
-    end
-
     function run(isTestMode::Bool=false)
         info = init_sdl_and_imgui()
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
@@ -82,6 +59,15 @@ module Editor
         my_texture = Ref{Ptr{SDL2.SDL_Texture}}()
         data = nothing
         ret, my_texture[], my_image_width[], my_image_height[] = load_texture_from_file(joinpath("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\assets\\images\\Bee.png"), renderer)
+
+        # Static variables
+        points = Ref(Vector{ImVec2}())
+        scrolling = Ref(ImVec2(0.0, 0.0))
+        opt_enable_grid = Ref(true)
+        opt_enable_context_menu = Ref(true)
+        adding_line = Ref(false)
+        show_app_custom_rendering = Ref(true)
+
         # unwrap data into array
         #data = unsafe_wrap(Array, data, 10000; own=false)
         try
@@ -130,10 +116,9 @@ module Editor
                         CImGui.End()
                     end
                     
-                    if unsafe_load(io.KeyShift) # && unsafe_load(io.MouseDown)[1] && mouseUVCoord.x >= 0.0 && mouseUVCoord.y >= 0.0
+                    # if unsafe_load(io.KeyShift) # && unsafe_load(io.MouseDown)[1] && mouseUVCoord.x >= 0.0 && mouseUVCoord.y >= 0.0
                         try
-                            show_app_custom_rendering = true
-                            @c ShowExampleAppCustomRendering(&show_app_custom_rendering)
+                            ShowExampleAppCustomRendering(show_app_custom_rendering, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_texture[], my_image_width[], my_image_height[])
                             CImGui.Begin("SDL2/SDL_Renderer Texture Test")
                             CImGui.Text(string("pointer = ", my_texture))
                             CImGui.Text(string("size = $(my_image_width[]) x $(my_image_height[])"))
@@ -146,17 +131,13 @@ module Editor
                             CImGui.Text("Mouse Position:")
                             CImGui.SameLine()
                             CImGui.Text(string("x = $(unsafe_load(io.MousePos).x), y = $(unsafe_load(io.MousePos).y)"))
-                            # mouseUVCoord = ImVec2(unsafe_load(io.MousePos).x, unsafe_load(io.MousePos).y)
-                            #mouseUVCoord = ImVec2(1, 1)
-                            println("mouseUVCoord = ", mouseUVCoord)
                             displayedTextureSize = ImVec2(unsafe_load(io.DisplaySize).x, unsafe_load(io.DisplaySize).y)
-                            #inspect(Int64(my_image_width[]), Int64(my_image_height[]), data, mouseUVCoord::ImVec2, displayedTextureSize::ImVec2)
                         CImGui.End()
                     catch e 
                         @error "Error" exception=e
                         Base.show_backtrace(stderr, catch_backtrace())
                     end
-                end
+                #end
 
                     @cstatic begin
                         CImGui.Begin("Scene")  

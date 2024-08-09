@@ -146,7 +146,7 @@ end
     ShowExampleAppCustomRendering(p_open::Ref{Bool})
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
-function ShowExampleAppCustomRendering(p_open::Ref{Bool})
+function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h)
     CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Example: Custom rendering", p_open) || (CImGui.End(); return)
 
@@ -160,89 +160,132 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool})
         CImGui.ColorEdit4("Color", col)
     end
 
-    p = CImGui.GetCursorScreenPos()
-    col32 = CImGui.ColorConvertFloat4ToU32(ImVec4(col...))
-    begin
-        x::Cfloat = p.x + 4.0
-        y::Cfloat = p.y + 4.0
-        spacing = 8.0
-        for n = 0:2-1
-            th::Cfloat = (n == 0) ? 1.0 : thickness
-            CImGui.AddCircle(draw_list, ImVec2(x+sz*0.5, y+sz*0.5), sz*0.5, col32, 6, th); x += sz + spacing; # hexagon
-            CImGui.AddCircle(draw_list, ImVec2(x+sz*0.5, y+sz*0.5), sz*0.5, col32, 20, th); x += sz + spacing; # circle
-            CImGui.AddRect(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32, 0.0, CImGui.ImDrawFlags_RoundCornersAll, th); x += sz + spacing;
-            CImGui.AddRect(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32, 10.0, CImGui.ImDrawFlags_RoundCornersAll, th); x += sz + spacing;
-            CImGui.AddRect(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32, 10.0, CImGui.ImDrawFlags_RoundCornersTopLeft | CImGui.ImDrawFlags_RoundCornersBottomRight, th); x += sz + spacing;
-            CImGui.AddTriangle(draw_list, ImVec2(x+sz*0.5, y), ImVec2(x+sz,y+sz-0.5), ImVec2(x,y+sz-0.5), col32, th); x += sz + spacing;
-            CImGui.AddLine(draw_list, ImVec2(x, y), ImVec2(x+sz,    y), col32, th); x += sz + spacing;  # horizontal line (note: drawing a filled rectangle will be faster!)
-            CImGui.AddLine(draw_list, ImVec2(x, y), ImVec2(x,    y+sz), col32, th); x += spacing;       # vertical line (note: drawing a filled rectangle will be faster!)
-            CImGui.AddLine(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32, th); x += sz +spacing;   # diagonal line
-            CImGui.AddBezierCubic(draw_list, ImVec2(x, y), ImVec2(x+sz*1.3,y+sz*0.3), (x+sz-sz*1.3,y+sz-sz*0.3), ImVec2(x+sz, y+sz), col32, th);
-            x = p.x + 4
-            y += sz + spacing
-        end
-        CImGui.AddCircleFilled(draw_list, ImVec2(x+sz*0.5, y+sz*0.5), sz*0.5, col32, 6); x += sz+spacing; # hexagon
-        CImGui.AddCircleFilled(draw_list, ImVec2(x+sz*0.5, y+sz*0.5), sz*0.5, col32, 32); x += sz+spacing; # circle
-        CImGui.AddRectFilled(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32); x += sz+spacing;
-        CImGui.AddRectFilled(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32, 10.0); x += sz+spacing;
-        CImGui.AddRectFilled(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), col32, 10.0, CImGui.ImDrawFlags_RoundCornersTopLeft | CImGui.ImDrawFlags_RoundCornersBottomRight); x += sz+spacing;
-        CImGui.AddTriangleFilled(draw_list, ImVec2(x+sz*0.5, y), ImVec2(x+sz,y+sz-0.5), ImVec2(x,y+sz-0.5), col32); x += sz+spacing;
-        CImGui.AddRectFilled(draw_list, ImVec2(x, y), ImVec2(x+sz, y+thickness), col32); x += sz+spacing;          # horizontal line (faster than AddLine, but only handle integer thickness)
-        CImGui.AddRectFilled(draw_list, ImVec2(x, y), ImVec2(x+thickness, y+sz), col32); x += spacing+spacing;     # vertical line (faster than AddLine, but only handle integer thickness)
-        CImGui.AddRectFilled(draw_list, ImVec2(x, y), ImVec2(x+1, y+1), col32);          x += sz;                  # pixel (faster than AddLine)
-        CImGui.AddRectFilledMultiColor(draw_list, ImVec2(x, y), ImVec2(x+sz, y+sz), IM_COL32(0,0,0,255), IM_COL32(255,0,0,255), IM_COL32(255,255,0,255), IM_COL32(0,255,0,255))
-        CImGui.Dummy(ImVec2((sz+spacing)*8, (sz+spacing)*3))
-    end
-    CImGui.Separator()
-    @cstatic adding_line=false points=ImVec2[] begin
-        CImGui.Text("Canvas example")
-        CImGui.Button("Clear") && empty!(points)
-        if length(points) ≥ 2
-            CImGui.SameLine()
-            CImGui.Button("Undo") && (pop!(points); pop!(points);)
-        end
-        CImGui.Text("Left-click and drag to add lines,\nRight-click to undo")
 
-        # here we are using InvisibleButton() as a convenience to 1) advance the cursor and 2) allows us to use IsItemHovered()
-        # but you can also draw directly and poll mouse/keyboard by yourself. You can manipulate the cursor using GetCursorPos() and SetCursorPos().
-        # if you only use the ImDrawList API, you can notify the owner window of its extends by using SetCursorPos(max).
-        canvas_pos = CImGui.GetCursorScreenPos()            # ImDrawList API uses screen coordinates!
-        canvas_size = CImGui.GetContentRegionAvail()        # resize canvas to what's available
+    if CImGui.TreeNode("Images")
+        io = CImGui.GetIO()
 
-        cx, cy = canvas_size.x, canvas_size.y
-        cx < 50.0 && (cx = 50.0)
-        cy < 50.0 && (cy = 50.0)
-        canvas_size = ImVec2(cx, cy)
-        CImGui.AddRectFilledMultiColor(draw_list, canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(50, 50, 50, 255), IM_COL32(50, 50, 60, 255), IM_COL32(60, 60, 70, 255), IM_COL32(50, 50, 60, 255))
-        CImGui.AddRect(draw_list, canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), IM_COL32(255, 255, 255, 255))
+        # Here we are grabbing the font texture because that's the only one we have access to inside the demo code.
+        # Remember that ImTextureID is just storage for whatever you want it to be, it is essentially a value that will be passed to the render function inside the ImDrawCmd structure.
+        # If you use one of the default imgui_impl_XXXX.cpp renderer, they all have comments at the top of their file to specify what they expect to be stored in ImTextureID.
+        # (for example, the imgui_impl_dx11.cpp renderer expect a 'ID3D11ShaderResourceView*' pointer. The imgui_impl_glfw_gl3.cpp renderer expect a GLuint OpenGL texture identifier etc.)
+        # If you decided that ImTextureID = MyEngineTexture*, then you can pass your MyEngineTexture* pointers to CImGui.Image(), and gather width/height through your own functions, etc.
+        # Using ShowMetricsWindow() as a "debugger" to inspect the draw data that are being passed to your render will help you debug issues if you are confused about this.
+        # Consider using the lower-level ImDrawList::AddImage() API, via CImGui.GetWindowDrawList()->AddImage().
+        font_atlas = unsafe_load(io.Fonts)
+        # my_tex_id = unsafe_load(font_atlas.TexID)
+        # my_tex_w = unsafe_load(font_atlas.TexWidth)
+        # my_tex_h = unsafe_load(font_atlas.TexHeight)
 
-        adding_preview = false
-        CImGui.InvisibleButton("canvas", canvas_size)
-        mouse_x = unsafe_load(CImGui.GetIO().MousePos.x)
-        mouse_y = unsafe_load(CImGui.GetIO().MousePos.y)
-        mouse_pos_in_canvas = ImVec2(mouse_x - canvas_pos.x, mouse_y - canvas_pos.y)
-        if adding_line
-            adding_preview = true
-            push!(points, mouse_pos_in_canvas)
-            !CImGui.IsMouseDown(0) && (adding_line = adding_preview = false;)
-        end
-        if CImGui.IsItemHovered()
-            if !adding_line && CImGui.IsMouseClicked(0)
-                push!(points, mouse_pos_in_canvas)
-                adding_line = true
+        CImGui.Text(string("%.0fx%.0f", my_tex_w, my_tex_h))
+        pos = CImGui.GetCursorScreenPos()
+        CImGui.Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), (0,0), (1,1), (255,255,255,255), (255,255,255,128))
+        if CImGui.IsItemHovered() && unsafe_load(io.KeyShift)
+            CImGui.BeginTooltip()
+            region_sz = min(32.0, min(my_tex_w, my_tex_h))
+            region_x = unsafe_load(io.MousePos).x - pos.x - region_sz * 0.5
+            if region_x < 0.0
+                region_x = 0.0
+            elseif region_x > my_tex_w - region_sz
+                region_x = my_tex_w - region_sz
             end
-            if CImGui.IsMouseClicked(1) && !isempty(points)
-                adding_line = adding_preview = false
-                pop!(points)
-                pop!(points)
+            region_y = unsafe_load(io.MousePos).y - pos.y - region_sz * 0.5
+            if region_y < 0.0
+                region_y = 0.0
+            elseif region_y > my_tex_h - region_sz
+                region_y = my_tex_h - region_sz
             end
+            zoom = 4.0
+            CImGui.Text(string("Min: (%.2f, %.2f)", region_x, region_y))
+            CImGui.Text(string("Max: (%.2f, %.2f)", region_x + region_sz, region_y + region_sz))
+            uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h)
+            uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h)
+            CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
+            CImGui.EndTooltip()
         end
-        CImGui.PushClipRect(draw_list, canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), true) # clip lines within the canvas (if we resize it, etc.)
-        @cfor i=1 i<length(points) i+=2 begin
-            CImGui.AddLine(draw_list, ImVec2(canvas_pos.x + points[i].x, canvas_pos.y + points[i].y), ImVec2(canvas_pos.x + points[i + 1].x, canvas_pos.y + points[i + 1].y), IM_COL32(255, 255, 0, 255), 2.0)
-        end
-        CImGui.PopClipRect(draw_list)
-        adding_preview && pop!(points)
+        CImGui.TextWrapped("And now some textured buttons..")
+       
+        CImGui.TreePop()
     end
+
+
+
+# UI elements
+CImGui.Checkbox("Enable grid", opt_enable_grid)
+CImGui.Checkbox("Enable context menu", opt_enable_context_menu)
+CImGui.Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.")
+
+# Canvas setup
+canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
+canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
+canvas_sz = ImVec2(max(canvas_sz.x, 50.0), max(canvas_sz.y, 50.0))
+canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y)
+
+# Draw border and background color
+io = CImGui.GetIO()
+draw_list = CImGui.GetWindowDrawList()
+CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
+CImGui.AddRect(draw_list, canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255))
+
+# Invisible button for interactions
+CImGui.InvisibleButton("canvas", canvas_sz, CImGui.ImGuiButtonFlags_MouseButtonLeft | CImGui.ImGuiButtonFlags_MouseButtonRight)
+is_hovered = CImGui.IsItemHovered()  # Hovered
+is_active = CImGui.IsItemActive()  # Held
+origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
+mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - origin.x, unsafe_load(io.MousePos).y - origin.y)
+
+# Add first and second point
+if is_hovered && !adding_line[] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+    push!(points[], mouse_pos_in_canvas)
+    push!(points[], mouse_pos_in_canvas)
+    adding_line[] = true
+end
+if adding_line[]
+    points[][end] = mouse_pos_in_canvas
+    if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
+        adding_line[] = false
+    end
+end
+
+# Pan
+mouse_threshold_for_pan = opt_enable_context_menu[] ? -1.0 : 0.0
+if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
+    scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
+end
+
+# Context menu
+drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
+if opt_enable_context_menu[] && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
+    CImGui.OpenPopupOnItemClick("context")
+end
+if CImGui.BeginPopup("context")
+    if adding_line[]
+        resize!(points[], length(points[]) - 2)
+    end
+    adding_line[] = false
+    if CImGui.MenuItem("Remove one", "", false, length(points[]) > 0)
+        resize!(points[], length(points[]) - 2)
+    end
+    if CImGui.MenuItem("Remove all", "", false, length(points[]) > 0)
+        empty!(points[])
+    end
+    CImGui.EndPopup()
+end
+
+# Draw grid and lines
+CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
+if opt_enable_grid[]
+    GRID_STEP = 64.0
+    for x in 0:GRID_STEP:canvas_sz.x
+        CImGui.AddLine(draw_list, ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
+    end
+    for y in 0:GRID_STEP:canvas_sz.y
+        CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40))
+    end
+end
+for n in 1:2:length(points[])-1
+    CImGui.AddLine(draw_list, ImVec2(origin.x + points[][n].x, origin.y + points[][n].y), ImVec2(origin.x + points[][n+1].x, origin.y + points[][n+1].y), IM_COL32(255, 255, 0, 255), 2.0)
+end
+CImGui.PopClipRect(draw_list)
+
     CImGui.End()
 end
