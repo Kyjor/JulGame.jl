@@ -146,7 +146,7 @@ end
     ShowExampleAppCustomRendering(p_open::Ref{Bool})
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
-function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level)
+function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level, grid_step)
     CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Example: Custom rendering", p_open) || (CImGui.End(); return)
 
@@ -193,6 +193,8 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     # UI elements
     CImGui.Checkbox("Enable grid", opt_enable_grid)
     CImGui.Checkbox("Enable context menu", opt_enable_context_menu)
+    # grid step int input as slider with range. Min = 1, Max = 64
+    CImGui.SliderInt("Grid step", grid_step, 1, 64, "%d")
     CImGui.Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.")
 
     # Canvas setup
@@ -240,7 +242,8 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
 
     # Zoom
     if unsafe_load(io.KeyCtrl)
-        zoom_level[] += unsafe_load(io.MouseWheel) * 0.10
+        zoom_level[] += unsafe_load(io.MouseWheel) # * 0.10
+        zoom_level[] = clamp(zoom_level[], 1.0, 50.0)
     end
 
     # Context menu
@@ -265,7 +268,7 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     # Draw grid and lines
     CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
     if opt_enable_grid[]
-        GRID_STEP = 64.0
+        GRID_STEP = grid_step[] * zoom_level[]
 
         for x in 0:GRID_STEP:canvas_sz.x*10
             CImGui.AddLine(draw_list, ImVec2(origin.x + canvas_p0.x + x, canvas_p0.y), ImVec2(origin.x + canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
@@ -280,10 +283,6 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
         p2 = ImVec2(origin.x + points[][n+1].x, origin.y + points[][n+1].y)
         CImGui.AddLine(draw_list, p1, p2, IM_COL32(255, 255, 0, 255), 2.0)
     end
-    println("origin: ", origin)
-
-    println("canvas_p0: ", canvas_p0)
-    println("canvas_sz: ", canvas_sz)
     
     CImGui.AddImage(draw_list, my_tex_id, ImVec2(origin.x + canvas_p0.x, origin.y + canvas_p0.y), ImVec2(origin.x + (my_tex_w * zoom_level[]) + canvas_p0.x, origin.y + (my_tex_h * zoom_level[]) + canvas_p0.y), ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
     CImGui.PopClipRect(draw_list)
