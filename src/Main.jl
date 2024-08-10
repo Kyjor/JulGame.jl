@@ -757,13 +757,13 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					end
 					colliderRenderCount += 1
 					collider = entity.collider
-					if JulGame.get_type(collider) == "CircleCollider"
+					if Component.get_type(collider) == "CircleCollider"
 						SDL2E.SDL_RenderDrawCircle(
 							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
 							round(Int32, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
 							round(Int32, collider.diameter/2 * SCALE_UNITS))
 					else
-						colSize = JulGame.get_size(collider)
+						colSize = Component.get_size(collider)
 						colSize = Math.Vector2f(colSize.x, colSize.y)
 						colOffset = collider.offset
 						colOffset = Math.Vector2f(colOffset.x, colOffset.y)

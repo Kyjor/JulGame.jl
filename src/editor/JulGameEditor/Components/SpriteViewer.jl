@@ -161,22 +161,9 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     end
 
 
-    if CImGui.TreeNode("Images")
         io = CImGui.GetIO()
 
-        # Here we are grabbing the font texture because that's the only one we have access to inside the demo code.
-        # Remember that ImTextureID is just storage for whatever you want it to be, it is essentially a value that will be passed to the render function inside the ImDrawCmd structure.
-        # If you use one of the default imgui_impl_XXXX.cpp renderer, they all have comments at the top of their file to specify what they expect to be stored in ImTextureID.
-        # (for example, the imgui_impl_dx11.cpp renderer expect a 'ID3D11ShaderResourceView*' pointer. The imgui_impl_glfw_gl3.cpp renderer expect a GLuint OpenGL texture identifier etc.)
-        # If you decided that ImTextureID = MyEngineTexture*, then you can pass your MyEngineTexture* pointers to CImGui.Image(), and gather width/height through your own functions, etc.
-        # Using ShowMetricsWindow() as a "debugger" to inspect the draw data that are being passed to your render will help you debug issues if you are confused about this.
-        # Consider using the lower-level ImDrawList::AddImage() API, via CImGui.GetWindowDrawList()->AddImage().
-        font_atlas = unsafe_load(io.Fonts)
-        # my_tex_id = unsafe_load(font_atlas.TexID)
-        # my_tex_w = unsafe_load(font_atlas.TexWidth)
-        # my_tex_h = unsafe_load(font_atlas.TexHeight)
-
-        CImGui.Text(string("%.0fx%.0f", my_tex_w, my_tex_h))
+        CImGui.Text("$(my_tex_w)x$(my_tex_h)")
         pos = CImGui.GetCursorScreenPos()
         CImGui.Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), (0,0), (1,1), (255,255,255,255), (255,255,255,128))
         if CImGui.IsItemHovered() && unsafe_load(io.KeyShift)
@@ -202,13 +189,7 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
             CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
             CImGui.EndTooltip()
         end
-        CImGui.TextWrapped("And now some textured buttons..")
-       
-        CImGui.TreePop()
-    end
-
-
-
+        
 # UI elements
 CImGui.Checkbox("Enable grid", opt_enable_grid)
 CImGui.Checkbox("Enable context menu", opt_enable_context_menu)

@@ -336,7 +336,7 @@ module Editor
                             end
                         CImGui.End()
                     catch e
-                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, is_test_mode)
+                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, isTestMode)
                     end
 
                     try
@@ -454,7 +454,7 @@ module Editor
         SDL2.SDL_SetHint(SDL2.SDL_HINT_IME_SHOW_UI, "1")
 
         window = SDL2.SDL_CreateWindow(
-        "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1920, 1080,
+        "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
         SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
         )
         if window == C_NULL 

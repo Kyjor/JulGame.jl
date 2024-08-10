@@ -18,7 +18,7 @@ module AnimationModule
 
     function Component.update_array_value(this::Animation, value, field, index::Int32)
         fieldToUpdate = getfield(this, field)
-        if get_type(this, value) == "_Vector4"
+        if Component.get_type(this, value) == "_Vector4"
             fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.z, value.t)
         end
     end
