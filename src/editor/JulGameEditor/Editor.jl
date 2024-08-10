@@ -67,7 +67,7 @@ module Editor
         opt_enable_context_menu = Ref(true)
         adding_line = Ref(false)
         show_app_custom_rendering = Ref(true)
-        zoom_level = Ref(2.0)
+        zoom_level = Ref(1.0)
         grid_step = Ref(Int32(64))
 
         # unwrap data into array
