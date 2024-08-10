@@ -67,6 +67,7 @@ module Editor
         opt_enable_context_menu = Ref(true)
         adding_line = Ref(false)
         show_app_custom_rendering = Ref(true)
+        zoom_level = Ref(2.0)
 
         # unwrap data into array
         #data = unsafe_wrap(Array, data, 10000; own=false)
@@ -118,7 +119,7 @@ module Editor
                     
                     # if unsafe_load(io.KeyShift) # && unsafe_load(io.MouseDown)[1] && mouseUVCoord.x >= 0.0 && mouseUVCoord.y >= 0.0
                         try
-                            ShowExampleAppCustomRendering(show_app_custom_rendering, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_texture[], my_image_width[], my_image_height[])
+                            ShowExampleAppCustomRendering(show_app_custom_rendering, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_texture[], my_image_width[], my_image_height[], zoom_level)
                             CImGui.Begin("SDL2/SDL_Renderer Texture Test")
                             CImGui.Text(string("pointer = ", my_texture))
                             CImGui.Text(string("size = $(my_image_width[]) x $(my_image_height[])"))

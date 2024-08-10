@@ -146,7 +146,7 @@ end
     ShowExampleAppCustomRendering(p_open::Ref{Bool})
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
-function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h)
+function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level)
     CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Example: Custom rendering", p_open) || (CImGui.End(); return)
 
@@ -190,83 +190,111 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
             CImGui.EndTooltip()
         end
         
-# UI elements
-CImGui.Checkbox("Enable grid", opt_enable_grid)
-CImGui.Checkbox("Enable context menu", opt_enable_context_menu)
-CImGui.Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.")
+    # UI elements
+    CImGui.Checkbox("Enable grid", opt_enable_grid)
+    CImGui.Checkbox("Enable context menu", opt_enable_context_menu)
+    CImGui.Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.")
 
-# Canvas setup
-canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
-canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
-canvas_sz = ImVec2(max(canvas_sz.x, 50.0), max(canvas_sz.y, 50.0))
-canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y)
+    # Canvas setup
+    canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
+    canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
+    canvas_sz = ImVec2(max(canvas_sz.x, 50.0), max(canvas_sz.y, 50.0))
+    canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y)
 
-# Draw border and background color
-io = CImGui.GetIO()
-draw_list = CImGui.GetWindowDrawList()
-CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
-CImGui.AddRect(draw_list, canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255))
+    canvas_max = ImVec2(my_tex_w * 10, my_tex_h * 10)
 
-# Invisible button for interactions
-CImGui.InvisibleButton("canvas", canvas_sz, CImGui.ImGuiButtonFlags_MouseButtonLeft | CImGui.ImGuiButtonFlags_MouseButtonRight)
-is_hovered = CImGui.IsItemHovered()  # Hovered
-is_active = CImGui.IsItemActive()  # Held
-origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
-mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - origin.x, unsafe_load(io.MousePos).y - origin.y)
+    # Draw border and background color
+    io = CImGui.GetIO()
+    draw_list = CImGui.GetWindowDrawList()
+    CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
+    CImGui.AddRect(draw_list, canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255))
 
-# Add first and second point
-if is_hovered && !adding_line[] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
-    push!(points[], mouse_pos_in_canvas)
-    push!(points[], mouse_pos_in_canvas)
-    adding_line[] = true
-end
-if adding_line[]
-    points[][end] = mouse_pos_in_canvas
-    if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
-        adding_line[] = false
+    # Invisible button for interactions
+    CImGui.InvisibleButton("canvas", canvas_sz, CImGui.ImGuiButtonFlags_MouseButtonLeft | CImGui.ImGuiButtonFlags_MouseButtonRight)
+    is_hovered = CImGui.IsItemHovered()  # Hovered
+    is_active = CImGui.IsItemActive()  # Held
+    # origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
+    scrolling[] = ImVec2(min(scrolling[].x, 0.0), min(scrolling[].y, 0.0))
+    scrolling[] = ImVec2(max(scrolling[].x, -canvas_max.x), max(scrolling[].y, -canvas_max.y))
+    origin = ImVec2(min(0, 0 + scrolling[].x), min(0, 0 + scrolling[].y))  # Lock scrolled origin
+    mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - origin.x, unsafe_load(io.MousePos).y - origin.y)
+
+    # Add first and second point
+    if is_hovered && !adding_line[] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+        push!(points[], mouse_pos_in_canvas)
+        push!(points[], mouse_pos_in_canvas)
+        adding_line[] = true
     end
-end
-
-# Pan
-mouse_threshold_for_pan = opt_enable_context_menu[] ? -1.0 : 0.0
-if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
-    scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
-end
-
-# Context menu
-drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
-if opt_enable_context_menu[] && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
-    CImGui.OpenPopupOnItemClick("context")
-end
-if CImGui.BeginPopup("context")
     if adding_line[]
-        resize!(points[], length(points[]) - 2)
+        points[][end] = mouse_pos_in_canvas
+        if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
+            adding_line[] = false
+        end
     end
-    adding_line[] = false
-    if CImGui.MenuItem("Remove one", "", false, length(points[]) > 0)
-        resize!(points[], length(points[]) - 2)
-    end
-    if CImGui.MenuItem("Remove all", "", false, length(points[]) > 0)
-        empty!(points[])
-    end
-    CImGui.EndPopup()
-end
 
-# Draw grid and lines
-CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
-if opt_enable_grid[]
-    GRID_STEP = 64.0
-    for x in 0:GRID_STEP:canvas_sz.x
-        CImGui.AddLine(draw_list, ImVec2(canvas_p0.x + x, canvas_p0.y), ImVec2(canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
+    # Pan
+    mouse_threshold_for_pan = opt_enable_context_menu[] ? -1.0 : 0.0
+    if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
+        scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
     end
-    for y in 0:GRID_STEP:canvas_sz.y
-        CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40))
+
+    # Zoom
+    if unsafe_load(io.KeyCtrl)
+        zoom_level[] += unsafe_load(io.MouseWheel) * 0.10
     end
-end
-for n in 1:2:length(points[])-1
-    CImGui.AddLine(draw_list, ImVec2(origin.x + points[][n].x, origin.y + points[][n].y), ImVec2(origin.x + points[][n+1].x, origin.y + points[][n+1].y), IM_COL32(255, 255, 0, 255), 2.0)
-end
-CImGui.PopClipRect(draw_list)
+
+    # Context menu
+    drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
+    if opt_enable_context_menu[] && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
+        CImGui.OpenPopupOnItemClick("context")
+    end
+    if CImGui.BeginPopup("context")
+        if adding_line[]
+            resize!(points[], length(points[]) - 2)
+        end
+        adding_line[] = false
+        if CImGui.MenuItem("Remove one", "", false, length(points[]) > 0)
+            resize!(points[], length(points[]) - 2)
+        end
+        if CImGui.MenuItem("Remove all", "", false, length(points[]) > 0)
+            empty!(points[])
+        end
+        CImGui.EndPopup()
+    end
+
+    # Draw grid and lines
+    CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
+    if opt_enable_grid[]
+        GRID_STEP = 64.0
+
+        for x in 0:GRID_STEP:canvas_sz.x*10
+            CImGui.AddLine(draw_list, ImVec2(origin.x + canvas_p0.x + x, canvas_p0.y), ImVec2(origin.x + canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
+        end
+        for y in 0:GRID_STEP:canvas_sz.y*10
+            CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, origin.y + canvas_p0.y + y), ImVec2(canvas_p1.x, origin.y + canvas_p0.y + y), IM_COL32(200, 200, 200, 40))
+        end
+    end
+
+    for n in 1:2:length(points[])-1
+        p1 = ImVec2(origin.x + points[][n].x, origin.y + points[][n].y)
+        p2 = ImVec2(origin.x + points[][n+1].x, origin.y + points[][n+1].y)
+        CImGui.AddLine(draw_list, p1, p2, IM_COL32(255, 255, 0, 255), 2.0)
+    end
+    println("origin: ", origin)
+
+    println("canvas_p0: ", canvas_p0)
+    println("canvas_sz: ", canvas_sz)
+    
+    CImGui.AddImage(draw_list, my_tex_id, ImVec2(origin.x + canvas_p0.x, origin.y + canvas_p0.y), ImVec2(origin.x + (my_tex_w * zoom_level[]) + canvas_p0.x, origin.y + (my_tex_h * zoom_level[]) + canvas_p0.y), ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
+    CImGui.PopClipRect(draw_list)
 
     CImGui.End()
 end
+
+# function ImDrawList_AddImage(self, user_texture_id, p_min, p_max, uv_min, uv_max, col)
+#     ccall((:ImDrawList_AddImage, libcimgui), Cvoid, (Ptr{ImDrawList}, ImTextureID, ImVec2, ImVec2, ImVec2, ImVec2, ImU32), self, user_texture_id, p_min, p_max, uv_min, uv_max, col)
+# end
+
+# function ImDrawList_AddLine(self, p1, p2, col, thickness)
+#     ccall((:ImDrawList_AddLine, libcimgui), Cvoid, (Ptr{ImDrawList}, ImVec2, ImVec2, ImU32, Cfloat), self, p1, p2, col, thickness)
+# end
