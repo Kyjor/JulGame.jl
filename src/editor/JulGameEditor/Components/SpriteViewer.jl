@@ -36,63 +36,18 @@ function load_texture_from_file(filename::String, renderer::Ptr{SDL2.SDL_Rendere
 end
 
 
-function get_center(rc::CImGui.ImRect)
-    return ImVec2((rc.Min.x + rc.Max.x) * 0.5, (rc.Min.y + rc.Max.y) * 0.5)
-end
-
-function get_width(rc::CImGui.ImRect)
-    return rc.Max.x - rc.Min.x
-end
-
-function get_size(rc::CImGui.ImRect)
-    return ImVec2(rc.Max.x - rc.Min.x, rc.Max.y - rc.Min.y)
-end
-
-
-
-
 """
     ShowExampleAppCustomRendering(p_open::Ref{Bool})
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
-function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level, grid_step)
+function show_animation_window(frame_name, points, scrolling, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level, grid_step)
     CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
-    CImGui.Begin("Crop select", p_open) || (CImGui.End(); return)
+    CImGui.Begin("Animation - $(frame_name)") || (CImGui.End(); return)
 
     draw_list = CImGui.GetWindowDrawList()
-
     io = CImGui.GetIO()
-
-    CImGui.Text("$(my_tex_w)x$(my_tex_h)")
-    pos = CImGui.GetCursorScreenPos()
-    CImGui.Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), (0,0), (1,1), (255,255,255,255), (255,255,255,128))
-    if CImGui.IsItemHovered() && unsafe_load(io.KeyShift)
-        CImGui.BeginTooltip()
-        region_sz = min(32.0, min(my_tex_w, my_tex_h))
-        region_x = unsafe_load(io.MousePos).x - pos.x - region_sz * 0.5
-        if region_x < 0.0
-            region_x = 0.0
-        elseif region_x > my_tex_w - region_sz
-            region_x = my_tex_w - region_sz
-        end
-        region_y = unsafe_load(io.MousePos).y - pos.y - region_sz * 0.5
-        if region_y < 0.0
-            region_y = 0.0
-        elseif region_y > my_tex_h - region_sz
-            region_y = my_tex_h - region_sz
-        end
-        zoom = 4.0
-        CImGui.Text(string("Min: (%.2f, %.2f)", region_x, region_y))
-        CImGui.Text(string("Max: (%.2f, %.2f)", region_x + region_sz, region_y + region_sz))
-        uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h)
-        uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h)
-        CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
-        CImGui.EndTooltip()
-    end
         
     # UI elements
-    CImGui.Checkbox("Enable grid", opt_enable_grid)
-    CImGui.Checkbox("Enable context menu", opt_enable_context_menu)
     # grid step int input as slider with range. Min = 1, Max = 64
     CImGui.SliderInt("Grid step", grid_step, 1, 64, "%d")
     CImGui.Text("Mouse Left: drag to add square,\nMouse Right: drag to scroll, click for context menu.\nCTRL+Mouse Wheel: zoom")
@@ -108,7 +63,6 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     canvas_max = ImVec2(my_tex_w * 10, my_tex_h * 10)
 
     # Draw border and background color
-    io = CImGui.GetIO()
     draw_list = CImGui.GetWindowDrawList()
     CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
     CImGui.AddRect(draw_list, canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255))
@@ -142,7 +96,7 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     end
 
     # Pan
-    mouse_threshold_for_pan = opt_enable_context_menu[] ? -1.0 : 0.0
+    mouse_threshold_for_pan = -1.0 
     if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
     end
@@ -155,7 +109,7 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
 
     # Context menu
     drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
-    if opt_enable_context_menu[] && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
+    if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
         CImGui.OpenPopupOnItemClick("context")
     end
     if CImGui.BeginPopup("context")
@@ -174,7 +128,6 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
 
     # Draw grid and lines
     CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
-    if opt_enable_grid[]
         GRID_STEP = grid_step[] * zoom_level[]
 
         for x in 0:GRID_STEP:canvas_sz.x*10
@@ -183,7 +136,6 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
         for y in 0:GRID_STEP:canvas_sz.y*10
             CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, origin.y + canvas_p0.y + y), ImVec2(canvas_p1.x, origin.y + canvas_p0.y + y), IM_COL32(200, 200, 200, 40))
         end
-    end
     
     # Draw squares with add rect 
     for n in 1:2:length(points[])-1
@@ -198,3 +150,65 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
 
     CImGui.End()
 end
+
+function show_image_with_hover_preview(my_tex_id, my_tex_w, my_tex_h, crop)
+    io = CImGui.GetIO()
+
+    x, y, w, h = crop.x, crop.y, crop.z, crop.t
+    W, H = my_tex_w, my_tex_h  # dimensions of the texture or image
+    
+    u1, v1, u2, v2 = rect_to_uv(x, y, w, h, W, H)
+    crop = true
+    if u1 == 0 && v1 == 0 && u2 == 0 && v2 == 0
+        u1, v1 = 0
+        u2, v2 = 1
+        crop = false
+    else
+        my_tex_w = w
+        my_tex_h = h
+    end
+    println("Start UV Coordinates: ($u1, $v1)")
+    println("End UV Coordinates: ($u2, $v2)")
+    
+
+    # CImGui.Text("$(my_tex_w)x$(my_tex_h)")
+    pos = CImGui.GetCursorScreenPos()
+    CImGui.Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), (u1,v1), (u2,v2), (255,255,255,255), (255,255,255,128))
+    if CImGui.IsItemHovered() && unsafe_load(io.KeyShift)
+        CImGui.BeginTooltip()
+        region_sz = min(32.0, min(my_tex_w, my_tex_h))
+        region_x = unsafe_load(io.MousePos).x - pos.x - region_sz * 0.5
+        if region_x < 0.0
+            region_x = 0.0
+        elseif region_x > my_tex_w - region_sz
+            region_x = my_tex_w - region_sz
+        end
+        region_y = unsafe_load(io.MousePos).y - pos.y - region_sz * 0.5
+        if region_y < 0.0
+            region_y = 0.0
+        elseif region_y > my_tex_h - region_sz
+            region_y = my_tex_h - region_sz
+        end
+        zoom = 4.0
+        CImGui.Text(string("Min: (%.2f, %.2f)", region_x, region_y))
+        CImGui.Text(string("Max: (%.2f, %.2f)", region_x + region_sz, region_y + region_sz))
+        uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h)
+        uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h)
+        CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
+        CImGui.EndTooltip()
+    end
+end
+
+function rect_to_uv(x, y, w, h, W, H)
+    # Start UV coordinates (top-left)
+    u1 = x / W
+    v1 = y / H
+    
+    # End UV coordinates (bottom-right)
+    u2 = (x + w) / W
+    v2 = (y + h) / H
+    
+    return u1, v1, u2, v2
+end
+
+

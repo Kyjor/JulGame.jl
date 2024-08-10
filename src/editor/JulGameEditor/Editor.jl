@@ -63,10 +63,7 @@ module Editor
         # Static variables
         points = Ref(Vector{ImVec2}())
         scrolling = Ref(ImVec2(0.0, 0.0))
-        opt_enable_grid = Ref(true)
-        opt_enable_context_menu = Ref(true)
         adding_line = Ref(false)
-        show_app_custom_rendering = Ref(true)
         zoom_level = Ref(1.0)
         grid_step = Ref(Int32(64))
 
@@ -119,22 +116,8 @@ module Editor
                     end
                     
                     # if unsafe_load(io.KeyShift) # && unsafe_load(io.MouseDown)[1] && mouseUVCoord.x >= 0.0 && mouseUVCoord.y >= 0.0
-                        try
-                            ShowExampleAppCustomRendering(show_app_custom_rendering, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_texture[], my_image_width[], my_image_height[], zoom_level, grid_step)
-                            CImGui.Begin("SDL2/SDL_Renderer Texture Test")
-                            CImGui.Text(string("pointer = ", my_texture))
-                            CImGui.Text(string("size = $(my_image_width[]) x $(my_image_height[])"))
-                            CImGui.Image(my_texture[], ImVec2(my_image_width[], my_image_height[]))
-
-                            # CImGui.ImageButton(pickerImage.textureID, ImVec2(pickerImage.mWidth, pickerImage.mHeight))
-                            rc = CImGui.ImRect(CImGui.GetItemRectMin(), CImGui.GetItemRectMax())
-                            mouseUVCoord = ImVec2(unsafe_load(io.MousePos).x - rc.Min.x / get_size(rc).x, unsafe_load(io.MousePos).y - rc.Min.y / get_size(rc).y) 
-                            mouseUVCoord = ImVec2(mouseUVCoord.x, 1.0 - mouseUVCoord.y)
-                            CImGui.Text("Mouse Position:")
-                            CImGui.SameLine()
-                            CImGui.Text(string("x = $(unsafe_load(io.MousePos).x), y = $(unsafe_load(io.MousePos).y)"))
-                            displayedTextureSize = ImVec2(unsafe_load(io.DisplaySize).x, unsafe_load(io.DisplaySize).y)
-                        CImGui.End()
+                    try
+                        # show_animation_window(points, scrolling, adding_line, my_texture[], my_image_width[], my_image_height[], zoom_level, grid_step)
                     catch e 
                         @error "Error" exception=e
                         Base.show_backtrace(stderr, catch_backtrace())

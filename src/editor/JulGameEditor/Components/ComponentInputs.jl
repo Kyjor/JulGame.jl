@@ -214,7 +214,23 @@ function show_animator_properties(animator)
                                     CImGui.Button("Add Frame") && Component.append_array(animations[i])
                                     CImGui.Button("Delete") && (deleteat!(animations, i); break;)
                                     for k = eachindex(animations[i].frames)
+                                        if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
+                                            sprite = animator.parent.sprite
+                                            show_image_with_hover_preview(sprite.texture, sprite.size.x, sprite.size.y, animations[i].frames[k])
+                                            CImGui.SameLine()
+                                        end
                                         if CImGui.TreeNode("frame $(k)")
+                                            if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
+                                                points = Ref(Vector{ImVec2}())
+                                                scrolling = Ref(ImVec2(0.0, 0.0))
+                                                adding_line = Ref(false)
+                                                zoom_level = Ref(1.0)
+                                                grid_step = Ref(Int32(64))
+                    
+                                                sprite = animator.parent.sprite
+                                                show_animation_window("frame $(k)", points, scrolling, adding_line, sprite.texture, sprite.size.x, sprite.size.y, zoom_level, grid_step)
+                                            end
+
                                             vec = animations[i].frames[k]
                                             vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
