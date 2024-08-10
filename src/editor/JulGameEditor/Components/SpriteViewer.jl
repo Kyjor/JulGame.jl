@@ -57,7 +57,7 @@ Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
 function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt_enable_grid, opt_enable_context_menu, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level, grid_step)
     CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
-    CImGui.Begin("Example: Custom rendering", p_open) || (CImGui.End(); return)
+    CImGui.Begin("Crop select", p_open) || (CImGui.End(); return)
 
     draw_list = CImGui.GetWindowDrawList()
 
@@ -95,8 +95,10 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     CImGui.Checkbox("Enable context menu", opt_enable_context_menu)
     # grid step int input as slider with range. Min = 1, Max = 64
     CImGui.SliderInt("Grid step", grid_step, 1, 64, "%d")
-    CImGui.Text("Mouse Left: drag to add lines,\nMouse Right: drag to scroll, click for context menu.")
-
+    CImGui.Text("Mouse Left: drag to add square,\nMouse Right: drag to scroll, click for context menu.\nCTRL+Mouse Wheel: zoom")
+    selectedPoint1 = length(points[]) > 0 ? points[][end-1] : ImVec2(0,0)
+    selectedPoint2 = length(points[]) > 0 ? points[][end] : ImVec2(0,0)
+    CImGui.Text("Current selection: x:$(selectedPoint1.x),y:$(selectedPoint1.y) w:$(selectedPoint2.x - selectedPoint1.x),h:$(selectedPoint2.y - selectedPoint1.y)")
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
     canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
@@ -134,6 +136,7 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
     if adding_line[]
         points[][end] = mouse_pos_in_canvas_zoom_adjusted
         if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
+            points[] = [points[][end-1], points[][end]] # only keep last two points
             adding_line[] = false
         end
     end
@@ -195,11 +198,3 @@ function ShowExampleAppCustomRendering(p_open::Ref{Bool}, points, scrolling, opt
 
     CImGui.End()
 end
-
-# function ImDrawList_AddImage(self, user_texture_id, p_min, p_max, uv_min, uv_max, col)
-#     ccall((:ImDrawList_AddImage, libcimgui), Cvoid, (Ptr{ImDrawList}, ImTextureID, ImVec2, ImVec2, ImVec2, ImVec2, ImU32), self, user_texture_id, p_min, p_max, uv_min, uv_max, col)
-# end
-
-# function ImDrawList_AddLine(self, p1, p2, col, thickness)
-#     ccall((:ImDrawList_AddLine, libcimgui), Cvoid, (Ptr{ImDrawList}, ImVec2, ImVec2, ImU32, Cfloat), self, p1, p2, col, thickness)
-# end
