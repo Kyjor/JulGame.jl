@@ -160,16 +160,14 @@ function show_image_with_hover_preview(my_tex_id, my_tex_w, my_tex_h, crop)
     u1, v1, u2, v2 = rect_to_uv(x, y, w, h, W, H)
     crop = true
     if u1 == 0 && v1 == 0 && u2 == 0 && v2 == 0
-        u1, v1 = 0
-        u2, v2 = 1
+        u1, v1 = 0, 0
+        u2, v2 = 1, 1
         crop = false
+        return
     else
         my_tex_w = w
         my_tex_h = h
     end
-    println("Start UV Coordinates: ($u1, $v1)")
-    println("End UV Coordinates: ($u2, $v2)")
-    
 
     # CImGui.Text("$(my_tex_w)x$(my_tex_h)")
     pos = CImGui.GetCursorScreenPos()
@@ -190,13 +188,18 @@ function show_image_with_hover_preview(my_tex_id, my_tex_w, my_tex_h, crop)
             region_y = my_tex_h - region_sz
         end
         zoom = 4.0
-        CImGui.Text(string("Min: (%.2f, %.2f)", region_x, region_y))
-        CImGui.Text(string("Max: (%.2f, %.2f)", region_x + region_sz, region_y + region_sz))
+        CImGui.Text("Min: ($(region_x), $(region_y))")
+        CImGui.Text("Max: ($(region_x + region_sz), $(region_y + region_sz))")
         uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h)
         uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h)
+        if crop
+            uv0 = (u1,v1)
+            uv1 = (u2,v2)
+        end
         CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
         CImGui.EndTooltip()
     end
+    CImGui.SameLine()
 end
 
 function rect_to_uv(x, y, w, h, W, H)

@@ -217,7 +217,6 @@ function show_animator_properties(animator)
                                         if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
                                             sprite = animator.parent.sprite
                                             show_image_with_hover_preview(sprite.texture, sprite.size.x, sprite.size.y, animations[i].frames[k])
-                                            CImGui.SameLine()
                                         end
                                         if CImGui.TreeNode("frame $(k)")
                                             if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing

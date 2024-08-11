@@ -58,8 +58,7 @@ module Editor
         my_image_height = Ref{Cint}()
         my_texture = Ref{Ptr{SDL2.SDL_Texture}}()
         data = nothing
-        ret, my_texture[], my_image_width[], my_image_height[] = load_texture_from_file(joinpath("F:\\Projects\\Julia\\JulGame-Example\\Platformer\\assets\\images\\Bee.png"), renderer)
-
+        
         # Static variables
         points = Ref(Vector{ImVec2}())
         scrolling = Ref(ImVec2(0.0, 0.0))
@@ -584,7 +583,8 @@ module Editor
     end
 
     function log_exceptions(error_type, latest_exceptions, e, is_test_mode)
-        println("Error: $(is_test_mode): ", e)
+        println("Error: ", e)
+        Base.show_backtrace(stderr, catch_backtrace())
         push!(latest_exceptions, [e, String("$(Dates.now())")])
         if length(latest_exceptions) > 10
             deleteat!(latest_exceptions, 1)
