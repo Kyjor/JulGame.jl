@@ -66,6 +66,8 @@ module Editor
         zoom_level = Ref(1.0)
         grid_step = Ref(Int32(64))
 
+        animation_window_dict = Ref(Dict())
+
         # unwrap data into array
         #data = unsafe_wrap(Array, data, 10000; own=false)
         try
@@ -299,7 +301,7 @@ module Editor
                                         if length(filteredEntities) < entityIndex
                                             break
                                         end
-                                        show_field_editor(filteredEntities[entityIndex], entityField)
+                                        show_field_editor(filteredEntities[entityIndex], entityField, animation_window_dict)
                                     end
                 
                                     CImGui.Separator()

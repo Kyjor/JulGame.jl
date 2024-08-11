@@ -40,7 +40,7 @@ end
     ShowExampleAppCustomRendering(p_open::Ref{Bool})
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
-function show_animation_window(frame_name, points, scrolling, adding_line, my_tex_id, my_tex_w, my_tex_h, zoom_level, grid_step)
+function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_tex_h)
     CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Animation - $(frame_name)") || (CImGui.End(); return)
 
@@ -49,10 +49,10 @@ function show_animation_window(frame_name, points, scrolling, adding_line, my_te
         
     # UI elements
     # grid step int input as slider with range. Min = 1, Max = 64
-    CImGui.SliderInt("Grid step", grid_step, 1, 64, "%d")
+    CImGui.SliderInt("Grid step", window_info[]["grid_step"], 1, 64, "%d")
     CImGui.Text("Mouse Left: drag to add square,\nMouse Right: drag to scroll, click for context menu.\nCTRL+Mouse Wheel: zoom")
-    selectedPoint1 = length(points[]) > 0 ? points[][end-1] : ImVec2(0,0)
-    selectedPoint2 = length(points[]) > 0 ? points[][end] : ImVec2(0,0)
+    selectedPoint1 = length(window_info[]["points"][]) > 0 ? window_info[]["points"][][end-1] : ImVec2(0,0)
+    selectedPoint2 = length(window_info[]["points"][]) > 0 ? window_info[]["points"][][end] : ImVec2(0,0)
     CImGui.Text("Current selection: x:$(selectedPoint1.x),y:$(selectedPoint1.y) w:$(selectedPoint2.x - selectedPoint1.x),h:$(selectedPoint2.y - selectedPoint1.y)")
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
@@ -67,44 +67,47 @@ function show_animation_window(frame_name, points, scrolling, adding_line, my_te
     CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
     CImGui.AddRect(draw_list, canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255))
 
+    # Draw border around actual image that is being edited TODO: Fix this
+    # CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (my_tex_w * window_info[]["zoom_level"][]), canvas_p0.y + (my_tex_h * window_info[]["zoom_level"][])), ImVec2(canvas_p0.x, canvas_p0.y), IM_COL32(255, 255, 255, 255))
+
     # Invisible button for interactions
     CImGui.InvisibleButton("canvas", canvas_sz, CImGui.ImGuiButtonFlags_MouseButtonLeft | CImGui.ImGuiButtonFlags_MouseButtonRight)
     is_hovered = CImGui.IsItemHovered()  # Hovered
     is_active = CImGui.IsItemActive()  # Held
-    # origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
-    scrolling[] = ImVec2(min(scrolling[].x, 0.0), min(scrolling[].y, 0.0))
-    scrolling[] = ImVec2(max(scrolling[].x, -canvas_max.x), max(scrolling[].y, -canvas_max.y))
-    origin = ImVec2(min(0, 0 + scrolling[].x), min(0, 0 + scrolling[].y))  # Lock scrolled origin
+    # origin = ImVec2(canvas_p0.x + window_info[]["scrolling"][].x, canvas_p0.y + window_info[]["scrolling"][].y)  # Lock scrolled origin
+    window_info[]["scrolling"][] = ImVec2(min(window_info[]["scrolling"][].x, 0.0), min(window_info[]["scrolling"][].y, 0.0))
+    window_info[]["scrolling"][] = ImVec2(max(window_info[]["scrolling"][].x, -canvas_max.x), max(window_info[]["scrolling"][].y, -canvas_max.y))
+    origin = ImVec2(min(0, 0 + window_info[]["scrolling"][].x), min(0, 0 + window_info[]["scrolling"][].y))  # Lock scrolled origin
     mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - canvas_p0.x, unsafe_load(io.MousePos).y - canvas_p0.y)
     CImGui.Text("Mouse Position: $(mouse_pos_in_canvas.x), $(mouse_pos_in_canvas.y)")
-    CImGui.Text("Mouse Pixel: $(floor(mouse_pos_in_canvas.x / zoom_level[])), $(floor(mouse_pos_in_canvas.y / zoom_level[]))")
+    CImGui.Text("Mouse Pixel: $(floor(mouse_pos_in_canvas.x / window_info[]["zoom_level"][])), $(floor(mouse_pos_in_canvas.y / window_info[]["zoom_level"][]))")
 
-    mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / zoom_level[]), floor(mouse_pos_in_canvas.y / zoom_level[]))
-    #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ zoom_level[]) * zoom_level[], round(mouse_pos_in_canvas_zoom_adjusted.y/ zoom_level[]) * zoom_level[])
+    mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / window_info[]["zoom_level"][]), floor(mouse_pos_in_canvas.y / window_info[]["zoom_level"][]))
+    #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ window_info[]["zoom_level"][]) * window_info[]["zoom_level"][], round(mouse_pos_in_canvas_zoom_adjusted.y/ window_info[]["zoom_level"][]) * window_info[]["zoom_level"][])
     # Add first and second point
-    if is_hovered && !adding_line[] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
-        push!(points[], mouse_pos_in_canvas_zoom_adjusted)
-        push!(points[], mouse_pos_in_canvas_zoom_adjusted)
-        adding_line[] = true
+    if is_hovered && !window_info[]["adding_line"][] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+        push!(window_info[]["points"][], mouse_pos_in_canvas_zoom_adjusted)
+        push!(window_info[]["points"][], mouse_pos_in_canvas_zoom_adjusted)
+        window_info[]["adding_line"][] = true
     end
-    if adding_line[]
-        points[][end] = mouse_pos_in_canvas_zoom_adjusted
+    if window_info[]["adding_line"][]
+        window_info[]["points"][][end] = mouse_pos_in_canvas_zoom_adjusted
         if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
-            points[] = [points[][end-1], points[][end]] # only keep last two points
-            adding_line[] = false
+            window_info[]["points"][] = [window_info[]["points"][][end-1], window_info[]["points"][][end]] # only keep last two points
+            window_info[]["adding_line"][] = false
         end
     end
 
     # Pan
     mouse_threshold_for_pan = -1.0 
     if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
-        scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
+        window_info[]["scrolling"][] = ImVec2(window_info[]["scrolling"][].x + unsafe_load(io.MouseDelta).x, window_info[]["scrolling"][].y + unsafe_load(io.MouseDelta).y)
     end
 
     # Zoom
     if unsafe_load(io.KeyCtrl)
-        zoom_level[] += unsafe_load(io.MouseWheel) * 4.0 # * 0.10
-        zoom_level[] = clamp(zoom_level[], 1.0, 50.0)
+        window_info[]["zoom_level"][] += unsafe_load(io.MouseWheel) * 4.0 # * 0.10
+        window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][], 1.0, 50.0)
     end
 
     # Context menu
@@ -113,42 +116,45 @@ function show_animation_window(frame_name, points, scrolling, adding_line, my_te
         CImGui.OpenPopupOnItemClick("context")
     end
     if CImGui.BeginPopup("context")
-        if adding_line[]
-            resize!(points[], length(points[]) - 2)
+        if window_info[]["adding_line"][]
+            resize!(window_info[]["points"][], length(window_info[]["points"][]) - 2)
         end
-        adding_line[] = false
-        if CImGui.MenuItem("Remove one", "", false, length(points[]) > 0)
-            resize!(points[], length(points[]) - 2)
+        window_info[]["adding_line"][] = false
+        if CImGui.MenuItem("Remove one", "", false, length(window_info[]["points"][]) > 0)
+            resize!(window_info[]["points"][], length(window_info[]["points"][]) - 2)
         end
-        if CImGui.MenuItem("Remove all", "", false, length(points[]) > 0)
-            empty!(points[])
+        if CImGui.MenuItem("Remove all", "", false, length(window_info[]["points"][]) > 0)
+            empty!(window_info[]["points"][])
         end
         CImGui.EndPopup()
     end
 
     # Draw grid and lines
     CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
-        GRID_STEP = grid_step[] * zoom_level[]
+        GRID_STEP = window_info[]["grid_step"][] * window_info[]["zoom_level"][]
 
-        for x in 0:GRID_STEP:canvas_sz.x*10
+        for x in 0:GRID_STEP:canvas_sz.x*10 # TODO: 10 is arbitrary
             CImGui.AddLine(draw_list, ImVec2(origin.x + canvas_p0.x + x, canvas_p0.y), ImVec2(origin.x + canvas_p0.x + x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
         end
-        for y in 0:GRID_STEP:canvas_sz.y*10
+        for y in 0:GRID_STEP:canvas_sz.y*10 # TODO: 10 is arbitrary
             CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, origin.y + canvas_p0.y + y), ImVec2(canvas_p1.x, origin.y + canvas_p0.y + y), IM_COL32(200, 200, 200, 40))
         end
     
     # Draw squares with add rect 
-    for n in 1:2:length(points[])-1
-        p1 = ImVec2(origin.x + canvas_p0.x + (points[][n].x * zoom_level[]), origin.y + canvas_p0.y + (points[][n].y * zoom_level[]))
-        p2 = ImVec2(origin.x + canvas_p0.x + (points[][n+1].x * zoom_level[]), origin.y + canvas_p0.y + (points[][n+1].y * zoom_level[]))
+    for n in 1:2:length(window_info[]["points"][])-1
+        p1 = ImVec2(origin.x + canvas_p0.x + (window_info[]["points"][][n].x * window_info[]["zoom_level"][]), origin.y + canvas_p0.y + (window_info[]["points"][][n].y * window_info[]["zoom_level"][]))
+        p2 = ImVec2(origin.x + canvas_p0.x + (window_info[]["points"][][n+1].x * window_info[]["zoom_level"][]), origin.y + canvas_p0.y + (window_info[]["points"][][n+1].y * window_info[]["zoom_level"][]))
         # scale to zoom level
         CImGui.AddRect(draw_list, p1, p2, IM_COL32(255, 255, 0, 255))
     end
 
-    CImGui.AddImage(draw_list, my_tex_id, ImVec2(origin.x + canvas_p0.x, origin.y + canvas_p0.y), ImVec2(origin.x + (my_tex_w * zoom_level[]) + canvas_p0.x, origin.y + (my_tex_h * zoom_level[]) + canvas_p0.y), ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
+    CImGui.AddImage(draw_list, my_tex_id, ImVec2(origin.x + canvas_p0.x, origin.y + canvas_p0.y), ImVec2(origin.x + (my_tex_w * window_info[]["zoom_level"][]) + canvas_p0.x, origin.y + (my_tex_h * window_info[]["zoom_level"][]) + canvas_p0.y), ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
     CImGui.PopClipRect(draw_list)
 
     CImGui.End()
+
+    # x, y, w, h = crop.x, crop.y, crop.z, crop.t
+    return selectedPoint1.x, selectedPoint1.y, selectedPoint2.x - selectedPoint1.x, selectedPoint2.y - selectedPoint1.y
 end
 
 function show_image_with_hover_preview(my_tex_id, my_tex_w, my_tex_h, crop)
