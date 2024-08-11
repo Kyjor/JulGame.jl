@@ -165,7 +165,8 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 indices, elem_count, sizeof(CImGui.ImDrawIdx))
 
                 if res != 0
-                    println("error: ", unsafe_string(SDL2.SDL_GetError()))
+                    @error "Error rendering imgui:" exception=unsafe_string(SDL2.SDL_GetError())
+                    Base.show_backtrace(stderr, catch_backtrace())
                 end
             end
         end

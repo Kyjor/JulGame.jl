@@ -13,7 +13,7 @@ include("ScreenButtonFields.jl")
 show_field_editor(entity, field)
 Creates inputs based on the component type and populates them.
 """
-function show_field_editor(entity, fieldName)
+function show_field_editor(entity, fieldName, animation_window_dict)
     field = getfield(entity, fieldName)
     if field == C_NULL || field === nothing
         return
@@ -36,7 +36,7 @@ function show_field_editor(entity, fieldName)
         elseif isa(field, SoundSourceModule.InternalSoundSource)
             show_sound_source_fields(entity.soundSource)
         elseif isa(field, AnimatorModule.InternalAnimator)
-            show_animator_properties(entity.animator)
+            show_animator_properties(entity.animator, animation_window_dict)
         else
             for field in fieldnames(typeof(field))
                 show_component_field_input(getfield(entity, Symbol(lowercase(fieldName))), field)
@@ -183,7 +183,7 @@ function show_component_field_input(component, componentField)
 end
 
 """
-    show_animator_properties(animator)
+    show_animator_properties(animator, animation_window_dict)
 
 Display the properties of an animator object in the user interface.
 
@@ -191,7 +191,7 @@ Display the properties of an animator object in the user interface.
 - `animator`: The animator object to display properties for.
 
 """
-function show_animator_properties(animator)
+function show_animator_properties(animator, animation_window_dict)
     try
         for field in fieldnames(typeof(animator))
             fieldString = "$(field)"
@@ -214,9 +214,38 @@ function show_animator_properties(animator)
                                     CImGui.Button("Add Frame") && Component.append_array(animations[i])
                                     CImGui.Button("Delete") && (deleteat!(animations, i); break;)
                                     for k = eachindex(animations[i].frames)
+                                        vec = animations[i].frames[k]
+                                        anim_x, anim_y, anim_w, anim_h = vec.x, vec.y, vec.z, vec.t
+
+                                        if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
+                                            sprite = animator.parent.sprite
+                                            show_image_with_hover_preview(sprite.texture, sprite.size.x, sprite.size.y, animations[i].frames[k])
+                                        end
                                         if CImGui.TreeNode("frame $(k)")
-                                            vec = animations[i].frames[k]
-                                            vec4i = Cint[vec.x, vec.y, vec.z, vec.t]
+                                            if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
+                                                
+                                                points = Ref(Vector{ImVec2}([ImVec2(anim_x, anim_y), ImVec2(anim_x + anim_w, anim_y + anim_h)]))
+                                                scrolling = Ref(ImVec2(0.0, 0.0))
+                                                adding_line = Ref(false)
+                                                zoom_level = Ref(1.0)
+                                                grid_step = Ref(Int32(64))
+
+                                                # put these in a ref dictionary
+                                                window_info = Ref(Dict("points" => points, "scrolling" => scrolling, "adding_line" => adding_line, "zoom_level" => zoom_level, "grid_step" => grid_step))
+                                                # check if animation_window_dict has the key "frame $(k)"
+                                                if haskey(animation_window_dict[], "frame $(k)")
+                                                    # animation_window_dict[]["frame $(k)"][]["points"] = points
+                                                    window_info[] = animation_window_dict[]["frame $(k)"][]
+                                                else
+                                                    animation_window_dict[]["frame $(k)"] = window_info
+                                                end
+
+                    
+                                                sprite = animator.parent.sprite
+                                                anim_x, anim_y, anim_w, anim_h = show_animation_window("frame $(k)", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+                                            end
+
+                                            vec4i = Cint[anim_x, anim_y, anim_w, anim_h]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
                                             Component.update_array_value(animations[i], JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
                                             CImGui.TreePop()

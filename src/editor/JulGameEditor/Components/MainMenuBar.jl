@@ -31,7 +31,7 @@ Show the file menu in the main menu bar.
 - `events`: An array of event functions. These are callbacks that are triggered when the user selects a menu item.
 """
 function ShowMenuFile(events)
-    if CImGui.MenuItem("Open", "Ctrl+O.")
+    if CImGui.MenuItem("Open", "Ctrl+O")
         events[end]()
     end
     if length(events) > 1 && CImGui.MenuItem("Save", "Ctrl+S")
