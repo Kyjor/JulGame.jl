@@ -144,6 +144,9 @@ module Editor
                                 if payload != C_NULL
                                     payload = unsafe_load(payload)
                                     println("payload: ", payload)
+                                    origin = unsafe_load(Ptr{Cint}(payload.Data))
+                                            # destination = n
+                                    println("origin: ", origin)
                                     @assert payload.DataSize == sizeof(Cint)
                                 end
                                 CImGui.EndDragDropTarget()
@@ -176,6 +179,8 @@ module Editor
                             hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
                             updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
+                            entitiesWithParents = filter(entity -> entity.parent != C_NULL, currentSceneMain.scene.entities)
+
                             ShowHelpMarker("Hold CTRL and click to select multiple items.")
                             if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
@@ -185,12 +190,32 @@ module Editor
                                 CImGui.PushID(n)
 
                                 buf = "$(n): $(filteredEntities[n].name)"
-                                if CImGui.Selectable(buf, hierarchyEntitySelections[n])
-                                    # clear selection when CTRL is not held
-                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
-                                    hierarchyEntitySelections[n] ⊻= 1
-                                    itemSelected = true
-                                    currentSceneMain.selectedEntity = filteredEntities[n]
+                                children = filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
+                                if length(children) == 0
+                                    if CImGui.Selectable(buf, hierarchyEntitySelections[n])
+                                        # clear selection when CTRL is not held
+                                        !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
+                                        hierarchyEntitySelections[n] ⊻= 1
+                                        itemSelected = true
+                                        currentSceneMain.selectedEntity = filteredEntities[n]
+                                    end
+                                       
+                                else
+                                    if CImGui.TreeNode(buf)
+                                        for child in children
+                                            CImGui.PushID(child.id)
+                                            buf = "$(child.name)"
+                                            if CImGui.Selectable(buf, hierarchyEntitySelections[n])
+                                                # clear selection when CTRL is not held
+                                                !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
+                                                hierarchyEntitySelections[n] ⊻= 1
+                                                itemSelected = true
+                                                currentSceneMain.selectedEntity = child
+                                            end
+                                            CImGui.PopID()
+                                        end
+                                        CImGui.TreePop()
+                                    end
                                 end
                                 
                                 # our entities are both drag sources and drag targets here!
@@ -203,7 +228,9 @@ module Editor
                                     payload = CImGui.AcceptDragDropPayload("Entity")
                                     if payload != C_NULL
                                         payload = unsafe_load(payload)
-                                        println("payload: ", payload)
+                                    origin = unsafe_load(Ptr{Cint}(payload.Data))
+                                            destination = n
+                                            filteredEntities[n].parent = filteredEntities[origin]
                                         @assert payload.DataSize == sizeof(Cint)
                                     end
                                     CImGui.EndDragDropTarget()

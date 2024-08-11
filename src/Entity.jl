@@ -20,6 +20,7 @@ module EntityModule
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         isActive::Bool
         name::String
+        parent::Union{Entity, Ptr{Nothing}}
         persistentBetweenScenes::Bool
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
         scripts::Vector{Any}
@@ -47,6 +48,7 @@ module EntityModule
             this.sprite = C_NULL
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
+            this.parent = C_NULL
 
             return this
         end
