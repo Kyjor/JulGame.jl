@@ -21,7 +21,7 @@ module Editor
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
-    function run(isTestMode::Bool=false)
+    function run(is_test_mode::Bool=false)
         info = init_sdl_and_imgui()
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
         startingSize = ImVec2(1920, 1080)
@@ -322,7 +322,7 @@ module Editor
                             end
                         CImGui.End()
                     catch e
-                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, isTestMode)
+                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, is_test_mode)
                     end
 
                     try
@@ -374,7 +374,7 @@ module Editor
                             end
                         CImGui.End()
                     catch e
-                        log_exceptions("UI Inspector Window Error:", latest_exceptions, e, isTestMode)
+                        log_exceptions("UI Inspector Window Error:", latest_exceptions, e, is_test_mode)
                     end
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
@@ -404,9 +404,9 @@ module Editor
                     #################################################
 
                     SDL2.SDL_RenderPresent(renderer);
-                    if isTestMode && testFrameCount < testFrameLimit
+                    if is_test_mode && testFrameCount < testFrameLimit
                         testFrameCount += 1
-                    elseif isTestMode
+                    elseif is_test_mode
                         quit = true
                     end
                 catch e 
