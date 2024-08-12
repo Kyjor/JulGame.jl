@@ -186,7 +186,12 @@ module Editor
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
                             
+                            println(length(entitiesWithParents))
                             for n = eachindex(filteredEntities)
+                                if filteredEntities[n].parent != C_NULL
+                                    continue
+                                end
+
                                 CImGui.PushID(n)
 
                                 buf = "$(n): $(filteredEntities[n].name)"
@@ -228,9 +233,9 @@ module Editor
                                     payload = CImGui.AcceptDragDropPayload("Entity")
                                     if payload != C_NULL
                                         payload = unsafe_load(payload)
-                                    origin = unsafe_load(Ptr{Cint}(payload.Data))
-                                            destination = n
-                                            filteredEntities[n].parent = filteredEntities[origin]
+                                        origin = unsafe_load(Ptr{Cint}(payload.Data))
+                                        destination = n
+                                        filteredEntities[origin].parent = filteredEntities[destination]
                                         @assert payload.DataSize == sizeof(Cint)
                                     end
                                     CImGui.EndDragDropTarget()

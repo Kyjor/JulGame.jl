@@ -139,7 +139,7 @@ function show_component_field_input(component, componentField)
         @c CImGui.Checkbox("$(componentField)", &fieldValue)
         setfield!(component, componentField, fieldValue)
 
-    elseif isa(fieldValue, String)
+    elseif isa(fieldValue, String) && String(componentField) != "id"
         buf = "$(fieldValue)"*"\0"^(64)
         CImGui.InputText("$(componentField)", buf, length(buf))
         currentTextInTextBox = ""
