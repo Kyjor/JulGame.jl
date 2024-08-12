@@ -48,7 +48,7 @@ module SceneReaderModule
                 end
                 
                 if haskey(entity, "parent") && entity.parent != ""
-                    childParentDict[entity.id] = entity.parent
+                    childParentDict[string(entity.id)] = entity.parent
                 end
                 newEntity = Entity(entity.name, string(entity.id))
                 newEntity.isActive = entity.isActive
@@ -83,16 +83,16 @@ module SceneReaderModule
             end
 
             for entity in entities
-                if entity.parent != C_NULL
-                    if haskey(childParentDict, entity.parent.id)
-                        parent = childParentDict[entity.parent.id]
+                    if haskey(childParentDict, string(entity.id))
+                        parentId = childParentDict[string(entity.id)]
                         for e in entities
-                            if e.id == parent
+                            println("Checking if $(e.id) == $parentId")
+                            if string(e.id) == string(parentId)
+                                println("setting parent of $(entity.name) to $(e.name)")
                                 entity.parent = e
                             end
                         end
                     end
-                end
             end
 
             uiElements = deserialize_ui_elements(json.UIElements)

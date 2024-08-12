@@ -186,7 +186,7 @@ module Editor
                                 hierarchyEntitySelections=fill(false, length(filteredEntities))
                             end
                             
-                            println(length(entitiesWithParents))
+                            #println(length(entitiesWithParents))
                             for n = eachindex(filteredEntities)
                                 if filteredEntities[n].parent != C_NULL
                                     continue
