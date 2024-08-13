@@ -86,9 +86,7 @@ module SceneReaderModule
                     if haskey(childParentDict, string(entity.id))
                         parentId = childParentDict[string(entity.id)]
                         for e in entities
-                            println("Checking if $(e.id) == $parentId")
                             if string(e.id) == string(parentId)
-                                println("setting parent of $(entity.name) to $(e.name)")
                                 entity.parent = e
                             end
                         end

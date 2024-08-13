@@ -223,23 +223,8 @@ module Editor
                                     end
                                 end
                                 
-                                # our entities are both drag sources and drag targets here!
-                                if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
-                                    @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
-                                    CImGui.Text("Move $(filteredEntities[n].name)")
-                                    CImGui.EndDragDropSource()
-                                end
-                                if CImGui.BeginDragDropTarget()
-                                    payload = CImGui.AcceptDragDropPayload("Entity")
-                                    if payload != C_NULL
-                                        payload = unsafe_load(payload)
-                                        origin = unsafe_load(Ptr{Cint}(payload.Data))
-                                        destination = n
-                                        filteredEntities[origin].parent = filteredEntities[destination]
-                                        @assert payload.DataSize == sizeof(Cint)
-                                    end
-                                    CImGui.EndDragDropTarget()
-                                end
+                                handle_drag_and_drop(filteredEntities, n)
+                                
 
                                 # Reorder entities: We can only reorder entities if the entiities are not being filtered
                                 if length(filteredEntities) == length(currentSceneMain.scene.entities)
@@ -611,6 +596,7 @@ module Editor
             # We only need to do this in the case where the origin index is less than the destination index, because the other way around, the destination index is already "adjusted" because the items before it are not shifted
             destination -= 1 
         end
+        originEntity.parent = C_NULL
         updatedEntities = [entities[destination], originEntity]
         
         splice!(entities, destination : destination, updatedEntities)
@@ -625,6 +611,26 @@ module Editor
         end
         if is_test_mode
             @warn "Error in renderloop!" exception=e
+        end
+    end
+
+    function handle_drag_and_drop(filteredEntities, n)
+        # our entities are both drag sources and drag targets here!
+        if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+            @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
+            CImGui.Text("Move $(filteredEntities[n].name)")
+            CImGui.EndDragDropSource()
+        end
+        if CImGui.BeginDragDropTarget()
+            payload = CImGui.AcceptDragDropPayload("Entity")
+            if payload != C_NULL
+                payload = unsafe_load(payload)
+                origin = unsafe_load(Ptr{Cint}(payload.Data))
+                destination = n
+                filteredEntities[origin].parent = filteredEntities[destination]
+                @assert payload.DataSize == sizeof(Cint)
+            end
+            CImGui.EndDragDropTarget()
         end
     end
 end
