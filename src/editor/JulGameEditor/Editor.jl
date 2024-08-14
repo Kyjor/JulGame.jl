@@ -98,15 +98,6 @@ module Editor
                         CImGui.End()
                     end
                     
-                    # if unsafe_load(io.KeyShift) # && unsafe_load(io.MouseDown)[1] && mouseUVCoord.x >= 0.0 && mouseUVCoord.y >= 0.0
-                    try
-                        # show_animation_window(points, scrolling, adding_line, my_texture[], my_image_width[], my_image_height[], zoom_level, grid_step)
-                    catch e 
-                        @error "Error" exception=e
-                        Base.show_backtrace(stderr, catch_backtrace())
-                    end
-                #end
-
                     @cstatic begin
                         CImGui.Begin("Scene")  
                             sceneWindowPos = CImGui.GetWindowPos()
@@ -135,12 +126,19 @@ module Editor
                             end
                         CImGui.End()
                     end
-                    itemSelected = false
                     uiSelected = false
 
                     try
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
+                            # remove other entities from hierarchyEntitySelections if currentSceneMain.selectedEntity is not in hierarchyEntitySelections
+                            # this happens if we select an entity in the scene view
+                            if currentSceneMain.selectedEntity !== nothing && any(entity -> (entity[1] == currentSceneMain.selectedEntity && entity[2] == false), hierarchyEntitySelections)
+                                for index in eachindex(hierarchyEntitySelections)
+                                    hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], currentSceneMain.selectedEntity == hierarchyEntitySelections[index][1])
+                                end
+                            end 
+                             
                             CImGui.SameLine()
                             show_help_marker("This is a list of all entities in the scene. Click on an entity to select it.")
                             CImGui.SameLine()
@@ -279,13 +277,6 @@ module Editor
                         
                    
                         CImGui.Begin("UI Inspector") 
-                            # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
-                            #if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyUISelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing
-                                # fill!(hierarchyUISelections, false)
-                                #hierarchyUISelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
-                            #elseif uiSelected
-                                # currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyUISelections)[1]]
-                            #end
                             for uiElementIndex = eachindex(hierarchyUISelections)
                                 if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                     CImGui.PushID("AddMenu")
@@ -383,12 +374,6 @@ module Editor
         end
     end
 
-    function test()
-        println("Running test")
-    end
-    function test1()
-        println("Running test1")
-    end
     function init_sdl_and_imgui()
         if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
             println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
@@ -541,7 +526,6 @@ module Editor
     end
 
     function move_entities(entities, origin, destination)
-        println("indexin([destination], origin): ", indexin([destination], origin))
         if indexin([destination], origin) != [nothing]
             return
         end
@@ -633,10 +617,11 @@ module Editor
 
     function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, filteredEntities = nothing)
         CImGui.PushID(entity.id)
-        if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][1] == currentSceneMain.selectedEntity)
+        if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][2])
             # clear selection when CTRL is not held
-            !unsafe_load(CImGui.GetIO().KeyCtrl) && deselect_all_entities(hierarchyEntitySelections)
+            (!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
             hierarchyEntitySelections[entityIndex] = (hierarchyEntitySelections[entityIndex][1], true)
+            unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
             currentSceneMain.selectedEntity = entity
         end
         if filteredEntities !== nothing
@@ -665,6 +650,37 @@ module Editor
     function deselect_all_entities(hierarchyEntitySelections)
         for index in eachindex(hierarchyEntitySelections)
             hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], false)
+        end
+    end
+
+    function select_all_elements_in_between(hierarchyEntitySelections, lastSelectedIndex)
+        start = 0
+        for i in 1:lastSelectedIndex
+            if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex
+                start = i
+                break
+            end
+        end
+        if start != 0
+            for i in start:lastSelectedIndex
+                hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
+                if i == lastSelectedIndex
+                    return
+                end
+            end
+        end
+
+        for i in length(hierarchyEntitySelections):-1:lastSelectedIndex
+            if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex
+                start = i
+                break
+            end
+        end
+
+        if start != 0
+            for i in start:-1:lastSelectedIndex
+                hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
+            end
         end
     end
 end
