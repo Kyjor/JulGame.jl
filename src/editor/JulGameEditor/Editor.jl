@@ -40,7 +40,7 @@ module Editor
         # Hierarchy variables
         filteredEntities = Entity[]
         hierarchyFilterText::String = ""
-        hierarchyEntitySelections = Bool[]
+        hierarchyEntitySelections = []
         hierarchyUISelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
@@ -142,7 +142,7 @@ module Editor
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             CImGui.SameLine()
-                            ShowHelpMarker("This is a list of all entities in the scene. Click on an entity to select it.")
+                            show_help_marker("This is a list of all entities in the scene. Click on an entity to select it.")
                             CImGui.SameLine()
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
                                 CImGui.MenuItem("Add", C_NULL, false, false)
@@ -163,85 +163,27 @@ module Editor
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
                             entitiesWithParents = filter(entity -> entity.parent != C_NULL, currentSceneMain.scene.entities)
 
-                            ShowHelpMarker("Hold CTRL and click to select multiple items.")
+                            show_help_marker("Hold CTRL and click to select multiple items.")
                             if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
-                                hierarchyEntitySelections=fill(false, length(filteredEntities))
+                                hierarchyEntitySelections= []
+                                for entity in filteredEntities
+                                    push!(hierarchyEntitySelections, (entity, false))
+                                end
                             end
 
-
-
-                            
-                            #println(length(entitiesWithParents))
-                            # if shift is not held
-                            if !unsafe_load(io.KeyShift)
-                                for n = eachindex(filteredEntities)
-                                    if CImGui.Selectable(buf, hierarchyEntitySelections[n])
-                                        # clear selection when CTRL is not held
-                                        !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
-                                        hierarchyEntitySelections[n] ⊻= 1
-                                        itemSelected = true
-                                        currentSceneMain.selectedEntity = filteredEntities[n]
-                                    end
+                            for n = eachindex(filteredEntities)
+                                if filteredEntities[n].parent != C_NULL
+                                    continue
                                 end
-                            else
-                                for n = eachindex(filteredEntities)
-                                    if filteredEntities[n].parent != C_NULL
-                                        continue
-                                    end
 
-                                    CImGui.PushID(n)
-
-                                    buf = "$(n): $(filteredEntities[n].name)"
-                                    children = filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
-                                    if length(children) == 0
-                                        if CImGui.Selectable(buf, hierarchyEntitySelections[n])
-                                            # clear selection when CTRL is not held
-                                            !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
-                                            hierarchyEntitySelections[n] ⊻= 1
-                                            itemSelected = true
-                                            currentSceneMain.selectedEntity = filteredEntities[n]
-                                        end
-                                        
-                                    else
-                                        if CImGui.TreeNode(buf)
-                                            for child in children
-                                                CImGui.PushID(child.id)
-                                                buf = "$(child.name)"
-                                                if CImGui.Selectable(buf, hierarchyEntitySelections[n])
-                                                    # clear selection when CTRL is not held
-                                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyEntitySelections, false)
-                                                    hierarchyEntitySelections[n] ⊻= 1
-                                                    itemSelected = true
-                                                    currentSceneMain.selectedEntity = child
-                                                end
-                                                CImGui.PopID()
-                                            end
-                                            CImGui.TreePop()
-                                        end
-                                    end
-                                    
-                                    handle_drag_and_drop(filteredEntities, n)
-                                    
-
-                                    # Reorder entities: We can only reorder entities if the entiities are not being filtered
-                                    if length(filteredEntities) == length(currentSceneMain.scene.entities)
-                                        CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
-                                        if CImGui.BeginDragDropTarget()
-                                            payload = CImGui.AcceptDragDropPayload("Entity") 
-                                            if payload != C_NULL
-                                                payload = unsafe_load(payload)
-                                                @assert payload.DataSize == sizeof(Cint)
-                                                origin = unsafe_load(Ptr{Cint}(payload.Data))
-                                                destination = n
-                                                # Move the entity(origin) to the position after the entity at the destination index and adust the other entities accordingly. Use splicing to do this.
-                                                move_entity(currentSceneMain.scene.entities, origin, destination)
-                                            end
-                                            CImGui.EndDragDropTarget()
-                                        end
-                                    end
-                                    CImGui.PopID()
+                                children = filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
+                                if length(children) == 0
+                                    handle_childless_entity_selection(filteredEntities[n], hierarchyEntitySelections, n, currentSceneMain)
+                                else
+                                    handle_parent_entity_selection(filteredEntities[n], children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
                                 end
-                        end
+                                handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
+                            end
 
                             CImGui.PopStyleVar()
                             CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
@@ -296,45 +238,38 @@ module Editor
                     
                     try
                         CImGui.Begin("Entity Inspector") 
-                            # TODO: Fix this. I know this is bad. I'm sorry. I'll fix it later.
-                            if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing && filteredEntities !== nothing && hierarchyEntitySelections !== nothing && indexin([currentSceneMain.selectedEntity], filteredEntities)[1] !== nothing && hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[begin]] == false
-                                fill!(hierarchyEntitySelections, false)
-                                hierarchyEntitySelections[indexin([currentSceneMain.selectedEntity], filteredEntities)[1]] = true
-                            elseif itemSelected
-                                currentSceneMain.selectedEntity = filteredEntities[indexin([true], hierarchyEntitySelections)[1]]
-                            end
-                            for entityIndex = eachindex(hierarchyEntitySelections)
-                                if hierarchyEntitySelections[entityIndex] || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
+                            #for entityIndex = eachindex(hierarchyEntitySelections)
+                                if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
                                     CImGui.PushID("AddMenu")
                                     if CImGui.BeginMenu("Add")
-                                        ShowEntityContextMenu(filteredEntities[entityIndex])
+                                        ShowEntityContextMenu(currentSceneMain.selectedEntity)
                                         CImGui.EndMenu()
                                     end
                                     CImGui.PopID()
                                     CImGui.Separator()
                                     for entityField in fieldnames(Entity)
-                                        if length(filteredEntities) < entityIndex
-                                            break
-                                        end
-                                        show_field_editor(filteredEntities[entityIndex], entityField, animation_window_dict)
+                                        # if length(filteredEntities) < entityIndex
+                                        #     break
+                                        # end
+                                        show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict)
                                     end
                 
                                     CImGui.Separator()
                                     if CImGui.Button("Duplicate") 
-                                        push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.scene.entities[entityIndex]))
+                                        push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.selectedEntity))
                                         # TODO: switch to duplicated entity
                                     end
 
                                     CImGui.Separator()
                                     CImGui.Text("Delete Entity: NO CONFIRMATION")
                                     if CImGui.Button("Delete")
-                                        MainLoop.destroy_entity(currentSceneMain, currentSceneMain.scene.entities[entityIndex])
+                                        MainLoop.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
                                         break
                                     end
                                     
-                                    break # TODO: Remove this when we can select multiple entities and edit them all at once
+                                    #break # TODO: Remove this when we can select multiple entities and edit them all at once
                                 end
-                            end
+                            #end
                         CImGui.End()
                     catch e
                         log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, is_test_mode)
@@ -605,21 +540,30 @@ module Editor
         return event
     end
 
-    function move_entity(entities, origin, destination)
-        if origin == destination
+    function move_entities(entities, origin, destination)
+        println("indexin([destination], origin): ", indexin([destination], origin))
+        if indexin([destination], origin) != [nothing]
             return
         end
 
-        originEntity = splice!(entities, origin)
-        if origin < destination
-            # We need to adjust the destination index because we removed the origin entity
-            # We only need to do this in the case where the origin index is less than the destination index, because the other way around, the destination index is already "adjusted" because the items before it are not shifted
-            destination -= 1 
+        destinationEntities = entities[destination]
+        originEntities = []
+        # sort the origin indices in descending order so that we can remove them from the entities list without affecting the destination index
+        sort!(origin, rev=true)
+        for index in origin
+            push!(originEntities, splice!(entities, index))
         end
-        originEntity.parent = C_NULL
-        updatedEntities = [entities[destination], originEntity]
+        # reverse the origin entities so that they are in the correct order
+        reverse!(originEntities)
+        # must be done after the origin entities are removed because the destination index is based on the original list of entities
+        destinationIndex = indexin([destinationEntities], entities)[1]
+
+        for originEntity in originEntities
+            originEntity.parent = C_NULL
+        end
+        updatedEntities = [entities[destinationIndex], originEntities...]
         
-        splice!(entities, destination : destination, updatedEntities)
+        splice!(entities, destinationIndex : destinationIndex, updatedEntities)
     end
 
     function log_exceptions(error_type, latest_exceptions, e, is_test_mode)
@@ -634,23 +578,93 @@ module Editor
         end
     end
 
-    function handle_drag_and_drop(filteredEntities, n)
+    function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
+        selections = []
+        for index in eachindex(hierarchyEntitySelections)
+            if hierarchyEntitySelections[index][2]
+                push!(selections, index)
+            end
+        end
+
         # our entities are both drag sources and drag targets here!
         if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
             @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
-            CImGui.Text("Move $(filteredEntities[n].name)")
+            if length(selections) > 1
+                CImGui.Text("Move $(length(selections)) entities")
+            else
+                CImGui.Text("Move $(filteredEntities[n].name)")
+            end
             CImGui.EndDragDropSource()
         end
+        # Parent entities by dragging one on top of the other
         if CImGui.BeginDragDropTarget()
             payload = CImGui.AcceptDragDropPayload("Entity")
             if payload != C_NULL
                 payload = unsafe_load(payload)
-                origin = unsafe_load(Ptr{Cint}(payload.Data))
+                origin = length(selections) > 1 ? selections : [unsafe_load(Ptr{Cint}(payload.Data))]
                 destination = n
-                filteredEntities[origin].parent = filteredEntities[destination]
+
+                for origin in origin
+                    filteredEntities[origin].parent = filteredEntities[destination]
+                end
                 @assert payload.DataSize == sizeof(Cint)
             end
             CImGui.EndDragDropTarget()
+        end
+
+        # Reorder entities: We can only reorder entities if the entities are not being filtered
+        if length(filteredEntities) == length(currentSceneMain.scene.entities)
+            CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
+            if CImGui.BeginDragDropTarget()
+                payload = CImGui.AcceptDragDropPayload("Entity") 
+                if payload != C_NULL
+                    payload = unsafe_load(payload)
+                    @assert payload.DataSize == sizeof(Cint)
+                    origin = length(selections) > 1 ? selections : [unsafe_load(Ptr{Cint}(payload.Data))]
+                    
+                    destination = n
+                    # Move the entity(origin) to the position after the entity at the destination index and adust the other entities accordingly. Use splicing to do this.
+                    move_entities(currentSceneMain.scene.entities, origin, destination)
+                end
+                CImGui.EndDragDropTarget()
+            end
+        end
+    end
+
+    function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, filteredEntities = nothing)
+        CImGui.PushID(entity.id)
+        if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][1] == currentSceneMain.selectedEntity)
+            # clear selection when CTRL is not held
+            !unsafe_load(CImGui.GetIO().KeyCtrl) && deselect_all_entities(hierarchyEntitySelections)
+            hierarchyEntitySelections[entityIndex] = (hierarchyEntitySelections[entityIndex][1], true)
+            currentSceneMain.selectedEntity = entity
+        end
+        if filteredEntities !== nothing
+            # get the index of the selected entity in the filtered entities list
+            itemSelected = indexin([entity], filteredEntities)[1]
+            handle_drag_and_drop(filteredEntities, itemSelected, currentSceneMain, hierarchyEntitySelections)
+        end 
+
+        CImGui.PopID()
+    end
+
+    function handle_parent_entity_selection(entity, children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
+        if CImGui.TreeNodeEx(entity.name, CImGui.ImGuiTreeNodeFlags_None)
+            for child in children
+                handle_childless_entity_selection(child, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
+            end
+                if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+                    @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
+                    CImGui.Text("Move $(entity.name)")
+                    CImGui.EndDragDropSource()
+                end
+            CImGui.TreePop()
+        end
+    end
+
+    function deselect_all_entities(hierarchyEntitySelections)
+        for index in eachindex(hierarchyEntitySelections)
+            hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], false)
         end
     end
 end
