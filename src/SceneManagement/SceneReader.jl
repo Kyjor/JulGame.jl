@@ -19,8 +19,8 @@ module SceneReaderModule
         () -> (name; parameters)
     end
 
-    export deserializeScene
-    function deserializeScene(filePath, isEditor)
+    export deserialize_scene
+    function deserialize_scene(filePath, isEditor)
         try
             entitiesJson = read(filePath, String)
 
@@ -28,13 +28,14 @@ module SceneReaderModule
             entities =[]
             uiElements = []
             res = []
+            childParentDict = Dict()
     
             for entity in json.Entities
                 components = []
                 scripts = []
     
                 for component in entity.components
-                    push!(components, deserializeComponent(component, isEditor))
+                    push!(components, deserialize_component(component, isEditor))
                 end
                 
                 for script in entity.scripts
@@ -46,8 +47,10 @@ module SceneReaderModule
                     push!(scripts, scriptObject)
                 end
                 
-                newEntity = Entity(entity.name)
-                newEntity.id = entity.id
+                if haskey(entity, "parent") && entity.parent != ""
+                    childParentDict[string(entity.id)] = entity.parent
+                end
+                newEntity = Entity(entity.name, string(entity.id))
                 newEntity.isActive = entity.isActive
                 newEntity.scripts = scripts
 
@@ -78,7 +81,19 @@ module SceneReaderModule
                 
                 push!(entities, newEntity)
             end
-            uiElements = deserializeUIElements(json.UIElements)
+
+            for entity in entities
+                    if haskey(childParentDict, string(entity.id))
+                        parentId = childParentDict[string(entity.id)]
+                        for e in entities
+                            if string(e.id) == string(parentId)
+                                entity.parent = e
+                            end
+                        end
+                    end
+            end
+
+            uiElements = deserialize_ui_elements(json.UIElements)
     
             push!(res, entities)
             push!(res, uiElements)
@@ -90,7 +105,7 @@ module SceneReaderModule
         end
     end
 
-    function deserializeUIElements(jsonUIElements)
+    function deserialize_ui_elements(jsonUIElements)
         res = []
 
         for uiElement in jsonUIElements
@@ -113,8 +128,8 @@ module SceneReaderModule
         return res
     end
 
-    export deserializeComponent
-    function deserializeComponent(component, isEditor)
+    export deserialize_component
+    function deserialize_component(component, isEditor)
         try
             if component.type == "Transform"
                 newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y))

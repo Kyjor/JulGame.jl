@@ -1,4 +1,5 @@
 module EntityModule
+    using UUIDs
     using ..JulGame.AnimationModule
     using ..JulGame.AnimatorModule
     using ..JulGame.ColliderModule
@@ -14,12 +15,13 @@ module EntityModule
 
     export Entity
     mutable struct Entity
-        id::Int32
+        id::String
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         isActive::Bool
         name::String
+        parent::Union{Entity, Ptr{Nothing}}
         persistentBetweenScenes::Bool
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
         scripts::Vector{Any}
@@ -27,11 +29,11 @@ module EntityModule
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
         transform::Transform
-        
-        function Entity(name::String = "New entity", transform::Transform = Transform(), scripts::Vector = [])
+
+        function Entity(name::String = "New entity", id::String = generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
             this = new()
 
-            this.id = 1
+            this.id = id
             this.name = name
             this.animator = C_NULL
             this.circleCollider = C_NULL
@@ -47,6 +49,7 @@ module EntityModule
             this.sprite = C_NULL
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
+            this.parent = C_NULL
 
             return this
         end
@@ -166,4 +169,7 @@ module EntityModule
         return this.shape
     end
 
+    function generate_uuid()
+        return string(UUIDs.uuid4())
+    end
 end

@@ -65,7 +65,7 @@ module SceneBuilderModule
         MAIN.globals = globals
         MAIN.level = this
         MAIN.targetFrameRate = targetFrameRate
-        scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         if size.x < camSize.x && size.x > 0
@@ -134,7 +134,7 @@ module SceneBuilderModule
     end
 
     function change_scene(this::Scene, isUsingEditor::Bool = false)
-        scene = deserializeScene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
         
         # println("Changing scene to $this.scene")
         # println("Entities in main scene: ", length(MAIN.scene.entities))

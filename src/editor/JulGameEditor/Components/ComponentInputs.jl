@@ -139,7 +139,7 @@ function show_component_field_input(component, componentField)
         @c CImGui.Checkbox("$(componentField)", &fieldValue)
         setfield!(component, componentField, fieldValue)
 
-    elseif isa(fieldValue, String)
+    elseif isa(fieldValue, String) && String(componentField) != "id"
         buf = "$(fieldValue)"*"\0"^(64)
         CImGui.InputText("$(componentField)", buf, length(buf))
         currentTextInTextBox = ""
@@ -463,7 +463,7 @@ end
 
 function show_script_editor(entity)
     if CImGui.TreeNode("Scripts")
-        ShowHelpMarker("Add a script here to run it on the entity.")
+        show_help_marker("Add a script here to run it on the entity.")
         CImGui.Button("Add Script") && (push!(entity.scripts, scriptObj("",[])); return;)
         for i = eachindex(entity.scripts)
             if CImGui.TreeNode("Script $(i)")
