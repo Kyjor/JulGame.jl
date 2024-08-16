@@ -85,7 +85,7 @@ module MainLoop
     end
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        SceneBuilderModule.change_scene(this.level, isUsingEditor)
+        SceneBuilderModule.deserialize_and_build_scene(this.level, isUsingEditor)
         initialize_scripts_and_components(false)
 
         if !isUsingEditor

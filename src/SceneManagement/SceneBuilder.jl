@@ -133,7 +133,7 @@ module SceneBuilderModule
         JulGame.MainLoop.prepare_window_scripts_and_start_loop(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
     end
 
-    function change_scene(this::Scene, isUsingEditor::Bool = false)
+    function deserialize_and_build_scene(this::Scene, isUsingEditor::Bool = false)
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
         
         # println("Changing scene to $this.scene")
