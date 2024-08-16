@@ -69,13 +69,16 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     camPos = main !== nothing ? ImVec2((main.scene.camera.position.x * scale_unit_factor), (main.scene.camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
 
     # Context menu
-    drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
-    if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
+    drag_delta_right = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
+    if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta_right.x == 0.0 && drag_delta_right.y == 0.0
         CImGui.OpenPopupOnItemClick("context")
     end
     # if left click
-    if CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left) && is_hovered
+    drag_delta_left = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Left)
+    if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Left) && is_hovered && drag_delta_left.x == 0.0 && drag_delta_left.y == 0.0
         handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    end
+    if CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left) && is_hovered
     end
     # if left click and drag
     if is_hovered && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan)
@@ -85,6 +88,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     if CImGui.BeginPopup("context")
         if CImGui.MenuItem("Delete", "", false, main.selectedEntity !== nothing)
             println("Delete selected entity")
+            MainLoop.destroy_entity(main, main.selectedEntity)
         end
         CImGui.EndPopup()
     end
