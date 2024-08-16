@@ -17,7 +17,6 @@ module MainLoop
 		fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
 		globals::Vector{Any}
 		input::Input
-		isDraggingEntity::Bool
 		isWindowFocused::Bool
 		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
 		lastMousePositionWorld::Union{Math.Vector2, Math.Vector2f}
@@ -787,41 +786,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
                 JulGame.render(uiElement, DEBUG)
 			end
 			#endregion ============= UI
-
-			# if isEditor
-			# 	SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
-				
-			# 	selectedEntity = this.selectedEntity
-			# 	try
-			# 		if selectedEntity !== nothing
-			# 			if JulGame.InputModule.get_button_pressed(this.input, "DELETE")
-			# 				# println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
-			# 				index = findfirst(x -> x == selectedEntity, this.scene.entities)
-			# 				if index !== nothing
-			# 					MainLoop.destroy_entity(this, this.scene.entities[index])
-			# 				end
-			# 			end
-
-			# 			pos = selectedEntity.transform.position
-                        
-			# 			size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
-			# 			size = Math.Vector2f(size.x, size.y)
-			# 			offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
-			# 			offset = Math.Vector2f(offset.x, offset.y)
-			# 			SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-			# 			Ref(SDL2.SDL_FRect((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-			# 			(pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2), 
-			# 			size.x * SCALE_UNITS, 
-			# 			size.y * SCALE_UNITS)))
-			# 		end
-			# 	catch e
-			# 		@error string(e)
-			# 		Base.show_backtrace(stdout, catch_backtrace())
-			# 		rethrow(e)
-			# 	end
-
-			# 	SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			# end
 
 			this.lastMousePositionWorld = this.mousePositionWorld
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)

@@ -42,23 +42,15 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / zoom_level[]), floor(mouse_pos_in_canvas.y / zoom_level[]))
     #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ zoom_level[]) * zoom_level[], round(mouse_pos_in_canvas_zoom_adjusted.y/ zoom_level[]) * zoom_level[])
     # Add first and second point
-    # if is_hovered && !adding_line[] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
-    #     push!(points[], mouse_pos_in_canvas_zoom_adjusted)
-    #     push!(points[], mouse_pos_in_canvas_zoom_adjusted)
-    #     adding_line[] = true
-    # end
-    # if adding_line[]
-    #     points[][end] = mouse_pos_in_canvas_zoom_adjusted
-    #     if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
-    #         points[] = [points[][end-1], points[][end]] # only keep last two points
-    #         adding_line[] = false
-    #     end
-    # end
-
+    
     # Pan
     mouse_threshold_for_pan = -1.0 
     mouse_drag_movement = ImVec2(0, 0)
     scale_unit_factor = 64
+   
+    if is_hovered && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan)
+        drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    end
     if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
         mouse_drag_movement = ImVec2(unsafe_load(io.MouseDelta).x, unsafe_load(io.MouseDelta).y)
@@ -73,10 +65,12 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
         # zoom_level[] += unsafe_load(io.MouseWheel) * 0.4 # * 0.10
         # zoom_level[] = clamp(zoom_level[], 0.2, 50.0)
     end
-    if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0)
+    if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing
         # move camera
         main.scene.camera.position = Math.Vector2f(main.scene.camera.position.x - (unsafe_load(io.MouseWheelH)), main.scene.camera.position.y - (unsafe_load(io.MouseWheel)))
     end
+    camPos = main !== nothing ? ImVec2((main.scene.camera.position.x * scale_unit_factor), (main.scene.camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
+
     # Context menu
     drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
     if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
@@ -84,8 +78,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     end
     # if left click
     if CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left) && is_hovered
-        println("Mouse clicked")
-        handle_mouse_click(main, mouse_pos_in_canvas_zoom_adjusted)
+        handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     end
     if CImGui.BeginPopup("context")
         if CImGui.MenuItem("Delete", "", false, main.selectedEntity !== nothing)
@@ -94,7 +87,6 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
         CImGui.EndPopup()
     end
 
-    camPos = main !== nothing ? ImVec2((main.scene.camera.position.x * scale_unit_factor), (main.scene.camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
      # Draw grid and lines
     CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
         GRID_STEP = 64.0 * zoom_level[]
@@ -115,31 +107,39 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     return canvas_sz
 end
 
-function handle_mouse_click(main, mouse_pos_in_canvas_zoom_adjusted)
+function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     # if main is nothing, return
     if main === nothing
         return
     end
     # select nearest entity
-    nearest_entity = get_nearest_entity(main, mouse_pos_in_canvas_zoom_adjusted)
-    # if nearest entity is nothing, return
-    if nearest_entity === nothing
-        return
-    end
+    nearest_entity = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     
     main.selectedEntity = nearest_entity
 end
 
-function get_nearest_entity(main, mouse_pos_in_canvas_zoom_adjusted)
+function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     # if main is nothing, return
     if main === nothing
         return
     end
     # get all entities
     entities = main.scene.entities
-    # get the nearest entity
-    nearest_entity = entities[1]
-    return nearest_entity
+    clicked_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/64, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/64)
+    for entity in entities
+        size = entity.transform.scale
+        # entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.scale
+
+        # get the nearest entity
+        if clicked_pos.x >= entity.transform.position.x && clicked_pos.x <= entity.transform.position.x + size.x && clicked_pos.y >= entity.transform.position.y && clicked_pos.y <= entity.transform.position.y + size.y
+            if main.selectedEntity == entity
+                continue
+            end
+            return entity
+        end
+    end
+
+    return nothing
 end
 
 function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
@@ -154,6 +154,26 @@ function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_le
     entity = main.selectedEntity
     
     # draw rect around selected entity
-    CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (entity.transform.position.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 - camPos.y), ImVec2(canvas_p0.x + entity.transform.position.x * 64 + 64 - camPos.x, canvas_p0.y + entity.transform.position.y * 64 + 64 - camPos.y), IM_COL32(255, 0, 0, 255))
+    # size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
+    CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (entity.transform.position.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 - camPos.y), ImVec2(canvas_p0.x + entity.transform.position.x * 64 + (entity.transform.scale.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 + (entity.transform.scale.y * 64) - camPos.y), IM_COL32(255, 0, 0, 255))
+end
 
+function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    # if main is nothing, return
+    if main === nothing
+        return
+    end
+    # if selected entity is nothing, return
+    if main.selectedEntity === nothing
+        return
+    end
+    entity = main.selectedEntity
+    # get the mouse position
+    mouse_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/64, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/64)
+    # get the selected entity position
+    entity_pos = entity.transform.position
+    # get the difference between the mouse position and the entity position
+    diff = ImVec2(mouse_pos.x - entity_pos.x, mouse_pos.y - entity_pos.y)
+    # update the entity position
+    entity.transform.position = Math.Vector2f(entity_pos.x + diff.x, entity_pos.y + diff.y)
 end
