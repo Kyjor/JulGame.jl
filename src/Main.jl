@@ -377,6 +377,7 @@ function destroy_entity(this::Main, entity)
 		if this.scene.entities[i] == entity
 			destroy_entity_components(this, entity)
 			deleteat!(this.scene.entities, i)
+			this.selectedEntity = nothing
 			break
 		end
 	end

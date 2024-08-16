@@ -56,6 +56,9 @@ module Editor
         zoom_level = Ref(1.0)
 
         animation_window_dict = Ref(Dict())
+
+        save_file_timer = 0
+
         try
             while !quit                    
                 try
@@ -234,38 +237,25 @@ module Editor
                     try
                         #region Entity Inspector
                         CImGui.Begin("Entity Inspector") 
-                            #for entityIndex = eachindex(hierarchyEntitySelections)
-                                if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
-                                    CImGui.PushID("AddMenu")
-                                    if CImGui.BeginMenu("Add")
-                                        ShowEntityContextMenu(currentSceneMain.selectedEntity)
-                                        CImGui.EndMenu()
-                                    end
-                                    CImGui.PopID()
-                                    CImGui.Separator()
-                                    for entityField in fieldnames(Entity)
-                                        # if length(filteredEntities) < entityIndex
-                                        #     break
-                                        # end
-                                        show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict)
-                                    end
-                
-                                    CImGui.Separator()
-                                    if CImGui.Button("Duplicate") 
-                                        push!(currentSceneMain.scene.entities, deepcopy(currentSceneMain.selectedEntity))
-                                        # TODO: switch to duplicated entity
-                                    end
-
-                                    CImGui.Separator()
-                                    CImGui.Text("Delete Entity: NO CONFIRMATION")
-                                    if CImGui.Button("Delete")
-                                        MainLoop.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
-                                        break
-                                    end
-                                    
-                                    #break # TODO: Remove this when we can select multiple entities and edit them all at once
-                                end
-                            #end
+                        if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
+                            CImGui.PushID("AddMenu")
+                            if CImGui.BeginMenu("Add")
+                                ShowEntityContextMenu(currentSceneMain.selectedEntity)
+                                CImGui.EndMenu()
+                            end
+                            CImGui.PopID()
+                            CImGui.Separator()
+                            for entityField in fieldnames(Entity)
+                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict)
+                            end
+        
+                            CImGui.Separator()
+                            if CImGui.Button("Duplicate") 
+                                copy = deepcopy(currentSceneMain.selectedEntity)
+                                push!(currentSceneMain.scene.entities, copy)
+                                currentSceneMain.selectedEntity = copy
+                            end
+                        end
                         CImGui.End()
                     catch e
                         log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, is_test_mode)
@@ -323,6 +313,28 @@ module Editor
                     SDL2.SDL_RenderClear(renderer)
                     
                     show_game_controls()
+
+                    #region Input
+                    if currentSceneMain !== nothing
+                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
+                            @info string("Saving scene")
+                            events[1]()
+                        end
+                        # delete selected entity
+                        if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
+                            if currentSceneMain.selectedEntity !== nothing
+                                MainLoop.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                            end
+                        end
+                        # duplicate selected entity with ctrl+d
+                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D")
+                            if currentSceneMain.selectedEntity !== nothing
+                                copy = deepcopy(currentSceneMain.selectedEntity)
+                                push!(currentSceneMain.scene.entities, copy)
+                                currentSceneMain.selectedEntity = copy
+                            end
+                        end
+                    end
                     
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
