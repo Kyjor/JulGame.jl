@@ -82,8 +82,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
             handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
         end
     end
-    if CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left) && is_hovered
-    end
+    
     # if left click and drag
     if is_hovered && (CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan) || duplicationMode)
         drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
