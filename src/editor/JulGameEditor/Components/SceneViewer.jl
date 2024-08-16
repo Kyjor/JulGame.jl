@@ -1,4 +1,4 @@
-function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
+function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode)
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Scene") || (CImGui.End(); return)
     # GET SIZE OF SCENE TEXTURE
@@ -76,12 +76,16 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     # if left click
     drag_delta_left = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Left)
     if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Left) && is_hovered && drag_delta_left.x == 0.0 && drag_delta_left.y == 0.0
-        handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+        if duplicationMode
+            handle_mouse_click_duplication(main)
+        else
+            handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+        end
     end
     if CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left) && is_hovered
     end
     # if left click and drag
-    if is_hovered && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan)
+    if is_hovered && (CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan) || duplicationMode)
         drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     end
 
@@ -122,6 +126,17 @@ function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     nearest_entity = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     
     main.selectedEntity = nearest_entity
+end
+
+function handle_mouse_click_duplication(main)
+    # if main is nothing, return
+    if main === nothing
+        return
+    end
+
+    copy = deepcopy(main.selectedEntity)
+    push!(main.scene.entities, copy)
+    main.selectedEntity = copy
 end
 
 function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)

@@ -59,6 +59,8 @@ module Editor
 
         save_file_timer = 0
 
+        duplicationMode = false
+
         try
             while !quit                    
                 try
@@ -117,7 +119,7 @@ module Editor
                     
                     try
                         prevSceneWindowSize = sceneWindowSize
-                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level)
+                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode)
                         if sceneWindowSize === nothing
                             sceneWindowSize = prevSceneWindowSize
                         end
@@ -327,11 +329,22 @@ module Editor
                             end
                         end
                         # duplicate selected entity with ctrl+d
-                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D")
-                            if currentSceneMain.selectedEntity !== nothing
+                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
+                            copy = deepcopy(currentSceneMain.selectedEntity)
+                            push!(currentSceneMain.scene.entities, copy)
+                            currentSceneMain.selectedEntity = copy
+                        end
+                        # turn on duplication mode with ctrl+shift+d
+                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
+                            duplicationMode = !duplicationMode
+                            if duplicationMode
+                                @info "Duplication mode on"
                                 copy = deepcopy(currentSceneMain.selectedEntity)
                                 push!(currentSceneMain.scene.entities, copy)
                                 currentSceneMain.selectedEntity = copy
+                            else
+                                @info "Duplication mode off"
+                                MainLoop.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
                             end
                         end
                     end
