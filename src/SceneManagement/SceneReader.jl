@@ -99,7 +99,7 @@ module SceneReaderModule
             push!(res, uiElements)
             return res
         catch e 
-            println(e)
+            @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
 			rethrow(e)
         end
@@ -119,7 +119,7 @@ module SceneReaderModule
                 
                 push!(res, newUIElement)
             catch e 
-                println(e)
+                @error string(e)
 				Base.show_backtrace(stdout, catch_backtrace())
 				rethrow(e)
             end
@@ -170,7 +170,7 @@ module SceneReaderModule
             
             return newComponent
         catch e
-            println(e)
+            @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
 			rethrow(e)
         end

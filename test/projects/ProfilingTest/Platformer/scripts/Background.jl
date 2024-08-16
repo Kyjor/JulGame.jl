@@ -29,7 +29,7 @@ function Base.getproperty(this::Background, s::Symbol)
         try
             getfield(this, s)
         catch e
-            println(e)
+            @error string(e)
             Base.show_backtrace(stdout, catch_backtrace())
         end
     end

@@ -105,7 +105,7 @@ module SceneBuilderModule
                             try
                                 param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
                             catch e
-                                println(e)
+                                @error string(e)
 						        Base.show_backtrace(stdout, catch_backtrace())
 						        rethrow(e)
                             end
@@ -117,7 +117,7 @@ module SceneBuilderModule
                     try
                         newScript = eval(Symbol(script.name))(params...)
                     catch e
-                        println(e)
+                        @error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
                     end
@@ -176,7 +176,7 @@ module SceneBuilderModule
                                 try
                                     param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
                                 catch e
-                                    println(e)
+                                    @error string(e)
                                     Base.show_backtrace(stdout, catch_backtrace())
                                     rethrow(e)
                                 end
@@ -188,7 +188,7 @@ module SceneBuilderModule
                     try
                         newScript = eval(Symbol(script.name))(params...)
                     catch e
-                        println(e)
+                        @error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
                     end

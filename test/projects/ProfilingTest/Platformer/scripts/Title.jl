@@ -41,7 +41,7 @@ function Base.getproperty(this::Title, s::Symbol)
 
                 JulGame.MainLoop.change_scene("level_1.json")
             catch e
-                println(e)
+                @error string(e)
 				Base.show_backtrace(stdout, catch_backtrace())
 				rethrow(e)
             end
@@ -57,7 +57,7 @@ function Base.getproperty(this::Title, s::Symbol)
         try
             getfield(this, s)
         catch e
-            println(e)
+            @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
 			rethrow(e)
         end

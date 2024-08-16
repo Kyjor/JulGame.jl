@@ -25,7 +25,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
     if s == :initialize
         function()
             MAIN.scene.camera.offset = JulGame.Math.Vector2f(0, -2.75)
-            MAIN.cameraBackgroundColor = (30, 111, 80)
+            MAIN.cameraBackgroundColor = (0, 0, 0)
             MAIN.optimizeSpriteRendering = true
 
             JulGame.add_shape(this.parent, JulGame.ShapeModule.Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))
@@ -64,7 +64,7 @@ function Base.getproperty(this::GameManager, s::Symbol)
         try
             getfield(this, s)
         catch e
-            println(e)
+            @error string(e)
             Base.show_backtrace(stdout, catch_backtrace())
         end
     end
