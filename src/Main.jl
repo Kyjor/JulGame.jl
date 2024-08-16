@@ -112,7 +112,7 @@ module MainLoop
                     if this.testMode
                         throw(e)
                     else
-                        println(e)
+                        @error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
                     end
@@ -282,7 +282,8 @@ module MainLoop
         SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
         SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 1.0, 1.0)	
         this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.size.x/2*this.zoom), round(y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
-        SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
+        println("set viewport to: ", this.scene.camera.startingCoordinates)
+		SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
         SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.zoom, this.zoom)
     end
 
@@ -294,7 +295,8 @@ module MainLoop
         SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
         SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 1.0, 1.0)	
         this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.size.x/2*this.zoom), round(y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
-        SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
+       	@info string("set viewport to: ", this.scene.camera.startingCoordinates)
+		SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
         SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.zoom, this.zoom)
 		println("Zoom: ", this.zoom)
     end
@@ -346,6 +348,7 @@ module MainLoop
 
 		JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 		this.scene.camera.startingCoordinates = Math.Vector2f(round(size.x/2) - round(this.scene.camera.size.x/2*this.zoom), round(size.y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
+		println("set viewport to: ", this.scene.camera.startingCoordinates)
 		SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
 		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
 
@@ -380,7 +383,7 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 				script.initialize()
 			catch e
 				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
-					println(e)
+					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 					rethrow(e)
 				end
@@ -425,7 +428,7 @@ function change_scene(sceneFileName::String, isEditor::Bool = false)
 			catch e
 				if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
 					println("Error shutting down script")
-					println(e)
+					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 					rethrow(e)
 				end
@@ -632,7 +635,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 
 			cameraPosition = Math.Vector2f()
 			if isEditor
-				cameraPosition = handle_editor_inputs_camera(this, windowPos, windowSize)
+				# cameraPosition = handle_editor_inputs_camera(this, windowPos, windowSize)
 			end
 
 			#endregion ============= Input
@@ -656,7 +659,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 						JulGame.update(rigidbody, deltaTime)
 					catch e
 						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-						println(e)
+						@error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
 					end
@@ -684,7 +687,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 						end
 					catch e
 						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-						println(e)
+						@error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
 					end
@@ -709,7 +712,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				shapeOrSprite = entity.sprite != C_NULL ? entity.sprite : entity.shape
 				shapeOrSpritePosition = shapeOrSprite.parent.transform.position
 				shapeOrSpriteSize = shapeOrSprite.parent.transform.scale
-
 				if ((shapeOrSpritePosition.x + shapeOrSpriteSize.x) < cameraPosition.x || shapeOrSpritePosition.y < cameraPosition.y || shapeOrSpritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (shapeOrSpritePosition.y - shapeOrSpriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shapeOrSprite.isWorldEntity && this.optimizeSpriteRendering 
 					skipcount += 1
 					continue
@@ -726,7 +728,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					Component.draw(renderOrder[i][2])
 				catch e
 					println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-					println(e)
+					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 					rethrow(e)
 				end
@@ -786,40 +788,40 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			end
 			#endregion ============= UI
 
-			if isEditor
-				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
+			# if isEditor
+			# 	SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 255, 0, 0, SDL2.SDL_ALPHA_OPAQUE)
 				
-				selectedEntity = this.selectedEntity !== nothing ? this.selectedEntity : nothing
-				try
-					if selectedEntity != nothing
-						if JulGame.InputModule.get_button_pressed(this.input, "DELETE")
-							# println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
-							index = findfirst(x -> x == selectedEntity, this.scene.entities)
-							if index !== nothing
-								MainLoop.destroy_entity(this, this.scene.entities[index])
-							end
-						end
+			# 	selectedEntity = this.selectedEntity
+			# 	try
+			# 		if selectedEntity !== nothing
+			# 			if JulGame.InputModule.get_button_pressed(this.input, "DELETE")
+			# 				# println("delete entity with name $(selectedEntity.name) and id $(selectedEntity.id)")
+			# 				index = findfirst(x -> x == selectedEntity, this.scene.entities)
+			# 				if index !== nothing
+			# 					MainLoop.destroy_entity(this, this.scene.entities[index])
+			# 				end
+			# 			end
 
-						pos = selectedEntity.transform.position
+			# 			pos = selectedEntity.transform.position
                         
-						size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
-						size = Math.Vector2f(size.x, size.y)
-						offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
-						offset = Math.Vector2f(offset.x, offset.y)
-						SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-						Ref(SDL2.SDL_FRect((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						(pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2), 
-						size.x * SCALE_UNITS, 
-						size.y * SCALE_UNITS)))
-					end
-				catch e
-					println(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
-				end
+			# 			size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
+			# 			size = Math.Vector2f(size.x, size.y)
+			# 			offset = selectedEntity.collider != C_NULL ? selectedEntity.collider.offset : Math.Vector2f()
+			# 			offset = Math.Vector2f(offset.x, offset.y)
+			# 			SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+			# 			Ref(SDL2.SDL_FRect((pos.x + offset.x - this.scene.camera.position.x) * SCALE_UNITS - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+			# 			(pos.y + offset.y - this.scene.camera.position.y) * SCALE_UNITS - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((size.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+			# 			size.x * SCALE_UNITS, 
+			# 			size.y * SCALE_UNITS)))
+			# 		end
+			# 	catch e
+			# 		@error string(e)
+			# 		Base.show_backtrace(stdout, catch_backtrace())
+			# 		rethrow(e)
+			# 	end
 
-				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			end
+			# 	SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
+			# end
 
 			this.lastMousePositionWorld = this.mousePositionWorld
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
@@ -863,7 +865,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				SDL2.SDL_framerateDelay(this.fpsManager)
 			end
 		catch e
-			println(e)
+			@error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
 			rethrow(e)
 		end

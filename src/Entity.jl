@@ -62,7 +62,7 @@ module EntityModule
         try
             script.initialize()
         catch e
-            println(e)
+            @error string(e)
             Base.show_backtrace(stdout, catch_backtrace())
             rethrow(e)
         end
@@ -73,7 +73,7 @@ module EntityModule
             try
                 script.update(deltaTime)
             catch e
-                println(e)
+                @error string(e)
                 Base.show_backtrace(stdout, catch_backtrace())
                 rethrow(e)
             end

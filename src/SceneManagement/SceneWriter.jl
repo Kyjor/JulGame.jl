@@ -73,7 +73,7 @@ module SceneWriterModule
                 JSON3.pretty(io, entitiesJson)
             end
         catch e
-            println(e)
+            @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
             rethrow(e)
         end
