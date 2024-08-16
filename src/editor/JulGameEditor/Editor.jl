@@ -79,6 +79,7 @@ module Editor
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
 
                     @cstatic begin
+                        #region Scene List
                         CImGui.Begin("Scene List") 
                         txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
                         CImGui.Text(txt)
@@ -102,35 +103,6 @@ module Editor
                         CImGui.End()
                     end
                     
-                    # @cstatic begin
-                    #     CImGui.Begin("Scene")  
-                    #         sceneWindowPos = CImGui.GetWindowPos()
-                    #         sceneWindowSize = CImGui.GetWindowSize()
-                    #         sceneWindowSize = ImVec2(sceneWindowSize.x - 30, sceneWindowSize.y - 35) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
-
-                    #         CImGui.SameLine()
-                    #         if sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
-                    #             println("Resizing scene texture to: ", sceneWindowSize.x, ", ", sceneWindowSize.y)
-                    #             SDL2.SDL_DestroyTexture(sceneTexture)
-                    #             sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, sceneWindowSize.x, sceneWindowSize.y)
-                    #             sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
-                    #         end
-
-                    #         CImGui.Image(sceneTexture, sceneTextureSize)
-                    #         if CImGui.BeginDragDropTarget()
-                    #             payload = CImGui.AcceptDragDropPayload("Scene")
-                    #             if payload != C_NULL
-                    #                 payload = unsafe_load(payload)
-                    #                 @info string("payload: ", payload)
-                    #                 origin = unsafe_load(Ptr{Cint}(payload.Data))
-                    #                         # destination = n
-                    #                 @info string("origin: ", origin)
-                    #                 @assert payload.DataSize == sizeof(Cint)
-                    #             end
-                    #             CImGui.EndDragDropTarget()
-                    #         end
-                    #     CImGui.End()
-                    # end
                     uiSelected = false
                     
                 
@@ -139,9 +111,20 @@ module Editor
                         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, sceneWindowSize.x, sceneWindowSize.y)
                         sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
                     end
-                    sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level)
+                    
+                    try
+                        prevSceneWindowSize = sceneWindowSize
+                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level)
+                        if sceneWindowSize === nothing
+                            sceneWindowSize = prevSceneWindowSize
+                        end
+                    catch e
+                        @error "Error in scene window!" exception=e
+                        Base.show_backtrace(stderr, catch_backtrace())
+                    end
 
                     try
+                        #region Hierarchy
                         CImGui.Begin("Hierarchy") 
                         if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
                             # remove other entities from hierarchyEntitySelections if currentSceneMain.selectedEntity is not in hierarchyEntitySelections
@@ -202,6 +185,7 @@ module Editor
                         end
 
                         CImGui.NewLine()
+                        #region UI Elements
                         if CImGui.TreeNode("UI Elements") &&  currentSceneMain !== nothing
                             CImGui.SameLine()
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
@@ -248,6 +232,7 @@ module Editor
                     show_debug_window(latest_exceptions)
                     
                     try
+                        #region Entity Inspector
                         CImGui.Begin("Entity Inspector") 
                             #for entityIndex = eachindex(hierarchyEntitySelections)
                                 if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
@@ -288,7 +273,7 @@ module Editor
 
                     try
                         
-                   
+                        #region UI Inspector
                         CImGui.Begin("UI Inspector") 
                             for uiElementIndex = eachindex(hierarchyUISelections)
                                 if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
@@ -319,7 +304,7 @@ module Editor
                                     CImGui.Separator()
                                     CImGui.Text("Delete UI Element: NO CONFIRMATION")
                                     if CImGui.Button("Delete")
-                                        MainLoop.DestroyUIElement(currentSceneMain.scene.uiElements[uiElementIndex])
+                                        MainLoop.destroy_ui_element(currentSceneMain.scene.uiElements[uiElementIndex])
                                         break
                                     end
                                     

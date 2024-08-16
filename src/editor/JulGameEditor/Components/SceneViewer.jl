@@ -48,9 +48,6 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     mouse_drag_movement = ImVec2(0, 0)
     scale_unit_factor = 64
    
-    if is_hovered && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan)
-        drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
-    end
     if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
         mouse_drag_movement = ImVec2(unsafe_load(io.MouseDelta).x, unsafe_load(io.MouseDelta).y)
@@ -80,6 +77,11 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level)
     if CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left) && is_hovered
         handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     end
+    # if left click and drag
+    if is_hovered && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan)
+        drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    end
+
     if CImGui.BeginPopup("context")
         if CImGui.MenuItem("Delete", "", false, main.selectedEntity !== nothing)
             println("Delete selected entity")
@@ -170,6 +172,9 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
     entity = main.selectedEntity
     # get the mouse position
     mouse_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/64, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/64)
+    if unsafe_load(CImGui.GetIO().KeyCtrl)
+        mouse_pos = ImVec2(floor(mouse_pos.x), floor(mouse_pos.y))
+    end
     # get the selected entity position
     entity_pos = entity.transform.position
     # get the difference between the mouse position and the entity position
