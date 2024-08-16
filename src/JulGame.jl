@@ -2,10 +2,11 @@ module JulGame
     include("CommonFunctions.jl")
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
+    MAIN = nothing
 
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
-    export SDL2, SDL2E
+    export SDL2, SDL2E, MAIN
 
     include("Utils.jl")
     export CallSDLFunction
@@ -58,6 +59,5 @@ module JulGame
     
     include("Main.jl") 
     using .MainLoop: Main
-    MAIN::Union{Main, Nothing} = nothing
-    export Main, MAIN
+    export Main
 end
