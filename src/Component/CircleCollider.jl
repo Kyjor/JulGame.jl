@@ -64,7 +64,7 @@ module CircleColliderModule
                 continue
             end
             if this != colliders[i] && Component.get_velocity(this.parent.rigidbody).y >= 0
-                collision = CheckCollision(this, colliders[i])
+                collision = check_collision(this, colliders[i])
                 if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                     for j in eachindex(this.currentRests)
@@ -146,7 +146,7 @@ module CircleColliderModule
         return "CircleCollider"
     end
 
-    function CheckCollision(a::CircleCollider, b::CircleCollider)
+    function check_collision(a::CircleCollider, b::CircleCollider)
         # Calculate total radius squared
         totalRadiusSquared::Float64 = (a.diameter + b.diameter)^2
         # If the distance between the centers of the circles is less than the sum of their radii
@@ -158,7 +158,7 @@ module CircleColliderModule
         return false
     end
 
-    function CheckCollision(a::InternalCircleCollider, b::InternalCollider)
+    function check_collision(a::InternalCircleCollider, b::InternalCollider)
         # Closest point on collision box
         cX, cY = 0, 0
 
