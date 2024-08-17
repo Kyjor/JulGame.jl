@@ -99,7 +99,7 @@ module Editor
                                     currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    MainLoop.change_scene(String(currentSceneName), true)
+                                    JulGame.change_scene(String(currentSceneName), true)
                                 end
                             end
                             CImGui.NewLine()
@@ -296,7 +296,7 @@ module Editor
                                     CImGui.Separator()
                                     CImGui.Text("Delete UI Element: NO CONFIRMATION")
                                     if CImGui.Button("Delete")
-                                        MainLoop.destroy_ui_element(currentSceneMain.scene.uiElements[uiElementIndex])
+                                        JulGame.destroy_ui_element(currentSceneMain.scene.uiElements[uiElementIndex])
                                         break
                                     end
                                     
@@ -325,7 +325,7 @@ module Editor
                         # delete selected entity
                         if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
                             if currentSceneMain.selectedEntity !== nothing
-                                MainLoop.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
                             end
                         end
                         # duplicate selected entity with ctrl+d
@@ -344,7 +344,7 @@ module Editor
                                 currentSceneMain.selectedEntity = copy
                             else
                                 @info "Duplication mode off"
-                                MainLoop.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
                             end
                         end
                     end

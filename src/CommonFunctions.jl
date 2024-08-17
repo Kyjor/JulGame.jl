@@ -11,9 +11,13 @@ function add_sprite end
 function append_array end
 function apply_forces end
 function center_text end
+function change_scene end
 function check_collisions end
+function create_entity end
 function create_sound_source end
 function destroy end
+function destroy_entity end
+function destroy_ui_element end
 function draw end
 function flip end
 function get_last_update end

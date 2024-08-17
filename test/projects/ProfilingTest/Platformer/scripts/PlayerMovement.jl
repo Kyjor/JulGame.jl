@@ -85,13 +85,13 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
                         this.gameManager.starCount = this.gameManager.starCount + 1
                     end
                     this.gameManager.currentLevel = 2
-                    JulGame.MainLoop.change_scene("level_2.json")
+                    JulGame.change_scene("level_2.json")
                 elseif this.gameManager.currentLevel == 2
                     if this.deathsThisLevel == 0
                         this.gameManager.starCount = this.gameManager.starCount + 1
                     end
                     this.gameManager.currentLevel = 3
-                    JulGame.MainLoop.change_scene("level_3.json")
+                    JulGame.change_scene("level_3.json")
                 else 
                     # you win text
                     JulGame.MAIN.scene.uiElements[1].isCenteredX, JulGame.MAIN.scene.uiElements[1].isCenteredY = true, true
@@ -120,12 +120,12 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
     elseif s == :handleCollisions
         function(otherCollider)
             if otherCollider.tag == "Coin"
-                JulGame.MainLoop.destroy_entity(MAIN, otherCollider.parent)
+                JulGame.destroy_entity(MAIN, otherCollider.parent)
                 # JulGame.Component.toggle_sound(this.coinSound)
                 JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[1], string(parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[2])))
             elseif otherCollider.tag == "Star"
                 # JulGame.Component.toggle_sound(this.starSound)
-                JulGame.MainLoop.destroy_entity(JulGame.MAIN, otherCollider.parent)
+                JulGame.destroy_entity(JulGame.MAIN, otherCollider.parent)
                 this.gameManager.starCount = this.gameManager.starCount + 1
                 JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[2], string(this.gameManager.starCount))
             end

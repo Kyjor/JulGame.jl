@@ -3,6 +3,8 @@ module MainLoop
 	using ..JulGame: Camera, Component, Input, Math, UI, SceneModule
     import ..JulGame: Component
     import ..JulGame.SceneManagement: SceneBuilderModule
+	import ..JulGame
+
 	include("Enums.jl")
 	include("Constants.jl")
 
@@ -260,7 +262,7 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 - `isEditor::Bool`: Whether the scene is being loaded in the editor. Default is `false`.
 
 """
-function change_scene(sceneFileName::String, isEditor::Bool = false)
+function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 	this::Main = MAIN
 	# println("Changing scene to: ", sceneFileName)
 	this.close = true
@@ -357,7 +359,7 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 # Arguments
 - `entity`: The entity to be destroyed.
 """
-function destroy_entity(this::Main, entity)
+function JulGame.destroy_entity(this::Main, entity)
 	for i = eachindex(this.scene.entities)
 		if this.scene.entities[i] == entity
 			destroy_entity_components(this, entity)
@@ -368,7 +370,7 @@ function destroy_entity(this::Main, entity)
 	end
 end
 
-function destroy_ui_element(this::Main, uiElement)
+function JulGame.destroy_ui_element(this::Main, uiElement)
 	for i = eachindex(this.scene.uiElements)
 		if this.scene.uiElements[i] == uiElement
 			deleteat!(this.scene.uiElements, i)

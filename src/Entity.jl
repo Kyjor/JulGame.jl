@@ -58,7 +58,7 @@ module EntityModule
     function JulGame.add_script(this::Entity, script)
         #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
         push!(this.scripts, script)
-        script.setParent(this)
+        script.parent = this
         try
             script.initialize()
         catch e
