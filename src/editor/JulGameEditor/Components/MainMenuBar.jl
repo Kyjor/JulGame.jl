@@ -35,7 +35,6 @@ function ShowMenuFile(events)
         events[end]()
     end
     if length(events) > 1 && CImGui.MenuItem("Save", "Ctrl+S")
-        @info "Trigger Save | find me here: $(@__FILE__):$(@__LINE__)"
         events[1]()
     end
 end

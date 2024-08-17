@@ -65,9 +65,13 @@ module SceneBuilderModule
         MAIN.globals = globals
         MAIN.level = this
         MAIN.targetFrameRate = targetFrameRate
-        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
-        MAIN.scene.entities = scene[1]
-        MAIN.scene.uiElements = scene[2]
+
+        if size == Math.Vector2()
+			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
+			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
+			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
+		end
+
         if size.x < camSize.x && size.x > 0
             camSize = Vector2(size.x, camSize.y)
         end
@@ -75,9 +79,24 @@ module SceneBuilderModule
             camSize = Vector2(camSize.x, size.y)
         end
         MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
+
+        flags = SDL2.SDL_RENDERER_ACCELERATED |
+		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
+		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
+		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+
+        MAIN.screenSize = size != C_NULL ? size : MAIN.scene.camera.size
+        if !isUsingEditor
+            MAIN.window = SDL2.SDL_CreateWindow(MAIN.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, MAIN.screenSize.x, MAIN.screenSize.y, flags)
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+        end
+
+        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+        MAIN.scene.entities = scene[1]
+        MAIN.scene.uiElements = scene[2]
         
         for uiElement in MAIN.scene.uiElements
-            if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
+            if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
                 UI.center_text(uiElement)
             end
         end

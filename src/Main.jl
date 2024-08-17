@@ -201,24 +201,9 @@ module MainLoop
     
 	function prepare_window(isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 		this::Main = MAIN
-		if size == Math.Vector2()
-			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
-			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
-			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
-		end
 		this.autoScaleZoom = autoScaleZoom
 		scale_zoom(this, size.x, size.y)
 
-		this.screenSize = size != C_NULL ? size : this.scene.camera.size
-
-		flags = SDL2.SDL_RENDERER_ACCELERATED |
-		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
-		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
-
-		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenSize.x, this.screenSize.y, flags)
-
-		JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
 		this.scene.camera.startingCoordinates = Math.Vector2f(round(size.x/2) - round(this.scene.camera.size.x/2*this.zoom), round(size.y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
 		@info string("Set viewport to: ", this.scene.camera.startingCoordinates)
 		SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))

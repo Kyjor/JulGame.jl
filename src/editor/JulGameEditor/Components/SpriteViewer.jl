@@ -4,40 +4,8 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CFor
 using CImGui.CSyntax.CStatic
 
-function load_texture_from_file(filename::String, renderer::Ptr{SDL2.SDL_Renderer})
-    width = Ref{Cint}()
-    height = Ref{Cint}()
-    channels = Ref{Cint}()
-    
-    surface = SDL2.IMG_Load(filename)
-    if surface == C_NULL
-        @error "Failed to load image: $(unsafe_string(SDL2.SDL_GetError()))"
-        return false, C_NULL, 0, 0
-    end
-    
-    surfaceInfo = unsafe_wrap(Array, surface, 10; own = false)
-    width[] = surfaceInfo[1].w
-    height[] = surfaceInfo[1].h
-
-    if surface == C_NULL
-        @error "Failed to create SDL surface: $(unsafe_string(SDL2.SDL_GetError()))"
-        return false, C_NULL, 0, 0
-    end
-    
-    texture_ptr = SDL2.SDL_CreateTextureFromSurface(renderer, surface)
-    
-    if texture_ptr == C_NULL
-        @error "Failed to create SDL texture: $(unsafe_string(SDL2.SDL_GetError()))"
-    end
-    
-    SDL2.SDL_FreeSurface(surface)
-    
-    return true, texture_ptr, width[], height[] #, data
-end
-
-
 """
-    ShowExampleAppCustomRendering(p_open::Ref{Bool})
+    show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_tex_h)
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
 function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_tex_h)
@@ -92,7 +60,7 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     end
     if window_info[]["adding_line"][]
         window_info[]["points"][][end] = mouse_pos_in_canvas_zoom_adjusted
-        if !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
+        if is_active && !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
             window_info[]["points"][] = [window_info[]["points"][][end-1], window_info[]["points"][][end]] # only keep last two points
             window_info[]["adding_line"][] = false
         end
@@ -105,14 +73,14 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     end
 
     # Zoom
-    if unsafe_load(io.KeyCtrl)
+    if is_active && unsafe_load(io.KeyCtrl)
         window_info[]["zoom_level"][] += unsafe_load(io.MouseWheel) * 4.0 # * 0.10
         window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][], 1.0, 50.0)
     end
 
     # Context menu
     drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
-    if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
+    if is_active && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
         CImGui.OpenPopupOnItemClick("context")
     end
     if CImGui.BeginPopup("context")
@@ -139,7 +107,10 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
         for y in 0:GRID_STEP:canvas_sz.y*10 # TODO: 10 is arbitrary
             CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, origin.y + canvas_p0.y + y), ImVec2(canvas_p1.x, origin.y + canvas_p0.y + y), IM_COL32(200, 200, 200, 40))
         end
+    CImGui.PopClipRect(draw_list)
     
+    CImGui.AddImage(draw_list, my_tex_id, ImVec2(origin.x + canvas_p0.x, origin.y + canvas_p0.y), ImVec2(origin.x + (my_tex_w * window_info[]["zoom_level"][]) + canvas_p0.x, origin.y + (my_tex_h * window_info[]["zoom_level"][]) + canvas_p0.y), ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
+
     # Draw squares with add rect 
     for n in 1:2:length(window_info[]["points"][])-1
         p1 = ImVec2(origin.x + canvas_p0.x + (window_info[]["points"][][n].x * window_info[]["zoom_level"][]), origin.y + canvas_p0.y + (window_info[]["points"][][n].y * window_info[]["zoom_level"][]))
@@ -148,8 +119,6 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
         CImGui.AddRect(draw_list, p1, p2, IM_COL32(255, 255, 0, 255))
     end
 
-    CImGui.AddImage(draw_list, my_tex_id, ImVec2(origin.x + canvas_p0.x, origin.y + canvas_p0.y), ImVec2(origin.x + (my_tex_w * window_info[]["zoom_level"][]) + canvas_p0.x, origin.y + (my_tex_h * window_info[]["zoom_level"][]) + canvas_p0.y), ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
-    CImGui.PopClipRect(draw_list)
 
     CImGui.End()
 

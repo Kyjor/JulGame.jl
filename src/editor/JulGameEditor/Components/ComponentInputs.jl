@@ -32,7 +32,7 @@ function show_field_editor(entity, fieldName, animation_window_dict)
         end
 
         if isa(field, SpriteModule.InternalSprite)
-            show_sprite_fields(entity.sprite)
+            show_sprite_fields(entity.sprite, animation_window_dict)
         elseif isa(field, SoundSourceModule.InternalSoundSource)
             show_sound_source_fields(entity.soundSource)
         elseif isa(field, AnimatorModule.InternalAnimator)
@@ -279,7 +279,7 @@ and updates the `sprite.imagePath` field with the current text in the text box.
 - `sprite`: The sprite object to display the fields for.
 
 """
-function show_sprite_fields(sprite)
+function show_sprite_fields(sprite, animation_window_dict)
     for field in fieldnames(typeof(sprite))
         fieldString = "$(field)"
 
@@ -309,7 +309,30 @@ function show_sprite_fields(sprite)
                 sprite.imagePath = imagePath
             end 
             CImGui.Button("Load Image") && (Component.load_image(sprite, currentTextInTextBox))
-        else 
+        elseif fieldString == "crop"
+            crop_x, crop_y, crop_w, crop_h = sprite.crop.x, sprite.crop.y, sprite.crop.z, sprite.crop.t
+
+            points = Ref(Vector{ImVec2}([ImVec2(crop_x, crop_y), ImVec2(crop_x + crop_w, crop_y + crop_h)]))
+            scrolling = Ref(ImVec2(0.0, 0.0))
+            adding_line = Ref(false)
+            zoom_level = Ref(1.0)
+            grid_step = Ref(Int32(64))
+            # put these in a ref dictionary
+            window_info = Ref(Dict("points" => points, "scrolling" => scrolling, "adding_line" => adding_line, "zoom_level" => zoom_level, "grid_step" => grid_step))
+            # check if animation_window_dict has the key "frame $(k)"
+            key = "crop-$(sprite.parent.id)"
+            if haskey(animation_window_dict[], key)
+                # animation_window_dict[]["frame $(k)"][]["points"] = points
+                window_info[] = animation_window_dict[][key][]
+            else
+                animation_window_dict[][key] = window_info
+            end
+
+            crop_x, crop_y, crop_w, crop_h = show_animation_window("crop", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+            vec4i = Cint[crop_x, crop_y, crop_w, crop_h]
+            @c CImGui.InputInt4("crop", vec4i)
+            sprite.crop = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))
+        else
             show_component_field_input(sprite, field)
         end  
     end

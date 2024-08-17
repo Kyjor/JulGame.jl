@@ -5,7 +5,8 @@ function CallSDLFunction(func::Function, args...)
     # Call SDL function and check for errors
     ret = func(args...)
     if (isa(ret, Number) && ret < 0) || ret == C_NULL
-        println(unsafe_string(SDL2.SDL_GetError()))
+        @error "$(unsafe_string(SDL2.SDL_GetError())) $(@__FILE__):$(@__LINE__)" 
+        @info "Check Utils.jl"
         Base.show_backtrace(stdout, catch_backtrace())
     end
 
