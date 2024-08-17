@@ -112,38 +112,38 @@ module SpriteModule
         if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0
             ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
             dstRect = Ref(SDL2.SDL_FRect(
-                (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
-                (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
+                (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * parentTransform.scale.x * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
+                (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * parentTransform.scale.y * SCALE_UNITS / ppu - SCALE_UNITS) / 2,
                 (srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu,
                 (srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu
             ))     
         end
 
-        srcRect = !this.isFloatPrecision ? (this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.z,this.crop.t)) : srcRect
-        dstRect = !this.isFloatPrecision ? Ref(SDL2.SDL_Rect(
-            convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
-            convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)),
-            convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
-            convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
-        )) : dstRect
-        if this.center != Math.Vector2(0,0)
-            calculatedCenter = Math.Vector2f(-this.size.x/2 + this.center.x, -this.size.y/2 + this.center.y)
-        end
-        if this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0 && !this.isFloatPrecision
-            ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
+        if !this.isFloatPrecision
+            srcRect = this.crop == Math.Vector4(0,0,0,0) || this.crop == C_NULL ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x,this.crop.y,this.crop.z,this.crop.t))
             dstRect = Ref(SDL2.SDL_Rect(
-                convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
-                convert(Int32, round((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu)),
-                convert(Int32, round((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu))
-            ))     
+                convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), # TODO: Center the sprite within the entity
+                convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)),
+                convert(Int32, round(this.crop == C_NULL ? this.size.x : this.crop.z)),
+                convert(Int32, round(this.crop == C_NULL ? this.size.y : this.crop.t))
+            ))
+            if (this.pixelsPerUnit > 0 || JulGame.PIXELS_PER_UNIT > 0) && this.pixelsPerUnit != -1
+                ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
+                dstRect = Ref(SDL2.SDL_Rect(
+                    convert(Int32, round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - ((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                    convert(Int32, round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - ((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS / ppu - SCALE_UNITS) / 2)),
+                    convert(Int32, round((srcRect == C_NULL ? this.size.x : this.crop.z) * SCALE_UNITS/ppu*parentTransform.scale.x)),
+                    convert(Int32, round((srcRect == C_NULL ? this.size.y : this.crop.t) * SCALE_UNITS/ppu*parentTransform.scale.y))
+                ))     
+            end
         end
 
          # Calculate center position on sprite using the center property. 
          # The value is a pointer to a point indicating the point around which dstrect will be rotated 
          # (if C_NULL, rotation will be done around dstrect.w / 2, dstrect.h / 2)
          # Todo: don't allocate this every frame
-        calculatedCenter = Ref(SDL2.SDL_Point(round(dstRect[].w/2 + this.center.x), round(dstRect[].h/2 + this.center.y)))    
+        calculatedCenter = Math.Vector2f(dstRect[].w/2 + this.center.x, dstRect[].h/2 + this.center.y)
+        calculatedCenter = !this.isFloatPrecision ? Ref(SDL2.SDL_Point(round(calculatedCenter.x), round(calculatedCenter.y))) : Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))   
 
         if  this.isFloatPrecision && SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 

@@ -579,7 +579,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					rendercount += 1
 					Component.draw(renderOrder[i][2])
 				catch e
-					println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
+					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 					rethrow(e)

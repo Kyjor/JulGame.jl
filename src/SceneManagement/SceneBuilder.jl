@@ -9,7 +9,7 @@ module SceneBuilderModule
     using ...ScreenButtonModule
     using ..SceneReaderModule
 
-    #function __init__()
+    function __init__()
         # if end of path is "test", then we are running tests
         if endswith(pwd(), "test")
             println("Loading scripts in test folder...")
@@ -37,7 +37,7 @@ module SceneBuilderModule
                 end
             end
         end
-    #end
+    end
         
     export Scene
     mutable struct Scene
@@ -136,7 +136,7 @@ module SceneBuilderModule
                     try
                         newScript = eval(Symbol(script.name))(params...)
                     catch e
-                        @error string(e)
+                        @error string(e) 
 						Base.show_backtrace(stdout, catch_backtrace())
 						rethrow(e)
                     end
