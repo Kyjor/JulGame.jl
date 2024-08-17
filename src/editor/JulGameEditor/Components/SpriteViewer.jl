@@ -60,7 +60,7 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     end
     if window_info[]["adding_line"][]
         window_info[]["points"][][end] = mouse_pos_in_canvas_zoom_adjusted
-        if is_active && !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
+        if is_hovered && !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
             window_info[]["points"][] = [window_info[]["points"][][end-1], window_info[]["points"][][end]] # only keep last two points
             window_info[]["adding_line"][] = false
         end
@@ -68,19 +68,19 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
 
     # Pan
     mouse_threshold_for_pan = -1.0 
-    if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
+    if is_hovered && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
         window_info[]["scrolling"][] = ImVec2(window_info[]["scrolling"][].x + unsafe_load(io.MouseDelta).x, window_info[]["scrolling"][].y + unsafe_load(io.MouseDelta).y)
     end
 
     # Zoom
-    if is_active && unsafe_load(io.KeyCtrl)
+    if is_hovered && unsafe_load(io.KeyCtrl)
         window_info[]["zoom_level"][] += unsafe_load(io.MouseWheel) * 4.0 # * 0.10
         window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][], 1.0, 50.0)
     end
 
     # Context menu
     drag_delta = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
-    if is_active && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
+    if is_hovered && CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Right) && drag_delta.x == 0.0 && drag_delta.y == 0.0
         CImGui.OpenPopupOnItemClick("context")
     end
     if CImGui.BeginPopup("context")

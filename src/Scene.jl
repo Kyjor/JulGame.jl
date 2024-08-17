@@ -34,5 +34,19 @@
         @warn "No entity with name $name found"
         return C_NULL
     end
+
+    function get_entities_by_name(this::Scene, name)
+        entities = []
+        for entity in this.entities
+            if entity.name == name
+                push!(entities, entity)
+            end
+        end
+
+        if length(entities) == 0
+            @warn "No entity with name $name found"
+        end
+        return entities
+    end
 end
 

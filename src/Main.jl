@@ -428,7 +428,7 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 - `entity`: The entity to create.
 
 """
-function create_entity(entity)
+function JulGame.create_entity(entity)
 	this::Main = MAIN
 	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
