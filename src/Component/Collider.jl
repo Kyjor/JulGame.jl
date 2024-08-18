@@ -304,7 +304,6 @@ module ColliderModule
             return (right == 0.0 ? RightSide::ColliderLocation : None::CollisionDirection, dist)
         elseif rightA > leftB
             depthRight = rightA - leftB
-            println(depthRight)
         end
         
         if leftA >= rightB
@@ -313,28 +312,26 @@ module ColliderModule
             return (left == 0.0 ? LeftSide::ColliderLocation : None::CollisionDirection, dist)
         elseif leftA < rightB
             depthLeft = rightB - leftA
-            println(depthLeft)
         end
     
         #If none of the sides from A are outside B
         collisionSide = min(depthBottom, depthTop, depthLeft, depthRight)
         collisionDistance = colliderB.isTrigger ? 0.0 : collisionSide/SCALE_UNITS
 
-        println("colliding")
         if collisionSide == depthBottom
-            println("Collision from below ", collisionDistance)
-            # if colliderB.isPlatformerCollider && collisionDistance > 0.25 #todo: make this a variable based on collider size. It's a magic number right now.
-            #     return (None::CollisionDirection, 0.0)
-            # end
+            # println("Collision from below ", collisionDistance)
+            if colliderB.isPlatformerCollider && collisionDistance > 0.25 #todo: make this a variable based on collider size. It's a magic number right now.
+                return (None::CollisionDirection, 0.0)
+            end
             return (Bottom::CollisionDirection, collisionDistance)
         elseif collisionSide == depthTop && !colliderB.isPlatformerCollider
-            println("Collision from above ", collisionDistance)
+            # println("Collision from above ", collisionDistance)
             return (Top::CollisionDirection, collisionDistance)
         elseif collisionSide == depthLeft && !colliderB.isPlatformerCollider
-            println("Collision from the left ", collisionDistance)
+            # println("Collision from the left ", collisionDistance)
             return (Left::CollisionDirection, collisionDistance)
         elseif collisionSide == depthRight && !colliderB.isPlatformerCollider
-            println("Collision from the right ", collisionDistance)
+            # println("Collision from the right ", collisionDistance)
             return (Right::CollisionDirection, collisionDistance)
         end 
         
