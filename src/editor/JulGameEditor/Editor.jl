@@ -73,12 +73,14 @@ module Editor
                     ################################## RENDER HERE
                     
                     ################################# MAIN MENU BAR
-                    events = []
+                    events = Dict{String, Function}()
                     if currentSceneMain !== nothing
-                        push!(events, save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, String(currentSceneName)))
+                        events["Save"] = save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, String(currentSceneName))
                     end
-                    push!(events, select_project_event(currentSceneMain, scenesLoadedFromFolder))
-                    show_main_menu_bar(events)
+                    events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder)
+                    events["Reset-camera"] = reset_camera_event(currentSceneMain)
+                    events["Regenerate-ids"] = regenerate_ids_event(currentSceneMain)
+                    show_main_menu_bar(events, currentSceneMain)
                     ################################# END MAIN MENU BAR
 
                     @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
@@ -254,6 +256,7 @@ module Editor
                             CImGui.Separator()
                             if CImGui.Button("Duplicate") 
                                 copy = deepcopy(currentSceneMain.selectedEntity)
+                                copy.id = JulGame.generate_uuid()
                                 push!(currentSceneMain.scene.entities, copy)
                                 currentSceneMain.selectedEntity = copy
                             end
@@ -290,6 +293,7 @@ module Editor
                                     # CImGui.Separator()
                                     # if CImGui.Button("Duplicate") 
                                     #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
+                                    # copy.id = JulGame.generate_uuid()
                                     #     # TODO: switch to duplicated entity
                                     # end
 
@@ -320,7 +324,7 @@ module Editor
                     if currentSceneMain !== nothing
                         if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
                             @info string("Saving scene")
-                            events[1]()
+                            events["Save"]()
                         end
                         # delete selected entity
                         if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
@@ -331,6 +335,7 @@ module Editor
                         # duplicate selected entity with ctrl+d
                         if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
                             copy = deepcopy(currentSceneMain.selectedEntity)
+                            copy.id = JulGame.generate_uuid()
                             push!(currentSceneMain.scene.entities, copy)
                             currentSceneMain.selectedEntity = copy
                         end
@@ -340,6 +345,7 @@ module Editor
                             if duplicationMode
                                 @info "Duplication mode on"
                                 copy = deepcopy(currentSceneMain.selectedEntity)
+                                copy.id = JulGame.generate_uuid()
                                 push!(currentSceneMain.scene.entities, copy)
                                 currentSceneMain.selectedEntity = copy
                             else

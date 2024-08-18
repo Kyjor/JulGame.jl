@@ -325,10 +325,13 @@ function show_sprite_fields(sprite, animation_window_dict)
                 # animation_window_dict[]["frame $(k)"][]["points"] = points
                 window_info[] = animation_window_dict[][key][]
             else
+                print("Adding crop window info for: $key")
                 animation_window_dict[][key] = window_info
             end
 
-            crop_x, crop_y, crop_w, crop_h = show_animation_window("crop", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+            CImGui.PushID(sprite.parent.id)
+                crop_x, crop_y, crop_w, crop_h = show_animation_window("crop", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+            CImGui.PopID()
             vec4i = Cint[crop_x, crop_y, crop_w, crop_h]
             @c CImGui.InputInt4("crop", vec4i)
             sprite.crop = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))

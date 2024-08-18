@@ -30,7 +30,7 @@ module EntityModule
         sprite::Union{InternalSprite, Ptr{Nothing}}
         transform::Transform
 
-        function Entity(name::String = "New entity", id::String = generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
+        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
             this = new()
 
             this.id = id
@@ -169,7 +169,7 @@ module EntityModule
         return this.shape
     end
 
-    function generate_uuid()
+    function JulGame.generate_uuid()
         return string(UUIDs.uuid4())
     end
 end

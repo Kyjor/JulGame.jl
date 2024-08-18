@@ -134,6 +134,7 @@ function handle_mouse_click_duplication(main)
     end
 
     copy = deepcopy(main.selectedEntity)
+    copy.id = JulGame.generate_uuid()
     push!(main.scene.entities, copy)
     main.selectedEntity = copy
 end

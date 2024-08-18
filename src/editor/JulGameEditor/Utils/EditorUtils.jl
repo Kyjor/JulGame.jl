@@ -307,3 +307,21 @@ function select_all_elements_in_between(hierarchyEntitySelections, lastSelectedI
         end
     end
 end
+
+function regenerate_ids_event(main)
+    event = @event begin
+        for index in eachindex(main.scene.entities)
+            main.scene.entities[index].id = JulGame.generate_uuid()
+        end
+    end
+
+    return event
+end
+
+function reset_camera_event(main)
+    event = @event begin
+        main.camera.position = Vec2(0, 0)
+    end
+
+    return event
+end
