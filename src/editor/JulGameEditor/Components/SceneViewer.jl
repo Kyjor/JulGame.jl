@@ -91,7 +91,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     if CImGui.BeginPopup("context")
         if CImGui.MenuItem("Delete", "", false, main.selectedEntity !== nothing)
             println("Delete selected entity")
-            MainLoop.destroy_entity(main, main.selectedEntity)
+            JulGame.destroy_entity(main, main.selectedEntity)
         end
         CImGui.EndPopup()
     end
