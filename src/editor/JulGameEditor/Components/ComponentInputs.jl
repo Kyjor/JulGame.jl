@@ -310,6 +310,10 @@ function show_sprite_fields(sprite, animation_window_dict)
             end 
             CImGui.Button("Load Image") && (Component.load_image(sprite, currentTextInTextBox))
         elseif fieldString == "crop"
+            if sprite.crop === nothing || sprite.crop == C_NULL
+                sprite.crop = JulGame.Math.Vector4(0,0,0,0)
+            end
+            
             crop_x, crop_y, crop_w, crop_h = sprite.crop.x, sprite.crop.y, sprite.crop.z, sprite.crop.t
 
             points = Ref(Vector{ImVec2}([ImVec2(crop_x, crop_y), ImVec2(crop_x + crop_w, crop_y + crop_h)]))
