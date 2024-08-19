@@ -50,6 +50,7 @@ module SceneWriterModule
                     "alpha" => uiElement.alpha, 
                     "fontPath" => normalize_path(uiElement.fontPath), 
                     "fontSize" => uiElement.fontSize, 
+                    "isActive" => uiElement.isActive,
                     "isCenteredX" => uiElement.isCenteredX,
                     "isCenteredY" => uiElement.isCenteredY,
                     "isWorldEntity" => uiElement.isWorldEntity,

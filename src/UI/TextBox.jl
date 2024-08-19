@@ -50,7 +50,7 @@ module TextBoxModule
     end
 
     function UI.render(this::TextBox, debug::Bool)
-        if this.textTexture == C_NULL
+        if this.textTexture == C_NULL || !this.isActive
             return
         end
 
