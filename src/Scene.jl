@@ -32,7 +32,7 @@
         end
 
         @warn "No entity with name $name found"
-        return C_NULL
+        return nothing
     end
 
     function get_entities_by_name(this::Scene, name)

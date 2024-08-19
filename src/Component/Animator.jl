@@ -16,6 +16,7 @@
         lastFrame::Int32
         lastUpdate::UInt64
         parent::Any
+        playOnce::Bool
         sprite::Union{InternalSprite, Ptr{Nothing}}
 
         function InternalAnimator(parent::Any, animations::Vector{Animation} = Animation[])
@@ -27,6 +28,7 @@
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent
             this.sprite = C_NULL
+            this.playOnce = false
 
             return this
         end
@@ -54,6 +56,18 @@
 
     function Component.append_array(this::InternalAnimator)
         push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
+    end
+    
+    function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
+        if animationIndex > 0 && animationIndex <= length(this.animations)
+            this.currentAnimation = this.animations[animationIndex]
+            this.playOnce = true
+            this.lastFrame = 1
+
+            return
+        end
+
+        @warn "Animation index out of bounds"
     end
     
     
@@ -94,7 +108,7 @@
     ```
     """
     function Update(this::InternalAnimator, currentRenderTime, deltaTime)
-        if this.currentAnimation.animatedFPS < 1
+        if this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames))
             return
         end
         deltaTime = (currentRenderTime - Component.get_last_update(this)) / 1000.0

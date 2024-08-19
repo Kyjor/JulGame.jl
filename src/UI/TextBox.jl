@@ -9,6 +9,7 @@ module TextBoxModule
         fontPath::String
         fontSize::Int32
         id::Int32
+        isActive::Bool
         isCenteredX::Bool
         isCenteredY::Bool
         isWorldEntity::Bool
@@ -35,6 +36,7 @@ module TextBoxModule
             this.isWorldEntity = isWorldEntity
             this.textTexture = C_NULL
             this.persistentBetweenScenes = false
+            this.isActive = true
             
             basePath = fontPath != "" ? joinpath(BasePath, "assets", "fonts") : joinpath(pwd(), "..", "Fonts")
             if fontPath == ""
