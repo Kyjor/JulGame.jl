@@ -179,7 +179,7 @@ module ColliderModule
             for collider in colliders
                 #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
                 if !Component.get_parent(collider).isActive || !collider.enabled
-                    if this.parent.rigidbody.grounded && i == length(colliders)
+                    if this.parent.rigidbody != C_NULL && this.parent.rigidbody !== nothing && this.parent.rigidbody.grounded && i == length(colliders)
                         this.parent.rigidbody.grounded = false
                     end
                     continue
@@ -190,7 +190,7 @@ module ColliderModule
                     if collision[1] == Top::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            eventToCall(collider)
+                            eventToCall((collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x, transform.position.y + collision[2])
@@ -198,7 +198,7 @@ module ColliderModule
                     if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            eventToCall(collider)
+                            eventToCall((collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x + collision[2], transform.position.y)
@@ -206,7 +206,7 @@ module ColliderModule
                     if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            eventToCall(collider)
+                            eventToCall((collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x - collision[2], transform.position.y)
@@ -214,7 +214,7 @@ module ColliderModule
                     if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            eventToCall(collider)
+                            eventToCall((collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x, transform.position.y - collision[2])
@@ -223,13 +223,15 @@ module ColliderModule
                     if collision[1] == Below::ColliderLocation
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            eventToCall(collider)
+                            eventToCall((collider=collider, direction=collision[1]))
                         end
                     end
                 end
                 i += 1
             end
-            this.parent.rigidbody.grounded = onGround
+            if this.parent.rigidbody != C_NULL && this.parent.rigidbody !== nothing
+                this.parent.rigidbody.grounded = onGround
+            end
             this.currentCollisions = []
         
 
@@ -244,6 +246,7 @@ module ColliderModule
 
         # this.parent.rigidbody.grounded = length(this.currentRests) > 0 && Component.get_velocity(this.parent.rigidbody).y >= 0
         # this.currentCollisions = InternalCollider[]
+        return length(this.currentCollisions) > 0
     end
 
     function Component.add_collision_event(this::InternalCollider, event)
