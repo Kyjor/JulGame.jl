@@ -25,10 +25,10 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
     canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
-    canvas_sz = ImVec2(max(canvas_sz.x, 50.0), max(canvas_sz.y, 50.0))
+    canvas_sz = ImVec2(max(canvas_sz.x, 50.0), max(canvas_sz.y*0.75, 50.0))
     canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y)
 
-    canvas_max = ImVec2(my_tex_w * 10, my_tex_h * 10)
+    canvas_max = ImVec2(my_tex_w * 10 * window_info[]["zoom_level"][], my_tex_h * 10 * window_info[]["zoom_level"][])
 
     # Draw border and background color
     draw_list = CImGui.GetWindowDrawList()
@@ -49,31 +49,16 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - canvas_p0.x, unsafe_load(io.MousePos).y - canvas_p0.y)
     mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / window_info[]["zoom_level"][]), floor(mouse_pos_in_canvas.y / window_info[]["zoom_level"][]))
     CImGui.Text("Zoom level: $(window_info[]["zoom_level"][])")
-    CImGui.Text("origin: $(origin.x), $(origin.y)")
-    CImGui.Text("Origin divided by zoom: $(origin.x / window_info[]["zoom_level"][]), $(origin.y / window_info[]["zoom_level"][])")
-    CImGui.Text("Origin * zoom: $(origin.x * window_info[]["zoom_level"][]), $(origin.y * window_info[]["zoom_level"][])")
-    CImGui.Text("Mouse Position: $(mouse_pos_in_canvas.x), $(mouse_pos_in_canvas.y)")
-    CImGui.Text("Mouse Pixel: $(floor(mouse_pos_in_canvas.x / window_info[]["zoom_level"][])), $(floor(mouse_pos_in_canvas.y / window_info[]["zoom_level"][]))")
-    CImGui.Text("Mouse position in canvas adj: $(mouse_pos_in_canvas_zoom_adjusted.x), $(mouse_pos_in_canvas_zoom_adjusted.y)")
-    CImGui.Text("Mouse position in canvas + origin: $(origin.x + mouse_pos_in_canvas_zoom_adjusted.x), $(origin.y + mouse_pos_in_canvas_zoom_adjusted.y)")
-    #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ window_info[]["zoom_level"][]) * window_info[]["zoom_level"][], round(mouse_pos_in_canvas_zoom_adjusted.y/ window_info[]["zoom_level"][]) * window_info[]["zoom_level"][])
+
     # Add first and second point
     if is_hovered && !window_info[]["adding_line"][] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
-        if unsafe_load(io.KeyShift)
-            push!(window_info[]["points"][], ImVec2(mouse_pos_in_canvas_zoom_adjusted.x - round(origin.x* window_info[]["zoom_level"][]), mouse_pos_in_canvas_zoom_adjusted.y - round(origin.y* window_info[]["zoom_level"][])))
-            push!(window_info[]["points"][], ImVec2(mouse_pos_in_canvas_zoom_adjusted.x - round(origin.x* window_info[]["zoom_level"][]), mouse_pos_in_canvas_zoom_adjusted.y - round(origin.y* window_info[]["zoom_level"][])))
-        else
-            push!(window_info[]["points"][], ImVec2(mouse_pos_in_canvas_zoom_adjusted.x, mouse_pos_in_canvas_zoom_adjusted.y))
-            push!(window_info[]["points"][], ImVec2(mouse_pos_in_canvas_zoom_adjusted.x, mouse_pos_in_canvas_zoom_adjusted.y))
-        end
+        push!(window_info[]["points"][], ImVec2(mouse_pos_in_canvas_zoom_adjusted.x - round(origin.x/ window_info[]["zoom_level"][]), mouse_pos_in_canvas_zoom_adjusted.y - round(origin.y)/ window_info[]["zoom_level"][]))
+        push!(window_info[]["points"][], ImVec2(mouse_pos_in_canvas_zoom_adjusted.x - round(origin.x/ window_info[]["zoom_level"][]), mouse_pos_in_canvas_zoom_adjusted.y - round(origin.y/ window_info[]["zoom_level"][])))
         window_info[]["adding_line"][] = true
     end
     if window_info[]["adding_line"][]
-        if unsafe_load(io.KeyShift)
-            window_info[]["points"][][end] = ImVec2(mouse_pos_in_canvas_zoom_adjusted.x - round(origin.x* window_info[]["zoom_level"][]), mouse_pos_in_canvas_zoom_adjusted.y - round(origin.y* window_info[]["zoom_level"][]))
-        else
-            window_info[]["points"][][end] = ImVec2(mouse_pos_in_canvas_zoom_adjusted.x, mouse_pos_in_canvas_zoom_adjusted.y)
-        end
+        window_info[]["points"][][end] = ImVec2(mouse_pos_in_canvas_zoom_adjusted.x - round(origin.x/ window_info[]["zoom_level"][]), mouse_pos_in_canvas_zoom_adjusted.y - round(origin.y/ window_info[]["zoom_level"][]))
+        
         if is_hovered && !CImGui.IsMouseDown(CImGui.ImGuiMouseButton_Left)
             window_info[]["points"][] = [window_info[]["points"][][end-1], window_info[]["points"][][end]] # only keep last two points
             window_info[]["adding_line"][] = false
@@ -89,9 +74,9 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     # Zoom
     if is_hovered && unsafe_load(io.KeyCtrl)
         if unsafe_load(io.MouseWheel) == 1.0
-            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] * 4, 1.0, 50.0)
+            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] * 4, 1.0, 64.0)
         elseif unsafe_load(io.MouseWheel) == -1.0
-            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] / 4, 1.0, 50.0)
+            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] / 4,  1.0, 64.0)
         end 
     end
 
@@ -139,7 +124,7 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     CImGui.End()
 
     # x, y, w, h = crop.x, crop.y, crop.z, crop.t
-    return selectedPoint1.x, selectedPoint1.y, selectedPoint2.x - selectedPoint1.x, selectedPoint2.y - selectedPoint1.y
+    return floor(selectedPoint1.x), floor(selectedPoint1.y), round(selectedPoint2.x - selectedPoint1.x), round(selectedPoint2.y - selectedPoint1.y)
 end
 
 function show_image_with_hover_preview(my_tex_id, my_tex_w, my_tex_h, crop)
