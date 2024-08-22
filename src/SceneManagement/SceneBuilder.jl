@@ -9,7 +9,7 @@ module SceneBuilderModule
     using ...ScreenButtonModule
     using ..SceneReaderModule
 
-   # function __init__()
+    function init()
         # if end of path is "test", then we are running tests
         if endswith(pwd(), "test")
             println("Loading scripts in test folder...")
@@ -37,7 +37,17 @@ module SceneBuilderModule
                 end
             end
         end
-    #end
+    end
+
+   function __init__()
+        if ccall(:jl_generating_output, Cint, ()) != 1
+            init()
+        end
+    end
+
+    if ccall(:jl_generating_output, Cint, ()) == 1
+        init()
+    end
         
     export Scene
     mutable struct Scene
