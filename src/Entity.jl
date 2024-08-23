@@ -71,7 +71,7 @@ module EntityModule
     function JulGame.update(this::Entity, deltaTime)
         for script in this.scripts
             try
-                JulGame.update(script, deltaTime)
+                Base.invokelatest(JulGame.update, script, deltaTime)
             catch e
                 @error string(e)
                 Base.show_backtrace(stdout, catch_backtrace())

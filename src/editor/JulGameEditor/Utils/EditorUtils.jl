@@ -320,7 +320,7 @@ end
 
 function reset_camera_event(main)
     event = @event begin
-        main.camera.position = Vec2(0, 0)
+        main.scene.camera.position = JulGame.Math.Vector2f(0, 0)
     end
 
     return event

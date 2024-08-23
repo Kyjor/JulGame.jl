@@ -21,14 +21,9 @@ module MainLoop
 		input::Input
 		isGameModeRunningInEditor::Bool
 		isWindowFocused::Bool
-		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
-		lastMousePositionWorld::Union{Math.Vector2, Math.Vector2f}
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		mousePositionWorld::Union{Math.Vector2, Math.Vector2f}
-		mousePositionWorldRaw::Union{Math.Vector2, Math.Vector2f}
 		optimizeSpriteRendering::Bool
-		panCounter::Union{Math.Vector2, Math.Vector2f}
-		panThreshold::Float64
 		scene::SceneModule.Scene
 		selectedEntity::Union{Entity, Nothing}
 		selectedUIElementIndex::Int64
@@ -57,8 +52,6 @@ module MainLoop
 			this.input.scene = this.scene
 			this.isWindowFocused = false
 			this.mousePositionWorld = Math.Vector2f()
-			this.mousePositionWorldRaw = Math.Vector2f()
-			this.lastMousePositionWorld = Math.Vector2f()
 			this.optimizeSpriteRendering = false
 			this.selectedEntity = nothing
 			this.selectedUIElementIndex = -1
@@ -234,10 +227,6 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 		end
 	end
 
-	this.lastMousePosition = Math.Vector2(0, 0)
-	this.panCounter = Math.Vector2f(0, 0)
-	this.panThreshold = .1
-
 	this.spriteLayers = build_sprite_layers()
 	
 	if !isUsingEditor || this.isGameModeRunningInEditor
@@ -253,6 +242,7 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 				#end
 			end
 		end
+		build_sprite_layers()
 	end
 end
 
@@ -487,7 +477,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 
 			DEBUG = false
 			#region Input
-			this.lastMousePosition = this.input.mousePosition
 			if !isEditor
 				JulGame.InputModule.poll_input(this.input)
 			end
@@ -504,14 +493,16 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			end
 
 			#region Physics
-			if !isEditor
+			if !isEditor || this.isGameModeRunningInEditor
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
 
 				this.currentTestTime += deltaTime
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
-					return
+					println("Delta time: ", deltaTime)
+
+					#return
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
@@ -525,6 +516,8 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
 			end
+			println("Game loop")
+
 
 			#region Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
@@ -536,7 +529,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					continue
 				end
 
-				if !isEditor
+				if !isEditor || this.isGameModeRunningInEditor
 					try
                         JulGame.update(entity, deltaTime)
 						if this.close
@@ -579,6 +572,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 
 			sort!(renderOrder, by = x -> x[1])
 
+			println("Entities: ", length(this.scene.entities), " Render Order: ", length(renderOrder))
 			for i = eachindex(renderOrder)
 				try
 					rendercount += 1
@@ -642,9 +636,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
                 JulGame.render(uiElement, DEBUG)
 			end
 
-			this.lastMousePositionWorld = this.mousePositionWorld
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
-			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x - pos1.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y - pos1.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
 			this.mousePositionWorld = Math.Vector2(floor(Int32,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int32,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y )
 			#region Debug

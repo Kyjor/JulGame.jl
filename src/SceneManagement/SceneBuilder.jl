@@ -8,7 +8,6 @@ module SceneBuilderModule
     using ...TextBoxModule
     using ...ScreenButtonModule
     using ..SceneReaderModule
-    using Revise
 
     function init()
         # if end of path is "test", then we are running tests
