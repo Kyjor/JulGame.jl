@@ -8,6 +8,7 @@ module SceneBuilderModule
     using ...TextBoxModule
     using ...ScreenButtonModule
     using ..SceneReaderModule
+    using Revise
 
     function init()
         # if end of path is "test", then we are running tests
@@ -256,5 +257,48 @@ module SceneBuilderModule
         JulGame.initialize(screenButton)
         push!(MAIN.scene.screenButtons, screenButton)
         push!(MAIN.scene.uiElements, screenButton)
+    end
+
+    function add_scripts_to_entities(path::String)
+        println("Adding scripts to entities")
+        println("Entities: ", length(MAIN.scene.entities))
+		include.(filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+        for entity in MAIN.scene.entities
+            scriptCounter = 1
+            for script in entity.scripts
+                params = []
+                    for param in script.parameters
+                        if lowercase(param) == "true"
+                            param = true
+                        elseif lowercase(param) == "false"
+                            param = false
+                        else
+                            try
+                                param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
+                            catch e
+                                @error string(e)
+                                Base.show_backtrace(stdout, catch_backtrace())
+                                rethrow(e)
+                            end
+                        end
+                        push!(params, param)
+                    end
+                newScript = C_NULL
+                try
+                    newScript = Base.invokelatest(eval, Symbol(script.name))
+                    newScript = Base.invokelatest(newScript, params...)
+                catch e
+                    @error string(e)
+                    Base.show_backtrace(stdout, catch_backtrace())
+                    rethrow(e)
+                end
+                if newScript != C_NULL
+                    entity.scripts[scriptCounter] = newScript
+                    println("Script added to entity: ", entity.name, " - ", script.name, " - ", typeof(newScript), " - ", newScript)
+                    newScript.parent = entity
+                end
+                scriptCounter += 1
+            end
+        end
     end
 end

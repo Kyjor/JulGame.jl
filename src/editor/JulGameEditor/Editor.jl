@@ -54,6 +54,7 @@ module Editor
 
         scrolling = Ref(ImVec2(0.0, 0.0))
         zoom_level = Ref(1.0)
+        playMode = Ref(false)
 
         animation_window_dict = Ref(Dict())
 
@@ -121,7 +122,16 @@ module Editor
                     
                     try
                         prevSceneWindowSize = sceneWindowSize
-                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode)
+                        wasPlaying = playMode[]
+                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, playMode)
+                        if playMode[] != wasPlaying && currentSceneMain !== nothing
+                            if playMode[]
+                                JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath)
+                            else
+                                #JulGame.MainLoop.stop_game()
+                            end
+                        end
+                        # show_game_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode)
                         if sceneWindowSize === nothing
                             sceneWindowSize = prevSceneWindowSize
                         end

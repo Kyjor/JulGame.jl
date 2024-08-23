@@ -19,6 +19,7 @@ module MainLoop
 		fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
 		globals::Vector{Any}
 		input::Input
+		isGameModeRunningInEditor::Bool
 		isWindowFocused::Bool
 		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
 		lastMousePositionWorld::Union{Math.Vector2, Math.Vector2f}
@@ -65,6 +66,7 @@ module MainLoop
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
+			this.isGameModeRunningInEditor = false
 
 			this.currentTestTime = 0.0
 			this.testMode = false
@@ -226,8 +228,10 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 		end
 	end
 
-	for uiElement in this.scene.uiElements
-        JulGame.initialize(uiElement)
+	if !this.isGameModeRunningInEditor
+		for uiElement in this.scene.uiElements
+			JulGame.initialize(uiElement)
+		end
 	end
 
 	this.lastMousePosition = Math.Vector2(0, 0)
@@ -236,16 +240,17 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 
 	this.spriteLayers = build_sprite_layers()
 	
-	if !isUsingEditor
+	if !isUsingEditor || this.isGameModeRunningInEditor
+		println("Initializing scripts")
 		for script in scripts
 			try
-				script.initialize()
+				Base.invokelatest(JulGame.initialize, script)
 			catch e
-				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
+				#if typeof(e) != ErrorException || !contains(e.msg, "initialize")
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
-				end
+					#rethrow(e)
+				#end
 			end
 		end
 	end
@@ -679,4 +684,11 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			rethrow(e)
 		end
     end
+
+	function start_game_in_editor(this::Main, path::String)
+		this.isGameModeRunningInEditor = true
+		println("Starting game in editor")
+		SceneBuilderModule.add_scripts_to_entities(path)
+		initialize_scripts_and_components(false)
+	end
 end

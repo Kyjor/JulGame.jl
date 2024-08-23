@@ -71,7 +71,7 @@ module EntityModule
     function JulGame.update(this::Entity, deltaTime)
         for script in this.scripts
             try
-                script.update(deltaTime)
+                JulGame.update(script, deltaTime)
             catch e
                 @error string(e)
                 Base.show_backtrace(stdout, catch_backtrace())

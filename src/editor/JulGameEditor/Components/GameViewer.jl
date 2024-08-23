@@ -1,6 +1,6 @@
-function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, playMode)
+function show_game_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode)
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
-    CImGui.Begin("Scene") || (CImGui.End(); return)
+    CImGui.Begin("Game") || (CImGui.End(); return)
     # GET SIZE OF SCENE TEXTURE
     # w, h = Ref{Int32}(0), Ref{Int32}(0)
     # SDL2.SDL_QueryTexture(scene_tex_id[], Ref{UInt32}(0), Ref{Int32}(0), w, h)
@@ -9,9 +9,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     io = CImGui.GetIO()
     
     # UI elements
-    if CImGui.Button("Play")
-        playMode[] = true
-    end
+    # grid step int input as slider with range. Min = 1, Max = 64
+    CImGui.Text("Mouse Left: drag to add square,\nMouse Right: drag to scroll, click for context menu.\nCTRL+Mouse Wheel: zoom")
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
     canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
