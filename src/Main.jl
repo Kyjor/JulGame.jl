@@ -83,7 +83,7 @@ module MainLoop
 
     function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
         SceneBuilderModule.deserialize_and_build_scene(this.level, isUsingEditor)
-        initialize_scripts_and_components(false)
+        initialize_scripts_and_components(isUsingEditor)
 
         if !isUsingEditor
             full_loop(this)
@@ -230,9 +230,10 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 	this.spriteLayers = build_sprite_layers()
 	
 	if !isUsingEditor || this.isGameModeRunningInEditor
-		println("Initializing scripts")
 		for script in scripts
 			try
+				# TODO: only call latest if in editor and in game mode
+				println("Is using editor: ", isUsingEditor, " Is game mode running in editor: ", this.isGameModeRunningInEditor)
 				Base.invokelatest(JulGame.initialize, script)
 			catch e
 				#if typeof(e) != ErrorException || !contains(e.msg, "initialize")
@@ -268,7 +269,7 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 	skipcount = 0
 	persistentEntities = []	
 	for entity in this.scene.entities
-		if entity.persistentBetweenScenes
+		if entity.persistentBetweenScenes && (!isEditor || this.isGameModeRunningInEditor)
 			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
 			skipcount += 1
@@ -278,7 +279,7 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 		destroy_entity_components(this, entity)
 		for script in entity.scripts
 			try
-				script.onShutDown()
+				# script.onShutDown()
 			catch e
 				if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
 					println("Error shutting down script")
@@ -288,6 +289,8 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 				end
 			end
 		end
+
+		JulGame.destroy_entity(this, entity)
 		count += 1
 	end
 	# println("Destroyed $count entities")
@@ -460,9 +463,9 @@ Parameters:
 
 """
 function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
-	if this.shouldChangeScene
+	if this.shouldChangeScene && !isEditor
 		this.shouldChangeScene = false
-		initialize_new_scene(this, isEditor)
+		initialize_new_scene(this, false)
 		return
 	end
 	try
@@ -516,8 +519,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
 			end
-			println("Game loop")
-
 
 			#region Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
@@ -532,7 +533,8 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				if !isEditor || this.isGameModeRunningInEditor
 					try
                         JulGame.update(entity, deltaTime)
-						if this.close
+						if this.close && !this.isGameModeRunningInEditor
+							println("Closing game: ", this.isGameModeRunningInEditor)
 							return
 						end
 					catch e
@@ -571,8 +573,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			end
 
 			sort!(renderOrder, by = x -> x[1])
-
-			println("Entities: ", length(this.scene.entities), " Render Order: ", length(renderOrder))
 			for i = eachindex(renderOrder)
 				try
 					rendercount += 1
@@ -682,5 +682,11 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 		println("Starting game in editor")
 		SceneBuilderModule.add_scripts_to_entities(path)
 		initialize_scripts_and_components(false)
+	end
+
+	function stop_game_in_editor(this::Main)
+		this.isGameModeRunningInEditor = false
+		SDL2.Mix_HaltMusic()
+		this.scene.camera.target = C_NULL
 	end
 end

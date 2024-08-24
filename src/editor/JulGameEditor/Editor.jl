@@ -130,8 +130,9 @@ module Editor
                         if playMode[] != wasPlaying && currentSceneMain !== nothing
                             if playMode[]
                                 JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath)
-                            else
-                                #JulGame.MainLoop.stop_game()
+                            elseif !playMode[]
+                                JulGame.MainLoop.stop_game_in_editor(currentSceneMain)
+                                JulGame.change_scene(String(currentSceneName), true)
                             end
                         end
                         # show_game_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode)

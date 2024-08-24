@@ -284,6 +284,7 @@ module SceneBuilderModule
                     end
                 newScript = C_NULL
                 try
+                    # TODO: only call latest if in editor and in game mode
                     newScript = Base.invokelatest(eval, Symbol(script.name))
                     newScript = Base.invokelatest(newScript, params...)
                 catch e

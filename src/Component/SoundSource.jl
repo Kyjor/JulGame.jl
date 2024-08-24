@@ -14,13 +14,15 @@ module SoundSourceModule
     mutable struct InternalSoundSource
         channel::Int32
         isMusic::Bool
+        isPlaying::Bool
         parent::Any
         path::String
+        playOnStart::Bool
         sound::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
         volume::Int32
 
         # Music
-        function InternalSoundSource(parent::Any, path::String, channel::Int32, volume::Int32, isMusic::Bool)
+        function InternalSoundSource(parent::Any, path::String, channel::Int32, volume::Int32, isMusic::Bool, playOnStart::Bool = false)
             this = new()
 
             SDL2.SDL_ClearError()
@@ -46,6 +48,8 @@ module SoundSourceModule
             this.path = path
             this.sound = sound
             this.volume = volume
+            this.isPlaying = false
+            this.playOnStart = playOnStart
 
             return this
         end

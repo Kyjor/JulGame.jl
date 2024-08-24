@@ -77,15 +77,15 @@ function show_game_window(main, scene_tex_id, scrolling, zoom_level, duplication
     drag_delta_left = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Left)
     if CImGui.IsMouseReleased(CImGui.ImGuiMouseButton_Left) && is_hovered && drag_delta_left.x == 0.0 && drag_delta_left.y == 0.0
         if duplicationMode
-            handle_mouse_click_duplication(main)
+            handle_mouse_click_game_duplication(main)
         else
-            handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+            handle_mouse_click_game(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
         end
     end
     
     # if left click and drag
     if is_hovered && (CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan) || duplicationMode)
-        drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+        drag_selected_entity_game(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     end
 
     if CImGui.BeginPopup("context")
@@ -109,25 +109,25 @@ function show_game_window(main, scene_tex_id, scrolling, zoom_level, duplication
     CImGui.PopClipRect(draw_list)
     
     # Draw square around selected entity
-    highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
+    highlight_current_entity_game(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
 
     CImGui.End()
 
     return canvas_sz
 end
 
-function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+function handle_mouse_click_game(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     # if main is nothing, return
     if main === nothing
         return
     end
     # select nearest entity
-    nearest_entity = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    nearest_entity = get_nearest_entity_game(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     
     main.selectedEntity = nearest_entity
 end
 
-function handle_mouse_click_duplication(main)
+function handle_mouse_click_game_duplication(main)
     # if main is nothing, return
     if main === nothing
         return
@@ -139,7 +139,7 @@ function handle_mouse_click_duplication(main)
     main.selectedEntity = copy
 end
 
-function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+function get_nearest_entity_game(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     # if main is nothing, return
     if main === nothing
         return
@@ -163,7 +163,7 @@ function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     return nothing
 end
 
-function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
+function highlight_current_entity_game(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
     # if main is nothing, return
     if main === nothing
         return
@@ -179,7 +179,7 @@ function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_le
     CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (entity.transform.position.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 - camPos.y), ImVec2(canvas_p0.x + entity.transform.position.x * 64 + (entity.transform.scale.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 + (entity.transform.scale.y * 64) - camPos.y), IM_COL32(255, 0, 0, 255))
 end
 
-function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+function drag_selected_entity_game(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     # if main is nothing, return
     if main === nothing
         return

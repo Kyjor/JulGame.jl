@@ -198,6 +198,7 @@ module ColliderModule
                     if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
+                            # TODO: only call latest if in editor and in game mode
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
@@ -206,6 +207,7 @@ module ColliderModule
                     if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
+                            # TODO: only call latest if in editor and in game mode
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
@@ -214,6 +216,7 @@ module ColliderModule
                     if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
+                            # TODO: only call latest if in editor and in game mode
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
@@ -223,6 +226,7 @@ module ColliderModule
                     if collision[1] == Below::ColliderLocation
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
+                            # TODO: only call latest if in editor and in game mode
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                     end

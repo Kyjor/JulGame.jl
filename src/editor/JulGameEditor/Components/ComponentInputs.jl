@@ -5,8 +5,8 @@ using JulGame
 using JulGame.Math
 using JulGame.UI
 
-include("TextBoxFields.jl")
-include("ScreenButtonFields.jl")
+#include("TextBoxFields.jl")
+#include("ScreenButtonFields.jl")
 
 
 """

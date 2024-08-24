@@ -9,8 +9,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     io = CImGui.GetIO()
     
     # UI elements
-    if CImGui.Button("Play")
-        playMode[] = true
+    if (!playMode[] && CImGui.Button("Play")) || (playMode[] && CImGui.Button("Stop"))
+        playMode[] = !playMode[]
     end
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
