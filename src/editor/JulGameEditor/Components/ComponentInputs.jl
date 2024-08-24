@@ -398,7 +398,7 @@ function show_textbox_fields(textbox)
     end
 end
 
-function show_screenbutton_fields(screenButton)
+function show_screenbutton_fields1(screenButton)
     for field in fieldnames(typeof(screenButton))
         fieldString = "$(field)"
 

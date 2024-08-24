@@ -62,6 +62,9 @@ module Editor
 
         duplicationMode = false
 
+        startTime = Ref(UInt64(0))
+        lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
+
         try
             while !quit                    
                 try
@@ -297,7 +300,7 @@ module Editor
                                     if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
                                         show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                     else
-                                        show_screenbutton_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                                        show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
                                     end
 
                                     # CImGui.Separator()
@@ -324,7 +327,7 @@ module Editor
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
-                    gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, Ref(UInt64(0)), Ref(UInt64(0)), true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     

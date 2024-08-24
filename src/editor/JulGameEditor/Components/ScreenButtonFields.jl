@@ -1,5 +1,5 @@
 function show_screenbutton_fields(selectedScreenButton, screenButtonField)
-    fieldName = getFieldName(screenButtonField)
+    fieldName = getFieldName1(screenButtonField)
     unusedFields = ["alpha","clickEvents", "currentTexture", "buttonDownSprite", "buttonDownSpritePath", "buttonDownTexture", "buttonUpSprite", "buttonUpSpritePath", "buttonUpTexture", "fontPath", "isInitialized", "mouseOverSprite", "textTexture"]
     # TODO: 
     push!(unusedFields, "text")
@@ -67,6 +67,6 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
     end
 end
 
-function getFieldName(field)
+function getFieldName1(field)
     return "$(field)"
 end
