@@ -14,7 +14,7 @@ module Editor
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
 
-    include(joinpath("..","..","Macros.jl"))
+    include(joinpath("..","..","utils","Macros.jl"))
 
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "ImGuiSDLBackend"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
@@ -286,14 +286,6 @@ module Editor
                         CImGui.Begin("UI Inspector") 
                             for uiElementIndex = eachindex(hierarchyUISelections)
                                 if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
-                                    CImGui.PushID("AddMenu")
-                                    if CImGui.BeginMenu("Add")
-                                        ShowEntityContextMenu(currentSceneMain.scene.uiElements[uiElementIndex])
-                                        CImGui.EndMenu()
-                                    end
-                                    CImGui.PopID()
-                                    CImGui.Separator()
-
                                     if length(currentSceneMain.scene.uiElements) < uiElementIndex
                                         break
                                     end
@@ -314,7 +306,7 @@ module Editor
                                     CImGui.Separator()
                                     CImGui.Text("Delete UI Element: NO CONFIRMATION")
                                     if CImGui.Button("Delete")
-                                        JulGame.destroy_ui_element(currentSceneMain.scene.uiElements[uiElementIndex])
+                                        JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
                                         break
                                     end
                                     

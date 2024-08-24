@@ -259,8 +259,8 @@ module SceneBuilderModule
     end
 
     function add_scripts_to_entities(path::String)
-        println("Adding scripts to entities")
-        println("Entities: ", length(MAIN.scene.entities))
+        @info string("Adding scripts to entities")
+        @info string("Entities: ", length(MAIN.scene.entities))
 		include.(filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
         for entity in MAIN.scene.entities
             scriptCounter = 1
@@ -294,7 +294,6 @@ module SceneBuilderModule
                 end
                 if newScript != C_NULL
                     entity.scripts[scriptCounter] = newScript
-                    println("Script added to entity: ", entity.name, " - ", script.name, " - ", typeof(newScript), " - ", newScript)
                     newScript.parent = entity
                 end
                 scriptCounter += 1

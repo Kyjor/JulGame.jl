@@ -5,8 +5,8 @@ module MainLoop
     import ..JulGame.SceneManagement: SceneBuilderModule
 	import ..JulGame
 
-	include("Enums.jl")
-	include("Constants.jl")
+	include("utils/Enums.jl")
+	include("utils/Constants.jl")
 
 	export Main
 	mutable struct Main
@@ -233,7 +233,6 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 		for script in scripts
 			try
 				# TODO: only call latest if in editor and in game mode
-				println("Is using editor: ", isUsingEditor, " Is game mode running in editor: ", this.isGameModeRunningInEditor)
 				Base.invokelatest(JulGame.initialize, script)
 			catch e
 				#if typeof(e) != ErrorException || !contains(e.msg, "initialize")
@@ -503,8 +502,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				this.currentTestTime += deltaTime
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
-					println("Delta time: ", deltaTime)
-
+					# TODO: pause simulation
 					#return
 				end
 				for rigidbody in this.scene.rigidbodies
@@ -679,7 +677,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 
 	function start_game_in_editor(this::Main, path::String)
 		this.isGameModeRunningInEditor = true
-		println("Starting game in editor")
 		SceneBuilderModule.add_scripts_to_entities(path)
 		initialize_scripts_and_components(false)
 	end

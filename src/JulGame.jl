@@ -1,5 +1,5 @@
 module JulGame
-    include("CommonFunctions.jl")
+    include("utils/CommonFunctions.jl")
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
     MAIN = nothing
@@ -8,10 +8,10 @@ module JulGame
     const SDL2E = SDL2Extension
     export SDL2, SDL2E, MAIN
 
-    include("Utils.jl")
+    include("utils/Utils.jl")
     export CallSDLFunction
 
-    include("Constants.jl")
+    include("utils/Constants.jl")
     export SCALE_UNITS, GRAVITY
 
     PIXELS_PER_UNIT = -1
@@ -23,7 +23,7 @@ module JulGame
     Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
     export Renderer
     
-    include("Macros.jl")
+    include("utils/Macros.jl")
     using .Macros: @event
     export @event
 
@@ -31,29 +31,29 @@ module JulGame
     using .Math: Math
     export Math
 
-    include("Input/Input.jl")
+    include("engine/Input/Input.jl")
     using .InputModule: Input
     export Input
 
-    include("UI/UI.jl")
+    include("engine/UI/UI.jl")
     using .UI
     export ScreenButtonModule, TextBoxModule
 
-    include("Component/Component.jl")
+    include("engine/Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
     
-    include("Camera/Camera.jl")
+    include("engine/Camera/Camera.jl")
     using .CameraModule: Camera
     
-    include("Entity.jl") 
+    include("engine/Entity.jl") 
     using .EntityModule   
     export Entity
 
-    include("Scene.jl")
+    include("engine/Scene.jl")
     using .SceneModule: Scene
 
-    include("SceneManagement/SceneManagement.jl")
+    include("engine/SceneManagement/SceneManagement.jl")
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
     
