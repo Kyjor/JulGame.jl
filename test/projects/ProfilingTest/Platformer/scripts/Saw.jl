@@ -21,38 +21,21 @@ mutable struct Saw
     end
 end
 
-function Base.getproperty(this::Saw, s::Symbol)
-    if s == :initialize
-        function()
-        end
-    elseif s == :update
-        function(deltaTime)
-            this.rotation += 5
-            this.parent.sprite.rotation =  this.rotation % 360
+function JulGame.initialize(this::Saw)
+end
+function JulGame.update(this::Saw, deltaTime)
+    this.rotation += 5
+    this.parent.sprite.rotation =  this.rotation % 360
 
-            if this.parent.transform.position.y >= this.startingY && !this.isMovingUp
-                this.isMovingUp = true
-            elseif this.parent.transform.position.y <= this.endingY && this.isMovingUp
-                this.isMovingUp = false
-            end
+    if this.parent.transform.position.y >= this.startingY && !this.isMovingUp
+        this.isMovingUp = true
+    elseif this.parent.transform.position.y <= this.endingY && this.isMovingUp
+        this.isMovingUp = false
+    end
 
-            if this.isMovingUp
-                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y - this.speed*deltaTime)
-            else
-                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
-            end
-        end
-    elseif s == :setParent
-        function(parent)
-            this.parent = parent
-        end
-    elseif s == :handleCollisions
-        function()
-        end
-    elseif s == :onShutDown
-        function()
-        end
+    if this.isMovingUp
+        this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y - this.speed*deltaTime)
     else
-        getfield(this, s)
+        this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
     end
 end

@@ -35,23 +35,23 @@ mutable struct PlayerMovement
     end
 end
 
-function Base.getproperty(this::PlayerMovement, s::Symbol)
-    if s == :initialize
-        function()
-            this.animator = this.parent.animator
-            this.animator.currentAnimation = this.animator.animations[1]
-            this.jumpSound = this.parent.soundSource
-            this.cameraTarget = JulGame.TransformModule.Transform(Vector2f(this.parent.transform.position.x, 0))
-            MAIN.scene.camera.target = this.cameraTarget
-            this.gameManager = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "Game Manager").scripts[1]
-            this.deathsThisLevel = 0
-            # this.coinSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "coin.wav", Int32(50)))
-            # this.hurtSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "hit.wav", Int32(50)))
-            # this.starSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "power-up.wav", Int32(50)))
-        end
-    elseif s == :update
-        function(deltaTime)
-            this.canMove = true
+function JulGame.initialize(this::PlayerMovement)
+    this.animator = this.parent.animator
+    this.animator.currentAnimation = this.animator.animations[1]
+    this.jumpSound = this.parent.soundSource
+    this.cameraTarget = JulGame.TransformModule.Transform(Vector2f(this.parent.transform.position.x, 0))
+    MAIN.scene.camera.target = this.cameraTarget
+    this.gameManager = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "Game Manager").scripts[1]
+    this.deathsThisLevel = 0
+    # this.coinSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "coin.wav", Int32(50)))
+    # this.hurtSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "hit.wav", Int32(50)))
+    # this.starSound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "power-up.wav", Int32(50)))
+    collisionEvent = JulGame.Macros.@argevent (col) handle_collisions(this, col)
+    JulGame.Component.add_collision_event(this.parent.collider, collisionEvent)
+end
+
+function JulGame.update(this::PlayerMovement, deltaTime)
+    this.canMove = true
             x = 0
             speed = 10
             input = MAIN.input
@@ -79,7 +79,7 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             x = 0
             this.isJump = false
             if this.parent.transform.position.y > 8
-                this.respawn()
+                respawn(this)
                 if this.gameManager.currentLevel == 1
                     if this.deathsThisLevel == 0
                         this.gameManager.starCount = this.gameManager.starCount + 1
@@ -109,39 +109,26 @@ function Base.getproperty(this::PlayerMovement, s::Symbol)
             if this.cameraTarget.position != JulGame.Math.Vector2f(this.parent.transform.position.x, 2.75)
                 this.cameraTarget.position = JulGame.Math.Vector2f(this.cameraTarget.position.x + (this.parent.transform.position.x - this.cameraTarget.position.x) * deltaTime  * speed, 2.75)
             end
-            
-        end
-    elseif s == :setParent
-        function(parent)
-            this.parent = parent
-            collisionEvent = JulGame.Macros.@argevent (col) this.handleCollisions(col)
-            JulGame.Component.add_collision_event(this.parent.collider, collisionEvent)
-        end
-    elseif s == :handleCollisions
-        function(otherCollider)
-            if otherCollider.tag == "Coin"
-                JulGame.destroy_entity(MAIN, otherCollider.parent)
-                # JulGame.Component.toggle_sound(this.coinSound)
-                JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[1], string(parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[2])))
-            elseif otherCollider.tag == "Star"
-                # JulGame.Component.toggle_sound(this.starSound)
-                JulGame.destroy_entity(JulGame.MAIN, otherCollider.parent)
-                this.gameManager.starCount = this.gameManager.starCount + 1
-                JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[2], string(this.gameManager.starCount))
-            end
-        end
-    elseif s == :respawn
-        function()
-            # JulGame.Component.toggle_sound(this.hurtSound)
-            this.parent.transform.position = Vector2f(1, 4)
-            this.gameManager.starCount = max(this.gameManager.starCount - 1, 0)
-            JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
-            this.deathsThisLevel += 1
-        end
-    elseif s == :onShutDown
-        function()
-        end
-    else
-        getfield(this, s)
+end
+
+function handle_collisions(this::PlayerMovement, event)
+    otherCollider = event.collider
+
+    if otherCollider.tag == "Coin"
+        JulGame.destroy_entity(MAIN, otherCollider.parent)
+        # JulGame.Component.toggle_sound(this.coinSound)
+        JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[1], string(parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[2])))
+    elseif otherCollider.tag == "Star"
+        # JulGame.Component.toggle_sound(this.starSound)
+        JulGame.destroy_entity(JulGame.MAIN, otherCollider.parent)
+        this.gameManager.starCount = this.gameManager.starCount + 1
+        JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[2], string(this.gameManager.starCount))
     end
+end
+
+function respawn(this::PlayerMovement)
+    this.parent.transform.position = Vector2f(1, 4)
+    this.gameManager.starCount = max(this.gameManager.starCount - 1, 0)
+    JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
+    this.deathsThisLevel += 1
 end

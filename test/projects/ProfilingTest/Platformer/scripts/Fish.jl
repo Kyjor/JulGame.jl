@@ -21,39 +21,22 @@ mutable struct Fish
     end
 end
 
-function Base.getproperty(this::Fish, s::Symbol)
-    if s == :initialize
-        function()
-            this.animator = this.parent.animator
-            this.parent.sprite.rotation = 90
-        end
-    elseif s == :update
-        function(deltaTime)
-            if this.parent.transform.position.y >= this.startingY && !this.isMovingUp
-                this.parent.sprite.rotation = this.isFire ? 0 : 90
-                this.isMovingUp = true
-            elseif this.parent.transform.position.y <= this.endingY && this.isMovingUp
-                this.parent.sprite.rotation = this.isFire ? 180 : 270
-                this.isMovingUp = false
-            end
+function JulGame.initialize(this::Fish)
+    this.animator = this.parent.animator
+    this.parent.sprite.rotation = 90
+end
+function JulGame.update(this::Fish, deltaTime)
+    if this.parent.transform.position.y >= this.startingY && !this.isMovingUp
+        this.parent.sprite.rotation = this.isFire ? 0 : 90
+        this.isMovingUp = true
+    elseif this.parent.transform.position.y <= this.endingY && this.isMovingUp
+        this.parent.sprite.rotation = this.isFire ? 180 : 270
+        this.isMovingUp = false
+    end
 
-            if this.isMovingUp
-                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y - this.speed*deltaTime)
-            else
-                this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
-            end
-        end
-    elseif s == :setParent
-        function(parent)
-            this.parent = parent
-        end
-    elseif s == :handleCollisions
-        function()
-        end
-    elseif s == :onShutDown
-        function()
-        end
+    if this.isMovingUp
+        this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y - this.speed*deltaTime)
     else
-        getfield(this, s)
+        this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
     end
 end

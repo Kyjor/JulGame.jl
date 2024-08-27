@@ -14,52 +14,33 @@ mutable struct Title
     end
 end
 
-function Base.getproperty(this::Title, s::Symbol)
-    if s == :initialize
-        function()
-            this.textBox = MAIN.scene.uiElements[1]
-        end
-    elseif s == :update
-        function(deltaTime)
-            try
-                if this.fade 
-                    this.textBox.alpha -= 1
-                    JulGame.UI.update_text(this.textBox, this.textBox.text)
-                    if this.textBox.alpha <= 25
-                        this.fade = false
-                    end
-                else
-                    this.textBox.alpha += 1
-                    JulGame.UI.update_text(this.textBox, this.textBox.text)
-                    if this.textBox.alpha >= 250
-                        this.fade = true
-                    end
-                end
+function JulGame.initialize(this::Title)
+    this.textBox = MAIN.scene.uiElements[1]
+end
 
-                # sound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
-                # JulGame.Component.toggle_sound(sound)
-
-                JulGame.change_scene("level_1.json")
-            catch e
-                @error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
-				rethrow(e)
+function JulGame.update(this::Title, deltaTime)
+    try
+        if this.fade 
+            this.textBox.alpha -= 1
+            JulGame.UI.update_text(this.textBox, this.textBox.text)
+            if this.textBox.alpha <= 25
+                this.fade = false
+            end
+        else
+            this.textBox.alpha += 1
+            JulGame.UI.update_text(this.textBox, this.textBox.text)
+            if this.textBox.alpha >= 250
+                this.fade = true
             end
         end
-    elseif s == :setParent 
-        function(parent)
-            this.parent = parent
-        end
-    elseif s == :onShutDown
-        function ()
-        end
-    else
-        try
-            getfield(this, s)
-        catch e
-            @error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
-			rethrow(e)
-        end
+
+        # sound = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), false, "confirm-ui.wav", Int32(50)))
+        # JulGame.Component.toggle_sound(sound)
+
+        JulGame.change_scene("level_1.json")
+    catch e
+        @error string(e)
+        Base.show_backtrace(stdout, catch_backtrace())
+        rethrow(e)
     end
 end

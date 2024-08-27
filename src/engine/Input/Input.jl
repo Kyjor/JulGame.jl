@@ -123,7 +123,7 @@ module InputModule
                             continue
                         end
                         
-                        UI.handle_event(screenButton, evt, x[1], y[1])
+                        JulGame.UI.handle_event(screenButton, evt, x[1], y[1])
                     end
                 end
 
