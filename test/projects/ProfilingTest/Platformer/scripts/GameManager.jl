@@ -51,3 +51,6 @@ end
 
 function JulGame.update(this::GameManager, deltaTime)
 end
+
+function JulGame.on_shutdown(this::GameManager)
+end

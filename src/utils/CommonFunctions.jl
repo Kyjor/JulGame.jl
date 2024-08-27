@@ -37,6 +37,7 @@ function load_button_sprite_editor end
 function load_font end
 function load_image end
 function load_sound end
+function on_shutdown end
 function play_animation_once end
 function render end
 function set_color end

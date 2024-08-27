@@ -121,9 +121,10 @@ module MainLoop
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-                        script.onShutDown()
+                        # TODO: only call latest if in editor and in game mode
+                        Base.invokelatest(JulGame.on_shutdown, script)
                     catch e
-                        if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
+                        if typeof(e) != ErrorException
                             println("Error shutting down script")
                             Base.show_backtrace(stdout, catch_backtrace())
                             rethrow(e)
@@ -278,9 +279,10 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 		destroy_entity_components(this, entity)
 		for script in entity.scripts
 			try
-				# script.onShutDown()
+				# TODO: only call latest if in editor and in game mode
+				Base.invokelatest(JulGame.on_shutdown, script)
 			catch e
-				if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
+				if typeof(e) != ErrorException
 					println("Error shutting down script")
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())

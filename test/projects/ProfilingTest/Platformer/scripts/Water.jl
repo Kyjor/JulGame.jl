@@ -20,3 +20,6 @@ end
 function JulGame.update(this::Water, deltaTime)
     this.parent.transform.position = JulGame.Math.Vector2f(MAIN.scene.camera.position.x, 0) + this.offset
 end
+
+function JulGame.on_shutdown(this::Water)
+end

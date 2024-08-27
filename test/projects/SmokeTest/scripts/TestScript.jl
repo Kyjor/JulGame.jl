@@ -110,4 +110,7 @@ function JulGame.initialize(this::TestScript)
 end
 
 function JulGame.update(this::TestScript, deltaTime)
+end 
+
+function JulGame.on_shutdown(this::TestScript)
 end

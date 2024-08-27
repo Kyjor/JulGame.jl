@@ -37,3 +37,6 @@ function JulGame.update(this::Spider, deltaTime)
         this.parent.transform.position = JulGame.Math.Vector2f(this.parent.transform.position.x - this.speed*deltaTime, this.parent.transform.position.y)
     end
 end
+
+function JulGame.on_shutdown(this::Spider)
+end

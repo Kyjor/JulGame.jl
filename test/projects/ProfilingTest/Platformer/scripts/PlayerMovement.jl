@@ -132,3 +132,6 @@ function respawn(this::PlayerMovement)
     JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
     this.deathsThisLevel += 1
 end
+
+function JulGame.on_shutdown(this::PlayerMovement)
+end

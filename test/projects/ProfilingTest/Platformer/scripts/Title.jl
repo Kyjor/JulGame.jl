@@ -44,3 +44,6 @@ function JulGame.update(this::Title, deltaTime)
         rethrow(e)
     end
 end
+
+function JulGame.on_shutdown(this::Title)
+end

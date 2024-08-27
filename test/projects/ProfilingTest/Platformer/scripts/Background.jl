@@ -16,3 +16,6 @@ end
 function JulGame.update(this::Background, deltaTime)
     this.parent.transform.position = JulGame.Math.Vector2f(MAIN.scene.camera.position.x + 9.5, 0)
 end
+
+function JulGame.on_shutdown(this::Background)
+end

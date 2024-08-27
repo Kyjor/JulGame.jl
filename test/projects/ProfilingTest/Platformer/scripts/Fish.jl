@@ -40,3 +40,6 @@ function JulGame.update(this::Fish, deltaTime)
         this.parent.transform.position = Vector2f(this.parent.transform.position.x, this.parent.transform.position.y + this.speed*deltaTime)
     end
 end
+
+function JulGame.on_shutdown(this::Fish)
+end
