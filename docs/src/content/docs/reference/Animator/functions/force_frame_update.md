@@ -1,5 +1,5 @@
 ---
-title: ForceFrameUpdate(Animator)
+title: force_frame_update(Animator)
 description: Updates the sprite crop of the animator to the specified frame index.
 ---
 
@@ -14,7 +14,7 @@ Updates the sprite crop of the animator to the specified frame index.
 
 ### Example
 ```
-    animations = [Animation([Math.Vector4(0,0,16,16), Math.Vector4(0,17,16,16)], 60)]
-    animator = Animator(animations)
-    ForceFrameUpdate(animator, 1) # forces the animation to be at frame 1
+    animations = [Animation([Math.Vector4(0,0,16,16), Math.Vector4(0,17,16,16)], 60)] # creating an animation with two `Vector4` frames, running at 60 fps
+    animator = Animator(animations) # creating an animator, and associating the previously created animation with it
+    force_frame_update(animator, 1) # forces the animation to be at frame 1
 ```

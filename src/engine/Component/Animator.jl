@@ -72,7 +72,7 @@
     
     
     """
-    ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
+    force_frame_update(this::InternalAnimator, frameIndex::Int32)
     
     Updates the sprite crop of the animator to the specified frame index.
     
@@ -83,13 +83,13 @@
     # Example
     ```
     animator = Animator([Animation([Math.Vector4(0,0,0,0)], 60)])
-    ForceFrameUpdate(animator, 1)
+    force_frame_update(animator, 1)
     ```
     """
-    function ForceFrameUpdate(this::InternalAnimator, frameIndex::Int32)
+    function force_frame_update(this::InternalAnimator, frameIndex::Int32)
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
-    export ForceFrameUpdate
+    export force_frame_update
 
     """
     Update(this::Animator, currentRenderTime::UInt64, deltaTime::UInt64)
