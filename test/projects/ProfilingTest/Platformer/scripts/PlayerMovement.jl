@@ -117,7 +117,7 @@ function handle_collisions(this::PlayerMovement, event)
     if otherCollider.tag == "Coin"
         JulGame.destroy_entity(MAIN, otherCollider.parent)
         # JulGame.Component.toggle_sound(this.coinSound)
-        JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[1], string(parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[2])))
+        #JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[1], string(parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[1]) + 1, "/", parse(Int32, split(JulGame.MAIN.scene.uiElements[1].text, "/")[2])))
     elseif otherCollider.tag == "Star"
         # JulGame.Component.toggle_sound(this.starSound)
         JulGame.destroy_entity(JulGame.MAIN, otherCollider.parent)
