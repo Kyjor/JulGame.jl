@@ -4,42 +4,40 @@ module SceneLoaderModule
 
     export load_scene
     """
-        load_scene(projectPath::String, sceneFileName::String, isUsingEditor::Bool = false)
+        load_scene(projectPath::String, sceneFileName::String)
 
     Load a scene from the specified project path and scene file name.
 
     # Arguments
     - `projectPath`: The path to the project.
     - `sceneFileName`: The name of the scene file.
-    - `isUsingEditor`: (optional) A boolean indicating whether the scene is being loaded in the editor.
 
     # Returns
     The initialized main scene.
 
     """
-    function load_scene(projectPath::String, sceneFileName::String, isUsingEditor::Bool = false) 
+    function load_scene(projectPath::String, sceneFileName::String) 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene(sceneFileName, projectPath)
-        return SceneBuilderModule.load_and_prepare_scene(scene, "Editor", isUsingEditor)
+        return SceneBuilderModule.load_and_prepare_scene(scene, "Editor")
     end
     
     export load_scene_from_editor
     """
-        load_scene_from_editor(scenePath::String, renderer = nothing, isNewEditor::Bool=false)
+        load_scene_from_editor(scenePath::String, renderer = nothing)
 
     Load a scene from the editor.
 
     # Arguments
     - `scenePath`: The path of the scene to load.
     - `renderer`: Optional renderer to use for the scene.
-    - `isNewEditor`: Boolean indicating whether we are using the new editor.
 
     # Returns
     - The initialized main scene.
 
     """
-    function load_scene_from_editor(scenePath::String, renderer = nothing, isNewEditor::Bool=false) 
+    function load_scene_from_editor(scenePath::String, renderer = nothing) 
 
         projectPath = get_project_path_from_full_scene_path(scenePath)
         sceneFileName = get_scene_file_name_from_full_scene_path(scenePath)
@@ -52,7 +50,7 @@ module SceneLoaderModule
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene("$sceneFileName", "$projectPath")
 
-        SceneBuilderModule.load_and_prepare_scene(scene, "Editor", true; isNewEditor=isNewEditor)
+        SceneBuilderModule.load_and_prepare_scene(scene, "Editor")
 
         return MAIN
     end

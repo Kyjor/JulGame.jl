@@ -329,7 +329,7 @@ function show_sprite_fields(sprite, animation_window_dict)
                 # animation_window_dict[]["frame $(k)"][]["points"] = points
                 window_info[] = animation_window_dict[][key][]
             else
-                print("Adding crop window info for: $key")
+                # print("Adding crop window info for: $key")
                 animation_window_dict[][key] = window_info
             end
 

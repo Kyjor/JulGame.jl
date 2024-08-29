@@ -99,13 +99,13 @@ module Editor
                             if CImGui.Button("$(scene)")
                                 currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 if currentSceneMain === nothing
+                                    JulGame.IS_EDITOR = true
+                                    JulGame.PIXELS_PER_UNIT = 16
                                     currentSceneMain = load_scene(scene, renderer) 
                                     currentSceneMain.cameraBackgroundColor = (50, 50, 50)
-                                    JulGame.PIXELS_PER_UNIT = 16
-                                    currentSceneMain.autoScaleZoom = true
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    JulGame.change_scene(String(currentSceneName), true)
+                                    JulGame.change_scene(String(currentSceneName))
                                 end
                             end
                             CImGui.NewLine()
@@ -132,7 +132,7 @@ module Editor
                                 JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath)
                             elseif !playMode[]
                                 JulGame.MainLoop.stop_game_in_editor(currentSceneMain)
-                                JulGame.change_scene(String(currentSceneName), true)
+                                JulGame.change_scene(String(currentSceneName))
                             end
                         end
                         # show_game_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode)
@@ -320,7 +320,7 @@ module Editor
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
-                    gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, true, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     

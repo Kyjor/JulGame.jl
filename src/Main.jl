@@ -69,23 +69,25 @@ module MainLoop
 		end
 	end
 
-    function prepare_window_scripts_and_start_loop(isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
-        if !isNewEditor
-            prepare_window(isUsingEditor, size, isResizable, autoScaleZoom)
+    function prepare_window_scripts_and_start_loop(size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+        if !JulGame.IS_EDITOR
+            prepare_window(size, isResizable, autoScaleZoom)
         end
-        initialize_scripts_and_components(isUsingEditor)
+		println("Preparing window")
 
-        if !isUsingEditor
+        initialize_scripts_and_components()
+
+        if !JulGame.IS_EDITOR
             full_loop(MAIN)
             return
         end
     end
 
-    function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        SceneBuilderModule.deserialize_and_build_scene(this.level, isUsingEditor)
-        initialize_scripts_and_components(isUsingEditor)
+    function initialize_new_scene(this::Main)
+        SceneBuilderModule.deserialize_and_build_scene(this.level)
+        initialize_scripts_and_components()
 
-        if !isUsingEditor
+        if !JulGame.IS_EDITOR
             full_loop(this)
             return
         end
@@ -103,7 +105,7 @@ module MainLoop
             lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
             while !this.close
                 try
-                    game_loop(this, startTime, lastPhysicsTime, false)
+                    game_loop(this, startTime, lastPhysicsTime)
                 catch e
                     if this.testMode
                         throw(e)
@@ -142,7 +144,7 @@ module MainLoop
                 SDL2.SDL_Quit()
             else
                 this.shouldChangeScene = false
-                initialize_new_scene(this, false)
+                initialize_new_scene(this)
             end
         end
     end
@@ -197,7 +199,7 @@ module MainLoop
         end
     end
     
-	function prepare_window(isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+	function prepare_window(size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 		this::Main = MAIN
 		this.autoScaleZoom = autoScaleZoom
 		scale_zoom(this, size.x, size.y)
@@ -213,7 +215,7 @@ module MainLoop
 		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
 	end
 
-function initialize_scripts_and_components(isUsingEditor::Bool = false)
+function initialize_scripts_and_components()
 	this::Main = MAIN
 	scripts = []
 	for entity in this.scene.entities
@@ -230,7 +232,7 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 
 	this.spriteLayers = build_sprite_layers()
 	
-	if !isUsingEditor || this.isGameModeRunningInEditor
+	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 		for script in scripts
 			try
 				# TODO: only call latest if in editor and in game mode
@@ -249,16 +251,14 @@ end
 
 export change_scene
 """
-	change_scene(sceneFileName::String, isEditor::Bool = false)
+	change_scene(sceneFileName::String)
 
 Change the scene to the specified `sceneFileName`. This function destroys the current scene, including all entities, textboxes, and screen buttons, except for the ones marked as persistent. It then loads the new scene and sets the camera and persistent entities, textboxes, and screen buttons.
 
 # Arguments
 - `sceneFileName::String`: The name of the scene file to load.
-- `isEditor::Bool`: Whether the scene is being loaded in the editor. Default is `false`.
-
 """
-function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
+function JulGame.change_scene(sceneFileName::String)
 	this::Main = MAIN
 	# println("Changing scene to: ", sceneFileName)
 	this.close = true
@@ -269,7 +269,7 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 	skipcount = 0
 	persistentEntities = []	
 	for entity in this.scene.entities
-		if entity.persistentBetweenScenes && (!isEditor || this.isGameModeRunningInEditor)
+		if entity.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
 			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
 			skipcount += 1
@@ -277,16 +277,18 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 		end
 
 		destroy_entity_components(this, entity)
-		for script in entity.scripts
-			try
-				# TODO: only call latest if in editor and in game mode
-				Base.invokelatest(JulGame.on_shutdown, script)
-			catch e
-				if typeof(e) != ErrorException
-					println("Error shutting down script")
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
+		if !JulGame.IS_EDITOR
+			for script in entity.scripts
+				try
+					# TODO: only call latest if in editor and in game mode
+					Base.invokelatest(JulGame.on_shutdown, script)
+				catch e
+					if typeof(e) != ErrorException
+						println("Error shutting down script")
+						@error string(e)
+						Base.show_backtrace(stdout, catch_backtrace())
+						rethrow(e)
+					end
 				end
 			end
 		end
@@ -319,8 +321,8 @@ function JulGame.change_scene(sceneFileName::String, isEditor::Bool = false)
 	this.scene.camera = camera
 	this.level.scene = sceneFileName
 	
-	if isEditor
-		initialize_new_scene(this, true)
+	if JulGame.IS_EDITOR
+		initialize_new_scene(this)
 	end
 end
 
@@ -452,7 +454,7 @@ function JulGame.create_entity(entity)
 end
 
 """
-game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
+game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), Vector{Any}} = C_NULL)
 
 Runs the game loop.
 
@@ -460,13 +462,11 @@ Parameters:
 - `this`: The main struct.
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
-- `isEditor`: A boolean indicating whether the game loop is running in editor mode.
-
 """
-function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
-	if this.shouldChangeScene && !isEditor
+function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+	if this.shouldChangeScene && !JulGame.IS_EDITOR
 		this.shouldChangeScene = false
-		initialize_new_scene(this, false)
+		initialize_new_scene(this)
 		return
 	end
 	try
@@ -475,29 +475,29 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
-			if isEditor
+			if JulGame.IS_EDITOR
 				this.scene.camera.size = Math.Vector2(windowSize.x, windowSize.y)
 			end
 
 			DEBUG = false
 			#region Input
-			if !isEditor
+			if !JulGame.IS_EDITOR
 				JulGame.InputModule.poll_input(this.input)
 			end
 
-			if this.input.quit && !isEditor
+			if this.input.quit && !JulGame.IS_EDITOR
 				this.close = true
 			end
 			DEBUG = this.input.debug
 
 			cameraPosition = Math.Vector2f()
 
-			if !isEditor
+			if !JulGame.IS_EDITOR
 				SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 			end
 
 			#region Physics
-			if !isEditor || this.isGameModeRunningInEditor
+			if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
 
@@ -530,7 +530,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					continue
 				end
 
-				if !isEditor || this.isGameModeRunningInEditor
+				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
                         JulGame.update(entity, deltaTime)
 						if this.close && !this.isGameModeRunningInEditor
@@ -666,7 +666,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				end
 			end
 
-			if !isEditor
+			if !JulGame.IS_EDITOR
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 				SDL2.SDL_framerateDelay(this.fpsManager)
 			end

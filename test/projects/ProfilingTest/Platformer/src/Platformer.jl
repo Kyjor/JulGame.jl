@@ -6,7 +6,7 @@
         JulGame.PIXELS_PER_UNIT = 16
         scene = JulGame.SceneBuilderModule.Scene("level_0.json")
         try
-            SceneBuilderModule.load_and_prepare_scene(scene, "JulGame Example", false, JulGame.Math.Vector2(1920, 1080), JulGame.Math.Vector2(1280, 720), true, 1.0, true, 120)
+            SceneBuilderModule.load_and_prepare_scene(scene, "JulGame Example", JulGame.Math.Vector2(1920, 1080), JulGame.Math.Vector2(1280, 720), true, 1.0, true, 120)
         catch e
             @error e
             Base.show_backtrace(stderr, catch_backtrace())

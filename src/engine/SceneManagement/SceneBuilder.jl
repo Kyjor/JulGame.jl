@@ -40,11 +40,13 @@ module SceneBuilderModule
     end
 
    function __init__()
+    # if not using PackageCompiler, then we need to call init() here
         if ccall(:jl_generating_output, Cint, ()) != 1
             init()
         end
     end
 
+    # if using PackageCompiler, then we need to call init here
     if ccall(:jl_generating_output, Cint, ()) == 1
         init()
     end
@@ -64,7 +66,7 @@ module SceneBuilderModule
         end    
     end
     
-    function load_and_prepare_scene(this::Scene, windowName::String = "Game", isUsingEditor = false, size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = []; isNewEditor = false)
+    function load_and_prepare_scene(this::Scene, windowName::String = "Game", size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = [])
         #file loading
         if autoScaleZoom 
             zoom = 1.0
@@ -91,17 +93,17 @@ module SceneBuilderModule
         MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
 
         flags = SDL2.SDL_RENDERER_ACCELERATED |
-		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
-		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
+		(JulGame.IS_EDITOR ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
+		(isResizable || JulGame.IS_EDITOR ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
 		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
 
         MAIN.screenSize = size != C_NULL ? size : MAIN.scene.camera.size
-        if !isUsingEditor
+        if !JulGame.IS_EDITOR
             MAIN.window = SDL2.SDL_CreateWindow(MAIN.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, MAIN.screenSize.x, MAIN.screenSize.y, flags)
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
         end
 
-        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         
@@ -121,7 +123,7 @@ module SceneBuilderModule
                 push!(MAIN.scene.colliders, entity.collider)
             end
 
-            if !isUsingEditor
+            if !JulGame.IS_EDITOR
                 scriptCounter = 1
                 for script in entity.scripts
                     params = []
@@ -159,11 +161,11 @@ module SceneBuilderModule
         end
 
         MAIN.assets = joinpath(BasePath, "assets")
-        JulGame.MainLoop.prepare_window_scripts_and_start_loop(isUsingEditor, size, isResizable, autoScaleZoom, isNewEditor)
+        JulGame.MainLoop.prepare_window_scripts_and_start_loop(size, isResizable, autoScaleZoom)
     end
 
-    function deserialize_and_build_scene(this::Scene, isUsingEditor::Bool = false)
-        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene), isUsingEditor)
+    function deserialize_and_build_scene(this::Scene)
+        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         
         # println("Changing scene to $this.scene")
         # println("Entities in main scene: ", length(MAIN.scene.entities))
@@ -192,7 +194,7 @@ module SceneBuilderModule
                 push!(MAIN.scene.colliders, entity.collider)
             end
 
-            if !isUsingEditor
+            if !JulGame.IS_EDITOR
                 scriptCounter = 1
                 for script in entity.scripts
                     params = []

@@ -3,10 +3,11 @@ module JulGame
     using SimpleDirectMediaLayer
     const SDL2 = SimpleDirectMediaLayer
     MAIN = nothing
+    IS_EDITOR = false
 
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
-    export SDL2, SDL2E, MAIN
+    export IS_EDITOR, SDL2, SDL2E, MAIN
 
     include("utils/Utils.jl")
     export CallSDLFunction

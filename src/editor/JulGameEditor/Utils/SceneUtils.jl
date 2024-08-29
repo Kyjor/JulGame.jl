@@ -81,7 +81,7 @@ The loaded main struct.
 function load_scene(scenePath::String, renderer)
     game = C_NULL
     try
-        game = SceneLoaderModule.load_scene_from_editor(scenePath, renderer, true);
+        game = SceneLoaderModule.load_scene_from_editor(scenePath, renderer);
     catch e
         rethrow(e)
     end

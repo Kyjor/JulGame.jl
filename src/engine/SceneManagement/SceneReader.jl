@@ -20,7 +20,7 @@ module SceneReaderModule
     end
 
     export deserialize_scene
-    function deserialize_scene(filePath, isEditor)
+    function deserialize_scene(filePath)
         try
             entitiesJson = read(filePath, String)
 
@@ -35,7 +35,7 @@ module SceneReaderModule
                 scripts = []
     
                 for component in entity.components
-                    push!(components, deserialize_component(component, isEditor))
+                    push!(components, deserialize_component(component))
                 end
                 
                 for script in entity.scripts
@@ -132,7 +132,7 @@ module SceneReaderModule
     end
 
     export deserialize_component
-    function deserialize_component(component, isEditor)
+    function deserialize_component(component)
         try
             if component.type == "Transform"
                 newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y))
