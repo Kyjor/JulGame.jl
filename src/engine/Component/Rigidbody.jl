@@ -52,7 +52,7 @@
         newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
         Component.set_position(transform, newPosition)
-        SetVelocity(this, newVelocity * velocityMultiplier)
+        set_velocity(this, newVelocity * velocityMultiplier)
         this.acceleration = newAcceleration
 
         if this.parent.collider != C_NULL
@@ -76,7 +76,7 @@
     end
 
     """
-    AddVelocity(this::Rigidbody, velocity::Math.Vector2f)
+    add_velocity(this::Rigidbody, velocity::Math.Vector2f)
 
     Add the given velocity to the Rigidbody's current velocity. If the y-component of the velocity is positive, set the `grounded` flag to false.
     
@@ -84,7 +84,7 @@
     - `this::Rigidbody`: The Rigidbody component to set the velocity for.
     - `velocity::Math.Vector2f`: The velocity to set.
     """
-    function AddVelocity(this::InternalRigidbody, velocity::Math.Vector2f)
+    function add_velocity(this::InternalRigidbody, velocity::Math.Vector2f)
         this.velocity = this.velocity + velocity
         if(velocity.y < 0)
             this.grounded = false
@@ -93,10 +93,10 @@
             end
         end
     end
-    export AddVelocity
+    export add_velocity
     
     """
-    SetVelocity(this::Rigidbody, velocity::Math.Vector2f)
+    set_velocity(this::Rigidbody, velocity::Math.Vector2f)
 
     Set the velocity of the Rigidbody component.
 
@@ -104,11 +104,11 @@
     - `this::Rigidbody`: The Rigidbody component to set the velocity for.
     - `velocity::Vector2f`: The velocity to set.
     """
-    function SetVelocity(this::InternalRigidbody, velocity::Math.Vector2f)
+    function set_velocity(this::InternalRigidbody, velocity::Math.Vector2f)
         this.velocity = velocity
         if(velocity.y < 0)
             #this.grounded = false
         end
     end
-    export SetVelocity
+    export set_velocity
 end

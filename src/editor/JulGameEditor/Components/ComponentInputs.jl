@@ -13,7 +13,7 @@ using JulGame.UI
 show_field_editor(entity, field)
 Creates inputs based on the component type and populates them.
 """
-function show_field_editor(entity, fieldName, animation_window_dict)
+function show_field_editor(entity, fieldName, animation_window_dict, animator_preview_dict)
     field = getfield(entity, fieldName)
     if field == C_NULL || field === nothing
         return
@@ -36,7 +36,7 @@ function show_field_editor(entity, fieldName, animation_window_dict)
         elseif isa(field, SoundSourceModule.InternalSoundSource)
             show_sound_source_fields(entity.soundSource)
         elseif isa(field, AnimatorModule.InternalAnimator)
-            show_animator_properties(entity.animator, animation_window_dict)
+            show_animator_properties(entity.animator, animation_window_dict, animator_preview_dict)
         else
             for field in fieldnames(typeof(field))
                 show_component_field_input(getfield(entity, Symbol(lowercase(fieldName))), field)
@@ -183,7 +183,7 @@ function show_component_field_input(component, componentField)
 end
 
 """
-    show_animator_properties(animator, animation_window_dict)
+        show_animator_properties(animator, animation_window_dict, animator_preview_dict)
 
 Display the properties of an animator object in the user interface.
 
@@ -191,7 +191,7 @@ Display the properties of an animator object in the user interface.
 - `animator`: The animator object to display properties for.
 
 """
-function show_animator_properties(animator, animation_window_dict)
+function show_animator_properties(animator, animation_window_dict, animator_preview_dict)
     try
         for field in fieldnames(typeof(animator))
             fieldString = "$(field)"
@@ -199,9 +199,22 @@ function show_animator_properties(animator, animation_window_dict)
             if fieldString == "animations"
                 animationFields=fieldnames(JulGame.AnimationModule.Animation);
                 animations = animator.animations
+                currentRenderTime = SDL2.SDL_GetTicks()
 
                 CImGui.Button("Add Animation") && Component.append_array(animator)
                 for i = eachindex(animations) 
+                    if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
+                        animator_preview_dict_key = "animation-$(animator.parent.id)-$(i)"
+                        animator_preview_dict_info = Ref(Dict("lastFrame" => 1, "lastUpdate" => SDL2.SDL_GetTicks()))
+
+                        if haskey(animator_preview_dict[], animator_preview_dict_key)
+                            animator_preview_dict_info[] = animator_preview_dict[][animator_preview_dict_key][]
+                        else
+                            animator_preview_dict[][animator_preview_dict_key] = animator_preview_dict_info
+                        end
+
+                        show_image_animation_with_hover_preview(animator, animations[i], currentRenderTime, animator_preview_dict_info)
+                    end
                     if CImGui.TreeNode("animation $(i)")
                         for j = eachindex(animationFields)
                             animationFieldString = "$(animationFields[j])"
@@ -239,7 +252,6 @@ function show_animator_properties(animator, animation_window_dict)
                                                 else
                                                     animation_window_dict[]["frame $(k)"] = window_info
                                                 end
-
                     
                                                 sprite = animator.parent.sprite
                                                 anim_x, anim_y, anim_w, anim_h = show_animation_window("frame $(k)", window_info, sprite.texture, sprite.size.x, sprite.size.y)
@@ -247,6 +259,8 @@ function show_animator_properties(animator, animation_window_dict)
 
                                             vec4i = Cint[anim_x, anim_y, anim_w, anim_h]
                                             @c CImGui.InputInt4("frame input $(k)", vec4i)
+                                            window_info[]["points"][][1] = ImVec2(vec4i[1], vec4i[2])
+                                            window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
                                             Component.update_array_value(animations[i], JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
                                             CImGui.TreePop()
                                         end
@@ -338,6 +352,8 @@ function show_sprite_fields(sprite, animation_window_dict)
             CImGui.PopID()
             vec4i = Cint[crop_x, crop_y, crop_w, crop_h]
             @c CImGui.InputInt4("crop", vec4i)
+            window_info[]["points"][][1] = ImVec2(vec4i[1], vec4i[2])
+            window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
             sprite.crop = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))
         else
             show_component_field_input(sprite, field)

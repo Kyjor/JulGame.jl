@@ -57,6 +57,7 @@ module Editor
         playMode = Ref(false)
 
         animation_window_dict = Ref(Dict())
+        animator_preview_dict = Ref(Dict())
 
         save_file_timer = 0
 
@@ -264,7 +265,7 @@ module Editor
                             CImGui.PopID()
                             CImGui.Separator()
                             for entityField in fieldnames(Entity)
-                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict)
+                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict)
                             end
         
                             CImGui.Separator()

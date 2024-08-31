@@ -62,8 +62,8 @@ function JulGame.update(this::PlayerMovement, deltaTime)
             if this.parent.rigidbody.grounded
                 # JulGame.Component.toggle_sound(this.jumpSound)
 
-                JulGame.RigidbodyModule.SetVelocity(this.parent.rigidbody, Vector2f(JulGame.Component.get_velocity(this.parent.rigidbody).x, 0))
-                JulGame.RigidbodyModule.AddVelocity(this.parent.rigidbody, Vector2f(0, this.jumpVelocity))
+                JulGame.RigidbodyModule.set_velocity(this.parent.rigidbody, Vector2f(JulGame.Component.get_velocity(this.parent.rigidbody).x, 0))
+                JulGame.RigidbodyModule.add_velocity(this.parent.rigidbody, Vector2f(0, this.jumpVelocity))
                 this.animator.currentAnimation = this.animator.animations[3]
             end
             if this.parent.rigidbody.grounded
@@ -75,7 +75,7 @@ function JulGame.update(this::PlayerMovement, deltaTime)
                 JulGame.Component.flip(this.parent.sprite)
             end
             
-            JulGame.RigidbodyModule.SetVelocity(this.parent.rigidbody, Vector2f(x, JulGame.Component.get_velocity(this.parent.rigidbody).y))
+            JulGame.RigidbodyModule.set_velocity(this.parent.rigidbody, Vector2f(x, JulGame.Component.get_velocity(this.parent.rigidbody).y))
             x = 0
             this.isJump = false
             if this.parent.transform.position.y > 8

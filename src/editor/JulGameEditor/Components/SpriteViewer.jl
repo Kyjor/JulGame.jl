@@ -163,16 +163,85 @@ function show_image_with_hover_preview(my_tex_id, my_tex_w, my_tex_h, crop)
         elseif region_y > my_tex_h - region_sz
             region_y = my_tex_h - region_sz
         end
-        zoom = 4.0
-        CImGui.Text("Min: ($(region_x), $(region_y))")
-        CImGui.Text("Max: ($(region_x + region_sz), $(region_y + region_sz))")
+        zoom = 8.0
         uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h)
-        uv1 = ImVec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h)
+        uv1 = ImVec2(((region_x + region_sz) / my_tex_w), (region_y + region_sz) / my_tex_h)
         if crop
             uv0 = (u1,v1)
             uv1 = (u2,v2)
         end
         CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
+        CImGui.EndTooltip()
+    end
+    CImGui.SameLine()
+end
+
+function show_image_animation_with_hover_preview(animator, animation, currentRenderTime, animator_preview_dict_info)
+    io = CImGui.GetIO()
+    # dt = unsafe_load(io.DeltaTime)
+    
+    sprite = animator.parent.sprite
+    my_tex_id = sprite.texture
+    my_tex_w = sprite.size.x
+    my_tex_h = sprite.size.y
+    crop = animation.frames[1]
+
+    x, y, w, h = crop.x, crop.y, crop.z, crop.t
+    W, H = my_tex_w, my_tex_h  # dimensions of the texture or image
+    
+    u1, v1, u2, v2 = rect_to_uv(x, y, w, h, W, H)
+    isCropped = true
+    if u1 == 0 && v1 == 0 && u2 == 0 && v2 == 0
+        u1, v1 = 0, 0
+        u2, v2 = 1, 1
+        isCropped = false
+        return
+    else
+        my_tex_w = w
+        my_tex_h = h
+    end
+
+    pos = CImGui.GetCursorScreenPos()
+    CImGui.Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), (u1,v1), (u2,v2), (255,255,255,255), (255,255,255,128))
+    if CImGui.IsItemHovered() && unsafe_load(io.KeyShift)
+        crop = get_next_frame(animator_preview_dict_info, animation, currentRenderTime)
+        
+        x, y, w, h = crop.x, crop.y, crop.z, crop.t
+
+        u1, v1, u2, v2 = rect_to_uv(x, y, w, h, W, H)
+        if u1 == 0 && v1 == 0 && u2 == 0 && v2 == 0
+            u1, v1 = 0, 0
+            u2, v2 = 1, 1
+            isCropped = false
+            return
+        else
+            my_tex_w = w
+            my_tex_h = h
+        end
+
+
+        CImGui.BeginTooltip()
+            region_sz = min(32.0, min(my_tex_w, my_tex_h))
+            region_x = unsafe_load(io.MousePos).x - pos.x - region_sz * 0.5
+            if region_x < 0.0
+                region_x = 0.0
+            elseif region_x > my_tex_w - region_sz
+                region_x = my_tex_w - region_sz
+            end
+            region_y = unsafe_load(io.MousePos).y - pos.y - region_sz * 0.5
+            if region_y < 0.0
+                region_y = 0.0
+            elseif region_y > my_tex_h - region_sz
+                region_y = my_tex_h - region_sz
+            end
+            zoom = 8.0
+            uv0 = ImVec2((region_x) / my_tex_w, (region_y) / my_tex_h)
+            uv1 = ImVec2(((region_x + region_sz) / my_tex_w), (region_y + region_sz) / my_tex_h)
+            if isCropped
+                uv0 = (u1,v1)
+                uv1 = (u2,v2)
+            end
+            CImGui.Image(my_tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, (255,255,255,255), (255,255,255,128))
         CImGui.EndTooltip()
     end
     CImGui.SameLine()
@@ -190,4 +259,16 @@ function rect_to_uv(x, y, w, h, W, H)
     return u1, v1, u2, v2
 end
 
+function get_next_frame(info_dict, animation, currentRenderTime)
+    if animation.animatedFPS < 1
+        return
+    end
 
+    deltaTime = (currentRenderTime - info_dict[]["lastUpdate"]) / 1000.0
+    framesToUpdate = floor(deltaTime / (1.0 / animation.animatedFPS))
+    if framesToUpdate > 0
+        info_dict[]["lastFrame"] = info_dict[]["lastFrame"] + framesToUpdate
+        info_dict[]["lastUpdate"] = currentRenderTime
+    end
+    return animation.frames[info_dict[]["lastFrame"] > length(animation.frames) ? (1; info_dict[]["lastFrame"] = 1) : info_dict[]["lastFrame"]]
+end
