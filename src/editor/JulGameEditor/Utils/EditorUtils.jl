@@ -326,12 +326,13 @@ function reset_camera_event(main)
     return event
 end
 
-function confirmation_dialog(dialogue, title, event::Function)
-    CImGui.OpenPopup(title)
+function confirmation_dialog(dialog)
+    CImGui.OpenPopup(dialog[])
 
-    if CImGui.BeginPopupModal(title, C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+    if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
         CImGui.Text("Are you sure you would like to open this scene?\nIf you currently have a scene open, any unsaved changes will be lost.\n\n")
-        CImGui.Separator()
+        #CImGui.Separator()
+        CImGui.NewLine()
 
         # @cstatic dont_ask_me_next_time=false begin
         #     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_FramePadding, (0, 0))
@@ -341,15 +342,20 @@ function confirmation_dialog(dialogue, title, event::Function)
 
         if CImGui.Button("OK", (120, 0))
             CImGui.CloseCurrentPopup()
-            dialogue[] = ("", "")
-            event()
+            dialog[] = ""
+
+            return "ok"
         end
         CImGui.SetItemDefaultFocus()
         CImGui.SameLine()
         if CImGui.Button("Cancel",(120, 0))
             CImGui.CloseCurrentPopup()
-            dialogue[] = ("", "")
+            dialog[] = ""
+
+            return "cancel"
         end
         CImGui.EndPopup()
+
+        return "continue"
     end
 end

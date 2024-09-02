@@ -79,6 +79,7 @@ Load a scene from the specified `scenePath` using the given `renderer`.
 The loaded main struct.
 """
 function load_scene(scenePath::String, renderer)
+    println("Loading scene from $scenePath")
     game = C_NULL
     try
         game = SceneLoaderModule.load_scene_from_editor(scenePath, renderer);

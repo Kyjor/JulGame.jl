@@ -34,6 +34,7 @@ module Editor
         # Project variables
         currentSceneMain = nothing
         currentSceneName = ""
+        currentScenePath = ""
         currentSelectedProjectPath = ""
         gameInfo = []
         ##############################
@@ -66,7 +67,7 @@ module Editor
         startTime = Ref(UInt64(0))
         lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
-        currentDialogue::Base.RefValue{Tuple{String, String}} = Ref(("", ""))
+        currentDialog::Base.RefValue{String} = Ref("")
 
         try
             while !quit                    
@@ -104,14 +105,14 @@ module Editor
                         for scene in scenesLoadedFromFolder[]
                             if CImGui.Button("$(scene)")
                                 currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
+                                currentScenePath = scene
                                 if currentSceneMain === nothing
                                     JulGame.IS_EDITOR = true
                                     JulGame.PIXELS_PER_UNIT = 16
-                                    currentDialogue[] = (String(currentSceneName), scene)
-                                    #currentSceneMain.cameraBackgroundColor = (50, 50, 50)
+                                    currentDialog[] = "Open scene: $(currentSceneName)"
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    JulGame.change_scene(String(currentSceneName))
+                                    currentDialog[] = "Open scene: $(currentSceneName)"
                                 end
                             end
                             CImGui.NewLine()
@@ -120,14 +121,19 @@ module Editor
                         CImGui.End()
                     end
                     
-                    if currentDialogue[] !== ("", "")
-                        println("Opening scene: $(currentDialogue[][2])")
-                        confirmation_dialog(currentDialogue, "Open scene: $(currentDialogue[][1])", () -> load_scene(currentDialogue[][2], renderer))
+                    if currentDialog[] != "" #TODO: make more dynamic
+                        #println("Opening scene: $(currentDialog[][2])")
+                        if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
+                            if currentSceneMain === nothing
+                                currentSceneMain = load_scene(currentScenePath, renderer)
+                                currentSceneMain.cameraBackgroundColor = (50, 50, 50)
+                            else
+                                JulGame.change_scene(String(currentSceneName))
+                            end
+                        end
                     end
 
-
                     uiSelected = false
-                    
                 
                     if sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
                         SDL2.SDL_DestroyTexture(sceneTexture)
