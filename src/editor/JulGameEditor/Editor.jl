@@ -66,6 +66,8 @@ module Editor
         startTime = Ref(UInt64(0))
         lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
+        currentDialogue::Base.RefValue{Tuple{String, String}} = Ref(("", ""))
+
         try
             while !quit                    
                 try
@@ -96,14 +98,17 @@ module Editor
                         txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
                         CImGui.Text(txt)
 
+                        # Usage:
+                        
+                        
                         for scene in scenesLoadedFromFolder[]
                             if CImGui.Button("$(scene)")
                                 currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 if currentSceneMain === nothing
                                     JulGame.IS_EDITOR = true
                                     JulGame.PIXELS_PER_UNIT = 16
-                                    currentSceneMain = load_scene(scene, renderer) 
-                                    currentSceneMain.cameraBackgroundColor = (50, 50, 50)
+                                    currentDialogue[] = (String(currentSceneName), scene)
+                                    #currentSceneMain.cameraBackgroundColor = (50, 50, 50)
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
                                     JulGame.change_scene(String(currentSceneName))
@@ -115,6 +120,12 @@ module Editor
                         CImGui.End()
                     end
                     
+                    if currentDialogue[] !== ("", "")
+                        println("Opening scene: $(currentDialogue[][2])")
+                        confirmation_dialog(currentDialogue, "Open scene: $(currentDialogue[][1])", () -> load_scene(currentDialogue[][2], renderer))
+                    end
+
+
                     uiSelected = false
                     
                 
