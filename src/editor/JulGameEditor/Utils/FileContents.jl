@@ -1,0 +1,4 @@
+sceneJsonContents = "{
+    \"Entities\": [ ],
+    \"UIElements\": [ ]
+}"

@@ -13,7 +13,7 @@ function show_main_menu_bar(events, main)
     if CImGui.BeginMainMenuBar()
         @cstatic buf="File"*"\0"^128 begin
             if CImGui.BeginMenu(buf)
-                ShowMenuFile(events)
+                show_file_menu(events, main)
                 CImGui.EndMenu()
             end
         end
@@ -30,16 +30,19 @@ function show_main_menu_bar(events, main)
 end
 
 """
-    ShowMenuFile(events)
+    show_file_menu(events, main)
 
 Show the file menu in the main menu bar.
 
 # Arguments
 - `events`: An array of event functions. These are callbacks that are triggered when the user selects a menu item.
 """
-function ShowMenuFile(events)
-    if CImGui.MenuItem("Open Project", "Ctrl+O")
+function show_file_menu(events, main)
+    if CImGui.MenuItem("Open Project", "")
         events["Select-project"]()
+    end
+    if main !== nothing && CImGui.MenuItem("New Scene", "")
+        events["New-Scene"]()
     end
 end
 

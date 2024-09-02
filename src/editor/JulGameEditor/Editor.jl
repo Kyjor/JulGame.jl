@@ -40,7 +40,7 @@ module Editor
         ##############################
         # Hierarchy variables
         filteredEntities = Entity[]
-        hierarchyFilterText::String = ""
+        hierarchyFilterText = Ref("")
         hierarchyEntitySelections = []
         hierarchyUISelections = Bool[]
         ##############################
@@ -68,6 +68,7 @@ module Editor
         lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
         currentDialog::Base.RefValue{String} = Ref("")
+        newSceneText = Ref("")
 
         try
             while !quit                    
@@ -88,6 +89,9 @@ module Editor
                     events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder)
                     events["Reset-camera"] = reset_camera_event(currentSceneMain)
                     events["Regenerate-ids"] = regenerate_ids_event(currentSceneMain)
+                    events["New-Scene"] = @event begin
+                        currentDialog[] = "New Scene"
+                    end
                     show_main_menu_bar(events, currentSceneMain)
                     ################################# END MAIN MENU BAR
 
@@ -103,16 +107,18 @@ module Editor
                         
                         
                         for scene in scenesLoadedFromFolder[]
-                            if CImGui.Button("$(scene)")
-                                currentSceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
+                            name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
+                            
+                            if CImGui.Button("$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))")
+                                currentSceneName = name
                                 currentScenePath = scene
                                 if currentSceneMain === nothing
                                     JulGame.IS_EDITOR = true
                                     JulGame.PIXELS_PER_UNIT = 16
-                                    currentDialog[] = "Open scene: $(currentSceneName)"
+                                    currentDialog[] = "Open Scene"
                                     currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
-                                    currentDialog[] = "Open scene: $(currentSceneName)"
+                                    currentDialog[] = "Open Scene"
                                 end
                             end
                             CImGui.NewLine()
@@ -121,7 +127,7 @@ module Editor
                         CImGui.End()
                     end
                     
-                    if currentDialog[] != "" #TODO: make more dynamic
+                    if currentDialog[] == "Open Scene"
                         #println("Opening scene: $(currentDialog[][2])")
                         if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                             if currentSceneMain === nothing
@@ -130,6 +136,18 @@ module Editor
                             else
                                 JulGame.change_scene(String(currentSceneName))
                             end
+                        end
+                    elseif currentDialog[] == "New Scene"
+                        newSceneName = new_scene_dialog(currentDialog, newSceneText)
+                        if newSceneName != ""
+                            currentSceneName = newSceneName
+                            currentScenePath = joinpath(currentSelectedProjectPath, "scenes", "$(newSceneName).json")
+                            touch(currentScenePath)
+                            file = open(currentScenePath, "w")
+                                println(file, sceneJsonContents)
+                            close(file)
+                            JulGame.change_scene("$(String(currentSceneName)).json")
+                            scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath)
                         end
                     end
 
@@ -161,7 +179,7 @@ module Editor
                         @error "Error in scene window!" exception=e
                         Base.show_backtrace(stderr, catch_backtrace())
                     end
-
+                    
                     try
                         #region Hierarchy
                         CImGui.Begin("Hierarchy") 
@@ -190,10 +208,10 @@ module Editor
                             end
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
-                            currentHierarchyFilterText = hierarchyFilterText
-                            hierarchyFilterText = text_input_single_line("Hierarchy Filter") 
-                            updateSelectionsBasedOnFilter = hierarchyFilterText != currentHierarchyFilterText
-                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText) || contains(lowercase(entity.name), lowercase(hierarchyFilterText))), currentSceneMain.scene.entities)
+                            currentHierarchyFilterText = hierarchyFilterText[]
+                            text_input_single_line("Hierarchy Filter", hierarchyFilterText) 
+                            updateSelectionsBasedOnFilter = hierarchyFilterText[] != currentHierarchyFilterText
+                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText[]) || contains(lowercase(entity.name), lowercase(hierarchyFilterText[]))), currentSceneMain.scene.entities)
                             entitiesWithParents = filter(entity -> entity.parent != C_NULL, currentSceneMain.scene.entities)
 
                             show_help_marker("Hold CTRL and click to select multiple items.")
