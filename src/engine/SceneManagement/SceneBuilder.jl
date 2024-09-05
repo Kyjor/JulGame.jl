@@ -66,12 +66,22 @@ module SceneBuilderModule
         end    
     end
     
-    function load_and_prepare_scene(this::Scene, windowName::String = "Game", size::Vector2 = Vector2(800, 800), camSize::Vector2 = Vector2(800,800), isResizable::Bool = true, zoom::Float64 = 1.0, autoScaleZoom::Bool = true, targetFrameRate = 60.0, globals = [])
-        #file loading
+    function load_and_prepare_scene(;this::Scene, config=parse_config(), globals = [])
+        println("config: ", config)
+        config = fill_in_config(config)
+        println("config: ", config)
+        windowName::String = get(config, "WindowName", DEFAULT_CONFIG["WindowName"])
+        size::Vector2 = Vector2(parse(Int32, get(config, "Width", DEFAULT_CONFIG["Width"])), parse(Int32, get(config, "Height", DEFAULT_CONFIG["Height"])))
+        camSize::Vector2 = Vector2(parse(Int32, get(config, "CameraWidth", DEFAULT_CONFIG["CameraWidth"])), parse(Int32, get(config, "CameraHeight", DEFAULT_CONFIG["CameraHeight"])))
+        isResizable::Bool = parse(Bool, get(config, "IsResizable", DEFAULT_CONFIG["IsResizable"]))
+        zoom::Float64 = parse(Float64, get(config, "Zoom", DEFAULT_CONFIG["Zoom"]))
+        autoScaleZoom::Bool = parse(Bool, get(config, "AutoScaleZoom", DEFAULT_CONFIG["AutoScaleZoom"]))
+        targetFrameRate::Int32 = parse(Int32, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"]))
+
         if autoScaleZoom 
-            zoom = 1.0
+             zoom = 1.0
         end
-        
+
         MAIN.windowName = windowName
         MAIN.zoom = zoom
         MAIN.globals = globals
@@ -302,4 +312,81 @@ module SceneBuilderModule
             end
         end
     end
+
+    # Define default configuration values
+const DEFAULT_CONFIG = Dict(
+    "WindowName" => "Default Game",
+    "Width" => "800",
+    "Height" => "600",
+    "CameraWidth" => "800",
+    "CameraHeight" => "600",
+    "IsResizable" => "0",
+    "Zoom" => "1.0",
+    "AutoScaleZoom" => "0",
+    "FrameRate" => "30"
+)
+
+# Function to read and parse the config file
+function parse_config()
+    filename = joinpath(pwd(), "..", "config.julgame")
+    config = copy(DEFAULT_CONFIG)
+    
+    if isfile(filename)
+        # Open the file for reading
+        open(filename, "r") do file
+            for line in eachline(file)
+                # Split the line at the '=' character
+                parts = split(line, "=", limit=2)
+                if length(parts) == 2
+                    key, value = parts[1], parts[2]
+                    # Strip any extra whitespace and add to dictionary
+                    config[strip(key)] = strip(value)
+                end
+            end
+        end
+    else
+        write_config(filename, config)
+    end
+    
+    
+    return config
+end
+
+function fill_in_config(config)
+    for (key, value) in DEFAULT_CONFIG
+        if !haskey(config, key)
+            config[key] = value
+        end
+    end
+
+    return config
+end
+
+# Function to write values to the config file
+function write_config(filename::String, config::Dict{String, String})
+    # Open the file for writing
+    open(filename, "w") do file
+        for (key, value) in config
+            # Write each key-value pair to the file
+            println(file, "$key=$value")
+        end
+    end
+end
+
+# # Example usage
+# config_file = "config.txt"
+
+# # Read the configuration
+# config = parse_config(config_file)
+# println("Parsed Configuration:")
+# println(config)
+
+# # Modify some values (example)
+# config["Width"] = "800"
+# config["Height"] = "600"
+
+# # Write the updated configuration back to the file
+# write_config(config_file, config)
+# println("Updated Configuration Written to File.")
+
 end

@@ -310,6 +310,13 @@ function create_new_project(newProjectPath, newProjectName)
     file = open(projectToml, "w")
         println(file, projectTomlContent(newProjectName))
     close(file)
+
+    #create the config.julgame file
+    configJulgame = joinpath(projectFolder, "config.julgame")
+    touch(configJulgame)
+    file = open(configJulgame, "w")
+        println(file, config_file_content(newProjectName))
+    close(file)
 end
 
 function move_entities(entities, origin, destination)

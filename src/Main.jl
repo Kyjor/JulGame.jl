@@ -287,7 +287,7 @@ function JulGame.change_scene(sceneFileName::String)
 						println("Error shutting down script")
 						@error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						#rethrow(e)
 					end
 				end
 			end

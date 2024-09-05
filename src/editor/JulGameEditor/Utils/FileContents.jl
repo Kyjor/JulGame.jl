@@ -112,3 +112,16 @@ end
 
 "
 end
+
+function config_file_content(projectName)
+    return
+    "WindowName=$projectName
+Width=800
+Height=800
+CameraWidth=800
+CameraHeight=800
+IsResizable=1
+Zoom=1.0
+AutoScaleZoom=0
+FrameRate=60"
+end
