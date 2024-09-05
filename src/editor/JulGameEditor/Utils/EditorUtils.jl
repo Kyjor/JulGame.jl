@@ -139,14 +139,72 @@ This function creates an event that allows the user to select a project folder. 
 - `event`: The event that triggers the folder selection.
 
 """
-function select_project_event(currentSceneMain, scenesLoadedFromFolder)
+function select_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
     event = @event begin
         if currentSceneMain === nothing 
             choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+        else
+            dialog[] = "Select Project"
         end
     end
 
     return event
+end
+
+function select_project_dialog(dialog, scenesLoadedFromFolder)
+    CImGui.OpenPopup(dialog[])
+
+    if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
+        CImGui.NewLine()
+        if CImGui.Button("OK", (120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+
+            return choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+        end
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+        end
+        CImGui.EndPopup()
+    end
+    return ""
+end
+
+function create_project_event(dialog)
+    event = @event begin
+        dialog[] = "New Project"
+    end
+
+    return event
+end
+
+function create_project_dialog(dialog, scenesLoadedFromFolder)
+
+    CImGui.OpenPopup(dialog[])
+
+    if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
+        CImGui.NewLine()
+        if CImGui.Button("OK", (120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+
+            projectPath = choose_folder_with_dialog() #|> (dir) -> (create_new_project(dir))
+            println("Project path: ", projectPath)
+        end
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+        end
+        CImGui.EndPopup()
+    end
+    return ""
 end
 
 function move_entities(entities, origin, destination)

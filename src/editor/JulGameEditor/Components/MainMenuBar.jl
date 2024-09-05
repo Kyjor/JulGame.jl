@@ -38,6 +38,9 @@ Show the file menu in the main menu bar.
 - `events`: An array of event functions. These are callbacks that are triggered when the user selects a menu item.
 """
 function show_file_menu(events, main)
+    if CImGui.MenuItem("New Project", "")
+        events["New-project"]()
+    end
     if CImGui.MenuItem("Open Project", "")
         events["Select-project"]()
     end

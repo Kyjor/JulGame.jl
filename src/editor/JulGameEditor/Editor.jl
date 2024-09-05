@@ -86,7 +86,8 @@ module Editor
                     if currentSceneMain !== nothing
                         events["Save"] = save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, String(currentSceneName))
                     end
-                    events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder)
+                    events["New-project"] = create_project_event(currentDialog)
+                    events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog)
                     events["Reset-camera"] = reset_camera_event(currentSceneMain)
                     events["Regenerate-ids"] = regenerate_ids_event(currentSceneMain)
                     events["New-Scene"] = @event begin
@@ -148,6 +149,19 @@ module Editor
                             close(file)
                             JulGame.change_scene("$(String(currentSceneName)).json")
                             scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath)
+                        end
+                    elseif currentDialog[] == "Select Project"
+                        selectedProjectPath = select_project_dialog(currentDialog, scenesLoadedFromFolder)
+                        if selectedProjectPath != ""
+                            currentSceneMain = nothing
+                        end
+                    elseif currentDialog[] == "New Project"
+                        selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder)
+                        if selectedProjectPath != ""
+                            println("Selected project path: $(selectedProjectPath)")
+                            #currentSceneMain = nothing
+                            # currentSelectedProjectPath = selectedProjectPath
+                            # scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath)
                         end
                     end
 
