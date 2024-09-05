@@ -681,7 +681,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 	function start_game_in_editor(this::Main, path::String)
 		this.isGameModeRunningInEditor = true
 		SceneBuilderModule.add_scripts_to_entities(path)
-		initialize_scripts_and_components(false)
+		initialize_scripts_and_components()
 	end
 
 	function stop_game_in_editor(this::Main)

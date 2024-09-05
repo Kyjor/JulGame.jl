@@ -1,11 +1,11 @@
-function init_sdl_and_imgui()
+function init_sdl_and_imgui(windowTitle::String)
     if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
         println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
     end
     SDL2.SDL_SetHint(SDL2.SDL_HINT_IME_SHOW_UI, "1")
 
     window = SDL2.SDL_CreateWindow(
-    "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
+    windowTitle, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
     SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
     )
     if window == C_NULL 
@@ -182,20 +182,41 @@ function create_project_event(dialog)
     return event
 end
 
-function create_project_dialog(dialog, scenesLoadedFromFolder)
+function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPath, newProjectText)
 
     CImGui.OpenPopup(dialog[])
 
     if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
         CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
         CImGui.NewLine()
-        if CImGui.Button("OK", (120, 0))
+        text = text_input_single_line("Project Name", newProjectText) 
+        newProjectText[] = strip(newProjectText[])
+        newProjectText[] = replace(newProjectText[], " " => "-")
+        newProjectText[] = replace(newProjectText[], "." => "-")
+        CImGui.NewLine()
+
+        if CImGui.Button("Open", (120, 0))
+            selectedProjectPath[] = choose_folder_with_dialog()
+        end
+        CImGui.SameLine()
+
+        newProjectPath = joinpath(selectedProjectPath[], newProjectText[])
+        CImGui.Text("Full Path: $(newProjectPath)")
+        CImGui.NewLine()
+
+        pathAlreadyExists = isdir(newProjectPath)
+        if !pathAlreadyExists && selectedProjectPath[] != "" &&  newProjectText[] != "" && CImGui.Button("Confirm", (120, 0))
             CImGui.CloseCurrentPopup()
             dialog[] = ""
 
-            projectPath = choose_folder_with_dialog() #|> (dir) -> (create_new_project(dir))
-            println("Project path: ", projectPath)
+            create_new_project(newProjectPath, newProjectText[])
+            scenesLoadedFromFolder[] = get_all_scenes_from_base_folder(joinpath(newProjectPath, newProjectText[]))
         end
+
+        if pathAlreadyExists
+            CImGui.Text("The path already exists. Please choose a different name.")
+        end
+
         CImGui.SetItemDefaultFocus()
         CImGui.SameLine()
         if CImGui.Button("Cancel",(120, 0))
@@ -205,6 +226,90 @@ function create_project_dialog(dialog, scenesLoadedFromFolder)
         CImGui.EndPopup()
     end
     return ""
+end
+
+function create_new_project(newProjectPath, newProjectName)
+    # create the project folder
+    if !isdir(newProjectPath)
+        mkdir(newProjectPath)
+    end
+
+    # add the julia .gitignore file
+    gitignore = joinpath(newProjectPath, ".gitignore")
+    touch(gitignore)
+    file = open(gitignore, "w")
+        println(file, gitIgnoreFileContent)
+    close(file)
+
+    # create a readme file
+    readme = joinpath(newProjectPath, "README.md")
+    touch(readme)
+    file = open(readme, "w")
+        println(file, readMeFileContent(newProjectName))
+    close(file)
+
+    # create the inner project folder (same name as the project)
+    projectFolder = joinpath(newProjectPath, newProjectName)
+    mkdir(projectFolder)
+    if !isdir(projectFolder)
+        mkdir(projectFolder)
+    end
+
+    # create assets folder. Inside of the assets folder, we also create folders for fonts, images, and sounds
+    mkdir(joinpath(projectFolder, "assets"))
+    mkdir(joinpath(projectFolder, "assets", "fonts"))
+    mkdir(joinpath(projectFolder, "assets", "images"))
+    mkdir(joinpath(projectFolder, "assets", "sounds"))
+
+    # Todo: insert the default font into the fonts folder
+    # copy(joinpath(pwd(), "..", "Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), joinpath(projectFolder, "assets", "fonts", "FiraCode-Regular.ttf"))
+
+
+    # create the scenes folder
+    scenesFolder = joinpath(projectFolder, "scenes")
+    mkdir(scenesFolder)
+
+    #create default scene
+    defaultScene = joinpath(scenesFolder, "scene.json")
+    touch(defaultScene)
+    file = open(defaultScene, "w")
+        println(file, sceneJsonContents)
+    close(file)
+
+    # create the scripts folder
+    scriptsFolder = joinpath(projectFolder, "scripts")
+    mkdir(scriptsFolder)
+
+    # create the src folder
+    srcFolder = joinpath(projectFolder, "src")
+    mkdir(srcFolder)
+
+    # create the src files, one named after the project, and one named Run.jl
+    srcFile = joinpath(srcFolder, "$(newProjectName).jl")
+    touch(srcFile)
+    file = open(srcFile, "w")
+        println(file, mainFileContent(newProjectName))
+    close(file)
+
+    runFile = joinpath(srcFolder, "Run.jl")
+    touch(runFile)
+    file = open(runFile, "w")
+        println(file, runFileContent(newProjectName))
+    close(file)
+
+    # create precompile_app.jl
+    precompileFile = joinpath(srcFolder, "precompile_app.jl")
+    touch(precompileFile)
+    file = open(precompileFile, "w")
+        println(file, precompileFileContent(newProjectName))
+    close(file)
+
+    # create the project.toml file
+    projectToml = joinpath(projectFolder, "Project.toml")
+    touch(projectToml)
+    file = open(projectToml, "w")
+        println(file, projectTomlContent(newProjectName))
+    close(file)
 end
 
 function move_entities(entities, origin, destination)

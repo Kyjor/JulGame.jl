@@ -54,6 +54,28 @@ function get_all_scenes_from_folder(projectPath::String)
     return sceneFiles
 end
 
+function get_all_scenes_from_base_folder(projectPath::String)
+    sceneFiles = []
+    try
+        # search through projectpath and it's subdirectories for a scenes folder. If it exists, return all of the json files from it
+        if !isdir(joinpath(projectPath, "scenes"))
+            @error "No scenes folder found in project directory: $projectPath"
+        else
+            for (root, dirs, files) in walkdir(joinpath(projectPath, "scenes"))
+                for file in files
+                    if occursin(r".json$", file)
+                        push!(sceneFiles, joinpath(root, file))
+                    end
+                end
+            end
+        end
+    catch e
+        rethrow(e)
+    end
+
+    return sceneFiles
+end
+
 """
     choose_folder_with_dialog()
 

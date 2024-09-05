@@ -22,7 +22,9 @@ module Editor
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
     function run(is_test_mode::Bool=false)
-        info = init_sdl_and_imgui()
+        windowTitle = "JulGame Editor v0.1.0"
+
+        info = init_sdl_and_imgui(windowTitle)
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
         startingSize = ImVec2(1920, 1080)
         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
@@ -35,7 +37,7 @@ module Editor
         currentSceneMain = nothing
         currentSceneName = ""
         currentScenePath = ""
-        currentSelectedProjectPath = ""
+        currentSelectedProjectPath = Ref("")
         gameInfo = []
         ##############################
         # Hierarchy variables
@@ -64,11 +66,14 @@ module Editor
 
         duplicationMode = false
 
+        # Engine Timing
         startTime = Ref(UInt64(0))
         lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
 
+        # Dialogs
         currentDialog::Base.RefValue{String} = Ref("")
         newSceneText = Ref("")
+        newProjectText = Ref("")
 
         try
             while !quit                    
@@ -84,7 +89,7 @@ module Editor
                     ################################# MAIN MENU BAR
                     events = Dict{String, Function}()
                     if currentSceneMain !== nothing
-                        events["Save"] = save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, String(currentSceneName))
+                        events["Save"] = save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath[], String(currentSceneName))
                     end
                     events["New-project"] = create_project_event(currentDialog)
                     events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog)
@@ -117,7 +122,7 @@ module Editor
                                     JulGame.IS_EDITOR = true
                                     JulGame.PIXELS_PER_UNIT = 16
                                     currentDialog[] = "Open Scene"
-                                    currentSelectedProjectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
+                                    currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                 else
                                     currentDialog[] = "Open Scene"
                                 end
@@ -128,6 +133,10 @@ module Editor
                         CImGui.End()
                     end
                     
+                    if currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
+                        newWindowTitle = "$(windowTitle) - $(currentSelectedProjectPath[])"
+                        SDL2.SDL_SetWindowTitle(window, newWindowTitle)
+                    end
                     if currentDialog[] == "Open Scene"
                         #println("Opening scene: $(currentDialog[][2])")
                         if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
@@ -142,13 +151,13 @@ module Editor
                         newSceneName = new_scene_dialog(currentDialog, newSceneText)
                         if newSceneName != ""
                             currentSceneName = newSceneName
-                            currentScenePath = joinpath(currentSelectedProjectPath, "scenes", "$(newSceneName).json")
+                            currentScenePath = joinpath(currentSelectedProjectPath[], "scenes", "$(newSceneName).json")
                             touch(currentScenePath)
                             file = open(currentScenePath, "w")
                                 println(file, sceneJsonContents)
                             close(file)
                             JulGame.change_scene("$(String(currentSceneName)).json")
-                            scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath)
+                            scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
                         end
                     elseif currentDialog[] == "Select Project"
                         selectedProjectPath = select_project_dialog(currentDialog, scenesLoadedFromFolder)
@@ -156,12 +165,9 @@ module Editor
                             currentSceneMain = nothing
                         end
                     elseif currentDialog[] == "New Project"
-                        selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder)
+                        selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder, currentSelectedProjectPath, newProjectText)
                         if selectedProjectPath != ""
                             println("Selected project path: $(selectedProjectPath)")
-                            #currentSceneMain = nothing
-                            # currentSelectedProjectPath = selectedProjectPath
-                            # scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath)
                         end
                     end
 
@@ -179,7 +185,7 @@ module Editor
                         sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, playMode)
                         if playMode[] != wasPlaying && currentSceneMain !== nothing
                             if playMode[]
-                                JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath)
+                                JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
                             elseif !playMode[]
                                 JulGame.MainLoop.stop_game_in_editor(currentSceneMain)
                                 JulGame.change_scene(String(currentSceneName))
@@ -443,7 +449,7 @@ module Editor
         catch e
             backup_file_name = backup_file_name = "$(replace(currentSceneName, ".json" => ""))-backup-$(replace(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"), ":" => "-")).json"
             @info string("Backup file name: ", backup_file_name)
-            SceneWriterModule.serialize_entities(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath, backup_file_name)
+            SceneWriterModule.serialize_entities(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath[], backup_file_name)
             Base.show_backtrace(stderr, catch_backtrace())
             @warn "Error in renderloop!" exception=e
         finally
