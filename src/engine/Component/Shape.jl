@@ -45,7 +45,7 @@ module ShapeModule
 
         parentTransform = this.parent.transform
 
-        cameraDiff = this.isWorldEntity ? 
+        cameraDiff = this.isWorldEntity && MAIN.scene.camera !== nothing ? 
         Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
         position = this.isWorldEntity ?

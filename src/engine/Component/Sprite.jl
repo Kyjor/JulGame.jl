@@ -77,7 +77,7 @@ module SpriteModule
         end
     end
     
-    function Component.draw(this::InternalSprite)
+    function Component.draw(this::InternalSprite, camera = nothing)
         if this.image == C_NULL || JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
             return
         end
@@ -94,8 +94,8 @@ module SpriteModule
 
         parentTransform = this.parent.transform
 
-        cameraDiff = this.isWorldEntity ? 
-        Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
+        cameraDiff = this.isWorldEntity && camera !== nothing ? 
+        Math.Vector2(camera.position.x * SCALE_UNITS, camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
         position = this.isWorldEntity ?
         parentTransform.position :

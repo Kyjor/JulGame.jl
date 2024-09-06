@@ -105,6 +105,10 @@ module InputModule
                     SDL2.SDL_GetMouseState(pointer(x), pointer(y))
                     
                     this.mousePosition = Math.Vector2(x[1], y[1])
+                    if MAIN.scene.camera === nothing
+                        continue
+                    end
+
                     for screenButton in this.scene.screenButtons
                         # Check position of button to see which we are interacting with
                         eventWasInsideThisButton = true

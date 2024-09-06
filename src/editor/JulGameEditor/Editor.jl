@@ -75,11 +75,24 @@ module Editor
         newSceneText = Ref("")
         newProjectText = Ref("")
 
+        panOffset = Math.Vector2(0, 0)
+
         try
             while !quit                    
                 try
                     if currentSceneMain === nothing
                         quit = poll_events()
+                    else 
+                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LEFT")
+                            println("Panning left: ", panOffset)
+                            panOffset = Math.Vector2(panOffset.x + 1, panOffset.y)
+                        elseif JulGame.InputModule.get_button_held_down(currentSceneMain.input, "RIGHT")
+                            panOffset = Math.Vector2(panOffset.x - 1, panOffset.y)
+                        elseif JulGame.InputModule.get_button_held_down(currentSceneMain.input, "UP")
+                            panOffset = Math.Vector2(panOffset.x, panOffset.y + 1)
+                        elseif JulGame.InputModule.get_button_held_down(currentSceneMain.input, "DOWN")
+                            panOffset = Math.Vector2(panOffset.x, panOffset.y - 1)
+                        end
                     end   
                     start_frame()
                     CImGui.igDockSpaceOverViewport(C_NULL, C_NULL, CImGui.ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
@@ -142,7 +155,7 @@ module Editor
                         if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                             if currentSceneMain === nothing
                                 currentSceneMain = load_scene(currentScenePath, renderer)
-                                currentSceneMain.cameraBackgroundColor = (50, 50, 50)
+                                #TODO: currentSceneMain.cameraBackgroundColor = (50, 50, 50)
                             else
                                 JulGame.change_scene(String(currentSceneName))
                             end
@@ -374,10 +387,20 @@ module Editor
                         log_exceptions("UI Inspector Window Error:", latest_exceptions, e, is_test_mode)
                     end
 
+                    # Save the current viewport
+                    viewport::SDL2.SDL_Rect = SDL2.SDL_Rect(0, 0, sceneWindowSize.x, sceneWindowSize.y)
+                    @c SDL2.SDL_RenderGetViewport(sdlRenderer, &viewport)
+
+                    # Apply the panOffset to the viewport
+                    panViewport::SDL2.SDL_Rect = SDL2.SDL_Rect(panOffset.x, panOffset.y, sceneWindowSize.x, sceneWindowSize.y)
+                    @c SDL2.SDL_RenderSetViewport(renderer, &panViewport)
+
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
+                    @c SDL2.SDL_RenderSetViewport(renderer, &viewport)
+
                     SDL2.SDL_RenderClear(renderer)
                     
                     show_game_controls()
@@ -423,6 +446,7 @@ module Editor
                     SDL2.SDL_SetRenderDrawColor(renderer, (UInt8)(round(clear_color[1] * 255)), (UInt8)(round(clear_color[2] * 255)), (UInt8)(round(clear_color[3] * 255)), (UInt8)(round(clear_color[4] * 255)));
                     SDL2.SDL_RenderClear(renderer);
                     ImGui_ImplSDLRenderer2_RenderDrawData(CImGui.GetDrawData())
+                    
                     screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, sceneWindowSize.x, sceneWindowSize.y - 20))
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
                     ################################################# Injecting game loop into editor

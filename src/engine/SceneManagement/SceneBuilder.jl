@@ -100,14 +100,14 @@ module SceneBuilderModule
         if size.y < camSize.y && size.y > 0
             camSize = Vector2(camSize.x, size.y)
         end
-        MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
+        #MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
 
         flags = SDL2.SDL_RENDERER_ACCELERATED |
 		(JulGame.IS_EDITOR ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
 		(isResizable || JulGame.IS_EDITOR ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
 		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
 
-        MAIN.screenSize = size != C_NULL ? size : MAIN.scene.camera.size
+        MAIN.screenSize = size
         if !JulGame.IS_EDITOR
             MAIN.window = SDL2.SDL_CreateWindow(MAIN.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, MAIN.screenSize.x, MAIN.screenSize.y, flags)
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.window, -1, SDL2.SDL_RENDERER_ACCELERATED)

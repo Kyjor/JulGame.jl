@@ -4,9 +4,10 @@ module CameraModule
 
     export Camera
     mutable struct Camera
-        size::Vector2
+		backgroundColor::Tuple{Int64, Int64, Int64}
         offset::Vector2f
         position::Vector2f
+        size::Vector2
         startingCoordinates::Vector2f
 
         target::Union{
@@ -18,6 +19,7 @@ module CameraModule
         function Camera(size::Vector2, initialPosition::Vector2f, offset::Vector2f, target)
             this = new()
             
+            this.backgroundColor = (0,0,0)
             this.size = size
             this.position = initialPosition
             this.offset = Vector2f(offset.x, offset.y)
@@ -30,7 +32,7 @@ module CameraModule
     end
 
     function update(this::Camera, newPosition)
-        SDL2.SDL_SetRenderDrawColor(Renderer, MAIN.cameraBackgroundColor[1], MAIN.cameraBackgroundColor[2], MAIN.cameraBackgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
+        SDL2.SDL_SetRenderDrawColor(Renderer, this.backgroundColor[1], this.backgroundColor[2], this.backgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
         SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
 
         if this.target != C_NULL && newPosition == C_NULL

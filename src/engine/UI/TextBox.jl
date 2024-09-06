@@ -63,7 +63,7 @@ module TextBoxModule
                 SDL2.SDL_Point(this.position.x, this.position.y)], 5)
         end
 
-        cameraDiff = this.isWorldEntity ? 
+        cameraDiff = this.isWorldEntity && MAIN.scene.camera !== nothing ? 
         Math.Vector2(MAIN.scene.camera.position.x * SCALE_UNITS, MAIN.scene.camera.position.y * SCALE_UNITS) : 
         Math.Vector2(0,0)
 
@@ -133,6 +133,11 @@ module TextBoxModule
     end
 
     function UI.center_text(this::TextBox)
+        if MAIN.scene.camera === nothing
+            @warn "No camera found in scene"
+            return
+        end
+
         if this.isCenteredX
             this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0), this.position.y)
         end

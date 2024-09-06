@@ -23,7 +23,7 @@ end
 
 function JulGame.initialize(this::GameManager)
     MAIN.scene.camera.offset = JulGame.Math.Vector2f(0, -2.75)
-    MAIN.cameraBackgroundColor = (0, 0, 0)
+    #todo: MAIN.cameraBackgroundColor = (0, 0, 0)
     MAIN.optimizeSpriteRendering = true
 
     JulGame.add_shape(this.parent, JulGame.ShapeModule.Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))

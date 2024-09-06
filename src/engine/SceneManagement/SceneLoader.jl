@@ -50,7 +50,7 @@ module SceneLoaderModule
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene("$sceneFileName", "$projectPath")
 
-        SceneBuilderModule.load_and_prepare_scene(scene, "Editor")
+        SceneBuilderModule.load_and_prepare_scene(;this=scene)
 
         return MAIN
     end
