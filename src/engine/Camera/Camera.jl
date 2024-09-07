@@ -32,8 +32,8 @@ module CameraModule
     end
 
     function update(this::Camera, newPosition)
-        SDL2.SDL_SetRenderDrawColor(Renderer, this.backgroundColor[1], this.backgroundColor[2], this.backgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
-        SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
+        #SDL2.SDL_SetRenderDrawColor(Renderer, this.backgroundColor[1], this.backgroundColor[2], this.backgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
+        #SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
 
         if this.target != C_NULL && newPosition == C_NULL
             targetPos = this.target.position

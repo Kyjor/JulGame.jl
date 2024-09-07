@@ -563,36 +563,9 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			cameraPosition = this.scene.camera !== nothing ? this.scene.camera.position : Math.Vector2f(0,0)
 			cameraSize = this.scene.camera !== nothing ? this.scene.camera.size : Math.Vector2(0,0)
 			
-			skipcount = 0
-			rendercount = 0
-			renderOrder = []
-			for entity in this.scene.entities
-				if !entity.isActive || (entity.sprite == C_NULL && entity.shape == C_NULL)
-					continue
-				end
-
-				shapeOrSprite = entity.sprite != C_NULL ? entity.sprite : entity.shape
-				shapeOrSpritePosition = shapeOrSprite.parent.transform.position
-				shapeOrSpriteSize = shapeOrSprite.parent.transform.scale
-				if ((shapeOrSpritePosition.x + shapeOrSpriteSize.x) < cameraPosition.x || shapeOrSpritePosition.y < cameraPosition.y || shapeOrSpritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (shapeOrSpritePosition.y - shapeOrSpriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shapeOrSprite.isWorldEntity && this.optimizeSpriteRendering 
-					skipcount += 1
-					continue
-				end
-
-				push!(renderOrder, (shapeOrSprite.layer, shapeOrSprite))
-			end
-
-			sort!(renderOrder, by = x -> x[1])
-			for i = eachindex(renderOrder)
-				try
-					rendercount += 1
-					Component.draw(renderOrder[i][2])
-				catch e
-					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
-				end
+			if !JulGame.IS_EDITOR
+				println("Rendering scene")
+				render_scene_sprites(this, this.scene.camera)
 			end
 
 			#println("Skipped $skipcount, rendered $rendercount")
@@ -686,6 +659,43 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			rethrow(e)
 		end
     end
+
+	function render_scene_sprites(this::Main, camera)
+		cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0,0)
+		cameraSize = camera !== nothing ? camera.size : Math.Vector2(0,0)
+			
+		skipcount = 0
+		rendercount = 0
+		renderOrder = []
+		for entity in this.scene.entities
+			if !entity.isActive || (entity.sprite == C_NULL && entity.shape == C_NULL)
+				continue
+			end
+
+			shapeOrSprite = entity.sprite != C_NULL ? entity.sprite : entity.shape
+			shapeOrSpritePosition = shapeOrSprite.parent.transform.position
+			shapeOrSpriteSize = shapeOrSprite.parent.transform.scale
+			if ((shapeOrSpritePosition.x + shapeOrSpriteSize.x) < cameraPosition.x || shapeOrSpritePosition.y < cameraPosition.y || shapeOrSpritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (shapeOrSpritePosition.y - shapeOrSpriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shapeOrSprite.isWorldEntity && this.optimizeSpriteRendering 
+				skipcount += 1
+				continue
+			end
+
+			push!(renderOrder, (shapeOrSprite.layer, shapeOrSprite))
+		end
+
+		sort!(renderOrder, by = x -> x[1])
+		for i = eachindex(renderOrder)
+			try
+				rendercount += 1
+				Component.draw(renderOrder[i][2], camera)
+			catch e
+				println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
+				@error string(e)
+				Base.show_backtrace(stdout, catch_backtrace())
+				rethrow(e)
+			end
+		end
+	end
 
 	function start_game_in_editor(this::Main, path::String)
 		this.isGameModeRunningInEditor = true

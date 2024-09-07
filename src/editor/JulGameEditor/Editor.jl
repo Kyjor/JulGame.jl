@@ -28,7 +28,9 @@ module Editor
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
         startingSize = ImVec2(1920, 1080)
         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
+        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
         sceneTextureSize = ImVec2(startingSize.x, startingSize.y)
+        gameTextureSize = ImVec2(startingSize.x, startingSize.y)
 
         style_imGui()
         showDemoWindow = true
@@ -51,6 +53,7 @@ module Editor
 
         sceneWindowPos = ImVec2(0, 0)
         sceneWindowSize = ImVec2(startingSize.x, startingSize.y)
+        gameWindowSize = ImVec2(startingSize.x, startingSize.y)
         testFrameCount = 0
         testFrameLimit = 100
         quit = false
@@ -76,6 +79,8 @@ module Editor
         newProjectText = Ref("")
 
         panOffset = Math.Vector2(0, 0)
+        camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
+        gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
 
         try
             while !quit                    
@@ -84,7 +89,6 @@ module Editor
                         quit = poll_events()
                     else 
                         if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LEFT")
-                            println("Panning left: ", panOffset)
                             panOffset = Math.Vector2(panOffset.x + 1, panOffset.y)
                         elseif JulGame.InputModule.get_button_held_down(currentSceneMain.input, "RIGHT")
                             panOffset = Math.Vector2(panOffset.x - 1, panOffset.y)
@@ -119,8 +123,8 @@ module Editor
                     @cstatic begin
                         #region Scene List
                         CImGui.Begin("Scene List") 
-                        txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
-                        CImGui.Text(txt)
+                        # txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
+                        # CImGui.Text(txt)
 
                         # Usage:
                         
@@ -155,6 +159,7 @@ module Editor
                         if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                             if currentSceneMain === nothing
                                 currentSceneMain = load_scene(currentScenePath, renderer)
+                                currentSceneMain.scene.camera = gameCamera
                                 #TODO: currentSceneMain.cameraBackgroundColor = (50, 50, 50)
                             else
                                 JulGame.change_scene(String(currentSceneName))
@@ -192,10 +197,17 @@ module Editor
                         sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
                     end
                     
+                    if gameWindowSize.x != gameTextureSize.x || gameWindowSize.y != gameTextureSize.y
+                        SDL2.SDL_DestroyTexture(gameTexture)
+                        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, gameWindowSize.x, gameWindowSize.y)
+                        gameTextureSize = ImVec2(gameWindowSize.x, gameWindowSize.y)
+                    end
+                    
                     try
                         prevSceneWindowSize = sceneWindowSize
+                        
                         wasPlaying = playMode[]
-                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, playMode)
+                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, playMode, camera)
                         if playMode[] != wasPlaying && currentSceneMain !== nothing
                             if playMode[]
                                 JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
@@ -204,7 +216,13 @@ module Editor
                                 JulGame.change_scene(String(currentSceneName))
                             end
                         end
-                        # show_game_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode)
+                        
+                        prevGameWindowSize = gameWindowSize
+                        gameWindowSize = show_game_window(gameTexture)
+
+                        if gameWindowSize === nothing
+                            gameWindowSize = prevGameWindowSize
+                        end
                         if sceneWindowSize === nothing
                             sceneWindowSize = prevSceneWindowSize
                         end
@@ -387,20 +405,20 @@ module Editor
                         log_exceptions("UI Inspector Window Error:", latest_exceptions, e, is_test_mode)
                     end
 
-                    # Save the current viewport
-                    viewport::SDL2.SDL_Rect = SDL2.SDL_Rect(0, 0, sceneWindowSize.x, sceneWindowSize.y)
-                    @c SDL2.SDL_RenderGetViewport(sdlRenderer, &viewport)
-
-                    # Apply the panOffset to the viewport
-                    panViewport::SDL2.SDL_Rect = SDL2.SDL_Rect(panOffset.x, panOffset.y, sceneWindowSize.x, sceneWindowSize.y)
-                    @c SDL2.SDL_RenderSetViewport(renderer, &panViewport)
-
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
+                    if currentSceneMain !== nothing
+                        JulGame.MainLoop.render_scene_sprites(currentSceneMain, camera)
+                    end
+
+                    SDL2.SDL_SetRenderTarget(renderer, gameTexture)
+                    SDL2.SDL_RenderClear(renderer)
+                    if currentSceneMain !== nothing
+                        JulGame.MainLoop.render_scene_sprites(currentSceneMain, gameCamera)
+                    end
+
                     gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
-                    @c SDL2.SDL_RenderSetViewport(renderer, &viewport)
-
                     SDL2.SDL_RenderClear(renderer)
                     
                     show_game_controls()
@@ -482,6 +500,7 @@ module Editor
 
             CImGui.DestroyContext(ctx)
             SDL2.SDL_DestroyTexture(sceneTexture)
+            SDL2.SDL_DestroyTexture(gameTexture)
             SDL2.SDL_DestroyRenderer(renderer);
             SDL2.SDL_DestroyWindow(window);
             SDL2.SDL_Quit()

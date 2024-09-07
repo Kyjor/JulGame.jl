@@ -67,9 +67,7 @@ module SceneBuilderModule
     end
     
     function load_and_prepare_scene(;this::Scene, config=parse_config(), globals = [])
-        println("config: ", config)
         config = fill_in_config(config)
-        println("config: ", config)
         windowName::String = get(config, "WindowName", DEFAULT_CONFIG["WindowName"])
         size::Vector2 = Vector2(parse(Int32, get(config, "Width", DEFAULT_CONFIG["Width"])), parse(Int32, get(config, "Height", DEFAULT_CONFIG["Height"])))
         camSize::Vector2 = Vector2(parse(Int32, get(config, "CameraWidth", DEFAULT_CONFIG["CameraWidth"])), parse(Int32, get(config, "CameraHeight", DEFAULT_CONFIG["CameraHeight"])))

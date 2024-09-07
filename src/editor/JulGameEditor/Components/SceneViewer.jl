@@ -1,4 +1,4 @@
-function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, playMode)
+function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, playMode, camera)
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Scene") || (CImGui.End(); return)
     # GET SIZE OF SCENE TEXTURE
@@ -53,8 +53,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
         mouse_drag_movement = ImVec2(unsafe_load(io.MouseDelta).x, unsafe_load(io.MouseDelta).y)
         # if scene is something, update the camera position
-        if main !== nothing && main.scene.camera !== nothing
-            main.scene.camera.position = Math.Vector2f(main.scene.camera.position.x - (mouse_drag_movement.x/scale_unit_factor), main.scene.camera.position.y - (mouse_drag_movement.y/scale_unit_factor))
+        if main !== nothing && camera !== nothing
+            camera.position = Math.Vector2f(camera.position.x - (mouse_drag_movement.x/scale_unit_factor), camera.position.y - (mouse_drag_movement.y/scale_unit_factor))
         end
     end
 
@@ -63,11 +63,11 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         # zoom_level[] += unsafe_load(io.MouseWheel) * 0.4 # * 0.10
         # zoom_level[] = clamp(zoom_level[], 0.2, 50.0)
     end
-    if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing && main.scene.camera !== nothing
+    if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing && camera !== nothing
         # move camera
-        main.scene.camera.position = Math.Vector2f(main.scene.camera.position.x - (unsafe_load(io.MouseWheelH)), main.scene.camera.position.y - (unsafe_load(io.MouseWheel)))
+        camera.position = Math.Vector2f(camera.position.x - (unsafe_load(io.MouseWheelH)), camera.position.y - (unsafe_load(io.MouseWheel)))
     end
-    camPos = main !== nothing && main.scene.camera !== nothing ? ImVec2((main.scene.camera.position.x * scale_unit_factor), (main.scene.camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
+    camPos = main !== nothing && camera !== nothing ? ImVec2((camera.position.x * scale_unit_factor), (camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
 
     # Context menu
     drag_delta_right = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
