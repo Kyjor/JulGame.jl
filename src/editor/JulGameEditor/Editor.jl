@@ -77,6 +77,7 @@ module Editor
         currentDialog::Base.RefValue{String} = Ref("")
         newSceneText = Ref("")
         newProjectText = Ref("")
+        newScriptText = Ref("")
 
         panOffset = Math.Vector2(0, 0)
         camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
@@ -334,7 +335,20 @@ module Editor
                         end
                     CImGui.End()
                 catch e
-                    log_exceptions("Hierarchy Window Error:", latest_exceptions, e, is_test_mode)
+                    # Get the stack trace
+                    bt = stacktrace(catch_backtrace())
+                        
+                    file = ""
+                    line = ""
+                    if !isempty(bt)
+                        top_frame = bt[1]
+                        file = top_frame.file
+                        line = top_frame.line
+                    else
+                        @info("Stack trace is empty.")
+                    end
+
+                    log_exceptions("Hierarchy Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
                 end
 
                     show_debug_window(latest_exceptions)
@@ -351,7 +365,7 @@ module Editor
                             CImGui.PopID()
                             CImGui.Separator()
                             for entityField in fieldnames(Entity)
-                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict)
+                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict, newScriptText)
                             end
         
                             CImGui.Separator()
@@ -364,7 +378,20 @@ module Editor
                         end
                         CImGui.End()
                     catch e
-                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, is_test_mode)
+                         # Get the stack trace
+                        bt = stacktrace(catch_backtrace())
+                        
+                        file = ""
+                        line = ""
+                        if !isempty(bt)
+                            top_frame = bt[1]
+                            file = top_frame.file
+                            line = top_frame.line
+                        else
+                            @info("Stack trace is empty.")
+                        end
+
+                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
                     end
 
                     try
@@ -402,7 +429,20 @@ module Editor
                             end
                         CImGui.End()
                     catch e
-                        log_exceptions("UI Inspector Window Error:", latest_exceptions, e, is_test_mode)
+                        # Get the stack trace
+                        bt = stacktrace(catch_backtrace())
+                            
+                        file = ""
+                        line = ""
+                        if !isempty(bt)
+                            top_frame = bt[1]
+                            file = top_frame.file
+                            line = top_frame.line
+                        else
+                            @info("Stack trace is empty.")
+                        end
+
+                        log_exceptions("UI Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
                     end
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)

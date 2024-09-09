@@ -13,14 +13,14 @@ using JulGame.UI
 show_field_editor(entity, field)
 Creates inputs based on the component type and populates them.
 """
-function show_field_editor(entity, fieldName, animation_window_dict, animator_preview_dict)
+function show_field_editor(entity, fieldName, animation_window_dict, animator_preview_dict, newScriptText)
     field = getfield(entity, fieldName)
     if field == C_NULL || field === nothing
         return
     end
 
     if !is_a_julgame_component(field)
-        show_component_field_input(entity, fieldName)
+        show_component_field_input(entity, fieldName, newScriptText)
         return
     end
 
@@ -39,7 +39,7 @@ function show_field_editor(entity, fieldName, animation_window_dict, animator_pr
             show_animator_properties(entity.animator, animation_window_dict, animator_preview_dict)
         else
             for field in fieldnames(typeof(field))
-                show_component_field_input(getfield(entity, Symbol(lowercase(fieldName))), field)
+                show_component_field_input(getfield(entity, Symbol(lowercase(fieldName))), field, "")
             end
         end
 
@@ -84,7 +84,7 @@ This function displays the input fields for a given component field. It takes tw
 The function checks the type of the field value and displays the corresponding input fields using CImGui library. It updates the field value based on the user input.
 
 """
-function show_component_field_input(component, componentField)
+function show_component_field_input(component, componentField, newScriptText)
     fieldValue = getfield(component, componentField)
     if isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
         isFloat::Bool = isa(fieldValue, Math._Vector2{Float64}) ? true : false
@@ -164,7 +164,7 @@ function show_component_field_input(component, componentField)
         end
         setfield!(component, componentField, x)
     elseif String(componentField) == "scripts"
-        show_script_editor(component)
+        show_script_editor(component, newScriptText)
     elseif isa(fieldValue, Vector) # Then we need to unpack the nested items
         for i = eachindex(fieldValue)
             continue # TODO: Implement this
@@ -274,7 +274,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                     end
                 end
             else
-                show_component_field_input(animator, field)
+                show_component_field_input(animator, field, "")
             end  
         end
     catch e
@@ -356,7 +356,7 @@ function show_sprite_fields(sprite, animation_window_dict)
             window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
             sprite.crop = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))
         else
-            show_component_field_input(sprite, field)
+            show_component_field_input(sprite, field, "")
         end  
     end
 end
@@ -487,7 +487,7 @@ function show_sound_source_fields(soundSource)
             CImGui.Button("Load Sound") && (Component.load_sound(soundSource, currentTextInTextBox, false))
             CImGui.Button("Load Music") && (Component.load_sound(soundSource, currentTextInTextBox, true))
         else
-            show_component_field_input(soundSource, field)
+            show_component_field_input(soundSource, field, "")
         end  
     end
 end
@@ -507,29 +507,37 @@ function is_a_julgame_component(field)
     return isa(field, JulGame.TransformModule.Transform) || isa(field, JulGame.SpriteModule.InternalSprite) || isa(field, JulGame.ColliderModule.InternalCollider) || isa(field, JulGame.RigidbodyModule.InternalRigidbody) || isa(field, JulGame.SoundSourceModule.InternalSoundSource) || isa(field, JulGame.AnimatorModule.InternalAnimator) || isa(field, JulGame.ShapeModule.InternalShape) || isa(field, JulGame.CircleColliderModule.InternalCircleCollider) || isa(field, JulGame.AnimationModule.Animation)
 end
 
-function show_script_editor(entity)
+function create_new_script(name)
+    path = joinpath(JulGame.BasePath, "scripts", "$(name).jl")
+    touch(joinpath(path))
+    file = open(path, "w")
+        println(file, newScriptContent(name))
+    close(file)
+
+    SDL2.SDL_OpenURL("vscode://file/$(path)")
+end
+
+function show_script_editor(entity, newScriptText)
     if CImGui.TreeNode("Scripts")
         show_help_marker("Add a script here to run it on the entity.")
-        CImGui.Button("Add Script") && (push!(entity.scripts, scriptObj("",[])); return;)
+        text = text_input_single_line("Name", newScriptText) 
+        CImGui.SameLine()
+        CImGui.Button("Create New Script") && (push!(entity.scripts, scriptObj(String(text), [])); create_new_script(text);)
+        
+        script = display_files(joinpath(JulGame.BasePath, "scripts"), "scripts", "Add Script")
+        if script != ""
+            push!(entity.scripts, scriptObj(script, []))
+        end
+        
         for i = eachindex(entity.scripts)
             if CImGui.TreeNode("Script $(i)")
-                buf = "$(entity.scripts[i].name)"*"\0"^(64)
                 CImGui.Button("Delete $(i)") && (deleteat!(entity.scripts, i); return;)
-                CImGui.InputText("Script $(i)", buf, length(buf))
-                currentTextInTextBox = ""
-                for characterIndex = eachindex(buf)
-                    if Int32(buf[characterIndex]) == 0 
-                        if characterIndex != 1
-                            currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                        end
-                        break
-                    end
-                end
+                CImGui.Text(entity.scripts[i].name)
                 
-                entity.scripts[i] = scriptObj(currentTextInTextBox, entity.scripts[i].parameters)
+                entity.scripts[i] = scriptObj(entity.scripts[i].name, entity.scripts[i].parameters)
                 if CImGui.TreeNode("Script $(i) parameters")
                     params = entity.scripts[i].parameters
-                    CImGui.Button("Add New Script Parameter") && (push!(params, ""); entity.scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                    CImGui.Button("Add New Script Parameter") && (push!(params, ""); entity.scripts[i] = scriptObj(entity.scripts[i].name, params); break;)
 
                     for j = eachindex(entity.scripts[i].parameters)
                         buf = "$(entity.scripts[i].parameters[j])"*"\0"^(64)
