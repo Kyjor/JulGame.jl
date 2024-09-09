@@ -14,12 +14,12 @@ module SpriteModule
         position::Math.Vector2f
         rotation::Float64
         pixelsPerUnit::Int32
-        center::Math.Vector2
+        center::Math.Vector2f
     end
 
     export InternalSprite
     mutable struct InternalSprite
-        center::Math.Vector2
+        center::Math.Vector2f
         color::Math.Vector3
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
@@ -36,7 +36,7 @@ module SpriteModule
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int32 = Int32(0), center::Math.Vector2 = Math.Vector2(0,0))
+        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Math.Vector3 = Math.Vector3(255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int32 = Int32(0), center::Math.Vector2f = Math.Vector2f(0.5,0.5))
             this = new()
 
             this.offset = Math.Vector2f()
@@ -139,14 +139,15 @@ module SpriteModule
             end
         end
 
-         # Calculate center position on sprite using the center property. 
+         # Calculate center position on sprite using the center property
+         # center should be a point from 0 to 1, where 0.5 is the center of the sprite 
          # The value is a pointer to a point indicating the point around which dstrect will be rotated 
          # (if C_NULL, rotation will be done around dstrect.w / 2, dstrect.h / 2)
          # Todo: don't allocate this every frame
-        calculatedCenter = Math.Vector2f(dstRect[].w/2 + this.center.x, dstRect[].h/2 + this.center.y)
+        calculatedCenter = Math.Vector2(dstRect[].w * (this.center.x%1), dstRect[].h * (this.center.y%1))
         calculatedCenter = !this.isFloatPrecision ? Ref(SDL2.SDL_Point(round(calculatedCenter.x), round(calculatedCenter.y))) : Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))   
 
-        if  this.isFloatPrecision && SDL2.SDL_RenderCopyExF(
+        if this.isFloatPrecision && SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             this.texture, 
             srcRect, 

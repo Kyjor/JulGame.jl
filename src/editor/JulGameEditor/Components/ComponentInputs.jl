@@ -86,7 +86,12 @@ The function checks the type of the field value and displays the corresponding i
 """
 function show_component_field_input(component, componentField, newScriptText)
     fieldValue = getfield(component, componentField)
-    if isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
+    if isa(fieldValue, String) && String(componentField) == "id"
+        #display id as text and add a button to copy it to clipboard
+        CImGui.Text("$(componentField): $(fieldValue)")
+        CImGui.SameLine()
+        CImGui.Button("Copy") && SDL2.SDL_SetClipboardText(fieldValue)
+    elseif isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
         isFloat::Bool = isa(fieldValue, Math._Vector2{Float64}) ? true : false
 
         x = isFloat ? Cfloat(fieldValue.x) : Cint(fieldValue.x)
@@ -348,13 +353,29 @@ function show_sprite_fields(sprite, animation_window_dict)
             end
 
             CImGui.PushID(sprite.parent.id)
-                crop_x, crop_y, crop_w, crop_h = show_animation_window("crop", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+                crop_x, crop_y, crop_w, crop_h = show_animation_window("Sprite crop", window_info, sprite.texture, sprite.size.x, sprite.size.y)
             CImGui.PopID()
             vec4i = Cint[crop_x, crop_y, crop_w, crop_h]
             @c CImGui.InputInt4("crop", vec4i)
             window_info[]["points"][][1] = ImVec2(vec4i[1], vec4i[2])
             window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
             sprite.crop = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))
+        elseif fieldString == "rotation"
+            x = Cfloat(sprite.rotation)
+            @c CImGui.InputFloat("rotation", &x, 1)
+            x = Float64(x)
+            sprite.rotation = x
+        elseif fieldString == "center"
+            #float that is min 0 and max 1
+            x = Cfloat(sprite.center.x)
+            y = Cfloat(sprite.center.y)
+            @c CImGui.InputFloat("center x", &x, 0.01)
+            @c CImGui.InputFloat("center y", &y, 0.01)
+            x = Float64(x)
+            y = Float64(y)
+            c = clamp(x, 0, 1)
+            y = clamp(y, 0, 1)
+            sprite.center = Vector2f(x, y)
         else
             show_component_field_input(sprite, field, "")
         end  

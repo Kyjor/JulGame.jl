@@ -9,8 +9,8 @@ using CImGui.CSyntax.CStatic
 Demonstrate using the low-level ImDrawList to draw custom shapes.
 """
 function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_tex_h)
-    CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
-    CImGui.Begin("Animation - $(frame_name)") || (CImGui.End(); return)
+    #CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
+    CImGui.Begin("$(frame_name)") || (CImGui.End(); return)
 
     draw_list = CImGui.GetWindowDrawList()
     io = CImGui.GetIO()

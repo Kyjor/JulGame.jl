@@ -48,5 +48,16 @@
         end
         return entities
     end
+
+    function get_entity_by_id(this::Scene, id)
+        for entity in this.entities
+            if entity.id == id
+                return entity
+            end
+        end
+
+        @warn "No entity with id $id found"
+        return nothing
+    end
 end
 
