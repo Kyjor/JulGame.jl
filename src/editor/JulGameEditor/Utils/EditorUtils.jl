@@ -262,7 +262,7 @@ function create_new_project(newProjectPath, newProjectName)
     mkdir(joinpath(projectFolder, "assets", "sounds"))
 
     # Todo: insert the default font into the fonts folder
-    # copy(joinpath(pwd(), "..", "Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf"), joinpath(projectFolder, "assets", "fonts", "FiraCode-Regular.ttf"))
+    cp(joinpath(pwd(), "..", "fonts", "FiraCode-Regular.ttf"), joinpath(projectFolder, "assets", "fonts", "FiraCode-Regular.ttf"))
 
 
     # create the scenes folder

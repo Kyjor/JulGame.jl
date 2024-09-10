@@ -98,7 +98,7 @@ module SceneBuilderModule
         if size.y < camSize.y && size.y > 0
             camSize = Vector2(camSize.x, size.y)
         end
-        #MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
+        MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
 
         flags = SDL2.SDL_RENDERER_ACCELERATED |
 		(JulGame.IS_EDITOR ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
@@ -262,7 +262,7 @@ module SceneBuilderModule
     end
     
     function create_new_screen_button(this::Scene)
-        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
+        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"), "test")
         JulGame.initialize(screenButton)
         push!(MAIN.scene.screenButtons, screenButton)
         push!(MAIN.scene.uiElements, screenButton)

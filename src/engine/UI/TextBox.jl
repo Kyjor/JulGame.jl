@@ -38,9 +38,9 @@ module TextBoxModule
             this.persistentBetweenScenes = false
             this.isActive = true
             
-            basePath = fontPath != "" ? joinpath(BasePath, "assets", "fonts") : joinpath(pwd(), "..", "Fonts")
+            basePath = joinpath(BasePath, "assets", "fonts")
             if fontPath == ""
-                fontPath = joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")
+                fontPath = joinpath("FiraCode-Regular.ttf")
             end
 
             UI.load_font(this, basePath, fontPath)
@@ -76,7 +76,7 @@ module TextBoxModule
         if this.font == C_NULL
             return
         end
-        if fontPath != joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf")
+        if fontPath != joinpath("FiraCode-Regular.ttf")
             this.fontPath = fontPath
         end
 
@@ -146,12 +146,16 @@ module TextBoxModule
         end
     end
     
-    function UI.update_font_size(this::TextBox, newSize::Int32)
+    function UI.update_font_size(this::TextBox, newSize::Int32; basePath::String = "")
         this.fontSize = newSize
         # TODO: SDL2.TTF_SetFontSize(this.font, newSize)
         # close font, reopen with new size
+        if basePath == ""
+            basePath = joinpath(BasePath, "assets", "fonts")
+        end
+
         SDL2.TTF_CloseFont(this.font)
-        UI.load_font(this, joinpath(BasePath, "assets", "fonts"), joinpath(this.fontPath))
+        UI.load_font(this, basePath, joinpath(this.fontPath))
     end
 
     function UI.destroy(this::TextBox)

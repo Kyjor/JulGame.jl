@@ -633,7 +633,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				]
 
 				if length(this.debugTextBoxes) == 0
-					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+					fontPath = joinpath(this.assets, "fonts", "FiraCode-Regular.ttf")
 
 					for i = eachindex(statTexts)
 						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)

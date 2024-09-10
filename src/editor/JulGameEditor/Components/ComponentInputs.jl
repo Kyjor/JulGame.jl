@@ -398,27 +398,20 @@ function show_textbox_fields(textbox)
         fieldString = "$(field)"
 
         if fieldString == "fontPath"
-            buf = "$(textbox.fontPath)"*"\0"^(64)
-            CImGui.InputText("Font Path Input", buf, length(buf))
-            currentTextInTextBox = ""
-            for characterIndex = eachindex(buf)
-                if Int32(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            textbox.fontPath = currentTextInTextBox
+            nameToDisplay = textbox.fontPath == joinpath("FiraCode-Regular.ttf") ? "Default: FiraCode-Regular.ttf" : textbox.fontPath
+            CImGui.Text("Current font: $(nameToDisplay)")
 
             basePath = joinpath(BasePath, "assets", "fonts")
             fontPath = joinpath(strip(String(textbox.fontPath)))
-            if strip(String(currentTextInTextBox)) == "" || joinpath(strip(String(currentTextInTextBox))) == joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
-                basePath = joinpath(pwd(), "..")
-                fontPath = joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+            if strip(String(textbox.fontPath)) == "" || joinpath(strip(String(textbox.fontPath))) == joinpath("FiraCode-Regular.ttf")
+                fontPath = joinpath("FiraCode-Regular.ttf")
             end
-            fontMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "fonts"), "fonts")
+            fontMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "fonts"), "fonts"; default="FiraCode-Regular")
             if fontMenuValue != ""
+                if fontMenuValue == "Default"
+                    fontMenuValue = joinpath("FiraCode-Regular.ttf")
+                end
+
                 # remove joinpath("assets", "fonts") from fontMenuValue and set it to fontPath
                 fontPath = replace(fontMenuValue, joinpath(JulGame.BasePath, "assets", "fonts") => "")
                 # remove leading / or \\ from fontPath
@@ -427,8 +420,8 @@ function show_textbox_fields(textbox)
                 end
 
                 textbox.fontPath = fontPath
+                UI.load_font(textbox, basePath, fontPath)
             end 
-            CImGui.Button("Load Font") && (UI.load_font(textbox, basePath, fontPath))
         else 
             show_textbox_fields(textbox, field)
         end  
@@ -455,7 +448,7 @@ function show_screenbutton_fields1(screenButton)
             setfield!(screenButton, Symbol(fieldString), currentTextInScreenButton)
 
             if fieldString == "fontPath"
-                # TODO: CImGui.Button("Load Font") && (UI.load_font(screenButton, joinpath(pwd()), joinpath("Fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")))
+                # TODO: CImGui.Button("Load Font") && (UI.load_font(screenButton, joinpath(pwd()), joinpath("FiraCode-Regular.ttf")))
             elseif fieldString == "buttonUpSpritePath"
                 CImGui.Button("Load Button Up Sprite") && (UI.load_button_sprite_editor(screenButton, currentTextInScreenButton, true))
             elseif fieldString == "buttonDownSpritePath"
