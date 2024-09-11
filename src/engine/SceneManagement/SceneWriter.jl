@@ -139,6 +139,18 @@ module SceneWriterModule
                     "useGravity" => component.useGravity,
                     )
                 push!(componentsDict, serializedComponent)
+            elseif componentType == "Shape"
+                serializedComponent = Dict(
+                    "type" => componentType,
+                    "color" => Dict("x" => component.color.x, "y" => component.color.y, "z" => component.color.z),
+                    "isFilled" => component.isFilled, 
+                    "isWorldEntity" => component.isWorldEntity, 
+                    "layer" => component.layer, 
+                    "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
+                    "position" => Dict("x" => component.position.x, "y" => component.position.y),
+                    "size" => Dict("x" => component.size.x, "y" => component.size.y),
+                    )
+                push!(componentsDict, serializedComponent)
             elseif componentType == "SoundSource"
                 serializedComponent = Dict(
                     "type" => componentType, 

@@ -345,6 +345,7 @@ function move_entities(entities, origin, destination)
 end
 
 function log_exceptions(error_type, latest_exceptions, e, top_backtrace, is_test_mode)
+    @error string(e)
     Base.show_backtrace(stderr, catch_backtrace())
     push!(latest_exceptions, [e, String("$(Dates.now())"), top_backtrace])
     if length(latest_exceptions) > 10

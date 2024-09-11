@@ -159,13 +159,13 @@ module EntityModule
         return this.sprite
     end
 
-    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, false, Math.Vector2f(0,0), Math.Vector2f(0,0)))
+    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1)))
         if this.shape != C_NULL
             println("Shape already exists on entity named ", this.name)
             return
         end
 
-        this.shape = InternalShape(this::Entity, shape.size, shape.color, shape.isFilled, shape.offset; isWorldEntity = shape.isWorldEntity, position = shape.position)
+        this.shape = InternalShape(this::Entity, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer)
         
         return this.shape
     end

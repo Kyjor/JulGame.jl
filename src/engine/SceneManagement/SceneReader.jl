@@ -7,6 +7,7 @@ module SceneReaderModule
     using ...EntityModule
     using ...Math
     using ...RigidbodyModule
+    using ...ShapeModule
     using ...SoundSourceModule
     using ...SpriteModule
     using ...UI.TextBoxModule
@@ -66,6 +67,9 @@ module SceneReaderModule
                         continue
                     elseif typeof(component) == Rigidbody
                         JulGame.add_rigidbody(newEntity, component::Rigidbody)
+                        continue
+                    elseif typeof(component) == Shape
+                        JulGame.add_shape(newEntity, component::Shape)
                         continue
                     elseif typeof(component) == SoundSource
                         JulGame.add_sound_source(newEntity, component::SoundSource)
@@ -169,6 +173,15 @@ module SceneReaderModule
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
                 center = !haskey(component, "center") ? Vector2f(0.5,0.5) : Vector2f(component.center.x, component.center.y)
                 newComponent = Sprite(color::Vector3, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit), center::Vector2f)
+            elseif component.type == "Shape"
+                color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
+                layer = !haskey(component, "layer") ? Int32(0) : Int32(component.layer)
+                size = !haskey(component, "size") || isempty(component.size) ? Vector2f(1,1) : Vector2f(component.size.x, component.size.y)
+                isFilled = !haskey(component, "isFilled") ? true : component.isFilled
+                isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
+                offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
+                position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
+                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int32, offset::Vector2f, position::Vector2f, size::Vector2f)
             end
             
             return newComponent

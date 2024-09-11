@@ -50,7 +50,7 @@ function JulGame.initialize(this::TestScript)
         newShape = C_NULL
         @testset "Engine Shape Tests" begin
             @testset "Shape constructor" begin
-                newShape = ShapeModule.Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, true, Math.Vector2f(0,0), Math.Vector2f(0,0))
+                newShape = ShapeModule.Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1))
                 @test newShape != C_NULL && newShape !== nothing
             end
         end

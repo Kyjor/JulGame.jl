@@ -23,7 +23,7 @@ function display_files(base_path::String, file_type::String, title::String = "",
         end
         for file::String in readdir(joinpath(base_path))
             if isdir(joinpath(base_path, file))
-                value = display_files(joinpath(base_path, file), file_type, depth+1)
+                value = display_files(joinpath(base_path, file), file_type, "", depth+1)
                 if value != ""
                     break
                 end

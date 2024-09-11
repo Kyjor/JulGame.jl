@@ -26,7 +26,7 @@ function JulGame.initialize(this::GameManager)
     #todo: MAIN.cameraBackgroundColor = (0, 0, 0)
     MAIN.optimizeSpriteRendering = true
 
-    JulGame.add_shape(this.parent, JulGame.ShapeModule.Shape(Math.Vector3(0,0,0), Math.Vector2f(10,5),  true, false, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5)))
+    JulGame.add_shape(this.parent, JulGame.ShapeModule.Shape(Math.Vector3(0,0,0), true, false, 0, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5), Math.Vector2f(10,5)))
     coinUI = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "CoinUI")
     livesUI = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "LivesUI")
 

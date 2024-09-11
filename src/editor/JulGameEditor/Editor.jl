@@ -261,7 +261,7 @@ module Editor
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
                             currentHierarchyFilterText = hierarchyFilterText[]
-                            text_input_single_line("Hierarchy Filter", hierarchyFilterText) 
+                            text_input_single_line("get_scene_file_name_from_full_scene_path", hierarchyFilterText) 
                             updateSelectionsBasedOnFilter = hierarchyFilterText[] != currentHierarchyFilterText
                             filteredEntities = filter(entity -> (isempty(hierarchyFilterText[]) || contains(lowercase(entity.name), lowercase(hierarchyFilterText[]))), currentSceneMain.scene.entities)
                             entitiesWithParents = filter(entity -> entity.parent != C_NULL, currentSceneMain.scene.entities)
@@ -448,13 +448,13 @@ module Editor
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     if currentSceneMain !== nothing
-                        JulGame.MainLoop.render_scene_sprites(currentSceneMain, camera)
+                        JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, camera)
                     end
 
                     SDL2.SDL_SetRenderTarget(renderer, gameTexture)
                     SDL2.SDL_RenderClear(renderer)
                     if currentSceneMain !== nothing
-                        JulGame.MainLoop.render_scene_sprites(currentSceneMain, gameCamera)
+                        JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, gameCamera)
                     end
 
                     gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible

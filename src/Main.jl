@@ -564,55 +564,10 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			cameraSize = this.scene.camera !== nothing ? this.scene.camera.size : Math.Vector2(0,0)
 			
 			if !JulGame.IS_EDITOR
-				println("Rendering scene")
-				render_scene_sprites(this, this.scene.camera)
+				render_scene_sprites_and_shapes(this, this.scene.camera)
 			end
-
-			#println("Skipped $skipcount, rendered $rendercount")
-
-			colliderSkipCount = 0
-			colliderRenderCount = 0
-			for entity in this.scene.entities
-				if !entity.isActive
-					continue
-				end
-
-				entityShape = entity.shape
-				if entityShape != C_NULL
-					Component.draw(entityShape)
-				end
-				
-				if DEBUG && entity.collider != C_NULL
-					SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-					pos = entity.transform.position
-					scale = entity.transform.scale
-
-					if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
-						colliderSkipCount += 1
-						continue
-					end
-					colliderRenderCount += 1
-					collider = entity.collider
-					if Component.get_type(collider) == "CircleCollider"
-						SDL2E.SDL_RenderDrawCircle(
-							round(Int32, (pos.x - cameraPosition.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, (pos.y - cameraPosition.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, collider.diameter/2 * SCALE_UNITS))
-					else
-						colSize = Component.get_size(collider)
-						colSize = Math.Vector2f(colSize.x, colSize.y)
-						colOffset = collider.offset
-						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
-
-						SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * SCALE_UNITS - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						(pos.y + colOffset.y - cameraPosition.y) * SCALE_UNITS - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
-						entity.transform.scale.x * colSize.x * SCALE_UNITS, 
-						entity.transform.scale.y * colSize.y * SCALE_UNITS)))
-					end
-				end
-			end
-			#println("Skipped $colliderSkipCount, rendered $colliderRenderCount")
+			
+			render_scene_debug(this, cameraPosition, cameraSize, DEBUG)
 
 			#region UI
 			for uiElement in this.scene.uiElements
@@ -660,7 +615,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 		end
     end
 
-	function render_scene_sprites(this::Main, camera)
+	function render_scene_sprites_and_shapes(this::Main, camera::Camera)
 		cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0,0)
 		cameraSize = camera !== nothing ? camera.size : Math.Vector2(0,0)
 			
@@ -668,19 +623,36 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 		rendercount = 0
 		renderOrder = []
 		for entity in this.scene.entities
-			if !entity.isActive || (entity.sprite == C_NULL && entity.shape == C_NULL)
+			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
+			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
+			if !entity.isActive || (!spriteExists && !shapeExists)
 				continue
 			end
 
-			shapeOrSprite = entity.sprite != C_NULL ? entity.sprite : entity.shape
-			shapeOrSpritePosition = shapeOrSprite.parent.transform.position
-			shapeOrSpriteSize = shapeOrSprite.parent.transform.scale
-			if ((shapeOrSpritePosition.x + shapeOrSpriteSize.x) < cameraPosition.x || shapeOrSpritePosition.y < cameraPosition.y || shapeOrSpritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (shapeOrSpritePosition.y - shapeOrSpriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shapeOrSprite.isWorldEntity && this.optimizeSpriteRendering 
-				skipcount += 1
-				continue
+			position = entity.transform.position
+			size = entity.transform.scale
+			sprite = entity.sprite
+			shape = entity.shape
+
+			skipSprite = false
+			skipShape = false
+
+			# TODO: consider offset
+			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+				skipSprite = true
 			end
 
-			push!(renderOrder, (shapeOrSprite.layer, shapeOrSprite))
+			# TODO: consider offset
+			if shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shape.isWorldEntity && this.optimizeSpriteRendering 
+				skipShape = true
+			end
+
+			if !skipSprite && spriteExists
+				push!(renderOrder, (sprite.layer, sprite))
+			end
+			if !skipShape && shapeExists
+				push!(renderOrder, (shape.layer, shape))
+			end
 		end
 
 		sort!(renderOrder, by = x -> x[1])
@@ -710,4 +682,46 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			this.scene.camera.target = C_NULL
 		end
 	end
-end
+
+	function render_scene_debug(this::Main, cameraPosition, cameraSize, DEBUG)
+		colliderSkipCount = 0
+		colliderRenderCount = 0
+		for entity in this.scene.entities
+			if !entity.isActive
+				continue
+			end
+	
+			if DEBUG && entity.collider != C_NULL
+				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+				pos = entity.transform.position
+				scale = entity.transform.scale
+	
+				if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
+					colliderSkipCount += 1
+					continue
+				end
+				colliderRenderCount += 1
+				collider = entity.collider
+	
+				if Component.get_type(collider) == "CircleCollider"
+					SDL2E.SDL_RenderDrawCircle(
+							round(Int32, (pos.x - cameraPosition.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int32, (pos.y - cameraPosition.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int32, collider.diameter/2 * SCALE_UNITS))
+				else
+						colSize = Component.get_size(collider)
+						colSize = Math.Vector2f(colSize.x, colSize.y)
+						colOffset = collider.offset
+						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
+						
+						SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * SCALE_UNITS - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						(pos.y + colOffset.y - cameraPosition.y) * SCALE_UNITS - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						entity.transform.scale.x * colSize.x * SCALE_UNITS, 
+						entity.transform.scale.y * colSize.y * SCALE_UNITS)))
+				end
+			end
+		end
+	end
+end # module
+
