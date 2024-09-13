@@ -95,7 +95,7 @@ module SpriteModule
         parentTransform = this.parent.transform
 
         cameraDiff = this.isWorldEntity && camera !== nothing ? 
-        Math.Vector2(camera.position.x * SCALE_UNITS, camera.position.y * SCALE_UNITS) : 
+        Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
         Math.Vector2(0,0)
         position = this.isWorldEntity ?
         parentTransform.position :

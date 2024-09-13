@@ -36,7 +36,7 @@ module MainLoop
 		windowName::String
 		zoom::Float64
 
-		function Main(zoom::Float64)
+		function Main(zoom::Float64 = 1.0)
 			this::Main = new()
 
 			SDL2.init()
@@ -483,7 +483,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
 			if JulGame.IS_EDITOR && this.scene.camera !== nothing
-				this.scene.camera.size = Math.Vector2(windowSize.x, windowSize.y)
+				#this.scene.camera.size = Math.Vector2(windowSize.x, windowSize.y)
 			end
 
 			DEBUG = false
@@ -532,7 +532,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			currentRenderTime = SDL2.SDL_GetTicks()
 			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
 			if this.scene.camera !== nothing
-				JulGame.CameraModule.update(this.scene.camera, C_NULL)
+				JulGame.CameraModule.update(this.scene.camera)
 			end
 
 			for entity in this.scene.entities
@@ -679,7 +679,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 		this.isGameModeRunningInEditor = false
 		SDL2.Mix_HaltMusic()
 		if this.scene.camera !== nothing
-			this.scene.camera.target = C_NULL
+			this.scene.camera.target = nothing
 		end
 	end
 

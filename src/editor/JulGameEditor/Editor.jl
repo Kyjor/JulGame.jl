@@ -22,15 +22,16 @@ module Editor
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
     function run(is_test_mode::Bool=false)
+        isPackageCompiled = ccall(:jl_generating_output, Cint, ()) == 1
         windowTitle = "JulGame Editor v0.1.0"
 
         info = init_sdl_and_imgui(windowTitle)
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
         startingSize = ImVec2(1920, 1080)
         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
-        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, startingSize.x, startingSize.y)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
+        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, 200, 200)# SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
         sceneTextureSize = ImVec2(startingSize.x, startingSize.y)
-        gameTextureSize = ImVec2(startingSize.x, startingSize.y)
+        gameTextureSize = ImVec2(200, 200)
 
         style_imGui()
         showDemoWindow = true
@@ -60,7 +61,7 @@ module Editor
 
         scrolling = Ref(ImVec2(0.0, 0.0))
         zoom_level = Ref(1.0)
-        playMode = Ref(false)
+        playMode = false
 
         animation_window_dict = Ref(Dict())
         animator_preview_dict = Ref(Dict())
@@ -82,6 +83,8 @@ module Editor
         panOffset = Math.Vector2(0, 0)
         camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
         gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
+        confirmation_modal = ConfirmationModal("Start/Stop Game"; message="Are you sure you want to start/stop the game? Any unsaved progress will be lost.", confirmText="Yes", cancelText="No", open=false, type="Warning")
+        cameraWindow = CameraWindow(true, gameCamera)
 
         try
             while !quit                    
@@ -116,10 +119,13 @@ module Editor
                     events["New-Scene"] = @event begin
                         currentDialog[] = "New Scene"
                     end
+                    events["Play-Mode"] = @event begin confirmation_modal.open = true; end
+                    
                     show_main_menu_bar(events, currentSceneMain)
                     ################################# END MAIN MENU BAR
-
-                    @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
+                    if !isPackageCompiled
+                        @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
+                    end
 
                     @cstatic begin
                         #region Scene List
@@ -151,7 +157,7 @@ module Editor
                         CImGui.End()
                     end
                     
-                    if currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
+                    if !playMode && currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
                         newWindowTitle = "$(windowTitle) - $(currentSelectedProjectPath[])"
                         SDL2.SDL_SetWindowTitle(window, newWindowTitle)
                     end
@@ -192,27 +198,36 @@ module Editor
 
                     uiSelected = false
                 
-                    if sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
+                    if sceneWindowSize !== nothing && sceneTextureSize !== nothing && sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
                         SDL2.SDL_DestroyTexture(sceneTexture)
                         sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, sceneWindowSize.x, sceneWindowSize.y)
                         sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
                     end
                     
-                    if gameWindowSize.x != gameTextureSize.x || gameWindowSize.y != gameTextureSize.y
+                    if gameCamera !== nothing && gameTextureSize !== nothing && gameCamera.size.x != gameTextureSize.x || gameCamera.size.y != gameTextureSize.y
                         SDL2.SDL_DestroyTexture(gameTexture)
-                        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, gameWindowSize.x, gameWindowSize.y)
-                        gameTextureSize = ImVec2(gameWindowSize.x, gameWindowSize.y)
+                        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, gameCamera.size.x, gameCamera.size.y)
+                        gameTextureSize = ImVec2(gameCamera.size.x, gameCamera.size.y)
                     end
                     
                     try
                         prevSceneWindowSize = sceneWindowSize
                         
-                        wasPlaying = playMode[]
-                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, playMode, camera)
-                        if playMode[] != wasPlaying && currentSceneMain !== nothing
-                            if playMode[]
+                        wasPlaying = playMode
+                        if show_modal(confirmation_modal)
+                            playMode = !playMode
+                            if playMode
+                                startTime[] = SDL2.SDL_GetTicks()
+                                
+                                # Animate the text in the window title
+                                SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
+                            end
+                        end
+                        #sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, camera)
+                        if playMode != wasPlaying && currentSceneMain !== nothing
+                            if playMode
                                 JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
-                            elseif !playMode[]
+                            elseif !playMode
                                 JulGame.MainLoop.stop_game_in_editor(currentSceneMain)
                                 JulGame.change_scene(String(currentSceneName))
                             end
@@ -444,6 +459,25 @@ module Editor
 
                         log_exceptions("UI Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
                     end
+
+                    try
+                        show_camera_window(cameraWindow)
+                    catch e
+                    # Get the stack trace
+                    bt = stacktrace(catch_backtrace())
+                        
+                    file = ""
+                    line = ""
+                    if !isempty(bt)
+                        top_frame = bt[1]
+                        file = top_frame.file
+                        line = top_frame.line
+                    else
+                        @info("Stack trace is empty.")
+                    end
+
+                    log_exceptions("UI Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
+                end
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)

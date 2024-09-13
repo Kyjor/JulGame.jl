@@ -235,8 +235,10 @@ module InputModule
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
             @info(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
-            @info(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-            JulGame.MainLoop.update_viewport(MAIN, event.window.data1, event.window.data2)
+            if !JulGame.IS_EDITOR
+                @info(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
+                JulGame.MainLoop.update_viewport(MAIN, event.window.data1, event.window.data2)
+            end
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
             @info(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED

@@ -31,25 +31,20 @@ module CameraModule
         end
     end
 
-    function update(this::Camera, newPosition)
+    function update(this::Camera, newPosition = nothing)
         #SDL2.SDL_SetRenderDrawColor(Renderer, this.backgroundColor[1], this.backgroundColor[2], this.backgroundColor[3], SDL2.SDL_ALPHA_OPAQUE);
         #SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
 
-        if this.target != C_NULL && newPosition == C_NULL
+        center =  Vector2f(this.size.x/SCALE_UNITS/2, this.size.y/SCALE_UNITS/2)
+        if this.target !== nothing && newPosition === nothing && this.target !== C_NULL && newPosition !== C_NULL
             targetPos = this.target.position
-            center =  Vector2f(this.size.x/SCALE_UNITS/2, this.size.y/SCALE_UNITS/2)
             targetScale = this.target.scale
             this.position = targetPos - center + 0.5 * targetScale + this.offset
             return
         end
-        if newPosition == C_NULL
+        if newPosition === nothing || newPosition == C_NULL
             return
         end
         this.position = newPosition
     end
-
-    function set_target(this::Camera, target)
-        this.target = target
-    end
-
 end

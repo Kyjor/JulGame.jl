@@ -26,8 +26,8 @@ module JulGame
     export Renderer
     
     include("utils/Macros.jl")
-    using .Macros: @event
-    export @event
+    using .Macros: @event, @argevent
+    export @event, @argevent
 
     include("Math/Math.jl")
     using .Math: Math

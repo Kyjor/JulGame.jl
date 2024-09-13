@@ -1,4 +1,4 @@
-function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, playMode, camera)
+function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, camera)
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Scene") || (CImGui.End(); return)
     # GET SIZE OF SCENE TEXTURE
@@ -8,10 +8,6 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     draw_list = CImGui.GetWindowDrawList()
     io = CImGui.GetIO()
     
-    # UI elements
-    if (!playMode[] && CImGui.Button("Play")) || (playMode[] && CImGui.Button("Stop"))
-        playMode[] = !playMode[]
-    end
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
     canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
@@ -98,16 +94,26 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     end
 
      # Draw grid and lines
-    CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
-        GRID_STEP = 64.0 * zoom_level[]
-        for x in 0:GRID_STEP:canvas_sz.x
-            CImGui.AddLine(draw_list, ImVec2(canvas_p0.x + x - camPos.x, canvas_p0.y), ImVec2(canvas_p0.x + x - camPos.x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
-        end
-        for y in 0:GRID_STEP:canvas_sz.y
-            CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, y + canvas_p0.y - camPos.y), ImVec2(canvas_p1.x, y + canvas_p0.y - camPos.y), IM_COL32(200, 200, 200, 40))
-        end
+     CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
 
-    CImGui.PopClipRect(draw_list)
+     GRID_STEP = 64.0 * zoom_level[]
+     
+     # Adjust starting points for infinite grid
+     start_x = canvas_p0.x - mod(camPos.x, GRID_STEP)
+     start_y = canvas_p0.y - mod(camPos.y, GRID_STEP)
+     
+     # Draw vertical grid lines
+     for x in start_x:GRID_STEP:canvas_p1.x
+         CImGui.AddLine(draw_list, ImVec2(x, canvas_p0.y), ImVec2(x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
+     end
+     
+     # Draw horizontal grid lines
+     for y in start_y:GRID_STEP:canvas_p1.y
+         CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, y), ImVec2(canvas_p1.x, y), IM_COL32(200, 200, 200, 40))
+     end
+     
+     CImGui.PopClipRect(draw_list)
+     
     
     # Draw square around selected entity
     highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
