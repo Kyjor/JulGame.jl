@@ -530,8 +530,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 
 			#region Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
-			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			if this.scene.camera !== nothing
+			if this.scene.camera !== nothing && !JulGame.IS_EDITOR
 				JulGame.CameraModule.update(this.scene.camera)
 			end
 

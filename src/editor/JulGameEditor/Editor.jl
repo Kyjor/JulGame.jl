@@ -110,7 +110,7 @@ module Editor
                     ################################# MAIN MENU BAR
                     events = Dict{String, Function}()
                     if currentSceneMain !== nothing
-                        events["Save"] = save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath[], String(currentSceneName))
+                        events["Save"] = save_scene_event(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, gameCamera, currentSelectedProjectPath[], String(currentSceneName))
                     end
                     events["New-project"] = create_project_event(currentDialog)
                     events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog)
@@ -223,7 +223,8 @@ module Editor
                                 SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
                             end
                         end
-                        #sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, camera)
+                        
+                        sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, camera)
                         if playMode != wasPlaying && currentSceneMain !== nothing
                             if playMode
                                 JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
@@ -488,6 +489,7 @@ module Editor
                     SDL2.SDL_SetRenderTarget(renderer, gameTexture)
                     SDL2.SDL_RenderClear(renderer)
                     if currentSceneMain !== nothing
+                        JulGame.CameraModule.update(gameCamera)
                         JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, gameCamera)
                     end
 
@@ -565,7 +567,7 @@ module Editor
         catch e
             backup_file_name = backup_file_name = "$(replace(currentSceneName, ".json" => ""))-backup-$(replace(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"), ":" => "-")).json"
             @info string("Backup file name: ", backup_file_name)
-            SceneWriterModule.serialize_entities(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, currentSelectedProjectPath[], backup_file_name)
+            SceneWriterModule.serialize_entities(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, gameCamera, currentSelectedProjectPath[], backup_file_name)
             Base.show_backtrace(stderr, catch_backtrace())
             @warn "Error in renderloop!" exception=e
         finally

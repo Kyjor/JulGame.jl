@@ -118,9 +118,9 @@ Save the scene by serializing the entities and text boxes to a file.
 # Returns
 - `event`: The event object representing the save scene event.
 """
-function save_scene_event(entities, uiElements, projectPath::String, sceneName::String)
+function save_scene_event(entities, uiElements, camera, projectPath::String, sceneName::String)
     event = @event begin
-        SceneWriterModule.serialize_entities(entities, uiElements, projectPath, "$(sceneName)")
+        SceneWriterModule.serialize_entities(entities, uiElements, camera, projectPath, "$(sceneName)")
     end
 
     return event

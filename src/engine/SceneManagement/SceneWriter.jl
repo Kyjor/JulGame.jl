@@ -14,7 +14,7 @@ module SceneWriterModule
     - `sceneName`: The name of the scene.
 
     """
-    function serialize_entities(entities::Array, uiElements::Array, projectPath, sceneName)
+    function serialize_entities(entities::Array, uiElements::Array, camera, projectPath, sceneName)
         
         println("Serializing entities")
         entitiesDict = []
@@ -66,7 +66,8 @@ module SceneWriterModule
         end
         entitiesJson = Dict( 
             "Entities" => entitiesDict,
-            "UIElements" => uiElementsDict
+            "UIElements" => uiElementsDict,
+            "Camera" => Dict("position" => Dict("x" => camera.position.x, "y" => camera.position.y), "backgroundColor" => Dict("r" => camera.backgroundColor[1], "g" => camera.backgroundColor[2], "b" => camera.backgroundColor[3], "a" => camera.backgroundColor[4]), "size" => Dict("x" => camera.size.x, "y" => camera.size.y), "offset" => Dict("x" => camera.offset.x, "y" => camera.offset.y), "startingCoordinates" => Dict("x" => camera.startingCoordinates.x, "y" => camera.startingCoordinates.y))
             )
         try
             println("writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))")
