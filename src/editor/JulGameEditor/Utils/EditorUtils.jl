@@ -142,7 +142,7 @@ This function creates an event that allows the user to select a project folder. 
 function select_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
     event = @event begin
         if currentSceneMain === nothing 
-            choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            choose_project_filepath() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
         else
             dialog[] = "Select Project"
         end
@@ -161,7 +161,7 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
             CImGui.CloseCurrentPopup()
             dialog[] = ""
 
-            return choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            return choose_project_filepath() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
         end
         CImGui.SetItemDefaultFocus()
         CImGui.SameLine()
@@ -196,7 +196,7 @@ function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPa
         CImGui.NewLine()
 
         if CImGui.Button("Open", (120, 0))
-            selectedProjectPath[] = choose_folder_with_dialog()
+            selectedProjectPath[] = choose_project_filepath()
         end
         CImGui.SameLine()
 

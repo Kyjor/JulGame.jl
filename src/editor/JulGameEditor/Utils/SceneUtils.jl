@@ -34,15 +34,14 @@ An array of file paths to the JSON files found in the "scenes" folder.
 function get_all_scenes_from_folder(projectPath::String)
     sceneFiles = []
     try
-        # search through projectpath and it's subdirectories for a scenes folder. If it exists, return all of the json files from it
-        for (root, dirs, files) in walkdir(projectPath)
-            if "scenes" in dirs
-                for (root, dirs, files) in walkdir(joinpath(root, "scenes"))
-                    for file in files
-                        # println(file)
-                        if occursin(r".json$", file)
-                            push!(sceneFiles, joinpath(root, file))
-                        end
+        # get all files in the scenes folder joinpath(projectPath, "scenes")
+        if !isdir(joinpath(projectPath, "scenes"))
+            @error "No scenes folder found in project directory: $projectPath"
+        else
+            for (root, dirs, files) in walkdir(joinpath(projectPath, "scenes"))
+                for file in files
+                    if occursin(r".json$", file)
+                        push!(sceneFiles, joinpath(root, file))
                     end
                 end
             end
@@ -77,14 +76,12 @@ function get_all_scenes_from_base_folder(projectPath::String)
 end
 
 """
-    choose_folder_with_dialog()
+    choose_project_filepath()
 
-Opens a dialog box to choose a folder.
+Opens a dialog box to choose a config.julgame file.
 """
-function choose_folder_with_dialog()
-    dir = pick_folder()
-    # println("open_dialog returned $dir")
-    return dir
+function choose_project_filepath()
+    return dirname(pick_file(; filterlist="julgame"))
 end
 
 

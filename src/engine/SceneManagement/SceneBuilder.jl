@@ -326,7 +326,7 @@ const DEFAULT_CONFIG = Dict(
 
 # Function to read and parse the config file
 function parse_config()
-    filename = joinpath(JulGame.BasePath, "..", "config.julgame")
+    filename = joinpath(JulGame.BasePath, "config.julgame")
     config = copy(DEFAULT_CONFIG)
     
     if isfile(filename)
