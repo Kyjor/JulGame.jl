@@ -114,6 +114,7 @@ module SceneBuilderModule
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
+        MAIN.scene.camera = scene[3]
         
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
@@ -189,6 +190,8 @@ module SceneBuilderModule
                 UI.center_text(uiElement)
             end
         end
+
+        MAIN.scene.camera = scene[3]
 
         for entity in MAIN.scene.entities
             if entity.persistentBetweenScenes #TODO: Verify if the entity is in it's first scene. If it is, don't skip the scripts.

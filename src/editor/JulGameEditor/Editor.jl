@@ -166,10 +166,12 @@ module Editor
                         if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                             if currentSceneMain === nothing
                                 currentSceneMain = load_scene(currentScenePath, renderer)
-                                currentSceneMain.scene.camera = gameCamera
-                                #TODO: currentSceneMain.cameraBackgroundColor = (50, 50, 50)
+                                gameCamera = currentSceneMain.scene.camera
+                                cameraWindow.camera = gameCamera
                             else
                                 JulGame.change_scene(String(currentSceneName))
+                                gameCamera = currentSceneMain.scene.camera
+                                cameraWindow.camera = gameCamera
                             end
                         end
                     elseif currentDialog[] == "New Scene"

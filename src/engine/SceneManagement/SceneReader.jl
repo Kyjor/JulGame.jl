@@ -2,6 +2,7 @@ module SceneReaderModule
     using JSON3
     using ...AnimatorModule
     using ...AnimationModule
+    using ...CameraModule
     using ...ColliderModule
     using ...CircleColliderModule
     using ...EntityModule
@@ -87,20 +88,25 @@ module SceneReaderModule
             end
 
             for entity in entities
-                    if haskey(childParentDict, string(entity.id))
-                        parentId = childParentDict[string(entity.id)]
-                        for e in entities
-                            if string(e.id) == string(parentId)
-                                entity.parent = e
-                            end
+                if haskey(childParentDict, string(entity.id))
+                    parentId = childParentDict[string(entity.id)]
+                    for e in entities
+                        if string(e.id) == string(parentId)
+                            entity.parent = e
                         end
                     end
+                end
             end
-
             uiElements = deserialize_ui_elements(json.UIElements)
-    
+            camera = Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
+            if haskey(json, "Camera")
+                camera = Camera(Vector2(json.Camera.size.x, json.Camera.size.y), Vector2f(json.Camera.position.x, json.Camera.position.y), Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
+                camera.backgroundColor = (json.Camera.backgroundColor.r, json.Camera.backgroundColor.g, json.Camera.backgroundColor.b, json.Camera.backgroundColor.a)
+            end
+             
             push!(res, entities)
             push!(res, uiElements)
+            push!(res, camera)
             return res
         catch e 
             @error string(e)

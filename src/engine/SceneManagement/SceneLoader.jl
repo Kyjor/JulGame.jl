@@ -49,7 +49,7 @@ module SceneLoaderModule
         JulGame.MAIN = JulGame.Main(Float64(1.0))
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene("$sceneFileName", "$projectPath")
-
+        
         SceneBuilderModule.load_and_prepare_scene(;this=scene)
 
         return MAIN
@@ -69,25 +69,7 @@ module SceneLoaderModule
 
     """
     function get_project_path_from_full_scene_path(scenePath::String)
-        projectPath = ""
-        dirArray = length(split(scenePath, "/")) > 1 ? split(scenePath, "/") : split(scenePath, "\\")
-        counter = 1
-        for dir in dirArray
-            if counter >= length(dirArray)-1
-                continue
-            elseif counter == 1
-                projectPath = "$dir\\"
-            else
-                projectPath = joinpath(projectPath, dir)
-            end
-            counter += 1
-        end
-
-        if startswith(projectPath, "\\/")
-            projectPath = projectPath[2:end]
-        end
-
-        return projectPath
+        return dirname(dirname(scenePath))
     end
 
     export get_scene_file_name_from_full_scene_path
