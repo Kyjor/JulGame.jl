@@ -195,9 +195,10 @@ function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPa
         newProjectText[] = replace(newProjectText[], "." => "-")
         CImGui.NewLine()
 
-        if CImGui.Button("Open", (120, 0))
-            selectedProjectPath[] = choose_project_filepath()
+        if CImGui.Button("Select directory", (120, 0))
+            selectedProjectPath[] = choose_folder_with_dialog()
         end
+        
         CImGui.SameLine()
 
         newProjectPath = joinpath(selectedProjectPath[], newProjectText[])

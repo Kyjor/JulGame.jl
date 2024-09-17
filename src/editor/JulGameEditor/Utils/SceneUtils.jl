@@ -84,6 +84,11 @@ function choose_project_filepath()
     return dirname(pick_file(; filterlist="julgame"))
 end
 
+function choose_folder_with_dialog()
+    dir = pick_folder()
+    # println("open_dialog returned $dir")
+    return dir
+end
 
 """
     load_scene(scenePath::String, renderer)
