@@ -38,12 +38,11 @@ module TextBoxModule
             this.persistentBetweenScenes = false
             this.isActive = true
             
-            basePath = joinpath(BasePath, "assets", "fonts")
             if fontPath == ""
                 fontPath = joinpath("FiraCode-Regular.ttf")
             end
 
-            UI.load_font(this, basePath, fontPath)
+            UI.load_font(this, joinpath(BasePath, "assets", "fonts"), fontPath)
 
             return this
         end
