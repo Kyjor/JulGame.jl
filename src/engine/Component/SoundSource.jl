@@ -97,9 +97,4 @@ module SoundSourceModule
         end
         this.sound = C_NULL
     end
-    
-    function Component.set_parent(this::InternalSoundSource, parent::Any)
-        this.parent = parent
-    end
-
 end

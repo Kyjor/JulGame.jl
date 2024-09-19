@@ -34,33 +34,17 @@
         end
     end
 
-    function Component.get_last_update(this::InternalAnimator)
-        return this.lastUpdate
-    end
-
-    function Component.set_last_update(this::InternalAnimator, value)
-        this.lastUpdate = value
-    end
-
     function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
         if this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames))
             return
         end
-        deltaTime = (currentRenderTime - Component.get_last_update(this)) / 1000.0
+        deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
         framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
         if framesToUpdate > 0
             this.lastFrame = this.lastFrame + framesToUpdate
-            Component.set_last_update(this, currentRenderTime)
+            this.lastUpdate = currentRenderTime
         end
         this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
-    end
-
-    function Component.set_sprite(this::InternalAnimator, sprite)
-        this.sprite = sprite
-    end
-
-    function Component.set_parent(this::InternalAnimator, parent)
-        this.parent = parent
     end
 
     function Component.append_array(this::InternalAnimator)

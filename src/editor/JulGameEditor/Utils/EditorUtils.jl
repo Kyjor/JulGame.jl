@@ -262,9 +262,12 @@ function create_new_project(newProjectPath, newProjectName)
     mkdir(joinpath(projectFolder, "assets", "images"))
     mkdir(joinpath(projectFolder, "assets", "sounds"))
 
-    # Todo: insert the default font into the fonts folder
+    # Insert the default font into the fonts folder
     cp(joinpath(pwd(), "..", "fonts", "FiraCode-Regular.ttf"), joinpath(projectFolder, "assets", "fonts", "FiraCode-Regular.ttf"))
 
+    # Insert the button up and button down images into the images folder
+    cp(joinpath(pwd(), "..", "images", "ButtonUp.png"), joinpath(projectFolder, "assets", "images", "ButtonUp.png"))
+    cp(joinpath(pwd(), "..", "images", "ButtonDown.png"), joinpath(projectFolder, "assets", "images", "ButtonDown.png"))
 
     # create the scenes folder
     scenesFolder = joinpath(projectFolder, "scenes")

@@ -184,10 +184,6 @@ module SpriteModule
         this.isFlipped = !this.isFlipped
     end
 
-    function Component.set_parent(this::InternalSprite, parent::Any)
-        this.parent = parent
-    end
-
     function Component.load_image(this::InternalSprite, imagePath::String)
         SDL2.SDL_ClearError()
         this.image = SDL2.IMG_Load(joinpath(BasePath, "assets", "images", imagePath))

@@ -10,7 +10,6 @@ module UI
         load_font,
         render,
         set_color,
-        set_parent,
         set_position,
         update_font_size,
         update_text

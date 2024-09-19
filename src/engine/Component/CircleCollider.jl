@@ -130,10 +130,6 @@ module CircleColliderModule
         this.currentCollisions = []
     end
 
-    function Component.set_parent(this::CircleCollider, parent::Any)
-        this.parent = parent
-    end
-
     function Component.get_parent(this::CircleCollider)
         return this.parent
     end

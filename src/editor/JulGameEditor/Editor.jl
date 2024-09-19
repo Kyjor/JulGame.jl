@@ -253,7 +253,9 @@ module Editor
                     try
                         #region Hierarchy
                         CImGui.Begin("Hierarchy") 
-                        if CImGui.TreeNode("Entities") &&  currentSceneMain !== nothing
+
+                        currentSceneMain === nothing && CImGui.Text("No scene loaded.")
+                        if currentSceneMain !== nothing && CImGui.TreeNode("Entities")
                             # remove other entities from hierarchyEntitySelections if currentSceneMain.selectedEntity is not in hierarchyEntitySelections
                             # this happens if we select an entity in the scene view
                             if currentSceneMain.selectedEntity !== nothing && any(entity -> (entity[1] == currentSceneMain.selectedEntity && entity[2] == false), hierarchyEntitySelections)
@@ -313,7 +315,7 @@ module Editor
 
                         CImGui.NewLine()
                         #region UI Elements
-                        if CImGui.TreeNode("UI Elements") &&  currentSceneMain !== nothing
+                        if currentSceneMain !== nothing && CImGui.TreeNode("UI Elements")
                             CImGui.SameLine()
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
                                 CImGui.MenuItem("Add", C_NULL, false, false)

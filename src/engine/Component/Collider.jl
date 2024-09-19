@@ -78,10 +78,6 @@ module ColliderModule
         return this.parent
     end
 
-    function Component.set_parent(this::InternalCollider, parent::Any)
-        this.parent = parent
-    end
-
     function Component.check_collisions(this::InternalCollider)
         # colliders = MAIN.scene.colliders
         # #Only check the player against other colliders

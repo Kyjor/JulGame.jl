@@ -7,7 +7,7 @@
         
         scene = SceneBuilderModule.Scene("scene.json", SMOKETESTDIR)
         try
-            SceneBuilderModule.load_and_prepare_scene(scene, "JulGame Example", Math.Vector2(1920, 1080), Math.Vector2(576, 576), false, 1.0, true, 60.0, [Test])
+            SceneBuilderModule.load_and_prepare_scene(;this=scene, globals=[Test])
         catch e
             @error e
             Base.show_backtrace(stderr, catch_backtrace())

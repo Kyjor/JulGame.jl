@@ -93,10 +93,6 @@ module TextBoxModule
         end
     end
 
-    function UI.set_parent(this::TextBox, parent)
-        this.parent = parent
-    end
-
     """
         update_text(this::TextBox, newText)
 

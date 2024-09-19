@@ -89,7 +89,7 @@ module EntityModule
 
         this.animator = InternalAnimator(this::Entity, animator.animations)
         if this.sprite != C_NULL 
-            Component.set_sprite(this.animator, this.sprite)
+            this.animator.sprite = this.sprite
         end
 
         return this.animator
@@ -152,7 +152,7 @@ module EntityModule
 
         this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center)
         if this.animator != C_NULL
-            Component.set_sprite(this.animator, this.sprite)
+            this.animator.sprite = this.sprite
         end
         Component.initialize(this.sprite)
 

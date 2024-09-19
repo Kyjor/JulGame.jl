@@ -21,7 +21,6 @@ function destroy_ui_element end
 function draw end
 function flip end
 function generate_uuid end
-function get_last_update end
 function get_offset end
 function get_parent end
 function get_position end
@@ -41,14 +40,11 @@ function on_shutdown end
 function play_animation_once end
 function render end
 function set_color end
-function set_last_update end
 function set_offset end
-function set_parent end
 function set_position end
 function set_rotation end
 function set_scale end
 function set_size end
-function set_sprite end
 function set_tag end
 function stop_music end
 function toggle_sound end
