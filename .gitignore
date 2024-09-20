@@ -39,4 +39,6 @@ playground.jl
 
 *.ini
 
+*.DS_Store
+
 src/editor/Build/
