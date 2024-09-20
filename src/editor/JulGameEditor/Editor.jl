@@ -50,7 +50,7 @@ module Editor
         hierarchyUISelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
-        latest_exceptions = []
+        latest_exceptions = Ref([])
 
         sceneWindowPos = ImVec2(0, 0)
         sceneWindowSize = ImVec2(startingSize.x, startingSize.y)
@@ -127,89 +127,109 @@ module Editor
                         @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
                     end
 
-                    @cstatic begin
-                        #region Scene List
-                        CImGui.Begin("Scene List") 
-                        # txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
-                        # CImGui.Text(txt)
+                    try 
+                        @cstatic begin
+                            #region Scene List
+                            CImGui.Begin("Scene List") 
+                            # txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
+                            # CImGui.Text(txt)
 
-                        # Usage:
-                        
-                        
-                        for scene in scenesLoadedFromFolder[]
-                            name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
+                            # Usage:
                             
-                            if CImGui.Button("$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))")
-                                currentSceneName = name
-                                currentScenePath = scene
+                            
+                            for scene in scenesLoadedFromFolder[]
+                                name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
+                                
+                                if CImGui.Button("$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))")
+                                    currentSceneName = name
+                                    currentScenePath = scene
+                                    if currentSceneMain === nothing
+                                        JulGame.IS_EDITOR = true
+                                        JulGame.PIXELS_PER_UNIT = 16
+                                        currentDialog[] = "Open Scene"
+                                        currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
+                                    else
+                                        currentDialog[] = "Open Scene"
+                                    end
+                                end
+                                CImGui.NewLine()
+                            end
+
+                            CImGui.End()
+                        end
+                    catch e
+                        handle_editor_exceptions("Scene list:", latest_exceptions, e, is_test_mode)
+                    end
+                    
+                    try 
+                        if !playMode && currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
+                            newWindowTitle = "$(windowTitle) - $(currentSelectedProjectPath[])"
+                            SDL2.SDL_SetWindowTitle(window, newWindowTitle)
+                        end
+                    catch e
+                        handle_editor_exceptions("Window renaming:", latest_exceptions, e, is_test_mode)
+                    end
+                    
+                    try
+                        if currentDialog[] == "Open Scene"
+                            #println("Opening scene: $(currentDialog[][2])")
+                            if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                                 if currentSceneMain === nothing
-                                    JulGame.IS_EDITOR = true
-                                    JulGame.PIXELS_PER_UNIT = 16
-                                    currentDialog[] = "Open Scene"
-                                    currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
+                                    currentSceneMain = load_scene(currentScenePath, renderer)
+                                    gameCamera = currentSceneMain.scene.camera
+                                    cameraWindow.camera = gameCamera
                                 else
-                                    currentDialog[] = "Open Scene"
+                                    JulGame.change_scene(String(currentSceneName))
+                                    gameCamera = currentSceneMain.scene.camera
+                                    cameraWindow.camera = gameCamera
                                 end
                             end
-                            CImGui.NewLine()
-                        end
-
-                        CImGui.End()
-                    end
-                    
-                    if !playMode && currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
-                        newWindowTitle = "$(windowTitle) - $(currentSelectedProjectPath[])"
-                        SDL2.SDL_SetWindowTitle(window, newWindowTitle)
-                    end
-                    if currentDialog[] == "Open Scene"
-                        #println("Opening scene: $(currentDialog[][2])")
-                        if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
-                            if currentSceneMain === nothing
-                                currentSceneMain = load_scene(currentScenePath, renderer)
-                                gameCamera = currentSceneMain.scene.camera
-                                cameraWindow.camera = gameCamera
-                            else
-                                JulGame.change_scene(String(currentSceneName))
-                                gameCamera = currentSceneMain.scene.camera
-                                cameraWindow.camera = gameCamera
+                        elseif currentDialog[] == "New Scene"
+                            newSceneName = new_scene_dialog(currentDialog, newSceneText)
+                            if newSceneName != ""
+                                currentSceneName = newSceneName
+                                currentScenePath = joinpath(currentSelectedProjectPath[], "scenes", "$(newSceneName).json")
+                                touch(currentScenePath)
+                                file = open(currentScenePath, "w")
+                                    println(file, sceneJsonContents)
+                                close(file)
+                                JulGame.change_scene("$(String(currentSceneName)).json")
+                                scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
+                            end
+                        elseif currentDialog[] == "Select Project"
+                            selectedProjectPath = select_project_dialog(currentDialog, scenesLoadedFromFolder)
+                            if selectedProjectPath != ""
+                                currentSceneMain = nothing
+                            end
+                        elseif currentDialog[] == "New Project"
+                            selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder, currentSelectedProjectPath, newProjectText)
+                            if selectedProjectPath != ""
+                                println("Selected project path: $(selectedProjectPath)")
                             end
                         end
-                    elseif currentDialog[] == "New Scene"
-                        newSceneName = new_scene_dialog(currentDialog, newSceneText)
-                        if newSceneName != ""
-                            currentSceneName = newSceneName
-                            currentScenePath = joinpath(currentSelectedProjectPath[], "scenes", "$(newSceneName).json")
-                            touch(currentScenePath)
-                            file = open(currentScenePath, "w")
-                                println(file, sceneJsonContents)
-                            close(file)
-                            JulGame.change_scene("$(String(currentSceneName)).json")
-                            scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
-                        end
-                    elseif currentDialog[] == "Select Project"
-                        selectedProjectPath = select_project_dialog(currentDialog, scenesLoadedFromFolder)
-                        if selectedProjectPath != ""
-                            currentSceneMain = nothing
-                        end
-                    elseif currentDialog[] == "New Project"
-                        selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder, currentSelectedProjectPath, newProjectText)
-                        if selectedProjectPath != ""
-                            println("Selected project path: $(selectedProjectPath)")
-                        end
+                    catch e
+                        handle_editor_exceptions("Dialogs handler:", latest_exceptions, e, is_test_mode)
                     end
-
                     uiSelected = false
                 
-                    if sceneWindowSize !== nothing && sceneTextureSize !== nothing && sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
-                        SDL2.SDL_DestroyTexture(sceneTexture)
-                        sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, sceneWindowSize.x, sceneWindowSize.y)
-                        sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
+                    try
+                        if sceneWindowSize !== nothing && sceneTextureSize !== nothing && sceneWindowSize.x != sceneTextureSize.x || sceneWindowSize.y != sceneTextureSize.y
+                            SDL2.SDL_DestroyTexture(sceneTexture)
+                            sceneTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, sceneWindowSize.x, sceneWindowSize.y)
+                            sceneTextureSize = ImVec2(sceneWindowSize.x, sceneWindowSize.y)
+                        end
+                    catch e
+                        handle_editor_exceptions("Scene window resizing:", latest_exceptions, e, is_test_mode)
                     end
                     
-                    if gameCamera !== nothing && gameTextureSize !== nothing && gameCamera.size.x != gameTextureSize.x || gameCamera.size.y != gameTextureSize.y
-                        SDL2.SDL_DestroyTexture(gameTexture)
-                        gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, gameCamera.size.x, gameCamera.size.y)
-                        gameTextureSize = ImVec2(gameCamera.size.x, gameCamera.size.y)
+                    try
+                        if gameCamera !== nothing && gameTextureSize !== nothing && gameCamera.size.x != gameTextureSize.x || gameCamera.size.y != gameTextureSize.y
+                            SDL2.SDL_DestroyTexture(gameTexture)
+                            gameTexture = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_BGRA8888, SDL2.SDL_TEXTUREACCESS_TARGET, gameCamera.size.x, gameCamera.size.y)
+                            gameTextureSize = ImVec2(gameCamera.size.x, gameCamera.size.y)
+                        end
+                    catch e
+                        handle_editor_exceptions("Game window resizing:", latest_exceptions, e, is_test_mode)
                     end
                     
                     try
@@ -246,8 +266,7 @@ module Editor
                             sceneWindowSize = prevSceneWindowSize
                         end
                     catch e
-                        @error "Error in scene window!" exception=e
-                        Base.show_backtrace(stderr, catch_backtrace())
+                        handle_editor_exceptions("Show modal/scene window:", latest_exceptions, e, is_test_mode)
                     end
                     
                     try
@@ -355,23 +374,14 @@ module Editor
                         end
                     CImGui.End()
                 catch e
-                    # Get the stack trace
-                    bt = stacktrace(catch_backtrace())
-                        
-                    file = ""
-                    line = ""
-                    if !isempty(bt)
-                        top_frame = bt[1]
-                        file = top_frame.file
-                        line = top_frame.line
-                    else
-                        @info("Stack trace is empty.")
-                    end
-
-                    log_exceptions("Hierarchy Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
+                    handle_editor_exceptions("Hierarchy window:", latest_exceptions, e, is_test_mode)
                 end
 
-                    show_debug_window(latest_exceptions)
+                try 
+                    show_debug_window(latest_exceptions[])
+                catch e
+                    @error "Debug window error"
+                end
                     
                     try
                         #region Entity Inspector
@@ -398,20 +408,7 @@ module Editor
                         end
                         CImGui.End()
                     catch e
-                         # Get the stack trace
-                        bt = stacktrace(catch_backtrace())
-                        
-                        file = ""
-                        line = ""
-                        if !isempty(bt)
-                            top_frame = bt[1]
-                            file = top_frame.file
-                            line = top_frame.line
-                        else
-                            @info("Stack trace is empty.")
-                        end
-
-                        log_exceptions("Entity Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
+                        handle_editor_exceptions("Entity inspector window:", latest_exceptions, e, is_test_mode)
                     end
 
                     try
@@ -449,95 +446,85 @@ module Editor
                             end
                         CImGui.End()
                     catch e
-                        # Get the stack trace
-                        bt = stacktrace(catch_backtrace())
-                            
-                        file = ""
-                        line = ""
-                        if !isempty(bt)
-                            top_frame = bt[1]
-                            file = top_frame.file
-                            line = top_frame.line
-                        else
-                            @info("Stack trace is empty.")
-                        end
-
-                        log_exceptions("UI Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
+                        handle_editor_exceptions("UI inspector window:", latest_exceptions, e, is_test_mode)
                     end
 
                     try
                         show_camera_window(cameraWindow)
                     catch e
-                    # Get the stack trace
-                    bt = stacktrace(catch_backtrace())
-                        
-                    file = ""
-                    line = ""
-                    if !isempty(bt)
-                        top_frame = bt[1]
-                        file = top_frame.file
-                        line = top_frame.line
-                    else
-                        @info("Stack trace is empty.")
+                        handle_editor_exceptions("Camera window:", latest_exceptions, e, is_test_mode)
                     end
-
-                    log_exceptions("UI Inspector Window Error:", latest_exceptions, e, "$(file):$(line)", is_test_mode)
-                end
 
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
-                    if currentSceneMain !== nothing
-                        JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, camera)
+                    try
+                        if currentSceneMain !== nothing
+                            JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, camera)
+                        end
+                    catch e
+                        handle_editor_exceptions("Scene window:", latest_exceptions, e, is_test_mode)
                     end
 
                     SDL2.SDL_SetRenderTarget(renderer, gameTexture)
                     SDL2.SDL_RenderClear(renderer)
-                    if currentSceneMain !== nothing
-                        JulGame.CameraModule.update(gameCamera)
-                        JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, gameCamera)
+                    try 
+                        if currentSceneMain !== nothing
+                            JulGame.CameraModule.update(gameCamera)
+                            JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, gameCamera)
+                        end
+                    catch e
+                        handle_editor_exceptions("Game window:", latest_exceptions, e, is_test_mode)
                     end
 
-                    gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    try
+                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                    catch e
+                        handle_editor_exceptions("Game loop:", latest_exceptions, e, is_test_mode)
+                    end
+                    
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
                     SDL2.SDL_RenderClear(renderer)
                     
                     show_game_controls()
 
                     #region Input
-                    if currentSceneMain !== nothing
-                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
-                            @info string("Saving scene")
-                            events["Save"]()
-                        end
-                        # delete selected entity
-                        if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
-                            if currentSceneMain.selectedEntity !== nothing
-                                JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                    try
+                        if currentSceneMain !== nothing
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
+                                @info string("Saving scene")
+                                events["Save"]()
                             end
-                        end
-                        # duplicate selected entity with ctrl+d
-                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                            copy = deepcopy(currentSceneMain.selectedEntity)
-                            copy.id = JulGame.generate_uuid()
-                            push!(currentSceneMain.scene.entities, copy)
-                            currentSceneMain.selectedEntity = copy
-                        end
-                        # turn on duplication mode with ctrl+shift+d
-                        if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                            duplicationMode = !duplicationMode
-                            if duplicationMode
-                                @info "Duplication mode on"
+                            # delete selected entity
+                            if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
+                                if currentSceneMain.selectedEntity !== nothing
+                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                end
+                            end
+                            # duplicate selected entity with ctrl+d
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
                                 copy = deepcopy(currentSceneMain.selectedEntity)
                                 copy.id = JulGame.generate_uuid()
                                 push!(currentSceneMain.scene.entities, copy)
                                 currentSceneMain.selectedEntity = copy
-                            else
-                                @info "Duplication mode off"
-                                JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                            end
+                            # turn on duplication mode with ctrl+shift+d
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
+                                duplicationMode = !duplicationMode
+                                if duplicationMode
+                                    @info "Duplication mode on"
+                                    copy = deepcopy(currentSceneMain.selectedEntity)
+                                    copy.id = JulGame.generate_uuid()
+                                    push!(currentSceneMain.scene.entities, copy)
+                                    currentSceneMain.selectedEntity = copy
+                                else
+                                    @info "Duplication mode off"
+                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                end
                             end
                         end
+                    catch e
+                        handle_editor_exceptions("Inputs:", latest_exceptions, e, is_test_mode)
                     end
-                    
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
                     SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
@@ -587,4 +574,21 @@ module Editor
             return 0
         end
     end
-end
+
+    function handle_editor_exceptions(error_location, latest_exceptions, e, is_test_mode)
+        # Get the stack trace
+        bt = stacktrace(catch_backtrace())
+                        
+        file = ""
+        line = ""
+        if !isempty(bt)
+            top_frame = bt[1]
+            file = top_frame.file
+            line = top_frame.line
+        else
+            @info("Stack trace is empty.")
+        end
+
+        log_exceptions(error_location, latest_exceptions, e, "$(file):$(line)", is_test_mode)
+    end
+end # module

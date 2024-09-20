@@ -351,8 +351,8 @@ end
 function log_exceptions(error_type, latest_exceptions, e, top_backtrace, is_test_mode)
     @error string(e)
     Base.show_backtrace(stderr, catch_backtrace())
-    push!(latest_exceptions, [e, String("$(Dates.now())"), top_backtrace])
-    if length(latest_exceptions) > 10
+    push!(latest_exceptions[], [e, String("$(Dates.now())"), top_backtrace])
+    if length(latest_exceptions[]) > 10
         deleteat!(latest_exceptions, 1)
     end
     if is_test_mode
