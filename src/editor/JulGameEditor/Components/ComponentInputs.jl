@@ -540,42 +540,96 @@ function show_script_editor(entity, newScriptText)
         
         script = display_files(joinpath(JulGame.BasePath, "scripts"), "scripts", "Add Script")
         if script != ""
-            push!(entity.scripts, scriptObj(script, []))
+            #push!(entity.scripts, scriptObj(script, []))
         end
         
         for i = eachindex(entity.scripts)
-            if CImGui.TreeNode("Script $(i)")
+            if CImGui.TreeNode("$(i): $(split("$(typeof(entity.scripts[i]))", ".")[end])")
                 CImGui.Button("Delete $(i)") && (deleteat!(entity.scripts, i); return;)
-                CImGui.Text(entity.scripts[i].name)
-                
-                entity.scripts[i] = scriptObj(entity.scripts[i].name, entity.scripts[i].parameters)
-                if CImGui.TreeNode("Script $(i) parameters")
-                    params = entity.scripts[i].parameters
-                    CImGui.Button("Add New Script Parameter") && (push!(params, ""); entity.scripts[i] = scriptObj(entity.scripts[i].name, params); break;)
-
-                    for j = eachindex(entity.scripts[i].parameters)
-                        buf = "$(entity.scripts[i].parameters[j])"*"\0"^(64)
-                        CImGui.Button("Delete $(j)") && (deleteat!(params, j); entity.scripts[i] = scriptObj(currentTextInTextBox, params); break;)
-                        CImGui.InputText("Parameter $(j)", buf, length(buf))
-                        currentTextInTextBox = ""
-                        for characterIndex = eachindex(buf)
-                            if Int32(buf[characterIndex]) == 0 
-                                if characterIndex != 1
-                                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                                end
-                                break
-                            end
-                        end
-                        params[j] = currentTextInTextBox
-                        entity.scripts[i] = scriptObj(entity.scripts[i].name, params)
-
+                for field in fieldnames(typeof(entity.scripts[i]))
+                    if field == :parent 
+                        continue
                     end
-                    CImGui.TreePop()
+
+                    if isdefined(entity.scripts[i], Symbol(field)) 
+                        display_script_field_input(entity.scripts[i], field)
+                        CImGui.Text("$(field): $(getfield(entity.scripts[i], field))")
+                    else 
+                        init_undefined_field(entity.scripts[i], field)
+                    end
                 end
+                # CImGui.Text(entity.scripts[i].name)
+                
+                # entity.scripts[i] = scriptObj(entity.scripts[i].name, entity.scripts[i].parameters)
+                # if CImGui.TreeNode("Script $(i) parameters")
+                #     params = entity.scripts[i].parameters
+                #     CImGui.Button("Add New Script Parameter") && (push!(params, ""); entity.scripts[i] = scriptObj(entity.scripts[i].name, params); break;)
+
+                #     for j = eachindex(entity.scripts[i].parameters)
+                #         buf = "$(entity.scripts[i].parameters[j])"*"\0"^(64)
+                #         CImGui.Button("Delete $(j)") && (deleteat!(params, j); entity.scripts[i] = scriptObj(currentTextInTextBox, params); break;)
+                #         CImGui.InputText("Parameter $(j)", buf, length(buf))
+                #         currentTextInTextBox = ""
+                #         for characterIndex = eachindex(buf)
+                #             if Int32(buf[characterIndex]) == 0 
+                #                 if characterIndex != 1
+                #                     currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                #                 end
+                #                 break
+                #             end
+                #         end
+                #         params[j] = currentTextInTextBox
+                #         entity.scripts[i] = scriptObj(entity.scripts[i].name, params)
+
+                #     end
+                #    CImGui.TreePop()
+                # end
                 CImGui.TreePop()
             end
         end
         CImGui.TreePop()
+    end
+end
+
+function display_script_field_input(script, field)
+    ftype = fieldtype(typeof(script), field)
+    if ftype == String
+        buf = "$(getfield(script, field))"*"\0"^(64)
+        CImGui.InputText("$(field)", buf, length(buf))
+        currentTextInTextBox = ""
+        for characterIndex = eachindex(buf)
+            if Int32(buf[characterIndex]) == 0 
+                if characterIndex != 1
+                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
+                end
+                break
+            end
+        end
+        setfield!(script, field, currentTextInTextBox)
+    elseif ftype == Float64 || ftype == Float32
+        x = ftype(getfield(script, field))
+        x = Cfloat(x)
+        @c CImGui.InputFloat("$(field)", &x, 1)
+        setfield!(script, field, ftype(x))
+    elseif ftype <: Int
+        x = ftype(getfield(script, field))
+        @c CImGui.InputInt("$(field)", &x, 1)
+        setfield!(script, field, x)
+    elseif ftype == Bool
+        x = getfield(script, field)
+        @c CImGui.Checkbox("$(field)", &x)
+        setfield!(script, field, x)
+    end
+end
+
+function init_undefined_field(script, field)
+    ftype = fieldtype(typeof(script), field)
+    if ftype == String
+        setfield!(script, field, "")
+    elseif ftype <: Number
+        setfield!(script, field, 0)
+    elseif ftype == Bool
+        setfield!(script, field, false)
     end
 end
 

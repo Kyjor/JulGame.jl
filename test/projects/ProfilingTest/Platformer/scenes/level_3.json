@@ -12187,7 +12187,7 @@
             },
             "isDefaultFont": true,
             "isCenteredY": false,
-            "fontPath": "FiraCode//ttf//FiraCode-Medium.ttf",
+            "fontPath": "FiraCode-Regular.ttf",
             "text": "0/17"
         },
         {
@@ -12209,7 +12209,7 @@
             },
             "isDefaultFont": true,
             "isCenteredY": false,
-            "fontPath": "FiraCode//ttf//FiraCode-Medium.ttf",
+            "fontPath": "FiraCode-Regular.ttf",
             "text": "3"
         }
     ]

@@ -27,12 +27,12 @@ function JulGame.initialize(this::GameManager)
     MAIN.optimizeSpriteRendering = true
 
     JulGame.add_shape(this.parent, JulGame.ShapeModule.Shape(Math.Vector3(0,0,0), true, false, 0, Math.Vector2f(0,0), Math.Vector2f(1.2175,0.5), Math.Vector2f(10,5)))
-    coinUI = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "CoinUI")
+    coinUI = JulGame.SceneModule.get_entity_by_id(MAIN.scene, "44e5d671-cf93-4862-9048-9900f55be3dc")
     livesUI = JulGame.SceneModule.get_entity_by_name(MAIN.scene, "LivesUI")
 
-    coinUI.persistentBetweenScenes = true
-    coinUI.sprite.isWorldEntity = false
-    coinUI.sprite.position = JulGame.Math.Vector2f(-.1, 1)
+    # coinUI.persistentBetweenScenes = true
+    # coinUI.sprite.isWorldEntity = false
+    # coinUI.sprite.position = JulGame.Math.Vector2f(-.1, 1)
 
     livesUI.persistentBetweenScenes = true
     livesUI.sprite.isWorldEntity = false

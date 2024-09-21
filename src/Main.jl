@@ -243,7 +243,12 @@ function initialize_scripts_and_components()
 		for script in scripts
 			try
 				# TODO: only call latest if in editor and in game mode
-				Base.invokelatest(JulGame.initialize, script)
+				if JulGame.IS_EDITOR
+					println(typeof(script))
+					Base.invokelatest(JulGame.initialize, script)
+				else
+					JulGame.initialize(script)
+				end
 			catch e
 				#if typeof(e) != ErrorException || !contains(e.msg, "initialize")
 					@error string(e)

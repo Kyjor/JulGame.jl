@@ -72,7 +72,7 @@ module EntityModule
         for script in this.scripts
             try
                 # TODO: only call latest if in editor and in game mode
-                Base.invokelatest(JulGame.update, script, deltaTime)
+                Base.invokelatest(JulGame.update, script, deltaTime) 
             catch e
                 @error string(e)
                 Base.show_backtrace(stdout, catch_backtrace())

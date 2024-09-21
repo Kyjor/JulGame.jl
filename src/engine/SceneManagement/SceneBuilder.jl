@@ -169,6 +169,10 @@ module SceneBuilderModule
             end
         end
 
+        if JulGame.IS_EDITOR
+            add_scripts_to_entities(joinpath(BasePath))
+        end
+
         MAIN.assets = joinpath(BasePath, "assets")
         JulGame.MainLoop.prepare_window_scripts_and_start_loop(size, isResizable, autoScaleZoom)
     end
@@ -243,6 +247,10 @@ module SceneBuilderModule
                 end
             end
         end 
+
+        if JulGame.IS_EDITOR
+            add_scripts_to_entities(joinpath(BasePath))
+        end
     end
 
     """
@@ -295,7 +303,7 @@ module SceneBuilderModule
                         end
                         push!(params, param)
                     end
-                newScript = C_NULL
+                newScript = nothing
                 try
                     # TODO: only call latest if in editor and in game mode
                     newScript = Base.invokelatest(eval, Symbol(script.name))
@@ -305,7 +313,7 @@ module SceneBuilderModule
                     Base.show_backtrace(stdout, catch_backtrace())
                     rethrow(e)
                 end
-                if newScript != C_NULL
+                if newScript != C_NULL && newScript !== nothing
                     entity.scripts[scriptCounter] = newScript
                     newScript.parent = entity
                 end
@@ -315,79 +323,63 @@ module SceneBuilderModule
     end
 
     # Define default configuration values
-const DEFAULT_CONFIG = Dict(
-    "WindowName" => "Default Game",
-    "Width" => "800",
-    "Height" => "600",
-    "CameraWidth" => "800",
-    "CameraHeight" => "600",
-    "IsResizable" => "0",
-    "Zoom" => "1.0",
-    "AutoScaleZoom" => "0",
-    "FrameRate" => "30"
-)
+    const DEFAULT_CONFIG = Dict(
+        "WindowName" => "Default Game",
+        "Width" => "800",
+        "Height" => "600",
+        "CameraWidth" => "800",
+        "CameraHeight" => "600",
+        "IsResizable" => "0",
+        "Zoom" => "1.0",
+        "AutoScaleZoom" => "0",
+        "FrameRate" => "30"
+    )
 
-# Function to read and parse the config file
-function parse_config()
-    filename = joinpath(JulGame.BasePath, "config.julgame")
-    config = copy(DEFAULT_CONFIG)
-    
-    if isfile(filename)
-        # Open the file for reading
-        open(filename, "r") do file
-            for line in eachline(file)
-                # Split the line at the '=' character
-                parts = split(line, "=", limit=2)
-                if length(parts) == 2
-                    key, value = parts[1], parts[2]
-                    # Strip any extra whitespace and add to dictionary
-                    config[strip(key)] = strip(value)
+    # Function to read and parse the config file
+    function parse_config()
+        filename = joinpath(JulGame.BasePath, "config.julgame")
+        config = copy(DEFAULT_CONFIG)
+        
+        if isfile(filename)
+            # Open the file for reading
+            open(filename, "r") do file
+                for line in eachline(file)
+                    # Split the line at the '=' character
+                    parts = split(line, "=", limit=2)
+                    if length(parts) == 2
+                        key, value = parts[1], parts[2]
+                        # Strip any extra whitespace and add to dictionary
+                        config[strip(key)] = strip(value)
+                    end
                 end
             end
+        else
+            write_config(filename, config)
         end
-    else
-        write_config(filename, config)
-    end
-    
-    
-    return config
-end
-
-function fill_in_config(config)
-    for (key, value) in DEFAULT_CONFIG
-        if !haskey(config, key)
-            config[key] = value
-        end
+        
+        
+        return config
     end
 
-    return config
-end
+    function fill_in_config(config)
+        for (key, value) in DEFAULT_CONFIG
+            if !haskey(config, key)
+                config[key] = value
+            end
+        end
 
-# Function to write values to the config file
-function write_config(filename::String, config::Dict{String, String})
-    # Open the file for writing
-    open(filename, "w") do file
-        for (key, value) in config
-            # Write each key-value pair to the file
-            println(file, "$key=$value")
+        return config
+    end
+
+    # Function to write values to the config file
+    function write_config(filename::String, config::Dict{String, String})
+        # Open the file for writing
+        open(filename, "w") do file
+            for (key, value) in config
+                # Write each key-value pair to the file
+                println(file, "$key=$value")
+            end
         end
     end
-end
+end # module
 
-# # Example usage
-# config_file = "config.txt"
-
-# # Read the configuration
-# config = parse_config(config_file)
-# println("Parsed Configuration:")
-# println(config)
-
-# # Modify some values (example)
-# config["Width"] = "800"
-# config["Height"] = "600"
-
-# # Write the updated configuration back to the file
-# write_config(config_file, config)
-# println("Updated Configuration Written to File.")
-
-end
