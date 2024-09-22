@@ -15,8 +15,7 @@ module SceneWriterModule
 
     """
     function serialize_entities(entities::Array, uiElements::Array, camera, projectPath, sceneName)
-        
-        println("Serializing entities")
+        @info String("Serializing entities")
         entitiesDict = []
         uiElementsDict = []
         
@@ -219,9 +218,36 @@ module SceneWriterModule
         scriptsDict = []
 
         for script in scripts
-            push!(scriptsDict, Dict("name" => script.name, "parameters" => script.parameters))
+            fields = Dict{String, Any}()
+            for i = eachindex(scripts)
+                scriptName = split("$(typeof(scripts[i]))", ".")[end]
+                for field in fieldnames(typeof(scripts[i]))
+                    if field == :parent 
+                        continue
+                    end
+                    val = nothing
+                    if isdefined(scripts[i], Symbol(field)) 
+                        val = getfield(scripts[i], field)
+                    else 
+                        val = set_undefined_field(scripts[i], field)
+                    end
+                    fields["$(field)"] = val
+                end
+            end
+            push!(scriptsDict, Dict("name" => script.name, "fields" => fields))
         end
 
         return scriptsDict
     end
-end
+
+    function set_undefined_field(script, field)
+        ftype = fieldtype(typeof(script), field)
+        if ftype == String
+            return ""
+        elseif ftype <: Number
+            return 0
+        elseif ftype == Bool
+            return false
+        end
+    end
+end # module

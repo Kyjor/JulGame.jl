@@ -124,54 +124,7 @@ module SceneBuilderModule
 
         MAIN.scene.rigidbodies = InternalRigidbody[]
         MAIN.scene.colliders = InternalCollider[]
-        for entity in MAIN.scene.entities
-            if entity.rigidbody != C_NULL
-                push!(MAIN.scene.rigidbodies, entity.rigidbody)
-            end
-            if entity.collider != C_NULL
-                push!(MAIN.scene.colliders, entity.collider)
-            end
-
-            if !JulGame.IS_EDITOR
-                scriptCounter = 1
-                for script in entity.scripts
-                    params = []
-                    for param in script.parameters
-                        if lowercase(param) == "true"
-                            param = true
-                        elseif lowercase(param) == "false"
-                            param = false
-                        else
-                            try
-                                param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
-                            catch e
-                                @error string(e)
-						        Base.show_backtrace(stdout, catch_backtrace())
-						        rethrow(e)
-                            end
-                        end
-                        push!(params, param)
-                    end
-
-                    newScript = C_NULL
-                    try
-                        newScript = eval(Symbol(script.name))(params...)
-                    catch e
-                        @error string(e) 
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
-                    end
-
-                    entity.scripts[scriptCounter] = newScript
-                    newScript.parent = entity
-                    scriptCounter += 1
-                end
-            end
-        end
-
-        if JulGame.IS_EDITOR
-            add_scripts_to_entities(joinpath(BasePath))
-        end
+        add_scripts_to_entities(BasePath)
 
         MAIN.assets = joinpath(BasePath, "assets")
         JulGame.MainLoop.prepare_window_scripts_and_start_loop(size, isResizable, autoScaleZoom)
@@ -180,8 +133,8 @@ module SceneBuilderModule
     function deserialize_and_build_scene(this::Scene)
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         
-        # println("Changing scene to $this.scene")
-        # println("Entities in main scene: ", length(MAIN.scene.entities))
+        @info String("Changing scene to $this.scene")
+        @info String("Entities in main scene: ", length(MAIN.scene.entities))
 
         for entity in scene[1]
             push!(MAIN.scene.entities, entity)
@@ -208,49 +161,9 @@ module SceneBuilderModule
             if entity.collider != C_NULL
                 push!(MAIN.scene.colliders, entity.collider)
             end
-
-            if !JulGame.IS_EDITOR
-                scriptCounter = 1
-                for script in entity.scripts
-                    params = []
-                        for param in script.parameters
-                            if lowercase(param) == "true"
-                                param = true
-                            elseif lowercase(param) == "false"
-                                param = false
-                            else
-                                try
-                                    param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
-                                catch e
-                                    @error string(e)
-                                    Base.show_backtrace(stdout, catch_backtrace())
-                                    rethrow(e)
-                                end
-                            end
-                            push!(params, param)
-                        end
-
-                    newScript = C_NULL
-                    try
-                        newScript = eval(Symbol(script.name))(params...)
-                    catch e
-                        @error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
-                    end
-
-                    if newScript != C_NULL
-                        entity.scripts[scriptCounter] = newScript
-                        newScript.parent = entity
-                    end
-                    scriptCounter += 1
-                end
-            end
         end 
 
-        if JulGame.IS_EDITOR
-            add_scripts_to_entities(joinpath(BasePath))
-        end
+        add_scripts_to_entities(BasePath)
     end
 
     """
@@ -281,33 +194,30 @@ module SceneBuilderModule
 
     function add_scripts_to_entities(path::String)
         @info string("Adding scripts to entities")
+        @info string("Path: ", path)
         @info string("Entities: ", length(MAIN.scene.entities))
 		include.(filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
         for entity in MAIN.scene.entities
             scriptCounter = 1
             for script in entity.scripts
-                params = []
-                    for param in script.parameters
-                        if lowercase(param) == "true"
-                            param = true
-                        elseif lowercase(param) == "false"
-                            param = false
-                        else
-                            try
-                                param = occursin(".", param) == true ? parse(Float64, param) : parse(Int32, param)
-                            catch e
-                                @error string(e)
-                                Base.show_backtrace(stdout, catch_backtrace())
-                                rethrow(e)
-                            end
-                        end
-                        push!(params, param)
-                    end
                 newScript = nothing
                 try
                     # TODO: only call latest if in editor and in game mode
                     newScript = Base.invokelatest(eval, Symbol(script.name))
-                    newScript = Base.invokelatest(newScript, params...)
+                    newScript = Base.invokelatest(newScript)
+                    for (key, value) in script.fields
+                        println("Key: $key, Value: $value")
+                        println(newScript)
+                        ftype = fieldtype(typeof(newScript), Symbol(key))
+                        if ftype == Float64
+                            value = Float64(value)
+                        elseif ftype == Int32
+                            value = Int32(value)
+                        end
+
+                        Base.invokelatest(setfield!, newScript, key, value)
+                        #setfield!(newScript, key, value)
+                    end
                 catch e
                     @error string(e)
                     Base.show_backtrace(stdout, catch_backtrace())

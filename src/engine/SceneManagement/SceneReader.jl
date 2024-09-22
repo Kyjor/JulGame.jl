@@ -17,8 +17,8 @@ module SceneReaderModule
     using ...JulGame
 
 
-    function scriptObj(name::String, parameters::Array)
-        () -> (name; parameters)
+    function scriptObj(name::String, fields::Array)
+        () -> (name; fields)
     end
 
     export deserialize_scene
@@ -27,7 +27,7 @@ module SceneReaderModule
             entitiesJson = read(filePath, String)
 
             json = JSON3.read(entitiesJson)
-            entities =[]
+            entities = []
             uiElements = []
             res = []
             childParentDict = Dict()
@@ -40,21 +40,12 @@ module SceneReaderModule
                     push!(components, deserialize_component(component))
                 end
                 
-                for script in entity.scripts
-                    scriptParameters = []
-                    for scriptParameter in script.parameters
-                        push!(scriptParameters, scriptParameter)
-                    end
-                    scriptObject = scriptObj(script.name, scriptParameters)
-                    push!(scripts, scriptObject)
-                end
-                
                 if haskey(entity, "parent") && entity.parent != ""
                     childParentDict[string(entity.id)] = entity.parent
                 end
                 newEntity = Entity(entity.name, string(entity.id))
                 newEntity.isActive = entity.isActive
-                newEntity.scripts = scripts
+                newEntity.scripts = entity.scripts
 
                 for component in components
                     if typeof(component) == Animator
