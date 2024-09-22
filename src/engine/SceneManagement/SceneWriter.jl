@@ -234,7 +234,9 @@ module SceneWriterModule
                     fields["$(field)"] = val
                 end
             end
-            push!(scriptsDict, Dict("name" => script.name, "fields" => fields))
+            scriptType = "$(typeof(script))"
+            scriptName = split(scriptType, ".")[end]
+            push!(scriptsDict, Dict("name" => scriptName, "fields" => fields))
         end
 
         return scriptsDict

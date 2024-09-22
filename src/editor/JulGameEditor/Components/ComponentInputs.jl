@@ -536,10 +536,24 @@ function show_script_editor(entity, newScriptText)
         show_help_marker("Add a script here to run it on the entity.")
         text = text_input_single_line("Name", newScriptText) 
         CImGui.SameLine()
-        CImGui.Button("Create New Script") && (push!(entity.scripts, scriptObj(String(text), [])); create_new_script(text);)
+        if CImGui.Button("Create New Script")
+            create_new_script(text)
+            include.(filter(contains(r".jl$"), readdir(joinpath(BasePath, "scripts"); join=true)))
+            newScript = Base.invokelatest(eval, Symbol(text))
+            newScript = Base.invokelatest(newScript)
+            newScript.parent = entity
+            push!(entity.scripts, newScript)
+        end
         
         script = display_files(joinpath(JulGame.BasePath, "scripts"), "scripts", "Add Script")
-        
+        if script != ""
+            include.(filter(contains(r".jl$"), readdir(joinpath(BasePath, "scripts"); join=true)))
+            newScript = Base.invokelatest(eval, Symbol(script))
+            newScript = Base.invokelatest(newScript)
+            newScript.parent = entity
+            push!(entity.scripts, newScript)
+        end
+
         for i = eachindex(entity.scripts)
             if CImGui.TreeNode("$(i): $(split("$(typeof(entity.scripts[i]))", ".")[end])")
                 CImGui.Button("Delete $(i)") && (deleteat!(entity.scripts, i); return;)
