@@ -538,7 +538,7 @@ function show_script_editor(entity, newScriptText)
         CImGui.SameLine()
         if CImGui.Button("Create New Script")
             create_new_script(text)
-            include.(filter(contains(r".jl$"), readdir(joinpath(BasePath, "scripts"); join=true)))
+            include(joinpath(JulGame.BasePath, "scripts", "$(text).jl"))
             newScript = Base.invokelatest(eval, Symbol(text))
             newScript = Base.invokelatest(newScript)
             newScript.parent = entity
@@ -547,7 +547,7 @@ function show_script_editor(entity, newScriptText)
         
         script = display_files(joinpath(JulGame.BasePath, "scripts"), "scripts", "Add Script")
         if script != ""
-            include.(filter(contains(r".jl$"), readdir(joinpath(BasePath, "scripts"); join=true)))
+            include(joinpath(JulGame.BasePath, "scripts", "$(script).jl"))
             newScript = Base.invokelatest(eval, Symbol(script))
             newScript = Base.invokelatest(newScript)
             newScript.parent = entity

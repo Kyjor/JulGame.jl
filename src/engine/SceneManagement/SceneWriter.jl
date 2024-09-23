@@ -239,6 +239,7 @@ module SceneWriterModule
             push!(scriptsDict, Dict("name" => scriptName, "fields" => fields))
         end
 
+        println(scriptsDict)
         return scriptsDict
     end
 

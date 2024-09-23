@@ -196,26 +196,32 @@ module SceneBuilderModule
         @info string("Adding scripts to entities")
         @info string("Path: ", path)
         @info string("Entities: ", length(MAIN.scene.entities))
-		include.(filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+        include.(filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+
         for entity in MAIN.scene.entities
             scriptCounter = 1
             for script in entity.scripts
                 newScript = nothing
                 try
                     # TODO: only call latest if in editor and in game mode
+                    #include(joinpath(BasePath "scripts"))
                     newScript = Base.invokelatest(eval, Symbol(script.name))
                     newScript = Base.invokelatest(newScript)
                     for (key, value) in script.fields
-                        println("Key: $key, Value: $value")
-                        println(newScript)
-                        ftype = fieldtype(typeof(newScript), Symbol(key))
-                        if ftype == Float64
-                            value = Float64(value)
-                        elseif ftype == Int32
-                            value = Int32(value)
-                        end
 
-                        Base.invokelatest(setfield!, newScript, key, value)
+                        ftype = nothing
+                        try
+                            ftype = fieldtype(typeof(newScript), Symbol(key))
+                            if ftype == Float64
+                                value = Float64(value)
+                            elseif ftype == Int32
+                                value = Int32(value)
+                            end
+    
+                            Base.invokelatest(setfield!, newScript, key, value)
+                        catch e
+                            @warn string(e)
+                        end
                         #setfield!(newScript, key, value)
                     end
                 catch e

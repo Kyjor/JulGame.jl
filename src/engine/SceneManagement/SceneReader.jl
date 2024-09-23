@@ -25,7 +25,6 @@ module SceneReaderModule
     function deserialize_scene(filePath)
         try
             entitiesJson = read(filePath, String)
-
             json = JSON3.read(entitiesJson)
             entities = []
             uiElements = []
@@ -34,7 +33,6 @@ module SceneReaderModule
     
             for entity in json.Entities
                 components = []
-                scripts = []
     
                 for component in entity.components
                     push!(components, deserialize_component(component))
