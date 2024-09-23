@@ -8,6 +8,7 @@ module SceneBuilderModule
     using ...TextBoxModule
     using ...ScreenButtonModule
     using ..SceneReaderModule
+    using JSON3
 
     function init()
         # if end of path is "test", then we are running tests
@@ -134,7 +135,7 @@ module SceneBuilderModule
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         
         @info String("Changing scene to $this.scene")
-        @info String("Entities in main scene: ", length(MAIN.scene.entities))
+        @info String("Entities in main scene: $(length(MAIN.scene.entities))")
 
         for entity in scene[1]
             push!(MAIN.scene.entities, entity)
@@ -201,6 +202,12 @@ module SceneBuilderModule
         for entity in MAIN.scene.entities
             scriptCounter = 1
             for script in entity.scripts
+                if !isa(script, JSON3.Object)
+                    scriptCounter += 1
+                    continue
+                end
+                println("Adding script: ", script.name)
+
                 newScript = nothing
                 try
                     # TODO: only call latest if in editor and in game mode

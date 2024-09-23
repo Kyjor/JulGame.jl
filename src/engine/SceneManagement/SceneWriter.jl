@@ -219,27 +219,25 @@ module SceneWriterModule
 
         for script in scripts
             fields = Dict{String, Any}()
-            for i = eachindex(scripts)
-                scriptName = split("$(typeof(scripts[i]))", ".")[end]
-                for field in fieldnames(typeof(scripts[i]))
-                    if field == :parent 
-                        continue
-                    end
-                    val = nothing
-                    if isdefined(scripts[i], Symbol(field)) 
-                        val = getfield(scripts[i], field)
-                    else 
-                        val = set_undefined_field(scripts[i], field)
-                    end
-                    fields["$(field)"] = val
+            scriptName = split("$(typeof(script))", ".")[end]
+            for field in fieldnames(typeof(script))
+                if field == :parent 
+                    continue
                 end
+                val = nothing
+                if isdefined(script, Symbol(field)) 
+                    val = getfield(script, field)
+                else 
+                    val = set_undefined_field(script, field)
+                end
+                fields["$(field)"] = val
             end
+
             scriptType = "$(typeof(script))"
             scriptName = split(scriptType, ".")[end]
             push!(scriptsDict, Dict("name" => scriptName, "fields" => fields))
         end
 
-        println(scriptsDict)
         return scriptsDict
     end
 
