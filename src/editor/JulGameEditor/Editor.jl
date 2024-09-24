@@ -9,7 +9,7 @@ module Editor
     using Dates
     using JulGame: Component, MainLoop, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
-
+    
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
