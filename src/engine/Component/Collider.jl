@@ -186,7 +186,11 @@ module ColliderModule
                     if collision[1] == Top::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            eventToCall((collider=collider, direction=collision[1]))
+                            if JulGame.IS_EDITOR
+                                Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            else
+                                eventToCall((collider=collider, direction=collision[1]))
+                            end
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x, transform.position.y + collision[2])
@@ -194,8 +198,12 @@ module ColliderModule
                     if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            # TODO: only call latest if in editor and in game mode
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            
+                            if JulGame.IS_EDITOR
+                                Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            else
+                                eventToCall((collider=collider, direction=collision[1]))
+                            end
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x + collision[2], transform.position.y)
@@ -203,8 +211,11 @@ module ColliderModule
                     if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            # TODO: only call latest if in editor and in game mode
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            if JulGame.IS_EDITOR
+                                Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            else
+                                eventToCall((collider=collider, direction=collision[1]))
+                            end
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x - collision[2], transform.position.y)
@@ -212,8 +223,11 @@ module ColliderModule
                     if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            # TODO: only call latest if in editor and in game mode
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            if JulGame.IS_EDITOR
+                                Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            else
+                                eventToCall((collider=collider, direction=collision[1]))
+                            end
                         end
                         #Begin to overlap, correct position
                         Component.get_parent(this).transform.position = Math.Vector2f(transform.position.x, transform.position.y - collision[2])
@@ -222,8 +236,11 @@ module ColliderModule
                     if collision[1] == Below::ColliderLocation
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            # TODO: only call latest if in editor and in game mode
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            if JulGame.IS_EDITOR
+                                Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            else
+                                eventToCall((collider=collider, direction=collision[1]))
+                            end
                         end
                     end
                 end

@@ -78,38 +78,39 @@ function projectTomlContent(projectName)
 end
 
 function newScriptContent(scriptName)
-    return "mutable struct $scriptName
+    return "module $scriptNamemodule
+    mutable struct $scriptName
     parent # do not remove this line, this is a reference to the entity that this script is attached to
     # This is where you define your script's fields
     # Example: speed::Float64
 
-    function $scriptName()
-        this = new() # do not remove this line
-        
-        # this is where you initialize your script's fields
-        # Example: this.speed = 1.0
-        
+        function $scriptName()
+            this = new() # do not remove this line
+            
+            # this is where you initialize your script's fields
+            # Example: this.speed = 1.0
+            
 
-        return this # do not remove this line
+            return this # do not remove this line
+        end
     end
+
+    # This is called when a scene is loaded, or when script is added to an entity
+    # This is where you should register collision events or other events
+    # Do not remove this function
+    function JulGame.initialize(this::$scriptName)
+    end
+
+    # This is called every frame
+    # Do not remove this function
+    function JulGame.update(this::$scriptName, deltaTime)
+    end
+
+    # This is called when the script is removed from an entity (scene change, entity deletion)
+    # Do not remove this function
+    function JulGame.on_shutdown(this::$scriptName)
+    end 
 end
-
-# This is called when a scene is loaded, or when script is added to an entity
-# This is where you should register collision events or other events
-# Do not remove this function
-function JulGame.initialize(this::$scriptName)
-end
-
-# This is called every frame
-# Do not remove this function
-function JulGame.update(this::$scriptName, deltaTime)
-end
-
-# This is called when the script is removed from an entity (scene change, entity deletion)
-# Do not remove this function
-function JulGame.on_shutdown(this::$scriptName)
-end 
-
 "
 end
 

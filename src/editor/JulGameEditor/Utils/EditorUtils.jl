@@ -142,7 +142,7 @@ This function creates an event that allows the user to select a project folder. 
 function select_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
     event = @event begin
         if currentSceneMain === nothing 
-            choose_project_filepath() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            choose_project_filepath() |> (dir) -> (if dir == "" return end; scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
         else
             dialog[] = "Select Project"
         end

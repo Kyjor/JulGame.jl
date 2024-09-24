@@ -121,8 +121,11 @@ module MainLoop
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-                        # TODO: only call latest if in editor and in game mode
-                        Base.invokelatest(JulGame.on_shutdown, script)
+						if JulGame.IS_EDITOR
+                        	Base.invokelatest(JulGame.on_shutdown, script)
+						else
+							JulGame.on_shutdown(script)
+						end
                     catch e
                         if typeof(e) != ErrorException
                             println("Error shutting down script")
@@ -242,9 +245,7 @@ function initialize_scripts_and_components()
 	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 		for script in scripts
 			try
-				# TODO: only call latest if in editor and in game mode
 				if JulGame.IS_EDITOR
-					println(typeof(script))
 					Base.invokelatest(JulGame.initialize, script)
 				else
 					JulGame.initialize(script)
@@ -292,8 +293,11 @@ function JulGame.change_scene(sceneFileName::String)
 		if !JulGame.IS_EDITOR
 			for script in entity.scripts
 				try
-					# TODO: only call latest if in editor and in game mode
-					Base.invokelatest(JulGame.on_shutdown, script)
+					if JulGame.IS_EDITOR
+						Base.invokelatest(JulGame.on_shutdown, script)
+					else
+						JulGame.on_shutdown(script)
+					end
 				catch e
 					if typeof(e) != ErrorException
 						println("Error shutting down script")

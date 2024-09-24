@@ -206,16 +206,15 @@ module SceneBuilderModule
                     scriptCounter += 1
                     continue
                 end
-                println("Adding script: ", script.name)
+                @info String("Adding script: $(script.name) to entity: $(entity.name)")
 
                 newScript = nothing
                 try
-                    # TODO: only call latest if in editor and in game mode
-                    #include(joinpath(BasePath "scripts"))
-                    newScript = Base.invokelatest(eval, Symbol(script.name))
-                    newScript = Base.invokelatest(newScript)
-                    for (key, value) in script.fields
+                    module_name = Base.invokelatest(eval, Symbol("$(script.name)Module"))
+                    constructor = Base.invokelatest(getfield, module_name, Symbol(script.name)) 
+                    newScript = Base.invokelatest(constructor)
 
+                    for (key, value) in script.fields
                         ftype = nothing
                         try
                             ftype = fieldtype(typeof(newScript), Symbol(key))
@@ -303,6 +302,12 @@ module SceneBuilderModule
                 println(file, "$key=$value")
             end
         end
+    end
+
+    function instantiate_script(script_name::String)
+        # Instantiate the struct from the module
+        new_script = eval(Symbol("$(script_name)module.$script_name"))()
+        return new_script
     end
 end # module
 

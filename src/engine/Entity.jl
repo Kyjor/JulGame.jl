@@ -71,8 +71,11 @@ module EntityModule
     function JulGame.update(this::Entity, deltaTime)
         for script in this.scripts
             try
-                # TODO: only call latest if in editor and in game mode
-                Base.invokelatest(JulGame.update, script, deltaTime) 
+                if JulGame.IS_EDITOR
+                    Base.invokelatest(JulGame.update, script, deltaTime) 
+                else
+                    JulGame.update(script, deltaTime)
+                end
             catch e
                 @error string(e)
                 Base.show_backtrace(stdout, catch_backtrace())

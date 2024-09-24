@@ -548,14 +548,29 @@ function show_script_editor(entity, newScriptText)
         script = display_files(joinpath(JulGame.BasePath, "scripts"), "scripts", "Add Script")
         if script != ""
             include(joinpath(JulGame.BasePath, "scripts", "$(script).jl"))
-            newScript = Base.invokelatest(eval, Symbol(script))
-            newScript = Base.invokelatest(newScript)
+            module_name = Base.invokelatest(eval, Symbol("$(script)Module"))
+            constructor = Base.invokelatest(getfield, module_name, Symbol(script)) 
+            newScript = Base.invokelatest(constructor)
             newScript.parent = entity
             push!(entity.scripts, newScript)
         end
 
         for i = eachindex(entity.scripts)
-            if CImGui.TreeNode("$(i): $(split("$(typeof(entity.scripts[i]))", ".")[end])")
+            scriptName = split("$(typeof(entity.scripts[i]))", ".")[end]
+            if CImGui.TreeNode("$(i): $(scriptName)")
+                if CImGui.Button("Open Script")
+                    path = joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl")
+                    SDL2.SDL_OpenURL("vscode://file/$(path)")
+                end
+                
+                if CImGui.Button("Reload $scriptName:$(i)")
+                    include(joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl"))
+                    module_name = Base.invokelatest(eval, Symbol("$(scriptName)Module"))
+                    constructor = Base.invokelatest(getfield, module_name, Symbol(scriptName)) 
+                    entity.scripts[i] = Base.invokelatest(constructor)
+                    entity.scripts[i].parent = entity
+                end
+
                 CImGui.Button("Delete $(i)") && (deleteat!(entity.scripts, i); return;)
                 for field in fieldnames(typeof(entity.scripts[i]))
                     if field == :parent 
