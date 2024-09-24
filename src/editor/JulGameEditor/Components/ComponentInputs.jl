@@ -260,6 +260,10 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                     
                                                 sprite = animator.parent.sprite
                                                 anim_x, anim_y, anim_w, anim_h = show_animation_window("frame $(k)", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+                                                if anim_x == -1 && anim_y == -1 && anim_w == -1 && anim_h == -1
+                                                    # TODO: fix this anim_x, anim_y, anim_w, anim_h = vec.x, vec.y, vec.z, vec.t
+                                                    continue
+                                                end
                                             end
 
                                             vec4i = Cint[anim_x, anim_y, anim_w, anim_h]
@@ -303,18 +307,8 @@ function show_sprite_fields(sprite, animation_window_dict)
         fieldString = "$(field)"
 
         if fieldString == "imagePath"
-            buf = "$(sprite.imagePath)"*"\0"^(64)
-            CImGui.InputText("Image Path Input", buf, length(buf))
-            currentTextInTextBox = ""
-            for characterIndex = eachindex(buf)
-                if Int32(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            sprite.imagePath = currentTextInTextBox
+            CImGui.Text("Image: $(sprite.imagePath == "" ? "None" : sprite.imagePath)")
+            
             imageMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "images"), "images")
             if imageMenuValue != ""
                 println("imageMenuValue: $imageMenuValue")
@@ -326,8 +320,8 @@ function show_sprite_fields(sprite, animation_window_dict)
                 end
 
                 sprite.imagePath = imagePath
+                Component.load_image(sprite, imagePath)
             end 
-            CImGui.Button("Load Image") && (Component.load_image(sprite, currentTextInTextBox))
         elseif fieldString == "crop"
             if sprite.crop === nothing || sprite.crop == C_NULL
                 sprite.crop = JulGame.Math.Vector4(0,0,0,0)
@@ -354,6 +348,10 @@ function show_sprite_fields(sprite, animation_window_dict)
 
             CImGui.PushID(sprite.parent.id)
                 crop_x, crop_y, crop_w, crop_h = show_animation_window("Sprite crop", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+                if crop_x == -1 && crop_y == -1 && crop_w == -1 && crop_h == -1
+                    # TODO: fix this crop_x, crop_y, crop_w, crop_h = sprite.crop.x, sprite.crop.y, sprite.crop.z, sprite.crop.t
+                    continue
+                end
             CImGui.PopID()
             vec4i = Cint[crop_x, crop_y, crop_w, crop_h]
             @c CImGui.InputInt4("crop", vec4i)
@@ -474,19 +472,8 @@ function show_sound_source_fields(soundSource)
         fieldString = "$(field)"
 
         if fieldString == "path"
-            CImGui.Text("Sound Path")
-            buf = "$(soundSource.path)"*"\0"^(64)
-            CImGui.InputText("Sound Path Input", buf, length(buf))
-            currentTextInTextBox = ""
-            for characterIndex = eachindex(buf)
-                if Int32(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            soundSource.path = currentTextInTextBox
+            CImGui.Text("Sound: $(soundSource.path == "" ? "None" : soundSource.path)")
+
             soundMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "sounds"), "sounds")
             if soundMenuValue != ""
                 # remove joinpath("assets", "sounds") from soundMenuValue and set it to soundPath
@@ -497,9 +484,8 @@ function show_sound_source_fields(soundSource)
                 end
 
                 soundSource.path = soundPath
+                Component.load_sound(soundSource, soundPath, soundSource.isMusic)
             end
-            CImGui.Button("Load Sound") && (Component.load_sound(soundSource, currentTextInTextBox, false))
-            CImGui.Button("Load Music") && (Component.load_sound(soundSource, currentTextInTextBox, true))
         else
             show_component_field_input(soundSource, field, "")
         end  
@@ -562,7 +548,7 @@ function show_script_editor(entity, newScriptText)
                     path = joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl")
                     SDL2.SDL_OpenURL("vscode://file/$(path)")
                 end
-                
+
                 if CImGui.Button("Reload $scriptName:$(i)")
                     include(joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl"))
                     module_name = Base.invokelatest(eval, Symbol("$(scriptName)Module"))
