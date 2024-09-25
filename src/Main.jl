@@ -121,11 +121,7 @@ module MainLoop
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-						if JulGame.IS_EDITOR
-                        	Base.invokelatest(JulGame.on_shutdown, script)
-						else
-							JulGame.on_shutdown(script)
-						end
+                        Base.invokelatest(JulGame.on_shutdown, script)
                     catch e
                         if typeof(e) != ErrorException
                             println("Error shutting down script")
@@ -222,7 +218,7 @@ module MainLoop
 		SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.zoom, this.zoom)
 		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
 		SDL2.SDL_initFramerate(this.fpsManager)
-		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
+		SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
 	end
 
 function initialize_scripts_and_components()
@@ -245,11 +241,7 @@ function initialize_scripts_and_components()
 	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 		for script in scripts
 			try
-				if JulGame.IS_EDITOR
-					Base.invokelatest(JulGame.initialize, script)
-				else
-					JulGame.initialize(script)
-				end
+				Base.invokelatest(JulGame.initialize, script)
 			catch e
 				#if typeof(e) != ErrorException || !contains(e.msg, "initialize")
 					@error string(e)

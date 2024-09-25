@@ -69,9 +69,9 @@ module SceneBuilderModule
     
     function load_and_prepare_scene(;this::Scene, config=parse_config(), globals = [])
         config = fill_in_config(config)
+
         windowName::String = get(config, "WindowName", DEFAULT_CONFIG["WindowName"])
         size::Vector2 = Vector2(parse(Int32, get(config, "Width", DEFAULT_CONFIG["Width"])), parse(Int32, get(config, "Height", DEFAULT_CONFIG["Height"])))
-        camSize::Vector2 = Vector2(parse(Int32, get(config, "CameraWidth", DEFAULT_CONFIG["CameraWidth"])), parse(Int32, get(config, "CameraHeight", DEFAULT_CONFIG["CameraHeight"])))
         isResizable::Bool = parse(Bool, get(config, "IsResizable", DEFAULT_CONFIG["IsResizable"]))
         zoom::Float64 = parse(Float64, get(config, "Zoom", DEFAULT_CONFIG["Zoom"]))
         autoScaleZoom::Bool = parse(Bool, get(config, "AutoScaleZoom", DEFAULT_CONFIG["AutoScaleZoom"]))
@@ -93,18 +93,11 @@ module SceneBuilderModule
 			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
 		end
 
-        if size.x < camSize.x && size.x > 0
-            camSize = Vector2(size.x, camSize.y)
-        end
-        if size.y < camSize.y && size.y > 0
-            camSize = Vector2(camSize.x, size.y)
-        end
-        MAIN.scene.camera = CameraModule.Camera(camSize, Vector2f(),Vector2f(), C_NULL)
-
         flags = SDL2.SDL_RENDERER_ACCELERATED |
 		(JulGame.IS_EDITOR ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
 		(isResizable || JulGame.IS_EDITOR ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)  |
+        (get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1" ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
 
         MAIN.screenSize = size
         if !JulGame.IS_EDITOR
@@ -116,6 +109,12 @@ module SceneBuilderModule
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         MAIN.scene.camera = scene[3]
+        if size.x < MAIN.scene.camera.size.x && size.x > 0
+            MAIN.scene.camera.size = Vector2(size.x, MAIN.scene.camera.size.y)
+        end
+        if size.y < MAIN.scene.camera.size.y && size.y > 0
+            MAIN.scene.camera.size = Vector2(MAIN.scene.camera.size.x, size.y)
+        end
         
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
@@ -249,12 +248,12 @@ module SceneBuilderModule
         "WindowName" => "Default Game",
         "Width" => "800",
         "Height" => "600",
-        "CameraWidth" => "800",
-        "CameraHeight" => "600",
+        "PixelsPerUnit" => "16",
         "IsResizable" => "0",
         "Zoom" => "1.0",
         "AutoScaleZoom" => "0",
-        "FrameRate" => "30"
+        "FrameRate" => "60",
+        "Fullscreen" => "0"
     )
 
     # Function to read and parse the config file
@@ -275,10 +274,9 @@ module SceneBuilderModule
                     end
                 end
             end
-        else
-            write_config(filename, config)
         end
-        
+
+        write_config(filename, config)
         
         return config
     end

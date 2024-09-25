@@ -302,7 +302,7 @@ function create_new_project(newProjectPath, newProjectName)
     close(file)
 
     # create precompile_app.jl
-    precompileFile = joinpath(srcFolder, "precompile_app.jl")
+    precompileFile = joinpath(srcFolder, "..", "precompile_app.jl")
     touch(precompileFile)
     file = open(precompileFile, "w")
         println(file, precompileFileContent(newProjectName))

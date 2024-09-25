@@ -40,13 +40,11 @@ end
 function mainFileContent(projectName)
     return "module $projectName 
         using JulGame
-        using JulGame.Math
 
         function run()
             JulGame.MAIN = JulGame.Main(Float64(1.0))
-            JulGame.PIXELS_PER_UNIT = 16
             scene = SceneBuilderModule.Scene(\"scene.json\")
-            SceneBuilderModule.load_and_prepare_scene(scene, \"$projectName\", Vector2(1280, 720),Vector2(1920, 1080), false, 1.0, true, 60)
+            SceneBuilderModule.load_and_prepare_scene(;this=scene)
         end
 
         julia_main() = run()
@@ -119,10 +117,10 @@ function config_file_content(projectName)
     "WindowName=$projectName
 Width=800
 Height=800
-CameraWidth=800
-CameraHeight=800
+PixelsPerUnit=16
 IsResizable=1
 Zoom=1.0
 AutoScaleZoom=0
+Fullscreen=0
 FrameRate=60"
 end

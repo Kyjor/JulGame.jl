@@ -85,6 +85,7 @@ module Editor
         gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
         confirmation_modal = ConfirmationModal("Start/Stop Game"; message="Are you sure you want to start/stop the game? Any unsaved progress will be lost.", confirmText="Yes", cancelText="No", open=false, type="Warning")
         cameraWindow = CameraWindow(true, gameCamera)
+        currentProjectConfig = (Width=Ref(Int32(800)), Height=Ref(Int32(600)), FrameRate=Ref(Int32(30)), WindowName=Ref("Game"), PixelsPerUnit=Ref(Int32(16)), AutoScaleZoom=Ref(Bool(0)), IsResizable=Ref(Bool(0)), Fullscreen=Ref(Bool(0)))
 
         try
             while !quit                    
@@ -148,6 +149,7 @@ module Editor
                                         JulGame.PIXELS_PER_UNIT = 16
                                         currentDialog[] = "Open Scene"
                                         currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
+                                        currentProjectConfig = load_project_config(currentSelectedProjectPath)
                                     else
                                         currentDialog[] = "Open Scene"
                                     end
@@ -455,6 +457,17 @@ module Editor
                         handle_editor_exceptions("Camera window:", latest_exceptions, e, is_test_mode)
                     end
 
+                    #region Config Window
+                    try 
+                        CImGui.Begin("Project Config") 
+                        if currentSelectedProjectPath[] !== ""
+                            show_config_fields(currentProjectConfig, currentSelectedProjectPath)
+                        end
+                        CImGui.End()
+                    catch e
+                        handle_editor_exceptions("Config window:", latest_exceptions, e, is_test_mode)
+                    end
+
                     SDL2.SDL_SetRenderTarget(renderer, sceneTexture)
                     SDL2.SDL_RenderClear(renderer)
                     try
@@ -590,5 +603,104 @@ module Editor
         end
 
         log_exceptions(error_location, latest_exceptions, e, "$(file):$(line)", is_test_mode)
+    end
+
+    function show_config_fields(currentProjectConfig, currentSelectedProjectPath)
+            CImGui.Text("Config")
+            CImGui.NewLine()
+            CImGui.Text("Width")
+            CImGui.SameLine()
+            CImGui.InputInt("##Width", currentProjectConfig.Width)
+            CImGui.NewLine()
+            CImGui.Text("Height")
+            CImGui.SameLine()
+            CImGui.InputInt("##Height", currentProjectConfig.Height)
+            CImGui.NewLine()
+            CImGui.Text("Frame Rate")
+            CImGui.SameLine()
+            CImGui.InputInt("##FrameRate", currentProjectConfig.FrameRate)
+            CImGui.NewLine()
+            CImGui.Text("Window Name")
+            CImGui.SameLine()
+            buf = "$(currentProjectConfig.WindowName[])"*"\0"^(64)
+            CImGui.InputText("##WindowName", buf, length(buf))
+            currentText = ""
+            for characterIndex = eachindex(buf)
+                if Int32(buf[characterIndex]) == 0 
+                    if characterIndex != 1
+                        currentText = String(SubString(buf, 1, characterIndex-1))
+                    end
+                    break
+                end
+            end
+            currentProjectConfig.WindowName[] = currentText
+            CImGui.NewLine()
+            CImGui.Text("Pixels Per Unit")
+            CImGui.SameLine()
+            CImGui.InputInt("##PixelsPerUnit", currentProjectConfig.PixelsPerUnit)
+            CImGui.NewLine()
+            CImGui.Text("Auto Scale Zoom")
+            CImGui.SameLine()
+            CImGui.Checkbox("##AutoScaleZoom", currentProjectConfig.AutoScaleZoom)
+            CImGui.NewLine()
+            CImGui.Text("Is Resizable")
+            CImGui.SameLine()
+            CImGui.Checkbox("##IsResizable", currentProjectConfig.IsResizable)
+            CImGui.NewLine()
+            CImGui.Text("Fullscreen")
+            CImGui.SameLine()
+            CImGui.Checkbox("##Fullscreen", currentProjectConfig.Fullscreen)
+            CImGui.NewLine()
+
+        if CImGui.Button("Save Config")
+            save_config_editor(currentProjectConfig, currentSelectedProjectPath)
+        end
+    end
+
+    function save_config_editor(currentProjectConfig, currentSelectedProjectPath)
+        filename = joinpath(currentSelectedProjectPath[], "config.julgame")
+        config = Dict{String, String}()
+        
+        config["WindowName"] = String(currentProjectConfig.WindowName[])
+        config["Width"] = string(currentProjectConfig.Width[])
+        config["Height"] = string(currentProjectConfig.Height[])
+        config["PixelsPerUnit"] = string(currentProjectConfig.PixelsPerUnit[])
+        config["Zoom"] = "1.0"
+        config["AutoScaleZoom"] = string(Int(currentProjectConfig.AutoScaleZoom[]))
+        config["Fullscreen"] = string(Int(currentProjectConfig.Fullscreen[]))
+        config["IsResizable"] = string(Int(currentProjectConfig.IsResizable[]))
+        config["FrameRate"] = string(currentProjectConfig.FrameRate[])
+        
+        open(filename, "w") do file
+            for (key, value) in config
+                println(file, "$key=$value")
+            end
+        end
+
+        @info "Saved config file to $(filename)"
+    end
+
+    function load_project_config(currentSelectedProjectPath)
+        filename = joinpath(currentSelectedProjectPath[], "config.julgame")
+        config = Dict{String, String}()
+        if isfile(filename)
+            open(filename, "r") do file
+                for line in eachline(file)
+                    key, value = split(line, "=")
+                    config[key] = value
+                end
+            end
+        end
+
+        Width = Ref(Int32(parse(Int, config["Width"])))
+        Height = Ref(Int32(parse(Int, config["Height"])))
+        FrameRate = Ref(Int32(parse(Int, config["FrameRate"])))
+        WindowName = Ref(config["WindowName"])
+        PixelsPerUnit = Ref(Int32(parse(Int, config["PixelsPerUnit"])))
+        AutoScaleZoom = Ref(parse(Bool, config["AutoScaleZoom"]))
+        IsResizable = Ref(parse(Bool, config["IsResizable"]))
+        Fullscreen = Ref(parse(Bool, config["Fullscreen"]))
+
+        return (Width=Width, Height=Height, FrameRate=FrameRate, WindowName=WindowName, PixelsPerUnit=PixelsPerUnit, AutoScaleZoom=AutoScaleZoom, IsResizable=IsResizable, Fullscreen=Fullscreen)
     end
 end # module

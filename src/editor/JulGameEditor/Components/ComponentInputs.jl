@@ -432,25 +432,36 @@ function show_screenbutton_fields1(screenButton)
 
         # TODO: if fieldString == "fontPath" || 
         if fieldString == "buttonUpSpritePath" || fieldString == "buttonDownSpritePath"
-            buf = "$(getfield(screenButton, Symbol(fieldString)))"*"\0"^(64)
-            CImGui.InputText("$(fieldString) Path Input", buf, length(buf))
-            currentTextInScreenButton = ""
-            for characterIndex = eachindex(buf)
-                if Int32(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentTextInScreenButton = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            setfield!(screenButton, Symbol(fieldString), currentTextInScreenButton)
+            CImGui.Text("$(getfield(screenButton, Symbol(fieldString)))")
 
             if fieldString == "fontPath"
                 # TODO: CImGui.Button("Load Font") && (UI.load_font(screenButton, joinpath(pwd()), joinpath("FiraCode-Regular.ttf")))
             elseif fieldString == "buttonUpSpritePath"
-                CImGui.Button("Load Button Up Sprite") && (UI.load_button_sprite_editor(screenButton, currentTextInScreenButton, true))
+                imageMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "images"), "images", "button up")
+                if imageMenuValue != ""
+                    @info String("loading button up: $imageMenuValue")
+                    # remove joinpath("assets", "images") from imageMenuValue and set it to imagePath
+                    imagePath = replace(imageMenuValue, joinpath(JulGame.BasePath, "assets", "images") => "")
+                    # remove leading / or \\ from imagePath
+                    if imagePath[1] == '/' || imagePath[1] == '\\'
+                        imagePath = imagePath[2:end]
+                    end
+
+                    UI.load_button_sprite_editor(screenButton, imagePath, true)
+                end 
             elseif fieldString == "buttonDownSpritePath"
-                CImGui.Button("Load Button Down Sprite") && (UI.load_button_sprite_editor(screenButton, currentTextInScreenButton, false))
+                imageMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "images"), "images", "button down")
+                if imageMenuValue != ""
+                    @info String("loading button up: $imageMenuValue")
+                    # remove joinpath("assets", "images") from imageMenuValue and set it to imagePath
+                    imagePath = replace(imageMenuValue, joinpath(JulGame.BasePath, "assets", "images") => "")
+                    # remove leading / or \\ from imagePath
+                    if imagePath[1] == '/' || imagePath[1] == '\\'
+                        imagePath = imagePath[2:end]
+                    end
+
+                    UI.load_button_sprite_editor(screenButton, imagePath, false)
+                end 
             end
         else 
             show_screenbutton_fields(screenButton, field)

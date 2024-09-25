@@ -71,11 +71,7 @@ module EntityModule
     function JulGame.update(this::Entity, deltaTime)
         for script in this.scripts
             try
-                if JulGame.IS_EDITOR
-                    Base.invokelatest(JulGame.update, script, deltaTime) 
-                else
-                    JulGame.update(script, deltaTime)
-                end
+                Base.invokelatest(JulGame.update, script, deltaTime) 
             catch e
                 @error string(e)
                 Base.show_backtrace(stdout, catch_backtrace())
