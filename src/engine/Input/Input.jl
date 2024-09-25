@@ -100,16 +100,20 @@ module InputModule
             end
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                 didMouseEventOccur = true
-                if this.scene.screenButtons != C_NULL
+                if this.scene.uiElements !== nothing
                     x,y = Int32[1], Int32[1]
                     SDL2.SDL_GetMouseState(pointer(x), pointer(y))
                     
                     this.mousePosition = Math.Vector2(x[1], y[1])
                     if MAIN.scene.camera === nothing
+                        @warn ("Camera is not set in the main scene.")
                         continue
                     end
 
-                    for screenButton in this.scene.screenButtons
+                    for screenButton in this.scene.uiElements
+                        if split("$(typeof(screenButton))", ".")[end] != "ScreenButton"
+                            continue
+                        end
                         # Check position of button to see which we are interacting with
                         eventWasInsideThisButton = true
                         if x[1] < screenButton.position.x + MAIN.scene.camera.startingCoordinates.x

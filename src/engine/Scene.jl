@@ -7,7 +7,6 @@
         colliders::Vector{Any}
         entities::Vector{Any}
         rigidbodies::Vector{Any}
-        screenButtons::Vector{Any}
         uiElements::Vector{Any}
 
         function Scene()
@@ -17,7 +16,6 @@
             this.colliders = []
             this.entities = []
             this.rigidbodies = []
-            this.screenButtons = []
             this.uiElements = []
 
             return this

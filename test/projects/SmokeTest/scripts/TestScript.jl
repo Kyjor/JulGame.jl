@@ -93,7 +93,6 @@ function JulGame.initialize(this::TestScript)
             @testset "ScreenButton constructor" begin
                 
                 newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode-Regular.ttf"), "test")
-                push!(MAIN.scene.screenButtons, newScreenButton)
                 push!(MAIN.scene.uiElements, newScreenButton)
                 @test newScreenButton != C_NULL && newScreenButton !== nothing
             end
