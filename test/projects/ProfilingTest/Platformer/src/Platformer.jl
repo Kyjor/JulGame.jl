@@ -1,3 +1,5 @@
+module PlatformerModule
+    using JulGame
     function run_platformer()
         JulGame.MAIN = JulGame.Main(Float64(1.0))
         MAIN.testMode = true
@@ -15,6 +17,7 @@
 
         return 0
     end
+end # module
 
 # comment when building
 # Platformer.run()
