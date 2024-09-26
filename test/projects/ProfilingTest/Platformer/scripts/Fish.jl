@@ -1,5 +1,11 @@
 module FishModule
-    using JulGame
+    function conditional_using(pkg::Symbol)
+        if !haskey(Base.loaded_modules, pkg)
+            @eval using $(pkg)
+        end
+    end
+    conditional_using(:JulGame)
+
     mutable struct Fish
         animator
         endingY::Int32

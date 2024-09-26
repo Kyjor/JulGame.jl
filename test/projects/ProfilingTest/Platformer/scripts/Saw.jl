@@ -1,5 +1,11 @@
 module SawModule
-    using JulGame
+    function conditional_using(pkg::Symbol)
+        if !haskey(Base.loaded_modules, pkg)
+            @eval using $(pkg)
+        end
+    end
+    conditional_using(:JulGame)
+
     mutable struct Saw
         animator::AnimatorModule.Animator
         endingY::Int32

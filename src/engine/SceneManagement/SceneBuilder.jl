@@ -112,7 +112,7 @@ module SceneBuilderModule
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         MAIN.scene.camera = scene[3]
-        print("caMERA : $(MAIN.scene.camera)")
+        
         if size.x < MAIN.scene.camera.size.x && size.x > 0
             MAIN.scene.camera.size = Vector2(size.x, MAIN.scene.camera.size.y)
         end

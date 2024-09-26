@@ -1,6 +1,10 @@
 module TestScriptModule
-    using JulGame
-    using JulGame.Math
+    function conditional_using(pkg::Symbol)
+        if !haskey(Base.loaded_modules, pkg)
+            @eval using $(pkg)
+        end
+    end
+    conditional_using(:JulGame)
     using Test
     mutable struct TestScript
         parent
@@ -16,7 +20,7 @@ module TestScriptModule
             newAnimation = C_NULL
             newAnimator = C_NULL
             @testset "Engine Animation Tests" begin
-                newAnimation = AnimationModule.Animation(Vector4[Vector4(0,0,0,0)], Int32(60))
+                newAnimation = AnimationModule.Animation(Math.Vector4[Math.Vector4(0,0,0,0)], Int32(60))
                 @testset "Animation constructor" begin
                     @test newAnimation != C_NULL && newAnimation !== nothing
                     @test newAnimation.animatedFPS == 60
@@ -95,7 +99,7 @@ module TestScriptModule
             @testset "UI Tests" begin
                 @testset "ScreenButton constructor" begin
                     
-                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode-Regular.ttf"), "test")
+                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Math.Vector2(256, 64), Math.Vector2(), joinpath("FiraCode-Regular.ttf"), "test")
                     push!(MAIN.scene.uiElements, newScreenButton)
                     @test newScreenButton != C_NULL && newScreenButton !== nothing
                 end
