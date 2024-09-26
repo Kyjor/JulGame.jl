@@ -1,11 +1,6 @@
 module PlayerMovementModule
-    function conditional_using(pkg::Symbol)
-        if !haskey(Base.loaded_modules, pkg)
-            @eval using $(pkg)
-        end
-    end
-    conditional_using(:JulGame)
-    
+    using ..JulGame
+
     mutable struct PlayerMovement
         animator
         cameraTarget
