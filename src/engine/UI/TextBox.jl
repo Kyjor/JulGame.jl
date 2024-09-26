@@ -62,7 +62,8 @@ module TextBoxModule
                 SDL2.SDL_Point(this.position.x, this.position.y)], 5)
         end
 
-        cameraDiff = this.isWorldEntity && MAIN.scene.camera !== nothing ? 
+        camera = MAIN.scene.camera
+        cameraDiff = this.isWorldEntity && camera !== nothing ? 
         Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
         Math.Vector2(0,0)
 

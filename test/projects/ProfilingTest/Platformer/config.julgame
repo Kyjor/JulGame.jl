@@ -1,9 +1,11 @@
+CameraHeight=600
+FrameRate=30
 Width=800
 Zoom=1.0
-CameraHeight=600
-Height=600
-FrameRate=30
-WindowName=Default Game
 AutoScaleZoom=0
-CameraWidth=800
+Height=600
+PixelsPerUnit=16
 IsResizable=0
+WindowName=Default Game
+CameraWidth=800
+Fullscreen=0

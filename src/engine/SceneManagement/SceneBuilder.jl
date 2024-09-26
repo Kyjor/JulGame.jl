@@ -16,11 +16,13 @@ module SceneBuilderModule
             println("Loading scripts in test folder...")
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "SmokeTest", "scripts"); join=true)))
+            @info "Loaded test scripts"
         end
 
         if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
             # println("Loading scripts...")
             include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
+            @info "Loaded scripts"
         else
             script_folder_name = "scripts"
             current_dir = pwd()
@@ -37,6 +39,7 @@ module SceneBuilderModule
                     break  # Exit loop if "scripts" folder is found in any parent folder
                 end
             end
+            @info "Loaded scripts"
         end
     end
 
@@ -109,6 +112,7 @@ module SceneBuilderModule
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         MAIN.scene.camera = scene[3]
+        print("caMERA : $(MAIN.scene.camera)")
         if size.x < MAIN.scene.camera.size.x && size.x > 0
             MAIN.scene.camera.size = Vector2(size.x, MAIN.scene.camera.size.y)
         end
