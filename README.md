@@ -1,5 +1,6 @@
 [![codecov](https://codecov.io/gh/Kyjor/JulGame.jl/graph/badge.svg?token=535VSQ21MJ)](https://codecov.io/gh/Kyjor/JulGame.jl)
-[Documentation is in progress!](https://docs.kyjor.io/JulGame.jl)
+
+[Documentation](https://docs.kyjor.io/JulGame.jl)
 
 [Trello board](https://trello.com/b/M6uH0Jmy/julgame)
 ![JulGame Logo](https://github.com/Kyjor/JulGame.jl/assets/13784123/f68ece3a-62a1-48fb-a905-c7c8b9aa35c1)
@@ -103,7 +104,7 @@ This is a list of references that I used in order to get JulGame where it is, al
 - and so many others who I will note some of in the future :)
 
 ## Games Made With JulGame
-Here I will be keeping a list for the first games created with JulGame by external contributors (aka not me). If you would like to see games that I have made, check them out at https://kyjor.itch.io
+Here I will be keeping a list for the first **original** games created with JulGame by external contributors (aka not me). If you would like to see games that I have made, check them out at https://kyjor.itch.io
 
 1.
 2.

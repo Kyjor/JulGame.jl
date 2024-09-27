@@ -68,6 +68,7 @@ module TestScriptModule
                 @testset "Entity constructor" begin
                     newEntity = JulGame.EntityModule.Entity()
                     @test newEntity != C_NULL && newEntity !== nothing
+                    push!(MAIN.scene.entities, newEntity)
                 end
                     
                 @testset "Entity addAnimator" begin
@@ -95,6 +96,15 @@ module TestScriptModule
                     JulGame.add_shape(newEntity, newShape)
                     @test newEntity.shape != C_NULL && newEntity.shape !== nothing
                 end
+            end
+
+            @testset "Scene api tests" begin
+                @test JulGame.SceneModule.get_entity_by_id(MAIN.scene, "test") === nothing
+                @test JulGame.SceneModule.get_entity_by_id(MAIN.scene, newEntity.id) == newEntity
+                @test JulGame.SceneModule.get_entity_by_name(MAIN.scene, "test") === nothing
+                @test JulGame.SceneModule.get_entity_by_name(MAIN.scene, newEntity.name) == newEntity
+                @test JulGame.SceneModule.get_entities_by_name(MAIN.scene, "test") == []
+                @test JulGame.SceneModule.get_entities_by_name(MAIN.scene, newEntity.name) == [newEntity]
             end
 
             @testset "UI Tests" begin

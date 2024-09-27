@@ -35,7 +35,7 @@
     end
 
     function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
-        if this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames))
+        if this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames)) || this.sprite == C_NULL || this.sprite === nothing
             return
         end
         deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
