@@ -68,28 +68,37 @@ module MainLoop
 	end
 
     function prepare_window_scripts_and_start_loop(size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
-        if !JulGame.IS_EDITOR
+        @debug "Preparing window"
+		if !JulGame.IS_EDITOR
+			@debug "Preparing window for game"
             prepare_window(size, isResizable, autoScaleZoom)
         end
+		@debug "Initializing scripts and components"
         initialize_scripts_and_components()
 
         if !JulGame.IS_EDITOR
+			@debug "Starting non editor loop"
             full_loop(MAIN)
             return
         end
     end
 
     function initialize_new_scene(this::Main)
+		@debug "Initializing new scene"
+		@debug "Deserializing and building scene"
         SceneBuilderModule.deserialize_and_build_scene(this.level)
+
         initialize_scripts_and_components()
 
         if !JulGame.IS_EDITOR
+			@debug "Starting non editor loop"
             full_loop(this)
             return
         end
     end
 
     function reset_camera_position(this::Main)
+		@debug "Resetting camera position"
 		if this.scene.camera === nothing return end
 
         cameraPosition = Math.Vector2f()
@@ -108,9 +117,12 @@ module MainLoop
                     if this.testMode
                         throw(e)
                     else
-                        @error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
                     end
                 end
                 if this.testMode && this.currentTestTime >= this.testLength
@@ -123,16 +135,20 @@ module MainLoop
                     try
                         Base.invokelatest(JulGame.on_shutdown, script)
                     catch e
-                        if typeof(e) != ErrorException
-                            println("Error shutting down script")
-                            Base.show_backtrace(stdout, catch_backtrace())
-                            rethrow(e)
-                        end
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							if typeof(e) != ErrorException
+								println("Error shutting down script")
+								Base.show_backtrace(stdout, catch_backtrace())
+							end
+						end
                     end
                 end
             end
 			
             if !this.shouldChangeScene
+				@info "Closing window"
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
                 SDL2.SDL_DestroyWindow(this.window)
                 SDL2.Mix_Quit()
@@ -140,6 +156,7 @@ module MainLoop
                 SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
                 SDL2.SDL_Quit()
             else
+				@debug "Changing scene"
                 this.shouldChangeScene = false
                 initialize_new_scene(this)
             end
@@ -147,18 +164,22 @@ module MainLoop
     end
 
     function create_new_entity(this::Main)
+		@debug "Creating new entity"
         SceneBuilderModule.create_new_entity(this.level)
     end
 
     function create_new_text_box(this::Main)
+		@debug "Creating new text box"
         SceneBuilderModule.create_new_text_box(this.level)
     end
 
 	function create_new_screen_button(this::Main)
+		@debug "Creating new screen button"
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
     function update_viewport(this::Main, x,y)
+		@debug "Updating viewport"
         if !this.autoScaleZoom
             return
         end
@@ -176,6 +197,7 @@ module MainLoop
     end
 
     function scale_zoom(this::Main, x,y)
+		@debug "Scaling zoom"
 		if this.scene.camera === nothing
 			return
 		end
@@ -243,11 +265,12 @@ function initialize_scripts_and_components()
 			try
 				Base.invokelatest(JulGame.initialize, script)
 			catch e
-				#if typeof(e) != ErrorException || !contains(e.msg, "initialize")
+				if JulGame.IS_EDITOR
+					rethrow(e)
+				else
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
-					#rethrow(e)
-				#end
+				end
 			end
 		end
 		build_sprite_layers()
@@ -265,11 +288,11 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 """
 function JulGame.change_scene(sceneFileName::String)
 	this::Main = MAIN
-	# println("Changing scene to: ", sceneFileName)
+	@debug "Changing scene to: $(sceneFileName)"
 	this.close = true
 	this.shouldChangeScene = true
 	#destroy current scene 
-	#println("Entities before destroying: ", length(this.scene.entities))
+	@debug  "Entities before destroying: $(length(this.scene.entities))" 
 	count = 0
 	skipcount = 0
 	persistentEntities = []	
@@ -285,17 +308,16 @@ function JulGame.change_scene(sceneFileName::String)
 		if !JulGame.IS_EDITOR
 			for script in entity.scripts
 				try
-					if JulGame.IS_EDITOR
-						Base.invokelatest(JulGame.on_shutdown, script)
-					else
-						JulGame.on_shutdown(script)
-					end
+					Base.invokelatest(JulGame.on_shutdown, script)
 				catch e
-					if typeof(e) != ErrorException
-						println("Error shutting down script")
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						#rethrow(e)
+					if JulGame.IS_EDITOR
+						rethrow(e)
+					else
+						if typeof(e) != ErrorException
+							println("Error shutting down script")
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
 					end
 				end
 			end
@@ -341,6 +363,7 @@ Builds the sprite layers for the main game.
 
 """
 function build_sprite_layers()
+	@debug "Building sprite layers"
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
 	for entity in MAIN.scene.entities
@@ -520,10 +543,13 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					try
 						JulGame.update(rigidbody, deltaTime)
 					catch e
-						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
 					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
@@ -544,14 +570,17 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					try
                         JulGame.update(entity, deltaTime)
 						if this.close && !this.isGameModeRunningInEditor
-							println("Closing game: ", this.isGameModeRunningInEditor)
+							@info "Closing game"
 							return
 						end
 					catch e
-						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							println(entity.name, " with id: ", entity.id, " has a problem with it's update")
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
 					end
 					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
@@ -609,9 +638,12 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				SDL2.SDL_framerateDelay(this.fpsManager)
 			end
 		catch e
-			@error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
-			rethrow(e)
+			if JulGame.IS_EDITOR
+				rethrow(e)
+			else
+				@error string(e)
+				Base.show_backtrace(stdout, catch_backtrace())
+			end
 		end
     end
 
@@ -661,10 +693,13 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				rendercount += 1
 				Component.draw(renderOrder[i][2], camera)
 			catch e
-				println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
-				@error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
-				rethrow(e)
+				if JulGame.IS_EDITOR
+					rethrow(e)
+				else
+					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
+					@error string(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
 			end
 		end
 	end
@@ -679,7 +714,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 		this.isGameModeRunningInEditor = false
 		SDL2.Mix_HaltMusic()
 		if this.scene.camera !== nothing && this.scene.camera != C_NULL
-			this.scene.camera.target = C_NULL
+			#this.scene.camera.target = C_NULL
 		end
 	end
 

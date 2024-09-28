@@ -16,13 +16,13 @@ function init_sdl_and_imgui(windowTitle::String)
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
     global sdlRenderer = renderer
     if (renderer == C_NULL)
-        println("Failed to create renderer: ", unsafe_string(SDL2.SDL_GetError()))
+        @error "Failed to create renderer: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
     ver = pointer(SDL2.SDL_version[SDL2.SDL_version(0,0,0)])
     SDL2.SDL_GetVersion(ver)
     global sdlVersion = string(unsafe_load(ver).major, ".", unsafe_load(ver).minor, ".", unsafe_load(ver).patch)
-    println("SDL version: ", sdlVersion)
+    @info "SDL version: $(sdlVersion)"
     sdlVersion = parse(Int32, replace(sdlVersion, "." => ""))
 
     ctx = CImGui.CreateContext()
