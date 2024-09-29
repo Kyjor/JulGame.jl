@@ -1,36 +1,25 @@
-mutable struct Background
-    parent
+module BackgroundModule
+    using ..JulGame
 
-    function Background()
-        this = new()
+    mutable struct Background
+        parent
 
-        this.parent = C_NULL
+        function Background()
+            this = new()
 
-        return this
-    end
-end
+            this.parent = C_NULL
 
-function Base.getproperty(this::Background, s::Symbol)
-    if s == :initialize
-        function()
-        end
-    elseif s == :update
-        function(deltaTime)
-            this.parent.transform.position = JulGame.Math.Vector2f(MAIN.scene.camera.position.x + 9.5, 0)
-        end
-    elseif s == :setParent 
-        function(parent)
-            this.parent = parent
-        end
-    elseif s == :onShutDown
-        function ()
-        end
-    else
-        try
-            getfield(this, s)
-        catch e
-            @error string(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+            return this
         end
     end
-end
+
+    function JulGame.initialize(this::Background)
+    end
+
+    function JulGame.update(this::Background, deltaTime)
+        this.parent.transform.position = JulGame.Math.Vector2f(MAIN.scene.camera.position.x + 9.5, 0)
+    end
+
+    function JulGame.on_shutdown(this::Background)
+    end
+end # module

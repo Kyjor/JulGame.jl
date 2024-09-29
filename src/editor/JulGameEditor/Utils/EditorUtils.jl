@@ -1,11 +1,11 @@
-function init_sdl_and_imgui()
+function init_sdl_and_imgui(windowTitle::String)
     if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
         println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
     end
     SDL2.SDL_SetHint(SDL2.SDL_HINT_IME_SHOW_UI, "1")
 
     window = SDL2.SDL_CreateWindow(
-    "JulGame Editor v0.1.0", SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
+    windowTitle, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
     SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
     )
     if window == C_NULL 
@@ -16,13 +16,13 @@ function init_sdl_and_imgui()
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
     global sdlRenderer = renderer
     if (renderer == C_NULL)
-        println("Failed to create renderer: ", unsafe_string(SDL2.SDL_GetError()))
+        @error "Failed to create renderer: $(unsafe_string(SDL2.SDL_GetError()))"
     end
 
     ver = pointer(SDL2.SDL_version[SDL2.SDL_version(0,0,0)])
     SDL2.SDL_GetVersion(ver)
     global sdlVersion = string(unsafe_load(ver).major, ".", unsafe_load(ver).minor, ".", unsafe_load(ver).patch)
-    println("SDL version: ", sdlVersion)
+    @info "SDL version: $(sdlVersion)"
     sdlVersion = parse(Int32, replace(sdlVersion, "." => ""))
 
     ctx = CImGui.CreateContext()
@@ -118,9 +118,9 @@ Save the scene by serializing the entities and text boxes to a file.
 # Returns
 - `event`: The event object representing the save scene event.
 """
-function save_scene_event(entities, uiElements, projectPath::String, sceneName::String)
+function save_scene_event(entities, uiElements, camera, projectPath::String, sceneName::String)
     event = @event begin
-        SceneWriterModule.serialize_entities(entities, uiElements, projectPath, "$(sceneName)")
+        SceneWriterModule.serialize_entities(entities, uiElements, camera, projectPath, "$(sceneName)")
     end
 
     return event
@@ -139,14 +139,188 @@ This function creates an event that allows the user to select a project folder. 
 - `event`: The event that triggers the folder selection.
 
 """
-function select_project_event(currentSceneMain, scenesLoadedFromFolder)
+function select_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
     event = @event begin
         if currentSceneMain === nothing 
-            choose_folder_with_dialog() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            choose_project_filepath() |> (dir) -> (if dir == "" return end; scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+        else
+            dialog[] = "Select Project"
         end
     end
 
     return event
+end
+
+function select_project_dialog(dialog, scenesLoadedFromFolder)
+    CImGui.OpenPopup(dialog[])
+
+    if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
+        CImGui.NewLine()
+        if CImGui.Button("OK", (120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+
+            return choose_project_filepath() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+        end
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+        end
+        CImGui.EndPopup()
+    end
+    return ""
+end
+
+function create_project_event(dialog)
+    event = @event begin
+        dialog[] = "New Project"
+    end
+
+    return event
+end
+
+function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPath, newProjectText)
+
+    CImGui.OpenPopup(dialog[])
+
+    if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
+        CImGui.NewLine()
+        text = text_input_single_line("Project Name", newProjectText) 
+        newProjectText[] = strip(newProjectText[])
+        newProjectText[] = replace(newProjectText[], " " => "-")
+        newProjectText[] = replace(newProjectText[], "." => "-")
+        CImGui.NewLine()
+
+        if CImGui.Button("Select directory", (120, 0))
+            selectedProjectPath[] = choose_folder_with_dialog()
+        end
+        
+        CImGui.SameLine()
+
+        newProjectPath = joinpath(selectedProjectPath[], newProjectText[])
+        CImGui.Text("Full Path: $(newProjectPath)")
+        CImGui.NewLine()
+
+        pathAlreadyExists = isdir(newProjectPath)
+        if !pathAlreadyExists && selectedProjectPath[] != "" &&  newProjectText[] != "" && CImGui.Button("Confirm", (120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+
+            create_new_project(newProjectPath, newProjectText[])
+            scenesLoadedFromFolder[] = get_all_scenes_from_base_folder(joinpath(newProjectPath, newProjectText[]))
+        end
+
+        if pathAlreadyExists
+            CImGui.Text("The path already exists. Please choose a different name.")
+        end
+
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+        end
+        CImGui.EndPopup()
+    end
+    return ""
+end
+
+function create_new_project(newProjectPath, newProjectName)
+    # create the project folder
+    if !isdir(newProjectPath)
+        mkdir(newProjectPath)
+    end
+
+    # add the julia .gitignore file
+    gitignore = joinpath(newProjectPath, ".gitignore")
+    touch(gitignore)
+    file = open(gitignore, "w")
+        println(file, gitIgnoreFileContent)
+    close(file)
+
+    # create a readme file
+    readme = joinpath(newProjectPath, "README.md")
+    touch(readme)
+    file = open(readme, "w")
+        println(file, readMeFileContent(newProjectName))
+    close(file)
+
+    # create the inner project folder (same name as the project)
+    projectFolder = joinpath(newProjectPath, newProjectName)
+    mkdir(projectFolder)
+    if !isdir(projectFolder)
+        mkdir(projectFolder)
+    end
+
+    # create assets folder. Inside of the assets folder, we also create folders for fonts, images, and sounds
+    mkdir(joinpath(projectFolder, "assets"))
+    mkdir(joinpath(projectFolder, "assets", "fonts"))
+    mkdir(joinpath(projectFolder, "assets", "images"))
+    mkdir(joinpath(projectFolder, "assets", "sounds"))
+
+    # Insert the default font into the fonts folder
+    cp(joinpath(pwd(), "..", "fonts", "FiraCode-Regular.ttf"), joinpath(projectFolder, "assets", "fonts", "FiraCode-Regular.ttf"))
+
+    # Insert the button up and button down images into the images folder
+    cp(joinpath(pwd(), "..", "images", "ButtonUp.png"), joinpath(projectFolder, "assets", "images", "ButtonUp.png"))
+    cp(joinpath(pwd(), "..", "images", "ButtonDown.png"), joinpath(projectFolder, "assets", "images", "ButtonDown.png"))
+
+    # create the scenes folder
+    scenesFolder = joinpath(projectFolder, "scenes")
+    mkdir(scenesFolder)
+
+    #create default scene
+    defaultScene = joinpath(scenesFolder, "scene.json")
+    touch(defaultScene)
+    file = open(defaultScene, "w")
+        println(file, sceneJsonContents)
+    close(file)
+
+    # create the scripts folder
+    scriptsFolder = joinpath(projectFolder, "scripts")
+    mkdir(scriptsFolder)
+
+    # create the src folder
+    srcFolder = joinpath(projectFolder, "src")
+    mkdir(srcFolder)
+
+    # create the src files, one named after the project, and one named Run.jl
+    srcFile = joinpath(srcFolder, "$(newProjectName).jl")
+    touch(srcFile)
+    file = open(srcFile, "w")
+        println(file, mainFileContent(newProjectName))
+    close(file)
+
+    runFile = joinpath(srcFolder, "Run.jl")
+    touch(runFile)
+    file = open(runFile, "w")
+        println(file, runFileContent(newProjectName))
+    close(file)
+
+    # create precompile_app.jl
+    precompileFile = joinpath(srcFolder, "..", "precompile_app.jl")
+    touch(precompileFile)
+    file = open(precompileFile, "w")
+        println(file, precompileFileContent(newProjectName))
+    close(file)
+
+    # create the project.toml file
+    projectToml = joinpath(projectFolder, "Project.toml")
+    touch(projectToml)
+    file = open(projectToml, "w")
+        println(file, projectTomlContent(newProjectName))
+    close(file)
+
+    #create the config.julgame file
+    configJulgame = joinpath(projectFolder, "config.julgame")
+    touch(configJulgame)
+    file = open(configJulgame, "w")
+        println(file, config_file_content(newProjectName))
+    close(file)
 end
 
 function move_entities(entities, origin, destination)
@@ -174,12 +348,12 @@ function move_entities(entities, origin, destination)
     splice!(entities, destinationIndex : destinationIndex, updatedEntities)
 end
 
-function log_exceptions(error_type, latest_exceptions, e, is_test_mode)
-    println("Error: ", e)
+function log_exceptions(error_type, latest_exceptions, e, top_backtrace, is_test_mode)
+    @error string(e)
     Base.show_backtrace(stderr, catch_backtrace())
-    push!(latest_exceptions, [e, String("$(Dates.now())")])
-    if length(latest_exceptions) > 10
-        deleteat!(latest_exceptions, 1)
+    push!(latest_exceptions[], [e, String("$(Dates.now())"), top_backtrace])
+    if length(latest_exceptions[]) > 10
+        deleteat!(latest_exceptions[], 1)
     end
     if is_test_mode
         @warn "Error in renderloop!" exception=e
@@ -305,5 +479,61 @@ function select_all_elements_in_between(hierarchyEntitySelections, lastSelectedI
         for i in start:-1:lastSelectedIndex
             hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
         end
+    end
+end
+
+function regenerate_ids_event(main)
+    event = @event begin
+        for index in eachindex(main.scene.entities)
+            main.scene.entities[index].id = JulGame.generate_uuid()
+        end
+    end
+
+    return event
+end
+
+function reset_camera_event(main)
+    event = @event begin
+        if main.scene.camera === nothing
+            @warn "No camera found in scene when resetting camera"
+            return
+        end
+        main.scene.camera.position = JulGame.Math.Vector2f(0, 0)
+    end
+
+    return event
+end
+
+function confirmation_dialog(dialog)
+    CImGui.OpenPopup(dialog[])
+
+    if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        CImGui.Text("Are you sure you would like to open this scene?\nIf you currently have a scene open, any unsaved changes will be lost.\n\n")
+        #CImGui.Separator()
+        CImGui.NewLine()
+
+        # @cstatic dont_ask_me_next_time=false begin
+        #     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_FramePadding, (0, 0))
+        #     @c CImGui.Checkbox("Don't ask me next time", &dont_ask_me_next_time)
+        #     CImGui.PopStyleVar()
+        # end
+
+        if CImGui.Button("OK", (120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+
+            return "ok"
+        end
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+            dialog[] = ""
+
+            return "cancel"
+        end
+        CImGui.EndPopup()
+
+        return "continue"
     end
 end

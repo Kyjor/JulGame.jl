@@ -1,22 +1,27 @@
-using Test
-mutable struct TestScript
-    parent
-    function TestScript()
-        this = new()
-        
-        return this
+module TestScriptModule
+    # function conditional_using(pkg::Symbol)
+    #     if !haskey(Base.loaded_modules, pkg)
+    #         @eval using $(pkg)
+    #     end
+    # end
+    # conditional_using(:JulGame)
+    using ..JulGame
+    using Test
+    mutable struct TestScript
+        parent
+        function TestScript()
+            this = new()
+            
+            return this
+        end
     end
-end
 
-function Base.getproperty(this::TestScript, s::Symbol)
-    if s == :initialize
-        function()
-            try
-                
+    function JulGame.initialize(this::TestScript)
+        try
             newAnimation = C_NULL
             newAnimator = C_NULL
             @testset "Engine Animation Tests" begin
-                newAnimation = AnimationModule.Animation(Vector4[Vector4(0,0,0,0)], Int32(60))
+                newAnimation = AnimationModule.Animation(Math.Vector4[Math.Vector4(0,0,0,0)], Int32(60))
                 @testset "Animation constructor" begin
                     @test newAnimation != C_NULL && newAnimation !== nothing
                     @test newAnimation.animatedFPS == 60
@@ -53,7 +58,7 @@ function Base.getproperty(this::TestScript, s::Symbol)
             newShape = C_NULL
             @testset "Engine Shape Tests" begin
                 @testset "Shape constructor" begin
-                    newShape = ShapeModule.Shape(Math.Vector3(255,0,0), Math.Vector2f(1,1), true, true, Math.Vector2f(0,0), Math.Vector2f(0,0))
+                    newShape = ShapeModule.Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1))
                     @test newShape != C_NULL && newShape !== nothing
                 end
             end
@@ -61,8 +66,9 @@ function Base.getproperty(this::TestScript, s::Symbol)
             newEntity = C_NULL
             @testset "Engine Entity Tests" begin
                 @testset "Entity constructor" begin
-                    newEntity = EntityModule.Entity()
+                    newEntity = JulGame.EntityModule.Entity()
                     @test newEntity != C_NULL && newEntity !== nothing
+                    push!(MAIN.scene.entities, newEntity)
                 end
                     
                 @testset "Entity addAnimator" begin
@@ -92,17 +98,25 @@ function Base.getproperty(this::TestScript, s::Symbol)
                 end
             end
 
+            @testset "Scene api tests" begin
+                @test JulGame.SceneModule.get_entity_by_id(MAIN.scene, "test") === nothing
+                @test JulGame.SceneModule.get_entity_by_id(MAIN.scene, newEntity.id) == newEntity
+                @test JulGame.SceneModule.get_entity_by_name(MAIN.scene, "test") === nothing
+                @test JulGame.SceneModule.get_entity_by_name(MAIN.scene, newEntity.name) == newEntity
+                @test JulGame.SceneModule.get_entities_by_name(MAIN.scene, "test") == []
+                @test JulGame.SceneModule.get_entities_by_name(MAIN.scene, newEntity.name) == [newEntity]
+            end
+
             @testset "UI Tests" begin
                 @testset "ScreenButton constructor" begin
                     
-                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(), joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), "test")
-                    push!(MAIN.scene.screenButtons, newScreenButton)
+                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Math.Vector2(256, 64), Math.Vector2(), joinpath("FiraCode-Regular.ttf"), "test")
                     push!(MAIN.scene.uiElements, newScreenButton)
                     @test newScreenButton != C_NULL && newScreenButton !== nothing
                 end
 
                 @testset "TextBox constructor" begin
-                    newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode", "ttf", "FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
+                    newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
                     push!(MAIN.scene.uiElements, newTextBox)
                     @test newTextBox != C_NULL && newTextBox !== nothing
                 end
@@ -110,18 +124,11 @@ function Base.getproperty(this::TestScript, s::Symbol)
             catch e
                 rethrow(e)
             end
-        end
-    elseif s == :update
-        function(deltaTime)
-        end
-    elseif s == :setParent 
-        function(parent)
-            this.parent = parent
-        end
-    elseif s == :onShutDown
-        function()
-        end
-    else
-        getfield(this, s)
     end
-end
+
+    function JulGame.update(this::TestScript, deltaTime)
+    end 
+
+    function JulGame.on_shutdown(this::TestScript)
+    end
+end # module

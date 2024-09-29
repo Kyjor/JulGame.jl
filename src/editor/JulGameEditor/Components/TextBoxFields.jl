@@ -51,7 +51,7 @@ function show_textbox_fields(selectedTextBox, textBoxField)
             setfield!(selectedTextBox, textBoxField, Vector2(x, y))
             JulGame.update_text(selectedTextBox, selectedTextBox.text)
         end
-    elseif fieldName == "autoSizeText" || fieldName == "isCenteredX" || fieldName == "isCenteredY" || fieldName == "isWorldEntity"
+    elseif fieldName == "autoSizeText" || fieldName == "isCenteredX" || fieldName == "isCenteredY" || fieldName == "isWorldEntity" || fieldName == "isActive"
         @c CImGui.Checkbox("$(textBoxField)", &Value)
 
         if Value != getfield(selectedTextBox, textBoxField)

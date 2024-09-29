@@ -1,4 +1,3 @@
-using JulGame
 using Test
 
 ROOTDIR = joinpath(@__DIR__, "..")
@@ -11,13 +10,13 @@ include(joinpath(PROFILINGTESTDIR, "Platformer", "src", "Platformer.jl"))
 @testset "All tests" begin
     cd(joinpath(@__DIR__, "projects", "ProfilingTest", "Platformer", "src"))
     @testset "Platformer" begin
-        @test run_platformer() == 0
+        @test PlatformerModule.run_platformer() == 0
     end
 
     include("math/mathtests.jl")
     
     cd(joinpath(SMOKETESTDIR, "src"))
-    @test run(SMOKETESTDIR, Test) == 0
+    @test SmokeTest.run(SMOKETESTDIR, Test) == 0
 
     if !Sys.islinux()
         cd(joinpath(ROOTDIR, "src", "editor", "JulGameEditor", "src"))

@@ -18,6 +18,9 @@ function ShowEntityContextMenu(currentEntitySelected)
         if CImGui.MenuItem("Rigidbody")
             JulGame.add_rigidbody(currentEntitySelected)
         end
+        if CImGui.MenuItem("Shape")
+            JulGame.add_shape(currentEntitySelected)
+        end
         if CImGui.MenuItem("SoundSource")
             JulGame.add_sound_source(currentEntitySelected)
         end

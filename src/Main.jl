@@ -3,29 +3,26 @@ module MainLoop
 	using ..JulGame: Camera, Component, Input, Math, UI, SceneModule
     import ..JulGame: Component
     import ..JulGame.SceneManagement: SceneBuilderModule
-	include("Enums.jl")
-	include("Constants.jl")
+	import ..JulGame
+
+	include("utils/Enums.jl")
+	include("utils/Constants.jl")
 
 	export Main
 	mutable struct Main
 		assets::String
 		autoScaleZoom::Bool
-		cameraBackgroundColor::Tuple{Int64, Int64, Int64}
 		close::Bool
 		currentTestTime::Float64
 		debugTextBoxes::Vector{UI.TextBoxModule.TextBox}
 		fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
 		globals::Vector{Any}
 		input::Input
+		isGameModeRunningInEditor::Bool
 		isWindowFocused::Bool
-		lastMousePosition::Union{Math.Vector2, Math.Vector2f}
-		lastMousePositionWorld::Union{Math.Vector2, Math.Vector2f}
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		mousePositionWorld::Union{Math.Vector2, Math.Vector2f}
-		mousePositionWorldRaw::Union{Math.Vector2, Math.Vector2f}
 		optimizeSpriteRendering::Bool
-		panCounter::Union{Math.Vector2, Math.Vector2f}
-		panThreshold::Float64
 		scene::SceneModule.Scene
 		selectedEntity::Union{Entity, Nothing}
 		selectedUIElementIndex::Int64
@@ -39,7 +36,7 @@ module MainLoop
 		windowName::String
 		zoom::Float64
 
-		function Main(zoom::Float64)
+		function Main(zoom::Float64 = 1.0)
 			this::Main = new()
 
 			SDL2.init()
@@ -48,14 +45,11 @@ module MainLoop
 			this.scene = SceneModule.Scene()
 			this.input = Input()
 
-			this.cameraBackgroundColor = (0,0,0)
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
 			this.input.scene = this.scene
 			this.isWindowFocused = false
 			this.mousePositionWorld = Math.Vector2f()
-			this.mousePositionWorldRaw = Math.Vector2f()
-			this.lastMousePositionWorld = Math.Vector2f()
 			this.optimizeSpriteRendering = false
 			this.selectedEntity = nothing
 			this.selectedUIElementIndex = -1
@@ -63,6 +57,7 @@ module MainLoop
 			this.shouldChangeScene = false
 			this.globals = []
 			this.input.main = this
+			this.isGameModeRunningInEditor = false
 
 			this.currentTestTime = 0.0
 			this.testMode = false
@@ -72,29 +67,40 @@ module MainLoop
 		end
 	end
 
-    function prepare_window_scripts_and_start_loop(isUsingEditor = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true, isNewEditor::Bool = false)
-        if !isNewEditor
-            prepare_window(isUsingEditor, size, isResizable, autoScaleZoom)
+    function prepare_window_scripts_and_start_loop(size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+        @debug "Preparing window"
+		if !JulGame.IS_EDITOR
+			@debug "Preparing window for game"
+            prepare_window(size, isResizable, autoScaleZoom)
         end
-        initialize_scripts_and_components(isUsingEditor)
+		@debug "Initializing scripts and components"
+        initialize_scripts_and_components()
 
-        if !isUsingEditor
+        if !JulGame.IS_EDITOR
+			@debug "Starting non editor loop"
             full_loop(MAIN)
             return
         end
     end
 
-    function initialize_new_scene(this::Main, isUsingEditor::Bool = false)
-        SceneBuilderModule.deserialize_and_build_scene(this.level, isUsingEditor)
-        initialize_scripts_and_components(false)
+    function initialize_new_scene(this::Main)
+		@debug "Initializing new scene"
+		@debug "Deserializing and building scene"
+        SceneBuilderModule.deserialize_and_build_scene(this.level)
 
-        if !isUsingEditor
+        initialize_scripts_and_components()
+
+        if !JulGame.IS_EDITOR
+			@debug "Starting non editor loop"
             full_loop(this)
             return
         end
     end
 
     function reset_camera_position(this::Main)
+		@debug "Resetting camera position"
+		if this.scene.camera === nothing return end
+
         cameraPosition = Math.Vector2f()
         JulGame.CameraModule.update(this.scene.camera, cameraPosition)
     end
@@ -106,14 +112,17 @@ module MainLoop
             lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
             while !this.close
                 try
-                    game_loop(this, startTime, lastPhysicsTime, false)
+                    game_loop(this, startTime, lastPhysicsTime)
                 catch e
                     if this.testMode
                         throw(e)
                     else
-                        @error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
                     end
                 end
                 if this.testMode && this.currentTestTime >= this.testLength
@@ -124,18 +133,22 @@ module MainLoop
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-                        script.onShutDown()
+                        Base.invokelatest(JulGame.on_shutdown, script)
                     catch e
-                        if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
-                            println("Error shutting down script")
-                            Base.show_backtrace(stdout, catch_backtrace())
-                            rethrow(e)
-                        end
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							if typeof(e) != ErrorException
+								println("Error shutting down script")
+								Base.show_backtrace(stdout, catch_backtrace())
+							end
+						end
                     end
                 end
             end
 			
             if !this.shouldChangeScene
+				@info "Closing window"
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
                 SDL2.SDL_DestroyWindow(this.window)
                 SDL2.Mix_Quit()
@@ -143,38 +156,52 @@ module MainLoop
                 SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
                 SDL2.SDL_Quit()
             else
+				@debug "Changing scene"
                 this.shouldChangeScene = false
-                initialize_new_scene(this, false)
+                initialize_new_scene(this)
             end
         end
     end
 
     function create_new_entity(this::Main)
+		@debug "Creating new entity"
         SceneBuilderModule.create_new_entity(this.level)
     end
 
     function create_new_text_box(this::Main)
+		@debug "Creating new text box"
         SceneBuilderModule.create_new_text_box(this.level)
     end
 
 	function create_new_screen_button(this::Main)
+		@debug "Creating new screen button"
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
     function update_viewport(this::Main, x,y)
+		@debug "Updating viewport"
         if !this.autoScaleZoom
             return
         end
 		scale_zoom(this, x, y)
         SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
         SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 1.0, 1.0)	
-        this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.size.x/2*this.zoom), round(y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
-        @info string("Set viewport to: ", this.scene.camera.startingCoordinates)
-		SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
+		
+		if this.scene.camera !== nothing
+			this.scene.camera.startingCoordinates = Math.Vector2f(round(x/2) - round(this.scene.camera.size.x/2*this.zoom), round(y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
+			@info string("Set viewport to: ", this.scene.camera.startingCoordinates)
+			SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
+		end
+
         SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.zoom, this.zoom)
     end
 
     function scale_zoom(this::Main, x,y)
+		@debug "Scaling zoom"
+		if this.scene.camera === nothing
+			return
+		end
+
         if this.autoScaleZoom
             targetRatio = this.scene.camera.size.x/this.scene.camera.size.y
             if this.scene.camera.size.x == max(this.scene.camera.size.x, this.scene.camera.size.y)
@@ -199,38 +226,24 @@ module MainLoop
         end
     end
     
-	function prepare_window(isUsingEditor::Bool = false, size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
+	function prepare_window(size = C_NULL, isResizable::Bool = false, autoScaleZoom::Bool = true)
 		this::Main = MAIN
-		if size == Math.Vector2()
-			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
-			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
-			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
-		end
 		this.autoScaleZoom = autoScaleZoom
 		scale_zoom(this, size.x, size.y)
 
-		this.screenSize = size != C_NULL ? size : this.scene.camera.size
-
-		flags = SDL2.SDL_RENDERER_ACCELERATED |
-		(isUsingEditor ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
-		(isResizable || isUsingEditor ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
-
-		this.window = SDL2.SDL_CreateWindow(this.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, this.screenSize.x, this.screenSize.y, flags)
-
-		JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(this.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
-		this.scene.camera.startingCoordinates = Math.Vector2f(round(size.x/2) - round(this.scene.camera.size.x/2*this.zoom), round(size.y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
-		@info string("Set viewport to: ", this.scene.camera.startingCoordinates)
-		SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
-		# windowInfo = unsafe_wrap(Array, SDL2.SDL_GetWindowSurface(this.window), 1; own = false)[1]
+		if this.scene.camera !== nothing
+			this.scene.camera.startingCoordinates = Math.Vector2f(round(size.x/2) - round(this.scene.camera.size.x/2*this.zoom), round(size.y/2) - round(this.scene.camera.size.y/2*this.zoom))																																				
+			@info string("Set viewport to: ", this.scene.camera.startingCoordinates)
+			SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x*this.zoom), round(this.scene.camera.size.y*this.zoom))))
+		end
 
 		SDL2.SDL_RenderSetScale(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.zoom, this.zoom)
 		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
 		SDL2.SDL_initFramerate(this.fpsManager)
-		SDL2.SDL_setFramerate(this.fpsManager, UInt32(60))
+		SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
 	end
 
-function initialize_scripts_and_components(isUsingEditor::Bool = false)
+function initialize_scripts_and_components()
 	this::Main = MAIN
 	scripts = []
 	for entity in this.scene.entities
@@ -239,54 +252,52 @@ function initialize_scripts_and_components(isUsingEditor::Bool = false)
 		end
 	end
 
-	for uiElement in this.scene.uiElements
-        JulGame.initialize(uiElement)
+	if !this.isGameModeRunningInEditor
+		for uiElement in this.scene.uiElements
+			JulGame.initialize(uiElement)
+		end
 	end
-
-	this.lastMousePosition = Math.Vector2(0, 0)
-	this.panCounter = Math.Vector2f(0, 0)
-	this.panThreshold = .1
 
 	this.spriteLayers = build_sprite_layers()
 	
-	if !isUsingEditor
+	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 		for script in scripts
 			try
-				script.initialize()
+				Base.invokelatest(JulGame.initialize, script)
 			catch e
-				if typeof(e) != ErrorException || !contains(e.msg, "initialize")
+				if JulGame.IS_EDITOR
+					rethrow(e)
+				else
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
 				end
 			end
 		end
+		build_sprite_layers()
 	end
 end
 
 export change_scene
 """
-	change_scene(sceneFileName::String, isEditor::Bool = false)
+	change_scene(sceneFileName::String)
 
 Change the scene to the specified `sceneFileName`. This function destroys the current scene, including all entities, textboxes, and screen buttons, except for the ones marked as persistent. It then loads the new scene and sets the camera and persistent entities, textboxes, and screen buttons.
 
 # Arguments
 - `sceneFileName::String`: The name of the scene file to load.
-- `isEditor::Bool`: Whether the scene is being loaded in the editor. Default is `false`.
-
 """
-function change_scene(sceneFileName::String, isEditor::Bool = false)
+function JulGame.change_scene(sceneFileName::String)
 	this::Main = MAIN
-	# println("Changing scene to: ", sceneFileName)
+	@debug "Changing scene to: $(sceneFileName)"
 	this.close = true
 	this.shouldChangeScene = true
 	#destroy current scene 
-	#println("Entities before destroying: ", length(this.scene.entities))
+	@debug  "Entities before destroying: $(length(this.scene.entities))" 
 	count = 0
 	skipcount = 0
 	persistentEntities = []	
 	for entity in this.scene.entities
-		if entity.persistentBetweenScenes
+		if entity.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
 			#println("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
 			skipcount += 1
@@ -294,18 +305,25 @@ function change_scene(sceneFileName::String, isEditor::Bool = false)
 		end
 
 		destroy_entity_components(this, entity)
-		for script in entity.scripts
-			try
-				script.onShutDown()
-			catch e
-				if typeof(e) != ErrorException || !contains(e.msg, "onShutDown")
-					println("Error shutting down script")
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
+		if !JulGame.IS_EDITOR
+			for script in entity.scripts
+				try
+					Base.invokelatest(JulGame.on_shutdown, script)
+				catch e
+					if JulGame.IS_EDITOR
+						rethrow(e)
+					else
+						if typeof(e) != ErrorException
+							println("Error shutting down script")
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
+					end
 				end
 			end
 		end
+
+		JulGame.destroy_entity(this, entity)
 		count += 1
 	end
 	# println("Destroyed $count entities")
@@ -333,8 +351,8 @@ function change_scene(sceneFileName::String, isEditor::Bool = false)
 	this.scene.camera = camera
 	this.level.scene = sceneFileName
 	
-	if isEditor
-		initialize_new_scene(this, true)
+	if JulGame.IS_EDITOR
+		initialize_new_scene(this)
 	end
 end
 
@@ -345,6 +363,7 @@ Builds the sprite layers for the main game.
 
 """
 function build_sprite_layers()
+	@debug "Building sprite layers"
 	layerDict = Dict{String, Array}()
 	layerDict["sort"] = []
 	for entity in MAIN.scene.entities
@@ -372,7 +391,7 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 # Arguments
 - `entity`: The entity to be destroyed.
 """
-function destroy_entity(this::Main, entity)
+function JulGame.destroy_entity(this::Main, entity)
 	for i = eachindex(this.scene.entities)
 		if this.scene.entities[i] == entity
 			destroy_entity_components(this, entity)
@@ -383,7 +402,7 @@ function destroy_entity(this::Main, entity)
 	end
 end
 
-function destroy_ui_element(this::Main, uiElement)
+function JulGame.destroy_ui_element(this::Main, uiElement)
 	for i = eachindex(this.scene.uiElements)
 		if this.scene.uiElements[i] == uiElement
 			deleteat!(this.scene.uiElements, i)
@@ -441,7 +460,7 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 - `entity`: The entity to create.
 
 """
-function create_entity(entity)
+function JulGame.create_entity(entity)
 	this::Main = MAIN
 	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
@@ -466,7 +485,7 @@ function create_entity(entity)
 end
 
 """
-game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), isEditor::Bool = false, Vector{Any}} = C_NULL)
+game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), Vector{Any}} = C_NULL)
 
 Runs the game loop.
 
@@ -474,13 +493,11 @@ Parameters:
 - `this`: The main struct.
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
-- `isEditor`: A boolean indicating whether the game loop is running in editor mode.
-
 """
-function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), isEditor::Bool = false, windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
-	if this.shouldChangeScene
+function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+	if this.shouldChangeScene && !JulGame.IS_EDITOR
 		this.shouldChangeScene = false
-		initialize_new_scene(this, isEditor)
+		initialize_new_scene(this)
 		return
 	end
 	try
@@ -489,46 +506,50 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
-			if isEditor
-				this.scene.camera.size = Math.Vector2(windowSize.x, windowSize.y)
+			if JulGame.IS_EDITOR && this.scene.camera !== nothing
+				#this.scene.camera.size = Math.Vector2(windowSize.x, windowSize.y)
 			end
 
 			DEBUG = false
 			#region Input
-			this.lastMousePosition = this.input.mousePosition
-			if !isEditor
+			if !JulGame.IS_EDITOR
 				JulGame.InputModule.poll_input(this.input)
 			end
 
-			if this.input.quit && !isEditor
+			if this.input.quit && !JulGame.IS_EDITOR
 				this.close = true
 			end
 			DEBUG = this.input.debug
 
 			cameraPosition = Math.Vector2f()
 
-			if !isEditor
+			if !JulGame.IS_EDITOR
 				SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 			end
 
 			#region Physics
-			if !isEditor
+			if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
-
+				JulGame.DELTA_TIME = deltaTime
+				
 				this.currentTestTime += deltaTime
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
-					return
+					# TODO: pause simulation
+					#return
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
 						JulGame.update(rigidbody, deltaTime)
 					catch e
-						println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
 					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
@@ -536,25 +557,30 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 
 			#region Rendering
 			currentRenderTime = SDL2.SDL_GetTicks()
-			SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 200, 0, SDL2.SDL_ALPHA_OPAQUE)
-			JulGame.CameraModule.update(this.scene.camera, C_NULL)
+			if this.scene.camera !== nothing && !JulGame.IS_EDITOR
+				JulGame.CameraModule.update(this.scene.camera)
+			end
 
 			for entity in this.scene.entities
 				if !entity.isActive
 					continue
 				end
 
-				if !isEditor
+				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
                         JulGame.update(entity, deltaTime)
-						if this.close
+						if this.close && !this.isGameModeRunningInEditor
+							@info "Closing game"
 							return
 						end
 					catch e
-						println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
-						rethrow(e)
+						if JulGame.IS_EDITOR
+							rethrow(e)
+						else
+							println(entity.name, " with id: ", entity.id, " has a problem with it's update")
+							@error string(e)
+							Base.show_backtrace(stdout, catch_backtrace())
+						end
 					end
 					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
@@ -562,98 +588,23 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					end
 				end
 			end
-
-			cameraPosition = this.scene.camera.position
-			cameraSize = this.scene.camera.size
 			
-			skipcount = 0
-			rendercount = 0
-			renderOrder = []
-			for entity in this.scene.entities
-				if !entity.isActive || (entity.sprite == C_NULL && entity.shape == C_NULL)
-					continue
-				end
-
-				shapeOrSprite = entity.sprite != C_NULL ? entity.sprite : entity.shape
-				shapeOrSpritePosition = shapeOrSprite.parent.transform.position
-				shapeOrSpriteSize = shapeOrSprite.parent.transform.scale
-				if ((shapeOrSpritePosition.x + shapeOrSpriteSize.x) < cameraPosition.x || shapeOrSpritePosition.y < cameraPosition.y || shapeOrSpritePosition.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (shapeOrSpritePosition.y - shapeOrSpriteSize.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shapeOrSprite.isWorldEntity && this.optimizeSpriteRendering 
-					skipcount += 1
-					continue
-				end
-
-				push!(renderOrder, (shapeOrSprite.layer, shapeOrSprite))
+			cameraPosition = this.scene.camera !== nothing ? this.scene.camera.position : Math.Vector2f(0,0)
+			cameraSize = this.scene.camera !== nothing ? this.scene.camera.size : Math.Vector2(0,0)
+			
+			if !JulGame.IS_EDITOR
+				render_scene_sprites_and_shapes(this, this.scene.camera)
 			end
-
-			sort!(renderOrder, by = x -> x[1])
-
-			for i = eachindex(renderOrder)
-				try
-					rendercount += 1
-					Component.draw(renderOrder[i][2])
-				catch e
-					println(sprite.parent.name, " with id: ", sprite.parent.id, " has a problem with it's sprite")
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-					rethrow(e)
-				end
-			end
-
-			#println("Skipped $skipcount, rendered $rendercount")
-
-			colliderSkipCount = 0
-			colliderRenderCount = 0
-			for entity in this.scene.entities
-				if !entity.isActive
-					continue
-				end
-
-				entityShape = entity.shape
-				if entityShape != C_NULL
-					Component.draw(entityShape)
-				end
-				
-				if DEBUG && entity.collider != C_NULL
-					SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
-					pos = entity.transform.position
-					scale = entity.transform.scale
-
-					if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
-						colliderSkipCount += 1
-						continue
-					end
-					colliderRenderCount += 1
-					collider = entity.collider
-					if Component.get_type(collider) == "CircleCollider"
-						SDL2E.SDL_RenderDrawCircle(
-							round(Int32, (pos.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, (pos.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, collider.diameter/2 * SCALE_UNITS))
-					else
-						colSize = Component.get_size(collider)
-						colSize = Math.Vector2f(colSize.x, colSize.y)
-						colOffset = collider.offset
-						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
-
-						SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - this.scene.camera.position.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						(pos.y + colOffset.y - this.scene.camera.position.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2) - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
-						colSize.x * SCALE_UNITS, 
-						colSize.y * SCALE_UNITS)))
-					end
-				end
-			end
-			#println("Skipped $colliderSkipCount, rendered $colliderRenderCount")
+			
+			render_scene_debug(this, cameraPosition, cameraSize, DEBUG)
 
 			#region UI
 			for uiElement in this.scene.uiElements
                 JulGame.render(uiElement, DEBUG)
 			end
 
-			this.lastMousePositionWorld = this.mousePositionWorld
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
-			this.mousePositionWorldRaw = Math.Vector2f((this.input.mousePosition.x - pos1.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom, ( this.input.mousePosition.y - pos1.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom)
-			this.mousePositionWorld = Math.Vector2(floor(Int32,(this.input.mousePosition.x + (this.scene.camera.position.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int32,( this.input.mousePosition.y + (this.scene.camera.position.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
+			this.mousePositionWorld = Math.Vector2(floor(Int32,(this.input.mousePosition.x + (cameraPosition.x * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom), floor(Int32,( this.input.mousePosition.y + (cameraPosition.y * SCALE_UNITS * this.zoom)) / SCALE_UNITS / this.zoom))
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y )
 			#region Debug
 			if DEBUG
@@ -666,7 +617,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				]
 
 				if length(this.debugTextBoxes) == 0
-					fontPath = joinpath(this.assets, "fonts", "FiraCode", "ttf", "FiraCode-Regular.ttf")
+					fontPath = joinpath(this.assets, "fonts", "FiraCode-Regular.ttf")
 
 					for i = eachindex(statTexts)
 						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
@@ -682,14 +633,130 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				end
 			end
 
-			if !isEditor
+			if !JulGame.IS_EDITOR
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 				SDL2.SDL_framerateDelay(this.fpsManager)
 			end
 		catch e
-			@error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
-			rethrow(e)
+			if JulGame.IS_EDITOR
+				rethrow(e)
+			else
+				@error string(e)
+				Base.show_backtrace(stdout, catch_backtrace())
+			end
 		end
     end
-end
+
+	function render_scene_sprites_and_shapes(this::Main, camera::Camera)
+		cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0,0)
+		cameraSize = camera !== nothing ? camera.size : Math.Vector2(0,0)
+			
+		skipcount = 0
+		rendercount = 0
+		renderOrder = []
+		for entity in this.scene.entities
+			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
+			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
+			if !entity.isActive || (!spriteExists && !shapeExists)
+				continue
+			end
+
+			position = entity.transform.position
+			size = entity.transform.scale
+			sprite = entity.sprite
+			shape = entity.shape
+
+			skipSprite = false
+			skipShape = false
+
+			# TODO: consider offset
+			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+				skipSprite = true
+			end
+
+			# TODO: consider offset
+			if shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shape.isWorldEntity && this.optimizeSpriteRendering 
+				skipShape = true
+			end
+
+			if !skipSprite && spriteExists
+				push!(renderOrder, (sprite.layer, sprite))
+			end
+			if !skipShape && shapeExists
+				push!(renderOrder, (shape.layer, shape))
+			end
+		end
+
+		sort!(renderOrder, by = x -> x[1])
+		for i = eachindex(renderOrder)
+			try
+				rendercount += 1
+				Component.draw(renderOrder[i][2], camera)
+			catch e
+				if JulGame.IS_EDITOR
+					rethrow(e)
+				else
+					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
+					@error string(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+			end
+		end
+	end
+
+	function start_game_in_editor(this::Main, path::String)
+		this.isGameModeRunningInEditor = true
+		SceneBuilderModule.add_scripts_to_entities(path)
+		initialize_scripts_and_components()
+	end
+
+	function stop_game_in_editor(this::Main)
+		this.isGameModeRunningInEditor = false
+		SDL2.Mix_HaltMusic()
+		if this.scene.camera !== nothing && this.scene.camera != C_NULL
+			#this.scene.camera.target = C_NULL
+		end
+	end
+
+	function render_scene_debug(this::Main, cameraPosition, cameraSize, DEBUG)
+		colliderSkipCount = 0
+		colliderRenderCount = 0
+		for entity in this.scene.entities
+			if !entity.isActive
+				continue
+			end
+	
+			if DEBUG && entity.collider != C_NULL
+				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+				pos = entity.transform.position
+				scale = entity.transform.scale
+	
+				if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
+					colliderSkipCount += 1
+					continue
+				end
+				colliderRenderCount += 1
+				collider = entity.collider
+	
+				if Component.get_type(collider) == "CircleCollider"
+					SDL2E.SDL_RenderDrawCircle(
+							round(Int32, (pos.x - cameraPosition.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int32, (pos.y - cameraPosition.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
+							round(Int32, collider.diameter/2 * SCALE_UNITS))
+				else
+						colSize = Component.get_size(collider)
+						colSize = Math.Vector2f(colSize.x, colSize.y)
+						colOffset = collider.offset
+						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
+						
+						SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * SCALE_UNITS - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
+						(pos.y + colOffset.y - cameraPosition.y) * SCALE_UNITS - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
+						entity.transform.scale.x * colSize.x * SCALE_UNITS, 
+						entity.transform.scale.y * colSize.y * SCALE_UNITS)))
+				end
+			end
+		end
+	end
+end # module
+

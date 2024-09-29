@@ -38,3 +38,7 @@ test/projects/ProfilingTest/Platformer/.vscode/settings.json
 playground.jl
 
 *.ini
+
+*.DS_Store
+
+src/editor/Build/

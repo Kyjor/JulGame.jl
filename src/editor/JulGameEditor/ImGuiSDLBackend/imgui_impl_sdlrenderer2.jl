@@ -148,7 +148,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 color = Ptr{Int}(Ptr{Cvoid}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + col_offset))
                     
                 tex = Ptr{SDL2.SDL_Texture}(CImGui.ImDrawCmd_GetTexID(pcmd))
-                offset = unsafe_load(pcmd.IdxOffset)*2 # TODO: understand why this is necessary to multiply by 2
+                offset = unsafe_load(pcmd.IdxOffset)*2
                
                 elem_count = Int(unsafe_load(pcmd.ElemCount))
                 indices = Ptr{CImGui.ImDrawIdx}(idx_buffer.Data + (offset)) 

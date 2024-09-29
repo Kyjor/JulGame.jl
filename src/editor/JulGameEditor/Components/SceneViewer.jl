@@ -1,4 +1,4 @@
-function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode)
+function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, camera)
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     CImGui.Begin("Scene") || (CImGui.End(); return)
     # GET SIZE OF SCENE TEXTURE
@@ -8,9 +8,6 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     draw_list = CImGui.GetWindowDrawList()
     io = CImGui.GetIO()
     
-    # UI elements
-    # grid step int input as slider with range. Min = 1, Max = 64
-    CImGui.Text("Mouse Left: drag to add square,\nMouse Right: drag to scroll, click for context menu.\nCTRL+Mouse Wheel: zoom")
     # Canvas setup
     canvas_p0 = CImGui.GetCursorScreenPos()  # ImDrawList API uses screen coordinates!
     canvas_sz = CImGui.GetContentRegionAvail()  # Resize canvas to what's available
@@ -52,8 +49,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
         mouse_drag_movement = ImVec2(unsafe_load(io.MouseDelta).x, unsafe_load(io.MouseDelta).y)
         # if scene is something, update the camera position
-        if main !== nothing
-            main.scene.camera.position = Math.Vector2f(main.scene.camera.position.x - (mouse_drag_movement.x/scale_unit_factor), main.scene.camera.position.y - (mouse_drag_movement.y/scale_unit_factor))
+        if main !== nothing && camera !== nothing
+            camera.position = Math.Vector2f(camera.position.x - (mouse_drag_movement.x/scale_unit_factor), camera.position.y - (mouse_drag_movement.y/scale_unit_factor))
         end
     end
 
@@ -62,11 +59,11 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         # zoom_level[] += unsafe_load(io.MouseWheel) * 0.4 # * 0.10
         # zoom_level[] = clamp(zoom_level[], 0.2, 50.0)
     end
-    if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing
+    if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing && camera !== nothing
         # move camera
-        main.scene.camera.position = Math.Vector2f(main.scene.camera.position.x - (unsafe_load(io.MouseWheelH)), main.scene.camera.position.y - (unsafe_load(io.MouseWheel)))
+        camera.position = Math.Vector2f(camera.position.x - (unsafe_load(io.MouseWheelH)), camera.position.y - (unsafe_load(io.MouseWheel)))
     end
-    camPos = main !== nothing ? ImVec2((main.scene.camera.position.x * scale_unit_factor), (main.scene.camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
+    camPos = main !== nothing && camera !== nothing ? ImVec2((camera.position.x * scale_unit_factor), (camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
 
     # Context menu
     drag_delta_right = CImGui.GetMouseDragDelta(CImGui.ImGuiMouseButton_Right)
@@ -91,22 +88,32 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     if CImGui.BeginPopup("context")
         if CImGui.MenuItem("Delete", "", false, main.selectedEntity !== nothing)
             println("Delete selected entity")
-            MainLoop.destroy_entity(main, main.selectedEntity)
+            JulGame.destroy_entity(main, main.selectedEntity)
         end
         CImGui.EndPopup()
     end
 
      # Draw grid and lines
-    CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
-        GRID_STEP = 64.0 * zoom_level[]
-        for x in 0:GRID_STEP:canvas_sz.x
-            CImGui.AddLine(draw_list, ImVec2(canvas_p0.x + x - camPos.x, canvas_p0.y), ImVec2(canvas_p0.x + x - camPos.x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
-        end
-        for y in 0:GRID_STEP:canvas_sz.y
-            CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, y + canvas_p0.y - camPos.y), ImVec2(canvas_p1.x, y + canvas_p0.y - camPos.y), IM_COL32(200, 200, 200, 40))
-        end
+     CImGui.PushClipRect(draw_list, canvas_p0, canvas_p1, true)
 
-    CImGui.PopClipRect(draw_list)
+     GRID_STEP = 64.0 * zoom_level[]
+     
+     # Adjust starting points for infinite grid
+     start_x = canvas_p0.x - mod(camPos.x, GRID_STEP)
+     start_y = canvas_p0.y - mod(camPos.y, GRID_STEP)
+     
+     # Draw vertical grid lines
+     for x in start_x:GRID_STEP:canvas_p1.x
+         CImGui.AddLine(draw_list, ImVec2(x, canvas_p0.y), ImVec2(x, canvas_p1.y), IM_COL32(200, 200, 200, 40))
+     end
+     
+     # Draw horizontal grid lines
+     for y in start_y:GRID_STEP:canvas_p1.y
+         CImGui.AddLine(draw_list, ImVec2(canvas_p0.x, y), ImVec2(canvas_p1.x, y), IM_COL32(200, 200, 200, 40))
+     end
+     
+     CImGui.PopClipRect(draw_list)
+     
     
     # Draw square around selected entity
     highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
@@ -134,6 +141,7 @@ function handle_mouse_click_duplication(main)
     end
 
     copy = deepcopy(main.selectedEntity)
+    copy.id = JulGame.generate_uuid()
     push!(main.scene.entities, copy)
     main.selectedEntity = copy
 end
