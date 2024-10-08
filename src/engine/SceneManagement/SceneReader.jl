@@ -41,9 +41,9 @@ module SceneReaderModule
                 if haskey(entity, "parent") && entity.parent != ""
                     childParentDict[string(entity.id)] = entity.parent
                 end
-                newEntity = Entity(entity.name, string(entity.id))
-                newEntity.isActive = entity.isActive
-                newEntity.scripts = entity.scripts
+                newEntity = Entity(get(entity, "name", "New entity"), string(entity.id))
+                newEntity.isActive = get(entity, "isActive", true)
+                newEntity.scripts = get(entity, "scripts", [])
 
                 for component in components
                     if typeof(component) == Animator
