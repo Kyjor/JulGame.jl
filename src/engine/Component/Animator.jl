@@ -79,7 +79,7 @@
     force_frame_update(animator, 1)
     ```
     """
-    function force_frame_update(this::InternalAnimator, frameIndex::Int32)
+    function force_frame_update(this::InternalAnimator, frameIndex)
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export force_frame_update    

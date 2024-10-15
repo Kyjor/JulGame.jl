@@ -215,8 +215,9 @@ module SceneBuilderModule
                     module_name = Base.invokelatest(eval, Symbol("$(script.name)Module"))
                     constructor = Base.invokelatest(getfield, module_name, Symbol(script.name)) 
                     newScript = Base.invokelatest(constructor)
+                    scriptFields = get(script, "fields", Dict())
 
-                    for (key, value) in script.fields
+                    for (key, value) in scriptFields
                         ftype = nothing
                         try
                             ftype = fieldtype(typeof(newScript), Symbol(key))

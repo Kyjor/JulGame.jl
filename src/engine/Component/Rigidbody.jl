@@ -39,6 +39,7 @@
     end
 
     function Component.update(this::InternalRigidbody, dt)
+        dt = clamp(dt, 0, .5)
         velocityMultiplier = Math.Vector2f(1.0, 1.0)
         transform = this.parent.transform
         currentPosition = transform.position

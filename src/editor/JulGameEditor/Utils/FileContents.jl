@@ -76,7 +76,7 @@ function projectTomlContent(projectName)
 end
 
 function newScriptContent(scriptName)
-    return "module $scriptNamemodule
+    return "module $(scriptName)Module
     using JulGame
     mutable struct $scriptName
     parent # do not remove this line, this is a reference to the entity that this script is attached to

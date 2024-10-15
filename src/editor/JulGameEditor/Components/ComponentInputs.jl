@@ -610,7 +610,9 @@ function display_script_field_input(script, field)
         setfield!(script, field, ftype(x))
     elseif ftype <: Int64 || ftype <: Int32 || ftype <: Int16 || ftype <: Int8
         x = ftype(getfield(script, field))
+        x = convert(Int32, x)
         @c CImGui.InputInt("$(field)", &x, 1)
+        x = convert(ftype, x)
         setfield!(script, field, x)
     elseif ftype == Bool
         x = getfield(script, field)
