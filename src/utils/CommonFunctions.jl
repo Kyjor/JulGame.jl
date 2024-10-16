@@ -22,7 +22,6 @@ function draw end
 function flip end
 function generate_uuid end
 function get_offset end
-function get_parent end
 function get_position end
 function get_rotation end
 function get_scale end
@@ -45,7 +44,6 @@ function set_position end
 function set_rotation end
 function set_scale end
 function set_size end
-function set_tag end
 function stop_music end
 function toggle_sound end
 function unload_sound end

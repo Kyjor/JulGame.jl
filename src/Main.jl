@@ -342,10 +342,10 @@ function JulGame.change_scene(sceneFileName::String)
 		JulGame.destroy_entity(this, entity)
 		count += 1
 	end
-	# println("Destroyed $count entities")
-	# println("Skipped $skipcount entities")
+	@debug "Destroyed $count entities while changing scenes"
+	@debug "Skipped $skipcount entities while changing scenes"
 
-	# println("Entities left after destroying: ", length(persistentEntities))
+	@debug "Entities left after destroying while changing scenes (persistent): $(length(persistentEntities)) "
 
 	persistentUIElements = []
 	# delete all UIElements
@@ -632,21 +632,21 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
 				]
 
-				if length(this.debugTextBoxes) == 0
-					fontPath = joinpath(this.assets, "fonts", "FiraCode-Regular.ttf")
+				# if length(this.debugTextBoxes) == 0
+				# 	fontPath = joinpath(this.assets, "fonts", "FiraCode-Regular.ttf")
 
-					for i = eachindex(statTexts)
-						textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
-						push!(this.debugTextBoxes, textBox)
-                        JulGame.initialize(textBox)
-					end
-				else
-					for i = eachindex(this.debugTextBoxes)
-                        db_textbox = this.debugTextBoxes[i]
-                        JulGame.update_text(db_textbox, statTexts[i])
-                        JulGame.render(db_textbox, false)
-					end
-				end
+				# 	for i = eachindex(statTexts)
+				# 		textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
+				# 		push!(this.debugTextBoxes, textBox)
+                #         JulGame.initialize(textBox)
+				# 	end
+				# else
+				# 	for i = eachindex(this.debugTextBoxes)
+                #         db_textbox = this.debugTextBoxes[i]
+                #         JulGame.update_text(db_textbox, statTexts[i])
+                #         JulGame.render(db_textbox, false)
+				# 	end
+				# end
 			end
 
 			if !JulGame.IS_EDITOR
@@ -743,6 +743,8 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 			end
 	
 			if DEBUG && entity.collider != C_NULL
+				rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
+        		SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 				pos = entity.transform.position
 				scale = entity.transform.scale
@@ -754,23 +756,18 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				colliderRenderCount += 1
 				collider = entity.collider
 	
-				if Component.get_type(collider) == "CircleCollider"
-					SDL2E.SDL_RenderDrawCircle(
-							round(Int32, (pos.x - cameraPosition.x) * SCALE_UNITS - ((entity.transform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, (pos.y - cameraPosition.y) * SCALE_UNITS - ((entity.transform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)), 
-							round(Int32, collider.diameter/2 * SCALE_UNITS))
-				else
-						colSize = Component.get_size(collider)
-						colSize = Math.Vector2f(colSize.x, colSize.y)
-						colOffset = collider.offset
-						colOffset = Math.Vector2f(colOffset.x, colOffset.y)
+				
+				colSize = collider.size
+				colSize = Math.Vector2f(colSize.x, colSize.y)
+				colOffset = collider.offset
+				colOffset = Math.Vector2f(colOffset.x, colOffset.y)
 						
-						SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-						Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * SCALE_UNITS - ((colSize.x * SCALE_UNITS - SCALE_UNITS) / 2), 
-						(pos.y + colOffset.y - cameraPosition.y) * SCALE_UNITS - ((colSize.y * SCALE_UNITS - SCALE_UNITS) / 2), 
-						entity.transform.scale.x * colSize.x * SCALE_UNITS, 
-						entity.transform.scale.y * colSize.y * SCALE_UNITS)))
-				end
+				SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+				Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * SCALE_UNITS, 
+				(pos.y + colOffset.y - cameraPosition.y) * SCALE_UNITS, 
+				entity.transform.scale.x * colSize.x * SCALE_UNITS, 
+				entity.transform.scale.y * colSize.y * SCALE_UNITS)))
+				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 			end
 		end
 	end
