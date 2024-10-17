@@ -139,7 +139,9 @@ module ColliderModule
                         end
                         #Begin to overlap, correct position
                         this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y - collision[2])
-                        this.parent.rigidbody.grounded = true
+                        if this.parent.rigidbody.velocity.y >= 0
+                            this.parent.rigidbody.grounded = true
+                        end
                     end
                     if collision[1] == Below::ColliderLocation
                         push!(this.currentCollisions, collider)
@@ -175,8 +177,8 @@ module ColliderModule
         b = SDL2.SDL_Rect(round(posB.x), round(posB.y), round(colliderBXSize), round(colliderBYSize))
 
         rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
-        SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
-        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 255, SDL2.SDL_ALPHA_OPAQUE)
+        # SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
+        # SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 255, SDL2.SDL_ALPHA_OPAQUE)
         
         result = Ref(SDL2.SDL_Rect(0,0,0,0))
         isIntersection = SDL2.SDL_IntersectRect(Ref(a), Ref(b), result)
@@ -186,21 +188,17 @@ module ColliderModule
         Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
         Math.Vector2(0,0)
         isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Int32(round(posA.x))), Ref(Int32(round(posA.y + 32))), Ref(Int32(round(posA.x))), Ref(Int32(round(posA.y + 80))))
-        SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x), round(posA.y + 80 - cameraDiff.y))
+        #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x), round(posA.y + 80 - cameraDiff.y))
 
         isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Int32(round(posA.x + colliderAXSize))), Ref(Int32(round(posA.y + 32))), Ref(Int32(round(posA.x + colliderAXSize))), Ref(Int32(round(posA.y + 80))))
-        SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
+        #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
         if isLineIntersectionL == SDL2.SDL_TRUE
-            println("line intersectionL")
-            println(posA)
             isLineIntersectionL = true
         else
             isLineIntersectionL = false
         end
 
         if isLineIntersectionR == SDL2.SDL_TRUE
-            println("line intersectionR")
-            println(posA)
             isLineIntersectionR = true
         else
             isLineIntersectionR = false
@@ -209,14 +207,14 @@ module ColliderModule
         if isIntersection == SDL2.SDL_TRUE
             a1 = SDL2.SDL_FRect(posA.x, posA.y, colliderAXSize, colliderAYSize)
             b1 = SDL2.SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
-            SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(a1))
-            SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(b1))
-            SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
+            # SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(a1))
+            # SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(b1))
+            # SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 
-            println("col a (me): $(a)")
-            println("col b (other): $(b)")
-            println("result: $(result)")
-            println("$(colliderA.parent.name) is colliding with $(colliderB.parent.name)")
+            # println("col a (me): $(a)")
+            # println("col b (other): $(b)")
+            # println("result: $(result)")
+            # println("$(colliderA.parent.name) is colliding with $(colliderB.parent.name)")
 
             depthHorizontal = result[].w
             depthVertical = result[].h
@@ -244,7 +242,7 @@ module ColliderModule
             end
         end
 
-        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
+        #SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 
         return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
     end

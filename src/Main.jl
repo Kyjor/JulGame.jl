@@ -275,13 +275,10 @@ function initialize_scripts_and_components()
 		end
 		build_sprite_layers()
 	end
-
+        
+        MAIN.scene.rigidbodies = []
+        MAIN.scene.colliders = []
 	for entity in MAIN.scene.entities
-		@info "skipping adding colliders and rigidbodies to global list as we are persisting"
-		if entity.persistentBetweenScenes #TODO: Verify if the entity is in it's first scene. If it is, don't skip the scripts.
-			continue
-		end
-		
 		@debug "adding rigidbodies to global list"
 		if entity.rigidbody != C_NULL
 			push!(MAIN.scene.rigidbodies, entity.rigidbody)
@@ -548,7 +545,6 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
 				JulGame.DELTA_TIME = deltaTime
-				
 				this.currentTestTime += deltaTime
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
