@@ -21,7 +21,6 @@
         parent::Any
         useGravity::Bool
         velocity::Math.Vector2f
-        elapsedTime
 
         function InternalRigidbody(parent::Any; mass::Float64 = 1.0, useGravity::Bool = true)
             this = new()
@@ -34,15 +33,13 @@
             this.parent = parent
             this.useGravity = useGravity
             this.velocity = Math.Vector2f(0.0, 0.0)
-            this.elapsedTime = 0.0
+    
             return this
         end
     end
 
     function Component.update(this::InternalRigidbody, dt)
         dt = clamp(dt, 0, .5)
-        this.elapsedTime += dt
-        
         velocityMultiplier = Math.Vector2f(1.0, 1.0)
         transform = this.parent.transform
         currentPosition = transform.position
