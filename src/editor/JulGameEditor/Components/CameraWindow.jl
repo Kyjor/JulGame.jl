@@ -13,7 +13,7 @@ function show_camera_window(this::CameraWindow)
     @cstatic begin
         #region Scene List
         CImGui.Begin("Camera") 
-        
+            show_help_marker("This is where we will display editable properties of the camera. Check the Game tab to see the changes. This is what your game should actually look like when ran in a separate window.")       
             if this.camera === nothing || !this.open
                 CImGui.Text("Open a scene to view the camera settings.")
                 return
