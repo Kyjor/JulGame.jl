@@ -641,7 +641,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
                          db_textbox = this.debugTextBoxes[i]
                          JulGame.update_text(db_textbox, statTexts[i])
                          JulGame.render(db_textbox, false)
-			 	end
+			 	  end
 				 end
 			end
 
