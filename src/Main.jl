@@ -282,7 +282,7 @@ function initialize_scripts_and_components()
 		@debug "adding rigidbodies to global list"
 		if entity.rigidbody != C_NULL
 			push!(MAIN.scene.rigidbodies, entity.rigidbody)
-		end
+                end
 		@debug "adding colliders to global list"
 		if entity.collider != C_NULL
 			push!(MAIN.scene.colliders, entity.collider)
@@ -628,21 +628,21 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 					"Mouse pos world: $(this.mousePositionWorld.x),$(this.mousePositionWorld.y)"
 				]
 
-				# if length(this.debugTextBoxes) == 0
-				# 	fontPath = joinpath(this.assets, "fonts", "FiraCode-Regular.ttf")
+				if length(this.debugTextBoxes) == 0
+				 	fontPath = "FiraCode-Regular.ttf"
 
-				# 	for i = eachindex(statTexts)
-				# 		textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
-				# 		push!(this.debugTextBoxes, textBox)
-                #         JulGame.initialize(textBox)
-				# 	end
-				# else
-				# 	for i = eachindex(this.debugTextBoxes)
-                #         db_textbox = this.debugTextBoxes[i]
-                #         JulGame.update_text(db_textbox, statTexts[i])
-                #         JulGame.render(db_textbox, false)
-				# 	end
-				# end
+					for i = eachindex(statTexts)
+				 		textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
+				 		push!(this.debugTextBoxes, textBox)
+                         JulGame.initialize(textBox)
+				 	end
+				 else
+				 	for i = eachindex(this.debugTextBoxes)
+                         db_textbox = this.debugTextBoxes[i]
+                         JulGame.update_text(db_textbox, statTexts[i])
+                         JulGame.render(db_textbox, false)
+			 	  end
+				 end
 			end
 
 			if !JulGame.IS_EDITOR

@@ -208,17 +208,17 @@ module ColliderModule
             horizontalCollisionDir = None::CollisionDirection
             verticalCollisionDir = None::CollisionDirection
             if result[].x == b.x 
-                println("colliding from left at depth $(depthHorizontal)")
+                @debug "colliding from left at depth $(depthHorizontal)"
                 horizontalCollisionDir = Left::CollisionDirection
             elseif result[].x == a.x
-                println("colliding from right at depth $(depthHorizontal)")
+                @debug "colliding from right at depth $(depthHorizontal)"
                 horizontalCollisionDir = Right::CollisionDirection
             end
             if result[].y == b.y
-                println("colliding from top at depth $(depthVertical)")
+                @debug "colliding from top at depth $(depthVertical)"
                 verticalCollisionDir = Bottom::CollisionDirection
             elseif result[].y == a.y
-                println("colliding from bottom at depth $(depthVertical)") 
+                @debug "colliding from botrom at depth $(depthVertical)" 
                 verticalCollisionDir = Top::CollisionDirection
             end
             
