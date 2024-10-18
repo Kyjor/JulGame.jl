@@ -101,15 +101,20 @@ module ColliderModule
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
-                        this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y + collision[2])
+                        if !collider.isTrigger
+                                this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y + collision[2])
+                        end
                     end
                     if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
-                        #Begin to overlap, correct position
-                        this.parent.transform.position = Math.Vector2f(transform.position.x + collision[2], transform.position.y)
+                        
+                        if !collider.isTrigger
+                                #Begin to overlap, correct position
+                                this.parent.transform.position = Math.Vector2f(transform.position.x + collision[2], transform.position.y)
+                        end
                     end
                     if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, collider)
@@ -117,7 +122,9 @@ module ColliderModule
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
-                        this.parent.transform.position = Math.Vector2f(transform.position.x - collision[2], transform.position.y)
+                        if !collider.isTrigger
+                                this.parent.transform.position = Math.Vector2f(transform.position.x - collision[2], transform.position.y)
+                        end
                     end
                     if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, collider)
@@ -125,9 +132,12 @@ module ColliderModule
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
-                        this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y - collision[2])
-                        if this.parent.rigidbody.velocity.y >= 0
-                            this.parent.rigidbody.grounded = true
+                        
+                        if !collider.isTrigger
+                                this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y - collision[2])
+                                if this.parent.rigidbody.velocity.y >= 0
+                                        this.parent.rigidbody.grounded = true
+                                end
                         end
                     end
                     if collision[1] == Below::ColliderLocation
