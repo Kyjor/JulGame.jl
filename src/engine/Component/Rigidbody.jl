@@ -33,7 +33,7 @@
             this.parent = parent
             this.useGravity = useGravity
             this.velocity = Math.Vector2f(0.0, 0.0)
-
+    
             return this
         end
     end
@@ -48,6 +48,7 @@
         if this.grounded
             newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
             velocityMultiplier = Math.Vector2f(1.0, 0.0)
+            println(this.grounded)
         end
         newAcceleration = Component.apply_forces(this)
         newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
@@ -70,10 +71,6 @@
 
     function Component.get_velocity(this::InternalRigidbody)
         return this.velocity
-    end
-
-    function Component.get_parent(this::InternalRigidbody)
-        return this.parent
     end
 
     """

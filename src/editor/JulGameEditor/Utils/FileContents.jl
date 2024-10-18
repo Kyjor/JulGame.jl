@@ -77,7 +77,7 @@ end
 
 function newScriptContent(scriptName)
     return "module $(scriptName)Module
-    using JulGame
+    using ..JulGame
     mutable struct $scriptName
     parent # do not remove this line, this is a reference to the entity that this script is attached to
     # This is where you define your script's fields

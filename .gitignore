@@ -42,3 +42,5 @@ playground.jl
 *.DS_Store
 
 src/editor/Build/
+
+*.swp

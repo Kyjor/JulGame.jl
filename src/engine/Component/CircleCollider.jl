@@ -57,7 +57,7 @@ module CircleColliderModule
 
         for i in eachindex(colliders)
             #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
-            if !Component.get_parent(colliders[i]).isActive || !colliders[i].enabled
+            if !colliders[i].parent.isActive || !colliders[i].enabled
                 if this.parent.rigidbody.grounded && i == length(colliders)
                     this.parent.rigidbody.grounded = false
                 end
@@ -68,13 +68,13 @@ module CircleColliderModule
                 if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
                     # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
                     for j in eachindex(this.currentRests)
-                        if Component.get_parent(this.currentRests[j]).transform.position.y == Component.get_parent(colliders[i]).transform.position.y && Component.get_size(this.currentRests[j]).y == Component.get_size(colliders[i]).y
+                        if this.currentRests[j].parent.transform.position.y == colliders[i].parent.transform.position.y && Component.get_size(this.currentRests[j]).y == Component.get_size(colliders[i]).y
                             push!(this.currentRests, colliders[i])
                             break
                         end
                     end
                 end
-                transform = Component.get_parent(this).transform
+                transform = this.parent.transform
                 # if collision[1] == Top::CollisionDirection
                 #     push!(this.currentCollisions, colliders[i])
                 #     for eventToCall in this.collisionEvents
@@ -130,17 +130,9 @@ module CircleColliderModule
         this.currentCollisions = []
     end
 
-    function Component.get_parent(this::CircleCollider)
-        return this.parent
-    end
-
     function Component.add_collision_event(this::CircleCollider, event)
         push!(this.collisionEvents, event)
     end   
-
-    function Component.get_type(this::CircleCollider)
-        return "CircleCollider"
-    end
 
     function check_collision(a::CircleCollider, b::CircleCollider)
         # Calculate total radius squared
@@ -158,8 +150,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX, cY = 0, 0
 
-        posA = Component.get_parent(a).transform.position + a.offset
-        posB = Component.get_parent(b).transform.position + b.offset
+        posA = a.parent.transform.position + a.offset
+        posB = b.parent.transform.position + b.offset
 
         # Find closest x offset
         if posA.x < posB.x
@@ -194,8 +186,8 @@ module CircleColliderModule
         # Closest point on collision box
         cX = 0
 
-        posA = Component.get_parent(a).transform.position + a.offset
-        posB = Component.get_parent(b).transform.position + b.offset
+        posA = a.parent.transform.position + a.offset
+        posB = b.parent.transform.position + b.offset
         radius = a.diameter / 2
 
         # Find closest x offset
