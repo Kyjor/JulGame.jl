@@ -132,6 +132,7 @@ module Editor
                         @cstatic begin
                             #region Scene List
                             CImGui.Begin("Scene List") 
+                            show_help_marker("This is where we will display our scenes. Scenes are where the gameplay happens.")
                             # txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
                             # CImGui.Text(txt)
 
@@ -274,7 +275,8 @@ module Editor
                     try
                         #region Hierarchy
                         CImGui.Begin("Hierarchy") 
-
+                        
+                        show_help_marker("This is where we will display a list of entities and textboxes for the scene")
                         currentSceneMain === nothing && CImGui.Text("No scene loaded.")
                         if currentSceneMain !== nothing && CImGui.TreeNode("Entities")
                             # remove other entities from hierarchyEntitySelections if currentSceneMain.selectedEntity is not in hierarchyEntitySelections
@@ -388,6 +390,8 @@ module Editor
                     try
                         #region Entity Inspector
                         CImGui.Begin("Entity Inspector") 
+                        
+                        show_help_marker("This is where we will display editable properties of entities")
                         if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
                             CImGui.PushID("AddMenu")
                             if CImGui.BeginMenu("Add")
@@ -417,6 +421,7 @@ module Editor
                         
                         #region UI Inspector
                         CImGui.Begin("UI Inspector") 
+                            show_help_marker("This is where we will display editable properties of textboxes and screen buttons")
                             for uiElementIndex = eachindex(hierarchyUISelections)
                                 if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
                                     if length(currentSceneMain.scene.uiElements) < uiElementIndex
@@ -460,6 +465,7 @@ module Editor
                     #region Config Window
                     try 
                         CImGui.Begin("Project Config") 
+                        show_help_marker("This tab contains configuration fields for the game when it is launched separately (command line or executable)")
                         if currentSelectedProjectPath[] !== ""
                             show_config_fields(currentProjectConfig, currentSelectedProjectPath)
                         end
