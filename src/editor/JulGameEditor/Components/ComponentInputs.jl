@@ -251,15 +251,17 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                                                 # put these in a ref dictionary
                                                 window_info = Ref(Dict("points" => points, "scrolling" => scrolling, "adding_line" => adding_line, "zoom_level" => zoom_level, "grid_step" => grid_step))
                                                 # check if animation_window_dict has the key "frame $(k)"
-                                                if haskey(animation_window_dict[], "frame $(k)")
+                                                key = "animation-$(animator.parent.id)-$(i)-frame-$(k)"
+
+                                                if haskey(animation_window_dict[], key)
                                                     # animation_window_dict[]["frame $(k)"][]["points"] = points
-                                                    window_info[] = animation_window_dict[]["frame $(k)"][]
+                                                    window_info[] = animation_window_dict[][key][]
                                                 else
-                                                    animation_window_dict[]["frame $(k)"] = window_info
+                                                    animation_window_dict[][key] = window_info
                                                 end
                     
                                                 sprite = animator.parent.sprite
-                                                anim_x, anim_y, anim_w, anim_h = show_animation_window("frame $(k)", window_info, sprite.texture, sprite.size.x, sprite.size.y)
+                                                anim_x, anim_y, anim_w, anim_h = show_animation_window(key, window_info, sprite.texture, sprite.size.x, sprite.size.y)
                                                 if anim_x == -1 && anim_y == -1 && anim_w == -1 && anim_h == -1
                                                     # TODO: fix this anim_x, anim_y, anim_w, anim_h = vec.x, vec.y, vec.z, vec.t
                                                     continue

@@ -69,10 +69,16 @@ module SceneWriterModule
             "Camera" => Dict("position" => Dict("x" => camera.position.x, "y" => camera.position.y), "backgroundColor" => Dict("r" => camera.backgroundColor[1], "g" => camera.backgroundColor[2], "b" => camera.backgroundColor[3], "a" => camera.backgroundColor[4]), "size" => Dict("x" => camera.size.x, "y" => camera.size.y), "offset" => Dict("x" => camera.offset.x, "y" => camera.offset.y), "startingCoordinates" => Dict("x" => camera.startingCoordinates.x, "y" => camera.startingCoordinates.y))
             )
         try
-            println("writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))")
-            open(joinpath(projectPath, "scenes", "$(sceneName)"), "w") do io
+            name = split(sceneName,".")[1]
+            @info "writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))"
+
+            open(joinpath(projectPath, "scenes", "$(name)-saving"), "w") do io
                 JSON3.pretty(io, entitiesJson)
             end
+            if isfile(joinpath(projectPath, "scenes", "$(sceneName)")) 
+                mv(joinpath(projectPath, "scenes", "$(sceneName)"), joinpath(projectPath, "scenes", "$(name)-backup.json"); force=true)
+            end
+            mv(joinpath(projectPath, "scenes", "$(name)-saving"), joinpath(projectPath, "scenes", "$(sceneName)"); force=true)
         catch e
             @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
