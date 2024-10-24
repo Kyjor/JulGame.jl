@@ -1,7 +1,7 @@
 function show_game_controls()
     @cstatic begin
         CImGui.Begin("Controls")  
-            CImGui.Text("Pan scene: Arrow keys/Hold middle mouse button and move mouse")
+            CImGui.Text("Pan scene: Hold right mouse button and move mouse")
             CImGui.NewLine()
             CImGui.Text("Select entity: Click on entity in scene window or in hierarchy window")
             CImGui.NewLine()

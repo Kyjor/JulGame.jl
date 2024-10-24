@@ -69,6 +69,10 @@ module EntityModule
     end
 
     function JulGame.update(this::Entity, deltaTime)
+        if !this.isActive 
+            return
+        end
+
         for script in this.scripts
             try
                 Base.invokelatest(JulGame.update, script, deltaTime) 
