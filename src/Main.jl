@@ -726,7 +726,7 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 		this.isGameModeRunningInEditor = false
 		SDL2.Mix_HaltMusic()
 		if this.scene.camera !== nothing && this.scene.camera != C_NULL
-			#this.scene.camera.target = C_NULL
+			this.scene.camera.target = C_NULL
 		end
 	end
 
