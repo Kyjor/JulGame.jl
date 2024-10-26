@@ -512,6 +512,7 @@ module Editor
                         if currentSceneMain !== nothing
                             if currentSceneMain.scene.camera != gameCamera
                                 gameCamera = currentSceneMain.scene.camera
+                                cameraWindow.camera = gameCamera
                             end
 
                             if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")

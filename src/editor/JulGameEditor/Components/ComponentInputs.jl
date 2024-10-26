@@ -240,6 +240,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                                             show_image_with_hover_preview(sprite.texture, sprite.size.x, sprite.size.y, animations[i].frames[k])
                                         end
                                         if CImGui.TreeNode("frame $(k)")
+                                            CImGui.Button("Delete") && (deleteat!(animations[i].frames, k); break;)
                                             if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
                                                 
                                                 points = Ref(Vector{ImVec2}([ImVec2(anim_x, anim_y), ImVec2(anim_x + anim_w, anim_y + anim_h)]))
