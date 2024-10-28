@@ -98,11 +98,11 @@ module PlayerMovementModule
                     else 
                         # you win text
                         JulGame.MAIN.scene.uiElements[1].isCenteredX, JulGame.MAIN.scene.uiElements[1].isCenteredY = true, true
-                        JulGame.UI.update_text(MAIN.scene.uiElements[1], "You Win!")
+                        MAIN.scene.uiElements[1].text = "You Win!"
                         JulGame.UI.set_color(MAIN.scene.uiElements[1], 0, 0, 0)
                         if this.deathsThisLevel == 0
                             this.gameManager.starCount = this.gameManager.starCount + 1
-                            JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
+                            MAIN.scene.uiElements[2].text = string(this.gameManager.starCount)
                         end
                     end
                 end
@@ -125,14 +125,14 @@ module PlayerMovementModule
             # JulGame.Component.toggle_sound(this.starSound)
             JulGame.destroy_entity(JulGame.MAIN, otherCollider.parent)
             this.gameManager.starCount = this.gameManager.starCount + 1
-            JulGame.UI.update_text(JulGame.MAIN.scene.uiElements[2], string(this.gameManager.starCount))
+            JulGame.MAIN.scene.uiElements[2].text = string(this.gameManager.starCount)
         end
     end
 
     function respawn(this::PlayerMovement)
         this.parent.transform.position = Vector2f(1, 4)
         this.gameManager.starCount = max(this.gameManager.starCount - 1, 0)
-        JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.gameManager.starCount))
+        MAIN.scene.uiElements[2].text = string(this.gameManager.starCount)
         this.deathsThisLevel += 1
     end
 

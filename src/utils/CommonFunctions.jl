@@ -38,6 +38,7 @@ function load_sound end
 function on_shutdown end
 function play_animation_once end
 function render end
+function rerender_text end
 function set_color end
 function set_offset end
 function set_position end
@@ -50,4 +51,3 @@ function unload_sound end
 function update end
 function update_array_value end
 function update_font_size end
-function update_text end

@@ -163,6 +163,7 @@ module SceneWriterModule
                     "channel" => component.channel, 
                     "isMusic" => component.isMusic, 
                     "path" => normalize_path(component.path), 
+                    "playOnStart" => component.playOnStart, 
                     "sound" => component.sound, 
                     "volume" => component.volume, 
                     )

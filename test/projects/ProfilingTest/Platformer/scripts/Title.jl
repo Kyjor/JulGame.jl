@@ -25,13 +25,13 @@ module TitleModule
         try
             if this.fade 
                 this.textBox.alpha -= 1
-                JulGame.UI.update_text(this.textBox, this.textBox.text)
+                this.textBox.text = this.textBox.text
                 if this.textBox.alpha <= 25
                     this.fade = false
                 end
             else
                 this.textBox.alpha += 1
-                JulGame.UI.update_text(this.textBox, this.textBox.text)
+                this.textBox.text = this.textBox.text
                 if this.textBox.alpha >= 250
                     this.fade = true
                 end

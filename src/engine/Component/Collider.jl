@@ -77,6 +77,10 @@ module ColliderModule
         colliderCheckedCount = 0
         i = 0
         onGround = false
+        if !this.parent.isActive || !this.enabled
+            return
+        end
+
         for collider in colliders
             i += 1
             
@@ -101,7 +105,7 @@ module ColliderModule
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
-                        if !collider.isTrigger
+                        if !collider.isTrigger && !this.isTrigger
                                 this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y + collision[2])
                         end
                     end
@@ -111,7 +115,7 @@ module ColliderModule
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         
-                        if !collider.isTrigger
+                        if !collider.isTrigger && !this.isTrigger
                                 #Begin to overlap, correct position
                                 this.parent.transform.position = Math.Vector2f(transform.position.x + collision[2], transform.position.y)
                         end
@@ -122,7 +126,7 @@ module ColliderModule
                             Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
                         end
                         #Begin to overlap, correct position
-                        if !collider.isTrigger
+                        if !collider.isTrigger && !this.isTrigger
                                 this.parent.transform.position = Math.Vector2f(transform.position.x - collision[2], transform.position.y)
                         end
                     end
@@ -133,7 +137,7 @@ module ColliderModule
                         end
                         #Begin to overlap, correct position
                         
-                        if !collider.isTrigger
+                        if !collider.isTrigger && !this.isTrigger
                                 this.parent.transform.position = Math.Vector2f(transform.position.x, transform.position.y - collision[2])
                                 if this.parent.rigidbody.velocity.y >= 0
                                         this.parent.rigidbody.grounded = true

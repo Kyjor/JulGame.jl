@@ -243,7 +243,7 @@ module Editor
                             playMode = !playMode
                             if playMode
                                 startTime[] = SDL2.SDL_GetTicks()
-                                
+                                 
                                 # Animate the text in the window title
                                 SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
                             end
@@ -253,6 +253,7 @@ module Editor
                         if playMode != wasPlaying && currentSceneMain !== nothing
                             if playMode
                                 JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
+                                currentSceneMain.scene.camera = gameCamera 
                             elseif !playMode
                                 JulGame.MainLoop.stop_game_in_editor(currentSceneMain)
                                 JulGame.change_scene(String(currentSceneName))
@@ -509,6 +510,11 @@ module Editor
                     #region Input
                     try
                         if currentSceneMain !== nothing
+                            if currentSceneMain.scene.camera != gameCamera
+                                gameCamera = currentSceneMain.scene.camera
+                                cameraWindow.camera = gameCamera
+                            end
+
                             if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
                                 @info string("Saving scene")
                                 events["Save"]()

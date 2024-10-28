@@ -7,6 +7,7 @@ module SoundSourceModule
         channel::Int32
         isMusic::Bool
         path::String
+        playOnStart::Bool
         volume::Int32
     end
 
@@ -22,7 +23,7 @@ module SoundSourceModule
         volume::Int32
 
         # Music
-        function InternalSoundSource(parent::Any, path::String, channel::Int32, volume::Int32, isMusic::Bool, playOnStart::Bool = false)
+        function InternalSoundSource(parent::Any, path::String, channel::Int32 = Int32(-1), volume::Int32 = Int32(-1), isMusic::Bool = false, playOnStart::Bool = false)
             this = new()
 
             SDL2.SDL_ClearError()

@@ -49,7 +49,7 @@ module GameManagerModule
         # this.currentMusic = JulGame.create_sound_source(this.parent, JulGame.SoundSourceModule.SoundSource(Int32(-1), true, this.soundBank[this.currentLevel], Int32(25)))
         # JulGame.Component.toggle_sound(this.currentMusic)
         
-        JulGame.UI.update_text(MAIN.scene.uiElements[2], string(this.starCount))
+        MAIN.scene.uiElements[2].text = string(this.starCount)
     end
 
     function JulGame.update(this::GameManager, deltaTime)

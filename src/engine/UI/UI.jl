@@ -8,11 +8,11 @@ module UI
         initialize,
         load_button_sprite_editor,
         load_font,
-        render,
+        render, 
+        rerender_text,
         set_color,
         set_position,
-        update_font_size,
-        update_text
+        update_font_size
 
     include("ScreenButton.jl")
     include("TextBox.jl")
