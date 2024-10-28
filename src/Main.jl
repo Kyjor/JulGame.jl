@@ -261,6 +261,7 @@ function initialize_scripts_and_components()
 	this.spriteLayers = build_sprite_layers()
 	
 	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
+
 		for script in scripts
 			try
 				Base.invokelatest(JulGame.initialize, script)
@@ -274,6 +275,14 @@ function initialize_scripts_and_components()
 			end
 		end
 		build_sprite_layers()
+
+		for entity in MAIN.scene.entities
+			@debug "Checking for a soundSource that needs to be activated"
+			if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart
+				Component.toggle_sound(entity.soundSource)
+				@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start")
+			end
+		end 
 	end
               
   MAIN.scene.rigidbodies = []
@@ -639,9 +648,9 @@ function game_loop(this::Main, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhys
 				 else
 				 	for i = eachindex(this.debugTextBoxes)
                          db_textbox = this.debugTextBoxes[i]
-                         JulGame.update_text(db_textbox, statTexts[i])
+                         db_textbox.text = statTexts[i]
                          JulGame.render(db_textbox, false)
-			 	  end
+			 	  	end
 				 end
 			end
 

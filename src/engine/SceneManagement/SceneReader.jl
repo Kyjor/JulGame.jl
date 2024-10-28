@@ -111,7 +111,7 @@ module SceneReaderModule
             try
                 newUIElement = nothing
                 if uiElement.type == "TextBox"
-                    newUIElement = TextBox(uiElement.name, uiElement.fontPath, uiElement.fontSize, Vector2(uiElement.position.x, uiElement.position.y), uiElement.text, uiElement.isCenteredX, uiElement.isCenteredY)    
+                    newUIElement = TextBox(uiElement.name, uiElement.fontPath, uiElement.fontSize, Vector2(uiElement.position.x, uiElement.position.y), get(uiElement, "text", " "), uiElement.isCenteredX, uiElement.isCenteredY)    
                     newUIElement.isWorldEntity = uiElement.isWorldEntity    
                     isActive::Bool = !haskey(uiElement, "isActive") ? true : uiElement.isActive
                     newUIElement.isActive = isActive    
@@ -156,7 +156,7 @@ module SceneReaderModule
             elseif component.type == "Rigidbody"
                 newComponent = Rigidbody(; mass = convert(Float64, component.mass), useGravity = !haskey(component, "useGravity") ? true : component.useGravity)
             elseif component.type == "SoundSource"
-                newComponent = SoundSource(Int32(component.channel), component.isMusic, component.path, Int32(component.volume))
+                newComponent = SoundSource(Int32(component.channel), component.isMusic, component.path, get(component, "playOnStart", false), Int32(component.volume))
             elseif component.type == "Sprite"
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)

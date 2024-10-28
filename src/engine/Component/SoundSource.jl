@@ -7,6 +7,7 @@ module SoundSourceModule
         channel::Int32
         isMusic::Bool
         path::String
+        playOnStart::Bool
         volume::Int32
     end
 

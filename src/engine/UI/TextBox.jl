@@ -26,13 +26,13 @@ module TextBoxModule
 
             this.alpha = 255
             this.fontPath = fontPath
-            this.fontSize = fontSize
-            this.id = 0
+            this.fontSize = Int32(fontSize)
+            this.id = Int32(0)
             this.isCenteredX = isCenteredX
             this.isCenteredY = isCenteredY
             this.name = name
             this.position = position
-            this.text = text
+            setfield!(this, :text, text)
             this.isWorldEntity = isWorldEntity
             this.textTexture = C_NULL
             this.persistentBetweenScenes = false
@@ -95,22 +95,16 @@ module TextBoxModule
     end
 
     """
-        update_text(this::TextBox, newText)
+        rerender_text(this::TextBox)
 
-    Update the text of the TextBox with the given `newText`. This function updates the `text` field of the TextBox, renders the new text using the specified font, and creates a texture from the rendered text. If the TextBox is not a world entity, it centers the text.
+    Recreates the font surface and texture. If the TextBox is not a world entity, it centers the text.
 
     # Arguments
     - `this::TextBox`: The TextBox object to update.
-    - `newText`: The new text to set for the TextBox.
 
     # Examples
     """
-    function UI.update_text(this::TextBox, newText::String)
-        if length(newText) == 0
-            newText = " " # prevents segfault when text is empty
-        end
-
-        this.text = newText
+    function UI.rerender_text(this::TextBox)
         SDL2.SDL_FreeSurface(this.renderText)
         SDL2.SDL_DestroyTexture(this.textTexture)
         this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
@@ -162,4 +156,22 @@ module TextBoxModule
         SDL2.SDL_DestroyTexture(this.textTexture)
         this.textTexture = C_NULL
     end
+
+    function Base.setproperty!(this::TextBox, s::Symbol, x)
+        @debug("setting textbox property $(s) to: $(x)")
+        try
+            setfield!(this, s, x)
+            if s == :text
+                if length(x) == 0
+                    setfield!(this, s, " ")# prevents segfault when text is empty
+                end
+
+                UI.rerender_text(this)
+            end
+        catch e
+            error(e)
+            Base.show_backtrace(stderr, catch_backtrace())
+        end
+    end
+
 end
