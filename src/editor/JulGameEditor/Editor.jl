@@ -34,7 +34,7 @@ module Editor
         gameTextureSize = ImVec2(200, 200)
 
         style_imGui()
-        showDemoWindow = true
+        showDemoWindow = false
         ##############################
         # Project variables
         currentSceneMain = nothing
