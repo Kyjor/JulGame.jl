@@ -34,7 +34,7 @@ module Editor
         gameTextureSize = ImVec2(200, 200)
 
         style_imGui()
-        showDemoWindow = true
+        showDemoWindow = false
         ##############################
         # Project variables
         currentSceneMain = nothing
@@ -125,7 +125,7 @@ module Editor
                     show_main_menu_bar(events, currentSceneMain)
                     ################################# END MAIN MENU BAR
                     if !isPackageCompiled
-                        @c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
+                        #@c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
                     end
 
                     try 

@@ -99,19 +99,18 @@ function show_camera_window(this::CameraWindow)
             # this.camera.backgroundColor = (color_r, color_g, color_b, color_a)
             CImGui.PopItemWidth()
             color = (Cfloat(this.camera.backgroundColor[1]/255), Cfloat(this.camera.backgroundColor[2]/255), Cfloat(this.camera.backgroundColor[3]/255), Cfloat(this.camera.backgroundColor[4]/255))
-            colorCfloat = Cfloat[color[1], color[2], color[3], color[4]]
+            colorCfloat = Cfloat[Cfloat(this.camera.backgroundColor[1]/255), Cfloat(this.camera.backgroundColor[2]/255), Cfloat(this.camera.backgroundColor[3]/255), Cfloat(this.camera.backgroundColor[4]/255)]
             @cstatic alpha_preview=true alpha_half_preview=true drag_and_drop=true options_menu=true hdr=false begin
                 show_help_marker("Right-click on the individual color widget to show options.")
                 CImGui.SameLine()
                 misc_flags = (hdr ? CImGui.ImGuiColorEditFlags_HDR : 0) | (drag_and_drop ? 0 : CImGui.ImGuiColorEditFlags_NoDragDrop) | (alpha_half_preview ? CImGui.ImGuiColorEditFlags_AlphaPreviewHalf : (alpha_preview ? CImGui.ImGuiColorEditFlags_AlphaPreview : 0)) | (options_menu ? 0 : CImGui.ImGuiColorEditFlags_NoOptions)
                 misc_flags |= CImGui.ImGuiColorEditFlags_AlphaBar
                     
-                CImGui.Text("Color widget RGBA:")
                 CImGui.ColorEdit4("Background##2", colorCfloat, CImGui.ImGuiColorEditFlags_DisplayRGB | misc_flags)
                 if CImGui.IsItemEdited()
                     println("Color changed to: ", color)
                     # update the camera background color rgba
-                    this.camera.backgroundColor = (UInt8(round(colorCfloat[1]*255)), UInt8(round(colorCfloat[2]*255)), UInt8(round(colorCfloat[3]*255)), UInt8(round(colorCfloat[4]*255)))
+                    this.camera.backgroundColor = (Int(round(colorCfloat[1]*255)), Int(round(colorCfloat[2]*255)), Int(round(colorCfloat[3]*255)), Int(round(colorCfloat[4]*255)))
                 end
                 CImGui.SetColorEditOptions(CImGui.ImGuiColorEditFlags_Float | CImGui.ImGuiColorEditFlags_HDR | CImGui.ImGuiColorEditFlags_PickerHueWheel)
             end # @cstatic
