@@ -229,7 +229,7 @@ module SceneBuilderModule
                             elseif ftype == Int32
                                 value = Int32(value)
                             end
-    
+                            @debug "Overwriting $(key) to $(value) using scene file"
                             Base.invokelatest(setfield!, newScript, key, value)
                         catch e
                             @warn string(e)
