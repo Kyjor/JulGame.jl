@@ -12,6 +12,7 @@ module UI
         rerender_text,
         set_color,
         set_position,
+        update_button_text,
         update_font_size
 
     include("ScreenButton.jl")

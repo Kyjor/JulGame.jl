@@ -185,7 +185,8 @@ module ImmediateUIModule
             needsReinitialize = false
             
             if button.text != text
-                button.text = text
+                # Use the update_button_text function which handles rerendering
+                UI.update_button_text(button, text)
             end
             
             if button.position != adjusted_position
@@ -194,6 +195,13 @@ module ImmediateUIModule
             
             if button.size != size
                 button.size = size
+                # If the size changed, we need to recenter the text
+                center_text_on_button(button)
+            end
+            
+            if button.fontSize != fontSize
+                button.fontSize = Int32(fontSize)
+                needsReinitialize = true
             end
             
             if button.textOffset != textOffset
@@ -217,11 +225,11 @@ module ImmediateUIModule
                     button.buttonDownSpritePath = buttonDownPath
                     needsReinitialize = true
                 end
-                
-                if needsReinitialize
-                    # Reinitialize button with new sprites
-                    UI.initialize(button)
-                end
+            end
+            
+            if needsReinitialize
+                # Reinitialize button with new sprites and text
+                UI.initialize(button)
             end
             
             # Update click handler
@@ -249,7 +257,7 @@ module ImmediateUIModule
             
             # Create new button component
             button = ScreenButton("immediate_$(id)", buttonUpPath, buttonDownPath, size, adjusted_position, 
-                                 fontPath, text, textOffset; id=id)
+                                 fontPath, text, textOffset; id=id, fontSize=Int32(fontSize))
             
             # Set button properties
             button.alpha = alpha
@@ -320,6 +328,7 @@ module ImmediateUIModule
     cleanup_immediate_component(id::String)
     
     Removes an immediate UI component from the cache and cleans up its resources.
+    Also removes it from the scene's uiElements array.
     """
     function cleanup_immediate_component(id::String)
         if haskey(IMMEDIATE_UI_CACHE, id)
@@ -330,24 +339,11 @@ module ImmediateUIModule
                 filter!(x -> x !== component, MAIN.scene.uiElements)
             end
             
-            # Clean up component resources
+            # Clean up component resources using appropriate destroy method
             if component isa TextBox
-                if isdefined(component, :texture) && component.texture !== nothing
-                    SDL2.SDL_DestroyTexture(component.texture)
-                end
-                if isdefined(component, :font) && component.font !== nothing
-                    TTF_CloseFont(component.font)
-                end
+                UI.destroy(component)
             elseif component isa ScreenButton
-                if isdefined(component, :buttonUpTexture) && component.buttonUpTexture !== nothing
-                    SDL2.SDL_DestroyTexture(component.buttonUpTexture)
-                end
-                if isdefined(component, :buttonDownTexture) && component.buttonDownTexture !== nothing
-                    SDL2.SDL_DestroyTexture(component.buttonDownTexture)
-                end
-                if isdefined(component, :font) && component.font !== nothing
-                    TTF_CloseFont(component.font)
-                end
+                UI.destroy(component)
             end
             
             # Remove from cache
@@ -373,5 +369,19 @@ module ImmediateUIModule
         # Clear the dictionaries
         empty!(IMMEDIATE_UI_CACHE)
         empty!(IMMEDIATE_UI_TIMESTAMPS)
+    end
+
+    """
+    center_text_on_button(button::ScreenButton)
+    
+    Centers the text within the button.
+    """
+    function center_text_on_button(button::ScreenButton)
+        # Calculate the position to center the text
+        textX = (button.size.x - button.textSize.x) / 2
+        textY = (button.size.y - button.textSize.y) / 2
+        
+        # Update the text offset
+        button.textOffset = Math.Vector2(textX, textY)
     end
 end 

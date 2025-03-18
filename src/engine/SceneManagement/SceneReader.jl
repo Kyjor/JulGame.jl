@@ -127,7 +127,18 @@ module SceneReaderModule
                     isActive::Bool = !haskey(uiElement, "isActive") ? true : uiElement.isActive
                     newUIElement.isActive = isActive    
                 else
-                    newUIElement = ScreenButton(uiElement.name, uiElement.buttonUpSpritePath, uiElement.buttonDownSpritePath, Vector2(uiElement.size.x, uiElement.size.y), Vector2(uiElement.position.x, uiElement.position.y), uiElement.fontPath, uiElement.text, Vector2(uiElement.textOffset.x, uiElement.textOffset.y))
+                    newUIElement = ScreenButton(
+                        uiElement.name, 
+                        uiElement.buttonUpSpritePath, 
+                        uiElement.buttonDownSpritePath, 
+                        Vector2(uiElement.size.x, uiElement.size.y), 
+                        Vector2(uiElement.position.x, uiElement.position.y), 
+                        uiElement.fontPath, 
+                        uiElement.text, 
+                        Vector2(uiElement.textOffset.x, uiElement.textOffset.y); 
+                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
+                        fontSize=Int32(get(uiElement, "fontSize", 24))
+                    )
                 end
                 newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 push!(res, newUIElement)

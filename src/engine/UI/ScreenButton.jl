@@ -16,6 +16,7 @@ module ScreenButtonModule
         buttonUpSpritePath::String
         buttonUpTexture
         fontPath::Union{String, Ptr{Nothing}}
+        fontSize::Int32
         id::String
         isActive::Bool
         isHovered::Bool
@@ -29,7 +30,7 @@ module ScreenButtonModule
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); id::String=JulGame.generate_uuid())
+        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); id::String=JulGame.generate_uuid(), fontSize::Int32=24)
             this = new()
             
             this.buttonDownSpritePath = buttonDownSpritePath
@@ -40,6 +41,7 @@ module ScreenButtonModule
 
             this.clickEvents = []
             this.currentTexture = C_NULL
+            this.fontSize = fontSize
             this.id = id
             this.size = size
             this.fontPath = fontPath
@@ -48,10 +50,12 @@ module ScreenButtonModule
             this.text = text
             this.textOffset = textOffset
             this.textTexture = C_NULL
+            this.textSize = Math.Vector2(0, 0)
             this.isInitialized = false
             this.persistentBetweenScenes = false
             this.isHovered = false
             this.isActive = true
+            this.alpha = 255
 
             return this
         end
@@ -67,8 +71,7 @@ module ScreenButtonModule
         end
 
         if this.currentTexture == C_NULL || 
-            #this.textTexture == C_NULL || 
-            this.currentTexture === nothing #|| this.textTexture === nothing
+            this.currentTexture === nothing
             return
         end
 
@@ -81,7 +84,15 @@ module ScreenButtonModule
             C_NULL, 
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-        # @assert SDL2.SDL_RenderCopyF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+        # Render the text if it exists
+        if this.textTexture != C_NULL && this.text != ""
+            @assert SDL2.SDL_RenderCopyF(
+                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+                this.textTexture, 
+                C_NULL, 
+                Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y, this.textSize.x, this.textSize.y))
+            ) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
     end
 
     function UI.initialize(this::ScreenButton)
@@ -89,17 +100,50 @@ module ScreenButtonModule
         this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonUpSprite)
         this.currentTexture = this.buttonUpTexture
 
-        if this.fontPath == C_NULL
-            this.isInitialized = true
-            return
+        # Initialize text if a font path is provided and text is not empty
+        if this.fontPath != C_NULL && this.text != ""
+            # Load the font
+            font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), this.fontSize)
+            
+            if font != C_NULL
+                # Render the text
+                textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255, 255, 255, 255))
+                
+                if textSurface != C_NULL
+                    # Get the size of the rendered text
+                    surface = unsafe_wrap(Array, textSurface, 10; own = false)
+                    this.textSize = Math.Vector2(surface[1].w, surface[1].h)
+                    
+                    # Create texture from surface
+                    this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
+                    
+                    # Center the text on the button
+                    center_text_on_button(this)
+                    
+                    # Free the surface
+                    SDL2.SDL_FreeSurface(textSurface)
+                end
+                
+                # Close the font
+                SDL2.TTF_CloseFont(font)
+            end
         end
-
-        #font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), 64)
-        # text = font != C_NULL ? CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255,255,255,255)) : C_NULL
-        # surface = unsafe_wrap(Array, text, 10; own = false)
-        # this.textSize = Math.Vector2(surface[1].w, surface[1].h)
-        # this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, text)
+        
         this.isInitialized = true
+    end
+
+    """
+    center_text_on_button(button::ScreenButton)
+    
+    Centers the text within the button.
+    """
+    function center_text_on_button(button::ScreenButton)
+        # Calculate the position to center the text
+        textX = (button.size.x - button.textSize.x) / 2
+        textY = (button.size.y - button.textSize.y) / 2
+        
+        # Update the text offset
+        button.textOffset = Math.Vector2(textX, textY)
     end
 
     function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
@@ -173,8 +217,71 @@ module ScreenButtonModule
         if this.buttonUpTexture != C_NULL
             SDL2.SDL_DestroyTexture(this.buttonUpTexture)
         end
+        if this.textTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.textTexture)
+        end
         this.buttonDownTexture = C_NULL
         this.buttonUpTexture = C_NULL
+        this.textTexture = C_NULL
         this.currentTexture = C_NULL
+    end
+
+    """
+    UI.update_button_text(button::ScreenButton, new_text::String)
+    
+    Updates the button's text and rerenders it.
+    
+    # Arguments
+    - `button::ScreenButton`: The button to update
+    - `new_text::String`: The new text to display on the button
+    
+    # Examples
+    ```julia
+    UI.update_button_text(my_button, "New Text")
+    ```
+    """
+    function UI.update_button_text(this::ScreenButton, new_text::String)
+        if this.text == new_text
+            return # No change needed
+        end
+        
+        this.text = new_text
+        
+        # Clean up previous texture if it exists
+        if this.textTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.textTexture)
+            this.textTexture = C_NULL
+        end
+        
+        # Skip rendering if text is empty or no font
+        if this.text == "" || this.fontPath == C_NULL
+            return
+        end
+        
+        # Load the font
+        font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), this.fontSize)
+        
+        if font != C_NULL
+            # Render the text
+            textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255, 255, 255, 255))
+            
+            if textSurface != C_NULL
+                # Get the size of the rendered text
+                surface = unsafe_wrap(Array, textSurface, 10; own = false)
+                this.textSize = Math.Vector2(surface[1].w, surface[1].h)
+                
+                # Create texture from surface
+                this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
+                
+                # Center the text on the button
+                center_text_on_button(this)
+                
+                # Free the surface
+                SDL2.SDL_FreeSurface(textSurface)
+            end
+            
+            # Close the font
+            SDL2.TTF_CloseFont(font)
+        end
     end
 end
