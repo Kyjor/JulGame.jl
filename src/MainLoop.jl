@@ -156,6 +156,9 @@ module MainLoopModule
                 SDL2.Mix_CloseAudio()
                 SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
                 SDL2.SDL_Quit()
+                
+                # Clean up all immediate UI components on game shutdown
+                JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
             else
 				@debug "Changing scene"
                 this.shouldChangeScene = false
@@ -262,6 +265,10 @@ function JulGame.change_scene(sceneFileName::String)
 	@debug "Changing scene to: $(sceneFileName)"
 	this.close = true
 	this.shouldChangeScene = true
+	
+	# Clean up all immediate UI components
+	JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
+	
 	#destroy current scene 
 	@debug "Entity count before destroying: $(length(this.scene.entities))" 
 	count = 0
@@ -722,6 +729,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	function stop_game_in_editor(this::MainLoop)
 		this.isGameModeRunningInEditor = false
 		SDL2.Mix_HaltMusic()
+		
+		# Clean up all immediate UI components when stopping the game in editor
+		JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
+		
 		if this.scene.camera !== nothing && this.scene.camera != C_NULL
 			this.scene.camera.target = C_NULL
 		end
