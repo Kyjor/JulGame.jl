@@ -406,22 +406,12 @@ function destroy_entity_components(this::MainLoop, entity)
 
 	entityRigidbody = entity.rigidbody
 	if entityRigidbody != C_NULL
-		for j = eachindex(this.scene.rigidbodies)
-			if this.scene.rigidbodies[j] == entityRigidbody
-				deleteat!(this.scene.rigidbodies, j)
-				break
-			end
-		end
+		filter!(rb -> rb != entityRigidbody, this.scene.rigidbodies)
 	end
 
 	entityCollider = entity.collider
 	if entityCollider != C_NULL
-		for j = eachindex(this.scene.colliders)
-			if this.scene.colliders[j] == entityCollider
-				deleteat!(this.scene.colliders, j)
-				break
-			end
-		end
+		filter!(col -> col != entityCollider, this.scene.colliders)
 	end
 
 	entitySoundSource = entity.soundSource
@@ -598,6 +588,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			for uiElement in this.scene.uiElements
                 JulGame.render(uiElement, DEBUG)
 			end
+
+			# Render all immediate text elements
+			UI.ImmediateTextModule.render_all_immediate_texts(DEBUG)
 
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x - this.input.mousePositionEditorGameWindowOffset.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y - this.input.mousePositionEditorGameWindowOffset.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)

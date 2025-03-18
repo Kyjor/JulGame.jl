@@ -74,7 +74,7 @@ module JulGame
 
     include("engine/UI/UI.jl")
     using .UI
-    export ScreenButtonModule, TextBoxModule
+    export ScreenButtonModule, TextBoxModule, ImmediateTextModule
 
     include("engine/Component/Component.jl")
     using .Component
