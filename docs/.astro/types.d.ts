@@ -459,6 +459,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/UI/immediate-ui.md": {
+	id: "reference/UI/immediate-ui.md";
+  slug: "reference/ui/immediate-ui";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/UI/index.md": {
 	id: "reference/UI/index.md";
   slug: "reference/ui";

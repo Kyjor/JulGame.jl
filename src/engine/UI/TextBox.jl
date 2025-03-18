@@ -59,12 +59,12 @@ module TextBoxModule
         end
     end
 
-    function UI.render(this::TextBox, debug::Bool)
+    function UI.render(this::TextBox)
         if this.textTexture == C_NULL || !this.isActive
             return
         end
 
-        if debug
+        if JulGame.IS_DEBUG
             rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
             SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
             SDL2.SDL_SetRenderDrawColor(Renderer, 0, 255, 0, 255);

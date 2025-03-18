@@ -582,21 +582,23 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				render_scene_sprites_and_shapes(this, this.scene.camera)
 			end
 			
-			render_scene_debug(this, cameraPosition, cameraSize, DEBUG)
+			if JulGame.IS_DEBUG
+				render_scene_debug(this, cameraPosition, cameraSize)
+			end
 
 			#region UI
 			for uiElement in this.scene.uiElements
-                JulGame.render(uiElement, DEBUG)
+                JulGame.render(uiElement)
 			end
 
-			# Render all immediate text elements
-			UI.ImmediateTextModule.render_all_immediate_texts(DEBUG)
+			# Render all immediate UI components
+			UI.ImmediateUIModule.render_all_immediate_components()
 
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x - this.input.mousePositionEditorGameWindowOffset.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y - this.input.mousePositionEditorGameWindowOffset.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y )
 			#region Debug
-			if DEBUG
+			if JulGame.IS_DEBUG
 				# Stats to display
 				statTexts = [
 					"FPS: $(round(1000 / round((startTime[] - lastStartTime) / SDL2.SDL_GetPerformanceFrequency() * 1000.0)))",
@@ -617,7 +619,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				 	for i = eachindex(this.debugTextBoxes)
                          db_textbox = this.debugTextBoxes[i]
                          db_textbox.text = statTexts[i]
-                         JulGame.render(db_textbox, false)
+                         JulGame.render(db_textbox)
 			 	  	end
 				 end
 			end
@@ -725,7 +727,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		end
 	end
 
-	function render_scene_debug(this::MainLoop, cameraPosition, cameraSize, DEBUG)
+	function render_scene_debug(this::MainLoop, cameraPosition, cameraSize)
 		colliderSkipCount = 0
 		colliderRenderCount = 0
 		for entity in this.scene.entities
@@ -733,7 +735,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				continue
 			end
 	
-			if DEBUG && entity.collider != C_NULL
+			if entity.collider != C_NULL
 				rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
         		SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)

@@ -55,7 +55,7 @@ module ScreenButtonModule
         end
     end
 
-    function UI.render(this::ScreenButton, debug)
+    function UI.render(this::ScreenButton)
         if !this.isInitialized
             UI.initialize(this)
         end

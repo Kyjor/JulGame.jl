@@ -16,9 +16,9 @@ module UI
 
     include("ScreenButton.jl")
     include("TextBox.jl")
-    include("ImmediateText.jl")
+    include("ImmediateUI.jl")
     
     export ScreenButtonModule
     export TextBoxModule
-    export ImmediateTextModule
+    export ImmediateUIModule
 end

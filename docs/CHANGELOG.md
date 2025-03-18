@@ -1,5 +1,27 @@
 # Documentation Changelog
 
+## 2023-12-16
+
+### ImmediateUI System Update
+
+#### New Features
+- Replaced ImmediateText with comprehensive ImmediateUI system
+- Added `immediate_button()` function for ephemeral interactive UI elements
+- Created new ImmediateUIExample.jl with both text and button examples
+
+#### Improvements
+- Updated UI documentation to reflect new ImmediateUI system
+- Added detailed reference for all ImmediateUI functions
+- Marked old ImmediateText system as deprecated (maintaining backward compatibility)
+- Updated all examples to use the new immediate_text() function
+- Added tooltips and notifications examples in documentation
+
+#### Technical Updates
+- Created unified ImmediateUIModule that handles both text and buttons
+- Enhanced performance of immediate UI rendering
+- Improved error handling for immediate UI functions
+- Ensured backwards compatibility with previous immediate text API
+
 ## 2023-12-15
 
 ### Comprehensive Documentation Update

@@ -13,7 +13,7 @@ JulGame includes several UI components for different use cases:
 
 | Component | Description | Use Case |
 |-----------|-------------|----------|
-| [ImmediateText](/JulGame.jl/reference/UI/immediate-text/) | Dynamic text without lifecycle management | Debug info, temporary labels |
+| [ImmediateUI](/JulGame.jl/reference/UI/immediate-ui/) | Dynamic text and buttons without lifecycle management | Debug info, temporary labels, tooltips, notifications |
 | [TextBox](/JulGame.jl/reference/UI/text-box/) | Static text elements with more formatting options | Dialogue, UI labels |
 | [ScreenButton](/JulGame.jl/reference/UI/screen-button/) | Clickable buttons for user interaction | UI menus, clickable elements |
 
@@ -23,7 +23,7 @@ The UI components in JulGame are organized in the following namespaces:
 
 ```julia
 using JulGame.UI                      # Access all UI components
-using JulGame.UI.ImmediateTextModule  # For ImmediateText only
+using JulGame.UI.ImmediateUIModule    # For ImmediateUI components
 using JulGame.UI.TextBoxModule        # For TextBox only 
 using JulGame.UI.ScreenButtonModule   # For ScreenButton only
 ```
@@ -49,13 +49,11 @@ using JulGame.Math
 # In your update function
 function update()
     # Show player health as immediate text
-    immediate("health_display", 
+    immediate_text("health_display", 
               "Health: $(player.health)",
               "Arial.ttf", 
               20, 
-              Math.Vector2(20, 20), 
-              false, 
-              false)
+              Math.Vector2(20, 20))
     
     # Display a text box for dialogue
     if isDialogueActive
@@ -70,22 +68,16 @@ function update()
                              true)  # centered vertically
     end
     
-    # Create a button for menu options
-    ScreenButtonModule.create("quit_button",
-                              "Quit Game",
-                              "Arial.ttf",
-                              24,
-                              Math.Vector2(MAIN.windowWidth / 2, MAIN.windowHeight / 2),
-                              200,  # width
-                              50,   # height
-                              true, # centered
-                              quitGame)  # callback function
-end
-
-function quitGame()
-    # Handle quit game logic
-    println("Quitting game...")
-    # Add your quit logic here
+    # Create a button using immediate UI
+    immediate_button("quit_button",
+                     "Quit Game",
+                     "Arial.ttf",
+                     24,
+                     Math.Vector2(MAIN.windowWidth / 2, MAIN.windowHeight / 2),
+                     200,  # width
+                     50,   # height
+                     true, # centered
+                     () -> println("Quitting game..."))  # callback function
 end
 ```
 

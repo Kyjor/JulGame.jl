@@ -108,14 +108,12 @@ function update(script::PlayerController, entity)
     end
     
     # Display score
-    using JulGame.UI.ImmediateTextModule
-    immediate("score_display", 
+    using JulGame.UI.ImmediateUIModule
+    immediate_text("score_display", 
               "Score: $(script.score)", 
               "Arial.ttf", 
               24, 
-              Math.Vector2(20, 20), 
-              false, 
-              false)
+              Math.Vector2(20, 20))
 end
 
 function onCollisionEnter(script::PlayerController, entity, other)
@@ -236,14 +234,12 @@ function update(script::PlayerController, entity)
     end
     
     # Score display code (same as before)
-    using JulGame.UI.ImmediateTextModule
-    immediate("score_display", 
+    using JulGame.UI.ImmediateUIModule
+    immediate_text("score_display", 
               "Score: $(script.score)", 
               "Arial.ttf", 
               24, 
-              Math.Vector2(20, 20), 
-              false, 
-              false)
+              Math.Vector2(20, 20))
 end
 ```
 

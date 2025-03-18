@@ -167,26 +167,27 @@ end
 
 JulGame provides UI components for creating interfaces:
 
-- **ImmediateText** for dynamic text without lifecycle management
+- **ImmediateUI** for dynamic text and buttons without lifecycle management
 - **TextBox** for static text with more formatting options
 - **ScreenButton** for clickable buttons
 
 ```julia
 function update()
     # Display text
-    immediate("score", 
+    immediate_text("score", 
               "Score: $(player.score)", 
               "Arial.ttf", 
               24, 
               Math.Vector2(20, 20))
     
-    # Create a button
-    ScreenButtonModule.create("start_button", 
-                              "Start Game", 
-                              "Arial.ttf", 
-                              24, 
-                              Math.Vector2(400, 300), 
-                              200, 50, true, startGame)
+    # Create an immediate button
+    immediate_button("start_button", 
+                     "Start Game", 
+                     "Arial.ttf", 
+                     24, 
+                     Math.Vector2(400, 300), 
+                     200, 50, true, 
+                     () -> startGame())
 end
 ```
 
