@@ -57,6 +57,14 @@ module ScreenButtonModule
             this.isActive = true
             this.alpha = 255
 
+            # If the textOffset is at (0,0), we'll consider it as "should center text"
+            # This ensures text is centered by default if no explicit offset is provided
+            if this.textOffset == Math.Vector2(0, 0) && this.text != ""
+                # Even though we don't have the text size yet, we'll mark it for centering
+                # The actual centering will happen in UI.initialize
+                this.textOffset = Math.Vector2(-1, -1)  # Special value to indicate centering is needed
+            end
+
             return this
         end
     end
@@ -75,6 +83,10 @@ module ScreenButtonModule
             return
         end
 
+        if this.currentTexture == this.buttonDownTexture && !this.isHovered
+            this.currentTexture = this.buttonUpTexture
+        end
+        
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             this.currentTexture, 
@@ -86,11 +98,24 @@ module ScreenButtonModule
 
         # Render the text if it exists
         if this.textTexture != C_NULL && this.text != ""
+            center_text_on_button(this)
+            # Position the text exactly in the center of the button
+            text_x = this.position.x + this.textOffset.x
+            text_y = this.position.y + this.textOffset.y
+            
+            # Ensure sizes and positions are precise
+            rect = SDL2.SDL_FRect(
+                Float32(text_x),
+                Float32(text_y),
+                Float32(this.textSize.x),
+                Float32(this.textSize.y)
+            )
+            
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
                 this.textTexture, 
                 C_NULL, 
-                Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y, this.textSize.x, this.textSize.y))
+                Ref(rect)
             ) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
         end
     end
@@ -112,12 +137,17 @@ module ScreenButtonModule
                 if textSurface != C_NULL
                     # Get the size of the rendered text
                     surface = unsafe_wrap(Array, textSurface, 10; own = false)
-                    this.textSize = Math.Vector2(surface[1].w, surface[1].h)
+                    width = Float32(surface[1].w)
+                    height = Float32(surface[1].h)
+                    this.textSize = Math.Vector2(width, height)
+                    
+                    # Debug the exact text dimensions
+                    println("Text dimensions for '$(this.text)': $(width)x$(height)")
                     
                     # Create texture from surface
                     this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
                     
-                    # Center the text on the button
+                    # Always center the text by default
                     center_text_on_button(this)
                     
                     # Free the surface
@@ -138,11 +168,29 @@ module ScreenButtonModule
     Centers the text within the button.
     """
     function center_text_on_button(button::ScreenButton)
-        # Calculate the position to center the text
-        textX = (button.size.x - button.textSize.x) / 2
-        textY = (button.size.y - button.textSize.y) / 2
+        # Reset any previous offset settings
+        if button.textSize.x == 0 || button.textSize.y == 0
+            # If text size isn't set yet, just use 0,0 offset
+            button.textOffset = Math.Vector2(0, 0)
+            return
+        end
         
-        # Update the text offset
+        # Calculate the position to center the text
+        # Make sure we're using exact calculations with floats
+        button_width = Float32(button.size.x)
+        button_height = Float32(button.size.y)
+        text_width = Float32(button.textSize.x)
+        text_height = Float32(button.textSize.y)
+        
+        # Calculate center position with floating-point precision
+        textX = (button_width - text_width) / 2
+        textY = (button_height - text_height) / 2
+        
+        # Debug information
+        #println("Button: $(button.name), Size: $(button_width)x$(button_height), TextSize: $(text_width)x$(text_height)")
+        #println("Calculated offsets - X: $textX, Y: $textY")
+        
+        # Update the text offset with precise floating-point coordinates
         button.textOffset = Math.Vector2(textX, textY)
     end
 
@@ -268,12 +316,17 @@ module ScreenButtonModule
             if textSurface != C_NULL
                 # Get the size of the rendered text
                 surface = unsafe_wrap(Array, textSurface, 10; own = false)
-                this.textSize = Math.Vector2(surface[1].w, surface[1].h)
+                width = Float32(surface[1].w)
+                height = Float32(surface[1].h)
+                this.textSize = Math.Vector2(width, height)
+                
+                # Debug the exact text dimensions
+                println("Text dimensions for '$(this.text)': $(width)x$(height)")
                 
                 # Create texture from surface
                 this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
                 
-                # Center the text on the button
+                # Always center the text on the button
                 center_text_on_button(this)
                 
                 # Free the surface

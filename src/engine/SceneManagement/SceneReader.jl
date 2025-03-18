@@ -127,6 +127,13 @@ module SceneReaderModule
                     isActive::Bool = !haskey(uiElement, "isActive") ? true : uiElement.isActive
                     newUIElement.isActive = isActive    
                 else
+                    # For text offset, check if it should be centered (if not specified or all zeros)
+                    textOffset = Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
+                    if !haskey(uiElement, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
+                        # Use (-1,-1) as a special value to indicate the text should be centered
+                        textOffset = Vector2(-1, -1)
+                    end
+                    
                     newUIElement = ScreenButton(
                         uiElement.name, 
                         uiElement.buttonUpSpritePath, 
@@ -135,10 +142,15 @@ module SceneReaderModule
                         Vector2(uiElement.position.x, uiElement.position.y), 
                         uiElement.fontPath, 
                         uiElement.text, 
-                        Vector2(uiElement.textOffset.x, uiElement.textOffset.y); 
+                        textOffset; 
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
                         fontSize=Int32(get(uiElement, "fontSize", 24))
                     )
+                    
+                    # Make sure the button is initialized properly
+                    if !newUIElement.isInitialized
+                        JulGame.UI.initialize(newUIElement)
+                    end
                 end
                 newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 push!(res, newUIElement)

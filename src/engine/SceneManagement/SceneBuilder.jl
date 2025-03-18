@@ -171,7 +171,7 @@ module SceneBuilderModule
     end
     
     function create_new_screen_button(this::Scene)
-        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"), "test")
+        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"))
         JulGame.initialize(screenButton)
         push!(MAIN.scene.uiElements, screenButton)
     end
