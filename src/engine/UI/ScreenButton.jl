@@ -36,6 +36,8 @@ module ScreenButtonModule
             this.buttonUpSpritePath = buttonUpSpritePath
             this.buttonDownSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonDownSpritePath)
             this.buttonUpSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonUpSpritePath)
+            # TODO: if buttonUp/DownSpritePath is not found, use a default sprite
+
             this.clickEvents = []
             this.currentTexture = C_NULL
             this.id = id
@@ -153,7 +155,11 @@ module ScreenButtonModule
         elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
             this.currentTexture = this.buttonUpTexture
             for eventToCall in this.clickEvents
-                Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+                try
+                    Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+                catch
+                    Base.invokelatest(eventToCall)
+                end
             end
         elseif evt.type == SDL2.SDL_MOUSEMOTION
             this.isHovered = true

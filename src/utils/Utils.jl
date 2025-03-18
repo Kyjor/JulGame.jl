@@ -9,7 +9,7 @@ function CallSDLFunction(func::Function, args...)
         || with function $(func) 
         || with args $(args)" 
 
-        Base.show_backtrace(stdout, catch_backtrace())
+        Base.show_backtrace(stdout, stacktrace())
     end
 
     return ret

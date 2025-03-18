@@ -108,6 +108,11 @@ module ImmediateUIModule
                 end
             end
             
+            # Ensure the component is in the scene's uiElements
+            if !(textBox in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, textBox)
+            end
+            
             return textBox
         else
             # Create new text component
@@ -119,6 +124,9 @@ module ImmediateUIModule
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = textBox
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, textBox)
             
             return textBox
         end
@@ -223,15 +231,20 @@ module ImmediateUIModule
                 UI.add_click_event(button, callback)
             end
             
+            # Ensure the component is in the scene's uiElements
+            if !(button in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, button)
+            end
+            
             return button
         else
             # Use default button images if not provided
             if buttonUpPath == ""
-                buttonUpPath = "button_up.png" # Default button up image
+                buttonUpPath = "ButtonUp.png" # Default button up image
             end
             
             if buttonDownPath == ""
-                buttonDownPath = "button_down.png" # Default button down image
+                buttonDownPath = "ButtonDown.png" # Default button down image
             end
             
             # Create new button component
@@ -248,6 +261,9 @@ module ImmediateUIModule
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = button
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, button)
             
             return button
         end
@@ -303,27 +319,40 @@ module ImmediateUIModule
     """
     cleanup_immediate_component(id::String)
     
-    Cleans up resources for an immediate UI component and removes it from the cache.
-    
-    # Arguments
-    - `id::String`: The ID of the component to clean up
+    Removes an immediate UI component from the cache and cleans up its resources.
     """
     function cleanup_immediate_component(id::String)
         if haskey(IMMEDIATE_UI_CACHE, id)
             component = IMMEDIATE_UI_CACHE[id]
             
-            # Clean up resources based on component type
-            if component isa TextBox
-                UI.destroy(component)
-            elseif component isa ScreenButton
-                UI.destroy(component)
+            # Remove from scene's uiElements if present
+            if component in MAIN.scene.uiElements
+                filter!(x -> x !== component, MAIN.scene.uiElements)
             end
             
-            # Remove from caches
-            delete!(IMMEDIATE_UI_CACHE, id)
-            if haskey(IMMEDIATE_UI_TIMESTAMPS, id)
-                delete!(IMMEDIATE_UI_TIMESTAMPS, id)
+            # Clean up component resources
+            if component isa TextBox
+                if isdefined(component, :texture) && component.texture !== nothing
+                    SDL2.SDL_DestroyTexture(component.texture)
+                end
+                if isdefined(component, :font) && component.font !== nothing
+                    TTF_CloseFont(component.font)
+                end
+            elseif component isa ScreenButton
+                if isdefined(component, :buttonUpTexture) && component.buttonUpTexture !== nothing
+                    SDL2.SDL_DestroyTexture(component.buttonUpTexture)
+                end
+                if isdefined(component, :buttonDownTexture) && component.buttonDownTexture !== nothing
+                    SDL2.SDL_DestroyTexture(component.buttonDownTexture)
+                end
+                if isdefined(component, :font) && component.font !== nothing
+                    TTF_CloseFont(component.font)
+                end
             end
+            
+            # Remove from cache
+            delete!(IMMEDIATE_UI_CACHE, id)
+            delete!(IMMEDIATE_UI_TIMESTAMPS, id)
         end
     end
 
