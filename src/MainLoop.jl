@@ -35,6 +35,7 @@ module MainLoopModule
 		targetFrameRate::Int32
 		testLength::Float64
 		testMode::Bool
+		windowSize::Math.Vector2
 		window::Ptr{SDL2.SDL_Window}
 		windowName::String
 
@@ -69,6 +70,7 @@ module MainLoopModule
 	end
 
     function prepare_window_scripts_and_start_loop(size)
+		MAIN.windowSize = size
         @debug "Preparing window"
 		if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			@debug "Preparing window for game"

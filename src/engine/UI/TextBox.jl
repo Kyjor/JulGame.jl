@@ -78,11 +78,40 @@ module TextBoxModule
         end
 
         camera = MAIN.scene.camera
-        cameraDiff = this.isWorldEntity && camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
-        Math.Vector2(0,0)
-
-        @assert SDL2.SDL_RenderCopyF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x - cameraDiff.x, this.position.y - cameraDiff.y, this.size.x, this.size.y))) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+        
+        # Handle world coordinates for world entities, similar to Sprite component
+        if this.isWorldEntity && camera !== nothing
+            # Calculate position in screen space
+            posX = (this.position.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
+            posY = (this.position.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
+            
+            # Don't scale the size, keep it the same as screen space
+            # Render with world-space positioning only, not scaling size
+            @assert SDL2.SDL_RenderCopyF(
+                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+                this.textTexture, 
+                C_NULL, 
+                Ref(SDL2.SDL_FRect(
+                    Float32(posX), 
+                    Float32(posY), 
+                    Float32(this.size.x), 
+                    Float32(this.size.y)
+                ))
+            ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+        else
+            # Render with screen-space positioning (traditional UI)
+            @assert SDL2.SDL_RenderCopyF(
+                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+                this.textTexture, 
+                C_NULL, 
+                Ref(SDL2.SDL_FRect(
+                    Float32(this.position.x), 
+                    Float32(this.position.y), 
+                    Float32(this.size.x), 
+                    Float32(this.size.y)
+                ))
+            ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
@@ -108,12 +137,15 @@ module TextBoxModule
         end
 
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+        
+        # Size is always in screen pixels, regardless of isWorldEntity
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
     end
 
     function UI.initialize(this::TextBox)
+        # Only center screen-space UI, not world entities
         if !this.isWorldEntity
             UI.center_text(this)
         end
@@ -181,7 +213,9 @@ module TextBoxModule
         this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
+        # Size is always in screen pixels, regardless of isWorldEntity
         this.size = Math.Vector2(surface[1].w, surface[1].h)
+        
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
         
         if !this.isWorldEntity
