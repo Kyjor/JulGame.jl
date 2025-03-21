@@ -63,7 +63,7 @@ Here's a simple example of a custom Health component:
 
 ```julia
 module HealthModule
-    using ..JulGame
+    using JulGame
 
     struct Health
         maxHealth::Int

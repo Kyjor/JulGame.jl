@@ -612,6 +612,8 @@ module Editor
                             Base.include(JulGame.ScriptModule, joinpath(JulGame.BasePath, "scripts", file))
                         catch e
                             @error "Error reloading file: $(file)"
+                            @error "Error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
                             continue
                         end
                         for entity in currentSceneMain.scene.entities
