@@ -14,12 +14,12 @@ module ImmediateUIModule
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
     
     # Lifetime in milliseconds before an unused immediate component is removed (default: 5 seconds)
-    const DEFAULT_LIFETIME = 5000
+    const DEFAULT_LIFETIME = 200
 
     """
     immediate_text(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2, 
                   width::Number=0, height::Number=0, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-                  anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255)
+                  anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate text component.
     
@@ -42,7 +42,7 @@ module ImmediateUIModule
     """
     function immediate_text(id::String, text::String, fontPath::String, fontSize::Number, 
         position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255)
+        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -52,7 +52,7 @@ module ImmediateUIModule
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing text component
-            textBox = IMMEDIATE_UI_CACHE[composite_id]
+            textBox = IMMEDIATE_UI_CACHE[composite_id].element
             
             # Only update if something has changed
             needsUpdate = false
@@ -97,6 +97,11 @@ module ImmediateUIModule
                 textBox.alpha = alpha
                 needsUpdate = true
             end
+
+            if textBox.isActive != isActive
+                textBox.isActive = isActive
+                needsUpdate = true
+            end
             
             if needsUpdate
                 # Reload font and regenerate texture
@@ -123,7 +128,7 @@ module ImmediateUIModule
             textBox.persistentBetweenScenes = false
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = textBox
+            IMMEDIATE_UI_CACHE[composite_id] = (element = textBox, lifetime = lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, textBox)
@@ -136,7 +141,7 @@ module ImmediateUIModule
     immediate_button(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2,
                      width::Number, height::Number, isCentered::Bool=true, callback::Function=() -> nothing;
                      buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                     alpha::Number=255)
+                     alpha::Number=255, lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate button component.
     
@@ -161,7 +166,7 @@ module ImmediateUIModule
     function immediate_button(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2,
                              width::Number, height::Number, isCentered::Bool=true, callback::Function=() -> nothing;
                              buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                             alpha::Number=255)
+                             alpha::Number=255, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -179,7 +184,7 @@ module ImmediateUIModule
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing button component
-            button = IMMEDIATE_UI_CACHE[composite_id]
+            button = IMMEDIATE_UI_CACHE[composite_id].element
             
             # Only update if something has changed
             needsReinitialize = false
@@ -210,6 +215,10 @@ module ImmediateUIModule
             
             if button.alpha != alpha
                 button.alpha = alpha
+            end
+
+            if button.isActive != isActive
+                button.isActive = isActive
             end
             
             # Check if button sprites need updating
@@ -268,7 +277,7 @@ module ImmediateUIModule
             UI.initialize(button)
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = button
+            IMMEDIATE_UI_CACHE[composite_id] = (element = button, lifetime = lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, button)
@@ -294,27 +303,27 @@ module ImmediateUIModule
         # Check for expired components and render active ones
         for (id, component) in IMMEDIATE_UI_CACHE
             # Skip if the component is not properly initialized
-            if !isdefined(component, :isActive) || component === nothing
+            if !isdefined(component.element, :isActive) || component.element === nothing
                 push!(expired_ids, id)
                 continue
             end
             
             # Check if this component hasn't been used for a while
-            if !haskey(IMMEDIATE_UI_TIMESTAMPS, id) || current_time - IMMEDIATE_UI_TIMESTAMPS[id] > DEFAULT_LIFETIME
+            if !haskey(IMMEDIATE_UI_TIMESTAMPS, id) || current_time - IMMEDIATE_UI_TIMESTAMPS[id] > component.lifetime
                 push!(expired_ids, id)
                 continue
             end
             
             # Skip inactive components
-            if isdefined(component, :isActive) && !component.isActive
+            if isdefined(component.element, :isActive) && !component.element.isActive
                 continue
             end
             
             # Render the component based on its type
-            if component isa TextBox
-                UI.render(component)
-            elseif component isa ScreenButton
-                UI.render(component)
+            if component.element isa TextBox
+                UI.render(component.element)
+            elseif component.element isa ScreenButton
+                UI.render(component.element)
             end
         end
         
@@ -332,7 +341,7 @@ module ImmediateUIModule
     """
     function cleanup_immediate_component(id::String)
         if haskey(IMMEDIATE_UI_CACHE, id)
-            component = IMMEDIATE_UI_CACHE[id]
+            component = IMMEDIATE_UI_CACHE[id].element
             
             # Remove from scene's uiElements if present
             if component in MAIN.scene.uiElements
