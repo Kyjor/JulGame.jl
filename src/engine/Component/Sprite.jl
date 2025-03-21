@@ -228,7 +228,7 @@ module SpriteModule
                 @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")
                 return
             end
-        else
+        elseif this.imagePath != imagePath
             this.imagePath = imagePath
         end
     
@@ -287,5 +287,24 @@ module SpriteModule
     function Component.set_color(this::InternalSprite)
         SDL2.SDL_SetTextureColorMod(this.texture, UInt8(this.color[1]%256), UInt8(this.color[2]%256), (this.color[3]%256));
         SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(this.color[4]%256));
+    end
+
+    function Base.setproperty!(this::InternalSprite, s::Symbol, x)
+        @debug("setting sprite property $(s) to: $(x)")
+        try
+            if s == :imagePath
+                @debug("setting imagePath to: $(x)")
+                if !isdefined(this, :imagePath) || (this.imagePath != x && !isempty(x))
+                    # Reload the image, cleaning up the old one first
+                    setfield!(this, s, x)
+                    Component.load_image(this, x)
+                end
+                return
+            end
+            setfield!(this, s, x)
+        catch e
+            error(e)
+            Base.show_backtrace(stderr, catch_backtrace())
+        end
     end
 end

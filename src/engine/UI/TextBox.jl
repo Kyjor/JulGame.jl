@@ -245,5 +245,4 @@ module TextBoxModule
             Base.show_backtrace(stderr, catch_backtrace())
         end
     end
-
 end

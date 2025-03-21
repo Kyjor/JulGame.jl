@@ -142,7 +142,7 @@ module ScreenButtonModule
                     this.textSize = Math.Vector2(width, height)
                     
                     # Debug the exact text dimensions
-                    println("Text dimensions for '$(this.text)': $(width)x$(height)")
+                    #println("Text dimensions for '$(this.text)': $(width)x$(height)")
                     
                     # Create texture from surface
                     this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
@@ -321,7 +321,7 @@ module ScreenButtonModule
                 this.textSize = Math.Vector2(width, height)
                 
                 # Debug the exact text dimensions
-                println("Text dimensions for '$(this.text)': $(width)x$(height)")
+                #println("Text dimensions for '$(this.text)': $(width)x$(height)")
                 
                 # Create texture from surface
                 this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
