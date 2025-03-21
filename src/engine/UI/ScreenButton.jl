@@ -127,8 +127,8 @@ module ScreenButtonModule
 
         # Initialize text if a font path is provided and text is not empty
         if this.fontPath != C_NULL && this.text != ""
-            # Load the font
-            font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), this.fontSize)
+            # Load the font using the cache
+            font = load_font_sdl(joinpath(JulGame.BasePath, "assets", "fonts"), this.fontPath, this.fontSize)
             
             if font != C_NULL
                 # Render the text
@@ -306,8 +306,8 @@ module ScreenButtonModule
             return
         end
         
-        # Load the font
-        font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), this.fontSize)
+        # Load the font using the cache
+        font = load_font_sdl(joinpath(JulGame.BasePath, "assets", "fonts"), this.fontPath, this.fontSize)
         
         if font != C_NULL
             # Render the text
@@ -336,5 +336,32 @@ module ScreenButtonModule
             # Close the font
             SDL2.TTF_CloseFont(font)
         end
+    end
+
+    """
+    load_font_sdl(basePath::String, fontPath::String, fontSize::Int32)
+    
+    Loads a font from the specified path, using the font cache if available.
+    
+    # Arguments
+    - `basePath::String`: The base path to load the font from
+    - `fontPath::String`: The path to the font file
+    - `fontSize::Int32`: The size of the font
+    
+    # Returns
+    A pointer to the loaded font
+    """
+    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int32)
+        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath))
+            raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+            rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            if rw != C_NULL
+                @debug("loading font from cache for button")
+                @debug("comma separated path: ", get_comma_separated_path(fontPath))
+                return SDL2.TTF_OpenFontRW(rw, 1, fontSize)
+            end
+        end
+        @debug "Loading font from disk for button, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
+        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), fontSize)
     end
 end
