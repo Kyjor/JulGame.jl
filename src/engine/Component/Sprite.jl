@@ -41,6 +41,7 @@ module SpriteModule
 
             this.offset = Math.Vector2f()
             this.isFlipped = isFlipped
+            @info "attemping to load sprite with path: $(imagePath)"
             this.imagePath = imagePath
             this.center = center
             this.color = color
@@ -296,14 +297,15 @@ module SpriteModule
                 @debug("setting imagePath to: $(x)")
                 if !isdefined(this, :imagePath) || (this.imagePath != x && !isempty(x))
                     # Reload the image, cleaning up the old one first
-                    setfield!(this, s, x)
-                    Component.load_image(this, x)
+                    setfield!(this, s, String(x))
+                    Component.load_image(this, String(x))
                 end
                 return
             end
             setfield!(this, s, x)
         catch e
-            error(e)
+            @error "Error setting sprite property $(s) to: $(x)"
+            @error "Error: $e"
             Base.show_backtrace(stderr, catch_backtrace())
         end
     end
