@@ -64,6 +64,7 @@ module MainLoopModule
 			this.testLength = 0.0
 			this.coroutine_condition = Condition()
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
+			this.spriteLayers = Dict()
 
 			return this
 		end

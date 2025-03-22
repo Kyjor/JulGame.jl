@@ -3,9 +3,13 @@ module ImmediateUIModule
     using ..UI.JulGame.Math
     using ..UI.TextBoxModule
     using ..UI.ScreenButtonModule
+    using ..UI.RectangleModule
+    using ..UI.LineModule
+    using ..UI.CircleModule
+    using ..UI.ProgressBarModule
     import ..UI
 
-    export immediate_text, immediate_button, render_all_immediate_components, cleanup_all_immediate_components
+    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, render_all_immediate_components, cleanup_all_immediate_components
 
     # Dictionary to store active immediate UI components by their id and type
     const IMMEDIATE_UI_CACHE = Dict{String, Any}()
@@ -283,6 +287,465 @@ module ImmediateUIModule
             push!(MAIN.scene.uiElements, button)
             
             return button
+        end
+    end
+
+    """
+    immediate_rect(id::String, x::Number, y::Number, width::Number, height::Number, 
+                  color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+                  borderWidth::Int32=0, fillMode::Bool=true;
+                  isWorldEntity::Bool=false, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                  borderRadius::Int32=0, lifetime::Number=DEFAULT_LIFETIME)
+
+    Creates or updates an immediate rectangle component.
+    
+    # Arguments
+    - `id::String`: Unique identifier for this immediate component
+    - `x::Number`: X position of the rectangle
+    - `y::Number`: Y position of the rectangle
+    - `width::Number`: Width of the rectangle
+    - `height::Number`: Height of the rectangle
+    - `color::Tuple{Int32, Int32, Int32, Int32}`: Color of the rectangle (RGBA)
+    - `borderWidth::Int32`: Width of the border (0 for no border)
+    - `fillMode::Bool`: Whether to fill the rectangle or just draw the outline
+    - `isWorldEntity::Bool`: Whether this rectangle should be positioned in world space
+    - `borderColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the border (RGBA)
+    - `borderRadius::Int32`: Radius of the rounded corners (0 for sharp corners)
+    - `lifetime::Number`: How long the component should persist without updates (ms)
+    
+    # Returns
+    The Rectangle object
+    """
+    function immediate_rect(id::String, x::Number, y::Number, width::Number, height::Number,
+                           color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)),
+                           borderWidth::Int32=Int32(0), fillMode::Bool=true;
+                           isWorldEntity::Bool=false, borderColor::Tuple{Int32, Int32, Int32, Int32}=(Int32(0), Int32(0), Int32(0), Int32(255)),
+                           borderRadius::Int32=Int32(0), isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+        
+        # Generate a composite ID that includes the component type
+        composite_id = "rect_$(id)"
+        
+        # Update timestamp
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        
+        position = Math.Vector2(x, y)
+        size = Math.Vector2(width, height)
+        
+        if haskey(IMMEDIATE_UI_CACHE, composite_id)
+            # Update existing rect component
+            rect = IMMEDIATE_UI_CACHE[composite_id].element
+            
+            # Only update if something has changed
+            needsUpdate = false
+            
+            if rect.position != position
+                rect.position = position
+                needsUpdate = true
+            end
+            
+            if rect.size != size
+                rect.size = size
+                needsUpdate = true
+            end
+            
+            if rect.color != color
+                rect.color = color
+                rect.alpha = Int32(color[4])
+                needsUpdate = true
+            end
+            
+            if rect.borderWidth != borderWidth
+                rect.borderWidth = borderWidth
+                needsUpdate = true
+            end
+            
+            if rect.fillMode != fillMode
+                rect.fillMode = fillMode
+                needsUpdate = true
+            end
+            
+            if rect.isWorldEntity != isWorldEntity
+                rect.isWorldEntity = isWorldEntity
+                needsUpdate = true
+            end
+            
+            if rect.borderColor != borderColor
+                rect.borderColor = borderColor
+                needsUpdate = true
+            end
+            
+            if rect.borderRadius != borderRadius
+                rect.borderRadius = borderRadius
+                needsUpdate = true
+            end
+
+            if rect.isActive != isActive
+                rect.isActive = isActive
+                needsUpdate = true
+            end
+            
+            # Ensure the component is in the scene's uiElements
+            if !(rect in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, rect)
+            end
+            
+            return rect
+        else
+            # Create new rect component
+            rect = Rectangle("immediate_$(id)", position, size, color, fillMode; 
+                            id=id, isWorldEntity=isWorldEntity, 
+                            borderRadius=borderRadius, borderWidth=borderWidth, borderColor=borderColor)
+            
+            rect.isActive = isActive
+            rect.persistentBetweenScenes = false
+            
+            # Store in cache
+            IMMEDIATE_UI_CACHE[composite_id] = (element = rect, lifetime = lifetime)
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, rect)
+            
+            return rect
+        end
+    end
+
+    """
+    immediate_line(id::String, x1::Number, y1::Number, x2::Number, y2::Number, 
+                  color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+                  thickness::Int32=1; isWorldEntity::Bool=false, lifetime::Number=DEFAULT_LIFETIME)
+
+    Creates or updates an immediate line component.
+    
+    # Arguments
+    - `id::String`: Unique identifier for this immediate component
+    - `x1::Number`: X position of the start point
+    - `y1::Number`: Y position of the start point
+    - `x2::Number`: X position of the end point
+    - `y2::Number`: Y position of the end point
+    - `color::Tuple{Int32, Int32, Int32, Int32}`: Color of the line (RGBA)
+    - `thickness::Int32`: Thickness of the line in pixels
+    - `isWorldEntity::Bool`: Whether this line should be positioned in world space
+    - `lifetime::Number`: How long the component should persist without updates (ms)
+    
+    # Returns
+    The Line object
+    """
+    function immediate_line(id::String, x1::Number, y1::Number, x2::Number, y2::Number,
+                           color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+                           thickness::Int32=1; isWorldEntity::Bool=false, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+        
+        # Generate a composite ID that includes the component type
+        composite_id = "line_$(id)"
+        
+        # Update timestamp
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        
+        startPoint = Math.Vector2(x1, y1)
+        endPoint = Math.Vector2(x2, y2)
+        
+        if haskey(IMMEDIATE_UI_CACHE, composite_id)
+            # Update existing line component
+            line = IMMEDIATE_UI_CACHE[composite_id].element
+            
+            # Only update if something has changed
+            needsUpdate = false
+            
+            if line.startPoint != startPoint
+                line.startPoint = startPoint
+                needsUpdate = true
+            end
+            
+            if line.endPoint != endPoint
+                line.endPoint = endPoint
+                needsUpdate = true
+            end
+            
+            if line.color != color
+                line.color = color
+                line.alpha = Int32(color[4])
+                needsUpdate = true
+            end
+            
+            if line.thickness != thickness
+                line.thickness = thickness
+                needsUpdate = true
+            end
+            
+            if line.isWorldEntity != isWorldEntity
+                line.isWorldEntity = isWorldEntity
+                needsUpdate = true
+            end
+
+            if line.isActive != isActive
+                line.isActive = isActive
+                needsUpdate = true
+            end
+            
+            # Ensure the component is in the scene's uiElements
+            if !(line in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, line)
+            end
+            
+            return line
+        else
+            # Create new line component
+            line = Line("immediate_$(id)", startPoint, endPoint, color, thickness; 
+                        id=id, isWorldEntity=isWorldEntity)
+            
+            line.isActive = isActive
+            line.persistentBetweenScenes = false
+            
+            # Store in cache
+            IMMEDIATE_UI_CACHE[composite_id] = (element = line, lifetime = lifetime)
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, line)
+            
+            return line
+        end
+    end
+
+    """
+    immediate_circle(id::String, x::Number, y::Number, radius::Number, 
+                    color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+                    fillMode::Bool=true; isWorldEntity::Bool=false, 
+                    borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                    lifetime::Number=DEFAULT_LIFETIME)
+
+    Creates or updates an immediate circle component.
+    
+    # Arguments
+    - `id::String`: Unique identifier for this immediate component
+    - `x::Number`: X position of the circle center
+    - `y::Number`: Y position of the circle center
+    - `radius::Number`: Radius of the circle
+    - `color::Tuple{Int32, Int32, Int32, Int32}`: Color of the circle (RGBA)
+    - `fillMode::Bool`: Whether to fill the circle or just draw the outline
+    - `isWorldEntity::Bool`: Whether this circle should be positioned in world space
+    - `borderWidth::Int32`: Width of the border (0 for no border)
+    - `borderColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the border (RGBA)
+    - `lifetime::Number`: How long the component should persist without updates (ms)
+    
+    # Returns
+    The Circle object
+    """
+    function immediate_circle(id::String, x::Number, y::Number, radius::Number,
+                             color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+                             fillMode::Bool=true; isWorldEntity::Bool=false, 
+                             borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                             isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+        
+        # Generate a composite ID that includes the component type
+        composite_id = "circle_$(id)"
+        
+        # Update timestamp
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        
+        center = Math.Vector2(x, y)
+        
+        if haskey(IMMEDIATE_UI_CACHE, composite_id)
+            # Update existing circle component
+            circle = IMMEDIATE_UI_CACHE[composite_id].element
+            
+            # Only update if something has changed
+            needsUpdate = false
+            
+            if circle.center != center
+                circle.center = center
+                needsUpdate = true
+            end
+            
+            if circle.radius != radius
+                circle.radius = radius
+                needsUpdate = true
+            end
+            
+            if circle.color != color
+                circle.color = color
+                circle.alpha = Int32(color[4])
+                needsUpdate = true
+            end
+            
+            if circle.fillMode != fillMode
+                circle.fillMode = fillMode
+                needsUpdate = true
+            end
+            
+            if circle.isWorldEntity != isWorldEntity
+                circle.isWorldEntity = isWorldEntity
+                needsUpdate = true
+            end
+            
+            if circle.borderWidth != borderWidth
+                circle.borderWidth = borderWidth
+                needsUpdate = true
+            end
+            
+            if circle.borderColor != borderColor
+                circle.borderColor = borderColor
+                needsUpdate = true
+            end
+
+            if circle.isActive != isActive
+                circle.isActive = isActive
+                needsUpdate = true
+            end
+            
+            # Ensure the component is in the scene's uiElements
+            if !(circle in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, circle)
+            end
+            
+            return circle
+        else
+            # Create new circle component
+            circle = Circle("immediate_$(id)", center, radius, color, fillMode; 
+                           id=id, isWorldEntity=isWorldEntity, 
+                           borderWidth=borderWidth, borderColor=borderColor)
+            
+            circle.isActive = isActive
+            circle.persistentBetweenScenes = false
+            
+            # Store in cache
+            IMMEDIATE_UI_CACHE[composite_id] = (element = circle, lifetime = lifetime)
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, circle)
+            
+            return circle
+        end
+    end
+
+    """
+    immediate_progress_bar(id::String, x::Number, y::Number, width::Number, height::Number, 
+                          progress::Number, fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
+                          backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200);
+                          isWorldEntity::Bool=false, borderWidth::Int32=1, 
+                          borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                          vertical::Bool=false, showBackground::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+
+    Creates or updates an immediate progress bar component.
+    
+    # Arguments
+    - `id::String`: Unique identifier for this immediate component
+    - `x::Number`: X position of the progress bar
+    - `y::Number`: Y position of the progress bar
+    - `width::Number`: Width of the progress bar
+    - `height::Number`: Height of the progress bar
+    - `progress::Number`: Progress value (0.0 to 1.0)
+    - `fillColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the fill (RGBA)
+    - `backgroundColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the background (RGBA)
+    - `isWorldEntity::Bool`: Whether this progress bar should be positioned in world space
+    - `borderWidth::Int32`: Width of the border (0 for no border)
+    - `borderColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the border (RGBA)
+    - `vertical::Bool`: Whether the progress bar fills vertically instead of horizontally
+    - `showBackground::Bool`: Whether to show the background
+    - `lifetime::Number`: How long the component should persist without updates (ms)
+    
+    # Returns
+    The ProgressBar object
+    """
+    function immediate_progress_bar(id::String, x::Number, y::Number, width::Number, height::Number,
+                                   progress::Number, fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
+                                   backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200);
+                                   isWorldEntity::Bool=false, borderWidth::Int32=1, 
+                                   borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                                   vertical::Bool=false, showBackground::Bool=true, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+        
+        # Generate a composite ID that includes the component type
+        composite_id = "progress_bar_$(id)"
+        
+        # Update timestamp
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        
+        position = Math.Vector2(x, y)
+        size = Math.Vector2(width, height)
+        
+        if haskey(IMMEDIATE_UI_CACHE, composite_id)
+            # Update existing progress bar component
+            progressBar = IMMEDIATE_UI_CACHE[composite_id].element
+            
+            # Only update if something has changed
+            needsUpdate = false
+            
+            if progressBar.position != position
+                progressBar.position = position
+                needsUpdate = true
+            end
+            
+            if progressBar.size != size
+                progressBar.size = size
+                needsUpdate = true
+            end
+            
+            if progressBar.progress != progress
+                progressBar.progress = clamp(Float32(progress), 0.0, 1.0)
+                needsUpdate = true
+            end
+            
+            if progressBar.fillColor != fillColor
+                progressBar.fillColor = fillColor
+                progressBar.alpha = Int32(fillColor[4])
+                needsUpdate = true
+            end
+            
+            if progressBar.backgroundColor != backgroundColor
+                progressBar.backgroundColor = backgroundColor
+                needsUpdate = true
+            end
+            
+            if progressBar.isWorldEntity != isWorldEntity
+                progressBar.isWorldEntity = isWorldEntity
+                needsUpdate = true
+            end
+            
+            if progressBar.borderWidth != borderWidth
+                progressBar.borderWidth = borderWidth
+                needsUpdate = true
+            end
+            
+            if progressBar.borderColor != borderColor
+                progressBar.borderColor = borderColor
+                needsUpdate = true
+            end
+            
+            if progressBar.vertical != vertical
+                progressBar.vertical = vertical
+                needsUpdate = true
+            end
+            
+            if progressBar.showBackground != showBackground
+                progressBar.showBackground = showBackground
+                needsUpdate = true
+            end
+
+            if progressBar.isActive != isActive
+                progressBar.isActive = isActive
+                needsUpdate = true
+            end
+            
+            # Ensure the component is in the scene's uiElements
+            if !(progressBar in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, progressBar)
+            end
+            
+            return progressBar
+        else
+            # Create new progress bar component
+            progressBar = ProgressBar("immediate_$(id)", position, size, Float32(progress), fillColor, backgroundColor, borderColor;
+                                     id=id, isWorldEntity=isWorldEntity, borderWidth=borderWidth,
+                                     vertical=vertical, showBackground=showBackground)
+            
+            progressBar.isActive = isActive
+            progressBar.persistentBetweenScenes = false
+            
+            # Store in cache
+            IMMEDIATE_UI_CACHE[composite_id] = (element = progressBar, lifetime = lifetime)
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, progressBar)
+            
+            return progressBar
         end
     end
 
