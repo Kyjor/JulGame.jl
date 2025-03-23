@@ -25,6 +25,7 @@ module UI
     include("Circle.jl")
     include("ProgressBar.jl")
     include("ImmediateUI.jl")
+    include("Factory.jl")
     
     export ScreenButtonModule
     export TextBoxModule

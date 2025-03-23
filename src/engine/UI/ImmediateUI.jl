@@ -617,12 +617,13 @@ module ImmediateUIModule
     end
 
     """
-    immediate_progress_bar(id::String, x::Number, y::Number, width::Number, height::Number, 
-                          progress::Number, fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
-                          backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200);
-                          isWorldEntity::Bool=false, borderWidth::Int32=1, 
-                          borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                          vertical::Bool=false, showBackground::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+    immediate_progress_bar(id::String, x::Number, y::Number, width::Number, height::Number,
+                           progress::Number, fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
+                           backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200);
+                           isWorldEntity::Bool=false, borderWidth::Int32=1, 
+                           borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                           borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true, 
+                           isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate progress bar component.
     
@@ -638,6 +639,7 @@ module ImmediateUIModule
     - `isWorldEntity::Bool`: Whether this progress bar should be positioned in world space
     - `borderWidth::Int32`: Width of the border (0 for no border)
     - `borderColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the border (RGBA)
+    - `borderRadius::Int32`: Radius of the border rounded corners (0 for sharp corners)
     - `vertical::Bool`: Whether the progress bar fills vertically instead of horizontally
     - `showBackground::Bool`: Whether to show the background
     - `lifetime::Number`: How long the component should persist without updates (ms)
@@ -650,7 +652,8 @@ module ImmediateUIModule
                                    backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200);
                                    isWorldEntity::Bool=false, borderWidth::Int32=1, 
                                    borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                                   vertical::Bool=false, showBackground::Bool=true, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                                   borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true, 
+                                   isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "progress_bar_$(id)"
@@ -704,6 +707,11 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if progressBar.borderRadius != borderRadius
+                progressBar.borderRadius = borderRadius
+                needsUpdate = true
+            end
+            
             if progressBar.borderColor != borderColor
                 progressBar.borderColor = borderColor
                 needsUpdate = true
@@ -734,7 +742,7 @@ module ImmediateUIModule
             # Create new progress bar component
             progressBar = ProgressBar("immediate_$(id)", position, size, Float32(progress), fillColor, backgroundColor, borderColor;
                                      id=id, isWorldEntity=isWorldEntity, borderWidth=borderWidth,
-                                     vertical=vertical, showBackground=showBackground)
+                                     borderRadius=borderRadius, vertical=vertical, showBackground=showBackground)
             
             progressBar.isActive = isActive
             progressBar.persistentBetweenScenes = false
