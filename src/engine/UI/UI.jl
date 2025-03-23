@@ -19,7 +19,7 @@ module UI
 
     include("ScreenButton.jl")
     include("TextBox.jl")
-    include("Draggable.jl")
+    #include("Draggable.jl")
     include("Rectangle.jl")
     include("Line.jl")
     include("Circle.jl")
@@ -30,7 +30,7 @@ module UI
     export ScreenButtonModule
     export TextBoxModule
     export ImmediateUIModule
-    export DraggableModule
+    #export DraggableModule
     export RectangleModule
     export LineModule
     export CircleModule
@@ -40,5 +40,5 @@ module UI
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components
-    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Draggable
+    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar#, Draggable
 end
