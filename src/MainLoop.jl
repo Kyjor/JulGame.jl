@@ -597,7 +597,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 			#region UI
-			for uiElement in this.scene.uiElements
+			# Sort UI elements by layer before rendering
+			sorted_ui_elements = sort(this.scene.uiElements, by = x -> isdefined(x, :layer) ? x.layer : Int32(0))
+			for uiElement in sorted_ui_elements
                 JulGame.render(uiElement)
 			end
 

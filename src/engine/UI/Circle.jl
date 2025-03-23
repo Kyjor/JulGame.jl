@@ -17,10 +17,12 @@ module CircleModule
         radius::Float32
         borderWidth::Int32
         borderColor::Tuple{Int32, Int32, Int32, Int32}
+        layer::Int32
         
         function Circle(name::String, center::Math.Vector2, radius::Float32, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255), 
                        fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
-                       borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255))
+                       borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
+                       layer::Int32=Int32(0))
             this = new()
             
             this.alpha = Int32(color[4])
@@ -35,6 +37,7 @@ module CircleModule
             this.radius = radius
             this.borderWidth = borderWidth
             this.borderColor = borderColor
+            this.layer = layer
             
             return this
         end

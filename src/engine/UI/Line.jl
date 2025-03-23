@@ -15,9 +15,10 @@ module LineModule
         startPoint::Math.Vector2
         endPoint::Math.Vector2
         thickness::Int32
+        layer::Int32
         
         function Line(name::String, startPoint::Math.Vector2, endPoint::Math.Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255), 
-                     thickness::Int32=1; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false)
+                     thickness::Int32=1; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=Int32(0))
             this = new()
             
             this.alpha = Int32(color[4])
@@ -30,6 +31,7 @@ module LineModule
             this.startPoint = startPoint
             this.endPoint = endPoint
             this.thickness = thickness
+            this.layer = layer
             
             return this
         end

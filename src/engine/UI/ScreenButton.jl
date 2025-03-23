@@ -21,6 +21,7 @@ module ScreenButtonModule
         isActive::Bool
         isHovered::Bool
         isInitialized::Bool
+        layer::Int32
         name::String
         persistentBetweenScenes::Bool
         position::Math.Vector2
@@ -30,7 +31,7 @@ module ScreenButtonModule
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); id::String=JulGame.generate_uuid(), fontSize::Int32=24)
+        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); id::String=JulGame.generate_uuid(), fontSize::Int32=24, layer::Int32=Int32(0))
             this = new()
             
             this.buttonDownSpritePath = buttonDownSpritePath
@@ -56,6 +57,7 @@ module ScreenButtonModule
             this.isHovered = false
             this.isActive = true
             this.alpha = 255
+            this.layer = layer
 
             # If the textOffset is at (0,0), we'll consider it as "should center text"
             # This ensures text is centered by default if no explicit offset is provided

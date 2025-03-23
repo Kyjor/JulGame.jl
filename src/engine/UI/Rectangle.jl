@@ -20,9 +20,11 @@ module RectangleModule
         borderColor::Tuple{Int32, Int32, Int32, Int32}
         isHovered::Bool
         clickEvents::Vector{Function}
+        layer::Int32
         function Rectangle(name::String, position::Math.Vector2, size::Math.Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)), 
                            fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
-                           borderRadius::Int32=Int32(0), borderWidth::Int32=Int32(0), borderColor::Tuple{Int32, Int32, Int32, Int32}=(Int32(0), Int32(0), Int32(0), Int32(255)))
+                           borderRadius::Int32=Int32(0), borderWidth::Int32=Int32(0), borderColor::Tuple{Int32, Int32, Int32, Int32}=(Int32(0), Int32(0), Int32(0), Int32(255)), 
+                           layer::Int32=Int32(0))
             this = new()
             
             this.alpha = Int32(color[4])
@@ -40,6 +42,7 @@ module RectangleModule
             this.borderColor = borderColor
             this.isHovered = false
             this.clickEvents = []
+            this.layer = layer
 
             return this
         end

@@ -23,7 +23,8 @@ module ImmediateUIModule
     """
     immediate_text(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2, 
                   width::Number=0, height::Number=0, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-                  anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, lifetime::Number=DEFAULT_LIFETIME)
+                  anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, 
+                  layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate text component.
     
@@ -40,13 +41,16 @@ module ImmediateUIModule
     - `anchorOffset::Math.Vector2`: Offset from the anchor point
     - `isWorldEntity::Bool`: Whether this text should be positioned in world space
     - `alpha::Number`: Transparency (0-255)
+    - `layer::Int32`: Rendering layer (higher values render on top)
+    - `lifetime::Number`: How long the component should persist without updates (ms)
     
     # Returns
     The TextBox object
     """
     function immediate_text(id::String, text::String, fontPath::String, fontSize::Number, 
         position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, 
+        isActive::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -107,6 +111,11 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if textBox.layer != layer
+                textBox.layer = layer
+                needsUpdate = true
+            end
+            
             if needsUpdate
                 # Reload font and regenerate texture
                 UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
@@ -126,7 +135,7 @@ module ImmediateUIModule
         else
             # Create new text component
             textBox = TextBox("immediate_$(id)", fontPath, fontSize, position, text, isCenteredX, isCenteredY; 
-                             anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity)
+                             anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity, layer=layer)
             
             textBox.alpha = alpha
             textBox.persistentBetweenScenes = false
@@ -145,7 +154,7 @@ module ImmediateUIModule
     immediate_button(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2,
                      width::Number, height::Number, isCentered::Bool=true, callback::Function=() -> nothing;
                      buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                     alpha::Number=255, lifetime::Number=DEFAULT_LIFETIME)
+                     alpha::Number=255, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate button component.
     
@@ -163,6 +172,8 @@ module ImmediateUIModule
     - `buttonDownPath::String`: Image for button pressed state (optional)
     - `textOffset::Math.Vector2`: Offset for positioning the text
     - `alpha::Number`: Transparency (0-255)
+    - `layer::Int32`: Rendering layer (higher values render on top)
+    - `lifetime::Number`: How long the component should persist without updates (ms)
     
     # Returns
     The ScreenButton object
@@ -170,7 +181,7 @@ module ImmediateUIModule
     function immediate_button(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2,
                              width::Number, height::Number, isCentered::Bool=true, callback::Function=() -> nothing;
                              buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                             alpha::Number=255, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                             alpha::Number=255, isActive::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -225,6 +236,10 @@ module ImmediateUIModule
                 button.isActive = isActive
             end
             
+            if button.layer != layer
+                button.layer = layer
+            end
+            
             # Check if button sprites need updating
             if (buttonUpPath != "" && button.buttonUpSpritePath != buttonUpPath) ||
                (buttonDownPath != "" && button.buttonDownSpritePath != buttonDownPath)
@@ -270,7 +285,7 @@ module ImmediateUIModule
             
             # Create new button component
             button = ScreenButton("immediate_$(id)", buttonUpPath, buttonDownPath, size, adjusted_position, 
-                                 fontPath, text, textOffset; id=id, fontSize=Int32(fontSize))
+                                 fontPath, text, textOffset; id=id, fontSize=Int32(fontSize), layer=layer)
             
             # Set button properties
             button.alpha = alpha
@@ -295,7 +310,7 @@ module ImmediateUIModule
                   color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
                   borderWidth::Int32=0, fillMode::Bool=true;
                   isWorldEntity::Bool=false, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                  borderRadius::Int32=0, lifetime::Number=DEFAULT_LIFETIME)
+                  borderRadius::Int32=0, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate rectangle component.
     
@@ -311,6 +326,7 @@ module ImmediateUIModule
     - `isWorldEntity::Bool`: Whether this rectangle should be positioned in world space
     - `borderColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the border (RGBA)
     - `borderRadius::Int32`: Radius of the rounded corners (0 for sharp corners)
+    - `layer::Int32`: Rendering layer (higher values render on top)
     - `lifetime::Number`: How long the component should persist without updates (ms)
     
     # Returns
@@ -320,7 +336,7 @@ module ImmediateUIModule
                            color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)),
                            borderWidth::Int32=Int32(0), fillMode::Bool=true;
                            isWorldEntity::Bool=false, borderColor::Tuple{Int32, Int32, Int32, Int32}=(Int32(0), Int32(0), Int32(0), Int32(255)),
-                           borderRadius::Int32=Int32(0), isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                           borderRadius::Int32=Int32(0), isActive::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "rect_$(id)"
@@ -384,6 +400,11 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if rect.layer != layer
+                rect.layer = layer
+                needsUpdate = true
+            end
+            
             # Ensure the component is in the scene's uiElements
             if !(rect in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, rect)
@@ -394,7 +415,8 @@ module ImmediateUIModule
             # Create new rect component
             rect = Rectangle("immediate_$(id)", position, size, color, fillMode; 
                             id=id, isWorldEntity=isWorldEntity, 
-                            borderRadius=borderRadius, borderWidth=borderWidth, borderColor=borderColor)
+                            borderRadius=borderRadius, borderWidth=borderWidth, borderColor=borderColor,
+                            layer=layer)
             
             rect.isActive = isActive
             rect.persistentBetweenScenes = false
@@ -412,7 +434,7 @@ module ImmediateUIModule
     """
     immediate_line(id::String, x1::Number, y1::Number, x2::Number, y2::Number, 
                   color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
-                  thickness::Int32=1; isWorldEntity::Bool=false, lifetime::Number=DEFAULT_LIFETIME)
+                  thickness::Int32=1; isWorldEntity::Bool=false, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate line component.
     
@@ -425,6 +447,7 @@ module ImmediateUIModule
     - `color::Tuple{Int32, Int32, Int32, Int32}`: Color of the line (RGBA)
     - `thickness::Int32`: Thickness of the line in pixels
     - `isWorldEntity::Bool`: Whether this line should be positioned in world space
+    - `layer::Int32`: Rendering layer (higher values render on top)
     - `lifetime::Number`: How long the component should persist without updates (ms)
     
     # Returns
@@ -432,7 +455,8 @@ module ImmediateUIModule
     """
     function immediate_line(id::String, x1::Number, y1::Number, x2::Number, y2::Number,
                            color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
-                           thickness::Int32=1; isWorldEntity::Bool=false, isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                           thickness::Int32=1; isWorldEntity::Bool=false, isActive::Bool=true, 
+                           layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "line_$(id)"
@@ -481,6 +505,11 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if line.layer != layer
+                line.layer = layer
+                needsUpdate = true
+            end
+            
             # Ensure the component is in the scene's uiElements
             if !(line in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, line)
@@ -490,7 +519,7 @@ module ImmediateUIModule
         else
             # Create new line component
             line = Line("immediate_$(id)", startPoint, endPoint, color, thickness; 
-                        id=id, isWorldEntity=isWorldEntity)
+                        id=id, isWorldEntity=isWorldEntity, layer=layer)
             
             line.isActive = isActive
             line.persistentBetweenScenes = false
@@ -506,11 +535,11 @@ module ImmediateUIModule
     end
 
     """
-    immediate_circle(id::String, x::Number, y::Number, radius::Number, 
+    immediate_circle(id::String, x::Number, y::Number, radius::Number,
                     color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
                     fillMode::Bool=true; isWorldEntity::Bool=false, 
                     borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                    lifetime::Number=DEFAULT_LIFETIME)
+                    layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate circle component.
     
@@ -524,6 +553,7 @@ module ImmediateUIModule
     - `isWorldEntity::Bool`: Whether this circle should be positioned in world space
     - `borderWidth::Int32`: Width of the border (0 for no border)
     - `borderColor::Tuple{Int32, Int32, Int32, Int32}`: Color of the border (RGBA)
+    - `layer::Int32`: Rendering layer (higher values render on top)
     - `lifetime::Number`: How long the component should persist without updates (ms)
     
     # Returns
@@ -533,7 +563,7 @@ module ImmediateUIModule
                              color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
                              fillMode::Bool=true; isWorldEntity::Bool=false, 
                              borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                             isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                             isActive::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "circle_$(id)"
@@ -591,6 +621,11 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if circle.layer != layer
+                circle.layer = layer
+                needsUpdate = true
+            end
+            
             # Ensure the component is in the scene's uiElements
             if !(circle in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, circle)
@@ -601,7 +636,8 @@ module ImmediateUIModule
             # Create new circle component
             circle = Circle("immediate_$(id)", center, radius, color, fillMode; 
                            id=id, isWorldEntity=isWorldEntity, 
-                           borderWidth=borderWidth, borderColor=borderColor)
+                           borderWidth=borderWidth, borderColor=borderColor,
+                           layer=layer)
             
             circle.isActive = isActive
             circle.persistentBetweenScenes = false
@@ -623,7 +659,7 @@ module ImmediateUIModule
                            isWorldEntity::Bool=false, borderWidth::Int32=1, 
                            borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
                            borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true, 
-                           isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                           isActive::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate progress bar component.
     
@@ -642,18 +678,25 @@ module ImmediateUIModule
     - `borderRadius::Int32`: Radius of the border rounded corners (0 for sharp corners)
     - `vertical::Bool`: Whether the progress bar fills vertically instead of horizontally
     - `showBackground::Bool`: Whether to show the background
+    - `layer::Int32`: Rendering layer (higher values render on top)
     - `lifetime::Number`: How long the component should persist without updates (ms)
     
     # Returns
     The ProgressBar object
     """
     function immediate_progress_bar(id::String, x::Number, y::Number, width::Number, height::Number,
-                                   progress::Number, fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
-                                   backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200);
-                                   isWorldEntity::Bool=false, borderWidth::Int32=1, 
-                                   borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                                   borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true, 
-                                   isActive::Bool=true, lifetime::Number=DEFAULT_LIFETIME)
+                                   progress::Number=0.0, 
+                                   fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 120, 215, 255),
+                                   backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(230, 230, 230, 255);
+                                   isWorldEntity::Bool=false,
+                                   borderWidth::Int32=0, 
+                                   borderColor::Tuple{Int32, Int32, Int32, Int32}=(200, 200, 200, 255),
+                                   borderRadius::Int32=0,
+                                   vertical::Bool=false,
+                                   showBackground::Bool=true,
+                                   isActive::Bool=true,
+                                   layer::Int32=Int32(0),
+                                   lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "progress_bar_$(id)"
@@ -732,6 +775,11 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if progressBar.layer != layer
+                progressBar.layer = layer
+                needsUpdate = true
+            end
+            
             # Ensure the component is in the scene's uiElements
             if !(progressBar in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, progressBar)
@@ -740,9 +788,17 @@ module ImmediateUIModule
             return progressBar
         else
             # Create new progress bar component
-            progressBar = ProgressBar("immediate_$(id)", position, size, Float32(progress), fillColor, backgroundColor, borderColor;
-                                     id=id, isWorldEntity=isWorldEntity, borderWidth=borderWidth,
-                                     borderRadius=borderRadius, vertical=vertical, showBackground=showBackground)
+            progressBar = ProgressBar("immediate_$(id)", position, size, progress; 
+                                    id=id, 
+                                    fillColor=fillColor,
+                                    backgroundColor=backgroundColor,
+                                    isWorldEntity=isWorldEntity,
+                                    borderWidth=borderWidth,
+                                    borderColor=borderColor,
+                                    borderRadius=borderRadius,
+                                    vertical=vertical,
+                                    showBackground=showBackground,
+                                    layer=layer)
             
             progressBar.isActive = isActive
             progressBar.persistentBetweenScenes = false
@@ -771,7 +827,10 @@ module ImmediateUIModule
         current_time = SDL2.SDL_GetTicks()
         expired_ids = String[]
         
-        # Check for expired components and render active ones
+        # Sort component IDs by layer before rendering
+        component_layers = Dict{String, Int32}()
+        
+        # First pass: collect layers for each component and check expiration
         for (id, component) in IMMEDIATE_UI_CACHE
             # Skip if the component is not properly initialized
             if !isdefined(component.element, :isActive) || component.element === nothing
@@ -790,12 +849,17 @@ module ImmediateUIModule
                 continue
             end
             
-            # Render the component based on its type
-            if component.element isa TextBox
-                UI.render(component.element)
-            elseif component.element isa ScreenButton
-                UI.render(component.element)
-            end
+            # Store the layer for sorting
+            component_layers[id] = isdefined(component.element, :layer) ? component.element.layer : Int32(0)
+        end
+        
+        # Sort component IDs by layer
+        sorted_ids = sort(collect(keys(component_layers)), by = id -> component_layers[id])
+        
+        # Second pass: render components in layer order
+        for id in sorted_ids
+            component = IMMEDIATE_UI_CACHE[id].element
+            UI.render(component)
         end
         
         # Clean up expired components

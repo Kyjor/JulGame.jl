@@ -22,13 +22,15 @@ module ProgressBarModule
         borderRadius::Int32
         vertical::Bool
         showBackground::Bool
+        layer::Int32
         
         function ProgressBar(name::String, position::Math.Vector2, size::Math.Vector2, progress::Float32=1.0,
                            fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
                            backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200),
                            borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255);
                            id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false,
-                           borderWidth::Int32=1, borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true)
+                           borderWidth::Int32=1, borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true,
+                           layer::Int32=Int32(0))
             this = new()
             
             this.alpha = Int32(fillColor[4])
@@ -47,6 +49,7 @@ module ProgressBarModule
             this.borderRadius = borderRadius
             this.vertical = vertical
             this.showBackground = showBackground
+            this.layer = layer
             
             return this
         end

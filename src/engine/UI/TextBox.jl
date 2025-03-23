@@ -17,6 +17,7 @@ module TextBoxModule
         isCenteredY::Bool
         isHovered::Bool
         isWorldEntity::Bool
+        layer::Int32
         name::String
         persistentBetweenScenes::Bool
         position::Vector2
@@ -26,7 +27,7 @@ module TextBoxModule
         textTexture
         isConstructed::Bool
 
-        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=Int32(0)) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.isConstructed = false
@@ -38,6 +39,7 @@ module TextBoxModule
             this.anchorOffset = anchorOffset
             this.isCenteredX = isCenteredX
             this.isCenteredY = isCenteredY
+            this.layer = layer
             this.name = name
             this.position = position
             setfield!(this, :text, text)
