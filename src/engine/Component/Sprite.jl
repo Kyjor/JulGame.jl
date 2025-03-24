@@ -41,7 +41,7 @@ module SpriteModule
 
             this.offset = Math.Vector2f()
             this.isFlipped = isFlipped
-            @info "attemping to load sprite with path: $(imagePath)"
+            @debug "attemping to load sprite with path: $(imagePath)"
             this.imagePath = imagePath
             this.center = center
             this.color = color
@@ -286,8 +286,8 @@ module SpriteModule
     end
 
     function Component.set_color(this::InternalSprite)
-        SDL2.SDL_SetTextureColorMod(this.texture, UInt8(this.color[1]%256), UInt8(this.color[2]%256), (this.color[3]%256));
-        SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(this.color[4]%256));
+        SDL2.SDL_SetTextureColorMod(this.texture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
+        SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[4], 0, 255)));
     end
 
     function Base.setproperty!(this::InternalSprite, s::Symbol, x)

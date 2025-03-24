@@ -70,8 +70,9 @@ module ErrorLoggingModule
         err_str = string(e)
         formatted_err = format_method_error(err_str)  # Format MethodError
         truncated_err = length(formatted_err) > 1500 ? formatted_err[1:1500] * "..." : formatted_err
-        full_err_string = "Error occurred : $(e)\n"
+        full_err_string = "Error occurred: $(truncated_err)\n"
 
+        # log to file in pwd
         st = Base.stacktrace(exception.backtrace)
         # Format and print each frame
         actual_frames = 0
@@ -91,6 +92,18 @@ module ErrorLoggingModule
         end
     
         @error full_err_string
+        log_error_to_file(full_err_string)
+    end
+
+    function log_error_to_file(e)
+        log_file_path = joinpath(pwd(), "error.log")
+        open(log_file_path, "a") do file
+            println(file, "ERROR:")
+            println(file, e)
+            
+            println(file, "\n---\n")
+        end
+        Base.show_backtrace(stdout, catch_backtrace())
     end
 
     function format_method_error(error_msg::String)
