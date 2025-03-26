@@ -592,8 +592,9 @@ module Editor
                         
                         # Create a floating window in the corner
                         CImGui.SetNextWindowBgAlpha(0.7)
-                        # top center of the screen
-                        CImGui.SetNextWindowPos(ImVec2(round(Int32, CImGui.GetIO().DisplaySize.x / 2.0), 10), CImGui.ImGuiCond_Always)
+                        # Position in top center of the screen - safely access display size
+                        display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
+                        CImGui.SetNextWindowPos(ImVec2(round(Int32, display_width / 2.0), 10), CImGui.ImGuiCond_Always, ImVec2(0.5, 0.0))
                         
                         window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
                                       CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
