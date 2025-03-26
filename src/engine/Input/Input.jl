@@ -380,11 +380,23 @@ module InputModule
         return false
     end
 
+    function get_button_held_down(button::String)
+        return get_button_held_down(MAIN.input, button)
+    end
+
+    function get_button_pressed(button::String)
+        return get_button_pressed(MAIN.input, button)
+    end
+
     function get_button_pressed(this::Input, button::String)
         if uppercase(button) in this.buttonsPressedDown
             return true
         end
         return false
+    end
+
+    function get_button_released(button::String)
+        return get_button_released(MAIN.input, button)
     end
 
     function get_button_released(this::Input, button::String)
@@ -401,6 +413,10 @@ module InputModule
         return false
     end
 
+    function get_mouse_button(button::Any)
+        return get_mouse_button(MAIN.input, button)
+    end
+
     function get_mouse_button_pressed(this::Input, button::Any)
         if button in this.mouseButtonsPressedDown
             return true
@@ -408,11 +424,19 @@ module InputModule
         return false
     end
 
+    function get_mouse_button_pressed(button::Any)
+        return get_mouse_button_pressed(MAIN.input, button)
+    end
+
     function get_mouse_button_released(this::Input, button::Any)
         if button in this.mouseButtonsReleased
             return true
         end
         return false
+    end
+
+    function get_mouse_button_released(button::Any)
+        return get_mouse_button_released(MAIN.input, button)
     end
 
     function create_cursor_bank(this::Input)
@@ -634,6 +658,10 @@ module InputModule
         SDL2.SDL_FreeSurface(scaled_surface)
 
         return cursor
+    end
+
+    function set_cursor_with_image(imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)
+        set_cursor_with_image(MAIN.input, imagePath, x, y, scale_factor)
     end
 
     function set_cursor(cursor)
