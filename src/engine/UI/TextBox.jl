@@ -222,16 +222,16 @@ module TextBoxModule
         if this.maxLineWidth > 0
             # Use SDL_TTF's word wrapping functionality
             if this.wrapWords
-                this.renderText = SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.text, this.textColor, this.maxLineWidth)
+                this.renderText = SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]), this.maxLineWidth)
             else
                 # For character wrapping, we need to manually handle it
                 # First measure each character and determine where line breaks should occur
                 wrapped_text = wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, wrapped_text, this.textColor)
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, wrapped_text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
             end
         else
             # No wrapping needed
-            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, this.textColor)
+            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
         end
 
         if this.renderText == C_NULL
@@ -366,22 +366,22 @@ module TextBoxModule
     end
 
     # Add methods to set and get the maximum line width
-    function UI.set_max_line_width(this::TextBox, maxWidth::Int32)
+    function set_max_line_width(this::TextBox, maxWidth::Int32)
         this.maxLineWidth = maxWidth
         UI.rerender_text(this)
     end
     
-    function UI.get_max_line_width(this::TextBox)
+    function get_max_line_width(this::TextBox)
         return this.maxLineWidth
     end
     
     # Add method to control word wrapping behavior
-    function UI.set_wrap_words(this::TextBox, wrapWords::Bool)
+    function set_wrap_words(this::TextBox, wrapWords::Bool)
         this.wrapWords = wrapWords
         UI.rerender_text(this)
     end
     
-    function UI.get_wrap_words(this::TextBox)
+    function get_wrap_words(this::TextBox)
         return this.wrapWords
     end
 end
