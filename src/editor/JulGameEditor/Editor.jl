@@ -373,9 +373,9 @@ module Editor
 
                                 children = filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
                                 if length(children) == 0
-                                    handle_childless_entity_selection(filteredEntities[n], hierarchyEntitySelections, n, currentSceneMain)
+                                    handle_childless_entity_selection(filteredEntities[n], hierarchyEntitySelections, n, currentSceneMain, delete_confirmation_modal)
                                 else
-                                    handle_parent_entity_selection(filteredEntities[n], children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
+                                    handle_parent_entity_selection(filteredEntities[n], children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal)
                                 end
                                 handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
                             end
@@ -428,8 +428,13 @@ module Editor
                                     uiSelected = true
                                     # currentSceneMain.selectedEntity = currentSceneMain.scene.uiElements[n]
                                 end
+                                
+                                # Add right-click context menu for UI elements
+                                if hierarchyUISelections[n]
+                                    show_ui_element_context_menu(currentSceneMain, n, ui_delete_confirmation_modal, hierarchyUISelections)
+                                end
+                                
                                 CImGui.PopID()
-
                             end
 
                             CImGui.TreePop()

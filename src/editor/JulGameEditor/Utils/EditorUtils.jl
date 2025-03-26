@@ -481,7 +481,7 @@ function hasDropConflict(filteredEntities, origin, destination)
     return false
 end
 
-function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, filteredEntities = nothing, hasParent = false)
+function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, delete_confirmation_modal, filteredEntities = nothing, hasParent = false)
     CImGui.PushID(entity.id)
     if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][2])
         # clear selection when CTRL is not held
@@ -490,6 +490,12 @@ function handle_childless_entity_selection(entity, hierarchyEntitySelections, en
         unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
         currentSceneMain.selectedEntity = entity
     end
+    
+    # Handle right-click context menu
+    if hierarchyEntitySelections[entityIndex][2]
+        show_entity_context_menu(currentSceneMain, hierarchyEntitySelections, delete_confirmation_modal)
+    end
+    
     if filteredEntities !== nothing 
         # Use the provided entityIndex directly since we now calculate it correctly
         handle_drag_and_drop(filteredEntities, entityIndex, currentSceneMain, hierarchyEntitySelections, hasParent)
@@ -498,7 +504,7 @@ function handle_childless_entity_selection(entity, hierarchyEntitySelections, en
     CImGui.PopID()
 end
 
-function handle_parent_entity_selection(entity, children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
+function handle_parent_entity_selection(entity, children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal)
     # First create the tree node
     treeNodeOpen = CImGui.TreeNodeEx(entity.name, CImGui.ImGuiTreeNodeFlags_None)
     
@@ -509,6 +515,11 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
         hierarchyEntitySelections[n] = (hierarchyEntitySelections[n][1], true)
         unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, n)
         currentSceneMain.selectedEntity = entity
+    end
+    
+    # Handle right-click context menu
+    if hierarchyEntitySelections[n][2]
+        show_entity_context_menu(currentSceneMain, hierarchyEntitySelections, delete_confirmation_modal)
     end
     
     # Make it a drag source
@@ -547,10 +558,10 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
                 
                 if isempty(childChildren)
                     # Regular child with no children of its own
-                    handle_childless_entity_selection(child, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities, true)
+                    handle_childless_entity_selection(child, hierarchyEntitySelections, childIndex, currentSceneMain, delete_confirmation_modal, filteredEntities, true)
                 else
                     # Child has its own children - recursively handle it as a parent
-                    handle_parent_entity_selection(child, childChildren, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities)
+                    handle_parent_entity_selection(child, childChildren, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal)
                 end
             end
         end
@@ -728,4 +739,199 @@ function bulk_delete_ui_elements(main, ui_indices_to_delete)
     for idx in reverse(ui_indices_to_delete)
         JulGame.destroy_ui_element(main, main.scene.uiElements[idx])
     end
+end
+
+"""
+    show_entity_context_menu(main, hierarchyEntitySelections, delete_confirmation_modal)
+
+Shows a context menu for one or more selected entities when right-clicked.
+
+# Arguments
+- `main`: The main scene object
+- `hierarchyEntitySelections`: Array of entity selection tuples (entity, isSelected)
+- `delete_confirmation_modal`: Confirmation modal for delete operations
+
+# Returns
+- `Bool`: Whether any action was triggered
+"""
+function show_entity_context_menu(main, hierarchyEntitySelections, delete_confirmation_modal)
+    action_taken = false
+    
+    if CImGui.BeginPopupContextItem("entity_context_menu")
+        selected_count = count(es -> es[2], hierarchyEntitySelections)
+        
+        # Get selected entities
+        selected_entities = [entity[1] for entity in hierarchyEntitySelections if entity[2]]
+        
+        if selected_count > 1
+            if CImGui.MenuItem("Delete Selected ($(selected_count))")
+                delete_confirmation_modal.open = true
+                action_taken = true
+            end
+            
+            if CImGui.MenuItem("Duplicate Selected ($(selected_count))")
+                for entity in selected_entities
+                    copy = duplicate_entity(entity)
+                    push!(main.scene.entities, copy)
+                end
+                action_taken = true
+            end
+        else
+            entity = main.selectedEntity
+            
+            if entity !== nothing
+                if CImGui.MenuItem("Delete \"$(entity.name)\"")
+                    CImGui.OpenPopup("Delete Single Entity")
+                    action_taken = true
+                end
+                
+                if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
+                    copy = duplicate_entity(entity)
+                    push!(main.scene.entities, copy)
+                    main.selectedEntity = copy
+                    action_taken = true
+                end
+                
+                CImGui.Separator()
+                
+                if CImGui.MenuItem("Add Component")
+                    CImGui.OpenPopup("Add Component")
+                    action_taken = true
+                end
+            end
+        end
+        
+        CImGui.EndPopup()
+    end
+    
+    # Handle the single entity delete confirmation
+    if CImGui.BeginPopupModal("Delete Single Entity", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        entity = main.selectedEntity
+        if entity !== nothing
+            CImGui.Text("Are you sure you want to delete \"$(entity.name)\"?\nThis cannot be undone.\n\n")
+            CImGui.NewLine()
+            if CImGui.Button("Delete", (120, 0))
+                JulGame.destroy_entity(main, entity)
+                main.selectedEntity = nothing
+                CImGui.CloseCurrentPopup()
+            end
+            CImGui.SetItemDefaultFocus()
+            CImGui.SameLine()
+            if CImGui.Button("Cancel",(120, 0))
+                CImGui.CloseCurrentPopup()
+            end
+        end
+        CImGui.EndPopup()
+    end
+    
+    return action_taken
+end
+
+"""
+    show_ui_element_context_menu(main, ui_element_index, ui_delete_confirmation_modal, hierarchyUISelections)
+
+Shows a context menu for one or more selected UI elements when right-clicked.
+
+# Arguments
+- `main`: The main scene object
+- `ui_element_index`: Index of the current UI element
+- `ui_delete_confirmation_modal`: Confirmation modal for delete operations
+- `hierarchyUISelections`: Array of booleans for UI element selection status
+
+# Returns
+- `Bool`: Whether any action was triggered
+"""
+function show_ui_element_context_menu(main, ui_element_index, ui_delete_confirmation_modal, hierarchyUISelections)
+    action_taken = false
+    
+    if CImGui.BeginPopupContextItem("ui_element_context_menu")
+        selected_count = count(hierarchyUISelections)
+        
+        if selected_count > 1
+            if CImGui.MenuItem("Delete Selected ($(selected_count))")
+                ui_delete_confirmation_modal.open = true
+                action_taken = true
+            end
+        else
+            # Single UI element selected
+            ui_element = main.scene.uiElements[ui_element_index]
+            
+            if CImGui.MenuItem("Delete \"$(ui_element.name)\"")
+                CImGui.OpenPopup("Delete Single UI Element")
+                action_taken = true
+            end
+            
+            # Add more UI element-specific actions here
+            if contains("$(typeof(ui_element))", "TextBox")
+                CImGui.Separator()
+                if CImGui.MenuItem("Edit Text")
+                    # Add text editing functionality here if needed
+                    action_taken = true
+                end
+            elseif contains("$(typeof(ui_element))", "ScreenButton")
+                CImGui.Separator()
+                if CImGui.MenuItem("Edit Button Properties")
+                    # Add button property editing here if needed
+                    action_taken = true
+                end
+            end
+        end
+        
+        CImGui.EndPopup()
+    end
+    
+    # Handle the single UI element delete confirmation
+    if CImGui.BeginPopupModal("Delete Single UI Element", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        ui_element = main.scene.uiElements[ui_element_index]
+        CImGui.Text("Are you sure you want to delete \"$(ui_element.name)\"?\nThis cannot be undone.\n\n")
+        CImGui.NewLine()
+        if CImGui.Button("Delete", (120, 0))
+            JulGame.destroy_ui_element(main, ui_element)
+            hierarchyUISelections[ui_element_index] = false
+            CImGui.CloseCurrentPopup()
+        end
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+        end
+        CImGui.EndPopup()
+    end
+    
+    return action_taken
+end
+
+"""
+    show_component_context_menu(entity, component_name)
+
+Shows a context menu for a component when right-clicked.
+
+# Arguments
+- `entity`: The entity that owns the component
+- `component_name`: The name of the component
+
+# Returns
+- `Bool`: Whether any action was triggered
+"""
+function show_component_context_menu(entity, component_name)
+    action_taken = false
+    
+    if CImGui.BeginPopupContextItem("component_context_menu_$(component_name)")
+        if component_name != "Transform" # Transform is required and can't be removed
+            if CImGui.MenuItem("Remove Component")
+                setfield!(entity, Symbol(lowercase(component_name)), C_NULL)
+                action_taken = true
+            end
+        end
+        
+        if CImGui.MenuItem("Reset Component")
+            # This would reset the component to default values
+            # Implementation depends on component type
+            action_taken = true
+        end
+        
+        CImGui.EndPopup()
+    end
+    
+    return action_taken
 end

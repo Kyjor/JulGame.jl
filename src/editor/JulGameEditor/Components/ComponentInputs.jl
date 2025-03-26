@@ -32,6 +32,9 @@ function show_field_editor(entity, fieldName, animation_window_dict, animator_pr
 
     fieldName::String = replace(split("$(typeof(field))", ".")[end], "Internal" => "") # Example: JulGame.ColliderModule.InternalCollider => InternalCollider => Collider
     if CImGui.TreeNode("$(fieldName)") 
+        # Add right-click context menu for component
+        show_component_context_menu(entity, fieldName)
+        
         if delete_button(entity, fieldName)
             CImGui.TreePop()
             return
