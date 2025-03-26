@@ -13,6 +13,7 @@ function apply_forces end
 function center_text end
 function change_scene end
 function check_collisions end
+function cleanup_sdl_resources end
 function create_entity end
 function create_sound_source end
 function destroy end

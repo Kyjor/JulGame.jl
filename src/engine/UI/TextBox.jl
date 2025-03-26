@@ -126,7 +126,7 @@ module TextBoxModule
         @debug string("loading font from $(basePath)\\$(fontPath)")
         this.font = load_font_sdl(basePath, fontPath, this.fontSize)
         if this.font == C_NULL
-            error("Failed to load font")
+            error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError()))")
             return
         end
         if fontPath != joinpath("FiraCode-Regular.ttf")

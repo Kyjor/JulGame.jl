@@ -37,7 +37,7 @@ module SceneBuilderModule
         end    
     end
     
-    function load_and_prepare_scene(this::Scene, main; config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false, globals = [])
+    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false, globals = [])
         config = fill_in_config(config)
 
         windowName::String = windowName
@@ -45,9 +45,10 @@ module SceneBuilderModule
         isResizable::Bool = isWindowResizable
         targetFrameRate::Int32 = parse(Int32, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"]))
 
-        if main !== nothing
-            JulGame.MAIN = main
-        end
+        JulGame.MAIN = main
+        MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
+        MAIN.testLength = 20.0
+        MAIN.currentTestTime = 0.0
         MAIN.windowName = windowName
         MAIN.globals = globals
         MAIN.level = this
@@ -68,7 +69,16 @@ module SceneBuilderModule
         
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             MAIN.window = SDL2.SDL_CreateWindow(MAIN.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, MAIN.screenSize.x, MAIN.screenSize.y, flags)
+            if MAIN.window == C_NULL
+                @error "Failed to create window with name $(MAIN.windowName), size $(MAIN.screenSize), flags $(flags), $(unsafe_string(SDL2.SDL_GetError()))"
+                return
+            end
+            # add error handling
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            if JulGame.Renderer == C_NULL
+                @error "Failed to create renderer with window $(MAIN.window), $(unsafe_string(SDL2.SDL_GetError()))"
+                return
+            end
         end
 
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))

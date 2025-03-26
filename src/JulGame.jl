@@ -26,6 +26,8 @@ module JulGame
     ProjectModule = ""
     ScriptModule = Module(:Scripts)
 
+    EditorState = Dict{String, Any}()
+
     include("engine/Logging/Logging.jl")
     using .Logging
     export ErrorLoggerModule
@@ -58,6 +60,9 @@ module JulGame
 
     Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
     export Renderer
+
+    Headless = false
+    export Headless
     
     include("utils/Macros.jl")
     using .Macros: @event, @argevent

@@ -62,7 +62,21 @@ module MainLoopModule
 		function MainLoop()
 			this::MainLoop = new()
 
-			SDL2.init()
+			this.targetFrameRate = 60
+			@info "Initializing SDL"
+			if SDL2.SDL_Init(SDL2.SDL_INIT_EVERYTHING) != 0
+				@error "Failed to initialize SDL, $(unsafe_string(SDL2.SDL_GetError()))"
+			end
+			if SDL2.TTF_Init() != 0
+				@error "Failed to initialize TTF, $(unsafe_string(SDL2.SDL_GetError()))"
+			end
+			if SDL2.Mix_OpenAudio(22050, SDL2.MIX_DEFAULT_FORMAT, 2, 1024) != 0
+				@error "Failed to open audio, $(unsafe_string(SDL2.SDL_GetError()))"
+			end
+			SDL2.SDL_ClearError()
+			this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
+			SDL2.SDL_initFramerate(this.fpsManager)
+			SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
 
 			this.scene = SceneModule.Scene()
 			this.input = Input()
@@ -86,17 +100,17 @@ module MainLoopModule
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
 			this.spriteLayers = Dict()
 
+			this.window = C_NULL
+			this.windowName = ""
+
 			return this
 		end
 	end
 
     function prepare_window_scripts_and_start_loop(size)
-		MAIN.windowSize = size
         @debug "Preparing window"
-		if !JulGame.IS_EDITOR && !JulGame.IS_WEB
-			@debug "Preparing window for game"
-            prepare_window(size)
-        end
+		MAIN.windowSize = size
+		
 		@debug "Initializing scripts and components"
         initialize_scripts_and_components()
 
@@ -176,21 +190,11 @@ module MainLoopModule
             cleanup_coroutines()
 			
             if !this.shouldChangeScene
-				@debug "Closing window"
-                SDL2.SDL_DestroyRenderer(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
-                SDL2.SDL_DestroyWindow(this.window)
-				@debug "Quitting Mix"
-                SDL2.Mix_Quit()
-				@debug "Closing Audio"
-                SDL2.Mix_CloseAudio()
-				@debug "Quitting TTF"
-                SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
-				@debug "Quitting SDL"
-                SDL2.SDL_Quit()
-                
                 # Clean up all immediate UI components on game shutdown
-				@debug "Cleaning up immediate UI components"
                 JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
+				@debug "Cleaning up immediate UI components"
+				JulGame.cleanup_sdl_resources()
+                exit()
             else
 				@debug "Changing scene"
                 this.shouldChangeScene = false
@@ -214,69 +218,62 @@ module MainLoopModule
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
-	function prepare_window(size)
+
+	function initialize_scripts_and_components()
 		this::MainLoop = MAIN
-
-		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
-		SDL2.SDL_initFramerate(this.fpsManager)
-		SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
-	end
-
-function initialize_scripts_and_components()
-	this::MainLoop = MAIN
-	scripts = []
-	for entity in this.scene.entities
-		for script in entity.scripts
-			push!(scripts, script)
-		end
-	end
-
-	if !this.isGameModeRunningInEditor
-		for uiElement in this.scene.uiElements
-			JulGame.initialize(uiElement)
-		end
-	end
-
-	this.spriteLayers = build_sprite_layers()
-	
-	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
-
-		for script in scripts
-			try
-				Base.invokelatest(JulGame.initialize, script)
-			catch e
-				if this.testMode
-					rethrow(e)
-				else
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-				end
+		scripts = []
+		for entity in this.scene.entities
+			for script in entity.scripts
+				push!(scripts, script)
 			end
 		end
-		build_sprite_layers()
 
+		if !this.isGameModeRunningInEditor
+			for uiElement in this.scene.uiElements
+				JulGame.initialize(uiElement)
+			end
+		end
+
+		this.spriteLayers = build_sprite_layers()
+		
+		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
+
+			for script in scripts
+				try
+					Base.invokelatest(JulGame.initialize, script)
+				catch e
+					if this.testMode
+						rethrow(e)
+					else
+						@error string(e)
+						Base.show_backtrace(stdout, catch_backtrace())
+					end
+				end
+			end
+			build_sprite_layers()
+
+			for entity in MAIN.scene.entities
+				@debug "Checking for a soundSource that needs to be activated"
+				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart
+					Component.toggle_sound(entity.soundSource)
+					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start")
+				end
+			end 
+		end
+				
+		MAIN.scene.rigidbodies = []
+		MAIN.scene.colliders = []
 		for entity in MAIN.scene.entities
-			@debug "Checking for a soundSource that needs to be activated"
-			if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart
-				Component.toggle_sound(entity.soundSource)
-				@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start")
+			@debug "adding rigidbodies to global list"
+			if entity.rigidbody != C_NULL
+				push!(MAIN.scene.rigidbodies, entity.rigidbody)
+					end
+			@debug "adding colliders to global list"
+			if entity.collider != C_NULL
+				push!(MAIN.scene.colliders, entity.collider)
 			end
 		end 
 	end
-              
-	MAIN.scene.rigidbodies = []
-	MAIN.scene.colliders = []
-	for entity in MAIN.scene.entities
-		@debug "adding rigidbodies to global list"
-		if entity.rigidbody != C_NULL
-			push!(MAIN.scene.rigidbodies, entity.rigidbody)
-                end
-		@debug "adding colliders to global list"
-		if entity.collider != C_NULL
-			push!(MAIN.scene.colliders, entity.collider)
-		end
-	end 
-end
 
 export change_scene
 """
@@ -810,6 +807,49 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				entity.transform.scale.y * colSize.y * SCALE_UNITS)))
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 			end
+		end
+	end
+
+	function JulGame.cleanup_sdl_resources()
+		SDL2.SDL_ClearError()
+		@debug "Closing window"
+		if JulGame.Renderer != C_NULL
+			SDL2.SDL_DestroyRenderer(JulGame.Renderer)
+			if unsafe_string(SDL2.SDL_GetError()) != ""
+				@error "Failed to destroy renderer, $(unsafe_string(SDL2.SDL_GetError()))"
+			end
+		end
+		SDL2.SDL_ClearError()
+		if JulGame.MAIN.window != C_NULL
+			SDL2.SDL_DestroyWindow(JulGame.MAIN.window)
+			if unsafe_string(SDL2.SDL_GetError()) != ""
+				@error "Failed to destroy window, $(unsafe_string(SDL2.SDL_GetError()))"
+			end
+		end
+		SDL2.SDL_ClearError()
+        # Reset any OpenGL-related attributes that might have been set
+        @debug "Resetting GL attributes"
+        SDL2.SDL_GL_ResetAttributes()
+		if unsafe_string(SDL2.SDL_GetError()) != ""
+			@error "Failed to reset GL attributes, $(unsafe_string(SDL2.SDL_GetError()))"
+		end
+		SDL2.SDL_ClearError()
+		@debug "Quitting Mix"
+        SDL2.Mix_Quit()
+		if unsafe_string(SDL2.SDL_GetError()) != ""
+			@error "Failed to quit Mix, $(unsafe_string(SDL2.SDL_GetError()))"
+		end
+		SDL2.SDL_ClearError()
+		@debug "Quitting TTF"
+        SDL2.TTF_Quit()
+		if unsafe_string(SDL2.SDL_GetError()) != ""
+			@error "Failed to quit TTF, $(unsafe_string(SDL2.SDL_GetError()))"
+		end
+		SDL2.SDL_ClearError()
+		@debug "Quitting SDL"
+        SDL2.SDL_Quit()
+		if unsafe_string(SDL2.SDL_GetError()) != ""
+			@error "Failed to quit SDL, $(unsafe_string(SDL2.SDL_GetError()))"
 		end
 	end
 end # module
