@@ -9,6 +9,26 @@ module MainLoopModule
 	include("utils/Enums.jl")
 	include("utils/Constants.jl")
 
+	"""
+		cleanup_coroutines()
+
+	Cleans up all active coroutines by attempting to gracefully terminate them and then clearing the coroutines array.
+	This function should be called when changing scenes, exiting the game, or stopping the game in editor mode.
+	"""
+	function cleanup_coroutines()
+		@debug "Cleaning up coroutines"
+		for coroutine in JulGame.Coroutines
+			if !istaskdone(coroutine.task)
+				try
+					schedule(coroutine.task, InterruptException(), error=true)
+				catch e
+					@debug "Error interrupting coroutine: $e"
+				end
+			end
+		end
+		empty!(JulGame.Coroutines)
+	end
+
 	export MainLoop
 	mutable struct MainLoop
 		assets::String
@@ -151,16 +171,25 @@ module MainLoopModule
                 end
             end
 			
+            # Clean up all coroutines when game exits
+            @debug "Cleaning up coroutines during game exit"
+            cleanup_coroutines()
+			
             if !this.shouldChangeScene
 				@debug "Closing window"
                 SDL2.SDL_DestroyRenderer(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
                 SDL2.SDL_DestroyWindow(this.window)
+				@debug "Quitting Mix"
                 SDL2.Mix_Quit()
+				@debug "Closing Audio"
                 SDL2.Mix_CloseAudio()
+				@debug "Quitting TTF"
                 SDL2.TTF_Quit() # TODO: Close all open fonts with TTF_CloseFont befor this
+				@debug "Quitting SDL"
                 SDL2.SDL_Quit()
                 
                 # Clean up all immediate UI components on game shutdown
+				@debug "Cleaning up immediate UI components"
                 JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
             else
 				@debug "Changing scene"
@@ -187,11 +216,6 @@ module MainLoopModule
 
 	function prepare_window(size)
 		this::MainLoop = MAIN
-
-		if this.scene.camera !== nothing
-			#@debug string("Set viewport to: ", this.scene.camera.startingCoordinates)
-			#SDL2.SDL_RenderSetViewport(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(this.scene.camera.startingCoordinates.x, this.scene.camera.startingCoordinates.y, round(this.scene.camera.size.x), round(this.scene.camera.size.y))))
-		end
 
 		this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
 		SDL2.SDL_initFramerate(this.fpsManager)
@@ -271,6 +295,10 @@ function JulGame.change_scene(sceneFileName::String)
 	
 	# Clean up all immediate UI components
 	JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
+	
+	# Clean up all coroutines
+	@debug "Cleaning up coroutines during scene change"
+	cleanup_coroutines()
 	
 	#destroy current scene 
 	@debug "Entity count before destroying: $(length(this.scene.entities))" 
@@ -737,6 +765,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		
 		# Clean up all immediate UI components when stopping the game in editor
 		JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
+		
+		# Clean up all coroutines when stopping the game in editor
+		@debug "Cleaning up coroutines when stopping game in editor"
+		cleanup_coroutines()
 		
 		if this.scene.camera !== nothing && this.scene.camera != C_NULL
 			this.scene.camera.target = C_NULL
