@@ -29,15 +29,22 @@ function show_textbox_fields(selectedTextBox, textBoxField)
         end
 
     elseif fieldName == "color"
-        x = Cfloat(Value.r)
-        y = Cfloat(Value.g)
-        z = Cfloat(Value.b)
-        w = Cfloat(Value.a)
-        @c CImGui.ColorEdit4("$(textBoxField)", &x, &y, &z, &w)
-        setfield!(selectedTextBox, textBoxField, Color(convert(Int32, round(x)), convert(Int32, round(y)), convert(Int32, round(z)), convert(Int32, round(w))))
-
-        if x != Value.r || y != Value.g || z != Value.b || w != Value.a
-            selectedTextBox.text = selectedTextBox.text
+        # Instead of using a function from another module, use CImGui directly here
+        colorCfloat = Cfloat[Value[1]/255, Value[2]/255, Value[3]/255, Value[4]/255]
+        
+        # Configure color editor options
+        misc_flags = CImGui.ImGuiColorEditFlags_AlphaPreview | 
+                    CImGui.ImGuiColorEditFlags_AlphaBar | 
+                    CImGui.ImGuiColorEditFlags_DisplayRGB
+        
+        if CImGui.ColorEdit4("TextBoxColor", colorCfloat, misc_flags)
+            newColor = (Int32(abs(round(colorCfloat[1] * 255))), 
+                        Int32(abs(round(colorCfloat[2] * 255))), 
+                        Int32(abs(round(colorCfloat[3] * 255))), 
+                        Int32(abs(round(colorCfloat[4] * 255))))
+            
+            selectedTextBox.color = newColor
+            selectedTextBox.text = selectedTextBox.text  # Trigger update
         end
     elseif fieldName == "position" || fieldName == "anchorOffset"
         x = Cint(Value.x)
