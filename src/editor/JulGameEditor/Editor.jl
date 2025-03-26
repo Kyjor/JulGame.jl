@@ -141,12 +141,7 @@ module Editor
                             #region Scene List
                             CImGui.Begin("Scene List") 
                             show_help_marker("This is where we will display our scenes. Scenes are where the gameplay happens.")
-                            # txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
-                            # CImGui.Text(txt)
 
-                            # Usage:
-                            
-                            
                             for scene in scenesLoadedFromFolder[]
                                 name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 
@@ -421,8 +416,7 @@ module Editor
         
                             CImGui.Separator()
                             if CImGui.Button("Duplicate") 
-                                copy = deepcopy(currentSceneMain.selectedEntity)
-                                copy.id = JulGame.generate_uuid()
+                                copy = duplicate_entity(currentSceneMain.selectedEntity)
                                 push!(currentSceneMain.scene.entities, copy)
                                 currentSceneMain.selectedEntity = copy
                             end
@@ -540,8 +534,7 @@ module Editor
                             end
                             # duplicate selected entity with ctrl+d
                             if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                                copy = deepcopy(currentSceneMain.selectedEntity)
-                                copy.id = JulGame.generate_uuid()
+                                copy = duplicate_entity(currentSceneMain.selectedEntity)
                                 push!(currentSceneMain.scene.entities, copy)
                                 currentSceneMain.selectedEntity = copy
                             end
@@ -559,6 +552,8 @@ module Editor
                                     JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
                                 end
                             end
+                            
+                            # TODO: Replace the deepcopy+generate_uuid pattern with duplicate_entity utility function
                         end
                     catch e
                         handle_editor_exceptions("Inputs:", latest_exceptions, e, is_test_mode)

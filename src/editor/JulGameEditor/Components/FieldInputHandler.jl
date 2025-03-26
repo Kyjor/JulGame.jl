@@ -61,6 +61,8 @@ function handle_component_field_input(component, componentField, newScriptText="
     end
     
     # Default case for unhandled types
-    CImGui.Text("$(fieldName): Unhandled type $(typeof(fieldValue))")
+    if JulGame.IS_DEBUG
+        CImGui.Text("$(fieldName): Unhandled type $(typeof(fieldValue))")
+    end
     return false
 end 

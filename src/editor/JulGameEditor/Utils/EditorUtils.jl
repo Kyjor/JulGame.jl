@@ -602,6 +602,23 @@ function regenerate_ids_event(main)
     return event
 end
 
+"""
+    duplicate_entity(entity)
+
+Creates a duplicate of an entity with a new UUID.
+
+# Arguments
+- `entity`: The entity to duplicate
+
+# Returns
+- The duplicate entity with a new UUID
+"""
+function duplicate_entity(entity)
+    copy = deepcopy(entity)
+    copy.id = JulGame.generate_uuid()
+    return copy
+end
+
 function reset_camera_event(main)
     event = @event begin
         if main.scene.camera === nothing

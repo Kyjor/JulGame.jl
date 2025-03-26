@@ -21,7 +21,7 @@ function show_boolean_input(component, componentField, fieldValue, label=nothing
     displayLabel = label === nothing ? string(componentField) : label
     
     value = fieldValue
-    @c CImGui.Checkbox("$(componentField)", &value)
+    @c CImGui.Checkbox(displayLabel, &value)
 
     if value != fieldValue
         setfield!(component, componentField, value)
