@@ -463,9 +463,8 @@ function handle_childless_entity_selection(entity, hierarchyEntitySelections, en
         currentSceneMain.selectedEntity = entity
     end
     if filteredEntities !== nothing
-        # get the index of the selected entity in the filtered entities list
-        itemSelected = indexin([entity], filteredEntities)[1]
-        handle_drag_and_drop(filteredEntities, itemSelected, currentSceneMain, hierarchyEntitySelections)
+        # Use the provided entityIndex directly since we now calculate it correctly
+        handle_drag_and_drop(filteredEntities, entityIndex, currentSceneMain, hierarchyEntitySelections)
     end 
 
     CImGui.PopID()
@@ -509,7 +508,11 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
     # If the tree node is open, show its children
     if treeNodeOpen
         for child in children
-            handle_childless_entity_selection(child, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
+            # Find the correct index for this child in the filteredEntities list
+            childIndex = findfirst(e -> e === child, filteredEntities)
+            if childIndex !== nothing
+                handle_childless_entity_selection(child, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities)
+            end
         end
         CImGui.TreePop()
     end
