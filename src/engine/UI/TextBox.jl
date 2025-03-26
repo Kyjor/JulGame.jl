@@ -26,8 +26,11 @@ module TextBoxModule
         text::String
         textTexture
         isConstructed::Bool
+        color::Tuple{Int32, Int32, Int32, Int32}
+        maxLineWidth::Int32
+        wrapWords::Bool
 
-        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=Int32(0)) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=Int32(0), color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)), maxLineWidth::Int32=Int32(0), wrapWords::Bool=true) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.isConstructed = false
@@ -49,6 +52,9 @@ module TextBoxModule
             this.persistentBetweenScenes = false
             this.isActive = true
             this.renderText = C_NULL
+            this.color = color
+            this.maxLineWidth = maxLineWidth
+            this.wrapWords = wrapWords
             
             if fontPath == ""
                 fontPath = joinpath("FiraCode-Regular.ttf")
@@ -212,7 +218,27 @@ module TextBoxModule
             SDL2.SDL_DestroyTexture(this.textTexture)
         end
 
-        this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(255,255,255,(this.alpha+1)%256))
+        # Check if we need to wrap text
+        if this.maxLineWidth > 0
+            # Use SDL_TTF's word wrapping functionality
+            if this.wrapWords
+                this.renderText = SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.text, this.textColor, this.maxLineWidth)
+            else
+                # For character wrapping, we need to manually handle it
+                # First measure each character and determine where line breaks should occur
+                wrapped_text = wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords)
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, wrapped_text, this.textColor)
+            end
+        else
+            # No wrapping needed
+            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, this.textColor)
+        end
+
+        if this.renderText == C_NULL
+            error("Failed to render text for textbox $(this.name)")
+            return
+        end
+
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
 
         # Size is always in screen pixels, regardless of isWorldEntity
@@ -225,8 +251,65 @@ module TextBoxModule
         end
     end
 
-    function UI.set_color(this::TextBox, r,g,b)
-        SDL2.SDL_SetTextureColorMod(this.textTexture, r%256, g%256, b%256);
+    # Helper function to manually wrap text at character boundaries
+    function wrap_text(text::String, font, maxWidth::Int32, wrapWords::Bool)
+        if maxWidth <= 0 || isempty(text)
+            return text
+        end
+
+        lines = String[]
+        current_line = ""
+        current_width = 0
+        
+        # If wrapping at word boundaries
+        if wrapWords
+            words = split(text)
+            for word in words
+                w, h = Ref{Cint}(0), Ref{Cint}(0)
+                word_with_space = word * " "
+                SDL2.TTF_SizeUTF8(font, word_with_space, w, h)
+                
+                if current_width + w[] > maxWidth && !isempty(current_line)
+                    push!(lines, rstrip(current_line))
+                    current_line = word * " "
+                    current_width = w[]
+                else
+                    current_line *= word * " "
+                    current_width += w[]
+                end
+            end
+            
+            if !isempty(current_line)
+                push!(lines, rstrip(current_line))
+            end
+        else
+            # Character by character wrapping
+            for c in text
+                char_str = string(c)
+                w, h = Ref{Cint}(0), Ref{Cint}(0)
+                SDL2.TTF_SizeUTF8(font, char_str, w, h)
+                
+                if current_width + w[] > maxWidth && !isempty(current_line)
+                    push!(lines, current_line)
+                    current_line = char_str
+                    current_width = w[]
+                else
+                    current_line *= char_str
+                    current_width += w[]
+                end
+            end
+            
+            if !isempty(current_line)
+                push!(lines, current_line)
+            end
+        end
+        
+        return join(lines, "\n")
+    end
+
+    function UI.set_color(this::TextBox, r, g, b, a=255)
+        this.color = (UInt8(r%256), UInt8(g%256), UInt8(b%256), UInt8(a%256))
+        UI.rerender_text(this)
     end
 
     function UI.center_text(this::TextBox)
@@ -268,8 +351,8 @@ module TextBoxModule
         @debug("setting textbox property $(s) to: $(x)")
         try
             setfield!(this, s, x)
-            if s == :text || s == :alpha || s == :isActive
-                if length(x) == 0
+            if s == :text || s == :alpha || s == :isActive || s == :textColor || s == :maxLineWidth || s == :wrapWords
+                if s == :text && length(x) == 0
                     setfield!(this, s, " ")# prevents segfault when text is empty
                 end
                 if this.isConstructed
@@ -280,5 +363,25 @@ module TextBoxModule
             error(e)
             Base.show_backtrace(stderr, catch_backtrace())
         end
+    end
+
+    # Add methods to set and get the maximum line width
+    function UI.set_max_line_width(this::TextBox, maxWidth::Int32)
+        this.maxLineWidth = maxWidth
+        UI.rerender_text(this)
+    end
+    
+    function UI.get_max_line_width(this::TextBox)
+        return this.maxLineWidth
+    end
+    
+    # Add method to control word wrapping behavior
+    function UI.set_wrap_words(this::TextBox, wrapWords::Bool)
+        this.wrapWords = wrapWords
+        UI.rerender_text(this)
+    end
+    
+    function UI.get_wrap_words(this::TextBox)
+        return this.wrapWords
     end
 end

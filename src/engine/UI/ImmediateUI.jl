@@ -21,10 +21,11 @@ module ImmediateUIModule
     const DEFAULT_LIFETIME = 200
 
     """
-    immediate_text(id::String, text::String, fontPath::String, fontSize::Number, position::Math.Vector2, 
-                  width::Number=0, height::Number=0, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-                  anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, 
-                  layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
+    immediate_text(id::String, text::String, fontPath::String, fontSize::Number, 
+        position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
+        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, 
+        isActive::Bool=true, color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)),
+        maxLineWidth::Int32=Int32(0), wrapWords::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
 
     Creates or updates an immediate text component.
     
@@ -34,13 +35,14 @@ module ImmediateUIModule
     - `fontPath::String`: Path to the font file
     - `fontSize::Number`: Size of the font
     - `position::Math.Vector2`: Position of the text
-    - `width::Number`: Width of the text box (0 for auto-size)
-    - `height::Number`: Height of the text box (0 for auto-size)
     - `isCenteredX::Bool`: Whether to center the text horizontally
     - `isCenteredY::Bool`: Whether to center the text vertically
     - `anchorOffset::Math.Vector2`: Offset from the anchor point
     - `isWorldEntity::Bool`: Whether this text should be positioned in world space
     - `alpha::Number`: Transparency (0-255)
+    - `color::Tuple{Int32, Int32, Int32, Int32}`: Color of the text (r,g,b,a)
+    - `maxLineWidth::Int32`: Maximum width before text wrapping (0 for no wrapping)
+    - `wrapWords::Bool`: Whether to wrap at word boundaries (true) or characters (false)
     - `layer::Int32`: Rendering layer (higher values render on top)
     - `lifetime::Number`: How long the component should persist without updates (ms)
     
@@ -50,7 +52,8 @@ module ImmediateUIModule
     function immediate_text(id::String, text::String, fontPath::String, fontSize::Number, 
         position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
         anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Number=255, 
-        isActive::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
+        isActive::Bool=true, color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)),
+        maxLineWidth::Int32=Int32(0), wrapWords::Bool=true, layer::Int32=Int32(0), lifetime::Number=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -116,6 +119,23 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            # Check color update
+            if textBox.color != color
+                textBox.color = color
+                needsUpdate = true
+            end
+            
+            # Check line wrapping updates
+            if textBox.maxLineWidth != maxLineWidth
+                textBox.maxLineWidth = maxLineWidth
+                needsUpdate = true
+            end
+            
+            if textBox.wrapWords != wrapWords
+                textBox.wrapWords = wrapWords
+                needsUpdate = true
+            end
+            
             if needsUpdate
                 # Reload font and regenerate texture
                 UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
@@ -135,7 +155,8 @@ module ImmediateUIModule
         else
             # Create new text component
             textBox = TextBox("immediate_$(id)", fontPath, fontSize, position, text, isCenteredX, isCenteredY; 
-                             anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity, layer=layer)
+                             anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity, layer=layer,
+                             color=color, maxLineWidth=maxLineWidth, wrapWords=wrapWords)
             
             textBox.alpha = alpha
             textBox.persistentBetweenScenes = false
