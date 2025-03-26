@@ -472,15 +472,45 @@ function handle_childless_entity_selection(entity, hierarchyEntitySelections, en
 end
 
 function handle_parent_entity_selection(entity, children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
-    if CImGui.TreeNodeEx(entity.name, CImGui.ImGuiTreeNodeFlags_None)
+    # First create the tree node
+    treeNodeOpen = CImGui.TreeNodeEx(entity.name, CImGui.ImGuiTreeNodeFlags_None)
+    
+    # Handle selection similar to childless entities
+    if CImGui.IsItemClicked() && !CImGui.IsItemToggledOpen()
+        # clear selection when CTRL is not held
+        (!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
+        hierarchyEntitySelections[n] = (hierarchyEntitySelections[n][1], true)
+        unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, n)
+        currentSceneMain.selectedEntity = entity
+    end
+    
+    # Make it a drag source
+    if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+        @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint))
+        CImGui.Text("Move $(entity.name)")
+        CImGui.EndDragDropSource()
+    end
+    
+    # Make it a drop target
+    if CImGui.BeginDragDropTarget()
+        payload = CImGui.AcceptDragDropPayload("Entity")
+        if payload != C_NULL
+            payload = unsafe_load(payload)
+            @assert payload.DataSize == sizeof(Cint)
+            
+            origin = unsafe_load(Ptr{Cint}(payload.Data))
+            
+            # Set the parent of the dragged entity to this entity
+            filteredEntities[origin].parent = entity
+        end
+        CImGui.EndDragDropTarget()
+    end
+    
+    # If the tree node is open, show its children
+    if treeNodeOpen
         for child in children
             handle_childless_entity_selection(child, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
         end
-            if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
-                @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
-                CImGui.Text("Move $(entity.name)")
-                CImGui.EndDragDropSource()
-            end
         CImGui.TreePop()
     end
 end
