@@ -5,9 +5,15 @@ using JulGame
 using JulGame.Math
 using JulGame.UI
 using FileWatching
+
+# Include field input helpers first
+include("VectorFieldInputs.jl")
+include("ScalarFieldInputs.jl")
+include("FieldInputHandler.jl")
+
+# Legacy includes - to be updated
 #include("TextBoxFields.jl")
 #include("ScreenButtonFields.jl")
-
 
 """
 show_field_editor(entity, field)
@@ -75,116 +81,16 @@ function delete_button(entity, fieldName)::Bool
 end
 
 """
-    show_component_field_input(component, componentField)
+    show_component_field_input(component, componentField, newScriptText)
 
 This function displays the input fields for a given component field. It takes two arguments:
 - `component`: The component object.
 - `componentField`: The field of the component object.
 
-The function checks the type of the field value and displays the corresponding input fields using CImGui library. It updates the field value based on the user input.
-
+The function delegates to the generic handler for component field inputs.
 """
 function show_component_field_input(component, componentField, newScriptText)
-    fieldValue = getfield(component, componentField)
-    if isa(fieldValue, String) && String(componentField) == "id"
-        #display id as text and add a button to copy it to clipboard
-        CImGui.Text("$(componentField): $(fieldValue)")
-        CImGui.SameLine()
-        CImGui.Button("Copy") && SDL2.SDL_SetClipboardText(fieldValue)
-    elseif isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
-        isFloat::Bool = isa(fieldValue, Math._Vector2{Float64}) ? true : false
-
-        x = isFloat ? Cfloat(fieldValue.x) : Cint(fieldValue.x)
-        y = isFloat ? Cfloat(fieldValue.y) : Cint(fieldValue.y)
-        if CImGui.TreeNode("$(componentField)")
-            if isFloat 
-                @c CImGui.InputFloat("$(componentField) x", &x, 1)
-                @c CImGui.InputFloat("$(componentField) y", &y, 1)
-            else
-                @c CImGui.InputInt("$(componentField) x", &x, 1)
-                @c CImGui.InputInt("$(componentField) y", &y, 1)
-            end
-            setfield!(component, componentField, (isFloat ? Vector2f(x, y) : Vector2(x, y)))
-            CImGui.TreePop()
-        end
-
-    elseif isa(fieldValue, Math._Vector3{Float64}) || isa(fieldValue, Math._Vector3{Int32})
-        isFloat = isa(fieldValue, Math._Vector3{Float64}) ? true : false
-
-        vec3 = isFloat ? Cfloat[fieldValue.x, fieldValue.y, fieldValue.z] : Cint[fieldValue.x, fieldValue.y, fieldValue.z]
-
-        if CImGui.TreeNode("$(componentField)")   
-            if isFloat 
-                @c CImGui.InputFloat3("input float3", vec3)
-            else
-                @c CImGui.InputInt3("input int3", vec3)
-            end
-        
-            setfield!(component, componentField, (isFloat ? Vector3f(vec3[1], vec3[2], vec3[3]) : Vector3(vec3[1], vec3[2], vec3[3])))
-            CImGui.TreePop()
-        end
-            
-    elseif isa(fieldValue, Math._Vector4{Float64}) || isa(fieldValue, Math._Vector4{Int32})
-        isFloat = isa(fieldValue, Math._Vector4{Float64}) ? true : false
-
-        vec4 = isFloat ? Cfloat[fieldValue.x, fieldValue.y, fieldValue.z, fieldValue.t] : Cint[fieldValue.x, fieldValue.y, fieldValue.z, fieldValue.t]
-
-        if CImGui.TreeNode("$(componentField)")
-            if isFloat 
-                @c CImGui.InputFloat4("input float4", vec4)
-            else
-                @c CImGui.InputInt4("input int4", vec4)
-            end
-
-            setfield!(component, componentField, (isFloat ? Vector4f(vec4[1], vec4[2], vec4[3], vec4[4]) : Vector4(vec4[1], vec4[2], vec4[3], vec4[4])))
-            CImGui.TreePop()
-        end
-
-    elseif isa(fieldValue, Bool) 
-        @c CImGui.Checkbox("$(componentField)", &fieldValue)
-        setfield!(component, componentField, fieldValue)
-
-    elseif isa(fieldValue, String) && String(componentField) != "id"
-        buf = "$(fieldValue)"*"\0"^(64)
-        CImGui.InputText("$(componentField)", buf, length(buf))
-        currentTextInTextBox = ""
-        for characterIndex = eachindex(buf)
-            if Int32(buf[characterIndex]) == 0 
-                if characterIndex != 1
-                    currentTextInTextBox = String(SubString(buf, 1, characterIndex-1))
-                end
-                break
-            end
-        end
-        setfield!(component, componentField, currentTextInTextBox)
-
-    elseif isa(fieldValue, Int32) || isa(fieldValue, Float64)
-        isFloat = isa(fieldValue, Float64) ? true : false
-        x = isFloat ? Cfloat(fieldValue) : Cint(fieldValue)
-        if isFloat 
-            @c CImGui.InputFloat("$(componentField)", &x, 1)
-            x = Float64(x)
-        else
-            @c CImGui.InputInt("$(componentField)", &x, 1)
-        end
-        setfield!(component, componentField, x)
-    elseif String(componentField) == "scripts"
-        show_script_editor(component, newScriptText)
-    elseif isa(fieldValue, Vector) # Then we need to unpack the nested items
-        for i = eachindex(fieldValue)
-            continue # TODO: Implement this
-            if is_a_julgame_component(fieldValue[i])
-                if CImGui.TreeNode("$(nestedFieldType) $(i)")
-                for field in fieldnames(typeof(fieldValue[i]))
-                    show_field_editor(fieldValue[i], field)
-                end
-                CImGui.TreePop()
-            end
-            else
-                #show_component_field_input(fieldValue, i)
-            end
-        end
-    end
+    handle_component_field_input(component, componentField, newScriptText)
 end
 
 """
@@ -225,7 +131,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                             animationFieldString = "$(animationFields[j])"
                             if animationFieldString == "animatedFPS"
                                 x = Cint(animations[i].animatedFPS)
-                                @c CImGui.InputInt("$(animationFieldString) $(j)", &x, 1)
+                                CImGui.InputInt("$(animationFieldString) $(j)", Ref(x), 1)
                                 animator.animations[i].animatedFPS = x
                             elseif animationFieldString == "frames"
                                 try
@@ -270,7 +176,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                                             end
 
                                             vec4i = Cint[anim_x, anim_y, anim_w, anim_h]
-                                            @c CImGui.InputInt4("frame input $(k)", vec4i)
+                                            CImGui.InputInt4("frame input $(k)", vec4i)
                                             window_info[]["points"][][1] = ImVec2(vec4i[1], vec4i[2])
                                             window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
                                             Component.update_array_value(animations[i], JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
@@ -355,26 +261,31 @@ function show_sprite_fields(sprite, animation_window_dict)
                 end
             CImGui.PopID()
             vec4i = Cint[crop_x, crop_y, crop_w, crop_h]
-            @c CImGui.InputInt4("crop", vec4i)
+            CImGui.InputInt4("crop", vec4i)
             window_info[]["points"][][1] = ImVec2(vec4i[1], vec4i[2])
             window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
             sprite.crop = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))
         elseif fieldString == "rotation"
-            x = Cfloat(sprite.rotation)
-            @c CImGui.InputFloat("rotation", &x, 1)
-            x = Float64(x)
-            sprite.rotation = x
+            show_numeric_input(sprite, field, sprite.rotation, "rotation")
         elseif fieldString == "center"
             #float that is min 0 and max 1
-            x = Cfloat(sprite.center.x)
-            y = Cfloat(sprite.center.y)
-            @c CImGui.InputFloat("center x", &x, 0.01)
-            @c CImGui.InputFloat("center y", &y, 0.01)
-            x = Float64(x)
-            y = Float64(y)
-            c = clamp(x, 0, 1)
-            y = clamp(y, 0, 1)
-            sprite.center = Vector2f(x, y)
+            if CImGui.TreeNode("center")
+                x = Cfloat(sprite.center.x)
+                y = Cfloat(sprite.center.y)
+                modified = false
+                modified |= CImGui.InputFloat("center x", Ref(x), 0.01f0, 0.1f0)
+                modified |= CImGui.InputFloat("center y", Ref(y), 0.01f0, 0.1f0)
+                
+                if modified
+                    x = Float64(x)
+                    y = Float64(y)
+                    x = clamp(x, 0, 1)
+                    y = clamp(y, 0, 1)
+                    sprite.center = Vector2f(x, y)
+                end
+                
+                CImGui.TreePop()
+            end
         elseif fieldString == "color"
             sprite.color = edit_color("SpriteColor#1", sprite.color)
         else
@@ -386,25 +297,30 @@ end
 function edit_color(label::String, color::NTuple{4, Int})
     colorCfloat = Cfloat[color[1]/255, color[2]/255, color[3]/255, color[4]/255]
 
-    @cstatic alpha_preview=true alpha_half_preview=true drag_and_drop=true options_menu=true hdr=false begin
-        show_help_marker("Right-click on the individual color widget to show options.")
-        CImGui.SameLine()
+    # Configure color editor options
+    alpha_preview = true
+    alpha_half_preview = true
+    drag_and_drop = true
+    options_menu = true
+    hdr = false
+    
+    show_help_marker("Right-click on the individual color widget to show options.")
+    CImGui.SameLine()
 
-        misc_flags = (hdr ? CImGui.ImGuiColorEditFlags_HDR : 0) |
-                     (drag_and_drop ? 0 : CImGui.ImGuiColorEditFlags_NoDragDrop) |
-                     (alpha_half_preview ? CImGui.ImGuiColorEditFlags_AlphaPreviewHalf : 
-                     (alpha_preview ? CImGui.ImGuiColorEditFlags_AlphaPreview : 0)) |
-                     (options_menu ? 0 : CImGui.ImGuiColorEditFlags_NoOptions) |
-                     CImGui.ImGuiColorEditFlags_AlphaBar
+    misc_flags = (hdr ? CImGui.ImGuiColorEditFlags_HDR : 0) |
+                 (drag_and_drop ? 0 : CImGui.ImGuiColorEditFlags_NoDragDrop) |
+                 (alpha_half_preview ? CImGui.ImGuiColorEditFlags_AlphaPreviewHalf : 
+                 (alpha_preview ? CImGui.ImGuiColorEditFlags_AlphaPreview : 0)) |
+                 (options_menu ? 0 : CImGui.ImGuiColorEditFlags_NoOptions) |
+                 CImGui.ImGuiColorEditFlags_AlphaBar
 
-        CImGui.ColorEdit4(label, colorCfloat, CImGui.ImGuiColorEditFlags_DisplayRGB | misc_flags)
+    CImGui.ColorEdit4(label, colorCfloat, CImGui.ImGuiColorEditFlags_DisplayRGB | misc_flags)
 
-        if CImGui.IsItemEdited()
-            return (Int(abs(round(colorCfloat[1] * 255))), 
-                    Int(abs(round(colorCfloat[2] * 255))), 
-                    Int(abs(round(colorCfloat[3] * 255))), 
-                    Int(abs(round(colorCfloat[4] * 255))))
-        end
+    if CImGui.IsItemEdited()
+        return (Int(abs(round(colorCfloat[1] * 255))), 
+                Int(abs(round(colorCfloat[2] * 255))), 
+                Int(abs(round(colorCfloat[3] * 255))), 
+                Int(abs(round(colorCfloat[4] * 255))))
     end
 
     return color  # Return original color if not edited
@@ -529,7 +445,7 @@ function show_sound_source_fields(soundSource)
                 Component.load_sound(soundSource, soundPath, soundSource.isMusic)
             end
         else
-            show_component_field_input(soundSource, field, "")
+            handle_component_field_input(soundSource, field)
         end  
     end
 end
