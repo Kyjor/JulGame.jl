@@ -400,7 +400,7 @@ function format_method_error(error_msg::String)
     return error_msg  # Return original if it doesn't match
 end
 
-function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
+function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections, hasParent = false)
     selections = []
     for index in eachindex(hierarchyEntitySelections)
         if hierarchyEntitySelections[index][2]
@@ -427,7 +427,10 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
             destination = n
 
             for origin in origin
-                filteredEntities[origin].parent = filteredEntities[destination]
+                if !hasDropConflict(filteredEntities, origin, destination) && filteredEntities[origin].parent != filteredEntities[destination] && filteredEntities[origin] != filteredEntities[destination]
+                    @info "Moving entity $(filteredEntities[origin].name) to $(filteredEntities[destination].name)"
+                    filteredEntities[origin].parent = filteredEntities[destination]
+                end
             end
             @assert payload.DataSize == sizeof(Cint)
         end
@@ -435,7 +438,7 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
     end
 
     # Reorder entities: We can only reorder entities if the entities are not being filtered
-    if length(filteredEntities) == length(currentSceneMain.scene.entities)
+    if length(filteredEntities) == length(currentSceneMain.scene.entities) && !hasParent
         CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
         if CImGui.BeginDragDropTarget()
             payload = CImGui.AcceptDragDropPayload("Entity") 
@@ -453,7 +456,26 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
     end
 end
 
-function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, filteredEntities = nothing)
+function hasDropConflict(filteredEntities, origin, destination)
+    # If the entity we are dragging's target is it's own child, we can't move it
+    if filteredEntities[destination].parent == filteredEntities[origin]
+        @warn "Cannot move entity $(filteredEntities[origin].name) because it the parent of $(filteredEntities[destination].name)"
+        return true
+    end
+    # if it is a grandchild, great grandchild, etc, we need to move all the way up the chain to check if we can move it 
+    parent = filteredEntities[destination].parent
+    while parent != C_NULL
+        if parent == filteredEntities[origin]
+            @warn "Cannot move entity $(filteredEntities[origin].name) because it is a forefather of $(filteredEntities[destination].name)"
+            return true
+        end
+        parent = parent.parent
+    end
+
+    return false
+end
+
+function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, filteredEntities = nothing, hasParent = false)
     CImGui.PushID(entity.id)
     if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][2])
         # clear selection when CTRL is not held
@@ -462,9 +484,9 @@ function handle_childless_entity_selection(entity, hierarchyEntitySelections, en
         unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
         currentSceneMain.selectedEntity = entity
     end
-    if filteredEntities !== nothing
+    if filteredEntities !== nothing 
         # Use the provided entityIndex directly since we now calculate it correctly
-        handle_drag_and_drop(filteredEntities, entityIndex, currentSceneMain, hierarchyEntitySelections)
+        handle_drag_and_drop(filteredEntities, entityIndex, currentSceneMain, hierarchyEntitySelections, hasParent)
     end 
 
     CImGui.PopID()
@@ -491,6 +513,7 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
     end
     
     # Make it a drop target
+    
     if CImGui.BeginDragDropTarget()
         payload = CImGui.AcceptDragDropPayload("Entity")
         if payload != C_NULL
@@ -498,11 +521,13 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
             @assert payload.DataSize == sizeof(Cint)
             
             origin = unsafe_load(Ptr{Cint}(payload.Data))
-            
-            # Set the parent of the dragged entity to this entity
-            filteredEntities[origin].parent = entity
+            if !hasDropConflict(filteredEntities, origin, n) && filteredEntities[origin].parent != entity && filteredEntities[origin] != entity
+                @info "Moving entity $(filteredEntities[origin].name) to $(entity.name)"
+                # Set the parent of the dragged entity to this entity
+                filteredEntities[origin].parent = entity
+            end
+            CImGui.EndDragDropTarget()
         end
-        CImGui.EndDragDropTarget()
     end
     
     # If the tree node is open, show its children
@@ -511,7 +536,16 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
             # Find the correct index for this child in the filteredEntities list
             childIndex = findfirst(e -> e === child, filteredEntities)
             if childIndex !== nothing
-                handle_childless_entity_selection(child, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities)
+                # Check if this child has its own children
+                childChildren = filter(e -> e.parent === child, filteredEntities)
+                
+                if isempty(childChildren)
+                    # Regular child with no children of its own
+                    handle_childless_entity_selection(child, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities, true)
+                else
+                    # Child has its own children - recursively handle it as a parent
+                    handle_parent_entity_selection(child, childChildren, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities)
+                end
             end
         end
         CImGui.TreePop()
