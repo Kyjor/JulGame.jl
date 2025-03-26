@@ -120,8 +120,8 @@ module SpriteModule
     
         # Handle pixelsPerUnit == 0 (use true size without scaling)
         if this.pixelsPerUnit == 0
-            scaledWidth = cropWidth * scaleX
-            scaledHeight = cropHeight * scaleY
+            scaledWidth = cropWidth * scaleX * SCALE_UNITS/64.0
+            scaledHeight = cropHeight * scaleY * SCALE_UNITS/64.0
         else
             # Use pixelsPerUnit or default PIXELS_PER_UNIT for scaling
             ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT

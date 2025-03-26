@@ -79,15 +79,16 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     # scrolling[] = ImVec2(max(scrolling[].x, -canvas_max.x), max(scrolling[].y, -canvas_max.y))
     mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - canvas_p0.x, unsafe_load(io.MousePos).y - canvas_p0.y)
 
+    # Calculate mouse position adjusted for zoom - this is the mouse position in the zoomed canvas coordinate system
     mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / zoom_level[]), floor(mouse_pos_in_canvas.y / zoom_level[]))
     #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ zoom_level[]) * zoom_level[], round(mouse_pos_in_canvas_zoom_adjusted.y/ zoom_level[]) * zoom_level[])
     # Add first and second point
     # Add debug panel in the top right corner
-    draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos_in_canvas_zoom_adjusted, camera, main)
+    draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos_in_canvas_zoom_adjusted, camera, main, zoom_level)
     # Pan
     mouse_threshold_for_pan = -1.0 
     mouse_drag_movement = ImVec2(0, 0)
-    scale_unit_factor = 64
+    scale_unit_factor = 64.0 * zoom_level[]
    
     if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
@@ -100,13 +101,41 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
 
     # Zoom
     if unsafe_load(io.KeyCtrl)
-        # zoom_level[] += unsafe_load(io.MouseWheel) * 0.4 # * 0.10
-        # zoom_level[] = clamp(zoom_level[], 0.2, 50.0)
+        # Get mouse position in world space before zoom
+        old_zoom = zoom_level[]
+        scale_factor = 64.0 * old_zoom
+        mouse_world_pos_x = (mouse_pos_in_canvas.x + (camera.position.x * scale_factor)) / scale_factor
+        mouse_world_pos_y = (mouse_pos_in_canvas.y + (camera.position.y * scale_factor)) / scale_factor
+
+        # Update zoom level
+        zoom_level[] += unsafe_load(io.MouseWheel) * 0.1
+        zoom_level[] = clamp(zoom_level[], 0.2, 5.0)
+        
+        # Only adjust camera if we have a main scene and camera, and if zoom actually changed
+        if main !== nothing && camera !== nothing && old_zoom != zoom_level[]
+            # Calculate new scale factor
+            new_scale_factor = 64.0 * zoom_level[]
+            
+            # Calculate how the world position would change
+            new_mouse_world_x = (mouse_pos_in_canvas.x + (camera.position.x * new_scale_factor)) / new_scale_factor
+            new_mouse_world_y = (mouse_pos_in_canvas.y + (camera.position.y * new_scale_factor)) / new_scale_factor
+            
+            # Adjust camera position to keep world position under mouse
+            offset_x = new_mouse_world_x - mouse_world_pos_x
+            offset_y = new_mouse_world_y - mouse_world_pos_y
+            
+            camera.position = Math.Vector2f(camera.position.x - offset_x, camera.position.y - offset_y)
+        end
     end
+    
+    # Pan camera with mouse wheel when Ctrl is not pressed
     if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing && camera !== nothing
         # move camera
         camera.position = Math.Vector2f(camera.position.x - (unsafe_load(io.MouseWheelH)), camera.position.y - (unsafe_load(io.MouseWheel)))
     end
+
+    # Apply zoom to camera position
+    scale_unit_factor = 64.0 * zoom_level[]
     camPos = main !== nothing && camera !== nothing ? ImVec2((camera.position.x * scale_unit_factor), (camera.position.y * scale_unit_factor)) : ImVec2(0, 0)
 
     # Context menu
@@ -172,8 +201,20 @@ function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     if main === nothing
         return
     end
+    
+    # Debug information
+    # println("Handling mouse click at coordinates:")
+    # println("Mouse position adjusted for zoom: $(mouse_pos_in_canvas_zoom_adjusted.x), $(mouse_pos_in_canvas_zoom_adjusted.y)")
+    # println("Camera position: $(camPos.x), $(camPos.y)")
+    
     # select nearest entity
     nearest_entity = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    
+    if nearest_entity !== nothing
+        # println("Selected entity: $(nearest_entity.name) at position ($(nearest_entity.transform.position.x), $(nearest_entity.transform.position.y))")
+    else
+        # println("No entity selected")
+    end
     
     main.selectedEntity = nearest_entity
 end
@@ -197,11 +238,17 @@ function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     end
     # get all entities
     entities = main.scene.entities
-    clicked_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/64, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/64)
+    
+    # Important: camPos is already scaled by zoom_level as it's calculated with scale_unit_factor = 64.0 * zoom_level[]
+    # mouse_pos_in_canvas_zoom_adjusted is already divided by zoom_level, so it's in world coordinates
+    # Therefore we need to use the original scale (64.0) to convert mouse click to world position
+    scale_unit_factor = 64.0
+    clicked_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/scale_unit_factor, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/scale_unit_factor)
+    
     for entity in entities
         size = entity.transform.scale
         # entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.scale
-
+        
         # get the nearest entity
         if clicked_pos.x >= entity.transform.position.x && clicked_pos.x <= entity.transform.position.x + size.x && clicked_pos.y >= entity.transform.position.y && clicked_pos.y <= entity.transform.position.y + size.y
             if main.selectedEntity == entity
@@ -225,9 +272,17 @@ function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_le
     end
     entity = main.selectedEntity
     
+    # Scale factor adjusted by zoom level
+    scale_factor = 64.0 * zoom_level[]
+    
     # draw rect around selected entity
     # size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
-    CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (entity.transform.position.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 - camPos.y), ImVec2(canvas_p0.x + entity.transform.position.x * 64 + (entity.transform.scale.x * 64) - camPos.x, canvas_p0.y + entity.transform.position.y * 64 + (entity.transform.scale.y * 64) - camPos.y), IM_COL32(255, 0, 0, 255))
+    CImGui.AddRect(draw_list, 
+                  ImVec2(canvas_p0.x + (entity.transform.position.x * scale_factor) - camPos.x, 
+                         canvas_p0.y + entity.transform.position.y * scale_factor - camPos.y), 
+                  ImVec2(canvas_p0.x + entity.transform.position.x * scale_factor + (entity.transform.scale.x * scale_factor) - camPos.x, 
+                         canvas_p0.y + entity.transform.position.y * scale_factor + (entity.transform.scale.y * scale_factor) - camPos.y), 
+                  IM_COL32(255, 0, 0, 255))
 end
 
 function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
@@ -240,8 +295,12 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
         return
     end
     entity = main.selectedEntity
-    # get the mouse position
-    mouse_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/64, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/64)
+    
+    # Same logic as in get_nearest_entity: camPos is already scaled by zoom_level
+    # mouse_pos_in_canvas_zoom_adjusted is already adjusted for zoom
+    scale_unit_factor = 64.0
+    mouse_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/scale_unit_factor, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/scale_unit_factor)
+    
     if unsafe_load(CImGui.GetIO().KeyCtrl)
         mouse_pos = ImVec2(floor(mouse_pos.x), floor(mouse_pos.y))
     end
@@ -254,7 +313,7 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
 end
 
 # New function to draw debug panel
-function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, main)
+function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, main, zoom_level)
     if main === nothing || camera === nothing
         return
     end
@@ -268,7 +327,7 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
 
     # Panel size and position - in the top right corner
     panel_width = debug_panel_collapsed ? 25 : 200
-    panel_height = debug_panel_collapsed ? 25 : 110
+    panel_height = debug_panel_collapsed ? 25 : 140
     padding = 10
     
     panel_pos = ImVec2(canvas_p1.x - panel_width - padding, canvas_p0.y + padding)
@@ -345,7 +404,8 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
                  IM_COL32(150, 150, 150, 255))
     
     # Calculate world mouse position
-    scale_unit_factor = 64
+    scale_unit_factor = 64.0 * zoom_level[]
+    # We need to divide by scale_unit_factor to get world coordinates
     world_mouse_x = (mouse_pos.x + (camera.position.x * scale_unit_factor)) / scale_unit_factor
     world_mouse_y = (mouse_pos.y + (camera.position.y * scale_unit_factor)) / scale_unit_factor
     
@@ -358,6 +418,10 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     CImGui.AddText(draw_list, ImVec2(panel_pos.x + 10, text_y + 15), 
                  IM_COL32(255, 255, 255, 255), 
                  "Camera Pos: ($(round(camera.position.x, digits=2)), $(round(camera.position.y, digits=2)))")
+    
+    CImGui.AddText(draw_list, ImVec2(panel_pos.x + 10, text_y + 30), 
+                 IM_COL32(255, 255, 255, 255), 
+                 "Zoom Level: $(round(zoom_level[], digits=2))x")
     
     # Draw "Reset Camera" button
     button_width = 120
@@ -390,5 +454,38 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     if reset_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
         # Reset camera position to 0,0
         camera.position = Math.Vector2f(0.0, 0.0)
+    end
+    
+    # Draw "Reset Zoom" button
+    zoom_button_width = 120
+    zoom_button_height = 20
+    zoom_button_x = panel_pos.x + (panel_width - zoom_button_width) / 2
+    zoom_button_y = button_pos.y - zoom_button_height - 5
+    
+    zoom_button_pos = ImVec2(zoom_button_x, zoom_button_y)
+    zoom_button_end = ImVec2(zoom_button_x + zoom_button_width, zoom_button_y + zoom_button_height)
+    
+    # Check if mouse is over button
+    zoom_reset_hovered = mouse_pos_screen.x >= zoom_button_pos.x && mouse_pos_screen.x <= zoom_button_end.x &&
+                     mouse_pos_screen.y >= zoom_button_pos.y && mouse_pos_screen.y <= zoom_button_end.y
+    
+    # Button background color changes when hovered
+    zoom_button_color = zoom_reset_hovered ? IM_COL32(100, 120, 180, 255) : IM_COL32(70, 90, 150, 255)
+    
+    CImGui.AddRectFilled(draw_list, zoom_button_pos, zoom_button_end, zoom_button_color, 3.0)
+    CImGui.AddRect(draw_list, zoom_button_pos, zoom_button_end, IM_COL32(120, 140, 200, 255), 3.0)
+    
+    # Button text
+    zoom_text = "Reset Zoom"
+    zoom_text_size = CImGui.CalcTextSize(zoom_text)
+    zoom_text_pos = ImVec2(zoom_button_pos.x + (zoom_button_width - zoom_text_size.x) / 2, 
+                       zoom_button_pos.y + (zoom_button_height - zoom_text_size.y) / 2)
+    
+    CImGui.AddText(draw_list, zoom_text_pos, IM_COL32(255, 255, 255, 255), zoom_text)
+    
+    # Check for button click
+    if zoom_reset_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+        # Reset zoom level to 1.0
+        zoom_level[] = 1.0
     end
 end

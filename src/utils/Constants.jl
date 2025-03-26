@@ -1,2 +1,2 @@
-const SCALE_UNITS = 64.0
-const GRAVITY = 9.81
+SCALE_UNITS = 64.0
+GRAVITY = 9.81

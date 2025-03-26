@@ -600,7 +600,13 @@ module Editor
                     SDL2.SDL_RenderClear(renderer)
                     try
                         if currentSceneMain !== nothing
+                            # Store the current camera scale value
+                            original_scale_units = JulGame.SCALE_UNITS
+                            # Apply zoom to rendering by temporarily modifying scale units
+                            JulGame.SCALE_UNITS = original_scale_units * zoom_level[]
                             JulGame.MainLoopModule.render_scene_sprites_and_shapes(currentSceneMain, camera)
+                            # Restore the original scale value
+                            JulGame.SCALE_UNITS = original_scale_units
                         end
                     catch e
                         handle_editor_exceptions("Scene window:", latest_exceptions, e, is_test_mode)
