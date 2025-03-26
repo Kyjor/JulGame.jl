@@ -157,17 +157,23 @@ function select_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
     return event
 end
 
-function select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
+function select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, dialog, currentSelectedProjectPath)
     event = @argevent (dir) begin
-        #if currentSceneMain === nothing  #TODO: Implement dialog for this case
-            if dir == "" 
-                return 
-            end 
-
+        if dir == "" 
+            return 
+        end 
+        
+        # Store the path in a global variable or somewhere it can be accessed in the dialog handler
+        JulGame.TEMP_SELECTED_PATH = string(dir)
+        
+        # Use the dialog approach instead of trying to modify currentSceneMain directly
+        if currentSceneMain !== nothing
+            dialog[] = "Select Recent Project"
+        else
+            # If no scene is loaded, we can directly set the path and load scenes
+            currentSelectedProjectPath[] = string(dir)
             scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(dir))
-        # else
-        #     dialog[] = "Select Project"
-        # end
+        end
     end
 
     return event

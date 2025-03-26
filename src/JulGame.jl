@@ -10,6 +10,9 @@ module JulGame
     IS_DEBUG::Bool = false
     IS_PACKAGE_COMPILED::Bool = false
 
+    # Temporary variable for recent project path selection
+    TEMP_SELECTED_PATH::String = ""
+
     DELTA_TIME = 0.0
     # TODO: Create a globals file
     

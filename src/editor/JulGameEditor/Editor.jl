@@ -133,7 +133,7 @@ module Editor
                     end
                     events["New-project"] = create_project_event(currentDialog)
                     events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog)
-                    events["Select-recent-project"] = select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog)
+                    events["Select-recent-project"] = select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog, currentSelectedProjectPath)
                     events["Reset-camera"] = reset_camera_event(currentSceneMain)
                     events["Regenerate-ids"] = regenerate_ids_event(currentSceneMain)
                     events["New-Scene"] = @event begin
@@ -220,6 +220,29 @@ module Editor
                             selectedProjectPath = select_project_dialog(currentDialog, scenesLoadedFromFolder)
                             if selectedProjectPath != ""
                                 currentSceneMain = nothing
+                            end
+                        elseif currentDialog[] == "Select Recent Project"
+                            # Dialog for handling recent project selection when a scene is already loaded
+                            CImGui.OpenPopup(currentDialog[])
+                            if CImGui.BeginPopupModal(currentDialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+                                CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
+                                CImGui.NewLine()
+                                if CImGui.Button("OK", (120, 0))
+                                    CImGui.CloseCurrentPopup()
+                                    currentDialog[] = ""
+                                    
+                                    # Reset the current scene before loading the new project
+                                    currentSceneMain = nothing
+                                    currentSelectedProjectPath[] = JulGame.TEMP_SELECTED_PATH
+                                    scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
+                                end
+                                CImGui.SetItemDefaultFocus()
+                                CImGui.SameLine()
+                                if CImGui.Button("Cancel",(120, 0))
+                                    CImGui.CloseCurrentPopup()
+                                    currentDialog[] = ""
+                                end
+                                CImGui.EndPopup()
                             end
                         elseif currentDialog[] == "New Project"
                             selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder, currentSelectedProjectPath, newProjectText)
