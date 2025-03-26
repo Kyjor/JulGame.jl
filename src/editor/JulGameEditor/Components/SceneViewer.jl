@@ -259,9 +259,16 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
         return
     end
 
+    # Track collapsed state with a proper static variable
+    # Using a module-level mutable struct to maintain state
+    global debug_panel_collapsed
+    if !@isdefined(debug_panel_collapsed)
+        global debug_panel_collapsed = false
+    end
+
     # Panel size and position - in the top right corner
-    panel_width = 200
-    panel_height = 110
+    panel_width = debug_panel_collapsed ? 25 : 200
+    panel_height = debug_panel_collapsed ? 25 : 110
     padding = 10
     
     panel_pos = ImVec2(canvas_p1.x - panel_width - padding, canvas_p0.y + padding)
@@ -270,6 +277,60 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     # Draw semi-transparent panel background
     CImGui.AddRectFilled(draw_list, panel_pos, panel_end, IM_COL32(50, 50, 50, 180), 5.0)
     CImGui.AddRect(draw_list, panel_pos, panel_end, IM_COL32(100, 100, 100, 255), 5.0)
+    
+    # Draw collapse/expand button
+    collapse_button_size = 16
+    collapse_button_padding = 5
+    collapse_button_pos = ImVec2(panel_end.x - collapse_button_size - collapse_button_padding, panel_pos.y + collapse_button_padding)
+    collapse_button_end = ImVec2(collapse_button_pos.x + collapse_button_size, collapse_button_pos.y + collapse_button_size)
+    
+    # Check if mouse is over collapse button
+    io = CImGui.GetIO()
+    mouse_pos_screen = unsafe_load(io.MousePos)
+    collapse_hovered = mouse_pos_screen.x >= collapse_button_pos.x && mouse_pos_screen.x <= collapse_button_end.x &&
+                       mouse_pos_screen.y >= collapse_button_pos.y && mouse_pos_screen.y <= collapse_button_end.y
+    
+    # Button background
+    collapse_button_color = collapse_hovered ? IM_COL32(120, 120, 120, 255) : IM_COL32(100, 100, 100, 255)
+    CImGui.AddRectFilled(draw_list, collapse_button_pos, collapse_button_end, collapse_button_color, 2.0)
+    CImGui.AddRect(draw_list, collapse_button_pos, collapse_button_end, IM_COL32(150, 150, 150, 255), 2.0)
+    
+    # Draw appropriate icon (either "-" or "+")
+    icon_color = IM_COL32(240, 240, 240, 255)
+    if debug_panel_collapsed
+        # Draw "+" for expand
+        line_padding = 4
+        CImGui.AddLine(draw_list, 
+                    ImVec2(collapse_button_pos.x + line_padding, collapse_button_pos.y + collapse_button_size/2), 
+                    ImVec2(collapse_button_end.x - line_padding, collapse_button_pos.y + collapse_button_size/2), 
+                    icon_color, 1.5)
+        CImGui.AddLine(draw_list, 
+                    ImVec2(collapse_button_pos.x + collapse_button_size/2, collapse_button_pos.y + line_padding), 
+                    ImVec2(collapse_button_pos.x + collapse_button_size/2, collapse_button_end.y - line_padding), 
+                    icon_color, 1.5)
+    else
+        # Draw "-" for collapse
+        line_padding = 4
+        CImGui.AddLine(draw_list, 
+                    ImVec2(collapse_button_pos.x + line_padding, collapse_button_pos.y + collapse_button_size/2), 
+                    ImVec2(collapse_button_end.x - line_padding, collapse_button_pos.y + collapse_button_size/2), 
+                    icon_color, 1.5)
+    end
+    
+    # Handle button click
+    if collapse_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+        global debug_panel_collapsed = !debug_panel_collapsed
+    end
+    
+    # If collapsed, just show debug icon and return
+    if debug_panel_collapsed
+        # Draw debug icon (a simple "D" or gear icon)
+       #=  CImGui.AddText(draw_list, 
+                     ImVec2(panel_pos.x + panel_width/2 - 5, panel_pos.y + panel_height/2 - 7), 
+                     IM_COL32(255, 255, 255, 255), 
+                     "D") =#
+        return
+    end
     
     # Title
     title = "Debug Info"
@@ -308,13 +369,11 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     button_end = ImVec2(button_x + button_width, button_y + button_height)
     
     # Check if mouse is over button
-    io = CImGui.GetIO()
-    mouse_pos_screen = unsafe_load(io.MousePos)
-    is_hovered = mouse_pos_screen.x >= button_pos.x && mouse_pos_screen.x <= button_end.x &&
+    reset_hovered = mouse_pos_screen.x >= button_pos.x && mouse_pos_screen.x <= button_end.x &&
                  mouse_pos_screen.y >= button_pos.y && mouse_pos_screen.y <= button_end.y
     
     # Button background color changes when hovered
-    button_color = is_hovered ? IM_COL32(100, 120, 180, 255) : IM_COL32(70, 90, 150, 255)
+    button_color = reset_hovered ? IM_COL32(100, 120, 180, 255) : IM_COL32(70, 90, 150, 255)
     
     CImGui.AddRectFilled(draw_list, button_pos, button_end, button_color, 3.0)
     CImGui.AddRect(draw_list, button_pos, button_end, IM_COL32(120, 140, 200, 255), 3.0)
@@ -328,7 +387,7 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     CImGui.AddText(draw_list, text_pos, IM_COL32(255, 255, 255, 255), text)
     
     # Check for button click
-    if is_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+    if reset_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
         # Reset camera position to 0,0
         camera.position = Math.Vector2f(0.0, 0.0)
     end
