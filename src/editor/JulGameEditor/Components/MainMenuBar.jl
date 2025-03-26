@@ -1,6 +1,10 @@
 using CImGui
 using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
+using Dates
+
+# Import the get_raw_recents function
+using ..Editor: get_raw_recents
 
 """
     ShowAppMainMenuBar(events)
@@ -50,9 +54,40 @@ function show_file_menu(events, main, recent_paths::Vector)
 
     # Recents submenu
     if !isempty(recent_paths) && CImGui.BeginMenu("Recents")
-        for path in recent_paths
-            if CImGui.MenuItem(path)
+        # Get raw recents data with timestamps
+        raw_recents = get_raw_recents()
+        
+        for (i, path) in enumerate(recent_paths)
+            # Find the timestamp for this path
+            timestamp_info = ""
+            for recent in raw_recents
+                if recent.path == path
+                    # Try to format the timestamp nicely
+                    try 
+                        dt = Dates.DateTime(recent.timestamp)
+                        timestamp_info = Dates.format(dt, "yyyy-mm-dd HH:MM:SS")
+                    catch
+                        timestamp_info = recent.timestamp
+                    end
+                    break
+                end
+            end
+            
+            # Truncate the path if it's too long
+            display_path = length(path) > 60 ? "..." * path[end-57:end] : path
+            
+            if CImGui.MenuItem(display_path)
                 events["Select-recent-project"](path)
+            end
+            
+            # Show tooltip with full path and timestamp on hover
+            if CImGui.IsItemHovered()
+                CImGui.BeginTooltip()
+                CImGui.Text("$(path)")
+                if timestamp_info != ""
+                    CImGui.Text("Last opened: $(timestamp_info)")
+                end
+                CImGui.EndTooltip()
             end
         end
         CImGui.EndMenu()

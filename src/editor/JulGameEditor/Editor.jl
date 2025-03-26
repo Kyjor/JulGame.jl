@@ -10,6 +10,9 @@ module Editor
     using JulGame: Component, MainLoopModule, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
     
+    # Editor configuration
+    const AUTO_LOAD_LAST_PROJECT = true  # Set to false to disable auto-loading the last project
+    
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
@@ -97,6 +100,23 @@ module Editor
         currentProjectConfig = (Width=Ref(Int32(800)), Height=Ref(Int32(600)), FrameRate=Ref(Int32(30)), WindowName=Ref("Game"), PixelsPerUnit=Ref(Int32(16)), AutoScaleZoom=Ref(Bool(0)), IsResizable=Ref(Bool(0)), Fullscreen=Ref(Bool(0)))
 
         recent_projects = parse_recents()
+        
+        auto_load_notification = false
+        auto_load_notification_time = 0.0
+        
+        # Auto-load the most recent project if there is one
+        if !is_test_mode && AUTO_LOAD_LAST_PROJECT
+            most_recent_project = get_most_recent_project()
+            if most_recent_project != "" && isdir(most_recent_project)
+                currentSelectedProjectPath[] = most_recent_project
+                scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(most_recent_project))
+                # Update window title
+                SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(most_recent_project)")
+                # Show notification
+                auto_load_notification = true
+                auto_load_notification_time = 5.0  # Show for 5 seconds
+            end
+        end
 
         try
             while !quit                   
@@ -632,6 +652,34 @@ module Editor
                         CImGui.End()
                     end
 
+                    # Add a floating auto-load notification if needed
+                    if auto_load_notification && auto_load_notification_time > 0
+                        # Calculate pulsing alpha for the text
+                        pulsing_alpha = 0.7 + 0.3 * sin(Float64(SDL2.SDL_GetTicks()) / 300.0)
+                        
+                        # Create a floating notification
+                        CImGui.SetNextWindowBgAlpha(0.8)
+                        # Position in bottom right of the screen
+                        display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
+                        display_height = unsafe_load(CImGui.GetIO().DisplaySize).y
+                        CImGui.SetNextWindowPos(ImVec2(display_width - 10, display_height - 10), CImGui.ImGuiCond_Always, ImVec2(1.0, 1.0))
+                        
+                        window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                      CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                      CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                      CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                      CImGui.ImGuiWindowFlags_NoNav
+                                      
+                        CImGui.Begin("AutoLoadNotification", C_NULL, window_flags)
+                        CImGui.PushStyleColor(CImGui.ImGuiCol_Text, (0.3, 0.8, 0.3, pulsing_alpha))
+                        CImGui.Text("Auto-loaded project: $(basename(currentSelectedProjectPath[]))")
+                        CImGui.PopStyleColor()
+                        
+                        # Decrease the timer
+                        auto_load_notification_time -= DELTA_TIME > 0 ? DELTA_TIME : 0.016
+                        CImGui.End()
+                    end
+
                     #region Input
                     try
                         if currentSceneMain !== nothing
@@ -941,32 +989,112 @@ module Editor
         return (Width=Width, Height=Height, FrameRate=FrameRate, WindowName=WindowName, PixelsPerUnit=PixelsPerUnit, AutoScaleZoom=AutoScaleZoom, IsResizable=IsResizable, Fullscreen=Fullscreen)
     end
 
-        # Function to read and parse the config file
-        function parse_recents()
-            try
-                filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
-                config = []
-                
-                if isfile(filename)
-                    # Open the file for reading
-                    open(filename, "r") do file
-                        for line in eachline(file)
-                            # Split the line at the '=' character
-                            push!(config, strip(line))
+    # Function to read and parse the recents file with timestamps
+    function get_raw_recents()
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+            projects = []
+            
+            if isfile(filename)
+                # Open the file for reading
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            # Check if the line contains a timestamp (format: "path|timestamp")
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                # Has timestamp format
+                                path = strip(parts[1])
+                                timestamp = strip(parts[2])
+                                # Only add if the path exists
+                                if isdir(path)
+                                    push!(projects, (path=path, timestamp=timestamp))
+                                end
+                            else
+                                # Old format without timestamp - if valid directory
+                                if isdir(line)
+                                    # Use current time as timestamp for old entries
+                                    push!(projects, (path=line, timestamp=string(Dates.now())))
+                                end
+                            end
                         end
                     end
-                else 
-                    touch(filename)
                 end
-        
-                return config
-            catch e
-                rm(filename; force=tru)
+            else 
                 touch(filename)
             end
+    
+            # Sort by timestamp, most recent first
+            sort!(projects, by = x -> x.timestamp, rev=true)
+            
+            return projects
+        catch e
+            @error "Error parsing recents file" exception=e
+            return []
         end
+    end
 
-    # Function to write values to the config file
+    # Function to get the most recent project path
+    function get_most_recent_project()
+        raw_recents = get_raw_recents()
+        if !isempty(raw_recents)
+            return raw_recents[1].path
+        end
+        return ""
+    end
+
+    # Function to read and parse the recents file
+    function parse_recents()
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+            projects = []
+            
+            if isfile(filename)
+                # Open the file for reading
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            # Check if the line contains a timestamp (format: "path|timestamp")
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                # Has timestamp format
+                                path = strip(parts[1])
+                                timestamp = strip(parts[2])
+                                # Only add if the path exists
+                                if isdir(path)
+                                    push!(projects, (path=path, timestamp=timestamp))
+                                end
+                            else
+                                # Old format without timestamp - if valid directory
+                                if isdir(line)
+                                    # Use current time as timestamp for old entries
+                                    push!(projects, (path=line, timestamp=string(Dates.now())))
+                                end
+                            end
+                        end
+                    end
+                end
+            else 
+                touch(filename)
+            end
+    
+            # Sort by timestamp, most recent first
+            sort!(projects, by = x -> x.timestamp, rev=true)
+            
+            # Return just the paths for backward compatibility
+            return [p.path for p in projects]
+        catch e
+            @error "Error parsing recents file" exception=e
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+            isfile(filename) && rm(filename; force=true)
+            touch(filename)
+            return []
+        end
+    end
+
+    # Function to write a path to the recents file with timestamp
     function add_path_to_recents(path::String)
         filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
         try 
@@ -974,23 +1102,49 @@ module Editor
                 touch(filename)
             end
 
-            # Read existing entries
-            existing_paths = Set(readlines(filename))  # Use a Set for fast lookup
-
-            # Only add if not already in the file
-            if path ∉ existing_paths
-                open(filename, "a") do file
-                    println(file, path)
+            # Get current timestamp
+            current_time = Dates.now()
+            
+            # Read existing entries with their timestamps
+            entries = []
+            if isfile(filename)
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            parts = split(line, "|")
+                            existing_path = length(parts) > 1 ? strip(parts[1]) : line
+                            existing_timestamp = length(parts) > 1 ? strip(parts[2]) : string(current_time)
+                            
+                            # Only keep entries that are different from the new path
+                            if existing_path != path && isdir(existing_path)
+                                push!(entries, (path=existing_path, timestamp=existing_timestamp))
+                            end
+                        end
+                    end
+                end
+            end
+            
+            # Add the new path with current timestamp at the beginning
+            pushfirst!(entries, (path=path, timestamp=string(current_time)))
+            
+            # Write all entries back to the file
+            open(filename, "w") do file
+                for entry in entries
+                    println(file, "$(entry.path)|$(entry.timestamp)")
                 end
             end
 
-            return parse_recents()
+            # Return paths only for backward compatibility
+            return [e.path for e in entries]
         catch e
+            @error "Error adding path to recents" exception=e
             rm(filename; force=true)
             touch(filename)
             open(filename, "a") do file
-                println(file, path)
+                println(file, "$(path)|$(Dates.now())")
             end
+            return [path]
         end
     end
 end # module
