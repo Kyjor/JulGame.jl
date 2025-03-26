@@ -18,6 +18,11 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     # UI elements
     # grid step int input as slider with range. Min = 1, Max = 64
     CImGui.SliderInt("Grid step", window_info[]["grid_step"], 1, 64, "%d")
+    # Add a slider for direct zoom control - convert Float64 to Float32 for CImGui compatibility
+    zoom_value = Ref{Cfloat}(convert(Cfloat, window_info[]["zoom_level"][]))
+    if CImGui.SliderFloat("Zoom", zoom_value, 1.0f0, 64.0f0, "%.1f", CImGui.ImGuiSliderFlags_Logarithmic)
+        window_info[]["zoom_level"][] = convert(Float64, zoom_value[])
+    end
     #CImGui.Text("Mouse Left: drag to add square,\nMouse Right: drag to scroll, click for context menu.\nCTRL+Mouse Wheel: zoom")
     selectedPoint1 = length(window_info[]["points"][]) > 0 ? window_info[]["points"][][end-1] : ImVec2(0,0)
     selectedPoint2 = length(window_info[]["points"][]) > 0 ? window_info[]["points"][][end] : ImVec2(0,0)
@@ -48,7 +53,6 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
     origin = ImVec2(min(0, 0 + window_info[]["scrolling"][].x), min(0, 0 + window_info[]["scrolling"][].y))  # Lock scrolled origin
     mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - canvas_p0.x, unsafe_load(io.MousePos).y - canvas_p0.y)
     mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / window_info[]["zoom_level"][]), floor(mouse_pos_in_canvas.y / window_info[]["zoom_level"][]))
-    CImGui.Text("Zoom level: $(window_info[]["zoom_level"][])")
 
     # Add first and second point
     if is_hovered && !window_info[]["adding_line"][] && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
@@ -73,11 +77,38 @@ function show_animation_window(frame_name, window_info, my_tex_id, my_tex_w, my_
 
     # Zoom
     if is_hovered && unsafe_load(io.KeyCtrl)
-        if unsafe_load(io.MouseWheel) == 1.0
-            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] * 4, 1.0, 64.0)
-        elseif unsafe_load(io.MouseWheel) == -1.0
-            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] / 4,  1.0, 64.0)
-        end 
+        zoomFactor = 1.1  # More gradual zoom factor (10% change per scroll)
+        
+        # Get mouse position before zoom (in world coordinates)
+        old_zoom = window_info[]["zoom_level"][]
+        mouse_pos_before = ImVec2(
+            (mouse_pos_in_canvas.x - window_info[]["scrolling"][].x) / old_zoom,
+            (mouse_pos_in_canvas.y - window_info[]["scrolling"][].y) / old_zoom
+        )
+        
+        # Apply zoom
+        if unsafe_load(io.MouseWheel) > 0
+            # Zoom in with a smoother factor
+            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] * zoomFactor, 1.0, 64.0)
+        elseif unsafe_load(io.MouseWheel) < 0
+            # Zoom out with a smoother factor
+            window_info[]["zoom_level"][] = clamp(window_info[]["zoom_level"][] / zoomFactor, 1.0, 64.0)
+        end
+        
+        # Calculate new position to keep mouse over same world position
+        if unsafe_load(io.MouseWheel) != 0
+            new_zoom = window_info[]["zoom_level"][]
+            mouse_pos_after = ImVec2(
+                mouse_pos_before.x * new_zoom,
+                mouse_pos_before.y * new_zoom
+            )
+            
+            # Adjust scrolling to keep mouse position fixed over world point
+            window_info[]["scrolling"][] = ImVec2(
+                window_info[]["scrolling"][].x + (mouse_pos_in_canvas.x - mouse_pos_after.x - window_info[]["scrolling"][].x),
+                window_info[]["scrolling"][].y + (mouse_pos_in_canvas.y - mouse_pos_after.y - window_info[]["scrolling"][].y)
+            )
+        end
     end
 
     # Context menu
