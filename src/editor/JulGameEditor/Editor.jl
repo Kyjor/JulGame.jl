@@ -17,7 +17,10 @@ module Editor
     include(joinpath("..","..","utils","Macros.jl"))
 
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "ImGuiSDLBackend"); join=true)))
+    
+    # Components includes (contains the ConfirmationModal used for all confirmation dialogs)
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
+    
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
 
@@ -88,6 +91,8 @@ module Editor
         camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
         gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
         confirmation_modal = ConfirmationModal("Start/Stop Game"; message="Are you sure you want to start/stop the game? Any unsaved progress will be lost.", confirmText="Yes", cancelText="No", open=false, type="Warning")
+        delete_confirmation_modal = ConfirmationModal("Delete Entities"; message="Are you sure you want to delete the selected entities? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
+        ui_delete_confirmation_modal = ConfirmationModal("Delete UI Elements"; message="Are you sure you want to delete the selected UI elements? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
         cameraWindow = CameraWindow(true, gameCamera)
         currentProjectConfig = (Width=Ref(Int32(800)), Height=Ref(Int32(600)), FrameRate=Ref(Int32(30)), WindowName=Ref("Game"), PixelsPerUnit=Ref(Int32(16)), AutoScaleZoom=Ref(Bool(0)), IsResizable=Ref(Bool(0)), Fullscreen=Ref(Bool(0)))
 
@@ -255,6 +260,31 @@ module Editor
                             end
                         end
                         
+                        # Handle bulk delete confirmation
+                        if show_modal(delete_confirmation_modal)
+                            # Get all selected entities
+                            entities_to_delete = [entity[1] for entity in hierarchyEntitySelections if entity[2]]
+                            
+                            # Delete entities using our helper function
+                            bulk_delete_entities(currentSceneMain, entities_to_delete)
+                            
+                            # Reset selections
+                            hierarchyEntitySelections = []
+                            currentSceneMain.selectedEntity = nothing
+                        end
+                        
+                        # Handle UI elements bulk delete confirmation
+                        if show_modal(ui_delete_confirmation_modal)
+                            # Get all selected UI element indices
+                            ui_indices_to_delete = findall(hierarchyUISelections)
+                            
+                            # Delete UI elements using our helper function
+                            bulk_delete_ui_elements(currentSceneMain, ui_indices_to_delete)
+                            
+                            # Reset selections
+                            hierarchyUISelections = fill(false, length(currentSceneMain.scene.uiElements))
+                        end
+                        
                         sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, camera)
                         if JulGame.IS_EDITOR_PLAY_MODE != wasPlaying && currentSceneMain !== nothing
                             if JulGame.IS_EDITOR_PLAY_MODE
@@ -311,6 +341,8 @@ module Editor
                                 end
                                 CImGui.EndMenu()
                             end
+                            
+                           
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
                             currentHierarchyFilterText = hierarchyFilterText[]
@@ -326,6 +358,13 @@ module Editor
                                     push!(hierarchyEntitySelections, (entity, false))
                                 end
                             end
+
+                            # Add bulk delete button
+                            selected_count = count(es -> es[2], hierarchyEntitySelections)
+                            if selected_count > 0 && CImGui.Button("Delete Selected ($(selected_count))")
+                                delete_confirmation_modal.open = true
+                            end
+                            CImGui.NewLine()
 
                             for n = eachindex(filteredEntities)
                                 if filteredEntities[n].parent != C_NULL
@@ -347,6 +386,7 @@ module Editor
                         end
 
                         CImGui.NewLine()
+                         
                         #region UI Elements
                         if currentSceneMain !== nothing && CImGui.TreeNode("UI Elements")
                             CImGui.SameLine()
@@ -364,6 +404,14 @@ module Editor
                                 end
                                 CImGui.EndMenu()
                             end
+                            
+                            # Add bulk delete button for UI elements
+                            CImGui.SameLine()
+                            selected_ui_count = count(hierarchyUISelections)
+                            if selected_ui_count > 0 && CImGui.Button("Delete Selected ($(selected_ui_count))")
+                                ui_delete_confirmation_modal.open = true
+                            end
+                            
                             CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
 
                             if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.uiElements) # || updateUISelectionsBasedOnFilter
@@ -443,18 +491,26 @@ module Editor
                                         show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
                                     end
 
-                                    # CImGui.Separator()
-                                    # if CImGui.Button("Duplicate") 
-                                    #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
-                                    # copy.id = JulGame.generate_uuid()
-                                    #     # TODO: switch to duplicated entity
-                                    # end
-
                                     CImGui.Separator()
-                                    CImGui.Text("Delete UI Element: NO CONFIRMATION")
+                                    CImGui.Text("Delete UI Element")
                                     if CImGui.Button("Delete")
-                                        JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
-                                        break
+                                        CImGui.OpenPopup("Delete UI Element Confirmation")
+                                    end
+                                    
+                                    if CImGui.BeginPopupModal("Delete UI Element Confirmation", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+                                        CImGui.Text("Are you sure you want to delete this UI element?\nThis cannot be undone.\n\n")
+                                        CImGui.NewLine()
+                                        if CImGui.Button("Delete", (120, 0))
+                                            JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
+                                            CImGui.CloseCurrentPopup()
+                                            break
+                                        end
+                                        CImGui.SetItemDefaultFocus()
+                                        CImGui.SameLine()
+                                        if CImGui.Button("Cancel",(120, 0))
+                                            CImGui.CloseCurrentPopup()
+                                        end
+                                        CImGui.EndPopup()
                                     end
                                     
                                     break # TODO: Remove this when we can select multiple entities and edit them all at once

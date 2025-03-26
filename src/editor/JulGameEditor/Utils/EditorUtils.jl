@@ -1,3 +1,9 @@
+using CImGui
+using CImGui.CSyntax
+using CImGui.CSyntax.CStatic
+using JulGame
+
+
 function init_sdl_and_imgui(windowTitle::String)
     if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
         println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
@@ -663,5 +669,63 @@ function confirmation_dialog(dialog)
         CImGui.EndPopup()
 
         return result    
+    end
+end
+
+"""
+    show_window_with_error_handling(window_name, content_function, latest_exceptions, is_test_mode)
+
+Shows a window with error handling.
+
+# Arguments
+- `window_name`: The name of the window
+- `content_function`: The function to call to display the content of the window
+- `latest_exceptions`: A reference to a list of latest exceptions
+- `is_test_mode`: Whether the function is being called in test mode
+
+# Returns
+- `Bool`: Whether the window should be shown again
+"""
+function show_window_with_error_handling(window_name, content_function, latest_exceptions, is_test_mode)
+    # Implementation of the function
+    # This is a placeholder and should be replaced with the actual implementation
+    return true  # Placeholder return, actual implementation needed
+end
+
+"""
+    bulk_delete_entities(main, entities_to_delete)
+
+Helper function to safely delete multiple entities at once.
+
+# Arguments
+- `main`: The main scene object
+- `entities_to_delete`: Array of entities to delete
+
+# Returns
+- nothing
+"""
+function bulk_delete_entities(main, entities_to_delete)
+    # Delete entities in reverse order to avoid index issues
+    for entity in reverse(entities_to_delete)
+        JulGame.destroy_entity(main, entity)
+    end
+end
+
+"""
+    bulk_delete_ui_elements(main, ui_indices_to_delete)
+
+Helper function to safely delete multiple UI elements at once.
+
+# Arguments
+- `main`: The main scene object
+- `ui_indices_to_delete`: Array of indices of UI elements to delete
+
+# Returns
+- nothing
+"""
+function bulk_delete_ui_elements(main, ui_indices_to_delete)
+    # Delete UI elements in reverse order to avoid index issues
+    for idx in reverse(ui_indices_to_delete)
+        JulGame.destroy_ui_element(main, main.scene.uiElements[idx])
     end
 end
