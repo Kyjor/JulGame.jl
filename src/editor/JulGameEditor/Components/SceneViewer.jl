@@ -65,6 +65,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
                      text)
     end
 
+    
+
     # Draw border around actual image that is being edited TODO: Fix this
     # CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (my_tex_w * zoom_level[]), canvas_p0.y + (my_tex_h * zoom_level[])), ImVec2(canvas_p0.x, canvas_p0.y), IM_COL32(255, 255, 255, 255))
 
@@ -80,7 +82,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / zoom_level[]), floor(mouse_pos_in_canvas.y / zoom_level[]))
     #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ zoom_level[]) * zoom_level[], round(mouse_pos_in_canvas_zoom_adjusted.y/ zoom_level[]) * zoom_level[])
     # Add first and second point
-    
+    # Add debug panel in the top right corner
+    draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos_in_canvas_zoom_adjusted, camera, main)
     # Pan
     mouse_threshold_for_pan = -1.0 
     mouse_drag_movement = ImVec2(0, 0)
@@ -248,4 +251,85 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
     diff = ImVec2(mouse_pos.x - entity_pos.x, mouse_pos.y - entity_pos.y)
     # update the entity position
     entity.transform.position = Math.Vector2f(entity_pos.x + diff.x, entity_pos.y + diff.y)
+end
+
+# New function to draw debug panel
+function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, main)
+    if main === nothing || camera === nothing
+        return
+    end
+
+    # Panel size and position - in the top right corner
+    panel_width = 200
+    panel_height = 110
+    padding = 10
+    
+    panel_pos = ImVec2(canvas_p1.x - panel_width - padding, canvas_p0.y + padding)
+    panel_end = ImVec2(panel_pos.x + panel_width, panel_pos.y + panel_height)
+    
+    # Draw semi-transparent panel background
+    CImGui.AddRectFilled(draw_list, panel_pos, panel_end, IM_COL32(50, 50, 50, 180), 5.0)
+    CImGui.AddRect(draw_list, panel_pos, panel_end, IM_COL32(100, 100, 100, 255), 5.0)
+    
+    # Title
+    title = "Debug Info"
+    title_pos = ImVec2(panel_pos.x + 10, panel_pos.y + 5)
+    CImGui.AddText(draw_list, title_pos, IM_COL32(255, 255, 255, 255), title)
+    
+    # Line under title
+    line_y = title_pos.y + 15
+    CImGui.AddLine(draw_list, 
+                 ImVec2(panel_pos.x + 5, line_y), 
+                 ImVec2(panel_end.x - 5, line_y), 
+                 IM_COL32(150, 150, 150, 255))
+    
+    # Calculate world mouse position
+    scale_unit_factor = 64
+    world_mouse_x = (mouse_pos.x + (camera.position.x * scale_unit_factor)) / scale_unit_factor
+    world_mouse_y = (mouse_pos.y + (camera.position.y * scale_unit_factor)) / scale_unit_factor
+    
+    # Debug information text
+    text_y = line_y + 10
+    CImGui.AddText(draw_list, ImVec2(panel_pos.x + 10, text_y), 
+                 IM_COL32(255, 255, 255, 255), 
+                 "World Mouse: ($(round(world_mouse_x, digits=2)), $(round(world_mouse_y, digits=2)))")
+    
+    CImGui.AddText(draw_list, ImVec2(panel_pos.x + 10, text_y + 15), 
+                 IM_COL32(255, 255, 255, 255), 
+                 "Camera Pos: ($(round(camera.position.x, digits=2)), $(round(camera.position.y, digits=2)))")
+    
+    # Draw "Reset Camera" button
+    button_width = 120
+    button_height = 20
+    button_x = panel_pos.x + (panel_width - button_width) / 2
+    button_y = panel_end.y - button_height - 10
+    
+    button_pos = ImVec2(button_x, button_y)
+    button_end = ImVec2(button_x + button_width, button_y + button_height)
+    
+    # Check if mouse is over button
+    io = CImGui.GetIO()
+    mouse_pos_screen = unsafe_load(io.MousePos)
+    is_hovered = mouse_pos_screen.x >= button_pos.x && mouse_pos_screen.x <= button_end.x &&
+                 mouse_pos_screen.y >= button_pos.y && mouse_pos_screen.y <= button_end.y
+    
+    # Button background color changes when hovered
+    button_color = is_hovered ? IM_COL32(100, 120, 180, 255) : IM_COL32(70, 90, 150, 255)
+    
+    CImGui.AddRectFilled(draw_list, button_pos, button_end, button_color, 3.0)
+    CImGui.AddRect(draw_list, button_pos, button_end, IM_COL32(120, 140, 200, 255), 3.0)
+    
+    # Button text
+    text = "Reset Camera"
+    text_size = CImGui.CalcTextSize(text)
+    text_pos = ImVec2(button_pos.x + (button_width - text_size.x) / 2, 
+                     button_pos.y + (button_height - text_size.y) / 2)
+    
+    CImGui.AddText(draw_list, text_pos, IM_COL32(255, 255, 255, 255), text)
+    
+    # Check for button click
+    if is_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
+        # Reset camera position to 0,0
+        camera.position = Math.Vector2f(0.0, 0.0)
+    end
 end
