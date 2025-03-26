@@ -1,6 +1,13 @@
 function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, camera)::ImVec2
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
-    CImGui.Begin("Scene") || (CImGui.End(); return ImVec2(0,0))
+    if JulGame.IS_EDITOR_PLAY_MODE
+        CImGui.PushStyleColor(CImGui.ImGuiCol_TitleBg, (0.8, 0.1, 0.1, 1.0))
+        CImGui.PushStyleColor(CImGui.ImGuiCol_TitleBgActive, (0.9, 0.2, 0.2, 1.0))
+        CImGui.Begin("Scene") || (CImGui.PopStyleColor(2); CImGui.End(); return ImVec2(0,0))
+        CImGui.PopStyleColor(2)
+    else
+        CImGui.Begin("Scene") || (CImGui.End(); return ImVec2(0,0))
+    end
     # GET SIZE OF SCENE TEXTURE
     # w, h = Ref{Int32}(0), Ref{Int32}(0)
     # SDL2.SDL_QueryTexture(scene_tex_id[], Ref{UInt32}(0), Ref{Int32}(0), w, h)
@@ -22,10 +29,41 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     
     CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
     try
-        CImGui.AddImage(draw_list, scene_tex_id, canvas_p0, canvas_p1, ImVec2(0,0), ImVec2(1,1), IM_COL32(255,255,255,255))
+        # Set tint color based on play mode
+        tint_color = JulGame.IS_EDITOR_PLAY_MODE ? IM_COL32(255, 200, 200, 255) : IM_COL32(255, 255, 255, 255)
+        CImGui.AddImage(draw_list, scene_tex_id, canvas_p0, canvas_p1, ImVec2(0,0), ImVec2(1,1), tint_color)
     catch
     end
     CImGui.AddRect(draw_list, canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255))
+
+    # Add a visual indicator for play mode
+    if JulGame.IS_EDITOR_PLAY_MODE
+        # Add a red border to make it more obvious we're in play mode
+        border_thickness = 4.0
+        CImGui.AddRect(draw_list, 
+                     ImVec2(canvas_p0.x - border_thickness, canvas_p0.y - border_thickness), 
+                     ImVec2(canvas_p1.x + border_thickness, canvas_p1.y + border_thickness), 
+                     IM_COL32(255, 50, 50, 255), 
+                     0.0,  # rounding 
+                     0,    # flags
+                     border_thickness)
+                     
+        # Add a "PLAY MODE" text indicator in a semi-transparent box at the top
+        text = "PLAY MODE"
+        text_size = CImGui.CalcTextSize(text)
+        box_pos = ImVec2(canvas_p0.x + (canvas_sz.x - text_size.x) / 2 - 10, canvas_p0.y + 10)
+        box_size = ImVec2(text_size.x + 20, text_size.y + 10)
+        
+        CImGui.AddRectFilled(draw_list, 
+                           box_pos, 
+                           ImVec2(box_pos.x + box_size.x, box_pos.y + box_size.y), 
+                           IM_COL32(255, 50, 50, 200))
+        
+        CImGui.AddText(draw_list, 
+                     ImVec2(box_pos.x + 10, box_pos.y + 5), 
+                     IM_COL32(255, 255, 255, 255), 
+                     text)
+    end
 
     # Draw border around actual image that is being edited TODO: Fix this
     # CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (my_tex_w * zoom_level[]), canvas_p0.y + (my_tex_h * zoom_level[])), ImVec2(canvas_p0.x, canvas_p0.y), IM_COL32(255, 255, 255, 255))

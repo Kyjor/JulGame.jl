@@ -116,6 +116,12 @@ module Editor
                         end
                     end   
                     start_frame()
+                    
+                    # When in play mode, apply a slight reddish tint to the menu bar
+                    if JulGame.IS_EDITOR_PLAY_MODE
+                        CImGui.PushStyleColor(CImGui.ImGuiCol_MenuBarBg, (0.5, 0.1, 0.1, 1.0))
+                    end
+                    
                     CImGui.igDockSpaceOverViewport(C_NULL, C_NULL, CImGui.ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
                     
                     ################################## RENDER HERE
@@ -257,6 +263,9 @@ module Editor
                                  
                                 # Animate the text in the window title
                                 SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
+                            else
+                                # Reset the window title when exiting play mode
+                                SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(currentSelectedProjectPath[])")
                             end
                         end
                         
@@ -576,6 +585,29 @@ module Editor
                     
                     show_game_controls()
 
+                    # Add a floating play mode indicator when in play mode
+                    if JulGame.IS_EDITOR_PLAY_MODE
+                        # Calculate pulsing alpha for the text
+                        pulsing_alpha = 0.6 + 0.4 * sin(Float64(SDL2.SDL_GetTicks()) / 300.0)
+                        
+                        # Create a floating window in the corner
+                        CImGui.SetNextWindowBgAlpha(0.7)
+                        # top center of the screen
+                        CImGui.SetNextWindowPos(ImVec2(round(Int32, CImGui.GetIO().DisplaySize.x / 2.0), 10), CImGui.ImGuiCond_Always)
+                        
+                        window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                      CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                      CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                      CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                      CImGui.ImGuiWindowFlags_NoNav
+                                      
+                        CImGui.Begin("PlayModeIndicator", C_NULL, window_flags)
+                        CImGui.PushStyleColor(CImGui.ImGuiCol_Text, (1.0, 0.3, 0.3, pulsing_alpha))
+                        CImGui.TextColored((1.0, 0.3, 0.3, pulsing_alpha), "PLAY MODE ACTIVE")
+                        CImGui.PopStyleColor()
+                        CImGui.End()
+                    end
+
                     #region Input
                     try
                         if currentSceneMain !== nothing
@@ -619,6 +651,12 @@ module Editor
                     catch e
                         handle_editor_exceptions("Inputs:", latest_exceptions, e, is_test_mode)
                     end
+                    
+                    # Pop the MenuBar style color if we're in play mode
+                    if JulGame.IS_EDITOR_PLAY_MODE
+                        CImGui.PopStyleColor()
+                    end
+                    
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
                     SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
@@ -628,6 +666,7 @@ module Editor
                     
                     screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, sceneWindowSize.x, sceneWindowSize.y - 20))
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
+                    
                     ################################################# Injecting game loop into editor
                     if currentSceneMain !== nothing
                         if currentSceneMain.input.editorCallback === nothing
