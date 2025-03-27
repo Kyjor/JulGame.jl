@@ -115,6 +115,7 @@ module Editor
                 # Show notification
                 auto_load_notification = true
                 auto_load_notification_time = 5.0  # Show for 5 seconds
+                start_file_watcher(most_recent_project)
             end
         end
 
@@ -769,9 +770,8 @@ module Editor
                 if current_path != currentSelectedProjectPath[]
                     recent_projects = add_path_to_recents(currentSelectedProjectPath[])
                     current_path = currentSelectedProjectPath[]
-                    condition = Condition()
-                    watch_task = @task poll_files(condition, current_path, filesToReload) # FileWatching.watch_folder(joinpath(currentSelectedProjectPath[], "scripts"), 0.1)
-                    schedule(watch_task)
+                    #starting the file watcher
+                    start_file_watcher(currentSelectedProjectPath[])
                     
                 elseif current_path !== nothing && current_path != "" && condition !== nothing && !istaskdone(watch_task)
                     notify(condition)
@@ -1152,5 +1152,12 @@ module Editor
             end
             return [path]
         end
+    end
+
+    function start_file_watcher(path::String)
+        @info "Starting file watcher"
+        condition = Condition()
+        watch_task = @task poll_files(condition, current_path, filesToReload) # FileWatching.watch_folder(joinpath(currentSelectedProjectPath[], "scripts"), 0.1)
+        schedule(watch_task)
     end
 end # module
