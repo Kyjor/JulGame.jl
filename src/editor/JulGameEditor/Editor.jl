@@ -110,12 +110,14 @@ module Editor
             if most_recent_project != "" && isdir(most_recent_project)
                 currentSelectedProjectPath[] = most_recent_project
                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(most_recent_project))
+                JulGame.BasePath = most_recent_project
+                @info("Base path: $(JulGame.BasePath)")
                 # Update window title
                 SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(most_recent_project)")
                 # Show notification
                 auto_load_notification = true
                 auto_load_notification_time = 5.0  # Show for 5 seconds
-                start_file_watcher(string(most_recent_project))
+                condition, watch_task = start_file_watcher(string(most_recent_project), filesToReload)
             end
         end
 
@@ -771,7 +773,7 @@ module Editor
                     recent_projects = add_path_to_recents(currentSelectedProjectPath[])
                     current_path = currentSelectedProjectPath[]
                     #starting the file watcher
-                    start_file_watcher(string(currentSelectedProjectPath[]))
+                    condition, watch_task = start_file_watcher(string(currentSelectedProjectPath[]), filesToReload)
                     
                 elseif current_path !== nothing && current_path != "" && condition !== nothing && !istaskdone(watch_task)
                     notify(condition)
@@ -864,7 +866,6 @@ module Editor
                         println("pushing to files to reload")
                         push!(filesToReload[], watched.first)
                         println("pushed to files to reload")
-
                     end
                 end
             catch e
@@ -1154,10 +1155,15 @@ module Editor
         end
     end
 
-    function start_file_watcher(path::String)
-        @info "Starting file watcher"
-        condition = Condition()
-        watch_task = @task poll_files(condition, current_path, filesToReload) # FileWatching.watch_folder(joinpath(currentSelectedProjectPath[], "scripts"), 0.1)
-        schedule(watch_task)
+    function start_file_watcher(path::String, filesToReload)
+        try
+            @info "Starting file watcher"
+            condition = Condition()
+            watch_task = @task poll_files(condition, path, filesToReload) # FileWatching.watch_folder(joinpath(currentSelectedProjectPath[], "scripts"), 0.1)
+            schedule(watch_task)
+            return condition, watch_task
+        catch e
+            @error "Error starting file watcher" exception=e
+        end
     end
 end # module
