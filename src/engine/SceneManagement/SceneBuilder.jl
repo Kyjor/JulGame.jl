@@ -175,7 +175,7 @@ module SceneBuilderModule
     end
 
     function create_new_text_box(this::Scene)
-        textBox = TextBox("TextBox", "", 40, Vector2(0, 200), "TextBox", true, true)
+        textBox = TextBox("TextBox", joinpath("FiraCode-Regular.ttf"), 40, Vector2(0, 200), "TextBox", true, true)
         JulGame.initialize(textBox)
         push!(MAIN.scene.uiElements, textBox)
     end

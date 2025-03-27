@@ -176,6 +176,20 @@ module Editor
                             CImGui.Begin("Scene List") 
                             show_help_marker("This is where we will display our scenes. Scenes are where the gameplay happens.")
 
+                            # Add a "New Scene" button at the top of the Scene List
+                            if currentSelectedProjectPath[] != ""
+                                CImGui.PushStyleColor(CImGui.ImGuiCol_Button, (0.2, 0.6, 0.2, 1.0))
+                                CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.3, 0.7, 0.3, 1.0))
+                                CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.8, 0.4, 1.0))
+                                
+                                if CImGui.Button("+ Create New Scene")
+                                    currentDialog[] = "New Scene"
+                                end
+                                
+                                CImGui.PopStyleColor(3)
+                                CImGui.Separator()
+                            end
+
                             for scene in scenesLoadedFromFolder[]
                                 name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 
@@ -231,12 +245,34 @@ module Editor
                             newSceneName = new_scene_dialog(currentDialog, newSceneText)
                             if newSceneName != ""
                                 currentSceneName = newSceneName
-                                currentScenePath = joinpath(currentSelectedProjectPath[], "scenes", "$(newSceneName).json")
+                                
+                                # Ensure scenes folder exists
+                                scenesDir = joinpath(currentSelectedProjectPath[], "scenes")
+                                isdir(scenesDir) || mkdir(scenesDir)
+                                
+                                currentScenePath = joinpath(scenesDir, "$(newSceneName).json")
                                 touch(currentScenePath)
                                 file = open(currentScenePath, "w")
                                     println(file, sceneJsonContents)
                                 close(file)
-                                JulGame.change_scene("$(String(currentSceneName)).json")
+                                
+                                # Check if we need to load the scene or just create it
+                                if currentSceneMain === nothing
+                                    JulGame.IS_EDITOR = true
+                                    JulGame.PIXELS_PER_UNIT = 16
+                                    currentSceneMain = load_scene(currentScenePath, renderer)
+                                    
+                                    if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
+                                        gameCamera = currentSceneMain.scene.camera
+                                        cameraWindow.camera = gameCamera
+                                    else 
+                                        currentSceneMain = nothing
+                                        @error "Main not loaded properly"
+                                    end
+                                else
+                                    JulGame.change_scene("$(String(currentSceneName)).json")
+                                end
+                                
                                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
                             end
                         elseif currentDialog[] == "Select Project"
@@ -444,7 +480,8 @@ module Editor
                          
                         #region UI Elements
                         if currentSceneMain !== nothing && CImGui.TreeNode("UI Elements")
-                            CImGui.SameLine()
+                            CImGui.NewLine()
+
                             if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
                                 CImGui.MenuItem("Add", C_NULL, false, false)
                                 if CImGui.BeginMenu("New")
