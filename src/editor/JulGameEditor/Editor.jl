@@ -115,7 +115,7 @@ module Editor
                 # Show notification
                 auto_load_notification = true
                 auto_load_notification_time = 5.0  # Show for 5 seconds
-                start_file_watcher(most_recent_project)
+                start_file_watcher(string(most_recent_project))
             end
         end
 
@@ -771,7 +771,7 @@ module Editor
                     recent_projects = add_path_to_recents(currentSelectedProjectPath[])
                     current_path = currentSelectedProjectPath[]
                     #starting the file watcher
-                    start_file_watcher(currentSelectedProjectPath[])
+                    start_file_watcher(string(currentSelectedProjectPath[]))
                     
                 elseif current_path !== nothing && current_path != "" && condition !== nothing && !istaskdone(watch_task)
                     notify(condition)
