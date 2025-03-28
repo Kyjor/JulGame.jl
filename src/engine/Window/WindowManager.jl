@@ -655,9 +655,9 @@ module WindowManagerModule
             this.isWindowFocused = false
             @debug "Window focus lost"
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
-            width = windowEvent.data1
-            height = windowEvent.data2
-            this.windowSize = Math.Vector2(width, height)
+            # width = windowEvent.data1
+            # height = windowEvent.data2
+            # this.windowSize = Math.Vector2(width, height)
             @debug "Window resized to $(width)x$(height)"
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
             @debug(string("Window $(event.window.windowID) shown"))

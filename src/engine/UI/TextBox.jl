@@ -4,7 +4,6 @@ module TextBoxModule
     import ..UI
     export TextBox      
     mutable struct TextBox
-        alpha
         anchorOffset::Vector2
         #anchor::JulGame.Enum
         clickEvents
@@ -34,7 +33,6 @@ module TextBoxModule
             this = new()
 
             this.isConstructed = false
-            this.alpha = 255
             this.clickEvents = []
             this.fontPath = fontPath
             this.fontSize = Int32(fontSize)
@@ -138,7 +136,7 @@ module TextBoxModule
             this.text = " "
         end
 
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(255,255,255,this.alpha))
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
         if this.renderText == C_NULL
             error("Failed to render text for textbox $(this.name)")
             return
@@ -307,8 +305,8 @@ module TextBoxModule
         return join(lines, "\n")
     end
 
-    function UI.set_color(this::TextBox, r, g, b, a=255)
-        this.color = (UInt8(r%256), UInt8(g%256), UInt8(b%256), UInt8(a%256))
+    function UI.set_color(this::TextBox; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
+        this.color = (Int32(r%256), Int32(g%256), Int32(b%256), Int32(a%256))
         UI.rerender_text(this)
     end
 
@@ -348,14 +346,14 @@ module TextBoxModule
     end
 
     function Base.setproperty!(this::TextBox, s::Symbol, x)
-        @debug("setting textbox property $(s) to: $(x)")
         try
             setfield!(this, s, x)
-            if s == :text || s == :alpha || s == :isActive || s == :textColor || s == :maxLineWidth || s == :wrapWords
+            if s == :text || s == :isActive || s == :textColor || s == :maxLineWidth || s == :wrapWords || s == :fontSize || s == :color
                 if s == :text && length(x) == 0
                     setfield!(this, s, " ")# prevents segfault when text is empty
                 end
                 if this.isConstructed
+                    @debug("rerendering text for $(this.name) because of $(s) = $(x)")
                     UI.rerender_text(this) # this line MUST stay inside the if for specific fields as we can't call this on fields that are used in this function
                 end
             end

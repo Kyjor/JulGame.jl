@@ -104,8 +104,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            if textBox.alpha != alpha
-                textBox.alpha = alpha
+            if textBox.color[4] != alpha
+                JulGame.UI.set_color(textBox; a=alpha)
                 needsUpdate = true
             end
 
@@ -158,7 +158,7 @@ module ImmediateUIModule
                              anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity, layer=layer,
                              color=color, maxLineWidth=maxLineWidth, wrapWords=wrapWords)
             
-            textBox.alpha = alpha
+            JulGame.UI.set_color(textBox; a=alpha)
             textBox.persistentBetweenScenes = false
             
             # Store in cache
@@ -249,8 +249,8 @@ module ImmediateUIModule
                 button.textOffset = textOffset
             end
             
-            if button.alpha != alpha
-                button.alpha = alpha
+            if button.color[4] != alpha
+                JulGame.UI.set_color(button; a=alpha)
             end
 
             if button.isActive != isActive
@@ -309,7 +309,7 @@ module ImmediateUIModule
                                  fontPath, text, textOffset; id=id, fontSize=Int32(fontSize), layer=layer)
             
             # Set button properties
-            button.alpha = alpha
+            JulGame.UI.set_color(button; a=alpha)
             button.persistentBetweenScenes = false
             UI.add_click_event(button, callback)
             
@@ -387,7 +387,7 @@ module ImmediateUIModule
             
             if rect.color != color
                 rect.color = color
-                rect.alpha = Int32(color[4])
+                JulGame.UI.set_color(rect; a=Int32(color[4]))
                 needsUpdate = true
             end
             
@@ -507,7 +507,7 @@ module ImmediateUIModule
             
             if line.color != color
                 line.color = color
-                line.alpha = Int32(color[4])
+                JulGame.UI.set_color(line; a=Int32(color[4]))
                 needsUpdate = true
             end
             
@@ -613,7 +613,7 @@ module ImmediateUIModule
             
             if circle.color != color
                 circle.color = color
-                circle.alpha = Int32(color[4])
+                JulGame.UI.set_color(circle; a=Int32(color[4]))
                 needsUpdate = true
             end
             
@@ -752,7 +752,7 @@ module ImmediateUIModule
             
             if progressBar.fillColor != fillColor
                 progressBar.fillColor = fillColor
-                progressBar.alpha = Int32(fillColor[4])
+                JulGame.UI.set_color(progressBar; a=Int32(fillColor[4]))
                 needsUpdate = true
             end
             

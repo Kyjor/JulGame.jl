@@ -5,7 +5,7 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton
-        alpha
+        color::Tuple{Int32, Int32, Int32, Int32}
         clickEvents::Vector{Function}
         currentTexture
         buttonDownSprite
@@ -31,7 +31,7 @@ module ScreenButtonModule
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); id::String=JulGame.generate_uuid(), fontSize::Int32=24, layer::Int32=Int32(0))
+        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)), id::String=JulGame.generate_uuid(), fontSize::Int32=Int32(24), layer::Int32=Int32(0))
             this = new()
             
             this.buttonDownSpritePath = buttonDownSpritePath
@@ -56,9 +56,8 @@ module ScreenButtonModule
             this.persistentBetweenScenes = false
             this.isHovered = false
             this.isActive = true
-            this.alpha = 255
             this.layer = layer
-
+            this.color = color
             # If the textOffset is at (0,0), we'll consider it as "should center text"
             # This ensures text is centered by default if no explicit offset is provided
             if this.textOffset == Math.Vector2(0, 0) && this.text != ""
@@ -210,6 +209,10 @@ module ScreenButtonModule
         end
 
         this.currentTexture = texture
+    end
+
+    function UI.set_color(this::ScreenButton; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
+        this.color = (Int32(r%256), Int32(g%256), Int32(b%256), Int32(a%256))
     end
 
     function load_image_sdl(fullPath::String, imagePath::String)
