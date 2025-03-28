@@ -122,9 +122,30 @@ module InputModule
             # @info "polling input"
             x,y = Int32[1], Int32[1]
             SDL2.SDL_GetMouseState(pointer(x), pointer(y))
-            this.mousePosition = Math.Vector2(x[1], y[1])
-            #@info "new mouse pos: $(this.mousePosition)"
-
+            
+            # Get current window size
+            window_width = Ref{Cint}(0)
+            window_height = Ref{Cint}(0)
+            SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
+            
+            # Get current render output size
+            render_width = Ref{Cint}(0)
+            render_height = Ref{Cint}(0)
+            SDL2.SDL_GetRendererOutputSize(JulGame.Renderer, render_width, render_height)
+            
+            # Get base resolution from WindowManager
+            base_resolution = MAIN.windowManager.baseResolution
+            
+            # Calculate scale factors between window and render sizes
+            scale_x = base_resolution.x / window_width[]
+            scale_y = base_resolution.y / window_height[]
+            
+            # Scale mouse coordinates to match our logical resolution
+            scaled_x = x[1] * scale_x
+            scaled_y = y[1] * scale_y
+            
+            this.mousePosition = Math.Vector2(scaled_x, scaled_y)
+            
             if this.editorCallback !== nothing
                 this.editorCallback(evt)
             end
@@ -151,16 +172,9 @@ module InputModule
                         end
                         # Check position of button to see which we are interacting with
                         eventWasInsideThisButton = true
-                        # Assuming:
-                        # - windowWidth and windowHeight are the physical dimensions of the window
-                        windowWidth = 1280  # Replace with actual window width
-                        windowHeight = 720  # Replace with actual window height
-
 
                         mouseX = this.mousePosition.x
                         mouseY = this.mousePosition.y
-                        # println(mouseX)
-                        # println(mouseY)
 
                         # UI Element position and size in screen space (MUST BE SCALED)
                         screenElementX = (uiElement.position.x + this.mousePositionEditorGameWindowOffset.x)

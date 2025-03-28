@@ -23,6 +23,7 @@ module WindowManagerModule
         allowHighDPI::Bool
         position::Math.Vector2
         fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
+        baseResolution::Math.Vector2
 
         function WindowManager()
             this = new()
@@ -43,6 +44,7 @@ module WindowManagerModule
             this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
             SDL2.SDL_initFramerate(this.fpsManager)
 			SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
+            this.baseResolution = Math.Vector2(1280, 720)
             
             return this
         end
@@ -712,5 +714,44 @@ module WindowManagerModule
 
     function close_window()
         close_window(JulGame.MAIN.windowManager)
+    end
+
+    """
+        set_base_resolution(this::WindowManager, width::Int32, height::Int32)
+
+    Sets the base resolution for UI scaling. This is the resolution that UI elements are designed for.
+    The mouse coordinates and UI elements will be scaled relative to this resolution.
+
+    # Arguments
+    - `width::Int32`: The base width resolution
+    - `height::Int32`: The base height resolution
+    """
+    function set_base_resolution(this::WindowManager, width::Int32, height::Int32)
+        if width <= 0 || height <= 0
+            @error "Base resolution must be positive"
+            return
+        end
+        this.baseResolution = Math.Vector2(width, height)
+        @debug "Base resolution set to $(width)x$(height)"
+    end
+
+    function set_base_resolution(width::Int32, height::Int32)
+        set_base_resolution(JulGame.MAIN.windowManager, width, height)
+    end
+
+    """
+        get_base_resolution(this::WindowManager)::Math.Vector2
+
+    Gets the current base resolution used for UI scaling.
+
+    # Returns
+    - `Math.Vector2`: The current base resolution
+    """
+    function get_base_resolution(this::WindowManager)::Math.Vector2
+        return this.baseResolution
+    end
+
+    function get_base_resolution()::Math.Vector2
+        return get_base_resolution(JulGame.MAIN.windowManager)
     end
 end 
