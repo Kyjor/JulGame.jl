@@ -1,7 +1,7 @@
 module MainLoopModule
 	using ..JulGame
 	using ..JulGame.ErrorLoggingModule
-	using ..JulGame: Camera, Component, Input, Math, UI, SceneModule
+	using ..JulGame: Camera, Component, Input, Math, UI, SceneModule, WindowManager
     import ..JulGame: Component
     import ..JulGame.SceneManagement: SceneBuilderModule
 	import ..JulGame
@@ -33,36 +33,26 @@ module MainLoopModule
 	mutable struct MainLoop
 		assets::String
 		close::Bool
-		coroutine_condition
+		coroutine_condition::Condition
 		currentTestTime::Float64
 		debugTextBoxes::Vector{UI.TextBoxModule.TextBox}
 		errorLogger::ErrorLoggingModule.ErrorLogger
-		fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
-		globals::Vector{Any}
 		input::Input
 		isGameModeRunningInEditor::Bool
-		isWindowFocused::Bool
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
-		scaleFactorX
-		scaleFactorY
 		scene::SceneModule.Scene
 		selectedEntity::Union{Entity, Nothing}
 		selectedUIElementIndex::Int64
-		screenSize::Math.Vector2
 		shouldChangeScene::Bool
 		spriteLayers::Dict
-		targetFrameRate::Int32
 		testLength::Float64
 		testMode::Bool
-		windowSize::Math.Vector2
-		window::Ptr{SDL2.SDL_Window}
-		windowName::String
+		windowManager::WindowManager
 
 		function MainLoop()
 			this::MainLoop = new()
 
-			this.targetFrameRate = 60
 			@info "Initializing SDL"
 			if SDL2.SDL_Init(SDL2.SDL_INIT_EVERYTHING) != 0
 				@error "Failed to initialize SDL, $(unsafe_string(SDL2.SDL_GetError()))"
@@ -74,22 +64,16 @@ module MainLoopModule
 				@error "Failed to open audio, $(unsafe_string(SDL2.SDL_GetError()))"
 			end
 			SDL2.SDL_ClearError()
-			this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
-			SDL2.SDL_initFramerate(this.fpsManager)
-			SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
 
 			this.scene = SceneModule.Scene()
 			this.input = Input()
 
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
-			this.isWindowFocused = false
 			this.optimizeSpriteRendering = false
 			this.selectedEntity = nothing
 			this.selectedUIElementIndex = -1
-			this.screenSize = Math.Vector2(0,0)
 			this.shouldChangeScene = false
-			this.globals = []
 			this.input.main = this
 			this.isGameModeRunningInEditor = false
 
@@ -100,8 +84,7 @@ module MainLoopModule
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
 			this.spriteLayers = Dict()
 
-			this.window = C_NULL
-			this.windowName = ""
+			this.windowManager = WindowManager()
 
 			return this
 		end
@@ -109,7 +92,7 @@ module MainLoopModule
 
     function prepare_window_scripts_and_start_loop(size)
         @debug "Preparing window"
-		MAIN.windowSize = size
+		MAIN.windowManager.windowSize = size
 		
 		@debug "Initializing scripts and components"
         initialize_scripts_and_components()
@@ -127,7 +110,7 @@ module MainLoopModule
         SceneBuilderModule.deserialize_and_build_scene(this.level)
 
         initialize_scripts_and_components()
-
+        
         if !JulGame.IS_EDITOR
 			@debug "Starting non editor loop"
             full_loop(this)
@@ -668,7 +651,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
-				SDL2.SDL_framerateDelay(this.fpsManager)
+				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
 			elseif JulGame.IS_WEB
 				entt = "["
 				for i = 1:length(this.scene.entities)
@@ -820,12 +803,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 		end
 		SDL2.SDL_ClearError()
-		if JulGame.MAIN.window != C_NULL
-			SDL2.SDL_DestroyWindow(JulGame.MAIN.window)
-			if unsafe_string(SDL2.SDL_GetError()) != ""
-				@error "Failed to destroy window, $(unsafe_string(SDL2.SDL_GetError()))"
-			end
+		
+		# Use the WindowManager to close the window
+		if JulGame.MAIN.windowManager !== nothing
+			JulGame.WindowManagerModule.close_window()
 		end
+		
 		SDL2.SDL_ClearError()
         # Reset any OpenGL-related attributes that might have been set
         @debug "Resetting GL attributes"

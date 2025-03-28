@@ -30,6 +30,7 @@ function get_size end
 function get_tag end
 function get_type end
 function get_velocity end
+function get_window_size end
 function handle_event end
 function initialize end
 function load_button_sprite_editor end

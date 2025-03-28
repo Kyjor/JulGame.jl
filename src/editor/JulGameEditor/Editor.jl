@@ -828,42 +828,48 @@ module Editor
                             Base.show_backtrace(stderr, catch_backtrace())
                             continue
                         end
-                        for entity in currentSceneMain.scene.entities
-                            i = 1
-                            for script in entity.scripts
-                                script_name = split("$(typeof(script))", ".")[end]
-                                if script_name == classname
-                                    try 
-                                        @debug("reloading script: $(script_name)")
-                                        module_name = getfield(JulGame.ScriptModule, Symbol("$(classname)Module"))
-                                        constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
-                                        new_script = Base.invokelatest(constructor)
+                        
+                        # Only attempt to reload scripts if currentSceneMain exists and is loaded
+                        if currentSceneMain !== nothing
+                            for entity in currentSceneMain.scene.entities
+                                i = 1
+                                for script in entity.scripts
+                                    script_name = split("$(typeof(script))", ".")[end]
+                                    if script_name == classname
+                                        try 
+                                            @debug("reloading script: $(script_name)")
+                                            module_name = getfield(JulGame.ScriptModule, Symbol("$(classname)Module"))
+                                            constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
+                                            new_script = Base.invokelatest(constructor)
 
-                                        # Copy all fields from old_script to the new script
-                                        for fieldname in fieldnames(typeof(entity.scripts[i]))
-                                            if fieldname != :parent  # Skip the `parent` field to avoid overwriting it
-                                                try
-                                                    if isdefined(entity.scripts[i], Symbol(fieldname))
-                                                        setfield!(new_script, fieldname, getfield(entity.scripts[i], fieldname))
+                                            # Copy all fields from old_script to the new script
+                                            for fieldname in fieldnames(typeof(entity.scripts[i]))
+                                                if fieldname != :parent  # Skip the `parent` field to avoid overwriting it
+                                                    try
+                                                        if isdefined(entity.scripts[i], Symbol(fieldname))
+                                                            setfield!(new_script, fieldname, getfield(entity.scripts[i], fieldname))
+                                                        end
+                                                    catch e
+                                                        @error("issue with field: $(fieldname): $e")
                                                     end
-                                                catch e
-                                                    println("issue with field: $(fieldname): $e")
                                                 end
                                             end
+
+                                            entity.scripts[i] = new_script
+                                            entity.scripts[i].parent = entity
+
+                                            @debug "script reloaded successfully"
+                                        catch e
+                                            @error "Error reloading script: $(script_name): $(first(string(e), 1000))"
+                                            Base.show_backtrace(stderr, catch_backtrace())
                                         end
-
-                                        entity.scripts[i] = new_script
-                                        entity.scripts[i].parent = entity
-
-                                        println("script reloaded successfully")
-                                    catch e
-                                        @error "Error reloading script: $(script_name): $(first(string(e), 1000))"
-                                        Base.show_backtrace(stderr, catch_backtrace())
                                     end
-                                end
 
-                                i += 1
+                                    i += 1
+                                end
                             end
+                        else
+                            @debug "Skipping script reload as no scene is currently loaded"
                         end
 
                     end
@@ -898,16 +904,16 @@ module Editor
             try
                 watched = FileWatching.watch_folder(joinpath(path, "scripts"), 0.01) 
                 if watched.first != ""
-                    println("Updated $(watched.first), renamed: $(watched.second.renamed), changed: $(watched.second.changed), timedout: $(watched.second.timedout)")
+                    @debug "Updated $(watched.first), renamed: $(watched.second.renamed), changed: $(watched.second.changed), timedout: $(watched.second.timedout)"
                     if watched.second.changed
-                        println("pushing to files to reload")
+                        @debug "pushing to files to reload"
                         push!(filesToReload[], watched.first)
-                        println("pushed to files to reload")
+                        @debug "pushed to files to reload"
                     end
                 end
             catch e
                 wait(condition)
-                println("Error: ", e)
+                @error "Error: ", e
             end
             wait(condition)
         end

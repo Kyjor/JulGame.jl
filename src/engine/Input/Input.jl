@@ -13,7 +13,6 @@ module InputModule
         didMouseEventOccur::Bool
         didMouseMotionOccur::Bool
         editorCallback::Union{Function, Nothing}
-        isWindowFocused::Bool
         main
         mouseButtonsPressedDown::Vector
         mouseButtonsHeldDown::Vector
@@ -51,7 +50,6 @@ module InputModule
             this.didMouseEventOccur = false
             this.didMouseMotionOccur = false
             this.editorCallback = nothing
-            this.isWindowFocused = true
             this.mouseButtonsPressedDown = []
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
@@ -289,53 +287,15 @@ module InputModule
         return false
     end    
 
-    function handle_window_events(this::Input, event)
+    function handle_window_events(this::Input, event::SDL2.SDL_Event)
         if event.type != SDL2.SDL_WINDOWEVENT
             return
         end
-        windowEvent = event.window.event
         
-        # Uncomment to debug window events
-        if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
-            @debug(string("Window $(event.window.windowID) shown"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
-            @debug(string("Window $(event.window.windowID) hidden"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
-            @debug(string("Window $(event.window.windowID) exposed"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
-            @debug(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
-            if !JulGame.IS_EDITOR
-                @debug(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
-            end
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
-            @debug(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
-            @debug(string("Window $(event.window.windowID) minimized"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
-            @debug(string("Window $(event.window.windowID) maximized"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
-            @debug(string("Window $(event.window.windowID) restored"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
-            @debug(string("Mouse entered window $(event.window.windowID)"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
-            @debug(string("Mouse left window $(event.window.windowID)"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
-            @debug(string("Window $(event.window.windowID) gained keyboard focus"))
-            this.isWindowFocused = true
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
-            @debug(string("Window $(event.window.windowID) lost keyboard focus"))
-            this.isWindowFocused = false
-
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
-            @debug(string("Window $(event.window.windowID) closed"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
-            @debug(string("Window $(event.window.windowID) is offered a focus"))
-        elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
-            @debug(string("Window $(event.window.windowID) has a special hit test"))
-        else
-            @debug(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
-        end    
+        # If we have access to the WindowManager through MAIN, delegate window events to it
+        if JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing
+            JulGame.WindowManagerModule.handle_window_event(event.window.event)
+        end
     end
 
     function handle_key_event(this::Input, keyboardState)
@@ -524,6 +484,10 @@ module InputModule
         this.isTestButtonClicked = true
     end
 
+    function simulate_mouse_click(x::Int32, y::Int32)
+        simulate_mouse_click(MAIN.input, MAIN.windowManager.window, x, y)
+    end
+
     function lift_mouse_after_simulated_click(this)
         mouse_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
         mouse_event.type = SDL2.SDL_MOUSEBUTTONUP
@@ -541,6 +505,10 @@ module InputModule
         ) 
         SDL2.SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = false
+    end
+
+    function lift_mouse_after_simulated_click()
+        lift_mouse_after_simulated_click(MAIN.input)
     end
 
     function simulate_key_press(this::Input, key::String)
@@ -569,6 +537,10 @@ module InputModule
 
         # Push the event to the event queue
         SDL2.SDL_PushEvent(key_event)
+    end
+
+    function simulate_key_press(key::String)
+        simulate_key_press(MAIN.input, key)
     end
 
     function get_comma_separated_path(path::String)

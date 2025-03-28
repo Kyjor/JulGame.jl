@@ -37,22 +37,21 @@ module SceneBuilderModule
         end    
     end
     
-    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false, globals = [])
+    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false)
         config = fill_in_config(config)
 
         windowName::String = windowName
         size::Vector2 = Vector2(parse(Int32, get(config, "Width", DEFAULT_CONFIG["Width"])), parse(Int32, get(config, "Height", DEFAULT_CONFIG["Height"])))
         isResizable::Bool = isWindowResizable
         targetFrameRate::Int32 = parse(Int32, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"]))
+        isFullscreen::Bool = get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1"
+        isVsyncEnabled::Bool = get(config, "Vsync", DEFAULT_CONFIG["Vsync"]) == "1"
 
         JulGame.MAIN = main
         MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
         MAIN.testLength = 20.0
         MAIN.currentTestTime = 0.0
-        MAIN.windowName = windowName
-        MAIN.globals = globals
         MAIN.level = this
-        MAIN.targetFrameRate = targetFrameRate
         MAIN.scene.name = split(this.scene, ".")[1]
 
         if size == Math.Vector2()
@@ -60,24 +59,38 @@ module SceneBuilderModule
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
 			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
 		end
-
-        flags = SDL2.SDL_RENDERER_ACCELERATED |
-		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)  |
-        (get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1" ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
-
-        MAIN.screenSize = size
         
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
-            MAIN.window = SDL2.SDL_CreateWindow(MAIN.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, MAIN.screenSize.x, MAIN.screenSize.y, flags)
-            if MAIN.window == C_NULL
-                @error "Failed to create window with name $(MAIN.windowName), size $(MAIN.screenSize), flags $(flags), $(unsafe_string(SDL2.SDL_GetError()))"
+            # Initialize window manager
+            windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
+            if !windowCreated
+                @error "Failed to create window"
                 return
             end
-            # add error handling
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            
+            # Create renderer
+            # todo move to window manager
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
-                @error "Failed to create renderer with window $(MAIN.window), $(unsafe_string(SDL2.SDL_GetError()))"
+                @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
                 return
+            end
+            
+            # Apply additional window settings from config
+            JulGame.WindowManagerModule.set_frame_rate(targetFrameRate)
+            JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
+            
+            # Set logical rendering size based on camera
+            scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            camera = scene[3]
+            if camera !== nothing && camera.size.x > 0 && camera.size.y > 0
+                JulGame.WindowManagerModule.set_logical_size(camera.size.x, camera.size.y)
+            end
+            
+            # Set window icon if available
+            iconPath = get(config, "Icon", "")
+            if iconPath != ""
+                JulGame.WindowManagerModule.set_window_icon(iconPath)
             end
         end
 
@@ -202,7 +215,7 @@ module SceneBuilderModule
         if JulGame.ProjectModule != ""
             @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
             scripts_mod = filter(x -> occursin(r"\.Scripts$", string(x)), ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)"))))
-            if scripts_mod !== nothing
+            if scripts_mod !== nothing && length(scripts_mod) > 0
                 JulGame.ScriptModule = scripts_mod[1]
             end
         end
@@ -258,7 +271,8 @@ module SceneBuilderModule
         "Width" => "800",
         "Height" => "600",
         "FrameRate" => "60",
-        "Fullscreen" => "0"
+        "Fullscreen" => "0",
+        "Vsync" => "0"
     )
 
     # Function to read and parse the config file

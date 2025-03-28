@@ -57,7 +57,7 @@ module JulGame
     
     BasePath = ""
     export BasePath
-
+    
     Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
     export Renderer
 
@@ -75,6 +75,10 @@ module JulGame
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule
     export PrefHandlerModule
+
+    include("engine/Window/WindowManager.jl")
+    using .WindowManagerModule: WindowManager
+    export WindowManager
 
     include("engine/Input/Input.jl")
     using .InputModule: Input
