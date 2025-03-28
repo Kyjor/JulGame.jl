@@ -38,6 +38,10 @@ module SceneBuilderModule
     end
     
     function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false)
+        if config === nothing
+            config = parse_config()
+        end
+        
         config = fill_in_config(config)
 
         windowName::String = windowName
