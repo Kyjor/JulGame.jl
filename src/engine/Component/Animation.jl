@@ -6,7 +6,9 @@ module AnimationModule
         animatedFPS::Int32
         frames::Vector{Math.Vector4}
 
-        function Animation(frames::Vector{Math.Vector4}, animatedFPS::Int32)
+        function Animation(frames::Vector{Math.Vector4}, animatedFPS::Int)
+            # Convert animatedFPS to Int32
+            animatedFPS = Math.TypeConversions.safe_int32_convert(animatedFPS)
             this = new()
             
             this.animatedFPS = animatedFPS
@@ -16,7 +18,9 @@ module AnimationModule
         end
     end
 
-    function Component.update_array_value(this::Animation, value, field, index::Int32)
+    function Component.update_array_value(this::Animation, value, field, index::Int)
+        # Convert index to Int32
+        index = Math.TypeConversions.safe_int32_convert(index)
         fieldToUpdate = getfield(this, field)
         if Component.get_type(this, value) == "_Vector4"
             fieldToUpdate[index] = Math.Vector4(value.x, value.y, value.z, value.t)

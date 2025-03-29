@@ -3,14 +3,14 @@ module SpiderModule
 
     mutable struct Spider
         animator
-        endingX::Int32
+        endingX::Int
         isMovingRight::Bool
         parent::JulGame.EntityModule.Entity
         sound::JulGame.SoundSourceModule.SoundSource
         speed::Number
-        startingX::Int32
+        startingX::Int
 
-        function Spider(speed::Number = 5, startingX::Int32 = Int32(0), endingX::Int32 = Int32(0))
+        function Spider(speed::Number = 5, startingX::Int = 0, endingX::Int = 0)
             this = new()
 
             this.endingX = endingX

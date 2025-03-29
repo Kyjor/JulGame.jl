@@ -188,10 +188,10 @@ module ColliderModule
         cameraDiff = camera !== nothing ? 
         Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
         Math.Vector2(0,0)
-        isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Int32(round(posA.x))), Ref(Int32(round(posA.y + 32))), Ref(Int32(round(posA.x))), Ref(Int32(round(posA.y + 80))))
+        isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x), round(posA.y + 80 - cameraDiff.y))
 
-        isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Int32(round(posA.x + colliderAXSize))), Ref(Int32(round(posA.y + 32))), Ref(Int32(round(posA.x + colliderAXSize))), Ref(Int32(round(posA.y + 80))))
+        isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
         if isLineIntersectionL == SDL2.SDL_TRUE
             isLineIntersectionL = true

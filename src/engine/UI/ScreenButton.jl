@@ -5,7 +5,7 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton
-        color::Tuple{Int32, Int32, Int32, Int32}
+        color::NTuple{4, Int}
         clickEvents::Vector{Function}
         currentTexture
         buttonDownSprite
@@ -16,12 +16,12 @@ module ScreenButtonModule
         buttonUpSpritePath::String
         buttonUpTexture
         fontPath::Union{String, Ptr{Nothing}}
-        fontSize::Int32
+        fontSize::Int
         id::String
         isActive::Bool
         isHovered::Bool
         isInitialized::Bool
-        layer::Int32
+        layer::Int
         name::String
         persistentBetweenScenes::Bool
         position::Math.Vector2
@@ -31,7 +31,7 @@ module ScreenButtonModule
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)), id::String=JulGame.generate_uuid(), fontSize::Int32=Int32(24), layer::Int32=Int32(0))
+        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); color::NTuple{4, Int}=(255, 255, 255, 255), id::String=JulGame.generate_uuid(), fontSize::Int=24, layer::Int=0)
             this = new()
             
             this.buttonDownSpritePath = buttonDownSpritePath
@@ -212,7 +212,7 @@ module ScreenButtonModule
     end
 
     function UI.set_color(this::ScreenButton; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
-        this.color = (Int32(r%256), Int32(g%256), Int32(b%256), Int32(a%256))
+        this.color = (r%256, g%256, b%256, a%256)
     end
 
     function load_image_sdl(fullPath::String, imagePath::String)
@@ -344,29 +344,29 @@ module ScreenButtonModule
     end
 
     """
-    load_font_sdl(basePath::String, fontPath::String, fontSize::Int32)
+    load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
     
     Loads a font from the specified path, using the font cache if available.
     
     # Arguments
     - `basePath::String`: The base path to load the font from
     - `fontPath::String`: The path to the font file
-    - `fontSize::Int32`: The size of the font
+    - `fontSize::Int`: The size of the font
     
     # Returns
     A pointer to the loaded font
     """
-    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int32)
+    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath))
             raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
             if rw != C_NULL
                 @debug("loading font from cache for button")
                 @debug("comma separated path: ", get_comma_separated_path(fontPath))
-                return SDL2.TTF_OpenFontRW(rw, 1, fontSize)
+                return SDL2.TTF_OpenFontRW(rw, 1, Math.TypeConversions.safe_int32_convert(fontSize))
             end
         end
         @debug "Loading font from disk for button, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
-        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), fontSize)
+        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), Math.TypeConversions.safe_int32_convert(fontSize))
     end
 end

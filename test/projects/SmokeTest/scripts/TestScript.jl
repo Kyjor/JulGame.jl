@@ -21,7 +21,7 @@ module TestScriptModule
             newAnimation = C_NULL
             newAnimator = C_NULL
             @testset "Engine Animation Tests" begin
-                newAnimation = AnimationModule.Animation(Math.Vector4[Math.Vector4(0,0,0,0)], Int32(60))
+                newAnimation = AnimationModule.Animation(Math.Vector4[Math.Vector4(0,0,0,0)], 60)
                 @testset "Animation constructor" begin
                     @test newAnimation != C_NULL && newAnimation !== nothing
                     @test newAnimation.animatedFPS == 60
@@ -58,7 +58,7 @@ module TestScriptModule
             newShape = C_NULL
             @testset "Engine Shape Tests" begin
                 @testset "Shape constructor" begin
-                    newShape = ShapeModule.Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), Int32(255))
+                    newShape = ShapeModule.Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255)
                     @test newShape != C_NULL && newShape !== nothing
                 end
             end

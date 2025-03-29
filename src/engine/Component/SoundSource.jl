@@ -4,11 +4,11 @@ module SoundSourceModule
     
     export SoundSource
     struct SoundSource
-        channel::Int32
+        channel::Int
         isMusic::Bool
         path::String
         playOnStart::Bool
-        volume::Int32
+        volume::Int
     end
 
     export InternalSoundSource
@@ -23,7 +23,7 @@ module SoundSourceModule
         volume::Int32
 
         # Music
-        function InternalSoundSource(parent::Any, path::String, channel::Int32 = Int32(-1), volume::Int32 = Int32(-1), isMusic::Bool = false, playOnStart::Bool = false)
+        function InternalSoundSource(parent::Any, path::String, channel::Int = -1, volume::Int = -1, isMusic::Bool = false, playOnStart::Bool = false)
             this = new()
 
             SDL2.SDL_ClearError()
@@ -41,7 +41,11 @@ module SoundSourceModule
                 SDL2.SDL_ClearError()
             end
             
-            isMusic ? SDL2.Mix_VolumeMusic(Int32(volume)) : SDL2.Mix_Volume(Int32(channel), Int32(volume))
+            # Convert channel and volume to Int32
+            channel = Math.TypeConversions.safe_int32_convert(channel)
+            volume = Math.TypeConversions.safe_int32_convert(volume)
+
+            isMusic ? SDL2.Mix_VolumeMusic(volume) : SDL2.Mix_Volume(channel, volume)
 
             this.channel = channel
             this.isMusic = isMusic
@@ -59,7 +63,7 @@ module SoundSourceModule
     function Component.toggle_sound(this::InternalSoundSource, loops = 0)
         if this.isMusic
             if SDL2.Mix_PlayingMusic() == 0
-                SDL2.Mix_PlayMusic( this.sound, Int32(-1) )
+                SDL2.Mix_PlayMusic( this.sound, Math.TypeConversions.safe_int32_convert(-1) )
             else
                 if SDL2.Mix_PausedMusic() == 1 
                     SDL2.Mix_ResumeMusic()
@@ -68,7 +72,7 @@ module SoundSourceModule
                 end
             end
         else
-            SDL2.Mix_PlayChannel( Int32(this.channel), this.sound, Int32(loops) )
+            SDL2.Mix_PlayChannel( Math.TypeConversions.safe_int32_convert(this.channel), this.sound, Math.TypeConversions.safe_int32_convert(loops) )
         end
     end
     
@@ -125,5 +129,24 @@ module SoundSourceModule
             SDL2.Mix_FreeChunk(this.sound)
         end
         this.sound = C_NULL
+    end
+
+    function Component.set_volume(this::InternalSoundSource)
+        # Convert volume to Int32 for SDL
+        volume = Math.TypeConversions.safe_int32_convert(this.volume)
+        channel = Math.TypeConversions.safe_int32_convert(this.channel)
+        
+        isMusic ? SDL2.Mix_VolumeMusic(volume) : SDL2.Mix_Volume(channel, volume)
+    end
+
+    function Component.play(this::InternalSoundSource, loops::Int = 0)
+        # Convert loops to Int32
+        loops = Math.TypeConversions.safe_int32_convert(loops)
+        
+        if this.isMusic
+            SDL2.Mix_PlayMusic(this.sound, -1)
+        else
+            SDL2.Mix_PlayChannel(this.channel, this.sound, loops)
+        end
     end
 end

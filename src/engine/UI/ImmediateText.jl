@@ -32,7 +32,7 @@ module ImmediateTextModule
             this.isConstructed = false
             this.alpha = 255
             this.fontPath = fontPath
-            this.fontSize = Int32(fontSize)
+            this.fontSize = fontSize
             this.id = id
             this.anchorOffset = anchorOffset
             this.isCenteredX = isCenteredX
@@ -97,7 +97,7 @@ module ImmediateTextModule
             end
             
             if immediateText.fontSize != fontSize
-                immediateText.fontSize = Int32(fontSize)
+                immediateText.fontSize = fontSize
                 needsUpdate = true
             end
             

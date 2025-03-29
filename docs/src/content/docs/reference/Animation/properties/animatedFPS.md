@@ -2,7 +2,7 @@
 title: Animation.animatedFPS 
 description: The amount of `frames` that will be shown per second.
 ---
-#### Type<span style="color:red;">:</span> Integer<br/>
+#### Type<span style="color:red;">:</span> Int<br/>
 
 `animatedFPS` stands for "animated Frames Per Second". It is a measure of how many unique consecutive images, or frames, are displayed each second in an animation. 
 

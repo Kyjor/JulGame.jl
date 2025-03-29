@@ -81,7 +81,7 @@ module EntityModule
         end
     end
 
-    function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], Int32(60))]))
+    function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
         if this.animator != C_NULL
             println("Animator already exists on entity named ", this.name)
             return
@@ -128,7 +128,7 @@ module EntityModule
         return this.rigidbody
     end
 
-    function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", false, Int32(50)))
+    function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
         if this.soundSource != C_NULL
             println("SoundSource already exists on entity named ", this.name)
             return
@@ -139,7 +139,7 @@ module EntityModule
         return this.soundSource
     end
 
-    function JulGame.create_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", false, Int32(50)))
+    function JulGame.create_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
         newSoundSource::InternalSoundSource = InternalSoundSource(this::Entity, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
         return newSoundSource
     end
@@ -159,7 +159,7 @@ module EntityModule
         return this.sprite
     end
 
-    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), Int32(255)))
+    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255))
         if this.shape != C_NULL
             println("Shape already exists on entity named ", this.name)
             return

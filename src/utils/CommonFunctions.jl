@@ -38,6 +38,7 @@ function load_font end
 function load_image end
 function load_sound end
 function on_shutdown end
+function play end
 function play_animation_once end
 function render end
 function rerender_text end
@@ -47,6 +48,7 @@ function set_position end
 function set_rotation end
 function set_scale end
 function set_size end
+function set_volume end
 function stop_music end
 function toggle_sound end
 function unload_sound end

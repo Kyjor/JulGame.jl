@@ -5,8 +5,7 @@ module LineModule
     
     export Line
     mutable struct Line
-        alpha::Int32
-        color::Tuple{Int32, Int32, Int32, Int32}
+        color::NTuple{4, Int}
         id::String
         isActive::Bool
         isWorldEntity::Bool
@@ -14,14 +13,13 @@ module LineModule
         persistentBetweenScenes::Bool
         startPoint::Math.Vector2
         endPoint::Math.Vector2
-        thickness::Int32
-        layer::Int32
+        thickness::Int
+        layer::Int
         
-        function Line(name::String, startPoint::Math.Vector2, endPoint::Math.Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255), 
-                     thickness::Int32=1; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=Int32(0))
+        function Line(name::String, startPoint::Math.Vector2, endPoint::Math.Vector2, color::NTuple{4, Int}=(255, 255, 255, 255), 
+                     thickness::Int=1; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int=0)
             this = new()
             
-            this.alpha = Int32(color[4])
             this.color = color
             this.id = id
             this.isActive = true
@@ -71,7 +69,7 @@ module LineModule
             UInt8(this.color[1]), 
             UInt8(this.color[2]), 
             UInt8(this.color[3]), 
-            UInt8(this.alpha)
+            UInt8(this.color[4])
         )
         SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
         

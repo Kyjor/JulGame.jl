@@ -6,10 +6,9 @@ module ProgressBarModule
     
     export ProgressBar
     mutable struct ProgressBar
-        alpha::Int32
-        backgroundColor::Tuple{Int32, Int32, Int32, Int32}
-        fillColor::Tuple{Int32, Int32, Int32, Int32}
-        borderColor::Tuple{Int32, Int32, Int32, Int32}
+        backgroundColor::NTuple{4, Int}
+        fillColor::NTuple{4, Int}
+        borderColor::NTuple{4, Int}
         id::String
         isActive::Bool
         isWorldEntity::Bool
@@ -18,22 +17,21 @@ module ProgressBarModule
         position::Math.Vector2
         size::Math.Vector2
         progress::Float32  # 0.0 to 1.0
-        borderWidth::Int32
-        borderRadius::Int32
+        borderWidth::Int
+        borderRadius::Int
         vertical::Bool
         showBackground::Bool
-        layer::Int32
+        layer::Int
         
         function ProgressBar(name::String, position::Math.Vector2, size::Math.Vector2, progress::Float32=1.0,
-                           fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
-                           backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200),
-                           borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255);
+                           fillColor::NTuple{4, Int}=(0, 255, 0, 255),
+                           backgroundColor::NTuple{4, Int}=(100, 100, 100, 200),
+                           borderColor::NTuple{4, Int}=(0, 0, 0, 255);
                            id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false,
-                           borderWidth::Int32=1, borderRadius::Int32=0, vertical::Bool=false, showBackground::Bool=true,
-                           layer::Int32=Int32(0))
+                           borderWidth::Int=1, borderRadius::Int=0, vertical::Bool=false, showBackground::Bool=true,
+                           layer::Int=0)
             this = new()
             
-            this.alpha = Int32(fillColor[4])
             this.backgroundColor = backgroundColor
             this.fillColor = fillColor
             this.borderColor = borderColor
@@ -149,18 +147,18 @@ module ProgressBarModule
             if this.vertical
                 # Vertical progress bar
                 clipRect = SDL2.SDL_Rect(
-                    Int32(posX),
-                    Int32(posY + height - fillHeight),
-                    Int32(width),
-                    Int32(fillHeight)
+                    Math.TypeConversions.safe_int32_convert(posX),
+                    Math.TypeConversions.safe_int32_convert(posY + height - fillHeight),
+                    Math.TypeConversions.safe_int32_convert(width),
+                    Math.TypeConversions.safe_int32_convert(fillHeight)
                 )
             else
                 # Horizontal progress bar
                 clipRect = SDL2.SDL_Rect(
-                    Int32(posX),
-                    Int32(posY),
-                    Int32(fillWidth),
-                    Int32(height)
+                    Math.TypeConversions.safe_int32_convert(posX),
+                    Math.TypeConversions.safe_int32_convert(posY),
+                    Math.TypeConversions.safe_int32_convert(fillWidth),
+                    Math.TypeConversions.safe_int32_convert(height)
                 )
             end
             
@@ -173,7 +171,6 @@ module ProgressBarModule
                 barRect,
                 this.borderRadius,
                 this.fillColor,
-                this.alpha,
                 true
             )
             
@@ -186,7 +183,7 @@ module ProgressBarModule
                 UInt8(this.fillColor[1]), 
                 UInt8(this.fillColor[2]), 
                 UInt8(this.fillColor[3]), 
-                UInt8(this.alpha)
+                UInt8(this.fillColor[4])
             )
             
             SDL2.SDL_RenderFillRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(fillRect))
@@ -201,8 +198,7 @@ module ProgressBarModule
                     barRect,
                     this.borderRadius,
                     this.borderWidth,
-                    this.borderColor,
-                    this.borderColor[4]
+                    this.borderColor
                 )
             else
                 # Draw regular border

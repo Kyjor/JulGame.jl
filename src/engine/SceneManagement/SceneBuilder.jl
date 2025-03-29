@@ -64,6 +64,7 @@ module SceneBuilderModule
 			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
 		end
         
+        scene = nothing
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             # Initialize window manager
             windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
@@ -81,12 +82,16 @@ module SceneBuilderModule
             end
             
             # Apply additional window settings from config
+            @debug "Setting frame rate to $(targetFrameRate)"
             JulGame.WindowManagerModule.set_frame_rate(targetFrameRate)
+            @debug "Setting vsync to $(isVsyncEnabled)"
             JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
             
-            # Set logical rendering size based on camera
+            @debug "Deserializing scene"
             scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
             camera = scene[3]
+            # Set logical rendering size based on camera
+            @debug "Setting logical size to $(size.x)x$(size.y)"
             if camera !== nothing && camera.size.x > 0 && camera.size.y > 0
                 JulGame.WindowManagerModule.set_logical_size(camera.size.x, camera.size.y)
             end
@@ -98,7 +103,10 @@ module SceneBuilderModule
             end
         end
 
-        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+        if scene === nothing
+            scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+        end
+        
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         MAIN.scene.camera = scene[3]
@@ -329,6 +337,17 @@ module SceneBuilderModule
         # Instantiate the struct from the module
         new_script = eval(Symbol("$(script_name)module.$script_name"))()
         return new_script
+    end
+
+    function build_scene(config::Dict{String, Any})
+        # Convert size parameters to Int32
+        width = Math.TypeConversions.safe_int32_convert(parse(Int, get(config, "Width", DEFAULT_CONFIG["Width"])))
+        height = Math.TypeConversions.safe_int32_convert(parse(Int, get(config, "Height", DEFAULT_CONFIG["Height"])))
+        
+        size::Vector2 = Vector2(width, height)
+        targetFrameRate::Int = Math.TypeConversions.safe_int32_convert(parse(Int, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
+        
+        # ... rest of the function ...
     end
 end # module
 

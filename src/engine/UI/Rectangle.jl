@@ -5,8 +5,7 @@ module RectangleModule
     
     export Rectangle
     mutable struct Rectangle
-        alpha::Int32
-        color::Tuple{Int32, Int32, Int32, Int32}
+        color::NTuple{4, Int}
         fillMode::Bool
         id::String
         isActive::Bool
@@ -15,19 +14,18 @@ module RectangleModule
         persistentBetweenScenes::Bool
         position::Math.Vector2
         size::Math.Vector2
-        borderRadius::Int32
-        borderWidth::Int32
-        borderColor::Tuple{Int32, Int32, Int32, Int32}
+        borderRadius::Int
+        borderWidth::Int
+        borderColor::NTuple{4, Int}
         isHovered::Bool
         clickEvents::Vector{Function}
-        layer::Int32
-        function Rectangle(name::String, position::Math.Vector2, size::Math.Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)), 
+        layer::Int
+        function Rectangle(name::String, position::Math.Vector2, size::Math.Vector2, color::NTuple{4, Int}=(255, 255, 255, 255), 
                            fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
-                           borderRadius::Int32=Int32(0), borderWidth::Int32=Int32(0), borderColor::Tuple{Int32, Int32, Int32, Int32}=(Int32(0), Int32(0), Int32(0), Int32(255)), 
-                           layer::Int32=Int32(0))
+                           borderRadius::Int=0, borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255), 
+                           layer::Int=0)
             this = new()
             
-            this.alpha = Int32(color[4])
             this.color = color
             this.fillMode = fillMode
             this.id = id
@@ -51,7 +49,7 @@ module RectangleModule
     """
     Draw a filled arc (quarter circle) with center, radius, and start/end angles
     """
-    function draw_filled_arc(renderer, x, y, radius, start_angle, end_angle, color, alpha)
+    function draw_filled_arc(renderer, x, y, radius, start_angle, end_angle, color)
         # Save the current renderer color and blend mode
         r = Ref(UInt8(0))
         g = Ref(UInt8(0))
@@ -65,7 +63,7 @@ module RectangleModule
             UInt8(color[1]), 
             UInt8(color[2]), 
             UInt8(color[3]), 
-            UInt8(alpha)
+            UInt8(color[4])
         )
         
         # Draw the filled arc by drawing lines from the center to points on the arc
@@ -93,7 +91,7 @@ module RectangleModule
     """
     Draw a rounded rectangle with the specified border radius
     """
-    function draw_rounded_rectangle(renderer, rect, radius, color, alpha, fill_mode)
+    function draw_rounded_rectangle(renderer, rect, radius, color, fill_mode)
         # Ensure the radius isn't too large for the rectangle
         radius = min(radius, min(rect.w, rect.h) ÷ 2)
         
@@ -104,7 +102,7 @@ module RectangleModule
                 UInt8(color[1]),
                 UInt8(color[2]),
                 UInt8(color[3]),
-                UInt8(alpha)
+                UInt8(color[4])
             )
             
             if fill_mode
@@ -142,7 +140,7 @@ module RectangleModule
                 UInt8(color[1]),
                 UInt8(color[2]),
                 UInt8(color[3]),
-                UInt8(alpha)
+                UInt8(color[4])
             )
             
             SDL2.SDL_RenderFillRectF(renderer, Ref(main_rect))
@@ -168,19 +166,19 @@ module RectangleModule
             # Draw the four corner arcs
             # Top-left corner (π to 3π/2)
             draw_filled_arc(renderer, top_left_center_x, top_left_center_y, 
-                            radius, π, 3π/2, color, alpha)
+                            radius, π, 3π/2, color)
             
             # Top-right corner (3π/2 to 2π)
             draw_filled_arc(renderer, top_right_center_x, top_right_center_y, 
-                            radius, 3π/2, 2π, color, alpha)
+                            radius, 3π/2, 2π, color)
             
             # Bottom-left corner (π/2 to π)
             draw_filled_arc(renderer, bottom_left_center_x, bottom_left_center_y, 
-                            radius, π/2, π, color, alpha)
+                            radius, π/2, π, color)
             
             # Bottom-right corner (0 to π/2)
             draw_filled_arc(renderer, bottom_right_center_x, bottom_right_center_y, 
-                            radius, 0, π/2, color, alpha)
+                            radius, 0, π/2, color)
         else
             # Draw the outline of a rounded rectangle
             SDL2.SDL_SetRenderDrawColor(
@@ -188,7 +186,7 @@ module RectangleModule
                 UInt8(color[1]),
                 UInt8(color[2]),
                 UInt8(color[3]),
-                UInt8(alpha)
+                UInt8(color[4])
             )
             
             # Draw the top line
@@ -288,7 +286,7 @@ module RectangleModule
     """
     Draw a border around a rounded rectangle
     """
-    function draw_rounded_border(renderer, rect, radius, border_width, color, alpha)
+    function draw_rounded_border(renderer, rect, radius, border_width, color)
         # Draw multiple concentric borders
         for i in 0:border_width-1
             border_rect = SDL2.SDL_FRect(
@@ -303,7 +301,6 @@ module RectangleModule
                 border_rect, 
                 radius + i, 
                 color, 
-                alpha, 
                 false
             )
         end
@@ -358,7 +355,6 @@ module RectangleModule
                 rect,
                 this.borderRadius,
                 this.color,
-                this.alpha,
                 this.fillMode
             )
             
@@ -369,8 +365,7 @@ module RectangleModule
                     rect,
                     this.borderRadius,
                     this.borderWidth,
-                    this.borderColor,
-                    this.borderColor[4]
+                    this.borderColor
                 )
             end
         else
@@ -381,7 +376,7 @@ module RectangleModule
                 UInt8(this.color[1]), 
                 UInt8(this.color[2]), 
                 UInt8(this.color[3]), 
-                UInt8(this.alpha)
+                UInt8(this.color[4])
             )
             
             # Draw rectangle
