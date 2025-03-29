@@ -6,11 +6,11 @@ module ShapeModule
         color::Math.Vector3
         isFilled::Bool
         isWorldEntity::Bool
-        layer::Int32
+        layer::Int
         offset::Math.Vector2f
         position::Math.Vector2f
         size::Math.Vector2f
-        alpha::Int32 # 0-255
+        alpha::Int # 0-255
     end
 
     export InternalShape
@@ -42,6 +42,14 @@ module ShapeModule
         end
     end
 
+    function Shape(layer::Int = 0, alpha::Int = 255)
+        # Convert layer and alpha to Int32
+        layer = Math.TypeConversions.safe_int32_convert(layer)
+        alpha = Math.TypeConversions.safe_int32_convert(alpha)
+        
+        return new(layer, alpha)
+    end
+
     function Component.draw(this::InternalShape, camera = nothing)
         if JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
             return                    
@@ -56,10 +64,13 @@ module ShapeModule
         parentTransform.position :
         this.position
 
-        outlineRect = Ref(SDL2.SDL_FRect(convert(Int32,round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2)), 
-        convert(Int32,round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2)),
-        convert(Int32,round(parentTransform.scale.x * SCALE_UNITS)), 
-        convert(Int32,round(parentTransform.scale.y * SCALE_UNITS))))
+        # Convert coordinates to Int32 for SDL
+        x = Math.TypeConversions.safe_int32_convert(round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2))
+        y = Math.TypeConversions.safe_int32_convert(round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2))
+        w = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.x * SCALE_UNITS))
+        h = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.y * SCALE_UNITS))
+        
+        outlineRect = Ref(SDL2.SDL_FRect(x, y, w, h))
 
         rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(0)))
         SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)

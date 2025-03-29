@@ -29,7 +29,7 @@ module TextBoxModule
         maxLineWidth::Int32
         wrapWords::Bool
 
-        function TextBox(name::String, fontPath::String, fontSize::Number, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=Int32(0), color::Tuple{Int32, Int32, Int32, Int32}=(Int32(255), Int32(255), Int32(255), Int32(255)), maxLineWidth::Int32=Int32(0), wrapWords::Bool=true) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Int, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=0, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255), maxLineWidth::Int32=0, wrapWords::Bool=true) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.isConstructed = false

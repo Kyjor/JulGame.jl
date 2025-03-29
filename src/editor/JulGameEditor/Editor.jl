@@ -97,7 +97,16 @@ module Editor
         delete_confirmation_modal = ConfirmationModal("Delete Entities"; message="Are you sure you want to delete the selected entities? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
         ui_delete_confirmation_modal = ConfirmationModal("Delete UI Elements"; message="Are you sure you want to delete the selected UI elements? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
         cameraWindow = CameraWindow(true, gameCamera)
-        currentProjectConfig = (Width=Ref(Int32(800)), Height=Ref(Int32(600)), FrameRate=Ref(Int32(30)), WindowName=Ref("Game"), PixelsPerUnit=Ref(Int32(16)), AutoScaleZoom=Ref(Bool(0)), IsResizable=Ref(Bool(0)), Fullscreen=Ref(Bool(0)))
+        currentProjectConfig = (
+            Width=Ref(Math.TypeConversions.safe_int32_convert(800)), 
+            Height=Ref(Math.TypeConversions.safe_int32_convert(600)), 
+            FrameRate=Ref(Math.TypeConversions.safe_int32_convert(30)), 
+            WindowName=Ref("Game"), 
+            PixelsPerUnit=Ref(Math.TypeConversions.safe_int32_convert(16)), 
+            AutoScaleZoom=Ref(Bool(0)), 
+            IsResizable=Ref(Bool(0)), 
+            Fullscreen=Ref(Bool(0))
+        )
 
         recent_projects = parse_recents()
         
@@ -229,9 +238,17 @@ module Editor
                             #println("Opening scene: $(currentDialog[][2])")
                             if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                                 if currentSceneMain === nothing
-                                    currentSceneMain = load_scene(currentScenePath, renderer)
+                                    try
+                                        currentSceneMain = load_scene(currentScenePath, renderer)
+                                    catch e
+                                        @error "Error loading scene: $(e)"
+                                    end
                                 else
-                                    JulGame.change_scene(String(currentSceneName))
+                                    try
+                                        JulGame.change_scene(String(currentSceneName))
+                                    catch e
+                                        @error "Error changing scene: $(e)"
+                                    end
                                 end
                                 if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
                                     gameCamera = currentSceneMain.scene.camera
@@ -683,7 +700,14 @@ module Editor
                         CImGui.SetNextWindowBgAlpha(0.7)
                         # Position in top center of the screen - safely access display size
                         display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
-                        CImGui.SetNextWindowPos(ImVec2(round(Int32, display_width / 2.0), 10), CImGui.ImGuiCond_Always, ImVec2(0.5, 0.0))
+                        CImGui.SetNextWindowPos(
+                            ImVec2(
+                                Math.TypeConversions.safe_int32_convert(round(display_width / 2.0)), 
+                                10
+                            ), 
+                            CImGui.ImGuiCond_Always, 
+                            ImVec2(0.5, 0.0)
+                        )
                         
                         window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
                                       CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
@@ -951,25 +975,6 @@ module Editor
             CImGui.SameLine()
             CImGui.InputInt("##FrameRate", currentProjectConfig.FrameRate)
             CImGui.NewLine()
-            CImGui.Text("Window Name")
-            CImGui.SameLine()
-            buf = "$(currentProjectConfig.WindowName[])"*"\0"^(64)
-            CImGui.InputText("##WindowName", buf, length(buf))
-            currentText = ""
-            for characterIndex = eachindex(buf)
-                if Int32(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentText = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            currentProjectConfig.WindowName[] = currentText
-            CImGui.NewLine()
-            CImGui.Text("Pixels Per Unit")
-            CImGui.SameLine()
-            CImGui.InputInt("##PixelsPerUnit", currentProjectConfig.PixelsPerUnit)
-            CImGui.NewLine()
             CImGui.Text("Auto Scale Zoom")
             CImGui.SameLine()
             CImGui.Checkbox("##AutoScaleZoom", currentProjectConfig.AutoScaleZoom)
@@ -992,10 +997,8 @@ module Editor
         filename = joinpath(currentSelectedProjectPath[], "config.julgame")
         config = Dict{String, String}()
         
-        config["WindowName"] = String(currentProjectConfig.WindowName[])
         config["Width"] = string(currentProjectConfig.Width[])
         config["Height"] = string(currentProjectConfig.Height[])
-        config["PixelsPerUnit"] = string(currentProjectConfig.PixelsPerUnit[])
         config["Zoom"] = "1.0"
         config["AutoScaleZoom"] = string(Int(currentProjectConfig.AutoScaleZoom[]))
         config["Fullscreen"] = string(Int(currentProjectConfig.Fullscreen[]))
@@ -1027,16 +1030,14 @@ module Editor
             end
         end
 
-        Width = Ref(Int32(parse(Int, config["Width"])))
-        Height = Ref(Int32(parse(Int, config["Height"])))
-        FrameRate = Ref(Int32(parse(Int, config["FrameRate"])))
-        WindowName = Ref(config["WindowName"])
-        PixelsPerUnit = Ref(Int32(parse(Int, config["PixelsPerUnit"])))
+        Width = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["Width"])))
+        Height = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["Height"])))
+        FrameRate = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["FrameRate"])))
         AutoScaleZoom = Ref(parse(Bool, config["AutoScaleZoom"]))
         IsResizable = Ref(parse(Bool, config["IsResizable"]))
         Fullscreen = Ref(parse(Bool, config["Fullscreen"]))
 
-        return (Width=Width, Height=Height, FrameRate=FrameRate, WindowName=WindowName, PixelsPerUnit=PixelsPerUnit, AutoScaleZoom=AutoScaleZoom, IsResizable=IsResizable, Fullscreen=Fullscreen)
+        return (Width=Width, Height=Height, FrameRate=FrameRate, AutoScaleZoom=AutoScaleZoom, IsResizable=IsResizable, Fullscreen=Fullscreen)
     end
 
     # Function to read and parse the recents file with timestamps

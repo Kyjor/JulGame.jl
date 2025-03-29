@@ -10,15 +10,23 @@ struct _Vector3{T}
     z::T
 
     function _Vector3{T}(v::L) where {T,L}
-        return (T <: Int32) ? new{T}(round(T,v),round(T,v),round(T,v)) :
-            new{T}(convert(T,v),convert(T,v),convert(T,v))
+        if T <: Int32
+            return new{T}(Math.TypeConversions.safe_int32_convert(v),
+                         Math.TypeConversions.safe_int32_convert(v),
+                         Math.TypeConversions.safe_int32_convert(v))
+        end
+        return new{T}(convert(T,v), convert(T,v), convert(T,v))
     end
 
     _Vector3{T}() where T = new{T}(0)
 
     function _Vector3{T}(x::L, y::P, z::Q) where {T,L,P,Q}
-        return (T <: Int32) ? new{T}(round(T,x), round(T,y), round(T,z)) :
-            new{T}(convert(T,x), convert(T,y), convert(T,z))
+        if T <: Int32
+            return new{T}(Math.TypeConversions.safe_int32_convert(x),
+                         Math.TypeConversions.safe_int32_convert(y),
+                         Math.TypeConversions.safe_int32_convert(z))
+        end
+        return new{T}(convert(T,x), convert(T,y), convert(T,z))
     end
 
     # Operator overloading

@@ -7,6 +7,7 @@
     export Animator
     struct Animator
         animations::Vector{Animation}
+        lastFrame::Int
     end
 
     export InternalAnimator
@@ -24,7 +25,7 @@
             
             this.animations = animations
             this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
-            this.lastFrame = 1
+            this.lastFrame = Math.TypeConversions.safe_int32_convert(0)
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent
             this.sprite = C_NULL
@@ -48,7 +49,7 @@
     end
 
     function Component.append_array(this::InternalAnimator)
-        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
+        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Math.TypeConversions.safe_int32_convert(60)))
     end
     
     function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
@@ -79,7 +80,8 @@
     force_frame_update(animator, 1)
     ```
     """
-    function force_frame_update(this::InternalAnimator, frameIndex)
+    function force_frame_update(this::InternalAnimator, frameIndex::Int)
+        frameIndex = Math.TypeConversions.safe_int32_convert(frameIndex)
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export force_frame_update    

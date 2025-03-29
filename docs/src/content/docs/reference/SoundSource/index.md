@@ -37,8 +37,8 @@ scene.addEntity(entity)
 SoundSourceModule.create(
     path::String,                         # Path to audio file (relative to assets/sounds/)
     isMusic::Bool = false,                # Whether this is music (true) or a sound effect (false)
-    volume::Integer = 128,                # Volume (0-128)
-    channel::Integer = -1,                # Audio channel (-1 for automatic)
+    volume::Int = 128,                # Volume (0-128)
+    channel::Int = -1,                # Audio channel (-1 for automatic)
     playOnStart::Bool = false             # Whether to play automatically on creation
 )
 ```

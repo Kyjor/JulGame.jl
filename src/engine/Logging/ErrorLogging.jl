@@ -146,7 +146,7 @@ module ErrorLoggingModule
                 elseif occursin(r"^\d+\.?\d*$", arg)
                     try
                         parsed_num = Meta.parse(arg)
-                        if isa(parsed_num, Integer)
+                        if isa(parsed_num, Int)
                             simplified_args[i] = "Int"
                         elseif isa(parsed_num, AbstractFloat)
                             simplified_args[i] = "Float64"

@@ -140,17 +140,17 @@ module SpriteModule
             dstRect = Ref(SDL2.SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
         else
             dstRect = Ref(SDL2.SDL_Rect(
-                convert(Int32, clamp(round(centeredX), -2147483648, 2147483647)),
-                convert(Int32, clamp(round(centeredY), -2147483648, 2147483647)),
-                convert(Int32, clamp(round(scaledWidth), -2147483648, 2147483647)),
-                convert(Int32, clamp(round(scaledHeight), -2147483648, 2147483647))
+                Math.TypeConversions.safe_int32_convert(round(centeredX)),
+                Math.TypeConversions.safe_int32_convert(round(centeredY)),
+                Math.TypeConversions.safe_int32_convert(round(scaledWidth)),
+                Math.TypeConversions.safe_int32_convert(round(scaledHeight))
             ))
         end
     
         # Calculate center for rotation
         calculatedCenter = Math.Vector2(dstRect[].w * (this.center.x % 1), dstRect[].h * (this.center.y % 1))
         rotationCenter = !this.isFloatPrecision ? 
-            Ref(SDL2.SDL_Point(round(calculatedCenter.x), round(calculatedCenter.y))) :
+            Ref(SDL2.SDL_Point(Math.TypeConversions.safe_int32_convert(round(calculatedCenter.x)), Math.TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
             Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
     
         # Render with appropriate precision

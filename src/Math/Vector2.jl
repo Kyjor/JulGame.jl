@@ -9,14 +9,21 @@ struct _Vector2{T}
     y::T
 
     function _Vector2{T}(value::L) where {T,L}
-        return (T <: Int32) ? new{T}(round(T,value), round(T,value)) : 
-            new{T}(convert(T,value),convert(T,value))
+        if T <: Int32
+            return new{T}(Math.TypeConversions.safe_int32_convert(value), 
+                         Math.TypeConversions.safe_int32_convert(value))
+        end
+        return new{T}(convert(T,value), convert(T,value))
     end
 
-    _Vector2{T}() where T = new{T}(convert(T,0),convert(T,0))
+    _Vector2{T}() where T = new{T}(convert(T,0), convert(T,0))
 
     function _Vector2{T}(x::L, y::P) where {T,L,P}
-        return (T <: Int32) ? new{T}(round(T,x),round(T,y)) : new{T}(convert(T,x),convert(T,y))
+        if T <: Int32
+            return new{T}(Math.TypeConversions.safe_int32_convert(x),
+                         Math.TypeConversions.safe_int32_convert(y))
+        end
+        return new{T}(convert(T,x), convert(T,y))
     end
 
     # Operator overloading
