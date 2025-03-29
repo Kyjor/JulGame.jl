@@ -5,8 +5,7 @@ module CircleModule
     
     export Circle
     mutable struct Circle
-        alpha::Int32
-        color::Tuple{Int32, Int32, Int32, Int32}
+        color::NTuple{4, Int}
         fillMode::Bool
         id::String
         isActive::Bool
@@ -15,17 +14,16 @@ module CircleModule
         persistentBetweenScenes::Bool
         center::Math.Vector2
         radius::Float32
-        borderWidth::Int32
-        borderColor::Tuple{Int32, Int32, Int32, Int32}
-        layer::Int32
+        borderWidth::Int
+        borderColor::NTuple{4, Int}
+        layer::Int
         
-        function Circle(name::String, center::Math.Vector2, radius::Float32, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255), 
+        function Circle(name::String, center::Math.Vector2, radius::Float32, color::NTuple{4, Int}=(255, 255, 255, 255), 
                        fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
-                       borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                       layer::Int32=Int32(0))
+                       borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+                       layer::Int=0)
             this = new()
             
-            this.alpha = Int32(color[4])
             this.color = color
             this.fillMode = fillMode
             this.id = id
@@ -77,7 +75,7 @@ module CircleModule
             UInt8(this.color[1]), 
             UInt8(this.color[2]), 
             UInt8(this.color[3]), 
-            UInt8(this.alpha)
+            UInt8(this.color[4])
         )
         SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
         
@@ -97,8 +95,8 @@ module CircleModule
         else
             # Draw just the outline
             x = 0
-            y = Int32(scaledRadius)
-            p = 3 - 2 * Int32(scaledRadius)
+            y = (scaledRadius)
+            p = 3 - 2 * (scaledRadius)
             
             while x <= y
                 # These points complete the octants of the circle
@@ -135,8 +133,8 @@ module CircleModule
             # Draw border (just the outline with increased radius)
             for i in 0:this.borderWidth-1
                 x = 0
-                y = Int32(scaledRadius + i)
-                p = 3 - 2 * Int32(scaledRadius + i)
+                y = (scaledRadius + i)
+                p = 3 - 2 * (scaledRadius + i)
                 
                 while x <= y
                     # These points complete the octants of the circle

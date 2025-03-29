@@ -18,14 +18,14 @@ module ShapeModule
         color::Math.Vector3
         isFilled::Bool
         isWorldEntity::Bool
-        layer::Int32
+        layer::Int
         offset::Math.Vector2f
         position::Math.Vector2f
         parent::Any # Entity
         size::Math.Vector2f
-        alpha::Int32 # 0-255
+        alpha::Int # 0-255
         
-        function InternalShape(parent::Any, color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2f = Math.Vector2f(0,0), size::Math.Vector2f = Math.Vector2f(1,1); isWorldEntity::Bool = true, position::Math.Vector2f = Math.Vector2f(0,0), layer::Int32 = Int32(0), alpha::Int32 = Int32(255))
+        function InternalShape(parent::Any, color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2f = Math.Vector2f(0,0), size::Math.Vector2f = Math.Vector2f(1,1); isWorldEntity::Bool = true, position::Math.Vector2f = Math.Vector2f(0,0), layer::Int = 0, alpha::Int = 255)
             this = new()
             
             this.color = color

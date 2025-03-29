@@ -9,14 +9,14 @@ module TextBoxModule
         clickEvents
         font
         fontPath::String
-        fontSize::Int32
+        fontSize::Int
         id::String
         isActive::Bool
         isCenteredX::Bool
         isCenteredY::Bool
         isHovered::Bool
         isWorldEntity::Bool
-        layer::Int32
+        layer::Int
         name::String
         persistentBetweenScenes::Bool
         position::Vector2
@@ -25,17 +25,17 @@ module TextBoxModule
         text::String
         textTexture
         isConstructed::Bool
-        color::Tuple{Int32, Int32, Int32, Int32}
-        maxLineWidth::Int32
+        color::NTuple{4, Int}
+        maxLineWidth::Int
         wrapWords::Bool
 
-        function TextBox(name::String, fontPath::String, fontSize::Int, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int32=0, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255), maxLineWidth::Int32=0, wrapWords::Bool=true) # TODO: replace bool with enum { left, center, right, etc }
+        function TextBox(name::String, fontPath::String, fontSize::Int, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int=0, color::NTuple{4, Int}=(255, 255, 255, 255), maxLineWidth::Int=0, wrapWords::Bool=true) # TODO: replace bool with enum { left, center, right, etc }
             this = new()
 
             this.isConstructed = false
             this.clickEvents = []
             this.fontPath = fontPath
-            this.fontSize = Int32(fontSize)
+            this.fontSize = fontSize
             this.id = id
             this.anchorOffset = anchorOffset
             this.isCenteredX = isCenteredX
@@ -136,7 +136,7 @@ module TextBoxModule
             this.text = " "
         end
 
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
         if this.renderText == C_NULL
             error("Failed to render text for textbox $(this.name)")
             return
@@ -172,18 +172,18 @@ module TextBoxModule
         end 
     end
 
-    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int32)
+    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath))
             raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
             if rw != C_NULL
                 @debug("loading font from cache")
                 @debug("comma separated path: ", get_comma_separated_path(fontPath))
-                return SDL2.TTF_OpenFontRW(rw, 1, fontSize)
+                return SDL2.TTF_OpenFontRW(rw, 1, Math.TypeConversions.safe_int32_convert(fontSize))
             end
         end
         @debug "Loading font from disk, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
-        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), fontSize)
+        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), Math.TypeConversions.safe_int32_convert(fontSize))
     end
 
     function get_comma_separated_path(path::String)
@@ -220,16 +220,16 @@ module TextBoxModule
         if this.maxLineWidth > 0
             # Use SDL_TTF's word wrapping functionality
             if this.wrapWords
-                this.renderText = SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]), this.maxLineWidth)
+                this.renderText = SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])), Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
             else
                 # For character wrapping, we need to manually handle it
                 # First measure each character and determine where line breaks should occur
                 wrapped_text = wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, wrapped_text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, wrapped_text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
             end
         else
             # No wrapping needed
-            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
+            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
         end
 
         if this.renderText == C_NULL
@@ -250,7 +250,7 @@ module TextBoxModule
     end
 
     # Helper function to manually wrap text at character boundaries
-    function wrap_text(text::String, font, maxWidth::Int32, wrapWords::Bool)
+    function wrap_text(text::String, font, maxWidth::Int, wrapWords::Bool)
         if maxWidth <= 0 || isempty(text)
             return text
         end
@@ -306,7 +306,7 @@ module TextBoxModule
     end
 
     function UI.set_color(this::TextBox; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
-        this.color = (Int32(r%256), Int32(g%256), Int32(b%256), Int32(a%256))
+        this.color = (r%256, g%256, b%256, a%256)
         UI.rerender_text(this)
     end
 
@@ -324,8 +324,8 @@ module TextBoxModule
         end
     end
     
-    function UI.update_font_size(this::TextBox, newSize::Int32; basePath::String = "")
-        this.fontSize = newSize
+    function UI.update_font_size(this::TextBox, newSize::Int; basePath::String = "")
+        this.fontSize = Math.TypeConversions.safe_int32_convert(newSize)
         # TODO: SDL2.TTF_SetFontSize(this.font, newSize)
         # close font, reopen with new size
         if basePath == ""
@@ -364,8 +364,8 @@ module TextBoxModule
     end
 
     # Add methods to set and get the maximum line width
-    function set_max_line_width(this::TextBox, maxWidth::Int32)
-        this.maxLineWidth = maxWidth
+    function set_max_line_width(this::TextBox, maxWidth::Int)
+        this.maxLineWidth = Math.TypeConversions.safe_int32_convert(maxWidth)
         UI.rerender_text(this)
     end
     

@@ -120,12 +120,34 @@ module SceneReaderModule
             try
                 newUIElement = nothing
                 if uiElement.type == "TextBox"
-                    newUIElement = TextBox(uiElement.name, uiElement.fontPath, uiElement.fontSize, Vector2(uiElement.position.x, uiElement.position.y), get(uiElement, "text", " "), uiElement.isCenteredX, uiElement.isCenteredY)    
-                    newUIElement.isWorldEntity = uiElement.isWorldEntity    
-                    newUIElement.anchorOffset = !haskey(uiElement, "anchorOffset") ? Vector2(0,0) : Vector2(uiElement.anchorOffset.x, uiElement.anchorOffset.y)
-                    newUIElement.id = string(get(uiElement, "id", newUIElement.id))
-                    isActive::Bool = !haskey(uiElement, "isActive") ? true : uiElement.isActive
-                    newUIElement.isActive = isActive    
+                    # Parse color, default to white if not present or malformed
+                    color_tuple = (255, 255, 255, 255)
+                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "x") && haskey(uiElement.color, "y") && haskey(uiElement.color, "z")
+                         alpha = get(uiElement, "alpha", 255) # Check for alpha separately
+                         color_tuple = (uiElement.color.x, uiElement.color.y, uiElement.color.z, alpha)
+                    end
+
+                    newUIElement = TextBox(
+                        uiElement.name, 
+                        uiElement.fontPath, 
+                        Int(get(uiElement, "fontSize", 20)), # Use fontSize from JSON or default
+                        Vector2(uiElement.position.x, uiElement.position.y), 
+                        get(uiElement, "text", " "), 
+                        get(uiElement, "isCenteredX", false), 
+                        get(uiElement, "isCenteredY", false); 
+                        # Keyword arguments:
+                        anchorOffset = !haskey(uiElement, "anchorOffset") ? Vector2(0,0) : Vector2(uiElement.anchorOffset.x, uiElement.anchorOffset.y),
+                        id = string(get(uiElement, "id", JulGame.generate_uuid())),
+                        isWorldEntity = get(uiElement, "isWorldEntity", false),
+                        layer = Int(get(uiElement, "layer", 0)),
+                        color = color_tuple,
+                        maxLineWidth = Int(get(uiElement, "maxLineWidth", 0)),
+                        wrapWords = get(uiElement, "wrapWords", true)
+                        # Note: isActive is handled after creation as it might affect centering
+                    )
+                    # Set isActive after potential centering logic inside TextBox initialization
+                    newUIElement.isActive = get(uiElement, "isActive", true)
+                    
                 else
                     # For text offset, check if it should be centered (if not specified or all zeros)
                     textOffset = Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
@@ -144,7 +166,7 @@ module SceneReaderModule
                         uiElement.text, 
                         textOffset; 
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
-                        fontSize=Int32(get(uiElement, "fontSize", 24))
+                        fontSize=Int(get(uiElement, "fontSize", 24))
                     )
                     
                     # Make sure the button is initialized properly
@@ -174,8 +196,8 @@ module SceneReaderModule
                 newAnimationFrames = Vector{Vector4}()
                 for animationFrame in animation.frames
                     push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
-                end
-                push!(newAnimations, Animation(newAnimationFrames, convert(Int32, animation.animatedFPS)))
+                    end
+                    push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
@@ -189,7 +211,7 @@ module SceneReaderModule
             elseif component.type == "Rigidbody"
                 newComponent = Rigidbody(; mass = convert(Float64, component.mass), useGravity = !haskey(component, "useGravity") ? true : component.useGravity)
             elseif component.type == "SoundSource"
-                newComponent = SoundSource(Int32(component.channel), component.isMusic, component.path, get(component, "playOnStart", false), Int32(component.volume))
+                newComponent = SoundSource(component.channel, component.isMusic, component.path, get(component, "playOnStart", false), component.volume)
             elseif component.type == "Sprite"
                 color = !haskey(component, "color") || isempty(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
@@ -200,17 +222,17 @@ module SceneReaderModule
                 rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
                 center = !haskey(component, "center") ? Vector2f(0.5,0.5) : Vector2f(component.center.x, component.center.y)
-                newComponent = Sprite(color::Tuple{Int64, Int64, Int64, Int64}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, Int32(layer), offset::Vector2f, position::Vector2f, rotation::Float64, Int32(pixelsPerUnit), center::Vector2f)
+                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f)
             elseif component.type == "Shape"
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
-                layer = !haskey(component, "layer") ? Int32(0) : Int32(component.layer)
+                layer = !haskey(component, "layer") ? 0 : component.layer
                 size = !haskey(component, "size") || isempty(component.size) ? Vector2f(1,1) : Vector2f(component.size.x, component.size.y)
                 isFilled = !haskey(component, "isFilled") ? true : component.isFilled
                 isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
                 offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
-                alpha = !haskey(component, "alpha") ? Int32(255) : Int32(component.alpha)
-                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int32, offset::Vector2f, position::Vector2f, size::Vector2f, alpha::Int32)
+                alpha = !haskey(component, "alpha") ? 255 : component.alpha
+                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, size::Vector2f, alpha::Int)
             end
             
             return newComponent

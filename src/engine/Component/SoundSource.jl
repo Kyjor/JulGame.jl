@@ -63,7 +63,7 @@ module SoundSourceModule
     function Component.toggle_sound(this::InternalSoundSource, loops = 0)
         if this.isMusic
             if SDL2.Mix_PlayingMusic() == 0
-                SDL2.Mix_PlayMusic( this.sound, Int32(-1) )
+                SDL2.Mix_PlayMusic( this.sound, Math.TypeConversions.safe_int32_convert(-1) )
             else
                 if SDL2.Mix_PausedMusic() == 1 
                     SDL2.Mix_ResumeMusic()
@@ -72,7 +72,7 @@ module SoundSourceModule
                 end
             end
         else
-            SDL2.Mix_PlayChannel( Int32(this.channel), this.sound, Int32(loops) )
+            SDL2.Mix_PlayChannel( Math.TypeConversions.safe_int32_convert(this.channel), this.sound, Math.TypeConversions.safe_int32_convert(loops) )
         end
     end
     

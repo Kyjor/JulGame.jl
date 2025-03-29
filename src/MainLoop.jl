@@ -608,7 +608,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 			#region UI
 			# Sort UI elements by layer before rendering
-			sorted_ui_elements = sort(this.scene.uiElements, by = x -> isdefined(x, :layer) ? x.layer : Int32(0))
+			sorted_ui_elements = sort(this.scene.uiElements, by = x -> isdefined(x, :layer) ? x.layer : 0)
 			for uiElement in sorted_ui_elements
                 JulGame.render(uiElement)
 			end
@@ -618,7 +618,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x - this.input.mousePositionEditorGameWindowOffset.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y - this.input.mousePositionEditorGameWindowOffset.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
-			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y )
+			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
 			#region Debug
 			if JulGame.IS_DEBUG
 				# Stats to display

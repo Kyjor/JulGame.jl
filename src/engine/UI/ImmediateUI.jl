@@ -24,7 +24,7 @@ module ImmediateUIModule
     immediate_text(id::String, text::String, fontPath::String, fontSize::Int, 
         position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
         anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Int=255, 
-        isActive::Bool=true, color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+        isActive::Bool=true, color::NTuple{4, Int}=(255, 255, 255, 255),
         maxLineWidth::Int=0, wrapWords::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
 
     Creates or updates an immediate text component.
@@ -52,19 +52,19 @@ module ImmediateUIModule
     function immediate_text(id::String, text::String, fontPath::String, fontSize::Int, 
         position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
         anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Int=255, 
-        isActive::Bool=true, color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+        isActive::Bool=true, color::NTuple{4, Int}=(255, 255, 255, 255),
         maxLineWidth::Int=0, wrapWords::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
         
         # Convert color to Int32 tuple
-        color = (Math.TypeConversions.safe_int32_convert(color[1]),
-                Math.TypeConversions.safe_int32_convert(color[2]),
-                Math.TypeConversions.safe_int32_convert(color[3]),
-                Math.TypeConversions.safe_int32_convert(color[4]))
+        color = (color[1],
+                color[2],
+                color[3],
+                color[4])
         
         # Convert other integer parameters
-        maxLineWidth = Math.TypeConversions.safe_int32_convert(maxLineWidth)
-        layer = Math.TypeConversions.safe_int32_convert(layer)
-        alpha = Math.TypeConversions.safe_int32_convert(alpha)
+        maxLineWidth = maxLineWidth
+        layer = layer
+        alpha = alpha
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -90,7 +90,7 @@ module ImmediateUIModule
             end
             
             if textBox.fontSize != fontSize
-                textBox.fontSize = Int32(fontSize)
+                textBox.fontSize = fontSize
                 needsUpdate = true
             end
             
@@ -186,7 +186,7 @@ module ImmediateUIModule
     immediate_button(id::String, text::String, fontPath::String, fontSize::Int, position::Math.Vector2,
                      width::Int, height::Int, isCentered::Bool=true, callback::Function=() -> nothing;
                      buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                     alpha::Int=255, layer::Int32=Int32(0), lifetime::Int=DEFAULT_LIFETIME)
+                     alpha::Int=255, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
 
     Creates or updates an immediate button component.
     
@@ -204,7 +204,7 @@ module ImmediateUIModule
     - `buttonDownPath::String`: Image for button pressed state (optional)
     - `textOffset::Math.Vector2`: Offset for positioning the text
     - `alpha::Int`: Transparency (0-255)
-    - `layer::Int32`: Rendering layer (higher values render on top)
+    - `layer::Int`: Rendering layer (higher values render on top)
     - `lifetime::Int`: How long the component should persist without updates (ms)
     
     # Returns
@@ -252,7 +252,7 @@ module ImmediateUIModule
             end
             
             if button.fontSize != fontSize
-                button.fontSize = Int32(fontSize)
+                button.fontSize = fontSize
                 needsReinitialize = true
             end
             
@@ -317,7 +317,7 @@ module ImmediateUIModule
             
             # Create new button component
             button = ScreenButton("immediate_$(id)", buttonUpPath, buttonDownPath, size, adjusted_position, 
-                                 fontPath, text, textOffset; id=id, fontSize=Int32(fontSize), layer=layer)
+                                 fontPath, text, textOffset; id=id, fontSize=fontSize, layer=layer)
             
             # Set button properties
             JulGame.UI.set_color(button; a=alpha)
@@ -339,9 +339,9 @@ module ImmediateUIModule
 
     """
     immediate_rect(id::String, x::Int, y::Int, width::Int, height::Int, 
-                  color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+                  color::NTuple{4, Int}=(255, 255, 255, 255),
                   borderWidth::Int=0, fillMode::Bool=true;
-                  isWorldEntity::Bool=false, borderColor::Tuple{Int, Int, Int, Int}=(0, 0, 0, 255),
+                  isWorldEntity::Bool=false, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
                   borderRadius::Int=0, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
 
     Creates or updates an immediate rectangle component.
@@ -365,26 +365,26 @@ module ImmediateUIModule
     The Rectangle object
     """
     function immediate_rect(id::String, x::Int, y::Int, width::Int, height::Int,
-                           color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+                           color::NTuple{4, Int}=(255, 255, 255, 255),
                            borderWidth::Int=0, fillMode::Bool=true;
-                           isWorldEntity::Bool=false, borderColor::Tuple{Int, Int, Int, Int}=(0, 0, 0, 255),
+                           isWorldEntity::Bool=false, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
                            borderRadius::Int=0, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
         
         # Convert colors to Int32 tuples
-        color = (Math.TypeConversions.safe_int32_convert(color[1]),
-                Math.TypeConversions.safe_int32_convert(color[2]),
-                Math.TypeConversions.safe_int32_convert(color[3]),
-                Math.TypeConversions.safe_int32_convert(color[4]))
+        color = (color[1],
+                color[2],
+                color[3],
+                color[4])
         
-        borderColor = (Math.TypeConversions.safe_int32_convert(borderColor[1]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[2]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[3]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[4]))
+        borderColor = (borderColor[1],
+                      borderColor[2],
+                      borderColor[3],
+                      borderColor[4])
         
         # Convert other integer parameters
-        borderWidth = Math.TypeConversions.safe_int32_convert(borderWidth)
-        borderRadius = Math.TypeConversions.safe_int32_convert(borderRadius)
-        layer = Math.TypeConversions.safe_int32_convert(layer)
+        borderWidth = borderWidth
+        borderRadius = borderRadius
+        layer = layer
         
         # Generate a composite ID that includes the component type
         composite_id = "rect_$(id)"
@@ -414,7 +414,7 @@ module ImmediateUIModule
             
             if rect.color != color
                 rect.color = color
-                JulGame.UI.set_color(rect; a=Int32(color[4]))
+                JulGame.UI.set_color(rect; a=color[4])
                 needsUpdate = true
             end
             
@@ -481,7 +481,7 @@ module ImmediateUIModule
 
     """
     immediate_line(id::String, x1::Int, y1::Int, x2::Int, y2::Int, 
-                  color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+                  color::NTuple{4, Int}=(255, 255, 255, 255),
                   thickness::Int=1; isWorldEntity::Bool=false, isActive::Bool=true, 
                   layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
 
@@ -503,19 +503,19 @@ module ImmediateUIModule
     The Line object
     """
     function immediate_line(id::String, x1::Int, y1::Int, x2::Int, y2::Int,
-                           color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+                           color::NTuple{4, Int}=(255, 255, 255, 255),
                            thickness::Int=1; isWorldEntity::Bool=false, isActive::Bool=true, 
                            layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
         
         # Convert color to Int32 tuple
-        color = (Math.TypeConversions.safe_int32_convert(color[1]),
-                Math.TypeConversions.safe_int32_convert(color[2]),
-                Math.TypeConversions.safe_int32_convert(color[3]),
-                Math.TypeConversions.safe_int32_convert(color[4]))
+        color = (color[1],
+                color[2],
+                color[3],
+                color[4])
         
         # Convert other integer parameters
-        thickness = Math.TypeConversions.safe_int32_convert(thickness)
-        layer = Math.TypeConversions.safe_int32_convert(layer)
+        thickness = thickness
+        layer = layer
         
         # Generate a composite ID that includes the component type
         composite_id = "line_$(id)"
@@ -545,7 +545,7 @@ module ImmediateUIModule
             
             if line.color != color
                 line.color = color
-                JulGame.UI.set_color(line; a=Int32(color[4]))
+                JulGame.UI.set_color(line; a=color[4])
                 needsUpdate = true
             end
             
@@ -595,9 +595,9 @@ module ImmediateUIModule
 
     """
     immediate_circle(id::String, x::Int, y::Int, radius::Int,
-                    color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+                    color::NTuple{4, Int}=(255, 255, 255, 255),
                     fillMode::Bool=true; isWorldEntity::Bool=false, 
-                    borderWidth::Int=0, borderColor::Tuple{Int, Int, Int, Int}=(0, 0, 0, 255),
+                    borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
                     layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
 
     Creates or updates an immediate circle component.
@@ -619,25 +619,25 @@ module ImmediateUIModule
     The Circle object
     """
     function immediate_circle(id::String, x::Int, y::Int, radius::Int,
-                             color::Tuple{Int, Int, Int, Int}=(255, 255, 255, 255),
+                             color::NTuple{4, Int}=(255, 255, 255, 255),
                              fillMode::Bool=true; isWorldEntity::Bool=false, 
-                             borderWidth::Int=0, borderColor::Tuple{Int, Int, Int, Int}=(0, 0, 0, 255),
+                             borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
                              isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
         
         # Convert colors to Int32 tuples
-        color = (Math.TypeConversions.safe_int32_convert(color[1]),
-                Math.TypeConversions.safe_int32_convert(color[2]),
-                Math.TypeConversions.safe_int32_convert(color[3]),
-                Math.TypeConversions.safe_int32_convert(color[4]))
+        color = (color[1],
+                color[2],
+                color[3],
+                color[4])
         
-        borderColor = (Math.TypeConversions.safe_int32_convert(borderColor[1]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[2]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[3]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[4]))
+        borderColor = (borderColor[1],
+                      borderColor[2],
+                      borderColor[3],
+                      borderColor[4])
         
         # Convert other integer parameters
-        borderWidth = Math.TypeConversions.safe_int32_convert(borderWidth)
-        layer = Math.TypeConversions.safe_int32_convert(layer)
+        borderWidth = borderWidth
+        layer = layer
 
         # Generate a composite ID that includes the component type
         composite_id = "circle_$(id)"
@@ -666,7 +666,7 @@ module ImmediateUIModule
             
             if circle.color != color
                 circle.color = color
-                JulGame.UI.set_color(circle; a=Int32(color[4]))
+                JulGame.UI.set_color(circle; a=color[4])
                 needsUpdate = true
             end
             
@@ -729,11 +729,11 @@ module ImmediateUIModule
     """
     immediate_progress_bar(id::String, x::Int, y::Int, width::Int, height::Int,
                            progress::Int=0.0, 
-                           fillColor::Tuple{Int, Int, Int, Int}=(0, 120, 215, 255),
-                           backgroundColor::Tuple{Int, Int, Int, Int}=(230, 230, 230, 255);
+                           fillColor::NTuple{4, Int}=(0, 120, 215, 255),
+                           backgroundColor::NTuple{4, Int}=(230, 230, 230, 255);
                            isWorldEntity::Bool=false,
                            borderWidth::Int=0, 
-                           borderColor::Tuple{Int, Int, Int, Int}=(200, 200, 200, 255),
+                           borderColor::NTuple{4, Int}=(200, 200, 200, 255),
                            borderRadius::Int=0,
                            vertical::Bool=false,
                            showBackground::Bool=true,
@@ -766,11 +766,11 @@ module ImmediateUIModule
     """
     function immediate_progress_bar(id::String, x::Int, y::Int, width::Int, height::Int,
                                    progress::Int=0.0, 
-                                   fillColor::Tuple{Int, Int, Int, Int}=(0, 120, 215, 255),
-                                   backgroundColor::Tuple{Int, Int, Int, Int}=(230, 230, 230, 255);
+                                   fillColor::NTuple{4, Int}=(0, 120, 215, 255),
+                                   backgroundColor::NTuple{4, Int}=(230, 230, 230, 255);
                                    isWorldEntity::Bool=false,
                                    borderWidth::Int=0, 
-                                   borderColor::Tuple{Int, Int, Int, Int}=(200, 200, 200, 255),
+                                   borderColor::NTuple{4, Int}=(200, 200, 200, 255),
                                    borderRadius::Int=0,
                                    vertical::Bool=false,
                                    showBackground::Bool=true,
@@ -779,25 +779,25 @@ module ImmediateUIModule
                                    lifetime::Int=DEFAULT_LIFETIME)
         
         # Convert colors to Int32 tuples
-        fillColor = (Math.TypeConversions.safe_int32_convert(fillColor[1]),
-                    Math.TypeConversions.safe_int32_convert(fillColor[2]),
-                    Math.TypeConversions.safe_int32_convert(fillColor[3]),
-                    Math.TypeConversions.safe_int32_convert(fillColor[4]))
+        fillColor = (fillColor[1],
+                    fillColor[2],
+                    fillColor[3],
+                    fillColor[4])
         
-        backgroundColor = (Math.TypeConversions.safe_int32_convert(backgroundColor[1]),
-                          Math.TypeConversions.safe_int32_convert(backgroundColor[2]),
-                          Math.TypeConversions.safe_int32_convert(backgroundColor[3]),
-                          Math.TypeConversions.safe_int32_convert(backgroundColor[4]))
+        backgroundColor = (backgroundColor[1],
+                          backgroundColor[2],
+                          backgroundColor[3],
+                          backgroundColor[4])
         
-        borderColor = (Math.TypeConversions.safe_int32_convert(borderColor[1]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[2]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[3]),
-                      Math.TypeConversions.safe_int32_convert(borderColor[4]))
+        borderColor = (borderColor[1],
+                      borderColor[2],
+                      borderColor[3],
+                      borderColor[4])
         
         # Convert other integer parameters
-        borderWidth = Math.TypeConversions.safe_int32_convert(borderWidth)
-        borderRadius = Math.TypeConversions.safe_int32_convert(borderRadius)
-        layer = Math.TypeConversions.safe_int32_convert(layer)
+        borderWidth = borderWidth
+        borderRadius = borderRadius
+        layer = layer
 
         # Generate a composite ID that includes the component type
         composite_id = "progress_bar_$(id)"
@@ -832,7 +832,7 @@ module ImmediateUIModule
             
             if progressBar.fillColor != fillColor
                 progressBar.fillColor = fillColor
-                JulGame.UI.set_color(progressBar; a=Int32(fillColor[4]))
+                JulGame.UI.set_color(progressBar; a=fillColor[4])
                 needsUpdate = true
             end
             
@@ -929,7 +929,7 @@ module ImmediateUIModule
         expired_ids = String[]
         
         # Sort component IDs by layer before rendering
-        component_layers = Dict{String, Int32}()
+        component_layers = Dict{String, Int}()
         
         # First pass: collect layers for each component and check expiration
         for (id, component) in IMMEDIATE_UI_CACHE
@@ -951,7 +951,7 @@ module ImmediateUIModule
             end
             
             # Store the layer for sorting
-            component_layers[id] = isdefined(component.element, :layer) ? component.element.layer : Int32(0)
+            component_layers[id] = isdefined(component.element, :layer) ? component.element.layer : 0
         end
         
         # Sort component IDs by layer

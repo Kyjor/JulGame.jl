@@ -4,39 +4,39 @@ module SpriteModule
 
     export Sprite
     struct Sprite
-        color::Tuple{Int64, Int64, Int64, Int64}
+        color::NTuple{4, Int}
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         imagePath::String
         isWorldEntity::Bool
-        layer::Int32
+        layer::Int
         offset::Math.Vector2f
         position::Math.Vector2f
         rotation::Float64
-        pixelsPerUnit::Int32
+        pixelsPerUnit::Int
         center::Math.Vector2f
     end
 
     export InternalSprite
     mutable struct InternalSprite
         center::Math.Vector2f
-        color::Tuple{Int64, Int64, Int64, Int64}
+        color::NTuple{4, Int}
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         isFloatPrecision::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         imagePath::String
         isWorldEntity::Bool
-        layer::Int32
+        layer::Int
         offset::Math.Vector2f
         parent::Any # Entity
         position::Math.Vector2f
         rotation::Float64
-        pixelsPerUnit::Int32
+        pixelsPerUnit::Int
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         
-        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::Tuple{Int64, Int64, Int64, Int64} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int32=Int32(-1), isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int32 = Int32(0), center::Math.Vector2f = Math.Vector2f(0.5,0.5))
+        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=-1, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5))
             this = new()
 
             this.offset = Math.Vector2f()

@@ -4,7 +4,7 @@ module CameraModule
 
     export Camera
     mutable struct Camera
-		backgroundColor::Tuple{Int64, Int64, Int64, Int64}
+		backgroundColor::NTuple{4, Int}
         offset::Vector2f
         position::Vector2f
         size::Vector2

@@ -14,12 +14,12 @@ using ..UI.ScreenButtonModule
 
 """
     create_progress_bar(position::Vector2, size::Vector2, progress::Number=0.5, 
-                      fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
-                      backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200),
-                      borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255);
+                      fillColor::NTuple{4, Int}=(0, 255, 0, 255),
+                      backgroundColor::NTuple{4, Int}=(100, 100, 100, 200),
+                      borderColor::NTuple{4, Int}=(0, 0, 0, 255);
                       name::String="ProgressBar", id::String="", isWorldEntity::Bool=false,
-                      borderWidth::Int32=1, borderRadius::Int32=0, vertical::Bool=false, 
-                      showBackground::Bool=true, alpha::Int32=255, layer::Int32=Int32(0))
+                      borderWidth::Int=1, borderRadius::Int=0, vertical::Bool=false, 
+                      showBackground::Bool=true, alpha::Int=255, layer::Int=0)
 
 Create a new progress bar UI element.
 
@@ -27,29 +27,29 @@ Create a new progress bar UI element.
 - `position::Vector2`: The position of the progress bar.
 - `size::Vector2`: The size of the progress bar.
 - `progress::Number=0.5`: The initial progress value (0.0 to 1.0).
-- `fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255)`: The color of the progress fill in RGBA format.
-- `backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200)`: The background color in RGBA format.
-- `borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255)`: The border color in RGBA format.
+- `fillColor::NTuple{4, Int}=(0, 255, 0, 255)`: The color of the progress fill in RGBA format.
+- `backgroundColor::NTuple{4, Int}=(100, 100, 100, 200)`: The background color in RGBA format.
+- `borderColor::NTuple{4, Int}=(0, 0, 0, 255)`: The border color in RGBA format.
 - `name::String="ProgressBar"`: The name of the progress bar.
 - `id::String=""`: The unique identifier for the progress bar. If empty, a UUID will be generated.
 - `isWorldEntity::Bool=false`: Whether the progress bar should be positioned in world space.
 - `borderWidth::Int32=1`: The width of the border.
-- `borderRadius::Int32=0`: The radius of the border rounded corners.
+- `borderRadius::Int=0`: The radius of the border rounded corners.
 - `vertical::Bool=false`: Whether the progress bar fills vertically (bottom to top) instead of horizontally.
 - `showBackground::Bool=true`: Whether to show the background of the progress bar.
-- `alpha::Int32=255`: The transparency of the progress bar (0-255).
-- `layer::Int32=Int32(0)`: The rendering layer (higher values render on top).
+- `alpha::Int=255`: The transparency of the progress bar (0-255).
+- `layer::Int=0`: The rendering layer (higher values render on top).
 
 # Returns
 The newly created ProgressBar object
 """
 function create_progress_bar(position::Vector2, size::Vector2, progress::Number=0.5, 
-                           fillColor::Tuple{Int32, Int32, Int32, Int32}=(0, 255, 0, 255),
-                           backgroundColor::Tuple{Int32, Int32, Int32, Int32}=(100, 100, 100, 200),
-                           borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255);
+                           fillColor::NTuple{4, Int}=(0, 255, 0, 255),
+                           backgroundColor::NTuple{4, Int}=(100, 100, 100, 200),
+                           borderColor::NTuple{4, Int}=(0, 0, 0, 255);
                            name::String="ProgressBar", id::String="", isWorldEntity::Bool=false,
-                           borderWidth::Int32=1, borderRadius::Int32=0, vertical::Bool=false, 
-                           showBackground::Bool=true, alpha::Int32=255, layer::Int32=Int32(0))
+                           borderWidth::Int=1, borderRadius::Int=0, vertical::Bool=false, 
+                           showBackground::Bool=true, alpha::Int=255, layer::Int=0)
     
     # Convert progress to Float32 and clamp to valid range
     progress = Float32(clamp(progress, 0.0, 1.0))
@@ -74,37 +74,37 @@ function create_progress_bar(position::Vector2, size::Vector2, progress::Number=
 end
 
 """
-    create_rectangle(position::Vector2, size::Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+    create_rectangle(position::Vector2, size::Vector2, color::NTuple{4, Int}=(255, 255, 255, 255),
                    fillMode::Bool=true;
                    name::String="Rectangle", id::String="", isWorldEntity::Bool=false,
-                   borderRadius::Int32=0, borderWidth::Int32=0, 
-                   borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                   layer::Int32=Int32(0))
+                   borderRadius::Int=0, borderWidth::Int=0, 
+                   borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+                   layer::Int=0)
 
 Create a new rectangle UI element.
 
 # Arguments
 - `position::Vector2`: The position of the rectangle
 - `size::Vector2`: The size of the rectangle
-- `color::Tuple{Int32, Int32, Int32, Int32}`: The color of the rectangle in RGBA format
+- `color::NTuple{4, Int}`: The color of the rectangle in RGBA format
 - `fillMode::Bool=true`: Whether to fill the rectangle or just draw the outline
 - `name::String="Rectangle"`: The name of the rectangle
 - `id::String=""`: The unique identifier for the rectangle. If empty, a UUID will be generated
 - `isWorldEntity::Bool=false`: Whether the rectangle should be positioned in world space
 - `borderRadius::Int32=0`: The radius of the border rounded corners
-- `borderWidth::Int32=0`: The width of the border
-- `borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255)`: The color of the border in RGBA format
-- `layer::Int32=Int32(0)`: The rendering layer (higher values render on top)
+- `borderWidth::Int=0`: The width of the border
+- `borderColor::NTuple{4, Int}=(0, 0, 0, 255)`: The color of the border in RGBA format
+- `layer::Int=0`: The rendering layer (higher values render on top)
 
 # Returns
 The newly created Rectangle object
 """
-function create_rectangle(position::Vector2, size::Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+function create_rectangle(position::Vector2, size::Vector2, color::NTuple{4, Int}=(255, 255, 255, 255),
                          fillMode::Bool=true;
                          name::String="Rectangle", id::String="", isWorldEntity::Bool=false,
-                         borderRadius::Int32=0, borderWidth::Int32=0, 
-                         borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                         layer::Int32=Int32(0))
+                         borderRadius::Int=0, borderWidth::Int=0, 
+                         borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+                         layer::Int=0)
     
     # Create a UUID if not provided
     if id == ""
@@ -124,28 +124,28 @@ function create_rectangle(position::Vector2, size::Vector2, color::Tuple{Int32, 
 end
 
 """
-    create_line(start::Vector2, ending::Vector2, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
-               thickness::Int32=1; name::String="Line", id::String="", isWorldEntity::Bool=false, layer::Int32=Int32(0))
+    create_line(start::Vector2, ending::Vector2, color::NTuple{4, Int}=(255, 255, 255, 255),
+               thickness::Int=1; name::String="Line", id::String="", isWorldEntity::Bool=false, layer::Int=0)
 
 Create a new line UI element.
 
 # Arguments
 - `start::Vector2`: The start position of the line
 - `ending::Vector2`: The end position of the line
-- `color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255)`: The color of the line in RGBA format
-- `thickness::Int32=1`: The thickness of the line in pixels
+- `color::NTuple{4, Int}=(255, 255, 255, 255)`: The color of the line in RGBA format
+- `thickness::Int=1`: The thickness of the line in pixels
 - `name::String="Line"`: The name of the line
 - `id::String=""`: The unique identifier for the line. If empty, a UUID will be generated
 - `isWorldEntity::Bool=false`: Whether the line should be positioned in world space
-- `layer::Int32=Int32(0)`: The rendering layer (higher values render on top)
+- `layer::Int=0`: The rendering layer (higher values render on top)
 
 # Returns
 The newly created Line object
 """
 function create_line(start::Vector2, ending::Vector2, 
-                    color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
-                    thickness::Int32=1;
-                    name::String="Line", id::String="", isWorldEntity::Bool=false, layer::Int32=Int32(0))
+                    color::NTuple{4, Int}=(255, 255, 255, 255),
+                    thickness::Int=1;
+                    name::String="Line", id::String="", isWorldEntity::Bool=false, layer::Int=0)
     
     # Create a UUID if not provided
     if id == ""
@@ -162,33 +162,33 @@ function create_line(start::Vector2, ending::Vector2,
 end
 
 """
-    create_circle(center::Vector2, radius::Number, color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+    create_circle(center::Vector2, radius::Number, color::NTuple{4, Int}=(255, 255, 255, 255),
                  fillMode::Bool=true; name::String="Circle", id::String="", isWorldEntity::Bool=false,
-                 borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255), layer::Int32=Int32(0))
+                 borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255), layer::Int=0)
 
 Create a new circle UI element.
 
 # Arguments
 - `center::Vector2`: The center position of the circle
 - `radius::Number`: The radius of the circle
-- `color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255)`: The color of the circle in RGBA format
+- `color::NTuple{4, Int}=(255, 255, 255, 255)`: The color of the circle in RGBA format
 - `fillMode::Bool=true`: Whether to fill the circle or just draw the outline
 - `name::String="Circle"`: The name of the circle
 - `id::String=""`: The unique identifier for the circle. If empty, a UUID will be generated
 - `isWorldEntity::Bool=false`: Whether the circle should be positioned in world space
-- `borderWidth::Int32=0`: The width of the border
-- `borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255)`: The color of the border in RGBA format
-- `layer::Int32=Int32(0)`: The rendering layer (higher values render on top)
+- `borderWidth::Int=0`: The width of the border
+- `borderColor::NTuple{4, Int}=(0, 0, 0, 255)`: The color of the border in RGBA format
+- `layer::Int=0`: The rendering layer (higher values render on top)
 
 # Returns
 The newly created Circle object
 """
 function create_circle(center::Vector2, radius::Number, 
-                      color::Tuple{Int32, Int32, Int32, Int32}=(255, 255, 255, 255),
+                      color::NTuple{4, Int}=(255, 255, 255, 255),
                       fillMode::Bool=true;
                       name::String="Circle", id::String="", isWorldEntity::Bool=false,
-                      borderWidth::Int32=0, borderColor::Tuple{Int32, Int32, Int32, Int32}=(0, 0, 0, 255),
-                      layer::Int32=Int32(0))
+                      borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+                      layer::Int=0)
     
     # Create a UUID if not provided
     if id == ""
