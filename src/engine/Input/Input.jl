@@ -122,29 +122,40 @@ module InputModule
             # @info "polling input"
             x,y = Int32[1], Int32[1]
             SDL2.SDL_GetMouseState(pointer(x), pointer(y))
-            
-            # Get current window size
-            window_width = Ref{Cint}(0)
-            window_height = Ref{Cint}(0)
-            SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
-            
-            # Get current render output size
-            render_width = Ref{Cint}(0)
-            render_height = Ref{Cint}(0)
-            SDL2.SDL_GetRendererOutputSize(JulGame.Renderer, render_width, render_height)
-            
-            # Get base resolution from WindowManager
-            base_resolution = MAIN.windowManager.baseResolution
-            
-            # Calculate scale factors between window and render sizes
-            scale_x = base_resolution.x / window_width[]
-            scale_y = base_resolution.y / window_height[]
-            
-            # Scale mouse coordinates to match our logical resolution
-            scaled_x = x[1] * scale_x
-            scaled_y = y[1] * scale_y
-            
-            this.mousePosition = Math.Vector2(scaled_x, scaled_y)
+            this.mousePosition = Math.Vector2(x[1], y[1])
+            #@info "new mouse pos: $(this.mousePosition)"
+
+            if !JulGame.IS_EDITOR
+                # Get current window size
+                window_width = Ref{Cint}(0)
+                window_height = Ref{Cint}(0)
+                SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
+                
+                # Get current render output size
+                render_width = Ref{Cint}(0)
+                render_height = Ref{Cint}(0)
+                SDL2.SDL_GetRendererOutputSize(JulGame.Renderer, render_width, render_height)
+                
+                # Get base resolution from WindowManager
+                base_resolution = MAIN.windowManager.baseResolution
+                
+                # Calculate scale factors between window and render sizes
+                scale_x = base_resolution.x / window_width[]
+                scale_y = base_resolution.y / window_height[]
+                
+                @debug("scale_x: $scale_x, scale_y: $scale_y")
+                @debug("window_width: $window_width[], window_height: $window_height[]")
+                @debug("render_width: $render_width[], render_height: $render_height[]")
+                # Scale mouse coordinates to match our logical resolution
+                scaled_x = x[1] * scale_x
+                scaled_y = y[1] * scale_y
+                if scaled_x == Inf || scaled_y == Inf
+                    Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
+                    scaled_x = 0
+                    scaled_y = 0
+                end
+                this.mousePosition = Math.Vector2(scaled_x, scaled_y)
+            end
             
             if this.editorCallback !== nothing
                 this.editorCallback(evt)
@@ -308,7 +319,7 @@ module InputModule
         
         # If we have access to the WindowManager through MAIN, delegate window events to it
         if JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing
-            JulGame.WindowManagerModule.handle_window_event(event.window.event)
+            JulGame.WindowManagerModule.handle_window_event(event.window)
         end
     end
 
@@ -474,9 +485,9 @@ module InputModule
         return ptr_event
     end    
 
-    function simulate_mouse_click(this::Input, window::Ptr{SDL2.SDL_Window}, x::Int32, y::Int32)
+    function simulate_mouse_click(this::Input, window::Ptr{SDL2.SDL_Window}, x::Int, y::Int)
         # Move the mouse to the specified position
-        SDL2.SDL_WarpMouseInWindow(window, x, y)
+        SDL2.SDL_WarpMouseInWindow(window, Math.TypeConversions.safe_int32_convert(x), Math.TypeConversions.safe_int32_convert(y))
         
         # Create a mouse button down event
         mouse_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
@@ -491,14 +502,14 @@ module InputModule
             SDL2.SDL_PRESSED,          # Button state (pressed)
             1,                         # Clicks (1 for single click)
             0,                         # Padding (unused, set to 0)
-            x,                         # X position
-            y                          # Y position
+            Math.TypeConversions.safe_int32_convert(x),                         # X position
+            Math.TypeConversions.safe_int32_convert(y)                          # Y position
         ) 
         SDL2.SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = true
     end
 
-    function simulate_mouse_click(x::Int32, y::Int32)
+    function simulate_mouse_click(x::Int, y::Int)
         simulate_mouse_click(MAIN.input, MAIN.windowManager.window, x, y)
     end
 

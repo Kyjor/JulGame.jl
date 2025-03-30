@@ -19,7 +19,7 @@ module WindowManagerModule
         isVsyncEnabled::Bool
         displayMode::SDL2.SDL_DisplayMode
         renderScale::Math.Vector2f
-        targetFrameRate::Int32
+        targetFrameRate::Int
         allowHighDPI::Bool
         position::Math.Vector2
         fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
@@ -110,21 +110,21 @@ module WindowManagerModule
     end
 
     """
-        resize_window(this::WindowManager, width::Int32, height::Int32)
+        resize_window(this::WindowManager, width::Int, height::Int)
 
     Resizes the window to the specified dimensions.
     """
-    function resize_window(this::WindowManager, width::Int32, height::Int32)
+    function resize_window(this::WindowManager, width::Int, height::Int)
         if this.window == C_NULL
             @error "Cannot resize window: Window has not been created"
             return
         end
         
         this.windowSize = Math.Vector2(width, height)
-        SDL2.SDL_SetWindowSize(this.window, width, height)
+        SDL2.SDL_SetWindowSize(this.window, Math.TypeConversions.safe_int32_convert(width), Math.TypeConversions.safe_int32_convert(height))
     end
 
-    function resize_window(width::Int32, height::Int32)
+    function resize_window(width::Int, height::Int)
         resize_window(JulGame.MAIN.windowManager, width, height)
     end
 
@@ -201,8 +201,8 @@ module WindowManagerModule
             # Restore window borders and original size
             this.isBorderless = false
             SDL2.SDL_SetWindowBordered(this.window, SDL2.SDL_TRUE)
-            SDL2.SDL_SetWindowSize(this.window, this.windowSize.x, this.windowSize.y)
-            SDL2.SDL_SetWindowPosition(this.window, this.position.x, this.position.y)
+            SDL2.SDL_SetWindowSize(this.window, Math.TypeConversions.safe_int32_convert(this.windowSize.x), Math.TypeConversions.safe_int32_convert(this.windowSize.y))
+            SDL2.SDL_SetWindowPosition(this.window, Math.TypeConversions.safe_int32_convert(this.position.x), Math.TypeConversions.safe_int32_convert(this.position.y))
         end
     end
 
@@ -370,21 +370,21 @@ module WindowManagerModule
     end
 
     """
-        set_window_position(this::WindowManager, x::Int32, y::Int32)
+        set_window_position(this::WindowManager, x::Int, y::Int)
 
     Sets the position of the window.
     """
-    function set_window_position(this::WindowManager, x::Int32, y::Int32)
+    function set_window_position(this::WindowManager, x::Int, y::Int)
         if this.window == C_NULL
             @error "Cannot set window position: Window has not been created"
             return
         end
         
-        SDL2.SDL_SetWindowPosition(this.window, x, y)
+        SDL2.SDL_SetWindowPosition(this.window, Math.TypeConversions.safe_int32_convert(x), Math.TypeConversions.safe_int32_convert(y))
         this.position = Math.Vector2(x, y)
     end
 
-    function set_window_position(x::Int32, y::Int32)
+    function set_window_position(x::Int, y::Int)
         set_window_position(JulGame.MAIN.windowManager, x, y)
     end
 
@@ -412,7 +412,7 @@ module WindowManagerModule
 
     Sets the target frame rate for the game.
     """
-    function set_frame_rate(this::WindowManager, frameRate::Int32)
+    function set_frame_rate(this::WindowManager, frameRate::Int)
         if JulGame.MAIN !== nothing
             this.targetFrameRate = frameRate
             SDL2.SDL_setFramerate(this.fpsManager, UInt32(frameRate))
@@ -422,7 +422,7 @@ module WindowManagerModule
         end
     end
 
-    function set_frame_rate(frameRate::Int32)
+    function set_frame_rate(frameRate::Int)
         set_frame_rate(JulGame.MAIN.windowManager, frameRate)
     end
 
@@ -649,7 +649,9 @@ module WindowManagerModule
 
     Handles window events like resizing, focus changes, etc.
     """
-    function handle_window_event(this::WindowManager, windowEvent)
+    function handle_window_event(this::WindowManager, event::SDL2.SDL_WindowEvent)
+        windowEvent = event.event
+        println("Window event: $(event)")
         if windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
             this.isWindowFocused = true
             @debug "Window focus gained"
@@ -657,42 +659,44 @@ module WindowManagerModule
             this.isWindowFocused = false
             @debug "Window focus lost"
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
-            # width = windowEvent.data1
-            # height = windowEvent.data2
-            # this.windowSize = Math.Vector2(width, height)
+            width = event.data1
+            height = event.data2
+            this.windowSize = Math.Vector2(width, height)
             @debug "Window resized to $(width)x$(height)"
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
-            @debug(string("Window $(event.window.windowID) shown"))
+            @debug(string("Window $(event.windowID) shown"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
-            @debug(string("Window $(event.window.windowID) hidden"))
+            @debug(string("Window $(event.windowID) hidden"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
-            @debug(string("Window $(event.window.windowID) exposed"))
+            @debug(string("Window $(event.windowID) exposed"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
-            @debug(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
+            @debug(string("Window $(event.windowID) moved to $(event.data1),$(event.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
-            @debug(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
+            width = event.data1
+            height = event.data2
+            @debug(string("Window $(event.windowID) size changed to $(event.data1)x$(event.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
-            @debug(string("Window $(event.window.windowID) minimized"))
+            @debug(string("Window $(event.windowID) minimized"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
-            @debug(string("Window $(event.window.windowID) maximized"))
+            @debug(string("Window $(event.windowID) maximized"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
-            @debug(string("Window $(event.window.windowID) restored"))
+            @debug(string("Window $(event.windowID) restored"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
-            @debug(string("Mouse entered window $(event.window.windowID)"))
+            @debug(string("Mouse entered window $(event.windowID)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
-            @debug(string("Mouse left window $(event.window.windowID)"))
+            @debug(string("Mouse left window $(event.windowID)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
-            @debug(string("Window $(event.window.windowID) closed"))
+            @debug(string("Window $(event.windowID) closed"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
-            @debug(string("Window $(event.window.windowID) is offered a focus"))
+            @debug(string("Window $(event.windowID) is offered a focus"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
-            @debug(string("Window $(event.window.windowID) has a special hit test"))
+            @debug(string("Window $(event.windowID) has a special hit test"))
         else
-            @debug(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
+            @debug(string("Window $(event.windowID) got unknown event $(event.event)"))   
         end    
     end
 
-    function handle_window_event(event)
+    function handle_window_event(event::SDL2.SDL_WindowEvent)
         handle_window_event(JulGame.MAIN.windowManager, event)
     end
 
@@ -717,25 +721,26 @@ module WindowManagerModule
     end
 
     """
-        set_base_resolution(this::WindowManager, width::Int32, height::Int32)
+        set_base_resolution(this::WindowManager, width::Int, height::Int)
 
     Sets the base resolution for UI scaling. This is the resolution that UI elements are designed for.
     The mouse coordinates and UI elements will be scaled relative to this resolution.
 
     # Arguments
-    - `width::Int32`: The base width resolution
-    - `height::Int32`: The base height resolution
+    - `width::Int`: The base width resolution
+    - `height::Int`: The base height resolution
     """
-    function set_base_resolution(this::WindowManager, width::Int32, height::Int32)
+    function set_base_resolution(this::WindowManager, width::Int, height::Int)
         if width <= 0 || height <= 0
             @error "Base resolution must be positive"
             return
         end
         this.baseResolution = Math.Vector2(width, height)
+        # SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, this.baseResolution.x, this.baseResolution.y) # Commented out - let window events handle logical size
         @debug "Base resolution set to $(width)x$(height)"
     end
 
-    function set_base_resolution(width::Int32, height::Int32)
+    function set_base_resolution(width::Int, height::Int)
         set_base_resolution(JulGame.MAIN.windowManager, width, height)
     end
 

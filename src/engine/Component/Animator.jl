@@ -14,7 +14,7 @@
     mutable struct InternalAnimator
         animations::Vector{Animation}
         currentAnimation::Animation
-        lastFrame::Int32
+        lastFrame::Int
         lastUpdate::UInt64
         parent::Any
         playOnce::Bool
@@ -25,7 +25,7 @@
             
             this.animations = animations
             this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
-            this.lastFrame = Math.TypeConversions.safe_int32_convert(0)
+            this.lastFrame = 0
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent
             this.sprite = C_NULL
@@ -49,7 +49,7 @@
     end
 
     function Component.append_array(this::InternalAnimator)
-        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Math.TypeConversions.safe_int32_convert(60)))
+        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], 60))
     end
     
     function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
@@ -66,13 +66,13 @@
     
     
     """
-    force_frame_update(this::InternalAnimator, frameIndex::Int32)
+    force_frame_update(this::InternalAnimator, frameIndex::Int)
     
     Updates the sprite crop of the animator to the specified frame index.
     
     # Arguments
     - `this::InternalAnimator`: The animator object.
-    - `frameIndex::Int32`: The index of the frame to update the sprite crop to.
+    - `frameIndex::Int`: The index of the frame to update the sprite crop to.
     
     # Example
     ```
@@ -81,7 +81,7 @@
     ```
     """
     function force_frame_update(this::InternalAnimator, frameIndex::Int)
-        frameIndex = Math.TypeConversions.safe_int32_convert(frameIndex)
+        frameIndex = frameIndex
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export force_frame_update    

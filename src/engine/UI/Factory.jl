@@ -33,7 +33,7 @@ Create a new progress bar UI element.
 - `name::String="ProgressBar"`: The name of the progress bar.
 - `id::String=""`: The unique identifier for the progress bar. If empty, a UUID will be generated.
 - `isWorldEntity::Bool=false`: Whether the progress bar should be positioned in world space.
-- `borderWidth::Int32=1`: The width of the border.
+- `borderWidth::Int=1`: The width of the border.
 - `borderRadius::Int=0`: The radius of the border rounded corners.
 - `vertical::Bool=false`: Whether the progress bar fills vertically (bottom to top) instead of horizontally.
 - `showBackground::Bool=true`: Whether to show the background of the progress bar.
@@ -91,7 +91,7 @@ Create a new rectangle UI element.
 - `name::String="Rectangle"`: The name of the rectangle
 - `id::String=""`: The unique identifier for the rectangle. If empty, a UUID will be generated
 - `isWorldEntity::Bool=false`: Whether the rectangle should be positioned in world space
-- `borderRadius::Int32=0`: The radius of the border rounded corners
+- `borderRadius::Int=0`: The radius of the border rounded corners
 - `borderWidth::Int=0`: The width of the border
 - `borderColor::NTuple{4, Int}=(0, 0, 0, 255)`: The color of the border in RGBA format
 - `layer::Int=0`: The rendering layer (higher values render on top)

@@ -39,15 +39,18 @@ module SceneBuilderModule
     
     function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false)
         if config === nothing
+            @info("Config is nothing, parsing config")
             config = parse_config()
+        else
+            @info("Config is not nothing, using provided config")
         end
-        
+
         config = fill_in_config(config)
 
         windowName::String = windowName
-        size::Vector2 = Vector2(parse(Int32, get(config, "Width", DEFAULT_CONFIG["Width"])), parse(Int32, get(config, "Height", DEFAULT_CONFIG["Height"])))
+        size::Vector2 = Vector2(parse(Int, string(get(config, "Width", DEFAULT_CONFIG["Width"]))), parse(Int, string(get(config, "Height", DEFAULT_CONFIG["Height"]))))
         isResizable::Bool = isWindowResizable
-        targetFrameRate::Int32 = parse(Int32, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"]))
+        targetFrameRate::Int = parse(Int, string(get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
         isFullscreen::Bool = get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1"
         isVsyncEnabled::Bool = get(config, "Vsync", DEFAULT_CONFIG["Vsync"]) == "1"
 
@@ -289,6 +292,7 @@ module SceneBuilderModule
 
     # Function to read and parse the config file
     function parse_config()
+        @debug "Parsing config at $(JulGame.BasePath)"
         filename = joinpath(JulGame.BasePath, "config.julgame")
         config = copy(DEFAULT_CONFIG)
         
@@ -313,6 +317,7 @@ module SceneBuilderModule
     end
 
     function fill_in_config(config)
+        @debug "Filling in config"
         for (key, value) in DEFAULT_CONFIG
             if !haskey(config, key)
                 config[key] = value
@@ -324,6 +329,7 @@ module SceneBuilderModule
 
     # Function to write values to the config file
     function write_config(filename::String, config::Dict{String, String})
+        @debug "Writing config to $(filename)"
         # Open the file for writing
         open(filename, "w") do file
             for (key, value) in config
@@ -331,23 +337,6 @@ module SceneBuilderModule
                 println(file, "$key=$value")
             end
         end
-    end
-
-    function instantiate_script(script_name::String)
-        # Instantiate the struct from the module
-        new_script = eval(Symbol("$(script_name)module.$script_name"))()
-        return new_script
-    end
-
-    function build_scene(config::Dict{String, Any})
-        # Convert size parameters to Int32
-        width = Math.TypeConversions.safe_int32_convert(parse(Int, get(config, "Width", DEFAULT_CONFIG["Width"])))
-        height = Math.TypeConversions.safe_int32_convert(parse(Int, get(config, "Height", DEFAULT_CONFIG["Height"])))
-        
-        size::Vector2 = Vector2(width, height)
-        targetFrameRate::Int = Math.TypeConversions.safe_int32_convert(parse(Int, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
-        
-        # ... rest of the function ...
     end
 end # module
 

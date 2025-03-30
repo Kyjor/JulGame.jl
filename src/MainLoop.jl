@@ -177,9 +177,7 @@ module MainLoopModule
                 JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
 				@debug "Cleaning up immediate UI components"
 				JulGame.cleanup_sdl_resources()
-				if !(get(ENV, "TEST_MODE", "false") == "true")
-					exit()
-				end
+				return
             else
 				@debug "Changing scene"
                 this.shouldChangeScene = false
