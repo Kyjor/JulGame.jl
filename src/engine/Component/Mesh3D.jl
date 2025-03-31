@@ -50,21 +50,44 @@ module Mesh3DModule
     const TEXTURE_MODE_CLAMP = 1
     const TEXTURE_MODE_MIRROR = 2
 
+    # Texture filtering modes
+    const TEXTURE_FILTER_NEAREST = 0
+    const TEXTURE_FILTER_LINEAR = 1
+    const TEXTURE_FILTER_ANISOTROPIC = 2
+
+    # Texture types
+    const TEXTURE_TYPE_DIFFUSE = 0
+    const TEXTURE_TYPE_NORMAL = 1
+    const TEXTURE_TYPE_SPECULAR = 2
+    const TEXTURE_TYPE_EMISSIVE = 3
+    const TEXTURE_TYPE_AMBIENT = 4
+
     mutable struct Texture
         surface::Ptr{SDL_Surface}
         texture::Ptr{SDL_Texture}
         width::Int
         height::Int
         mode::Int
+        filter::Int
+        type::Int
 
-        function Texture(surface::Ptr{SDL_Surface}, mode::Int = TEXTURE_MODE_REPEAT)
+        function Texture(surface::Ptr{SDL_Surface}, mode::Int = TEXTURE_MODE_REPEAT, 
+                        filter::Int = TEXTURE_FILTER_LINEAR, type::Int = TEXTURE_TYPE_DIFFUSE)
             texture = SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             if texture == C_NULL
                 error("Failed to create texture from surface")
             end
+            
+            # Set texture filtering
+            if filter == TEXTURE_FILTER_LINEAR
+                SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")
+            else
+                SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0")
+            end
+            
             width = surface.w
             height = surface.h
-            new(surface, texture, width, height, mode)
+            new(surface, texture, width, height, mode, filter, type)
         end
     end
 
@@ -74,20 +97,38 @@ module Mesh3DModule
         diffuse::vec3d
         specular::vec3d
         shininess::Float64
-        texture::Union{Texture, Nothing}
+        textures::Dict{Int, Texture}
         textureMode::Int
 
         function Material(name::String = "default")
-            new(name, vec3d(0.2, 0.2, 0.2), vec3d(0.8, 0.8, 0.8), vec3d(0.0, 0.0, 0.0), 0.0, nothing, TEXTURE_MODE_REPEAT)
+            new(name, vec3d(0.2, 0.2, 0.2), vec3d(0.8, 0.8, 0.8), 
+                vec3d(0.0, 0.0, 0.0), 0.0, Dict{Int, Texture}(), TEXTURE_MODE_REPEAT)
         end
     end
 
-    function load_texture(file_path::String, mode::Int = TEXTURE_MODE_REPEAT)::Texture
-        surface = SDL_LoadBMP(file_path)
+    function load_texture(file_path::String; 
+                         mode::Int = TEXTURE_MODE_REPEAT,
+                         filter::Int = TEXTURE_FILTER_LINEAR,
+                         type::Int = TEXTURE_TYPE_DIFFUSE)::Texture
+        # Get file extension
+        ext = lowercase(splitext(file_path)[2])
+        
+        # Load texture based on format
+        surface = if ext == ".bmp"
+            SDL_LoadBMP(file_path)
+        elseif ext == ".png"
+            SDL_LoadPNG(file_path)
+        elseif ext == ".jpg" || ext == ".jpeg"
+            SDL_LoadJPG(file_path)
+        else
+            error("Unsupported texture format: $ext")
+        end
+
         if surface == C_NULL
             error("Failed to load texture: $file_path")
         end
-        return Texture(surface, mode)
+
+        return Texture(surface, mode, filter, type)
     end
 
     function apply_texture_mode(tex_coord::vec3d, texture::Texture)::vec3d
@@ -591,8 +632,17 @@ module Mesh3DModule
                 
                 # Apply texture coordinates based on texture mode if texture exists
                 tex_coords = copy(tri.texCoords)
-                if material.texture !== nothing
-                    tex_coords = [apply_texture_mode(coord, material.texture) for coord in tex_coords]
+                
+                # Get the diffuse texture (or any available texture) for rendering
+                texture = nothing
+                if haskey(material.textures, TEXTURE_TYPE_DIFFUSE)
+                    texture = material.textures[TEXTURE_TYPE_DIFFUSE]
+                elseif !isempty(material.textures)
+                    texture = first(material.textures)[2]
+                end
+
+                if texture !== nothing
+                    tex_coords = [apply_texture_mode(coord, texture) for coord in tex_coords]
                 end
 
                 sdl_verts = [
@@ -602,8 +652,8 @@ module Mesh3DModule
                 ]
 
                 # Use material texture if available, otherwise use color
-                texture = material.texture !== nothing ? material.texture.texture : C_NULL
-                SDL_RenderGeometry(JulGame.Renderer, texture, sdl_verts, length(sdl_verts), C_NULL, 0)
+                texture_ptr = texture !== nothing ? texture.texture : C_NULL
+                SDL_RenderGeometry(JulGame.Renderer, texture_ptr, sdl_verts, length(sdl_verts), C_NULL, 0)
                 
                 if JulGame.IS_DEBUG
                     SDL_RenderDrawLine(
