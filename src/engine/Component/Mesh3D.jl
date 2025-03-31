@@ -512,8 +512,11 @@ module Mesh3DModule
         windowSize = main.windowManager.windowSize
         this.fAspectRatio = windowSize.y / windowSize.x
         this.matProj = MatrixOps.matrix_make_projection(this.fFov, this.fAspectRatio, this.fNear, this.fFar)
-        this.mesh = create_cube()
         
+        if this.mesh.tris === nothing
+            this.mesh = create_cube()
+        end
+
         # Move the cube forward
         if this.parent !== nothing
             this.parent.transform.position = Math.Vector3f(0.0, 0.0, 5.0)
