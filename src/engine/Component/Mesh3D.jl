@@ -350,20 +350,11 @@ module Mesh3DModule
         try
             # Use the FastObj parser to load the mesh data
             vertices, normals, texcoords, faces, face_texcoords, face_normals, materials = FastObj.parse_obj_file(file_path)
-            println("parsed obj file")
-            println("vertices=====================================================:")
-            println(vertices)
-            println("normals=====================================================:")
-            println(normals)
-            println("texcoords=====================================================:")
-            println(texcoords)
-            println("faces=====================================================:")
-            println(faces)
-            println("face_texcoords=====================================================:")
-            println(face_texcoords)
-            println("face_normals=====================================================:")
-            println(face_normals)
-            println(materials)
+            println("Parsed OBJ file successfully")
+            println("Vertices: $(length(vertices))")
+            println("Normals: $(length(normals))")
+            println("Texcoords: $(length(texcoords))")
+            println("Faces: $(length(faces))")
             
             # Clear existing data
             empty!(this.mesh.tris)
@@ -388,6 +379,12 @@ module Mesh3DModule
                         ]
                     end
                     
+                    # Add normals if available
+                    if i <= length(face_normals) && !isempty(face_normals[i])
+                        # Store normals in the triangle structure if needed
+                        # You might need to add a normals field to the triangle struct
+                    end
+                    
                     # Set the material for this triangle
                     tri.material = this.mesh.currentMaterial
                     
@@ -395,6 +392,7 @@ module Mesh3DModule
                 end
             end
             
+            println("Created $(length(this.mesh.tris)) triangles")
             return true
         catch e
             @error "Failed to load OBJ file: $file_path" exception=(e, catch_backtrace())

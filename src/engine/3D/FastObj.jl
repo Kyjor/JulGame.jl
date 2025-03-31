@@ -252,14 +252,40 @@ module FastObj
             if s[1] == "newmtl"
                 current_material = Material(string(s[2]))
                 parser.materials[s[2]] = current_material
-            elseif s[1] == "map_Kd" && current_material !== nothing
-                # Load texture
-                texture_path = joinpath(dirname(mtl_path), s[2])
-                if isfile(texture_path)
-                    texture = load_texture(texture_path)
-                    current_material.textures[TEXTURE_TYPE_DIFFUSE] = texture
-                else
-                    @warn "Texture file not found: $texture_path"
+            elseif current_material !== nothing
+                if s[1] == "Ka" && length(s) >= 4
+                    # Ambient color
+                    current_material.ambient = (
+                        parse(Float32, s[2]),
+                        parse(Float32, s[3]),
+                        parse(Float32, s[4])
+                    )
+                elseif s[1] == "Kd" && length(s) >= 4
+                    # Diffuse color
+                    current_material.diffuse = (
+                        parse(Float32, s[2]),
+                        parse(Float32, s[3]),
+                        parse(Float32, s[4])
+                    )
+                elseif s[1] == "Ks" && length(s) >= 4
+                    # Specular color
+                    current_material.specular = (
+                        parse(Float32, s[2]),
+                        parse(Float32, s[3]),
+                        parse(Float32, s[4])
+                    )
+                elseif s[1] == "Ns" && length(s) >= 2
+                    # Specular exponent
+                    current_material.shininess = parse(Float32, s[2])
+                elseif s[1] == "map_Kd"
+                    # Load texture
+                    texture_path = joinpath(dirname(mtl_path), s[2])
+                    if isfile(texture_path)
+                        texture = load_texture(texture_path)
+                        current_material.textures[TEXTURE_TYPE_DIFFUSE] = texture
+                    else
+                        @warn "Texture file not found: $texture_path"
+                    end
                 end
             end
         end
