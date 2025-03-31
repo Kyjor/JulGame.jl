@@ -10,6 +10,7 @@ module EntityModule
     using ..JulGame.SoundSourceModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
+    using ..JulGame.Mesh3DModule
     import ..JulGame: Component
     import ..JulGame
 
@@ -20,6 +21,7 @@ module EntityModule
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         isActive::Bool
+        mesh3d::Union{Mesh3D, Ptr{Nothing}}
         name::String
         parent::Union{Entity, Ptr{Nothing}}
         persistentBetweenScenes::Bool
@@ -39,6 +41,7 @@ module EntityModule
             this.circleCollider = C_NULL
             this.collider = C_NULL
             this.isActive = true
+            this.mesh3d = C_NULL
             this.scripts = []
             this.transform = transform
             for script in scripts
@@ -168,6 +171,19 @@ module EntityModule
         this.shape = InternalShape(this::Entity, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
         
         return this.shape
+    end
+
+    function JulGame.add_mesh3d(this::Entity, mesh3d::Mesh3D = Mesh3D())
+        if this.mesh3d != C_NULL
+            println("Mesh3D already exists on entity named ", this.name)
+            return
+        end
+
+        this.mesh3d = mesh3d
+        mesh3d.parent = this
+        Component.initialize(mesh3d, JulGame.MAIN)
+
+        return this.mesh3d
     end
 
     function JulGame.generate_uuid()

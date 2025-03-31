@@ -436,6 +436,11 @@ function destroy_entity_components(this::MainLoop, entity)
 	if entitySoundSource != C_NULL
 		Component.unload_sound(entitySoundSource)
 	end
+
+	entityMesh3D = entity.mesh3d
+	if entityMesh3D != C_NULL
+		Component.destroy(entityMesh3D)
+	end
 end
 
 export create_entity
@@ -686,7 +691,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		for entity in this.scene.entities
 			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
 			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
-			if !entity.isActive || (!spriteExists && !shapeExists)
+			mesh3dExists = entity.mesh3d != C_NULL && entity.mesh3d !== nothing
+			if !entity.isActive || (!spriteExists && !shapeExists && !mesh3dExists)
 				continue
 			end
 
@@ -694,9 +700,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			size = entity.transform.scale
 			sprite = entity.sprite
 			shape = entity.shape
+			mesh3d = entity.mesh3d
 
 			skipSprite = false
 			skipShape = false
+			skipMesh3d = false
 
 			# TODO: consider offset
 			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
@@ -714,18 +722,25 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			if !skipShape && shapeExists
 				push!(renderOrder, (shape.layer, shape))
 			end
+			if !skipMesh3d && mesh3dExists
+				push!(renderOrder, (mesh3d.layer, mesh3d))
+			end
 		end
 
 		sort!(renderOrder, by = x -> x[1])
 		for i = eachindex(renderOrder)
 			try
 				rendercount += 1
-				Component.draw(renderOrder[i][2], camera)
+				if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
+					Component.render(renderOrder[i][2], this)
+				else
+					Component.draw(renderOrder[i][2], camera)
+				end
 			catch e
 				if this.testMode
 					rethrow(e)
 				else
-					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's sprite")
+					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's component")
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 				end

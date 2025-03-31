@@ -194,6 +194,17 @@ module SceneWriterModule
                     "size" => Dict("x" => component.size.x, "y" => component.size.y),
                 )
                 push!(componentsDict, serializedComponent)
+            elseif typeof(component) == Mesh3D
+                push!(componentsDict, Dict(
+                    "type" => "Mesh3D",
+                    "fNear" => component.fNear,
+                    "fFar" => component.fFar,
+                    "fFov" => component.fFov,
+                    "fYaw" => component.fYaw,
+                    "fTheta" => component.fTheta,
+                    "fAspectRatio" => component.fAspectRatio,
+                    "vCamera" => Dict("x" => component.vCamera.x, "y" => component.vCamera.y, "z" => component.vCamera.z, "w" => component.vCamera.w),
+                    "vLookDir" => Dict("x" => component.vLookDir.x, "y" => component.vLookDir.y, "z" => component.vLookDir.z, "w" => component.vLookDir.w)))
             elseif "$componentType" != "Ptr"
                 println("Component type $(componentType) not supported")
             end

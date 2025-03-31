@@ -10,6 +10,7 @@ module Component
     include("Rigidbody.jl")
     include("Shape.jl")
     include("SoundSource.jl")
+    include("Mesh3D.jl")
     
     export AnimationModule
     export AnimatorModule
@@ -20,4 +21,5 @@ module Component
     export SoundSourceModule
     export SpriteModule
     export TransformModule
+    export Mesh3DModule
 end

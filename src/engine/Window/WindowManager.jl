@@ -651,7 +651,6 @@ module WindowManagerModule
     """
     function handle_window_event(this::WindowManager, event::SDL2.SDL_WindowEvent)
         windowEvent = event.event
-        println("Window event: $(event)")
         if windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
             this.isWindowFocused = true
             @debug "Window focus gained"
