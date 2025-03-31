@@ -5,9 +5,7 @@ module Mesh3DModule
     using ..JulGame.SDL2.LibSDL2
     using ..JulGame.Component
     using ..JulGame.InputModule
-
     
-    export Mesh3D
 
     export vec3d
     mutable struct vec3d
@@ -21,7 +19,7 @@ module Mesh3DModule
         end
     end
 
-
+  
 
 
     mutable struct triangle
@@ -228,6 +226,11 @@ module Mesh3DModule
         end
     end
 
+    include("../3D/FastObj.jl")
+    using .FastObj
+    
+    export Mesh3D
+
     function apply_texture_mode(tex_coord::vec3d, texture::Texture)::vec3d
         u = tex_coord.x
         v = tex_coord.y
@@ -344,100 +347,59 @@ module Mesh3DModule
     end
 
     function load_from_obj(this::Mesh3D, file_path::String)::Bool
-        f = open(file_path, "r")
-        if f === nothing
+        try
+            # Use the FastObj parser to load the mesh data
+            vertices, normals, texcoords, faces, face_texcoords, face_normals, materials = FastObj.parse_obj_file(file_path)
+            println("parsed obj file")
+            println("vertices=====================================================:")
+            println(vertices)
+            println("normals=====================================================:")
+            println(normals)
+            println("texcoords=====================================================:")
+            println(texcoords)
+            println("faces=====================================================:")
+            println(faces)
+            println("face_texcoords=====================================================:")
+            println(face_texcoords)
+            println("face_normals=====================================================:")
+            println(face_normals)
+            println(materials)
+            
+            # Clear existing data
+            empty!(this.mesh.tris)
+            this.mesh.materials = materials
+            
+            # Create triangles from the parsed data
+            for (i, face) in enumerate(faces)
+                if length(face) >= 3
+                    # Create a triangle from the first three vertices
+                    tri = triangle([
+                        vertices[face[1]],
+                        vertices[face[2]],
+                        vertices[face[3]]
+                    ])
+                    
+                    # Add texture coordinates if available
+                    if i <= length(face_texcoords) && !isempty(face_texcoords[i])
+                        tri.texCoords = [
+                            texcoords[face_texcoords[i][1]],
+                            texcoords[face_texcoords[i][2]],
+                            texcoords[face_texcoords[i][3]]
+                        ]
+                    end
+                    
+                    # Set the material for this triangle
+                    tri.material = this.mesh.currentMaterial
+                    
+                    push!(this.mesh.tris, tri)
+                end
+            end
+            
+            return true
+        catch e
+            @error "Failed to load OBJ file: $file_path" exception=(e, catch_backtrace())
             return false
         end
-
-        empty!(this.mesh.tris)
-        this.mesh.materials = Dict{String, Material}()
-        this.mesh.currentMaterial = "default"
-
-        # Store all vertex data
-        vertices = Vector{VertexData}()
-        normals = Vector{vec3d}()
-        texCoords = Vector{vec3d}()
-        faces = Vector{Vector{Int}}()
-        faceTexCoords = Vector{Vector{Int}}()
-        faceNormals = Vector{Vector{Int}}()
-
-        # Track current material
-        current_material = "default"
-
-        while !eof(f)
-            line = readline(f)
-            s = split(line)
-            
-            if isempty(s)
-                continue
-            end
-
-            if s[1] == "v"  # Vertex position
-                v = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), parse(Float64, s[4]))
-                push!(vertices, VertexData(v, vec3d(0,0,0), vec3d(0,0,0)))
-            elseif s[1] == "vn"  # Vertex normal
-                n = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), parse(Float64, s[4]))
-                push!(normals, n)
-            elseif s[1] == "vt"  # Texture coordinate
-                t = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), 0.0)
-                push!(texCoords, t)
-            elseif s[1] == "f"  # Face
-                # Parse face indices (vertex/texture/normal)
-                face_indices = Vector{Int}()
-                face_tex_indices = Vector{Int}()
-                face_normal_indices = Vector{Int}()
-                
-                for i in 2:length(s)
-                    indices = split(s[i], "/")
-                    if length(indices) >= 1
-                        push!(face_indices, parse(Int, indices[1]))
-                    end
-                    if length(indices) >= 2 && !isempty(indices[2])
-                        push!(face_tex_indices, parse(Int, indices[2]))
-                    end
-                    if length(indices) >= 3 && !isempty(indices[3])
-                        push!(face_normal_indices, parse(Int, indices[3]))
-                    end
-                end
-                push!(faces, face_indices)
-                push!(faceTexCoords, face_tex_indices)
-                push!(faceNormals, face_normal_indices)
-            elseif s[1] == "usemtl"  # Material
-                current_material = s[2]
-            elseif s[1] == "mtllib"  # Material library
-                mtl_path = joinpath(dirname(file_path), s[2])
-                load_material_library(this, mtl_path)
-            end
-        end
-
-        # Create triangles from faces
-        for (i, face) in enumerate(faces)
-            if length(face) >= 3
-                # Create a triangle from the first three vertices
-                tri = triangle([
-                    vertices[face[1]].position,
-                    vertices[face[2]].position,
-                    vertices[face[3]].position
-                ])
-                
-                # Add texture coordinates if available
-                if i <= length(faceTexCoords) && !isempty(faceTexCoords[i])
-                    tri.texCoords = [
-                        texCoords[faceTexCoords[i][1]],
-                        texCoords[faceTexCoords[i][2]],
-                        texCoords[faceTexCoords[i][3]]
-                    ]
-                end
-                
-                # Set the material for this triangle
-                tri.material = current_material
-                
-                push!(this.mesh.tris, tri)
-            end
-        end
-
-        close(f)
-        return true
     end
 
     function load_material_library(this::Mesh3D, mtl_path::String)
