@@ -28,13 +28,34 @@ module Mesh3DModule
         p::Vector{vec3d}
         sym::Any
         color::Any
+        texCoords::Vector{vec3d}
         function triangle(p = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)])
-            new(p, nothing, nothing)
+            new(p, nothing, nothing, [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)])
         end
+    end
+
+    mutable struct VertexData
+        position::vec3d
+        normal::vec3d
+        texCoord::vec3d
+    end
+
+    mutable struct Material
+        name::String
+        ambient::vec3d
+        diffuse::vec3d
+        specular::vec3d
+        shininess::Float64
     end
 
     mutable struct mesh
         tris::Vector{triangle}
+        materials::Dict{String, Material}
+        currentMaterial::String
+
+        function mesh(tris::Vector{triangle} = triangle[], materials::Dict{String, Material} = Dict{String, Material}(), currentMaterial::String = "default")
+            new(tris, materials, currentMaterial)
+        end
     end
 
     struct RGB
@@ -51,6 +72,13 @@ module Mesh3DModule
     const PIXEL_HALF = '▒'
     const PIXEL_THREEQUARTERS = '▓'
 
+    const SUPPORTED_FORMATS = Dict(
+        ".obj" => "Wavefront OBJ",
+        ".fbx" => "Autodesk FBX",
+        ".3ds" => "3D Studio",
+        ".dae" => "Collada DAE"
+    )
+
     mutable struct Mesh3D
         parent
         layer::Int
@@ -63,13 +91,14 @@ module Mesh3DModule
         matProj::mat4x4
         matWorld::mat4x4
         vecTrianglesToRaster::Vector{triangle}
+        fileFormat::String
 
         function Mesh3D()
             this = new()
             this.parent = C_NULL
             this.layer = 0
             this.isWorldEntity = true
-            this.mesh = mesh(triangle[])
+            this.mesh = mesh()
             this.fNear = 0.1
             this.fFar = 1000.0
             this.fFov = 90.0
@@ -77,8 +106,158 @@ module Mesh3DModule
             this.matProj = MatrixOps.matrix_make_identity()
             this.matWorld = MatrixOps.matrix_make_identity()
             this.vecTrianglesToRaster = []
+            this.fileFormat = ""
             return this
         end
+
+        function Mesh3D(file_path::String; fNear::Float64=0.1, fFar::Float64=1000.0, fFov::Float64=90.0)
+            this = new()
+            this.parent = C_NULL
+            this.layer = 0
+            this.isWorldEntity = true
+            this.mesh = mesh(triangle[])
+            this.fNear = fNear
+            this.fFar = fFar
+            this.fFov = fFov
+            this.fAspectRatio = 0.0
+            this.matProj = MatrixOps.matrix_make_identity()
+            this.matWorld = MatrixOps.matrix_make_identity()
+            this.vecTrianglesToRaster = []
+            
+            # Detect and store the file format
+            this.fileFormat = detect_file_format(file_path)
+            
+            # Load the mesh from the object file
+            if !load_from_object_file(this, file_path)
+                error("Failed to load mesh from file: $file_path")
+            end
+            
+            return this
+        end
+    end
+
+    function detect_file_format(file_path::String)::String
+        ext = lowercase(splitext(file_path)[2])
+        if haskey(SUPPORTED_FORMATS, ext)
+            return ext
+        end
+        error("Unsupported file format. Supported formats are: $(join(keys(SUPPORTED_FORMATS), ", "))")
+    end
+
+    function load_from_obj(this::Mesh3D, file_path::String)::Bool
+        f = open(file_path, "r")
+        if f === nothing
+            return false
+        end
+
+        empty!(this.mesh.tris)
+        this.mesh.materials = Dict{String, Material}()
+        this.mesh.currentMaterial = "default"
+
+        # Store all vertex data
+        vertices = Vector{VertexData}()
+        normals = Vector{vec3d}()
+        texCoords = Vector{vec3d}()
+        faces = Vector{Vector{Int}}()
+        faceTexCoords = Vector{Vector{Int}}()
+
+        while !eof(f)
+            line = readline(f)
+            s = split(line)
+            
+            if isempty(s)
+                continue
+            end
+
+            if s[1] == "v"  # Vertex position
+                v = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), parse(Float64, s[4]))
+                push!(vertices, VertexData(v, vec3d(0,0,0), vec3d(0,0,0)))
+            elseif s[1] == "vn"  # Vertex normal
+                n = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), parse(Float64, s[4]))
+                push!(normals, n)
+            elseif s[1] == "vt"  # Texture coordinate
+                t = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), 0.0)
+                push!(texCoords, t)
+            elseif s[1] == "f"  # Face
+                # Parse face indices (vertex/texture/normal)
+                face_indices = Vector{Int}()
+                face_tex_indices = Vector{Int}()
+                for i in 2:length(s)
+                    indices = split(s[i], "/")
+                    if length(indices) >= 1
+                        push!(face_indices, parse(Int, indices[1]))
+                    end
+                    if length(indices) >= 2 && !isempty(indices[2])
+                        push!(face_tex_indices, parse(Int, indices[2]))
+                    end
+                end
+                push!(faces, face_indices)
+                push!(faceTexCoords, face_tex_indices)
+            elseif s[1] == "usemtl"  # Material
+                this.mesh.currentMaterial = s[2]
+            elseif s[1] == "mtllib"  # Material library
+                # TODO: Load material library
+                # For now, we'll just ignore it
+            end
+        end
+
+        # Create triangles from faces
+        for (i, face) in enumerate(faces)
+            if length(face) >= 3
+                # Create a triangle from the first three vertices
+                tri = triangle([
+                    vertices[face[1]].position,
+                    vertices[face[2]].position,
+                    vertices[face[3]].position
+                ])
+                
+                # Add texture coordinates if available
+                if i <= length(faceTexCoords) && !isempty(faceTexCoords[i])
+                    tri.texCoords = [
+                        texCoords[faceTexCoords[i][1]],
+                        texCoords[faceTexCoords[i][2]],
+                        texCoords[faceTexCoords[i][3]]
+                    ]
+                end
+                
+                push!(this.mesh.tris, tri)
+            end
+        end
+
+        close(f)
+        return true
+    end
+
+    function load_from_fbx(this::Mesh3D, file_path::String)::Bool
+        # TODO: Implement FBX loading
+        # This would require a FBX parsing library
+        error("FBX loading not yet implemented")
+    end
+
+    function load_from_3ds(this::Mesh3D, file_path::String)::Bool
+        # TODO: Implement 3DS loading
+        error("3DS loading not yet implemented")
+    end
+
+    function load_from_dae(this::Mesh3D, file_path::String)::Bool
+        # TODO: Implement Collada DAE loading
+        error("Collada DAE loading not yet implemented")
+    end
+
+    function load_from_object_file(this::Mesh3D, file_path::String)::Bool
+        format = detect_file_format(file_path)
+        
+        if format == ".obj"
+            return load_from_obj(this, file_path)
+        elseif format == ".fbx"
+            return load_from_fbx(this, file_path)
+        elseif format == ".3ds"
+            return load_from_3ds(this, file_path)
+        elseif format == ".dae"
+            return load_from_dae(this, file_path)
+        end
+        
+        return false
     end
 
     function Component.initialize(this::Mesh3D, main)
@@ -224,10 +403,20 @@ module Mesh3DModule
             # Get Ray from triangle to camera 
             vCameraRay::vec3d = MatrixOps.vector_sub(triTransformed.p[1], cameraPos)
             if MatrixOps.vector_dot_product(normal, vCameraRay) < 0.0
-                # Lighting
-                light_direction = vec3d(-0.707, -0.707, -1.0)
-                light_direction = MatrixOps.vector_normalize(light_direction)
-                dp = MatrixOps.vector_dot_product(normal, light_direction)
+                # Combine camera-based lighting with fixed light direction
+                camera_light = MatrixOps.vector_normalize(vCameraRay)
+                fixed_light = MatrixOps.vector_normalize(vec3d(-0.707, -0.707, -1.0))
+                
+                # Calculate dot products for both light sources
+                dp_camera = MatrixOps.vector_dot_product(normal, camera_light)
+                dp_fixed = MatrixOps.vector_dot_product(normal, fixed_light)
+                
+                # Combine the lighting (weighted average)
+                dp = 0.3 * dp_camera + 0.7 * dp_fixed
+
+                # Add some ambient light to prevent completely dark faces
+                ambient = 0.2
+                dp = max(ambient, dp)
 
                 # Convert to view space
                 triViewed[].p[1] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[1])
@@ -337,9 +526,9 @@ module Mesh3DModule
             # Draw triangles
             for tri in listTriangles
                 sdl_verts = [
-                    SDL_Vertex(SDL_FPoint(tri.p[1].x, tri.p[1].y), tri.color, SDL_FPoint(0, 0)),
-                    SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), tri.color, SDL_FPoint(0, 0)),
-                    SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(0, 0))
+                    SDL_Vertex(SDL_FPoint(tri.p[1].x, tri.p[1].y), tri.color, SDL_FPoint(tri.texCoords[1].x, tri.texCoords[1].y)),
+                    SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), tri.color, SDL_FPoint(tri.texCoords[2].x, tri.texCoords[2].y)),
+                    SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(tri.texCoords[3].x, tri.texCoords[3].y))
                 ]
                 SDL_RenderGeometry(JulGame.Renderer, C_NULL, sdl_verts, length(sdl_verts), C_NULL, 0)
                 
@@ -369,38 +558,6 @@ module Mesh3DModule
     function Component.destroy(this::Mesh3D)
         empty!(this.mesh.tris)
         empty!(this.vecTrianglesToRaster)
-    end
-
-    function load_from_object_file(this::Mesh3D, file_name::String)
-        f = open(file_name, "r")
-        if f === nothing
-            return false
-        end
-
-        empty!(this.mesh.tris)
-        verts = Vector{vec3d}()
-
-        while !eof(f)
-            line = readline(f)
-            s = split(line)
-            
-            if !isempty(s) && s[1] == "v"
-                v = vec3d(parse(Float64, s[2]), parse(Float64, s[3]), parse(Float64, s[4]))
-                push!(verts, v)
-            end
-
-            if !isempty(s) && s[1] == "f"
-                tri = triangle([
-                    verts[parse(Int, s[2])],
-                    verts[parse(Int, s[3])],
-                    verts[parse(Int, s[4])]
-                ])
-                push!(this.mesh.tris, tri)
-            end
-        end
-
-        close(f)
-        return true
     end
 
     function avg_z(t::triangle)
