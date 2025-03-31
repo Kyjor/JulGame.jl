@@ -8,7 +8,9 @@ module CameraModule
         offset::Vector2f
         position::Vector2f
         size::Vector2
-
+        zPosition::Float64
+        yaw::Float64
+        pitch::Float64
         target::Union{
             Ptr{Nothing}, 
             JulGame.TransformModule.Transform
@@ -24,6 +26,9 @@ module CameraModule
             this.offset = Vector2f(offset.x, offset.y)
             this.target = target
             this.windowPos = Vector2(0,0)
+            this.zPosition = -5.0
+            this.yaw = 0.0
+            this.pitch = 0.0
 
             return this
         end

@@ -59,13 +59,8 @@ module Mesh3DModule
         fNear::Float64
         fFar::Float64
         fFov::Float64
-        fYaw::Float64
-        fTheta::Float64
         fAspectRatio::Float64
-        vCamera::vec3d
-        vLookDir::vec3d
         matProj::mat4x4
-        matView::mat4x4
         matWorld::mat4x4
         vecTrianglesToRaster::Vector{triangle}
 
@@ -78,13 +73,8 @@ module Mesh3DModule
             this.fNear = 0.1
             this.fFar = 1000.0
             this.fFov = 90.0
-            this.fYaw = 0.0
-            this.fTheta = 0.0
             this.fAspectRatio = 0.0
-            this.vCamera = vec3d(0, 0, 0)
-            this.vLookDir = vec3d(0, 0, 0)
             this.matProj = MatrixOps.matrix_make_identity()
-            this.matView = MatrixOps.matrix_make_identity()
             this.matWorld = MatrixOps.matrix_make_identity()
             this.vecTrianglesToRaster = []
             return this
@@ -96,6 +86,11 @@ module Mesh3DModule
         this.fAspectRatio = windowSize.y / windowSize.x
         this.matProj = MatrixOps.matrix_make_projection(this.fFov, this.fAspectRatio, this.fNear, this.fFar)
         this.mesh = create_cube()
+        
+        # Move the cube forward
+        if this.parent !== nothing
+            this.parent.transform.position = Math.Vector3f(0.0, 0.0, 5.0)
+        end
     end
 
     function Component.update(this::Mesh3D, deltaTime::Float64)
@@ -103,32 +98,64 @@ module Mesh3DModule
             return
         end
 
-        # Camera controls
-        vForward = MatrixOps.vector_mul(this.vLookDir, 8.0 * deltaTime)
-        
-        if InputModule.get_button_held_down("W")
-            this.vCamera = MatrixOps.vector_add(this.vCamera, vForward)
-        elseif InputModule.get_button_held_down("S")
-            this.vCamera = MatrixOps.vector_sub(this.vCamera, vForward)
-        end
+        # Debug controls for 3D movement
+        if JulGame.IS_DEBUG
+            moveSpeed = 1.0 * deltaTime
+            if JulGame.InputModule.get_button_held_down("Right")
+                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x + moveSpeed, this.parent.transform.position.y, this.parent.transform.position.z)
+            elseif JulGame.InputModule.get_button_held_down("Left")
+                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x - moveSpeed, this.parent.transform.position.y, this.parent.transform.position.z)
+            end
 
-        if InputModule.get_button_held_down("A")
-            this.fYaw -= 2.0 * deltaTime
-        elseif InputModule.get_button_held_down("D")
-            this.fYaw += 2.0 * deltaTime
-        end
+            if !JulGame.InputModule.get_button_held_down("LCtrl")
+                if JulGame.InputModule.get_button_held_down("Down")
+                    this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y + moveSpeed, this.parent.transform.position.z)
+                elseif JulGame.InputModule.get_button_held_down("Up")
+                    this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y - moveSpeed, this.parent.transform.position.z)
+                end
+            end
 
-        # Update camera view matrix
-        vUp = vec3d(0, 1, 0)
-        vTarget = vec3d(0, 0, 1)
-        matCameraRot = MatrixOps.matrix_make_rotation_y(this.fYaw)
-        this.vLookDir = MatrixOps.matrix_multiply_vector(matCameraRot, vTarget)
-        vTarget = MatrixOps.vector_add(this.vCamera, this.vLookDir)
-        matCamera = MatrixOps.matrix_point_at(this.vCamera, vTarget, vUp)
-        this.matView = MatrixOps.matrix_quick_inverse(matCamera)
+            # Z-axis movement with Ctrl + Up/Down
+            if JulGame.InputModule.get_button_held_down("LCtrl") && JulGame.InputModule.get_button_held_down("Up")
+                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y, this.parent.transform.position.z + moveSpeed)
+            elseif JulGame.InputModule.get_button_held_down("LCtrl") && JulGame.InputModule.get_button_held_down("Down")
+                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y, this.parent.transform.position.z - moveSpeed)
+            end
+
+            # Rotation controls with Q/E
+            if JulGame.InputModule.get_button_held_down("Q")
+                this.parent.transform.rotation = Math.Vector3f(this.parent.transform.rotation.x, this.parent.transform.rotation.y, this.parent.transform.rotation.z + 90.0 * deltaTime)
+            elseif JulGame.InputModule.get_button_held_down("E")
+                this.parent.transform.rotation = Math.Vector3f(this.parent.transform.rotation.x, this.parent.transform.rotation.y, this.parent.transform.rotation.z - 90.0 * deltaTime)
+            end
+
+            # Look at cube with spacebar
+            if JulGame.InputModule.get_button_pressed("2")
+
+                camera = JulGame.MAIN.scene.camera
+                println("trying to point at")
+                if camera !== nothing
+                    println("point at")
+                    # Calculate direction to cube
+                    cubePos = this.parent.transform.position
+                    cameraPos = vec3d(camera.position.x, camera.position.y, camera.zPosition)
+                    direction = MatrixOps.vector_sub(vec3d(cubePos.x, cubePos.y, cubePos.z), cameraPos)
+                    direction = MatrixOps.vector_normalize(direction)
+
+                    # Calculate yaw and pitch from direction
+                    yaw = atan(direction.x, direction.z)
+                    pitch = asin(direction.y)
+
+                    # Convert to degrees and set camera rotation
+                    camera.yaw = yaw * 180.0 / π
+                    camera.pitch = pitch * 180.0 / π
+                end
+            end
+        end
     end
 
     function Component.render(this::Mesh3D, main)
+        Component.update(this, 0.167)
         # Clear triangles to raster
         empty!(this.vecTrianglesToRaster)
 
@@ -138,39 +165,64 @@ module Mesh3DModule
         rot = this.parent.transform.rotation
 
         # Create world matrix
-        matTrans = MatrixOps.matrix_make_translation(pos.x, pos.y, 0.0)
+        matTrans = MatrixOps.matrix_make_translation(pos.x, pos.y, pos.z)
         matScale = MatrixOps.matrix_make_scale(scale.x, scale.y, 1.0)
         matRotZ = MatrixOps.matrix_make_rotation_z(rot.z)
         this.matWorld = MatrixOps.matrix_multiply_matrix(matRotZ, matScale)
         this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matTrans)
 
+        # Get camera position and create view matrix
+        cameraPos = vec3d(main.scene.camera.position.x, main.scene.camera.position.y, main.scene.camera.zPosition)
+        vUp = vec3d(0, 1, 0)
+        vTarget = vec3d(0, 0, 1)
+
+        # Create rotation matrices for camera
+        matCameraRotY = MatrixOps.matrix_make_rotation_y(main.scene.camera.yaw)
+        matCameraRotX = MatrixOps.matrix_make_rotation_x(main.scene.camera.pitch)
+
+        # Apply rotations to target
+        vTarget = MatrixOps.matrix_multiply_vector(matCameraRotY, vTarget)
+        vTarget = MatrixOps.matrix_multiply_vector(matCameraRotX, vTarget)
+
+        # Create camera matrix
+        matCamera = MatrixOps.matrix_point_at(cameraPos, vTarget, vUp)
+        matView = MatrixOps.matrix_quick_inverse(matCamera)
+
         # Process each triangle
         for tri in this.mesh.tris
-            triTransformed = triangle()
-            triViewed = triangle()
-            triProjected = Ref(triangle())
+            triProjected::triangle = triangle()
+			triTransformed::triangle = triangle()
+			triViewed::Ref{triangle} = Ref(triangle())
 
             # Transform triangle vertices
             triTransformed.p[1] = MatrixOps.matrix_multiply_vector(this.matWorld, tri.p[1])
             triTransformed.p[2] = MatrixOps.matrix_multiply_vector(this.matWorld, tri.p[2])
             triTransformed.p[3] = MatrixOps.matrix_multiply_vector(this.matWorld, tri.p[3])
 
+            # Debug check for NaNs after world transform
+            if any(isnan.(triTransformed.p[1].x) .|| isnan.(triTransformed.p[1].y) .|| isnan.(triTransformed.p[1].z))
+                println("NaN detected after world transform")
+                println("Position: ", pos)
+                println("Scale: ", scale)
+                println("Rotation: ", rot)
+            end
+
             normal::vec3d = vec3d(0, 0, 0)
-			line1::vec3d  = vec3d(0, 0, 0)
-			line2::vec3d  = vec3d(0, 0, 0)
-	
+            line1::vec3d  = vec3d(0, 0, 0)
+            line2::vec3d  = vec3d(0, 0, 0)
+
             # Get lines either side of the triangle
             line1 = MatrixOps.vector_sub(triTransformed.p[2], triTransformed.p[1])
             line2 = MatrixOps.vector_sub(triTransformed.p[3], triTransformed.p[1])
             
-			# Take cross product of lines to get normal to triangle surface 
-			normal = MatrixOps.vector_cross_product(line1, line2)
-	
+            # Take cross product of lines to get normal to triangle surface 
+            normal = MatrixOps.vector_cross_product(line1, line2)
+
             # you normally need to normalize a normal!
             normal = MatrixOps.vector_normalize(normal)
             
-			# Get Ray from triangle to camera 
-			vCameraRay::vec3d = MatrixOps.vector_sub(triTransformed.p[1], this.vCamera)
+            # Get Ray from triangle to camera 
+            vCameraRay::vec3d = MatrixOps.vector_sub(triTransformed.p[1], cameraPos)
             if MatrixOps.vector_dot_product(normal, vCameraRay) < 0.0
                 # Lighting
                 light_direction = vec3d(-0.707, -0.707, -1.0)
@@ -178,12 +230,20 @@ module Mesh3DModule
                 dp = MatrixOps.vector_dot_product(normal, light_direction)
 
                 # Convert to view space
-                triViewed.p[1] = MatrixOps.matrix_multiply_vector(this.matView, triTransformed.p[1])
-                triViewed.p[2] = MatrixOps.matrix_multiply_vector(this.matView, triTransformed.p[2])
-                triViewed.p[3] = MatrixOps.matrix_multiply_vector(this.matView, triTransformed.p[3])
+                triViewed[].p[1] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[1])
+                triViewed[].p[2] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[2])
+                triViewed[].p[3] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[3])
+
+                # Debug check for NaNs after view transform
+                if any(isnan.(triViewed[].p[1].x) .|| isnan.(triViewed[].p[1].y) .|| isnan.(triViewed[].p[1].z))
+                    println("NaN detected after view transform")
+                    println("Camera position: ", cameraPos)
+                    println("Camera yaw: ", main.scene.camera.yaw)
+                    println("Camera pitch: ", main.scene.camera.pitch)
+                end
 
                 # Clip against near plane
-				clipped = Ref([triangle([vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0)]), triangle([vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0)])])
+                clipped = Ref([triangle([vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0)]), triangle([vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0)])])
                 nClippedTriangles = triangle_clip_against_plane(vec3d(0.0, 0.0, this.fNear), vec3d(0.0, 0.0, 1.0), triViewed, clipped)
 
                 if nClippedTriangles > 0
@@ -192,6 +252,14 @@ module Mesh3DModule
                         triProjected.p[1] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[1])
                         triProjected.p[2] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[2])
                         triProjected.p[3] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[3])
+
+                        # Debug check for NaNs after projection
+                        if any(isnan.(triProjected.p[1].x) .|| isnan.(triProjected.p[1].y) .|| isnan.(triProjected.p[1].z))
+                            println("NaN detected after projection")
+                            println("Near plane: ", this.fNear)
+                            println("Far plane: ", this.fFar)
+                            println("FOV: ", this.fFov)
+                        end
 
                         # Scale into view
                         triProjected.p[1] = MatrixOps.vector_div(triProjected.p[1], triProjected.p[1].w)
@@ -227,7 +295,6 @@ module Mesh3DModule
         # Sort triangles by Z depth
         sort!(this.vecTrianglesToRaster, by = avg_z, rev = true)
 
-        println(this.vecTrianglesToRaster)
         # Render triangles
         for triToRaster in this.vecTrianglesToRaster
             if isnan(triToRaster.p[1].x) || isnan(triToRaster.p[1].y) ||
@@ -244,15 +311,9 @@ module Mesh3DModule
             for i in 1:4
                 nTrisToAdd = 0
                 while nNewTriangles > 0
-                    test = listTriangles[1]
+                    test::Ref{triangle} = Ref(listTriangles[begin])
                     popfirst!(listTriangles)
                     nNewTriangles -= 1
-
-                    #  Clip it against a plane. We only need to test each 
-					#  subsequent plane, against subsequent new triangles
-					#  as all triangles after a plane clip are guaranteed
-					#  to lie on the inside of the plane. I like how this
-					#  comment is almost completely and utterly justified
 
                     if i == 1
                         nTrisToAdd = triangle_clip_against_plane(vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), test, clipped)
@@ -273,7 +334,6 @@ module Mesh3DModule
                 nNewTriangles = length(listTriangles)
             end
 
-            println(length(listTriangles))
             # Draw triangles
             for tri in listTriangles
                 sdl_verts = [
@@ -281,7 +341,6 @@ module Mesh3DModule
                     SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), tri.color, SDL_FPoint(0, 0)),
                     SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(0, 0))
                 ]
-                println(sdl_verts)
                 SDL_RenderGeometry(JulGame.Renderer, C_NULL, sdl_verts, length(sdl_verts), C_NULL, 0)
                 
                 if JulGame.IS_DEBUG
@@ -290,13 +349,13 @@ module Mesh3DModule
                         round(tri.p[1].x), round(tri.p[1].y),
                         round(tri.p[2].x), round(tri.p[2].y)
                     )
-		
-					SDL_RenderDrawLine(
-						JulGame.Renderer,
-						round(tri.p[2].x), round(tri.p[2].y),
-						round(tri.p[3].x), round(tri.p[3].y)
-					)
-		
+        
+                    SDL_RenderDrawLine(
+                        JulGame.Renderer,
+                        round(tri.p[2].x), round(tri.p[2].y),
+                        round(tri.p[3].x), round(tri.p[3].y)
+                    )
+        
                     SDL_RenderDrawLine(
                         JulGame.Renderer,
                         round(tri.p[3].x), round(tri.p[3].y),
@@ -350,10 +409,10 @@ module Mesh3DModule
     end
 
     function triangle_clip_against_plane(plane_p::vec3d, plane_n::vec3d, in_tri::Ref{triangle}, out_tris::Ref{Vector{triangle}})::Int
+        # Make sure plane normal is indeed normal 
         plane_n = MatrixOps.vector_normalize(plane_n)
 
         dist = (p::vec3d) -> begin
-            n = MatrixOps.vector_normalize(p)
             return plane_n.x * p.x + plane_n.y * p.y + plane_n.z * p.z - MatrixOps.vector_dot_product(plane_n, plane_p)
         end
 
@@ -404,6 +463,7 @@ module Mesh3DModule
             out_tris[][1].color = in_tri[].color
             out_tris[][1].sym = in_tri[].sym
             
+            out_tris[][1].p[1] = inside_points[1]
             out_tris[][1].p[2] = MatrixOps.vector_intersect_plane(plane_p, plane_n, inside_points[1], outside_points[1])
             out_tris[][1].p[3] = MatrixOps.vector_intersect_plane(plane_p, plane_n, inside_points[1], outside_points[2])
         
@@ -427,6 +487,8 @@ module Mesh3DModule
 
             return 2
         end
+
+        return 0  # Default return if no other case matches
     end
 
     function create_cube()
