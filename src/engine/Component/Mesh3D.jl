@@ -40,12 +40,78 @@ module Mesh3DModule
         texCoord::vec3d
     end
 
+    const PIXEL_SOLID = '█'
+    const PIXEL_QUARTER = '░'
+    const PIXEL_HALF = '▒'
+    const PIXEL_THREEQUARTERS = '▓'
+
+    # Texture mapping modes
+    const TEXTURE_MODE_REPEAT = 0
+    const TEXTURE_MODE_CLAMP = 1
+    const TEXTURE_MODE_MIRROR = 2
+
+    mutable struct Texture
+        surface::Ptr{SDL_Surface}
+        texture::Ptr{SDL_Texture}
+        width::Int
+        height::Int
+        mode::Int
+
+        function Texture(surface::Ptr{SDL_Surface}, mode::Int = TEXTURE_MODE_REPEAT)
+            texture = SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            if texture == C_NULL
+                error("Failed to create texture from surface")
+            end
+            width = surface.w
+            height = surface.h
+            new(surface, texture, width, height, mode)
+        end
+    end
+
     mutable struct Material
         name::String
         ambient::vec3d
         diffuse::vec3d
         specular::vec3d
         shininess::Float64
+        texture::Union{Texture, Nothing}
+        textureMode::Int
+
+        function Material(name::String = "default")
+            new(name, vec3d(0.2, 0.2, 0.2), vec3d(0.8, 0.8, 0.8), vec3d(0.0, 0.0, 0.0), 0.0, nothing, TEXTURE_MODE_REPEAT)
+        end
+    end
+
+    function load_texture(file_path::String, mode::Int = TEXTURE_MODE_REPEAT)::Texture
+        surface = SDL_LoadBMP(file_path)
+        if surface == C_NULL
+            error("Failed to load texture: $file_path")
+        end
+        return Texture(surface, mode)
+    end
+
+    function apply_texture_mode(tex_coord::vec3d, texture::Texture)::vec3d
+        u = tex_coord.x
+        v = tex_coord.y
+
+        if texture.mode == TEXTURE_MODE_REPEAT
+            u = mod(u, 1.0)
+            v = mod(v, 1.0)
+        elseif texture.mode == TEXTURE_MODE_CLAMP
+            u = clamp(u, 0.0, 1.0)
+            v = clamp(v, 0.0, 1.0)
+        elseif texture.mode == TEXTURE_MODE_MIRROR
+            u = mod(u, 2.0)
+            v = mod(v, 2.0)
+            if u > 1.0
+                u = 2.0 - u
+            end
+            if v > 1.0
+                v = 2.0 - v
+            end
+        end
+
+        return vec3d(u, v, 0.0)
     end
 
     mutable struct mesh
@@ -66,11 +132,6 @@ module Mesh3DModule
 
     include("Mesh3D/MatrixOps.jl")
     using .MatrixOps
-
-    const PIXEL_SOLID = '█'
-    const PIXEL_QUARTER = '░'
-    const PIXEL_HALF = '▒'
-    const PIXEL_THREEQUARTERS = '▓'
 
     const SUPPORTED_FORMATS = Dict(
         ".obj" => "Wavefront OBJ",
@@ -525,12 +586,24 @@ module Mesh3DModule
 
             # Draw triangles
             for tri in listTriangles
+                # Get material for the triangle
+                material = get(this.mesh.materials, this.mesh.currentMaterial, Material())
+                
+                # Apply texture coordinates based on texture mode if texture exists
+                tex_coords = copy(tri.texCoords)
+                if material.texture !== nothing
+                    tex_coords = [apply_texture_mode(coord, material.texture) for coord in tex_coords]
+                end
+
                 sdl_verts = [
-                    SDL_Vertex(SDL_FPoint(tri.p[1].x, tri.p[1].y), tri.color, SDL_FPoint(tri.texCoords[1].x, tri.texCoords[1].y)),
-                    SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), tri.color, SDL_FPoint(tri.texCoords[2].x, tri.texCoords[2].y)),
-                    SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(tri.texCoords[3].x, tri.texCoords[3].y))
+                    SDL_Vertex(SDL_FPoint(tri.p[1].x, tri.p[1].y), tri.color, SDL_FPoint(tex_coords[1].x, tex_coords[1].y)),
+                    SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), tri.color, SDL_FPoint(tex_coords[2].x, tex_coords[2].y)),
+                    SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(tex_coords[3].x, tex_coords[3].y))
                 ]
-                SDL_RenderGeometry(JulGame.Renderer, C_NULL, sdl_verts, length(sdl_verts), C_NULL, 0)
+
+                # Use material texture if available, otherwise use color
+                texture = material.texture !== nothing ? material.texture.texture : C_NULL
+                SDL_RenderGeometry(JulGame.Renderer, texture, sdl_verts, length(sdl_verts), C_NULL, 0)
                 
                 if JulGame.IS_DEBUG
                     SDL_RenderDrawLine(
