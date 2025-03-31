@@ -29,8 +29,9 @@ module Mesh3DModule
         sym::Any
         color::Any
         texCoords::Vector{vec3d}
-        function triangle(p = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)])
-            new(p, nothing, nothing, [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)])
+        material::String
+        function triangle(p = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)], sym = nothing, color = nothing, texCoords = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)], material = "default")
+            new(p, sym, color, texCoords, material)
         end
     end
 
@@ -96,8 +97,12 @@ module Mesh3DModule
                 SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0")
             end
             
-            width = surface.w
-            height = surface.h
+            w = Ref{Int32}(0)
+            h = Ref{Int32}(0)
+            SDL_QueryTexture(texture, C_NULL, C_NULL, w, h)
+
+            width = w[]
+            height = h[]
             new(surface, texture, width, height, mode, filter, type, compression, UInt8[], 0)
         end
     end
@@ -176,18 +181,19 @@ module Mesh3DModule
                          filter::Int = TEXTURE_FILTER_LINEAR,
                          type::Int = TEXTURE_TYPE_DIFFUSE,
                          compression::Int = TEXTURE_COMPRESSION_NONE)::Texture
+        println("Loading texture from: $file_path")
         # Get file extension
         ext = lowercase(splitext(file_path)[2])
         
         # Load texture based on format
         surface = if ext == ".bmp"
-            SDL_LoadBMP(file_path)
+            IMG_Load(file_path)
         elseif ext == ".png"
-            SDL_LoadPNG(file_path)
+            IMG_Load(file_path)
         elseif ext == ".jpg" || ext == ".jpeg"
-            SDL_LoadJPG(file_path)
+            IMG_Load(file_path)
         elseif ext == ".dds"  # DirectDraw Surface (compressed texture)
-            SDL_LoadDDS(file_path)
+            IMG_Load(file_path)
         else
             error("Unsupported texture format: $ext")
         end
@@ -196,6 +202,7 @@ module Mesh3DModule
             error("Failed to load texture: $file_path")
         end
 
+        println("Surface loaded successfully")
         texture = Texture(surface, mode, filter, type, compression)
         
         # Apply compression if requested
@@ -352,6 +359,10 @@ module Mesh3DModule
         texCoords = Vector{vec3d}()
         faces = Vector{Vector{Int}}()
         faceTexCoords = Vector{Vector{Int}}()
+        faceNormals = Vector{Vector{Int}}()
+
+        # Track current material
+        current_material = "default"
 
         while !eof(f)
             line = readline(f)
@@ -374,6 +385,8 @@ module Mesh3DModule
                 # Parse face indices (vertex/texture/normal)
                 face_indices = Vector{Int}()
                 face_tex_indices = Vector{Int}()
+                face_normal_indices = Vector{Int}()
+                
                 for i in 2:length(s)
                     indices = split(s[i], "/")
                     if length(indices) >= 1
@@ -382,14 +395,18 @@ module Mesh3DModule
                     if length(indices) >= 2 && !isempty(indices[2])
                         push!(face_tex_indices, parse(Int, indices[2]))
                     end
+                    if length(indices) >= 3 && !isempty(indices[3])
+                        push!(face_normal_indices, parse(Int, indices[3]))
+                    end
                 end
                 push!(faces, face_indices)
                 push!(faceTexCoords, face_tex_indices)
+                push!(faceNormals, face_normal_indices)
             elseif s[1] == "usemtl"  # Material
-                this.mesh.currentMaterial = s[2]
+                current_material = s[2]
             elseif s[1] == "mtllib"  # Material library
-                # TODO: Load material library
-                # For now, we'll just ignore it
+                mtl_path = joinpath(dirname(file_path), s[2])
+                load_material_library(this, mtl_path)
             end
         end
 
@@ -412,12 +429,51 @@ module Mesh3DModule
                     ]
                 end
                 
+                # Set the material for this triangle
+                tri.material = current_material
+                
                 push!(this.mesh.tris, tri)
             end
         end
 
         close(f)
         return true
+    end
+
+    function load_material_library(this::Mesh3D, mtl_path::String)
+        if !isfile(mtl_path)
+            @warn "Material library file not found: $mtl_path"
+            return
+        end
+
+        f = open(mtl_path, "r")
+        current_material = nothing
+
+        while !eof(f)
+            line = readline(f)
+            s = split(line)
+            
+            if isempty(s)
+                continue
+            end
+
+            if s[1] == "newmtl"
+                println("newmtl: ", s[2])
+                current_material = Material(string(s[2]))
+                this.mesh.materials[s[2]] = current_material
+            elseif s[1] == "map_Kd" && current_material !== nothing
+                # Load texture
+                texture_path = joinpath(dirname(mtl_path), s[2])
+                if isfile(texture_path)
+                    texture = load_texture(texture_path)
+                    current_material.textures[TEXTURE_TYPE_DIFFUSE] = texture
+                else
+                    @warn "Texture file not found: $texture_path"
+                end
+            end
+        end
+
+        close(f)
     end
 
     function load_from_fbx(this::Mesh3D, file_path::String)::Bool
@@ -727,12 +783,15 @@ module Mesh3DModule
                 texture = nothing
                 if haskey(material.textures, TEXTURE_TYPE_DIFFUSE)
                     texture = material.textures[TEXTURE_TYPE_DIFFUSE]
+                    println("Using diffuse texture")
                 elseif !isempty(material.textures)
                     texture = first(material.textures)[2]
+                    println("Using fallback texture")
                 end
 
                 if texture !== nothing
                     tex_coords = [apply_texture_mode(coord, texture) for coord in tex_coords]
+                    println("Texture coordinates applied: ", tex_coords)
                 end
 
                 sdl_verts = [
@@ -743,7 +802,20 @@ module Mesh3DModule
 
                 # Use material texture if available, otherwise use color
                 texture_ptr = texture !== nothing ? texture.texture : C_NULL
-                SDL_RenderGeometry(JulGame.Renderer, texture_ptr, sdl_verts, length(sdl_verts), C_NULL, 0)
+                if texture_ptr != C_NULL
+                    println("Rendering with texture")
+                else
+                    println("Rendering without texture")
+                end
+
+                # Set the blend mode for proper texture rendering
+                SDL_SetRenderDrawBlendMode(JulGame.Renderer, SDL_BLENDMODE_BLEND)
+                
+                # Render the geometry
+                result = SDL_RenderGeometry(JulGame.Renderer, texture_ptr, sdl_verts, length(sdl_verts), C_NULL, 0)
+                if result < 0
+                    println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
+                end
                 
                 if JulGame.IS_DEBUG
                     SDL_RenderDrawLine(
@@ -864,25 +936,42 @@ module Mesh3DModule
     function create_cube()
         meshCube = mesh(triangle[
             # SOUTH
-            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
-            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
-            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
+            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)], 
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
+            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
             # EAST
-            triangle([ vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0)]),
-            triangle([ vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
+            triangle([ vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 1.0, 1.0)]),
+            triangle([ vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 0.0, 1.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 0.0, 1.0)]),
             # NORTH
-            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(1.0, 1.0, 1.0), vec3d(0.0, 1.0, 1.0)]),
-            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 0.0, 1.0)]),
+            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(1.0, 1.0, 1.0), vec3d(0.0, 1.0, 1.0)],
+                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(0.0, 1.0, 0.0)]),
+            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 0.0, 1.0)],
+                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 0.0, 0.0)]),
             # WEST
-            triangle([ vec3d(0.0, 0.0, 1.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 1.0, 0.0)]),
-            triangle([ vec3d(0.0, 0.0, 1.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 0.0, 0.0)]),
+            triangle([ vec3d(0.0, 0.0, 1.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 1.0, 0.0)],
+                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0)]),
+            triangle([ vec3d(0.0, 0.0, 1.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 0.0, 0.0)],
+                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
             # TOP
-            triangle([ vec3d(0.0, 1.0, 0.0), vec3d(0.0, 1.0, 1.0), vec3d(1.0, 1.0, 1.0)]),
-            triangle([ vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 1.0, 0.0)]),
+            triangle([ vec3d(0.0, 1.0, 0.0), vec3d(0.0, 1.0, 1.0), vec3d(1.0, 1.0, 1.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
+            triangle([ vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 1.0, 0.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
             # BOTTOM
-            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 0.0, 1.0), vec3d(0.0, 0.0, 0.0)]),
-            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 0.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
+            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 0.0, 1.0), vec3d(0.0, 0.0, 0.0)],
+                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 1.0)]),
+            triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 0.0, 0.0), vec3d(1.0, 0.0, 0.0)],
+                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 0.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
         ])
+        
+        # Set material for all triangles
+        for tri in meshCube.tris
+            tri.material = "default"
+        end
+        
         return meshCube
     end
 end 

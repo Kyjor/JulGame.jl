@@ -214,7 +214,7 @@ module SpriteModule
         SDL2.SDL_ClearError()
     
         fullPath = joinpath(BasePath, "assets", "images", imagePath)
-        this.image = load_image_sdl(this, fullPath, imagePath)
+        this.image = load_image_sdl(fullPath, imagePath)
         error = unsafe_string(SDL2.SDL_GetError())
     
         if !isempty(error) || this.image == C_NULL
@@ -248,7 +248,7 @@ module SpriteModule
         Component.set_color(this)
     end
 
-    function load_image_sdl(this::InternalSprite, fullPath::String, imagePath::String)
+    function load_image_sdl(fullPath::String, imagePath::String)
         if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
             raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
