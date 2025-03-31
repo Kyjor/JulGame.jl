@@ -62,6 +62,13 @@ module Mesh3DModule
     const TEXTURE_TYPE_EMISSIVE = 3
     const TEXTURE_TYPE_AMBIENT = 4
 
+    # Texture compression formats
+    const TEXTURE_COMPRESSION_NONE = 0
+    const TEXTURE_COMPRESSION_DXT1 = 1
+    const TEXTURE_COMPRESSION_DXT3 = 2
+    const TEXTURE_COMPRESSION_DXT5 = 3
+    const TEXTURE_COMPRESSION_ETC2 = 4
+
     mutable struct Texture
         surface::Ptr{SDL_Surface}
         texture::Ptr{SDL_Texture}
@@ -70,9 +77,13 @@ module Mesh3DModule
         mode::Int
         filter::Int
         type::Int
+        compression::Int
+        compressed_data::Vector{UInt8}
+        original_size::Int
 
         function Texture(surface::Ptr{SDL_Surface}, mode::Int = TEXTURE_MODE_REPEAT, 
-                        filter::Int = TEXTURE_FILTER_LINEAR, type::Int = TEXTURE_TYPE_DIFFUSE)
+                        filter::Int = TEXTURE_FILTER_LINEAR, type::Int = TEXTURE_TYPE_DIFFUSE,
+                        compression::Int = TEXTURE_COMPRESSION_NONE)
             texture = SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             if texture == C_NULL
                 error("Failed to create texture from surface")
@@ -87,8 +98,112 @@ module Mesh3DModule
             
             width = surface.w
             height = surface.h
-            new(surface, texture, width, height, mode, filter, type)
+            new(surface, texture, width, height, mode, filter, type, compression, UInt8[], 0)
         end
+    end
+
+    function compress_texture(texture::Texture, format::Int = TEXTURE_COMPRESSION_DXT1)::Bool
+        if texture.compression != TEXTURE_COMPRESSION_NONE
+            return false  # Already compressed
+        end
+
+        # Get surface data
+        surface = texture.surface
+        if surface == C_NULL
+            return false
+        end
+
+        # Calculate original size
+        texture.original_size = surface.w * surface.h * 4  # RGBA
+
+        # Compress based on format
+        if format == TEXTURE_COMPRESSION_DXT1
+            # DXT1 compression (8:1 ratio for RGB)
+            compressed_size = div(texture.original_size, 8)
+            texture.compressed_data = Vector{UInt8}(undef, compressed_size)
+            # TODO: Implement actual DXT1 compression
+        elseif format == TEXTURE_COMPRESSION_DXT3
+            # DXT3 compression (4:1 ratio for RGBA)
+            compressed_size = div(texture.original_size, 4)
+            texture.compressed_data = Vector{UInt8}(undef, compressed_size)
+            # TODO: Implement actual DXT3 compression
+        elseif format == TEXTURE_COMPRESSION_DXT5
+            # DXT5 compression (4:1 ratio for RGBA)
+            compressed_size = div(texture.original_size, 4)
+            texture.compressed_data = Vector{UInt8}(undef, compressed_size)
+            # TODO: Implement actual DXT5 compression
+        elseif format == TEXTURE_COMPRESSION_ETC2
+            # ETC2 compression (6:1 ratio for RGB)
+            compressed_size = div(texture.original_size, 6)
+            texture.compressed_data = Vector{UInt8}(undef, compressed_size)
+            # TODO: Implement actual ETC2 compression
+        else
+            return false
+        end
+
+        texture.compression = format
+        return true
+    end
+
+    function decompress_texture(texture::Texture)::Bool
+        if texture.compression == TEXTURE_COMPRESSION_NONE
+            return false  # Not compressed
+        end
+
+        # Decompress based on format
+        if texture.compression == TEXTURE_COMPRESSION_DXT1
+            # TODO: Implement DXT1 decompression
+            pass
+        elseif texture.compression == TEXTURE_COMPRESSION_DXT3
+            # TODO: Implement DXT3 decompression
+            pass
+        elseif texture.compression == TEXTURE_COMPRESSION_DXT5
+            # TODO: Implement DXT5 decompression
+            pass
+        elseif texture.compression == TEXTURE_COMPRESSION_ETC2
+            # TODO: Implement ETC2 decompression
+            pass
+        end
+
+        # Clear compressed data
+        empty!(texture.compressed_data)
+        texture.compression = TEXTURE_COMPRESSION_NONE
+        return true
+    end
+
+    function load_texture(file_path::String; 
+                         mode::Int = TEXTURE_MODE_REPEAT,
+                         filter::Int = TEXTURE_FILTER_LINEAR,
+                         type::Int = TEXTURE_TYPE_DIFFUSE,
+                         compression::Int = TEXTURE_COMPRESSION_NONE)::Texture
+        # Get file extension
+        ext = lowercase(splitext(file_path)[2])
+        
+        # Load texture based on format
+        surface = if ext == ".bmp"
+            SDL_LoadBMP(file_path)
+        elseif ext == ".png"
+            SDL_LoadPNG(file_path)
+        elseif ext == ".jpg" || ext == ".jpeg"
+            SDL_LoadJPG(file_path)
+        elseif ext == ".dds"  # DirectDraw Surface (compressed texture)
+            SDL_LoadDDS(file_path)
+        else
+            error("Unsupported texture format: $ext")
+        end
+
+        if surface == C_NULL
+            error("Failed to load texture: $file_path")
+        end
+
+        texture = Texture(surface, mode, filter, type, compression)
+        
+        # Apply compression if requested
+        if compression != TEXTURE_COMPRESSION_NONE
+            compress_texture(texture, compression)
+        end
+
+        return texture
     end
 
     mutable struct Material
@@ -104,31 +219,6 @@ module Mesh3DModule
             new(name, vec3d(0.2, 0.2, 0.2), vec3d(0.8, 0.8, 0.8), 
                 vec3d(0.0, 0.0, 0.0), 0.0, Dict{Int, Texture}(), TEXTURE_MODE_REPEAT)
         end
-    end
-
-    function load_texture(file_path::String; 
-                         mode::Int = TEXTURE_MODE_REPEAT,
-                         filter::Int = TEXTURE_FILTER_LINEAR,
-                         type::Int = TEXTURE_TYPE_DIFFUSE)::Texture
-        # Get file extension
-        ext = lowercase(splitext(file_path)[2])
-        
-        # Load texture based on format
-        surface = if ext == ".bmp"
-            SDL_LoadBMP(file_path)
-        elseif ext == ".png"
-            SDL_LoadPNG(file_path)
-        elseif ext == ".jpg" || ext == ".jpeg"
-            SDL_LoadJPG(file_path)
-        else
-            error("Unsupported texture format: $ext")
-        end
-
-        if surface == C_NULL
-            error("Failed to load texture: $file_path")
-        end
-
-        return Texture(surface, mode, filter, type)
     end
 
     function apply_texture_mode(tex_coord::vec3d, texture::Texture)::vec3d
