@@ -29,6 +29,15 @@ struct _Vector3{T}
         return new{T}(convert(T,x), convert(T,y), convert(T,z))
     end
 
+    function _Vector3{T}(vec2::_Vector2{L}) where {T,L}
+        if T <: Int32
+            return new{T}(Math.TypeConversions.safe_int32_convert(vec2.x),
+                         Math.TypeConversions.safe_int32_convert(vec2.y),
+                         0)
+        end
+        return new{T}(convert(T,vec2.x), convert(T,vec2.y), 0)
+    end
+
     # Operator overloading
     Base.:+(vec::_Vector3{T}, vec1::_Vector3{L}) where {T,L} = _Vector3{T}(vec.x + vec1.x, vec.y + vec1.y,
                                                                            vec1.z + vec.z)
@@ -53,6 +62,8 @@ struct _Vector3{T}
     Base.:/(a::Real, vec::_Vector3{T}) where T = _Vector3{T}(a / vec.x, a / vec.y, a / vec.z)
 
     Base.:(==)(a::_Vector3{T}, b::_Vector3{L}) where {T,L} = (a.x == b.x && a.y == b.y && a.z == b.z)
+    Base.:(==)(a::_Vector3{T}, b::_Vector2{L}) where {T,L} = (a.x == b.x && a.y == b.y && a.z == 0)
+    Base.:(==)(a::_Vector2{L}, b::_Vector3{T}) where {T,L} = (a.x == b.x && a.y == b.y && b.z == 0)
 end   
 
 Vector3 = _Vector3{Int32}
