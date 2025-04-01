@@ -988,4 +988,15 @@ module Mesh3DModule
         
         return meshCube
     end
+
+    function create_plane()
+        meshPlane = mesh(triangle[
+            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
+            triangle([ vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)],
+                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
+        ])
+        
+        return meshPlane
+    end
 end 

@@ -194,7 +194,7 @@ module SceneWriterModule
                     "size" => Dict("x" => component.size.x, "y" => component.size.y),
                 )
                 push!(componentsDict, serializedComponent)
-            elseif typeof(component) == Mesh3D
+            elseif componentType == "Mesh3D"
                 push!(componentsDict, Dict(
                     "type" => "Mesh3D",
                     "fNear" => component.fNear,
