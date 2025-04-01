@@ -317,7 +317,7 @@ module Mesh3DModule
             this.parent = C_NULL
             this.layer = 0
             this.isWorldEntity = true
-            this.mesh = mesh(triangle[])
+            this.mesh = mesh(nothing)
             this.fNear = fNear
             this.fFar = fFar
             this.fFov = fFov
@@ -362,37 +362,87 @@ module Mesh3DModule
             
             # Create triangles from the parsed data
             for (i, face) in enumerate(faces)
+                println("Processing face $i with $(length(face)) vertices")
+                println("Face vertices: $face")
+                
                 if length(face) >= 3
-                    # Create a triangle from the first three vertices
-                    tri = triangle([
-                        vertices[face[1]],
-                        vertices[face[2]],
-                        vertices[face[3]]
-                    ])
-                    
-                    # Add texture coordinates if available
-                    if i <= length(face_texcoords) && !isempty(face_texcoords[i])
-                        tri.texCoords = [
-                            texcoords[face_texcoords[i][1]],
-                            texcoords[face_texcoords[i][2]],
-                            texcoords[face_texcoords[i][3]]
-                        ]
+                    # For quads, create two triangles
+                    if length(face) == 4
+                        println("Creating two triangles from quad face")
+                        # First triangle
+                        tri1 = triangle([
+                            vertices[face[1]],
+                            vertices[face[2]],
+                            vertices[face[3]]
+                        ])
+                        
+                        # Add texture coordinates if available
+                        if i <= length(face_texcoords) && !isempty(face_texcoords[i])
+                            println("Adding texture coordinates to first triangle")
+                            tri1.texCoords = [
+                                texcoords[face_texcoords[i][1]],
+                                texcoords[face_texcoords[i][2]],
+                                texcoords[face_texcoords[i][3]]
+                            ]
+                        end
+                        
+                        # Set the material for this triangle
+                        tri1.material = this.mesh.currentMaterial
+                        push!(this.mesh.tris, tri1)
+                        println("Added first triangle to mesh")
+                        
+                        # Second triangle
+                        tri2 = triangle([
+                            vertices[face[1]],
+                            vertices[face[3]],
+                            vertices[face[4]]
+                        ])
+                        
+                        # Add texture coordinates if available
+                        if i <= length(face_texcoords) && !isempty(face_texcoords[i])
+                            println("Adding texture coordinates to second triangle")
+                            tri2.texCoords = [
+                                texcoords[face_texcoords[i][1]],
+                                texcoords[face_texcoords[i][3]],
+                                texcoords[face_texcoords[i][4]]
+                            ]
+                        end
+                        
+                        # Set the material for this triangle
+                        tri2.material = this.mesh.currentMaterial
+                        push!(this.mesh.tris, tri2)
+                        println("Added second triangle to mesh")
+                    else
+                        println("Creating single triangle from face")
+                        # For triangles, create a single triangle
+                        tri = triangle([
+                            vertices[face[1]],
+                            vertices[face[2]],
+                            vertices[face[3]]
+                        ])
+                        
+                        # Add texture coordinates if available
+                        if i <= length(face_texcoords) && !isempty(face_texcoords[i])
+                            println("Adding texture coordinates to triangle")
+                            tri.texCoords = [
+                                texcoords[face_texcoords[i][1]],
+                                texcoords[face_texcoords[i][2]],
+                                texcoords[face_texcoords[i][3]]
+                            ]
+                        end
+                        
+                        # Set the material for this triangle
+                        tri.material = this.mesh.currentMaterial
+                        push!(this.mesh.tris, tri)
+                        println("Added triangle to mesh")
                     end
-                    
-                    # Add normals if available
-                    if i <= length(face_normals) && !isempty(face_normals[i])
-                        # Store normals in the triangle structure if needed
-                        # You might need to add a normals field to the triangle struct
-                    end
-                    
-                    # Set the material for this triangle
-                    tri.material = this.mesh.currentMaterial
-                    
-                    push!(this.mesh.tris, tri)
+                else
+                    println("Skipping face with less than 3 vertices")
                 end
             end
             
             println("Created $(length(this.mesh.tris)) triangles")
+            println("Current material: $(this.mesh.currentMaterial)")
             return true
         catch e
             @error "Failed to load OBJ file: $file_path" exception=(e, catch_backtrace())
@@ -473,7 +523,8 @@ module Mesh3DModule
         this.fAspectRatio = windowSize.y / windowSize.x
         this.matProj = MatrixOps.matrix_make_projection(this.fFov, this.fAspectRatio, this.fNear, this.fFar)
         
-        if this.mesh.tris === nothing
+        if length(this.mesh.tris) == 0
+            println("creating cube")
             this.mesh = create_cube()
         end
 
@@ -754,7 +805,7 @@ module Mesh3DModule
 
                 if texture !== nothing
                     tex_coords = [apply_texture_mode(coord, texture) for coord in tex_coords]
-                    println("Texture coordinates applied: ", tex_coords)
+                    #println("Texture coordinates applied: ", tex_coords)
                 end
 
                 sdl_verts = [
@@ -766,9 +817,9 @@ module Mesh3DModule
                 # Use material texture if available, otherwise use color
                 texture_ptr = texture !== nothing ? texture.texture : C_NULL
                 if texture_ptr != C_NULL
-                    println("Rendering with texture")
+                    #println("Rendering with texture")
                 else
-                    println("Rendering without texture")
+                    #println("Rendering without texture")
                 end
 
                 # Set the blend mode for proper texture rendering

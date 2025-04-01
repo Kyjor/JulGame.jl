@@ -87,39 +87,20 @@ module FastObj
                 end
             elseif c == UInt8('f')
                 # Face
-                face = Int[]
-                face_tex = Int[]
-                face_norm = Int[]
+                faces, face_texcoords, face_normals = parse_face(parser)
+                println("Parsed face data:")
+                println("Faces: $faces")
+                println("Face texcoords: $face_texcoords")
+                println("Face normals: $face_normals")
                 
-                # Parse face indices
-                while parser.pos <= length(parser.data) && !isspace(Char(parser.data[parser.pos]))
-                    # Vertex index
-                    v_idx = parse_int(parser)
-                    push!(face, v_idx)
-                    
-                    # Check for texture coordinate and normal
-                    if parser.pos <= length(parser.data) && parser.data[parser.pos] == UInt8('/')
-                        parser.pos += 1
-                        if parser.pos <= length(parser.data) && parser.data[parser.pos] != UInt8('/')
-                            t_idx = parse_int(parser)
-                            push!(face_tex, t_idx)
-                        end
-                        
-                        if parser.pos <= length(parser.data) && parser.data[parser.pos] == UInt8('/')
-                            parser.pos += 1
-                            n_idx = parse_int(parser)
-                            push!(face_norm, n_idx)
-                        end
+                # Add all faces to the parser
+                for i in 1:length(faces)
+                    push!(parser.faces, faces[i])
+                    if i <= length(face_texcoords)
+                        push!(parser.face_texcoords, face_texcoords[i])
                     end
-                end
-                
-                if !isempty(face)
-                    push!(parser.faces, face)
-                    if !isempty(face_tex)
-                        push!(parser.face_texcoords, face_tex)
-                    end
-                    if !isempty(face_norm)
-                        push!(parser.face_normals, face_norm)
+                    if i <= length(face_normals)
+                        push!(parser.face_normals, face_normals[i])
                     end
                 end
             elseif c == UInt8('m')
@@ -174,6 +155,14 @@ module FastObj
             parser.pos += 1
         end
 
+        println("Final parser results:")
+        println("Vertices: $(length(parser.vertices))")
+        println("Normals: $(length(parser.normals))")
+        println("Texcoords: $(length(parser.texcoords))")
+        println("Faces: $(length(parser.faces))")
+        println("Face texcoords: $(length(parser.face_texcoords))")
+        println("Face normals: $(length(parser.face_normals))")
+
         return parser.vertices, parser.normals, parser.texcoords, parser.faces, 
                parser.face_texcoords, parser.face_normals, parser.materials
     end
@@ -196,16 +185,24 @@ module FastObj
         return parse(Float64, num_str)
     end
 
-    function parse_int(parser::FastObjParser)::Int
+    function parse_int(parser::FastObjParser)::Union{Int, Nothing}
         # Skip whitespace
         while parser.pos <= length(parser.data) && isspace(Char(parser.data[parser.pos]))
             parser.pos += 1
+        end
+        
+        if parser.pos > length(parser.data)
+            return nothing
         end
         
         # Find the end of the number
         end_pos = parser.pos
         while end_pos <= length(parser.data) && !isspace(Char(parser.data[end_pos])) && parser.data[end_pos] != UInt8('/')
             end_pos += 1
+        end
+        
+        if end_pos == parser.pos
+            return nothing
         end
         
         # Parse the number
@@ -291,5 +288,106 @@ module FastObj
         end
 
         close(f)
+    end
+
+    function parse_face(parser::FastObjParser)::Tuple{Vector{Vector{Int}}, Vector{Vector{Int}}, Vector{Vector{Int}}}
+        faces = Vector{Vector{Int}}()
+        face_texcoords = Vector{Vector{Int}}()
+        face_normals = Vector{Vector{Int}}()
+        
+        # Skip whitespace before face definition
+        while parser.pos <= length(parser.data) && isspace(Char(parser.data[parser.pos]))
+            parser.pos += 1
+        end
+        
+        if parser.pos > length(parser.data)
+            return faces, face_texcoords, face_normals
+        end
+        
+        # Parse all vertices for this face
+        vertices = Int[]
+        texcoords = Int[]
+        normals = Int[]
+        
+        while parser.pos <= length(parser.data) && !isspace(Char(parser.data[parser.pos]))
+            # Parse vertex index
+            v_idx = parse_int(parser)
+            if v_idx === nothing
+                break
+            end
+            
+            # Handle negative indices (relative to current position)
+            if v_idx < 0
+                v_idx = length(parser.vertices) + v_idx + 1
+            end
+            
+            # Add vertex index
+            push!(vertices, v_idx)
+            
+            # Check for texture coordinate and normal indices
+            if parser.pos <= length(parser.data) && parser.data[parser.pos] == UInt8('/')
+                parser.pos += 1
+                
+                # Parse texture coordinate index if present
+                if parser.pos <= length(parser.data) && !isspace(Char(parser.data[parser.pos])) && parser.data[parser.pos] != UInt8('/')
+                    vt_idx = parse_int(parser)
+                    if vt_idx !== nothing
+                        if vt_idx < 0
+                            vt_idx = length(parser.texcoords) + vt_idx + 1
+                        end
+                        push!(texcoords, vt_idx)
+                    end
+                end
+                
+                # Parse normal index if present
+                if parser.pos <= length(parser.data) && parser.data[parser.pos] == UInt8('/')
+                    parser.pos += 1
+                    if parser.pos <= length(parser.data) && !isspace(Char(parser.data[parser.pos]))
+                        vn_idx = parse_int(parser)
+                        if vn_idx !== nothing
+                            if vn_idx < 0
+                                vn_idx = length(parser.normals) + vn_idx + 1
+                            end
+                            push!(normals, vn_idx)
+                        end
+                    end
+                end
+            end
+        end
+        
+        println("Parsed face with $(length(vertices)) vertices")
+        println("Vertex indices: $vertices")
+        println("Texture coordinate indices: $texcoords")
+        println("Normal indices: $normals")
+        
+        # Triangulate the face using triangle fan approach
+        if length(vertices) >= 3
+            # For each vertex after the first two, create a triangle with the first vertex
+            for i in 2:(length(vertices)-1)
+                # Create triangle using first vertex and current edge
+                triangle = [vertices[1], vertices[i], vertices[i+1]]
+                push!(faces, triangle)
+                println("Created triangle: $triangle")
+                
+                # Add corresponding texture coordinates if available
+                if !isempty(texcoords)
+                    tex_triangle = [texcoords[1], texcoords[i], texcoords[i+1]]
+                    push!(face_texcoords, tex_triangle)
+                    println("Added texture coordinates: $tex_triangle")
+                end
+                
+                # Add corresponding normals if available
+                if !isempty(normals)
+                    normal_triangle = [normals[1], normals[i], normals[i+1]]
+                    push!(face_normals, normal_triangle)
+                    println("Added normal indices: $normal_triangle")
+                end
+            end
+        else
+            @warn "Face has less than 3 vertices, skipping"
+        end
+        
+        println("Created $(length(faces)) triangles from face")
+        return faces, face_texcoords, face_normals
     end
 end 
