@@ -36,7 +36,7 @@ Shows a confirmation modal dialog and returns true if the user confirmed the act
 # Returns
 - `Bool`: true if confirmed, false otherwise
 """
-function show_modal(modal::ConfirmationModal)
+#= function show_modal(modal::ConfirmationModal)
     result = false
     
     if modal.open
@@ -49,7 +49,7 @@ function show_modal(modal::ConfirmationModal)
     end
     
     return result
-end
+end =#
 
 function show_modal(this::ConfirmationModal; action = nothing) 
     if !this.open

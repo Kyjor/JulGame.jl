@@ -663,8 +663,8 @@ module Mesh3DModule
             normal = MatrixOps.vector_normalize(normal)
             
             # Get Ray from triangle to camera 
-            vCameraRay::vec3d = MatrixOps.vector_sub(triTransformed.p[1], cameraPos)
-            if MatrixOps.vector_dot_product(normal, vCameraRay) < 0.0
+            vCameraRay::vec3d = MatrixOps.vector_sub(cameraPos, triTransformed.p[1])
+            if MatrixOps.vector_dot_product(normal, vCameraRay) > 0.0
                 # Combine camera-based lighting with fixed light direction
                 camera_light = MatrixOps.vector_normalize(vCameraRay)
                 fixed_light = MatrixOps.vector_normalize(vec3d(-0.707, -0.707, -1.0))
