@@ -6,9 +6,8 @@ module CameraModule
     mutable struct Camera
 		backgroundColor::NTuple{4, Int}
         offset::Vector2f
-        position::Vector2f
+        position::Vector3f
         size::Vector2
-        zPosition::Float64
         yaw::Float64
         pitch::Float64
         target::Union{
@@ -17,7 +16,7 @@ module CameraModule
             }
         windowPos::Vector2
 
-        function Camera(size::Vector2, initialPosition::Vector2f, offset::Vector2f, target)
+        function Camera(size::Vector2, initialPosition::Vector3f, offset::Vector2f, target)
             this = new()
             
             this.backgroundColor = (0,0,0, 255)
@@ -26,7 +25,6 @@ module CameraModule
             this.offset = Vector2f(offset.x, offset.y)
             this.target = target
             this.windowPos = Vector2(0,0)
-            this.zPosition = -5.0
             this.yaw = 0.0
             this.pitch = 0.0
 
@@ -34,7 +32,7 @@ module CameraModule
         end
     end
 
-    function update(this::Camera, newPosition = nothing)
+    function update(this::Camera, newPosition::Union{Nothing, Vector3f} = nothing)
         SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
         rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
         SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
@@ -42,17 +40,21 @@ module CameraModule
         SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         
-        center =  Vector2f(this.size.x/SCALE_UNITS/2, this.size.y/SCALE_UNITS/2)
-        if this.target !== nothing && newPosition === nothing && this.target !== C_NULL && newPosition !== C_NULL
-            targetPos = this.target.position
-            targetScale = this.target.scale
-            this.position = targetPos - center + 0.5 * targetScale + this.offset
+        center_pixels = Vector2f(this.size.x / 2, this.size.y / 2)
+        center_world = center_pixels / SCALE_UNITS
+
+        if this.target !== nothing && this.target !== C_NULL && newPosition === nothing
+            targetPos::Vector3f = this.target.position
+            targetScale::Vector2f = this.target.scale
+            this.position = Vector3f(targetPos.x - center_world.x + 0.5 * targetScale.x + this.offset.x,
+                                     targetPos.y - center_world.y + 0.5 * targetScale.y + this.offset.y, 
+                                     targetPos.z)
             return
         end
-        if newPosition === nothing || newPosition == C_NULL
-            return
+
+        if newPosition !== nothing
+            this.position = newPosition
         end
-        this.position = newPosition
     end
 
     # making set property observable

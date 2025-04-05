@@ -579,7 +579,7 @@ module Mesh3DModule
                     println("point at")
                     # Calculate direction to cube
                     cubePos = this.parent.transform.position
-                    cameraPos = vec3d(camera.position.x, camera.position.y, camera.zPosition)
+                    cameraPos = vec3d(camera.position.x, camera.position.y, camera.position.z)
                     direction = MatrixOps.vector_sub(vec3d(cubePos.x, cubePos.y, cubePos.z), cameraPos)
                     direction = MatrixOps.vector_normalize(direction)
 
@@ -613,7 +613,7 @@ module Mesh3DModule
         this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matTrans)
 
         # Get camera position and create view matrix
-        cameraPos = vec3d(main.scene.camera.position.x, main.scene.camera.position.y, main.scene.camera.zPosition)
+        cameraPos = vec3d(main.scene.camera.position.x, main.scene.camera.position.y, main.scene.camera.position.z)
         vUp = vec3d(0, 1, 0)
         vTarget = vec3d(0, 0, 1)
 
@@ -632,25 +632,18 @@ module Mesh3DModule
         # Process each triangle
         for tri in this.mesh.tris
             triProjected::triangle = triangle()
-			triTransformed::triangle = triangle()
-			triViewed::Ref{triangle} = Ref(triangle())
+            triTransformed::triangle = triangle()
+            triViewed::Ref{triangle} = Ref(triangle())
 
             # Transform triangle vertices
             triTransformed.p[1] = MatrixOps.matrix_multiply_vector(this.matWorld, tri.p[1])
             triTransformed.p[2] = MatrixOps.matrix_multiply_vector(this.matWorld, tri.p[2])
             triTransformed.p[3] = MatrixOps.matrix_multiply_vector(this.matWorld, tri.p[3])
 
-            # Debug check for NaNs after world transform
-            if any(isnan.(triTransformed.p[1].x) .|| isnan.(triTransformed.p[1].y) .|| isnan.(triTransformed.p[1].z))
-                println("NaN detected after world transform")
-                println("Position: ", pos)
-                println("Scale: ", scale)
-                println("Rotation: ", rot)
-            end
-
+            # Calculate normal
             normal::vec3d = vec3d(0, 0, 0)
-            line1::vec3d  = vec3d(0, 0, 0)
-            line2::vec3d  = vec3d(0, 0, 0)
+            line1::vec3d = vec3d(0, 0, 0)
+            line2::vec3d = vec3d(0, 0, 0)
 
             # Get lines either side of the triangle
             line1 = MatrixOps.vector_sub(triTransformed.p[2], triTransformed.p[1])
@@ -658,40 +651,32 @@ module Mesh3DModule
             
             # Take cross product of lines to get normal to triangle surface 
             normal = MatrixOps.vector_cross_product(line1, line2)
-
-            # you normally need to normalize a normal!
             normal = MatrixOps.vector_normalize(normal)
-            
+
+            # Calculate distance from camera to triangle center
+            triCenter = MatrixOps.vector_div(
+                MatrixOps.vector_add(
+                    MatrixOps.vector_add(triTransformed.p[1], triTransformed.p[2]),
+                    triTransformed.p[3]
+                ),
+                3.0
+            )
+            distanceToCamera = MatrixOps.vector_length(
+                MatrixOps.vector_sub(cameraPos, triCenter)
+            )
+
+            # Skip triangles that are too far away
+            if distanceToCamera > this.fFar
+                continue
+            end
+
             # Get Ray from triangle to camera 
             vCameraRay::vec3d = MatrixOps.vector_sub(cameraPos, triTransformed.p[1])
             if MatrixOps.vector_dot_product(normal, vCameraRay) > 0.0
-                # Combine camera-based lighting with fixed light direction
-                camera_light = MatrixOps.vector_normalize(vCameraRay)
-                fixed_light = MatrixOps.vector_normalize(vec3d(-0.707, -0.707, -1.0))
-                
-                # Calculate dot products for both light sources
-                dp_camera = MatrixOps.vector_dot_product(normal, camera_light)
-                dp_fixed = MatrixOps.vector_dot_product(normal, fixed_light)
-                
-                # Combine the lighting (weighted average)
-                dp = 0.3 * dp_camera + 0.7 * dp_fixed
-
-                # Add some ambient light to prevent completely dark faces
-                ambient = 0.2
-                dp = max(ambient, dp)
-
                 # Convert to view space
                 triViewed[].p[1] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[1])
                 triViewed[].p[2] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[2])
                 triViewed[].p[3] = MatrixOps.matrix_multiply_vector(matView, triTransformed.p[3])
-
-                # Debug check for NaNs after view transform
-                if any(isnan.(triViewed[].p[1].x) .|| isnan.(triViewed[].p[1].y) .|| isnan.(triViewed[].p[1].z))
-                    println("NaN detected after view transform")
-                    println("Camera position: ", cameraPos)
-                    println("Camera yaw: ", main.scene.camera.yaw)
-                    println("Camera pitch: ", main.scene.camera.pitch)
-                end
 
                 # Clip against near plane
                 clipped = Ref([triangle([vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0)]), triangle([vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0)])])
@@ -704,18 +689,15 @@ module Mesh3DModule
                         triProjected.p[2] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[2])
                         triProjected.p[3] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[3])
 
-                        # Debug check for NaNs after projection
-                        if any(isnan.(triProjected.p[1].x) .|| isnan.(triProjected.p[1].y) .|| isnan.(triProjected.p[1].z))
-                            println("NaN detected after projection")
-                            println("Near plane: ", this.fNear)
-                            println("Far plane: ", this.fFar)
-                            println("FOV: ", this.fFov)
-                        end
-
                         # Scale into view
                         triProjected.p[1] = MatrixOps.vector_div(triProjected.p[1], triProjected.p[1].w)
                         triProjected.p[2] = MatrixOps.vector_div(triProjected.p[2], triProjected.p[2].w)
                         triProjected.p[3] = MatrixOps.vector_div(triProjected.p[3], triProjected.p[3].w)
+
+                        # Store the original z values for depth testing
+                        triProjected.p[1].z = triViewed[].p[1].z
+                        triProjected.p[2].z = triViewed[].p[2].z
+                        triProjected.p[3].z = triViewed[].p[3].z
 
                         # Scale to screen
                         windowSize = main.windowManager.windowSize
@@ -731,10 +713,15 @@ module Mesh3DModule
                         triProjected.p[3].x *= 0.5 * windowSize.x
                         triProjected.p[3].y *= 0.5 * windowSize.y
 
+                        # Calculate lighting
+                        light_direction = vec3d(0.0, 0.0, -1.0)
+                        dp = MatrixOps.vector_dot_product(normal, light_direction)
+                        dp = max(0.1, dp)  # Add some ambient light
+
                         # Set color based on lighting
-                        r = round(Int, 255 * max(0.0, dp))
-                        g = round(Int, 255 * max(0.0, dp))
-                        b = round(Int, 255 * max(0.0, dp))
+                        r = round(Int, 255 * dp)
+                        g = round(Int, 255 * dp)
+                        b = round(Int, 255 * dp)
                         triProjected.color = SDL_Color(r, g, b, 255)
 
                         push!(this.vecTrianglesToRaster, triProjected)
@@ -743,7 +730,7 @@ module Mesh3DModule
             end
         end
 
-        # Sort triangles by Z depth
+        # Sort triangles by average z depth (back to front)
         sort!(this.vecTrianglesToRaster, by = avg_z, rev = true)
 
         # Render triangles
