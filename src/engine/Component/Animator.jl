@@ -5,9 +5,9 @@
     using ..Component.SpriteModule
     import ..Component
     export Animator
+    
     struct Animator
         animations::Vector{Animation}
-        lastFrame::Int
     end
 
     export InternalAnimator

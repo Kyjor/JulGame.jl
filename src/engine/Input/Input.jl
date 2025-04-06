@@ -424,6 +424,14 @@ module InputModule
         return get_mouse_button_released(MAIN.input, button)
     end
 
+    function get_mouse_position(this::Input)
+        return this.mousePosition
+    end
+
+    function get_mouse_position()
+        return get_mouse_position(MAIN.input)
+    end
+
     function create_cursor_bank(this::Input)
         this.cursorBank["arrow"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
         this.cursorBank["ibeam"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)

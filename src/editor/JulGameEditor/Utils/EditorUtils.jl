@@ -173,6 +173,9 @@ function select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, d
             # If no scene is loaded, we can directly set the path and load scenes
             currentSelectedProjectPath[] = string(dir)
             scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(dir))
+            # Update BasePath when directly loading a project
+            JulGame.BasePath = string(dir)
+            @info("Base path updated: $(JulGame.BasePath)")
         end
     end
 
@@ -190,7 +193,15 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
             CImGui.CloseCurrentPopup()
             dialog[] = ""
 
-            result = choose_project_filepath() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            result = choose_project_filepath() |> (dir) -> begin
+                if dir != ""
+                    scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir)
+                    # Update BasePath when selecting a project
+                    JulGame.BasePath = dir
+                    @info("Base path updated: $(JulGame.BasePath)")
+                end
+                return dir
+            end
         end
         CImGui.SetItemDefaultFocus()
         CImGui.SameLine()
@@ -241,6 +252,9 @@ function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPa
 
             create_new_project(newProjectPath, newProjectText[])
             scenesLoadedFromFolder[] = get_all_scenes_from_base_folder(joinpath(newProjectPath, newProjectText[]))
+            # Update BasePath when creating a new project
+            JulGame.BasePath = newProjectPath
+            @info("Base path updated: $(JulGame.BasePath)")
         end
 
         if pathAlreadyExists
@@ -648,7 +662,7 @@ function reset_camera_event(main)
             @warn "No camera found in scene when resetting camera"
             return
         end
-        main.scene.camera.position = JulGame.Math.Vector2f(0, 0)
+        main.scene.camera.position = JulGame.Math.Vector3f(0.0, 0.0, 0.0)
     end
 
     return event

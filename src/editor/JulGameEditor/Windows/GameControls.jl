@@ -34,6 +34,10 @@ function show_game_controls()
             CImGui.Text("Duplicate entity: Select entity and click 'Duplicate' in hierarchy window or press 'LCTRL+D' keys")
             CImGui.NewLine()
             CImGui.Text("Duplicate entity brush: Select entity and press 'Shift+LCTRL+D' keys to activate and deactivate")
+            CImGui.NewLine()
+            CImGui.Text("Play/Stop scene (with confirmation): Press 'LCTRL+R' keys")
+            CImGui.NewLine()
+            CImGui.Text("Play/Stop scene (without confirmation): Press 'LCTRL+LSHIFT+R' keys")
         CImGui.End()
     end
 end

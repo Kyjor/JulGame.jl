@@ -95,7 +95,12 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         mouse_drag_movement = ImVec2(unsafe_load(io.MouseDelta).x, unsafe_load(io.MouseDelta).y)
         # if scene is something, update the camera position
         if main !== nothing && camera !== nothing
-            camera.position = Math.Vector2f(camera.position.x - (mouse_drag_movement.x/scale_unit_factor), camera.position.y - (mouse_drag_movement.y/scale_unit_factor))
+            # Use Vector3f to update camera position, preserving the z component
+            camera.position = Math.Vector3f(
+                camera.position.x - (mouse_drag_movement.x/scale_unit_factor), 
+                camera.position.y - (mouse_drag_movement.y/scale_unit_factor),
+                camera.position.z
+            )
         end
     end
 
@@ -124,14 +129,23 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
             offset_x = new_mouse_world_x - mouse_world_pos_x
             offset_y = new_mouse_world_y - mouse_world_pos_y
             
-            camera.position = Math.Vector2f(camera.position.x - offset_x, camera.position.y - offset_y)
+            # Use Vector3f to update camera position, preserving the z component
+            camera.position = Math.Vector3f(
+                camera.position.x - offset_x, 
+                camera.position.y - offset_y,
+                camera.position.z
+            )
         end
     end
     
     # Pan camera with mouse wheel when Ctrl is not pressed
     if is_hovered && !unsafe_load(io.KeyCtrl) && (unsafe_load(io.MouseWheelH) != 0.0 || unsafe_load(io.MouseWheel) != 0.0) && main !== nothing && camera !== nothing
         # move camera
-        camera.position = Math.Vector2f(camera.position.x - (unsafe_load(io.MouseWheelH)), camera.position.y - (unsafe_load(io.MouseWheel)))
+        camera.position = Math.Vector3f(
+            camera.position.x - (unsafe_load(io.MouseWheelH)), 
+            camera.position.y - (unsafe_load(io.MouseWheel)),
+            camera.position.z
+        )
     end
 
     # Apply zoom to camera position
@@ -452,8 +466,8 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     
     # Check for button click
     if reset_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
-        # Reset camera position to 0,0
-        camera.position = Math.Vector2f(0.0, 0.0)
+        # Reset camera position to 0,0,0
+        camera.position = Math.Vector3f(0.0, 0.0, 0.0)
     end
     
     # Draw "Reset Zoom" button

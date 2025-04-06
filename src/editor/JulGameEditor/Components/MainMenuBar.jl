@@ -98,10 +98,10 @@ function show_scene_menu(events)
     if CImGui.MenuItem("Save", "Ctrl+S")
         events["Save"]()
     end
-    if CImGui.MenuItem("Play/Pause Scene", "")
+    if CImGui.MenuItem("Play/Pause Scene", "Ctrl+R")
         events["Play-Mode"]()
     end
-    if CImGui.MenuItem("Reset Camera", "Ctrl+R")
+    if CImGui.MenuItem("Reset Camera", "")
         events["Reset-camera"]()
     end
 

@@ -1,4 +1,3 @@
-
 mutable struct CameraWindow 
     open::Bool
     camera
@@ -50,12 +49,12 @@ function show_camera_window(this::CameraWindow)
             position_y32 = Float32(this.camera.position.y)
             isEdited = @c CImGui.InputFloat("Position X", &position_x32, 1)
             if isEdited
-                this.camera.position = Vector2f(Float64(position_x32), this.camera.position.y)
+                this.camera.position = Vector3f(Float64(position_x32), this.camera.position.y, this.camera.position.z)
             end
             CImGui.SameLine()
             isEdited = @c CImGui.InputFloat("Position Y", &position_y32, 1)
             if isEdited
-                this.camera.position = Vector2f(this.camera.position.x, Float64(position_y32))
+                this.camera.position = Vector3f(this.camera.position.x, Float64(position_y32), this.camera.position.z)
             end
             
             CImGui.Text("Size: $(this.camera.size.x), $(this.camera.size.y)")

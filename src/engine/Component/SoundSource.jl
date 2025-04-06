@@ -13,14 +13,14 @@ module SoundSourceModule
 
     export InternalSoundSource
     mutable struct InternalSoundSource
-        channel::Int32
+        channel::Int
         isMusic::Bool
         isPlaying::Bool
         parent::Any
         path::String
         playOnStart::Bool
         sound::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
-        volume::Int32
+        volume::Int
 
         # Music
         function InternalSoundSource(parent::Any, path::String, channel::Int = -1, volume::Int = -1, isMusic::Bool = false, playOnStart::Bool = false)
@@ -42,10 +42,7 @@ module SoundSourceModule
             end
             
             # Convert channel and volume to Int32
-            channel = Math.TypeConversions.safe_int32_convert(channel)
-            volume = Math.TypeConversions.safe_int32_convert(volume)
-
-            isMusic ? SDL2.Mix_VolumeMusic(volume) : SDL2.Mix_Volume(channel, volume)
+            isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))) : SDL2.Mix_Volume(channel, Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128)))
 
             this.channel = channel
             this.isMusic = isMusic
@@ -131,12 +128,12 @@ module SoundSourceModule
         this.sound = C_NULL
     end
 
-    function Component.set_volume(this::InternalSoundSource)
+    function Component.set_volume(this::InternalSoundSource, volume::Int = 100, channel::Int = -1)
         # Convert volume to Int32 for SDL
-        volume = Math.TypeConversions.safe_int32_convert(this.volume)
-        channel = Math.TypeConversions.safe_int32_convert(this.channel)
+        this.volume = clamp(volume, 0, 128)
+        this.channel = clamp(channel, -1, 128)
         
-        isMusic ? SDL2.Mix_VolumeMusic(volume) : SDL2.Mix_Volume(channel, volume)
+        this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 
     function Component.play(this::InternalSoundSource, loops::Int = 0)

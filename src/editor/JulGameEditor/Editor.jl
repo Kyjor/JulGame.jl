@@ -91,8 +91,8 @@ module Editor
         newScriptText = Ref("")
 
         panOffset = Math.Vector2(0, 0)
-        camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
-        gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
+        camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
+        gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
         confirmation_modal = ConfirmationModal("Start/Stop Game"; message="Are you sure you want to start/stop the game? Any unsaved progress will be lost.", confirmText="Yes", cancelText="No", open=false, type="Warning")
         delete_confirmation_modal = ConfirmationModal("Delete Entities"; message="Are you sure you want to delete the selected entities? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
         ui_delete_confirmation_modal = ConfirmationModal("Delete UI Elements"; message="Are you sure you want to delete the selected UI elements? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
@@ -308,6 +308,9 @@ module Editor
                                     currentSceneMain = nothing
                                     currentSelectedProjectPath[] = JulGame.TEMP_SELECTED_PATH
                                     scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
+                                    # Update BasePath when selecting a recent project
+                                    JulGame.BasePath = currentSelectedProjectPath[]
+                                    @info("Base path updated: $(JulGame.BasePath)")
                                 end
                                 CImGui.SetItemDefaultFocus()
                                 CImGui.SameLine()
@@ -785,6 +788,31 @@ module Editor
                                 end
                             end
                             
+                            # Play/stop scene with LCTRL+R (with confirmation)
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "R")
+                                @debug "Play/Stop shortcut (with confirmation)"
+                                confirmation_modal.open = true
+                            end
+                            
+                            # Play/stop scene with LCTRL+LSHIFT+R (without confirmation)
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "R")
+                                @debug "Play/Stop shortcut (without confirmation)"
+                                # Toggle play mode directly
+                                JulGame.IS_EDITOR_PLAY_MODE = !JulGame.IS_EDITOR_PLAY_MODE
+                                if JulGame.IS_EDITOR_PLAY_MODE
+                                    startTime[] = SDL2.SDL_GetTicks()
+                                    # Animate the text in the window title
+                                    SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
+                                    JulGame.MainLoopModule.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
+                                    currentSceneMain.scene.camera = gameCamera
+                                else
+                                    # Reset the window title when exiting play mode
+                                    SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(currentSelectedProjectPath[])")
+                                    JulGame.MainLoopModule.stop_game_in_editor(currentSceneMain)
+                                    JulGame.change_scene(String(currentSceneName))
+                                end
+                            end
+                            
                             # TODO: Replace the deepcopy+generate_uuid pattern with duplicate_entity utility function
                         end
                     catch e
@@ -832,6 +860,9 @@ module Editor
                     current_path = currentSelectedProjectPath[]
                     #starting the file watcher
                     condition, watch_task = start_file_watcher(string(currentSelectedProjectPath[]), filesToReload)
+                    # Update BasePath when project changes
+                    JulGame.BasePath = currentSelectedProjectPath[]
+                    @info("Base path updated: $(JulGame.BasePath)")
                     
                 elseif current_path !== nothing && current_path != "" && condition !== nothing && !istaskdone(watch_task)
                     notify(condition)
