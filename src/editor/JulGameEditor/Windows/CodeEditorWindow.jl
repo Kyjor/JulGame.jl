@@ -69,7 +69,9 @@ end
 function save_file(editor_window::CodeEditorWindow)
     if editor_window.current_file != ""
         # Get content from editor
-        content = getText(editor_window.editor)
+        # fix: should be Coordinates(0, 0), Coordinates(end_line, end_column)
+        #TODO: fix
+        content = getText(editor_window.editor, Coordinates(-1, -1), Coordinates(-1, -1))
         
         # Write to file
         open(editor_window.current_file, "w") do file

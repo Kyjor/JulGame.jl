@@ -517,9 +517,15 @@ function setText(editor::TextEditor, text::AbstractString)
 end
 
 function getText(editor::TextEditor, startCoords::Coordinates, endCoords::Coordinates)
+    if startCoords.mLine == -1 && startCoords.mColumn == -1
+        startCoords = Coordinates(1, 1)
+    end
+    if endCoords.mLine == -1 && endCoords.mColumn == -1
+        endCoords = Coordinates(getLineCount(editor), getLineMaxColumn(editor, getLineCount(editor)))
+    end
     startCoords = sanitizeCoordinates(editor, startCoords)
     endCoords = sanitizeCoordinates(editor, endCoords)
-
+    
     if startCoords >= endCoords
         return ""
     end
@@ -1255,11 +1261,12 @@ function ensureCursorVisible(editor::TextEditor, cursorIdx::Int = 1)
     end
 end
 
-function handleKeyboardInputs(editor::TextEditor)
+function handleKeyboardInputs(editor::TextEditor)::Bool
     io = CImGui.GetIO()
     shift = unsafe_load(io.KeyShift)
     ctrl = unsafe_load(io.KeyCtrl)
     alt = unsafe_load(io.KeyAlt)
+    delete_occurred = false
 
     # Process typed characters
     input_vec_ptr = io.InputQueueCharacters
@@ -1297,7 +1304,7 @@ function handleKeyboardInputs(editor::TextEditor)
                 end
 
                 # Clear the input queue *after* processing
-                CImGui.ClearInputCharacters() # Use the dedicated CImGui function
+                #TODO: fix -- update IMGUI? CImGui.ClearInputCharacters(CImGui.GetIO()) # Use the dedicated CImGui function
             end
         end
     end
@@ -1343,8 +1350,10 @@ function handleKeyboardInputs(editor::TextEditor)
         moved = true
     elseif CImGui.IsKeyPressed(CImGui.ImGuiKey_Delete)
         delete(editor, ctrl)
+        delete_occurred = true
     elseif CImGui.IsKeyPressed(CImGui.ImGuiKey_Backspace)
         backspace(editor, ctrl)
+        delete_occurred = true
     elseif CImGui.IsKeyPressed(CImGui.ImGuiKey_Enter) || CImGui.IsKeyPressed(CImGui.ImGuiKey_KeypadEnter)
         enterCharacter(editor, '\n', shift)
     elseif CImGui.IsKeyPressed(CImGui.ImGuiKey_Tab)
@@ -1359,6 +1368,7 @@ function handleKeyboardInputs(editor::TextEditor)
         selectAll(editor)
     elseif ctrl && CImGui.IsKeyPressed(CImGui.ImGuiKey_X) # Cut
         cut(editor)
+        delete_occurred = true
     elseif ctrl && CImGui.IsKeyPressed(CImGui.ImGuiKey_C) || ctrl && CImGui.IsKeyPressed(CImGui.ImGuiKey_Insert) # Copy
         copy(editor)
     elseif ctrl && CImGui.IsKeyPressed(CImGui.ImGuiKey_V) || shift && CImGui.IsKeyPressed(CImGui.ImGuiKey_Insert) # Paste
@@ -1369,6 +1379,8 @@ function handleKeyboardInputs(editor::TextEditor)
     if moved && !shift
         clearSelections(editor)
     end
+
+    return delete_occurred
 end
 
 function handleMouseInputs(editor::TextEditor, draw_list, screenStartPos::ImVec2)
@@ -1504,11 +1516,11 @@ function render(editor::TextEditor, title::String, parentIsFocused::Bool = false
     screenStartPos = CImGui.GetCursorScreenPos() # Top-left of the drawable area
 
     # Handle Inputs
+    delete_occurred = false
     if editor.mIsFocused
-        handleKeyboardInputs(editor)
+        delete_occurred = handleKeyboardInputs(editor)
     end
     handleMouseInputs(editor, draw_list, screenStartPos) # Handle mouse even if not focused? For scrolling maybe.
-
     # Render Background
     bg_col = editor.mPalette[Int(Background)]
     CImGui.PushStyleColor(CImGui.ImGuiCol_ChildBg, bg_col) # Set background color
