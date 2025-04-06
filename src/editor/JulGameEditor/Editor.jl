@@ -119,6 +119,9 @@ module Editor
         # Variable to track if we want to show backup scenes
         show_backup_scenes = Ref(false)
         
+        # Variable to track if file explorer window is open
+        show_file_explorer = Ref(true)
+        
         # Auto-load the most recent project if there is one
         if !is_test_mode && AUTO_LOAD_LAST_PROJECT
             most_recent_project = get_most_recent_project()
@@ -188,6 +191,10 @@ module Editor
                         CodeEditorModule.open_file_dialog()
                     end
                     
+                    events["Toggle-File-Explorer"] = @event begin
+                        show_file_explorer[] = !show_file_explorer[]
+                    end
+                    
                     show_main_menu_bar(events, currentSceneMain, recent_projects)
                     ################################# END MAIN MENU BAR
                     if !isPackageCompiled
@@ -196,6 +203,9 @@ module Editor
 
                     # Show the code editor window if it's open
                     CodeEditorModule.show_code_editor()
+
+                    # Show the file explorer window if it's open
+                    FileExplorerWindow.show_window(show_file_explorer)
 
                     try 
                         @cstatic begin
