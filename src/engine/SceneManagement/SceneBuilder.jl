@@ -218,10 +218,18 @@ module SceneBuilderModule
         @debug string("Adding scripts to entities")
         @debug string("Path: ", path)
         @debug string("Entities: ", length(MAIN.scene.entities))
+        
+        # Track which scripts we've already loaded
+        
+        # Only load scripts for non-persistent entities or if package is not compiled
         if !JulGame.IS_PACKAGE_COMPILED
+            println("Package not compiled, loading scripts")
             @debug "Package not compiled, loading scripts"
             foreach(file -> try
-                Base.include(JulGame.ScriptModule, file)
+                if !(file in JulGame.LoadedScripts)
+                    Base.include(JulGame.ScriptModule, file)
+                    push!(JulGame.LoadedScripts, file)
+                end
             catch e
                 println("Error including $file: ", e)
             end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
@@ -236,6 +244,11 @@ module SceneBuilderModule
         end
 
         for entity in MAIN.scene.entities
+            # Skip script reloading for persistent entities
+            if entity.persistentBetweenScenes
+                continue
+            end
+            
             scriptCounter = 1
             for script in entity.scripts
                 if !isa(script, JSON3.Object)

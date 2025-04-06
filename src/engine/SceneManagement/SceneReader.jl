@@ -122,9 +122,8 @@ module SceneReaderModule
                 if uiElement.type == "TextBox"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
-                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "x") && haskey(uiElement.color, "y") && haskey(uiElement.color, "z")
-                         alpha = get(uiElement, "alpha", 255) # Check for alpha separately
-                         color_tuple = (uiElement.color.x, uiElement.color.y, uiElement.color.z, alpha)
+                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
+                         color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
                     end
 
                     newUIElement = TextBox(

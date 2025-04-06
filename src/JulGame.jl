@@ -25,6 +25,7 @@ module JulGame
 
     ProjectModule = ""
     ScriptModule = Module(:Scripts)
+    LoadedScripts = Set{String}()
 
     EditorState = Dict{String, Any}()
 

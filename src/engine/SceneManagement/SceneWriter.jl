@@ -54,8 +54,8 @@ module SceneWriterModule
             else
                 push!(uiElementsDict, Dict(
                     "id" => string(uiElement.id), 
-                    "alpha" => uiElement.alpha, 
                     "anchorOffset" => Dict("x" => uiElement.anchorOffset.x, "y" => uiElement.anchorOffset.y),
+                    "color" => Dict("r" => uiElement.color[1], "g" => uiElement.color[2], "b" => uiElement.color[3], "a" => uiElement.color[4]),
                     "fontPath" => normalize_path(uiElement.fontPath), 
                     "fontSize" => uiElement.fontSize, 
                     "isActive" => uiElement.isActive,
