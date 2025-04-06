@@ -27,8 +27,15 @@ function show_main_menu_bar(events, main, recent_paths::Vector)
                 show_scene_menu(events)
                 CImGui.EndMenu()
             end
-
         end
+        
+        @cstatic buf="Tools"*"\0"^128 begin
+            if CImGui.BeginMenu(buf)
+                show_tools_menu(events)
+                CImGui.EndMenu()
+            end
+        end
+        
         CImGui.EndMainMenuBar()
     end
 end
@@ -111,4 +118,14 @@ function show_scene_menu(events)
         end
         CImGui.EndMenu()
     end 
+end
+
+function show_tools_menu(events)
+    if CImGui.MenuItem("Code Editor", "Ctrl+E")
+        events["Open-code-editor"]()
+    end
+    
+    if CImGui.MenuItem("Open Script", "Ctrl+O")
+        events["Open-script"]()
+    end
 end

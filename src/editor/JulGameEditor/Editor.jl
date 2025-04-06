@@ -26,6 +26,12 @@ module Editor
     
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
+    
+    # Include editor scripts
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "EditorScripts"); join=true)))
+    
+    # Import modules we need
+    using .CodeEditorModule
 
     function run(is_test_mode::Bool=false)
         isPackageCompiled = ccall(:jl_generating_output, Cint, ()) == 1
@@ -173,11 +179,23 @@ module Editor
                     end
                     events["Play-Mode"] = @event begin confirmation_modal.open = true; end
                     
+                    # Code editor events
+                    events["Open-code-editor"] = @event begin
+                        CodeEditorModule.open_file_dialog()
+                    end
+                    
+                    events["Open-script"] = @event begin
+                        CodeEditorModule.open_file_dialog()
+                    end
+                    
                     show_main_menu_bar(events, currentSceneMain, recent_projects)
                     ################################# END MAIN MENU BAR
                     if !isPackageCompiled
                         #@c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
                     end
+
+                    # Show the code editor window if it's open
+                    CodeEditorModule.show_code_editor()
 
                     try 
                         @cstatic begin
