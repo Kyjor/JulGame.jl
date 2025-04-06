@@ -724,6 +724,50 @@ module Editor
                     
                     show_game_controls()
 
+                    # Add a floating project/scene info display at the top center
+                    # Calculate the current project name (last part of the path)
+                    currentProjectName = currentSelectedProjectPath[] != "" ? basename(currentSelectedProjectPath[]) : "No Project"
+                    currentSceneDisplayName = currentSceneName != "" ? replace(currentSceneName, ".json" => "") : "No Scene"
+                    
+                    # Create a floating window in the top center
+                    CImGui.SetNextWindowBgAlpha(0.7)
+                    # Position in top center of the screen
+                    display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
+                    CImGui.SetNextWindowPos(
+                        ImVec2(
+                            Math.TypeConversions.safe_int32_convert(round(display_width / 2.0)), 
+                            0
+                        ), 
+                        CImGui.ImGuiCond_Always, 
+                        ImVec2(0.5, 0.0)
+                    )
+                    
+                    project_window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                  CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                  CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                  CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                  CImGui.ImGuiWindowFlags_NoNav
+                    
+                    # Apply custom styling for the project/scene info window              
+                    CImGui.PushStyleColor(CImGui.ImGuiCol_WindowBg, (0.15, 0.15, 0.2, 0.8))  # Darker blue background
+                    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowBorderSize, 1.0)
+                    CImGui.PushStyleColor(CImGui.ImGuiCol_Border, (0.3, 0.3, 0.6, 0.6))
+                    
+                    CImGui.Begin("ProjectSceneInfo", C_NULL, project_window_flags)
+                    
+                    # Use a vibrant text color with a slight glow effect
+                    CImGui.PushStyleColor(CImGui.ImGuiCol_Text, (0.85, 0.85, 1.0, 0.95))
+                    
+                    # Display with some padding for visual comfort
+                    CImGui.SetCursorPosX(CImGui.GetCursorPosX() + 8)
+                    CImGui.Text("$(currentProjectName) - $(currentSceneDisplayName)")
+                    
+                    CImGui.PopStyleColor()  # Text color
+                    CImGui.End()
+                    
+                    CImGui.PopStyleColor(2)  # Window background and border
+                    CImGui.PopStyleVar()     # Border size
+
                     # Add a floating play mode indicator when in play mode
                     if JulGame.IS_EDITOR_PLAY_MODE
                         # Calculate pulsing alpha for the text
@@ -731,12 +775,11 @@ module Editor
                         
                         # Create a floating window in the corner
                         CImGui.SetNextWindowBgAlpha(0.7)
-                        # Position in top center of the screen - safely access display size
-                        display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
+                        # Position below the project info
                         CImGui.SetNextWindowPos(
                             ImVec2(
                                 Math.TypeConversions.safe_int32_convert(round(display_width / 2.0)), 
-                                10
+                                40
                             ), 
                             CImGui.ImGuiCond_Always, 
                             ImVec2(0.5, 0.0)
