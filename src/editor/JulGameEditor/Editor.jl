@@ -110,6 +110,9 @@ module Editor
         auto_load_notification = false
         auto_load_notification_time = 0.0
         
+        # Variable to track if we want to show backup scenes
+        show_backup_scenes = Ref(false)
+        
         # Auto-load the most recent project if there is one
         if !is_test_mode && AUTO_LOAD_LAST_PROJECT
             most_recent_project = get_most_recent_project()
@@ -194,12 +197,36 @@ module Editor
                                 
                                 CImGui.PopStyleColor(3)
                                 CImGui.Separator()
+                                
+                                # Add checkbox to toggle showing backup scenes
+                                CImGui.Checkbox("Show Backups", show_backup_scenes)
+                                if CImGui.IsItemHovered()
+                                    CImGui.SetTooltip("Toggle to show/hide scenes with '-backup' in the name")
+                                end
+                                CImGui.Separator()
                             end
 
                             for scene in scenesLoadedFromFolder[]
                                 name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 
-                                if CImGui.Button("$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))")
+                                # Skip backup scenes unless show_backup_scenes is true
+                                if !show_backup_scenes[] && occursin("-backup", name)
+                                    continue
+                                end
+                                
+                                # Add visual indicator for backup scenes
+                                if occursin("-backup", name)
+                                    CImGui.PushStyleColor(CImGui.ImGuiCol_Button, (0.6, 0.4, 0.1, 1.0))  # Amber color for backups
+                                    CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.7, 0.5, 0.2, 1.0))
+                                    CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.8, 0.6, 0.3, 1.0))
+                                end
+                                
+                                # Prepare button text with optional backup indicator
+                                buttonText = occursin("-backup", name) ? 
+                                    "[BACKUP] $(SubString(split(split(scene, "scenes")[2], ".")[1], 2))" : 
+                                    "$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))"
+                                
+                                if CImGui.Button(buttonText)
                                     currentSceneName = name
                                     currentScenePath = scene
                                     if currentSceneMain === nothing
@@ -212,6 +239,12 @@ module Editor
                                         currentDialog[] = "Open Scene"
                                     end
                                 end
+                                
+                                # Pop colors if this was a backup scene
+                                if occursin("-backup", name)
+                                    CImGui.PopStyleColor(3)
+                                end
+                                
                                 CImGui.NewLine()
                             end
 
