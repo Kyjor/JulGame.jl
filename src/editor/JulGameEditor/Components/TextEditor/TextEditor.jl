@@ -516,19 +516,6 @@ function setText(editor::TextEditor, text::AbstractString)
     colorizeAll(editor)
 end
 
-function getText(editor::TextEditor)
-    io = IOBuffer()
-    for (i, line) in enumerate(editor.mLines)
-        for glyph in line
-            print(io, glyph.mChar)
-        end
-        if i < length(editor.mLines)
-            print(io, '\n')
-        end
-    end
-    return String(take!(io))
-end
-
 function getText(editor::TextEditor, startCoords::Coordinates, endCoords::Coordinates)
     startCoords = sanitizeCoordinates(editor, startCoords)
     endCoords = sanitizeCoordinates(editor, endCoords)
@@ -538,30 +525,32 @@ function getText(editor::TextEditor, startCoords::Coordinates, endCoords::Coordi
     end
 
     io = IOBuffer()
-    start_char_idx = getCharIndex(editor, startCoords)
-    end_char_idx = getCharIndex(editor, endCoords)
+    start_char_idx = getCharIndex(editor, startCoords) # 0-based char index
+    end_char_idx = getCharIndex(editor, endCoords)   # 0-based char index
 
     for line_idx = startCoords.mLine:endCoords.mLine
-        line = editor.mLines[line_idx]
-        line_text = join([g.mChar for g in line])
+        line = editor.mLines[line_idx] # Line is Vector{Glyph}
+        num_glyphs = length(line)
 
-        local_start = (line_idx == startCoords.mLine) ? start_char_idx : 0
-        local_end = (line_idx == endCoords.mLine) ? end_char_idx : length(line_text)
+        # Determine glyph indices (1-based) for this line
+        # Range is [start_char_idx, end_char_idx) -> Glyphs [start_char_idx + 1, end_char_idx]
+        glyph_start_idx = (line_idx == startCoords.mLine) ? start_char_idx + 1 : 1
+        glyph_end_idx = (line_idx == endCoords.mLine) ? end_char_idx : num_glyphs # Inclusive end glyph index in the range
 
-        if local_start < length(line_text) && local_start <= local_end
-             # Adjust indices for Julia's 1-based string indexing if needed
-            start_str_idx = nextind(line_text, 0, local_start + 1)
-            end_str_idx = nextind(line_text, 0, local_end + 1) - 1 # End index is inclusive in substring
+        # Ensure indices are valid and the range is sensible
+        glyph_start_idx = max(1, glyph_start_idx)
+        # We want glyphs *up to* end_char_idx, so max index is end_char_idx.
+        # If end_char_idx is 0 (start of line), glyph_end_idx becomes 0.
+        # If line_idx != endCoords.mLine, glyph_end_idx is num_glyphs.
+        glyph_end_idx = min(num_glyphs, glyph_end_idx)
 
-            # Handle potential edge cases with indices
-            if start_str_idx <= end_str_idx && start_str_idx > 0 && end_str_idx <= lastindex(line_text)
-                 print(io, SubString(line_text, start_str_idx, end_str_idx))
-            elseif start_str_idx == end_str_idx + 1 # When range is empty
-                 # Print nothing
-            elseif start_str_idx <= lastindex(line_text) # If only start is valid
-                 print(io, SubString(line_text, start_str_idx))
+        if glyph_start_idx <= glyph_end_idx # Check if there's anything to print on this line
+            for i = glyph_start_idx:glyph_end_idx
+                 # Check bounds just in case, though should be correct now
+                 if i > 0 && i <= num_glyphs
+                      print(io, line[i].mChar)
+                 end
             end
-
         end
 
         if line_idx < endCoords.mLine
@@ -1273,22 +1262,44 @@ function handleKeyboardInputs(editor::TextEditor)
     alt = unsafe_load(io.KeyAlt)
 
     # Process typed characters
-    if !isempty(unsafe_wrap(Array, io.InputQueueCharacters, Int(unsafe_load(io.InputQueueCharacters).Size)))
-        input_chars = unsafe_wrap(Array, io.InputQueueCharacters, Int(unsafe_load(io.InputQueueCharacters).Size))
-        for i = 1:length(input_chars)
-             char_code = input_chars[i]
-             if char_code == 0 || char_code == CImGui.ImGuiKey_Tab # Ignore null and Tab (handle Tab separately)
-                 continue
-             end
-             # Check for newline chars (might be platform specific)
-             if char_code == UInt('\n') || char_code == UInt('\r')
-                 enterCharacter(editor, '\n', shift)
-             elseif char_code > 0 && char_code < 0x10000 # Basic check for printable char range
-                 enterCharacter(editor, Char(char_code), shift)
-             end
+    input_vec_ptr = io.InputQueueCharacters
+    if input_vec_ptr != C_NULL
+        input_vec = unsafe_load(input_vec_ptr)
+        input_size = Int(input_vec.Size) # Convert to Int
+
+        if input_size > 0 # Check size directly
+            input_data_ptr = input_vec.Data
+            if input_data_ptr != C_NULL # Ensure data pointer is valid
+                input_chars = unsafe_wrap(Array, input_data_ptr, input_size)
+                for i = 1:input_size # Iterate up to input_size
+                    char_code = input_chars[i] # This is ImWchar (UInt16)
+
+                    if char_code == 0 || char_code == CImGui.ImGuiKey_Tab # Ignore null and Tab
+                        continue
+                    end
+
+                    # Check for newline chars (compare UInt16)
+                    if char_code == UInt16('\n') || char_code == UInt16('\r')
+                        enterCharacter(editor, '\n', shift)
+                    # Check if it's a printable character (basic validity check)
+                    elseif char_code >= 32 # Basic check, could be refined
+                        try
+                            # Convert ImWchar (UInt16) to Julia Char (UTF-8)
+                            # This might need more robust UTF handling for complex cases (surrogates)
+                            char = Char(char_code)
+                            if isvalid(char)
+                                enterCharacter(editor, char, shift)
+                            end
+                        catch e
+                            @warn "Failed to convert character code $(repr(char_code)): $e"
+                        end
+                    end
+                end
+
+                # Clear the input queue *after* processing
+                CImGui.ClearInputCharacters() # Use the dedicated CImGui function
+            end
         end
-        # Clear the input queue manually? CImGui might do this.
-         unsafe_store!(unsafe_load(io.InputQueueCharacters).Size, 0)
     end
 
     # Handle special keys
@@ -1402,7 +1413,7 @@ end
 
 # Convert screen position (relative to text area top-left) to Coordinates
 function screenPosToCoordinates(editor::TextEditor, pos::ImVec2)::Coordinates
-     relativePos = pos + ImVec2(editor.mScrollX, editor.mScrollY) # Adjust for scroll
+     relativePos = ImVec2(pos.x + editor.mScrollX, pos.y + editor.mScrollY) # Adjust for scroll
      line = max(1, floor(Int, relativePos.y / editor.mLineHeight) + 1)
      line = min(line, getLineCount(editor))
 
