@@ -35,7 +35,7 @@ module TextBoxModule
             this.isConstructed = false
             this.clickEvents = []
             this.fontPath = fontPath
-            this.fontSize = fontSize
+            this.fontSize = fontSize  # Store the base font size
             this.id = id
             this.anchorOffset = anchorOffset
             this.isCenteredX = isCenteredX
@@ -54,10 +54,12 @@ module TextBoxModule
             this.maxLineWidth = maxLineWidth
             this.wrapWords = wrapWords
             
-            if fontPath == ""
+            if strip(fontPath) == ""
+                @debug "fontPath is empty, using default font"
                 fontPath = joinpath("FiraCode-Regular.ttf")
             end
 
+            # Load the font with the true font size (scaled for current window size)
             UI.load_font(this, joinpath(BasePath, "assets", "fonts"), fontPath)
             this.isConstructed = true
 
@@ -122,7 +124,11 @@ module TextBoxModule
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
         @debug string("loading font from $(basePath)\\$(fontPath)")
-        this.font = load_font_sdl(basePath, fontPath, this.fontSize)
+        
+        # Calculate the true font size based on window resolution
+        trueFontSize = get_true_font_size(this.fontSize)
+        
+        this.font = load_font_sdl(basePath, fontPath, trueFontSize)
         if this.font == C_NULL
             error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError()))")
             return
@@ -136,6 +142,7 @@ module TextBoxModule
             this.text = " "
         end
 
+        # Use high-quality font rendering with proper anti-aliasing
         this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
         if this.renderText == C_NULL
             error("Failed to render text for textbox $(this.name)")
@@ -147,10 +154,17 @@ module TextBoxModule
         # Size is always in screen pixels, regardless of isWorldEntity
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         
+        # Create texture with high-quality scaling
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+        
+        # Set texture scaling quality to linear
+        SDL2.SDL_SetTextureScaleMode(this.textTexture, SDL2.SDL_ScaleModeLinear)
     end
 
     function UI.initialize(this::TextBox)
+        # Ensure font is properly scaled for the current window size
+        UI.handle_window_resize(this)
+        
         # Only center screen-space UI, not world entities
         if !this.isWorldEntity
             UI.center_text(this)
@@ -183,6 +197,10 @@ module TextBoxModule
             end
         end
         @debug "Loading font from disk, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
+        if fontPath == ""
+            @debug "fontPath is empty, using default font"
+            fontPath = joinpath("FiraCode-Regular.ttf")
+        end
         return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), Math.TypeConversions.safe_int32_convert(fontSize))
     end
 
@@ -325,15 +343,51 @@ module TextBoxModule
     end
     
     function UI.update_font_size(this::TextBox, newSize::Int; basePath::String = "")
+        # Store the base font size (the size specified by the user)
         this.fontSize = Math.TypeConversions.safe_int32_convert(newSize)
-        # TODO: SDL2.TTF_SetFontSize(this.font, newSize)
-        # close font, reopen with new size
+        
+        # Calculate the true font size based on window resolution
+        trueFontSize = get_true_font_size(this.fontSize)
+        
+        # Close the current font
+        if this.font != C_NULL
+            SDL2.TTF_CloseFont(this.font)
+        end
+        
+        # Load the font with the scaled size
         if basePath == ""
             basePath = joinpath(BasePath, "assets", "fonts")
         end
 
-        SDL2.TTF_CloseFont(this.font)
         UI.load_font(this, basePath, joinpath(this.fontPath))
+    end
+
+    """
+        get_true_font_size(baseFontSize::Int)::Int
+
+    Calculates the true font size based on the current window size and base resolution.
+    This ensures text appears at a consistent size regardless of window resolution.
+
+    # Arguments
+    - `baseFontSize::Int`: The base font size (designed for the base resolution)
+
+    # Returns
+    - `Int`: The scaled font size for the current window resolution
+    """
+    function get_true_font_size(baseFontSize::Int)::Int
+        # Get current window size and base resolution
+        windowSize = JulGame.get_window_size()
+        baseResolution = JulGame.MAIN.windowManager.baseResolution
+        
+        # Calculate scaling factors
+        scaleX = windowSize.x / baseResolution.x
+        scaleY = windowSize.y / baseResolution.y
+        
+        # Use the smaller scaling factor to ensure text fits in both dimensions
+        scale = min(scaleX, scaleY)
+        
+        # Calculate and return the scaled font size
+        return Math.TypeConversions.safe_int32_convert(round(baseFontSize * scale))
     end
 
     function UI.destroy(this::TextBox)
@@ -381,5 +435,28 @@ module TextBoxModule
     
     function get_wrap_words(this::TextBox)
         return this.wrapWords
+    end
+    
+    """
+        handle_window_resize(this::TextBox)
+
+    Handles window resize events by recalculating the font size and reloading the font.
+    This ensures text appears at the correct size after window resizing.
+
+    # Arguments
+    - `this::TextBox`: The TextBox object to update
+    """
+    function UI.handle_window_resize(this::TextBox)
+        if this.font != C_NULL
+            # Close the current font
+            SDL2.TTF_CloseFont(this.font)
+            
+            # Reload the font with the new scaled size
+            basePath = joinpath(BasePath, "assets", "fonts")
+            UI.load_font(this, basePath, joinpath(this.fontPath))
+            
+            # Rerender the text
+            UI.rerender_text(this)
+        end
     end
 end

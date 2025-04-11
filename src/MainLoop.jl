@@ -658,6 +658,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
 			elseif JulGame.IS_WEB
+				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
 				entt = "["
 				for i = 1:length(this.scene.entities)
 					entt *= "{ \"x\": $(this.scene.entities[i].transform.position.x), \"y\": $(this.scene.entities[i].transform.position.y) }"

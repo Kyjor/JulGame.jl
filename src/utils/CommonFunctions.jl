@@ -33,6 +33,7 @@ function get_type end
 function get_velocity end
 function get_window_size end
 function handle_event end
+function handle_window_resize end
 function initialize end
 function load_button_sprite_editor end
 function load_font end

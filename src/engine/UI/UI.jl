@@ -1,4 +1,4 @@
-module UI
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           module UI
     using ..JulGame
     using ..JulGame.Math
 
@@ -7,6 +7,7 @@ module UI
         center_text,
         destroy,
         handle_event,
+        handle_window_resize,
         initialize,
         load_button_sprite_editor,
         load_font,

@@ -78,11 +78,16 @@ module SceneBuilderModule
             
             # Create renderer
             # todo move to window manager
+            # Enable high-quality scaling
+            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, "2")
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
                 return
             end
+            
+            # Set default texture scaling mode to linear
+            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, "2")
             
             # Apply additional window settings from config
             @debug "Setting frame rate to $(targetFrameRate)"
@@ -223,7 +228,6 @@ module SceneBuilderModule
         
         # Only load scripts for non-persistent entities or if package is not compiled
         if !JulGame.IS_PACKAGE_COMPILED
-            println("Package not compiled, loading scripts")
             @debug "Package not compiled, loading scripts"
             foreach(file -> try
                 if !(file in JulGame.LoadedScripts)

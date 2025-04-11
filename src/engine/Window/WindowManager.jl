@@ -662,6 +662,15 @@ module WindowManagerModule
             height = event.data2
             this.windowSize = Math.Vector2(width, height)
             @debug "Window resized to $(width)x$(height)"
+            
+            # Update all TextBoxes when window is resized
+            if JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
+                for element in JulGame.MAIN.scene.uiElements
+                    if "$(typeof(element))" == "JulGame.UI.TextBoxModule.TextBox"
+                        JulGame.UI.handle_window_resize(element)
+                    end
+                end
+            end
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
             @debug(string("Window $(event.windowID) shown"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
