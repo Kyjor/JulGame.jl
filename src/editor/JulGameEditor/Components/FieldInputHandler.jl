@@ -33,7 +33,6 @@ function handle_component_field_input(component, componentField, newScriptText="
         return false
     end
     
-    # Handle vector types
     if isa(fieldValue, Math._Vector2{Float64}) || isa(fieldValue, Math._Vector2{Int32})
         return show_vector2_input(component, componentField, fieldValue)
     elseif isa(fieldValue, Math._Vector3{Float64}) || isa(fieldValue, Math._Vector3{Int32})
@@ -41,12 +40,13 @@ function handle_component_field_input(component, componentField, newScriptText="
     elseif isa(fieldValue, Math._Vector4{Float64}) || isa(fieldValue, Math._Vector4{Int32})
         return show_vector4_input(component, componentField, fieldValue)
     
+
     # Handle scalar types 
     elseif isa(fieldValue, Bool)
         return show_boolean_input(component, componentField, fieldValue)
     elseif isa(fieldValue, String)
         return show_string_input(component, componentField, fieldValue)
-    elseif isa(fieldValue, Number)
+    elseif isa(fieldValue, Int) || isa(fieldValue, Float64) || isa(fieldValue, Float32)
         return show_numeric_input(component, componentField, fieldValue)
     
     # Handle scripts specially
