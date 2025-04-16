@@ -37,7 +37,7 @@ module SceneBuilderModule
         end    
     end
     
-    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false)
+    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false, preloadAllScenes::Bool=false)
         if config === nothing
             @info("Config is nothing, parsing config")
             config = parse_config()
@@ -67,6 +67,7 @@ module SceneBuilderModule
 			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
 		end
         
+        
         scene = nothing
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             # Initialize window manager
@@ -85,6 +86,24 @@ module SceneBuilderModule
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
                 return
             end
+
+            # Preload all scenes if requested
+            if preloadAllScenes
+                @info "Preloading all scenes..."
+                scenesDir = joinpath(BasePath, "scenes")
+                if isdir(scenesDir)
+                    for file in readdir(scenesDir)
+                        if endswith(file, ".json")
+                            scenePath = joinpath(scenesDir, file)
+                            @debug "Preloading scene: $file"
+                            SceneReaderModule.preload_scene(scenePath)
+                        end
+                    end
+                    @info "Finished preloading scenes"
+                else
+                    @warn "Scenes directory not found: $scenesDir"
+                end
+            end
             
             # Set default texture scaling mode to linear
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, "2")
@@ -96,7 +115,13 @@ module SceneBuilderModule
             JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
             
             @debug "Deserializing scene"
-            scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            # Use preloaded scene if available
+            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
+                @info "Using preloaded scene: $(this.scene)"
+                scene = JulGame.PRELOADED_SCENES[this.scene]
+            else
+                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            end
             camera = scene[3]
             # Set logical rendering size based on camera
             @debug "Setting logical size to $(size.x)x$(size.y)"
@@ -112,7 +137,13 @@ module SceneBuilderModule
         end
 
         if scene === nothing
-            scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            # Use preloaded scene if available
+            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
+                @debug "Using preloaded scene: $(this.scene)"
+                scene = JulGame.PRELOADED_SCENES[this.scene]
+            else
+                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            end
         end
         
         MAIN.scene.entities = scene[1]

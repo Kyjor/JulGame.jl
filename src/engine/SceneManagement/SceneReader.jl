@@ -21,9 +21,40 @@ module SceneReaderModule
         () -> (name; fields)
     end
 
+    export preload_scene
+    """
+        preload_scene(filePath::String)
+
+    Preloads a scene from the specified file path and stores it in the PRELOADED_SCENES cache.
+    This allows for faster scene switching as the scene is already loaded in memory.
+
+    # Arguments
+    - `filePath::String`: The path to the scene file to preload
+    """
+    function preload_scene(filePath::String)
+        try
+            if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
+                @debug("Scene already preloaded: $(basename(filePath))")
+                return
+            end
+
+            scene = deserialize_scene(filePath)
+            JulGame.PRELOADED_SCENES[basename(filePath)] = (entities = scene[1], uiElements = scene[2], camera = scene[3])
+            @debug("Preloaded scene: $(basename(filePath))")
+        catch e
+            @error string(e)
+            Base.show_backtrace(stdout, catch_backtrace())
+        end
+    end
+
     export deserialize_scene
     function deserialize_scene(filePath)
         try
+            if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
+                @info "deserialize_scene: Using preloaded scene: $(basename(filePath))"
+                return JulGame.PRELOADED_SCENES[basename(filePath)]
+            end
+
             json = nothing
             if haskey(JulGame.SCENE_CACHE, basename(filePath))
                 json = JulGame.SCENE_CACHE[basename(filePath)]

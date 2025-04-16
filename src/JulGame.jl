@@ -17,6 +17,7 @@ module JulGame
     # TODO: Create a globals file
     
     SCENE_CACHE::Dict = Dict{String, Any}()
+    PRELOADED_SCENES::Dict = Dict{String, Any}()
     IMAGE_CACHE::Dict = Dict{String, Any}()
     FONT_CACHE::Dict = Dict{String, Any}()
     AUDIO_CACHE::Dict = Dict{String, Any}()

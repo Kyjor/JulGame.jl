@@ -330,7 +330,7 @@ module TextBoxModule
 
     function UI.center_text(this::TextBox)
         if MAIN.scene.camera === nothing
-            @warn "No camera found in scene"
+            @debug "No camera found in scene"
             return
         end
 

@@ -659,7 +659,7 @@ end
 function reset_camera_event(main)
     event = @event begin
         if main.scene.camera === nothing
-            @warn "No camera found in scene when resetting camera"
+            @debug "No camera found in scene when resetting camera"
             return
         end
         main.scene.camera.position = JulGame.Math.Vector3f(0.0, 0.0, 0.0)
