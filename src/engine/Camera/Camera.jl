@@ -33,6 +33,11 @@ module CameraModule
     end
 
     function update(this::Camera, newPosition::Union{Nothing, Vector3f} = nothing)
+        if JulGame.WindowManagerModule.get_logical_size() != this.size
+            JulGame.WindowManagerModule.set_logical_size(this.size.x, this.size.y)
+            @info "Logical size changed to $(this.size)"
+        end
+
         SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
         rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
         SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)

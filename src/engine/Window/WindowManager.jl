@@ -309,6 +309,29 @@ module WindowManagerModule
         set_logical_size(JulGame.MAIN.windowManager, width, height)
     end
 
+    function get_logical_size(this::WindowManager)::Math.Vector2
+        if this.window == C_NULL
+            @error "Cannot get logical size: Window has not been created"
+            return Math.Vector2(0, 0)
+        end
+
+        width = Ref{Cint}(0)
+        height = Ref{Cint}(0)
+        SDL2.SDL_RenderGetLogicalSize(JulGame.Renderer, width, height)
+
+        return Math.Vector2(width[], height[])
+    end
+
+
+    """
+        get_logical_size()
+
+    Gets the logical size of the window.
+    """
+    function get_logical_size()
+        get_logical_size(JulGame.MAIN.windowManager)
+    end
+
     """
         set_display_mode(this::WindowManager, width::Int32, height::Int32, refresh_rate::Int32)
 
