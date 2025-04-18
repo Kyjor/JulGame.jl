@@ -22,6 +22,9 @@ module JulGame
     FONT_CACHE::Dict = Dict{String, Any}()
     AUDIO_CACHE::Dict = Dict{String, Any}()
 
+    BUILT_IN_ASSETS::Dict = Dict{String, Any}()
+    BUILT_IN_ASSETS["Font"] = read(joinpath(@__DIR__, "engine", "Assets", "Fonts", "FiraCode-Regular.ttf"))
+
     Coroutines::Vector = []
 
     ProjectModule = ""

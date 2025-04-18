@@ -368,7 +368,9 @@ module ImmediateUIModule
                            color::NTuple{4, Int}=(255, 255, 255, 255),
                            borderWidth::Int=0, fillMode::Bool=true;
                            isWorldEntity::Bool=false, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
-                           borderRadius::Int=0, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
+                           borderRadius::Int=0, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME,
+                           clickEvent::Function=() -> nothing,
+                           hoverEnterEvent::Function=() -> nothing, hoverExitEvent::Function=() -> nothing)
         
         # Convert colors to Int32 tuples
         color = (color[1],
@@ -456,6 +458,12 @@ module ImmediateUIModule
             # Ensure the component is in the scene's uiElements
             if !(rect in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, rect)
+            end
+
+            if !isempty(rect.clickEvents)
+                rect.clickEvents[1] = clickEvent
+            else
+                UI.add_click_event(rect, clickEvent)
             end
             
             return rect

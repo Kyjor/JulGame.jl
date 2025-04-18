@@ -18,6 +18,7 @@
         update_button_text,
         update_font_size
 
+    include("UIElement.jl")
     include("ScreenButton.jl")
     include("TextBox.jl")
     #include("Draggable.jl")

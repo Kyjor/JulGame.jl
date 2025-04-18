@@ -216,7 +216,7 @@ module SpriteModule
         if !isfile(joinpath(BasePath, "assets", "images", imagePath))
             @error("Image file does not exist: $(imagePath)")
             this.image = load_fallback_image()
-            this.imagePath = "fallback.png"
+            setfield!(this, :imagePath, "fallback.png")
             this.pixelsPerUnit = 0
             if this.image == C_NULL
                 @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")
@@ -235,7 +235,7 @@ module SpriteModule
     
             # Load from byte array
             this.image = load_fallback_image()
-            this.imagePath = "fallback.png"
+            setfield!(this, :imagePath, "fallback.png")
             this.pixelsPerUnit = 0
             if this.image == C_NULL
                 @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")

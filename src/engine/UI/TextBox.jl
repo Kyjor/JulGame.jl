@@ -3,60 +3,79 @@ module TextBoxModule
     using ..UI.JulGame.Math
     import ..UI
     export TextBox      
-    mutable struct TextBox
-        anchorOffset::Vector2
-        #anchor::JulGame.Enum
-        clickEvents
-        font
+    mutable struct TextBox <: UI.UIElement
+        font::Union{Ptr{SDL2.TTF_Font}, Ptr{Nothing}}
         fontPath::String
         fontSize::Int
-        id::String
-        isActive::Bool
-        isCenteredX::Bool
-        isCenteredY::Bool
-        isHovered::Bool
-        isWorldEntity::Bool
-        layer::Int
-        name::String
-        persistentBetweenScenes::Bool
-        position::Vector2
-        renderText
-        size::Vector2
-        text::String
-        textTexture
         isConstructed::Bool
-        color::NTuple{4, Int}
+        isWorldEntity::Bool
         maxLineWidth::Int
+        renderText::Union{Ptr{SDL2.SDL_Surface}, Ptr{Nothing}}
+        text::String
+        textTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         wrapWords::Bool
 
-        function TextBox(name::String, fontPath::String, fontSize::Int, position::Math.Vector2, text::String, isCenteredX::Bool = false, isCenteredY::Bool = false; anchorOffset::Math.Vector2 = Math.Vector2(0,0), id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, layer::Int=0, color::NTuple{4, Int}=(255, 255, 255, 255), maxLineWidth::Int=0, wrapWords::Bool=true) # TODO: replace bool with enum { left, center, right, etc }
-            this = new()
+        function TextBox(text::String; 
+        id::String=JulGame.generate_uuid(), 
+        name::String = "TextBox", 
+        anchor::Symbol = :center,
+        anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0,0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255), 
+        fontPath::String = "FiraCode-Regular.ttf", 
+        fontSize::Int = 16, 
+        maxLineWidth::Int=0, 
+        wrapWords::Bool=true)
 
+            this = new()
+            
             this.isConstructed = false
-            this.clickEvents = []
+            this.anchor = JulGame.Enum{Any}(
+                :center,
+                :top,
+                :bottom,
+                :left,
+                :right,
+                :topLeft,
+                :topRight,
+                :bottomLeft,
+                :bottomRight,
+            )
+
+            this.anchor.current_state = anchor
+            this.anchorOffset = anchorOffset
+
+            this.clickEvents = clickEvents
+            this.hoverEnterEvents = hoverEnterEvents
+            this.hoverExitEvents = hoverExitEvents
+
             this.fontPath = fontPath
             this.fontSize = fontSize  # Store the base font size
             this.id = id
-            this.anchorOffset = anchorOffset
-            this.isCenteredX = isCenteredX
-            this.isCenteredY = isCenteredY
             this.layer = layer
             this.name = name
             this.position = position
             setfield!(this, :text, text)
-            this.isHovered = false
             this.isWorldEntity = isWorldEntity
-            this.textTexture = C_NULL
-            this.persistentBetweenScenes = false
-            this.isActive = true
-            this.renderText = C_NULL
+            this.persistentBetweenScenes = persistentBetweenScenes
+            this.isActive = isActive
             this.color = color
             this.maxLineWidth = maxLineWidth
             this.wrapWords = wrapWords
             
+            this.textTexture = C_NULL
+            this.renderText = C_NULL
+
             if strip(fontPath) == ""
                 @debug "fontPath is empty, using default font"
-                fontPath = joinpath("FiraCode-Regular.ttf")
+                fontPath = "Default"
             end
 
             # Load the font with the true font size (scaled for current window size)
@@ -126,7 +145,8 @@ module TextBoxModule
         @debug string("loading font from $(basePath)\\$(fontPath)")
         
         # Calculate the true font size based on window resolution
-        trueFontSize = get_true_font_size(this.fontSize)
+        #trueFontSize = get_true_font_size(this.fontSize)
+        trueFontSize = this.fontSize
         
         this.font = load_font_sdl(basePath, fontPath, trueFontSize)
         if this.font == C_NULL
@@ -187,8 +207,14 @@ module TextBoxModule
     end
 
     function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
-        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath))
-            raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default"
+            if fontPath == "Default"
+                raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+                @debug "loading default font"
+            else
+                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+                @debug "loading font from cache"
+            end
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
             if rw != C_NULL
                 @debug("loading font from cache")
@@ -334,11 +360,26 @@ module TextBoxModule
             return
         end
 
-        if this.isCenteredX
-            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, this.position.y)    
-        end
-        if this.isCenteredY
-            this.position = Math.Vector2(this.position.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)
+        if this.anchor.current_state == :center
+            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)  
+        elseif this.anchor.current_state == :top
+            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, this.anchorOffset.y)
+        elseif this.anchor.current_state == :bottom
+            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
+        elseif this.anchor.current_state == :left
+            this.position = Math.Vector2(this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)
+        elseif this.anchor.current_state == :right
+            this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)
+        elseif this.anchor.current_state == :topLeft
+            this.position = Math.Vector2(this.anchorOffset.x, this.anchorOffset.y)
+        elseif this.anchor.current_state == :topRight
+            this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, this.anchorOffset.y)
+        elseif this.anchor.current_state == :bottomLeft
+            this.position = Math.Vector2(this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
+        elseif this.anchor.current_state == :bottomRight
+            this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
+        else
+            @error "Invalid anchor state: $(this.anchor.current_state)"
         end
     end
     
@@ -398,7 +439,7 @@ module TextBoxModule
         SDL2.SDL_DestroyTexture(this.textTexture)
         this.textTexture = C_NULL
     end
-
+#= 
     function Base.setproperty!(this::TextBox, s::Symbol, x)
         try
             setfield!(this, s, x)
@@ -415,7 +456,7 @@ module TextBoxModule
             error(e)
             Base.show_backtrace(stderr, catch_backtrace())
         end
-    end
+    end =#
 
     # Add methods to set and get the maximum line width
     function set_max_line_width(this::TextBox, maxWidth::Int)

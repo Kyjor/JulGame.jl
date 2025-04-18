@@ -19,6 +19,7 @@ module RectangleModule
         borderColor::NTuple{4, Int}
         isHovered::Bool
         clickEvents::Vector{Function}
+        hoverEvents::Vector{Function}
         layer::Int
         function Rectangle(name::String, position::Math.Vector2, size::Math.Vector2, color::NTuple{4, Int}=(255, 255, 255, 255), 
                            fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
@@ -40,6 +41,7 @@ module RectangleModule
             this.borderColor = borderColor
             this.isHovered = false
             this.clickEvents = []
+            this.hoverEvents = []
             this.layer = layer
 
             return this
@@ -421,6 +423,10 @@ module RectangleModule
     function UI.add_click_event(this::Rectangle, event)
         push!(this.clickEvents, event)
     end
+
+    #= function UI.add_hover_event(this::Rectangle, event)
+        push!(this.hoverEvents, event)
+    end =#
 
     function UI.handle_event(this::Rectangle, evt, x, y)    
         if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
