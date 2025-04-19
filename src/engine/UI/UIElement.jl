@@ -10,6 +10,7 @@ mutable struct UIElementInstance
     anchorOffset::Vector2
     isWorldEntity::Bool
     layer::Int
+    parent::Union{UIElement, Nothing}
     position::Vector2
     size::Vector2
 

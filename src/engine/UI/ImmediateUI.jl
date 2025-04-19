@@ -21,50 +21,69 @@ module ImmediateUIModule
     const DEFAULT_LIFETIME = 200
 
     """
-    immediate_text(id::String, text::String, fontPath::String, fontSize::Int, 
-        position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Int=255, 
-        isActive::Bool=true, color::NTuple{4, Int}=(255, 255, 255, 255),
-        maxLineWidth::Int=0, wrapWords::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
+    immediate_text(id::String, text::String; 
+        name::String = "TextBox", 
+        anchor::Symbol = :center,
+        anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0,0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255), 
+        fontPath::String = "Default", 
+        fontSize::Int = 16, 
+        maxLineWidth::Int=0, 
+        wrapWords::Bool=true,
+        lifetime::Int=DEFAULT_LIFETIME)
 
-    Creates or updates an immediate text component.
+    Creates or updates a text component that will be rendered on the screen. This can be called once (short-lived text) or be placed in an update loop for continuous rendering.
     
     # Arguments
     - `id::String`: Unique identifier for this immediate component
     - `text::String`: The text to display
-    - `fontPath::String`: Path to the font file
-    - `fontSize::Int`: Size of the font
-    - `position::Math.Vector2`: Position of the text
-    - `isCenteredX::Bool`: Whether to center the text horizontally
-    - `isCenteredY::Bool`: Whether to center the text vertically
+    - `name::String`: Name of the text box
+    - `anchor::Symbol`: Anchor point for positioning (:center, :top, :bottom, :left, :right, :topLeft, :topRight, :bottomLeft, :bottomRight)
     - `anchorOffset::Math.Vector2`: Offset from the anchor point
     - `isWorldEntity::Bool`: Whether this text should be positioned in world space
-    - `alpha::Int`: Transparency (0-255)
-    - `color::Tuple{<:Int, <:Int, <:Int, <:Int}`: Color of the text (r,g,b,a)
-    - `maxLineWidth::<:Int`: Maximum width before text wrapping (0 for no wrapping)
+    - `layer::Int`: Rendering layer (higher values render on top)
+    - `position::Math.Vector2`: Position of the text
+    - `clickEvents::Vector{Function}`: Functions to call when clicked
+    - `hoverEnterEvents::Vector{Function}`: Functions to call when hover starts
+    - `hoverExitEvents::Vector{Function}`: Functions to call when hover ends
+    - `isActive::Bool`: Whether the text is active/visible
+    - `persistentBetweenScenes::Bool`: Whether the text persists between scene changes
+    - `color::NTuple{4, Int}`: Color of the text (r,g,b,a)
+    - `fontPath::String`: Path to the font file
+    - `fontSize::Int`: Size of the font
+    - `maxLineWidth::Int`: Maximum width before text wrapping (0 for no wrapping)
     - `wrapWords::Bool`: Whether to wrap at word boundaries (true) or characters (false)
-    - `layer::<:Int`: Rendering layer (higher values render on top)
     - `lifetime::Int`: How long the component should persist without updates (ms)
     
     # Returns
     The TextBox object
     """
-    function immediate_text(id::String, text::String, fontPath::String, fontSize::Int, 
-        position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Int=255, 
-        isActive::Bool=true, color::NTuple{4, Int}=(255, 255, 255, 255),
-        maxLineWidth::Int=0, wrapWords::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
-        
-        # Convert color to Int32 tuple
-        color = (color[1],
-                color[2],
-                color[3],
-                color[4])
-        
-        # Convert other integer parameters
-        maxLineWidth = maxLineWidth
-        layer = layer
-        alpha = alpha
+    function immediate_text(text::String, id::String; 
+        name::String = "TextBox", 
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0,0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255), 
+        fontPath::String = "Default", 
+        fontSize::Int = 16, 
+        maxLineWidth::Int=0, 
+        wrapWords::Bool=true,
+        lifetime::Int=DEFAULT_LIFETIME)
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -99,9 +118,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            if textBox.isCenteredX != isCenteredX || textBox.isCenteredY != isCenteredY
-                textBox.isCenteredX = isCenteredX
-                textBox.isCenteredY = isCenteredY
+            if textBox.anchor.current_state != anchor
+                textBox.anchor.current_state = anchor
                 needsUpdate = true
             end
             
@@ -115,8 +133,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            if textBox.color[4] != alpha
-                JulGame.UI.set_color(textBox; a=alpha)
+            if textBox.color != color
+                textBox.color = color
                 needsUpdate = true
             end
 
@@ -130,13 +148,6 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            # Check color update
-            if textBox.color != color
-                textBox.color = color
-                needsUpdate = true
-            end
-            
-            # Check line wrapping updates
             if textBox.maxLineWidth != maxLineWidth
                 textBox.maxLineWidth = maxLineWidth
                 needsUpdate = true
@@ -152,7 +163,7 @@ module ImmediateUIModule
                 UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
                 UI.rerender_text(textBox)
                 
-                if isCenteredX || isCenteredY
+                if anchor != :none
                     UI.center_text(textBox)
                 end
             end
@@ -165,18 +176,34 @@ module ImmediateUIModule
             return textBox
         else
             # Create new text component
-            textBox = TextBox("immediate_$(id)", fontPath, fontSize, position, text, isCenteredX, isCenteredY; 
-                             anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity, layer=layer,
-                             color=color, maxLineWidth=maxLineWidth, wrapWords=wrapWords)
-            
-            JulGame.UI.set_color(textBox; a=alpha)
-            textBox.persistentBetweenScenes = false
+            textBox = TextBox(text; 
+                id=id,
+                name=name,
+                anchor=anchor,
+                anchorOffset=anchorOffset,
+                isWorldEntity=isWorldEntity,
+                layer=layer,
+                position=position,
+                clickEvents=clickEvents,
+                hoverEnterEvents=hoverEnterEvents,
+                hoverExitEvents=hoverExitEvents,
+                isActive=isActive,
+                persistentBetweenScenes=persistentBetweenScenes,
+                color=color,
+                fontPath=fontPath,
+                fontSize=fontSize,
+                maxLineWidth=maxLineWidth,
+                wrapWords=wrapWords)
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = (element = textBox, lifetime = lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, textBox)
+
+            if textBox.anchor != :none
+                UI.center_text(textBox)
+            end
             
             return textBox
         end

@@ -18,7 +18,7 @@ module TextBoxModule
         function TextBox(text::String; 
         id::String=JulGame.generate_uuid(), 
         name::String = "TextBox", 
-        anchor::Symbol = :center,
+        anchor::Symbol = :none,
         anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
         isWorldEntity::Bool=false, 
         layer::Int=0,
@@ -47,6 +47,7 @@ module TextBoxModule
                 :topRight,
                 :bottomLeft,
                 :bottomRight,
+                :none
             )
 
             this.anchor.current_state = anchor
@@ -360,6 +361,7 @@ module TextBoxModule
             return
         end
 
+        @info "centering text $(this.name) with anchor $(this.anchor.current_state)"
         if this.anchor.current_state == :center
             this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)  
         elseif this.anchor.current_state == :top
@@ -378,6 +380,8 @@ module TextBoxModule
             this.position = Math.Vector2(this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
         elseif this.anchor.current_state == :bottomRight
             this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
+        elseif this.anchor.current_state == :none
+            @debug "No anchor set for textbox $(this.name)"
         else
             @error "Invalid anchor state: $(this.anchor.current_state)"
         end
