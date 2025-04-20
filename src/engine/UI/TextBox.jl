@@ -57,6 +57,7 @@ module TextBoxModule
             this.hoverEnterEvents = hoverEnterEvents
             this.hoverExitEvents = hoverExitEvents
 
+            this.font = C_NULL
             this.fontPath = fontPath
             this.fontSize = fontSize  # Store the base font size
             this.id = id
@@ -144,17 +145,26 @@ module TextBoxModule
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
         @debug string("loading font from $(basePath)\\$(fontPath)")
-        
         # Calculate the true font size based on window resolution
         #trueFontSize = get_true_font_size(this.fontSize)
         trueFontSize = this.fontSize
+
+        # If the font is already loaded, clean it up
+        if this.font != C_NULL
+            println("closing font")
+            println(this.font)
+            SDL2.TTF_CloseFont(this.font)
+            this.font = C_NULL
+        end
+        free_text_resources(this)
+
         
         this.font = load_font_sdl(basePath, fontPath, trueFontSize)
         if this.font == C_NULL
             error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError()))")
             return
         end
-        if fontPath != joinpath("FiraCode-Regular.ttf")
+        if fontPath != "Default"
             this.fontPath = fontPath
         end
 
@@ -220,7 +230,7 @@ module TextBoxModule
             if rw != C_NULL
                 @debug("loading font from cache")
                 @debug("comma separated path: ", get_comma_separated_path(fontPath))
-                return SDL2.TTF_OpenFontRW(rw, 1, Math.TypeConversions.safe_int32_convert(fontSize))
+                return CallSDLFunction(SDL2.TTF_OpenFontRW, rw, 1, Math.TypeConversions.safe_int32_convert(fontSize))
             end
         end
         @debug "Loading font from disk, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
@@ -254,12 +264,7 @@ module TextBoxModule
     # Examples
     """
     function UI.rerender_text(this::TextBox)
-        if this.renderText != C_NULL
-            SDL2.SDL_FreeSurface(this.renderText)
-        end
-        if this.textTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.textTexture)
-        end
+        free_text_resources(this)
 
         # Check if we need to wrap text
         if this.maxLineWidth > 0
@@ -288,9 +293,20 @@ module TextBoxModule
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
-        
+
         if !this.isWorldEntity
             UI.center_text(this)
+        end
+    end
+
+    function free_text_resources(this::TextBox)
+        if this.renderText != C_NULL
+            SDL2.SDL_FreeSurface(this.renderText)
+            this.renderText = C_NULL
+        end
+        if this.textTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.textTexture)
+            this.textTexture = C_NULL
         end
     end
 
@@ -361,7 +377,7 @@ module TextBoxModule
             return
         end
 
-        @info "centering text $(this.name) with anchor $(this.anchor.current_state)"
+        #@info "centering text $(this.name) with anchor $(this.anchor.current_state)"
         if this.anchor.current_state == :center
             this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)  
         elseif this.anchor.current_state == :top
@@ -396,7 +412,9 @@ module TextBoxModule
         
         # Close the current font
         if this.font != C_NULL
+            println("closing font from update_font_size")
             SDL2.TTF_CloseFont(this.font)
+            this.font = C_NULL
         end
         
         # Load the font with the scaled size
@@ -436,12 +454,11 @@ module TextBoxModule
     end
 
     function UI.destroy(this::TextBox)
-        if this.textTexture == C_NULL
-            return
+        if this.font != C_NULL
+            SDL2.TTF_CloseFont(this.font)
+            this.font = C_NULL
         end
-
-        SDL2.SDL_DestroyTexture(this.textTexture)
-        this.textTexture = C_NULL
+        free_text_resources(this)
     end
 #= 
     function Base.setproperty!(this::TextBox, s::Symbol, x)
@@ -494,8 +511,9 @@ module TextBoxModule
     function UI.handle_window_resize(this::TextBox)
         if this.font != C_NULL
             # Close the current font
+            println("closing font from handle_window_resize")
             SDL2.TTF_CloseFont(this.font)
-            
+            this.font = C_NULL
             # Reload the font with the new scaled size
             basePath = joinpath(BasePath, "assets", "fonts")
             UI.load_font(this, basePath, joinpath(this.fontPath))

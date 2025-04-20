@@ -18,12 +18,12 @@ module ImmediateUIModule
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
     
     # Lifetime in milliseconds before an unused immediate component is removed (default: 5 seconds)
-    const DEFAULT_LIFETIME = 200
+    const DEFAULT_LIFETIME = 5000
 
     """
     immediate_text(id::String, text::String; 
         name::String = "TextBox", 
-        anchor::Symbol = :center,
+        anchor::Symbol = :none,
         anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
         isWorldEntity::Bool=false, 
         layer::Int=0,
@@ -66,7 +66,7 @@ module ImmediateUIModule
     # Returns
     The TextBox object
     """
-    function immediate_text(text::String, id::String; 
+    function immediate_text(id::String, text::String = "TextBox"; 
         name::String = "TextBox", 
         anchor::Symbol = :none,
         anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
@@ -162,10 +162,6 @@ module ImmediateUIModule
                 # Reload font and regenerate texture
                 UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
                 UI.rerender_text(textBox)
-                
-                if anchor != :none
-                    UI.center_text(textBox)
-                end
             end
             
             # Ensure the component is in the scene's uiElements
@@ -175,6 +171,7 @@ module ImmediateUIModule
             
             return textBox
         else
+            @debug "creating new text component with id $(composite_id): $(length(IMMEDIATE_UI_CACHE))"
             # Create new text component
             textBox = TextBox(text; 
                 id=id,
@@ -967,26 +964,16 @@ module ImmediateUIModule
         component_layers = Dict{String, Int}()
         
         # First pass: collect layers for each component and check expiration
-        for (id, component) in IMMEDIATE_UI_CACHE
-            # Skip if the component is not properly initialized
-            if !isdefined(component.element, :isActive) || component.element === nothing
-                push!(expired_ids, id)
-                continue
-            end
-            
+        for (composite_id, component) in IMMEDIATE_UI_CACHE     
             # Check if this component hasn't been used for a while
-            if !haskey(IMMEDIATE_UI_TIMESTAMPS, id) || current_time - IMMEDIATE_UI_TIMESTAMPS[id] > component.lifetime
-                push!(expired_ids, id)
-                continue
-            end
-            
-            # Skip inactive components
-            if isdefined(component.element, :isActive) && !component.element.isActive
+            if !haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime
+                @info "component $(composite_id) expired from lifetime $(component.lifetime)"
+                push!(expired_ids, composite_id)
                 continue
             end
             
             # Store the layer for sorting
-            component_layers[id] = isdefined(component.element, :layer) ? component.element.layer : 0
+            component_layers[composite_id] = component.element.layer
         end
         
         # Sort component IDs by layer
