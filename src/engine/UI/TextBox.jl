@@ -151,8 +151,8 @@ module TextBoxModule
 
         # If the font is already loaded, clean it up
         if this.font != C_NULL
-            println("closing font")
-            println(this.font)
+            @debug("closing font")
+            #println(this.font)
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
         end
@@ -511,7 +511,7 @@ module TextBoxModule
     function UI.handle_window_resize(this::TextBox)
         if this.font != C_NULL
             # Close the current font
-            println("closing font from handle_window_resize")
+            @debug("closing font from handle_window_resize")
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
             # Reload the font with the new scaled size

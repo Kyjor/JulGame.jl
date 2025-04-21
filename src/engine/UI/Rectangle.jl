@@ -432,7 +432,12 @@ module RectangleModule
         if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
         elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
             for eventToCall in this.clickEvents
-                Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+                @debug("calling event $(eventToCall) with $(evt) and $(x) and $(y)")
+                try
+                    Base.invokelatest(eventToCall, (evt = evt, x = x, y = y))
+                catch 
+                    Base.invokelatest(eventToCall)
+                end
             end
         end
     end

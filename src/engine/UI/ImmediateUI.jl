@@ -160,7 +160,9 @@ module ImmediateUIModule
             
             if needsUpdate
                 # Reload font and regenerate texture
-                UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
+                if textBox.fontSize != fontSize
+                    UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
+                end
                 UI.rerender_text(textBox)
             end
             
