@@ -161,8 +161,9 @@ module TextBoxModule
         
         this.font = load_font_sdl(basePath, fontPath, trueFontSize)
         if this.font == C_NULL
-            error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError()))")
-            return
+            error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError())), loading default font")
+            this.fontPath = "Default"
+            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(JulGame.BUILT_IN_ASSETS["Font"]), length(JulGame.BUILT_IN_ASSETS["Font"])), 1, Math.TypeConversions.safe_int32_convert(fontSize))
         end
         if fontPath != "Default"
             this.fontPath = fontPath
@@ -218,8 +219,8 @@ module TextBoxModule
     end
 
     function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
-        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default"
-            if fontPath == "Default"
+        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
+            if fontPath == "Default" || fontPath == ""
                 raw_data = JulGame.BUILT_IN_ASSETS["Font"]
                 @debug "loading default font"
             else
@@ -234,10 +235,7 @@ module TextBoxModule
             end
         end
         @debug "Loading font from disk, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
-        if fontPath == ""
-            @debug "fontPath is empty, using default font"
-            fontPath = joinpath("FiraCode-Regular.ttf")
-        end
+        
         return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), Math.TypeConversions.safe_int32_convert(fontSize))
     end
 

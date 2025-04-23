@@ -213,7 +213,7 @@ module SpriteModule
     function Component.load_image(this::InternalSprite, imagePath::String)
         SDL2.SDL_ClearError()
 
-        if !isfile(joinpath(BasePath, "assets", "images", imagePath))
+        if !JulGame.IS_PACKAGE_COMPILED && isfile(joinpath(BasePath, "assets", "images", imagePath))
             @error("Image file does not exist: $(imagePath)")
             this.image = load_fallback_image()
             setfield!(this, :imagePath, "fallback.png")
