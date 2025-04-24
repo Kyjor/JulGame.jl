@@ -30,6 +30,7 @@ module Editor
     # Include editor scripts
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "EditorScripts"); join=true)))
     
+    include("src/additional_precompile.jl")
     # Import modules we need
     using .CodeEditorModule
 
@@ -576,9 +577,9 @@ module Editor
                             end
                             
                             # Add bulk delete button for UI elements
-                            CImGui.SameLine()
                             selected_ui_count = count(hierarchyUISelections)
                             if selected_ui_count > 0 && CImGui.Button("Delete Selected ($(selected_ui_count))")
+                                CImGui.SameLine()
                                 ui_delete_confirmation_modal.open = true
                             end
                             

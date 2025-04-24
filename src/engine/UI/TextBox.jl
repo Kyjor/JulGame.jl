@@ -2,13 +2,14 @@ module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
-    export TextBox      
+    export TextBox
+    export DEFAULT_FONT      
+    DEFAULT_FONT = "Default"
     mutable struct TextBox <: UI.UIElement
         font::Union{Ptr{SDL2.TTF_Font}, Ptr{Nothing}}
         fontPath::String
         fontSize::Int
         isConstructed::Bool
-        isWorldEntity::Bool
         maxLineWidth::Int
         renderText::Union{Ptr{SDL2.SDL_Surface}, Ptr{Nothing}}
         text::String
@@ -16,23 +17,25 @@ module TextBoxModule
         wrapWords::Bool
 
         function TextBox(text::String; 
-        id::String=JulGame.generate_uuid(), 
-        name::String = "TextBox", 
-        anchor::Symbol = :none,
-        anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
-        isWorldEntity::Bool=false, 
-        layer::Int=0,
-        position::Math.Vector2 = Math.Vector2(0,0), 
-        clickEvents::Vector{Function} = Function[],
-        hoverEnterEvents::Vector{Function} = Function[],
-        hoverExitEvents::Vector{Function} = Function[],
-        isActive::Bool=true,
-        persistentBetweenScenes::Bool=false,
-        color::NTuple{4, Int}=(255, 255, 255, 255), 
-        fontPath::String = "FiraCode-Regular.ttf", 
-        fontSize::Int = 16, 
-        maxLineWidth::Int=0, 
-        wrapWords::Bool=true)
+            id::String=JulGame.generate_uuid(), 
+            name::String = "TextBox", 
+            anchor::Symbol = :none,
+            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            isWorldEntity::Bool=false, 
+            layer::Int=0,
+            position::Math.Vector2 = Math.Vector2(0,0), 
+            clickEvents::Vector{Function} = Function[],
+            hoverEnterEvents::Vector{Function} = Function[],
+            hoverExitEvents::Vector{Function} = Function[],
+            isActive::Bool=true,
+            persistentBetweenScenes::Bool=false,
+            color::NTuple{4, Int}=(255, 255, 255, 255), 
+            fontPath::String = "FiraCode-Regular.ttf", 
+            fontSize::Int = 16, 
+            maxLineWidth::Int=0, 
+            wrapWords::Bool=true,
+            parent::Union{UI.UIElement, Nothing}=nothing
+        )
 
             this = new()
             
@@ -47,6 +50,10 @@ module TextBoxModule
                 :topRight,
                 :bottomLeft,
                 :bottomRight,
+                :centerLeft,
+                :centerRight,
+                :centerTop,
+                :centerBottom,
                 :none
             )
 
@@ -74,7 +81,7 @@ module TextBoxModule
             
             this.textTexture = C_NULL
             this.renderText = C_NULL
-
+            this.parent = parent
             if strip(fontPath) == ""
                 @debug "fontPath is empty, using default font"
                 fontPath = "Default"
@@ -162,7 +169,7 @@ module TextBoxModule
         this.font = load_font_sdl(basePath, fontPath, trueFontSize)
         if this.font == C_NULL
             error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError())), loading default font")
-            this.fontPath = "Default"
+            this.fontPath = DEFAULT_FONT
             this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(JulGame.BUILT_IN_ASSETS["Font"]), length(JulGame.BUILT_IN_ASSETS["Font"])), 1, Math.TypeConversions.safe_int32_convert(fontSize))
         end
         if fontPath != "Default"
@@ -191,6 +198,10 @@ module TextBoxModule
         
         # Set texture scaling quality to linear
         SDL2.SDL_SetTextureScaleMode(this.textTexture, SDL2.SDL_ScaleModeLinear)
+
+        if !this.isWorldEntity
+            UI.align_to_anchor(this)
+        end
     end
 
     function UI.initialize(this::TextBox)
@@ -199,7 +210,7 @@ module TextBoxModule
         
         # Only center screen-space UI, not world entities
         if !this.isWorldEntity
-            UI.center_text(this)
+            UI.align_to_anchor(this)
         end
     end
 
@@ -293,7 +304,7 @@ module TextBoxModule
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
 
         if !this.isWorldEntity
-            UI.center_text(this)
+            UI.align_to_anchor(this)
         end
     end
 
@@ -368,42 +379,10 @@ module TextBoxModule
         this.color = (r%256, g%256, b%256, a%256)
         UI.rerender_text(this)
     end
-
-    function UI.center_text(this::TextBox)
-        if MAIN.scene.camera === nothing
-            @debug "No camera found in scene"
-            return
-        end
-
-        #@info "centering text $(this.name) with anchor $(this.anchor.current_state)"
-        if this.anchor.current_state == :center
-            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)  
-        elseif this.anchor.current_state == :top
-            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, this.anchorOffset.y)
-        elseif this.anchor.current_state == :bottom
-            this.position = Math.Vector2(max(MAIN.scene.camera.size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
-        elseif this.anchor.current_state == :left
-            this.position = Math.Vector2(this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)
-        elseif this.anchor.current_state == :right
-            this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, max(MAIN.scene.camera.size.y/2 - this.size.y/2, 0) + this.anchorOffset.y)
-        elseif this.anchor.current_state == :topLeft
-            this.position = Math.Vector2(this.anchorOffset.x, this.anchorOffset.y)
-        elseif this.anchor.current_state == :topRight
-            this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, this.anchorOffset.y)
-        elseif this.anchor.current_state == :bottomLeft
-            this.position = Math.Vector2(this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
-        elseif this.anchor.current_state == :bottomRight
-            this.position = Math.Vector2(MAIN.scene.camera.size.x - this.size.x + this.anchorOffset.x, MAIN.scene.camera.size.y - this.size.y + this.anchorOffset.y)
-        elseif this.anchor.current_state == :none
-            @debug "No anchor set for textbox $(this.name)"
-        else
-            @error "Invalid anchor state: $(this.anchor.current_state)"
-        end
-    end
     
     function UI.update_font_size(this::TextBox, newSize::Int; basePath::String = "")
         # Store the base font size (the size specified by the user)
-        this.fontSize = Math.TypeConversions.safe_int32_convert(newSize)
+        this.fontSize = newSize
         
         # Calculate the true font size based on window resolution
         trueFontSize = get_true_font_size(this.fontSize)

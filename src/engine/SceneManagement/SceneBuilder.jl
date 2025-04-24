@@ -157,7 +157,7 @@ module SceneBuilderModule
         
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
-                UI.center_text(uiElement)
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -198,7 +198,7 @@ module SceneBuilderModule
 
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
-                UI.center_text(uiElement)
+                UI.align_to_anchor(uiElement)
             end
         end
 

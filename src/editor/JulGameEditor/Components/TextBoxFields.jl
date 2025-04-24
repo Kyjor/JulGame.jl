@@ -1,6 +1,6 @@
 function show_textbox_fields(selectedTextBox, textBoxField)
     fieldName = getFieldName(textBoxField)
-    Value = getfield(selectedTextBox, textBoxField)
+    Value = getproperty(selectedTextBox, textBoxField)
 
     if fieldName == "text" || fieldName == "name" 
         buf = "$(Value)"*"\0"^(64)
@@ -14,20 +14,11 @@ function show_textbox_fields(selectedTextBox, textBoxField)
                 break
             end
         end
-        setfield!(selectedTextBox, textBoxField, currentTextInTextBox)
+        setproperty!(selectedTextBox, textBoxField, currentTextInTextBox)
         
         if currentTextInTextBox != Value
             selectedTextBox.text = selectedTextBox.text        
         end
-    elseif fieldName == "alpha"
-        x = Cint(Value)
-        @c CImGui.SliderInt("$(textBoxField)", &x, 0, 255)
-        setfield!(selectedTextBox, textBoxField, convert(Int32, round(x)))
-
-        if x != Value
-            selectedTextBox.text = selectedTextBox.text
-        end
-
     elseif fieldName == "color"
         # Instead of using a function from another module, use CImGui directly here
         colorCfloat = Cfloat[Value[1]/255, Value[2]/255, Value[3]/255, Value[4]/255]
@@ -38,10 +29,10 @@ function show_textbox_fields(selectedTextBox, textBoxField)
                     CImGui.ImGuiColorEditFlags_DisplayRGB
         
         if CImGui.ColorEdit4("TextBoxColor", colorCfloat, misc_flags)
-            newColor = (Int32(abs(round(colorCfloat[1] * 255))), 
-                        Int32(abs(round(colorCfloat[2] * 255))), 
-                        Int32(abs(round(colorCfloat[3] * 255))), 
-                        Int32(abs(round(colorCfloat[4] * 255))))
+            newColor = (Int(abs(round(colorCfloat[1] * 255))), 
+                        Int(abs(round(colorCfloat[2] * 255))), 
+                        Int(abs(round(colorCfloat[3] * 255))), 
+                        Int(abs(round(colorCfloat[4] * 255))))
             
             selectedTextBox.color = newColor
             selectedTextBox.text = selectedTextBox.text  # Trigger update
@@ -54,14 +45,14 @@ function show_textbox_fields(selectedTextBox, textBoxField)
         
         if x != Value.x || y != Value.y
             #selectedTextBox.setVector2Value(textBoxField, convert(Float64, x), convert(Float64, y))
-            setfield!(selectedTextBox, textBoxField, Vector2(x, y))
+            setproperty!(selectedTextBox, textBoxField, Vector2(x, y))
             selectedTextBox.text = selectedTextBox.text
         end
     elseif fieldName == "autoSizeText" || fieldName == "isCenteredX" || fieldName == "isCenteredY" || fieldName == "isWorldEntity" || fieldName == "isActive"
         @c CImGui.Checkbox("$(textBoxField)", &Value)
 
-        if Value != getfield(selectedTextBox, textBoxField)
-            setfield!(selectedTextBox, textBoxField, Value)
+        if Value != getproperty(selectedTextBox, textBoxField)
+            setproperty!(selectedTextBox, textBoxField, Value)
             selectedTextBox.text = selectedTextBox.text
         end
     elseif fieldName == "fontSize"
@@ -69,7 +60,22 @@ function show_textbox_fields(selectedTextBox, textBoxField)
         @c CImGui.InputInt("$(textBoxField)", &newSize, 1)
         
         if newSize != Value
-            JulGame.update_font_size(selectedTextBox, newSize)
+            JulGame.update_font_size(selectedTextBox, round(Int, newSize))
+        end
+    elseif fieldName == "anchor"
+        currentState = "$(selectedTextBox.anchor.current_state)"
+        if @c CImGui.BeginCombo("$(textBoxField)", currentState)
+            for option in ["none", "center", "topLeft", "topRight", "bottomLeft", "bottomRight", "centerLeft", "centerRight", "centerTop", "centerBottom"]
+                isSelected = currentState == option
+                if @c CImGui.Selectable(option, isSelected)
+                    #println("selected $option")
+                    selectedTextBox.anchor.current_state = Symbol(option)
+                end
+                if isSelected
+                    CImGui.SetItemDefaultFocus()
+                end
+            end
+            CImGui.EndCombo()
         end
     end
 end

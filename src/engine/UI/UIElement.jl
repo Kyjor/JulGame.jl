@@ -54,14 +54,25 @@ end
 function Base.setproperty!(script::UIElement, property::Symbol, value)
     add_relationship_if_not_exists(script)
 
-    #println("relationships[script]: $(relationships[script])")
-    # check if the FightingEntity has the property
     if hasfield(typeof(relationships[script]), property)
         #println("setproperty! from parent: $(property) ")
         setfield!(relationships[script], property, value)
     else
         #println("setproperty! from child: $(property) ")
         setfield!(script, property, value)
+    end
+
+    if contains("$(typeof(script))", "TextBox")
+        @debug "rerendering text for $(script)"
+        if property == :text || property == :isActive || property == :textColor || property == :maxLineWidth || property == :wrapWords || property == :fontSize || property == :color
+            #= if s == :text && length(x) == 0
+                setfield!(this, s, " ")# prevents segfault when text is empty
+            end =#
+            if script.isConstructed
+                @debug("rerendering text for $(script.name) because of $(property) = $(value)")
+                UI.rerender_text(script) # this line MUST stay inside the if for specific fields as we can't call this on fields that are used in this function
+            end
+        end
     end
 end
 
@@ -77,5 +88,91 @@ end
 function delete_relationship(script::UIElement)
     if haskey(relationships, script)
         delete!(relationships, script)
+    end
+end
+
+function UI.align_to_anchor(this::UIElement)
+    if MAIN.scene.camera === nothing
+        @debug "No camera found in scene"
+        return
+    end
+
+    #@info "centering text $(this.name) with anchor $(this.anchor.current_state)"
+    size = MAIN.scene.camera.size
+    parent_pos = Math.Vector2(0, 0)
+    if this.parent !== nothing
+        size = this.parent.size
+        parent_pos = this.parent.position
+    end
+
+    if this.anchor.current_state == :center
+        this.position = Math.Vector2(
+            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+        )  
+    elseif this.anchor.current_state == :top
+        this.position = Math.Vector2(
+            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :bottom
+        this.position = Math.Vector2(
+            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :left
+        this.position = Math.Vector2(
+            parent_pos.x + this.anchorOffset.x, 
+            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :right
+        this.position = Math.Vector2(
+            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
+            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :topLeft
+        this.position = Math.Vector2(
+            parent_pos.x + this.anchorOffset.x, 
+            parent_pos.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :topRight
+        this.position = Math.Vector2(
+            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
+            parent_pos.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :bottomLeft
+        this.position = Math.Vector2(
+            parent_pos.x + this.anchorOffset.x, 
+            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :bottomRight
+        this.position = Math.Vector2(
+            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
+            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :centerLeft
+        this.position = Math.Vector2(
+            parent_pos.x + this.anchorOffset.x, 
+            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :centerRight
+        this.position = Math.Vector2(
+            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
+            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :centerTop
+        this.position = Math.Vector2(
+            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :centerBottom
+        this.position = Math.Vector2(
+            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
+        )
+    elseif this.anchor.current_state == :none
+        @debug "No anchor set for textbox $(this.name)"
+    else
+        @error "Invalid anchor state: $(this.anchor.current_state)"
     end
 end

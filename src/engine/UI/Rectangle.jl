@@ -4,7 +4,7 @@ module RectangleModule
     import ..UI
     
     export Rectangle
-    mutable struct Rectangle
+    mutable struct Rectangle <: UI.UIElement
         color::NTuple{4, Int}
         fillMode::Bool
         id::String
@@ -18,21 +18,55 @@ module RectangleModule
         borderWidth::Int
         borderColor::NTuple{4, Int}
         isHovered::Bool
-        clickEvents::Vector{Function}
-        hoverEvents::Vector{Function}
         layer::Int
-        function Rectangle(name::String, position::Math.Vector2, size::Math.Vector2, color::NTuple{4, Int}=(255, 255, 255, 255), 
-                           fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
-                           borderRadius::Int=0, borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255), 
-                           layer::Int=0)
+        function Rectangle(;
+            id::String=JulGame.generate_uuid(), 
+            name::String = "TextBox", 
+            anchor::Symbol = :none,
+            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            isWorldEntity::Bool=false, 
+            layer::Int=0,
+            position::Math.Vector2 = Math.Vector2(0,0), 
+            clickEvents::Vector{Function} = Function[],
+            hoverEnterEvents::Vector{Function} = Function[],
+            hoverExitEvents::Vector{Function} = Function[],
+            isActive::Bool=true,
+            persistentBetweenScenes::Bool=false,
+            color::NTuple{4, Int}=(255, 255, 255, 255), 
+            parent::Union{UI.UIElement, Nothing}=nothing,
+            fillMode::Bool=true,
+            borderRadius::Int=0, 
+            borderWidth::Int=0, 
+            borderColor::NTuple{4, Int}=(0, 0, 0, 255), 
+            size::Math.Vector2 = Math.Vector2(0, 0)
+        )                  
             this = new()
+            
+            this.id = id
+            this.name = name
+            this.anchor = JulGame.Enum{Any}(
+                :center,
+                :top,
+                :bottom,
+                :left,
+                :right,
+                :topLeft,
+                :topRight,
+                :bottomLeft,
+                :bottomRight,
+                :centerLeft,
+                :centerRight,
+                :centerTop,
+                :centerBottom,
+                :none
+            )
+            this.anchor.current_state = anchor
+            this.anchorOffset = anchorOffset
             
             this.color = color
             this.fillMode = fillMode
-            this.id = id
             this.isActive = true
             this.isWorldEntity = isWorldEntity
-            this.name = name
             this.persistentBetweenScenes = false
             this.position = position
             this.size = size
@@ -40,10 +74,14 @@ module RectangleModule
             this.borderWidth = borderWidth
             this.borderColor = borderColor
             this.isHovered = false
-            this.clickEvents = []
-            this.hoverEvents = []
+            this.clickEvents = clickEvents
+            this.hoverEnterEvents = hoverEnterEvents
+            this.hoverExitEvents = hoverExitEvents
             this.layer = layer
-
+            this.parent = parent
+            this.isActive = isActive
+            this.persistentBetweenScenes = persistentBetweenScenes
+            
             return this
         end
     end

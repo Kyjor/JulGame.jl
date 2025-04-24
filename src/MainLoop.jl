@@ -633,10 +633,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				]
 
 				if length(this.debugTextBoxes) == 0
-				 	fontPath = "FiraCode-Regular.ttf"
-
 					for i = eachindex(statTexts)
-				 		textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
+				 		textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 16, position = Math.Vector2(0, 35 * i))
 				 		push!(this.debugTextBoxes, textBox)
                          JulGame.initialize(textBox)
 				 	end

@@ -18,7 +18,7 @@ module ImmediateUIModule
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
     
     # Lifetime in milliseconds before an unused immediate component is removed (default: 5 seconds)
-    const DEFAULT_LIFETIME = 5000
+    const DEFAULT_LIFETIME = 1000
 
     """
     immediate_text(id::String, text::String; 
@@ -83,7 +83,9 @@ module ImmediateUIModule
         fontSize::Int = 16, 
         maxLineWidth::Int=0, 
         wrapWords::Bool=true,
-        lifetime::Int=DEFAULT_LIFETIME)
+        lifetime::Int=DEFAULT_LIFETIME,
+        parent::Union{UI.UIElement, Nothing}=nothing,
+    )
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -157,6 +159,11 @@ module ImmediateUIModule
                 textBox.wrapWords = wrapWords
                 needsUpdate = true
             end
+
+            if textBox.parent != parent
+                textBox.parent = parent
+                needsUpdate = true
+            end 
             
             if needsUpdate
                 # Reload font and regenerate texture
@@ -192,7 +199,8 @@ module ImmediateUIModule
                 fontPath=fontPath,
                 fontSize=fontSize,
                 maxLineWidth=maxLineWidth,
-                wrapWords=wrapWords)
+                wrapWords=wrapWords,
+                parent=parent)
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = (element = textBox, lifetime = lifetime)
@@ -200,8 +208,8 @@ module ImmediateUIModule
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, textBox)
 
-            if textBox.anchor != :none
-                UI.center_text(textBox)
+            if textBox.anchor.current_state != :none
+                UI.align_to_anchor(textBox)
             end
             
             return textBox
@@ -358,7 +366,10 @@ module ImmediateUIModule
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, button)
-            
+           #=  if textBox.anchor.current_state != :none
+                UI.align_to_anchor(button)
+            end =#
+
             return button
         end
     end
@@ -390,13 +401,29 @@ module ImmediateUIModule
     # Returns
     The Rectangle object
     """
-    function immediate_rect(id::String, x::Int, y::Int, width::Int, height::Int,
-                           color::NTuple{4, Int}=(255, 255, 255, 255),
-                           borderWidth::Int=0, fillMode::Bool=true;
-                           isWorldEntity::Bool=false, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
-                           borderRadius::Int=0, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME,
-                           clickEvent::Function=() -> nothing,
-                           hoverEnterEvent::Function=() -> nothing, hoverExitEvent::Function=() -> nothing)
+    function immediate_rect(
+        id::String;
+        name::String = "Rectangle",
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0, 0),
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0, 0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255),
+        borderWidth::Int=0, 
+        fillMode::Bool=true,
+        borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+        borderRadius::Int=0, 
+        lifetime::Int=DEFAULT_LIFETIME,
+        clickEvent::Function=() -> nothing,
+        parent::Union{UI.UIElement, Nothing}=nothing,
+        size::Math.Vector2 = Math.Vector2(0, 0)
+    )
         
         # Convert colors to Int32 tuples
         color = (color[1],
@@ -419,9 +446,6 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
-        position = Math.Vector2(x, y)
-        size = Math.Vector2(width, height)
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing rect component
@@ -481,6 +505,41 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if rect.parent != parent
+                rect.parent = parent
+                needsUpdate = true
+            end
+
+            if rect.name != name
+                rect.name = name
+                needsUpdate = true
+            end
+
+            if rect.anchor.current_state != anchor
+                println("anchor: $anchor")
+                rect.anchor.current_state = anchor
+                needsUpdate = true
+            end
+            
+            if rect.anchorOffset != anchorOffset
+                rect.anchorOffset = anchorOffset
+                needsUpdate = true
+            end
+
+            if rect.position != position
+                rect.position = position
+                needsUpdate = true
+            end
+
+            if rect.size != size
+                rect.size = size
+                needsUpdate = true
+            end
+
+            if needsUpdate
+                UI.align_to_anchor(rect)
+            end
+
             # Ensure the component is in the scene's uiElements
             if !(rect in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, rect)
@@ -495,10 +554,27 @@ module ImmediateUIModule
             return rect
         else
             # Create new rect component
-            rect = Rectangle("immediate_$(id)", position, size, color, fillMode; 
-                            id=id, isWorldEntity=isWorldEntity, 
-                            borderRadius=borderRadius, borderWidth=borderWidth, borderColor=borderColor,
-                            layer=layer)
+            rect = Rectangle(;
+                id="immediate_$(id)", 
+                name=name,
+                anchor=anchor,
+                anchorOffset=anchorOffset,
+                isWorldEntity=isWorldEntity, 
+                layer=layer,
+                position=position, 
+                color=color, 
+                fillMode=fillMode,
+                borderRadius=borderRadius, 
+                borderWidth=borderWidth, 
+                borderColor=borderColor,
+                isActive=isActive,
+                persistentBetweenScenes=persistentBetweenScenes,
+                clickEvents=clickEvents,
+                hoverEnterEvents=hoverEnterEvents,
+                hoverExitEvents=hoverExitEvents,
+                parent=parent,
+                size=size
+            )
             
             rect.isActive = isActive
             rect.persistentBetweenScenes = false
@@ -508,7 +584,11 @@ module ImmediateUIModule
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, rect)
-            
+
+            if rect.anchor.current_state != :none
+                UI.align_to_anchor(rect)
+            end
+
             return rect
         end
     end

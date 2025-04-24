@@ -4,7 +4,7 @@
 
     import ..JulGame: 
         add_click_event,
-        center_text,
+        align_to_anchor,
         destroy,
         handle_event,
         handle_window_resize,
