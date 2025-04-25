@@ -161,7 +161,7 @@ module SceneReaderModule
                         get(uiElement, "text", " ");
                         id = string(get(uiElement, "id", JulGame.generate_uuid())),
                         name = get(uiElement, "name", "TextBox"), 
-                        anchor = get(uiElement, "anchor", :none),
+                        anchor = Symbol(get(uiElement, "anchor", "none")),
                         anchorOffset = Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
                         isWorldEntity = get(uiElement, "isWorldEntity", false),
                         layer = Int(get(uiElement, "layer", 0)),

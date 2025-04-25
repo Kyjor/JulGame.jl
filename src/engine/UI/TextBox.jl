@@ -222,7 +222,11 @@ module TextBoxModule
         if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
         elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
             for eventToCall in this.clickEvents
-                Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+                try
+                    Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+                catch e
+                    Base.invokelatest(eventToCall)
+                end
             end
         elseif evt.type == SDL2.SDL_MOUSEMOTION
             this.isHovered = true
@@ -389,7 +393,7 @@ module TextBoxModule
         
         # Close the current font
         if this.font != C_NULL
-            println("closing font from update_font_size")
+            #println("closing font from update_font_size")
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
         end

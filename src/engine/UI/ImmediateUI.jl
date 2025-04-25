@@ -177,6 +177,13 @@ module ImmediateUIModule
             if !(textBox in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, textBox)
             end
+
+            # if doesn't have click events, add click events 
+            # if !contains(textBox.clickEvents, clickEvents)
+            #     for event in clickEvents
+            #         UI.add_click_event(textBox, event)
+            #     end
+            # end
             
             return textBox
         else
@@ -420,9 +427,8 @@ module ImmediateUIModule
         borderColor::NTuple{4, Int}=(0, 0, 0, 255),
         borderRadius::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
-        clickEvent::Function=() -> nothing,
         parent::Union{UI.UIElement, Nothing}=nothing,
-        size::Math.Vector2 = Math.Vector2(0, 0)
+        size::Math.Vector2 = Math.Vector2(1, 1)
     )
         
         # Convert colors to Int32 tuples
@@ -545,11 +551,12 @@ module ImmediateUIModule
                 push!(MAIN.scene.uiElements, rect)
             end
 
-            if !isempty(rect.clickEvents)
-                rect.clickEvents[1] = clickEvent
-            else
-                UI.add_click_event(rect, clickEvent)
-            end
+           # if doesn't have click events, add click events 
+        #    if !contains(rect.clickEvents, clickEvents)
+        #         for event in clickEvents
+        #             UI.add_click_event(rect, event)
+        #         end
+        #     end
             
             return rect
         else
