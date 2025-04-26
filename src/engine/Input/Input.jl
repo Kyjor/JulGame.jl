@@ -215,7 +215,12 @@ module InputModule
                             SDL2.SDL_SetCursor(this.cursorBank["crosshair"])
                         end
 
+
                         JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
+                        if evt.type == SDL2.SDL_MOUSEBUTTONUP
+                            @info "Mouse button up at $(this.mousePosition)"
+                            break
+                        end
                     end
 
                     if JulGame.IS_DEBUG && !insideAnyElement
