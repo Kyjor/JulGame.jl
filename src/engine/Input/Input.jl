@@ -218,7 +218,7 @@ module InputModule
 
                         JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
                         if evt.type == SDL2.SDL_MOUSEBUTTONUP
-                            @info "Mouse button up at $(this.mousePosition)"
+                            @debug "Mouse button up at $(this.mousePosition)"
                             break
                         end
                     end
