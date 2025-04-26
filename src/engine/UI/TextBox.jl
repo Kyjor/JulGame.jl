@@ -96,7 +96,7 @@ module TextBoxModule
     end
 
     function UI.render(this::TextBox)
-        if this.textTexture == C_NULL || !this.isActive
+        if this.textTexture == C_NULL || !this.isActive || JulGame.IS_CHANGING_SCENE
             return
         end
 
@@ -151,6 +151,9 @@ module TextBoxModule
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
+        if JulGame.IS_CHANGING_SCENE
+            return
+        end
         @debug string("loading font from $(basePath)\\$(fontPath)")
         # Calculate the true font size based on window resolution
         #trueFontSize = get_true_font_size(this.fontSize)
@@ -277,6 +280,9 @@ module TextBoxModule
     # Examples
     """
     function UI.rerender_text(this::TextBox)
+        if JulGame.IS_CHANGING_SCENE || this.font == C_NULL || this.text == ""
+            return
+        end
         free_text_resources(this)
 
         # Check if we need to wrap text

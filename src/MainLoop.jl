@@ -268,6 +268,7 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 - `sceneFileName::String`: The name of the scene file to load.
 """
 function JulGame.change_scene(sceneFileName::String)
+	JulGame.IS_CHANGING_SCENE = true
 	this::MainLoop = MAIN
 	@debug "Changing scene to: $(sceneFileName)"
 	this.close = true
@@ -350,6 +351,7 @@ function JulGame.change_scene(sceneFileName::String)
 	if JulGame.IS_EDITOR
 		initialize_new_scene(this)
 	end
+	JulGame.IS_CHANGING_SCENE = false
 end
 
 """

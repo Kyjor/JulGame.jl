@@ -9,6 +9,7 @@ module JulGame
     IS_EDITOR_PLAY_MODE::Bool = false
     IS_DEBUG::Bool = false
     IS_PACKAGE_COMPILED::Bool = false
+    IS_CHANGING_SCENE::Bool = false
 
     # Temporary variable for recent project path selection
     TEMP_SELECTED_PATH::String = ""

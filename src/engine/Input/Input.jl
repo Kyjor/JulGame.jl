@@ -137,11 +137,11 @@ module InputModule
                 SDL2.SDL_GetRendererOutputSize(JulGame.Renderer, render_width, render_height)
                 
                 # Get base resolution from WindowManager
-                base_resolution = MAIN.windowManager.baseResolution
+                logical_size = JulGame.WindowManagerModule.get_logical_size()
                 
                 # Calculate scale factors between window and render sizes
-                scale_x = base_resolution.x / window_width[]
-                scale_y = base_resolution.y / window_height[]
+                scale_x = logical_size.x / window_width[]
+                scale_y = logical_size.y / window_height[]
                 
                 @debug("scale_x: $scale_x, scale_y: $scale_y")
                 @debug("window_width: $window_width[], window_height: $window_height[]")
@@ -154,6 +154,7 @@ module InputModule
                     scaled_x = 0
                     scaled_y = 0
                 end
+                @info "scaled_x: $scaled_x, scaled_y: $scaled_y"
                 this.mousePosition = Math.Vector2(scaled_x, scaled_y)
             end
             
@@ -177,7 +178,9 @@ module InputModule
                     end
 
                     insideAnyElement = false
-                    for uiElement in MAIN.scene.uiElements
+                        
+                    uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    for uiElement in uiElementsOrderedByLayerDescending
                         if !uiElement.isActive
                             continue
                         end
@@ -219,6 +222,7 @@ module InputModule
                         JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
                         if evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition)"
+                            @info "clicked on $(uiElement.name), skipping rest of event loop"
                             break
                         end
                     end
