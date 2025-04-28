@@ -251,10 +251,22 @@ module ImmediateUIModule
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, text::String, fontPath::String, fontSize::Int, position::Math.Vector2,
-                             width::Int, height::Int, isCentered::Bool=true, callback::Function=() -> nothing;
-                             buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                             alpha::Int=255, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
+    function immediate_button(id::String, callback::Function=() -> nothing; 
+        text::String="", 
+        fontPath::String="Default", 
+        fontSize::Int=16, 
+        position::Math.Vector2=Math.Vector2(0,0),
+        size::Math.Vector2=Math.Vector2(2, 1),
+        isCentered::Bool=true, 
+        buttonUpPath::String="", 
+        buttonDownPath::String="", 
+        textOffset::Math.Vector2=Math.Vector2(0,0),
+        color::NTuple{4, Int}=(255, 255, 255, 255),
+        isActive::Bool=true, 
+        layer::Int=0, 
+        lifetime::Int=DEFAULT_LIFETIME,
+        parent::Union{UI.UIElement, Nothing}=nothing
+    )
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -262,12 +274,10 @@ module ImmediateUIModule
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
         
-        size = Math.Vector2(width, height)
-        
         # Center if requested
         local adjusted_position = position
         if isCentered
-            adjusted_position = Math.Vector2(position.x - width/2, position.y - height/2)
+            adjusted_position = Math.Vector2(position.x - size.x/2, position.y - size.y/2)
         end
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
@@ -301,8 +311,8 @@ module ImmediateUIModule
                 button.textOffset = textOffset
             end
             
-            if button.color[4] != alpha
-                JulGame.UI.set_color(button; a=alpha)
+            if button.color[4] != color[4]
+                JulGame.UI.set_color(button; a=color[4])
             end
 
             if button.isActive != isActive
@@ -361,7 +371,7 @@ module ImmediateUIModule
                                  fontPath, text, textOffset; id=id, fontSize=fontSize, layer=layer)
             
             # Set button properties
-            JulGame.UI.set_color(button; a=alpha)
+            JulGame.UI.set_color(button; a=color[4])
             button.persistentBetweenScenes = false
             UI.add_click_event(button, callback)
             

@@ -154,7 +154,7 @@ module InputModule
                     scaled_x = 0
                     scaled_y = 0
                 end
-                @info "scaled_x: $scaled_x, scaled_y: $scaled_y"
+                #@info "scaled_x: $scaled_x, scaled_y: $scaled_y"
                 this.mousePosition = Math.Vector2(scaled_x, scaled_y)
             end
             
