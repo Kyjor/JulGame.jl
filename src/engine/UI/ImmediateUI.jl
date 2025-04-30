@@ -251,7 +251,7 @@ module ImmediateUIModule
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, callback::Function=() -> nothing; 
+    function immediate_button(id::String, callback::Union{Function, Nothing}=nothing; 
         text::String="", 
         fontPath::String="Default", 
         fontSize::Int=16, 
@@ -345,9 +345,13 @@ module ImmediateUIModule
             
             # Update click handler
             if !isempty(button.clickEvents)
-                button.clickEvents[1] = callback
+                if callback != nothing
+                    button.clickEvents[1] = callback
+                end
             else
-                UI.add_click_event(button, callback)
+                if callback != nothing
+                    UI.add_click_event(button, callback)
+                end
             end
             
             # Ensure the component is in the scene's uiElements
