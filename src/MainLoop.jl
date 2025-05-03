@@ -400,6 +400,10 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 	end
 end
 
+function JulGame.destroy_entity(entity)
+    JulGame.destroy_entity(MAIN, entity)
+end
+
 function JulGame.destroy_ui_element(this::MainLoop, uiElement)
 	for i = eachindex(this.scene.uiElements)
 		if this.scene.uiElements[i] == uiElement

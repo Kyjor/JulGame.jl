@@ -35,15 +35,21 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
         end
 
     elseif fieldName == "color"
-        x = Cfloat(Value.r)
-        y = Cfloat(Value.g)
-        z = Cfloat(Value.b)
-        w = Cfloat(Value.a)
-        @c CImGui.ColorEdit4("$(screenButtonField)", &x, &y, &z, &w)
-        setfield!(selectedScreenButton, screenButtonField, Color(convert(Int32, round(x)), convert(Int32, round(y)), convert(Int32, round(z)), convert(Int32, round(w))))
-
-        if x != Value.r || y != Value.g || z != Value.b || w != Value.a
-            # JulGame.update_text(selectedScreenButton, selectedScreenButton.text)
+       # Instead of using a function from another module, use CImGui directly here
+       colorCfloat = Cfloat[Value[1]/255, Value[2]/255, Value[3]/255, Value[4]/255]
+        
+       # Configure color editor options
+       misc_flags = CImGui.ImGuiColorEditFlags_AlphaPreview | 
+                   CImGui.ImGuiColorEditFlags_AlphaBar | 
+                   CImGui.ImGuiColorEditFlags_DisplayRGB
+       
+       if CImGui.ColorEdit4("$(screenButtonField)", colorCfloat, misc_flags)
+           newColor = (Int(abs(round(colorCfloat[1] * 255))), 
+                       Int(abs(round(colorCfloat[2] * 255))), 
+                       Int(abs(round(colorCfloat[3] * 255))), 
+                       Int(abs(round(colorCfloat[4] * 255))))
+           
+           setfield!(selectedScreenButton, screenButtonField, Color(convert(Int32, round(r)), convert(Int32, round(g)), convert(Int32, round(b)), convert(Int32, round(a))))
         end
     elseif fieldName == "position" || fieldName == "size"
         x = Cint(Value.x)

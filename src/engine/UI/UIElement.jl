@@ -91,6 +91,10 @@ function delete_relationship(script::UIElement)
     end
 end
 
+function UI.set_color(this::UIElement; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
+    this.color = (r%256, g%256, b%256, a%256)
+end
+
 function UI.align_to_anchor(this::UIElement)
     if MAIN.scene.camera === nothing
         @debug "No camera found in scene"

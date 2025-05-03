@@ -196,7 +196,7 @@ module ScreenButtonModule
     end
 
     function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
-        sprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images", path), path)
+        sprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), path)
         texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, sprite)
         if up
             this.buttonUpSpritePath = path
@@ -357,8 +357,14 @@ module ScreenButtonModule
     A pointer to the loaded font
     """
     function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
-        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath))
-            raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
+            if fontPath == "Default" || fontPath == ""
+                raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+                @debug "loading default font"
+            else
+                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+                @debug "loading font from cache"
+            end
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
             if rw != C_NULL
                 @debug("loading font from cache for button")
