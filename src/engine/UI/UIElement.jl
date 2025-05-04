@@ -101,7 +101,6 @@ function UI.align_to_anchor(this::UIElement)
         return
     end
 
-    #@info "centering text $(this.name) with anchor $(this.anchor.current_state)"
     size = MAIN.scene.camera.size
     parent_pos = Math.Vector2(0, 0)
     if this.parent !== nothing

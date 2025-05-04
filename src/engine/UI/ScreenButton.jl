@@ -9,7 +9,6 @@ module ScreenButtonModule
         buttonDownSprite
         buttonDownSpritePath::String
         buttonDownTexture
-        #TODO: add buttonHoverSprite/Color Mod 
         buttonUpSprite
         buttonUpSpritePath::String
         buttonUpTexture
@@ -67,6 +66,7 @@ module ScreenButtonModule
                 :centerBottom,
                 :none
             )
+            this.isInitialized = false
 
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
@@ -85,7 +85,6 @@ module ScreenButtonModule
             this.textOffset = textOffset
             this.textTexture = C_NULL
             this.textSize = Math.Vector2(0, 0)
-            this.isInitialized = false
             this.persistentBetweenScenes = persistentBetweenScenes
             this.isHovered = false
             this.isActive = isActive
@@ -132,7 +131,11 @@ module ScreenButtonModule
         if this.currentTexture == this.buttonDownTexture && !this.isHovered
             this.currentTexture = this.buttonUpTexture
         end
-        
+
+        if !this.isWorldEntity
+            UI.align_to_anchor(this)
+        end
+
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             this.currentTexture, 
@@ -171,6 +174,10 @@ module ScreenButtonModule
         this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonUpSprite)
         this.currentTexture = this.buttonUpTexture
 
+        if !this.isWorldEntity
+            UI.align_to_anchor(this)
+        end
+
         # Initialize text if a font path is provided and text is not empty
         if this.fontPath != C_NULL && this.text != ""
             # Load the font using the cache
@@ -204,7 +211,7 @@ module ScreenButtonModule
                 SDL2.TTF_CloseFont(font)
             end
         end
-        
+
         this.isInitialized = true
     end
 

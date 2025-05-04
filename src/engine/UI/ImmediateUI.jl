@@ -431,9 +431,6 @@ module ImmediateUIModule
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, button)
-            if button.anchor.current_state != :none
-                UI.align_to_anchor(button)
-            end
 
             return button
         end
