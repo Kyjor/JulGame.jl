@@ -73,9 +73,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0,0), 
-        clickEvents::Vector{Function} = Function[],
-        hoverEnterEvents::Vector{Function} = Function[],
-        hoverExitEvents::Vector{Function} = Function[],
+        clickEvent::Union{Function, Nothing}=nothing,
+        hoverEnterEvent::Union{Function, Nothing}=nothing,
+        hoverExitEvent::Union{Function, Nothing}=nothing,
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255), 
@@ -179,11 +179,18 @@ module ImmediateUIModule
             end
 
             # if doesn't have click events, add click events 
-            # if !contains(textBox.clickEvents, clickEvents)
-            #     for event in clickEvents
-            #         UI.add_click_event(textBox, event)
-            #     end
-            # end
+            if clickEvent !== nothing
+                textBox.clickEvents = Function[]
+                UI.add_click_event(textBox, clickEvent)
+            end
+            if hoverEnterEvent !== nothing
+                textBox.hoverEnterEvents = Function[]
+                push!(textBox.hoverEnterEvents, hoverEnterEvent)
+            end
+            if hoverExitEvent !== nothing
+                textBox.hoverExitEvents = Function[]
+                push!(textBox.hoverExitEvents, hoverExitEvent)
+            end
             
             return textBox
         else
@@ -197,9 +204,9 @@ module ImmediateUIModule
                 isWorldEntity=isWorldEntity,
                 layer=layer,
                 position=position,
-                clickEvents=clickEvents,
-                hoverEnterEvents=hoverEnterEvents,
-                hoverExitEvents=hoverExitEvents,
+                clickEvents=clickEvent !== nothing ? Function[clickEvent] : Function[],
+                hoverEnterEvents=hoverEnterEvent !== nothing ? Function[hoverEnterEvent] : Function[],
+                hoverExitEvents=hoverExitEvent !== nothing ? Function[hoverExitEvent] : Function[],
                 isActive=isActive,
                 persistentBetweenScenes=persistentBetweenScenes,
                 color=color,
@@ -353,9 +360,20 @@ module ImmediateUIModule
             end
             
             # Update click handler
-            # if callback !== nothing
-            #     UI.add_click_event(button, callback)
-            # end
+            if clickEvent !== nothing
+                button.clickEvents = Function[]
+                UI.add_click_event(button, clickEvent)
+            end
+
+            if hoverEnterEvent !== nothing
+                button.hoverEnterEvents = Function[]
+                push!(button.hoverEnterEvents, hoverEnterEvent)
+            end
+
+            if hoverExitEvent !== nothing
+                button.hoverExitEvents = Function[]
+                push!(button.hoverExitEvents, hoverExitEvent)
+            end
             
             # Ensure the component is in the scene's uiElements
             if !(button in MAIN.scene.uiElements)
@@ -456,9 +474,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0, 0), 
-        clickEvents::Vector{Function} = Function[],
-        hoverEnterEvents::Vector{Function} = Function[],
-        hoverExitEvents::Vector{Function} = Function[],
+        clickEvent::Union{Function, Nothing}=nothing,
+        hoverEnterEvent::Union{Function, Nothing}=nothing,
+        hoverExitEvent::Union{Function, Nothing}=nothing,
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255),
@@ -592,11 +610,18 @@ module ImmediateUIModule
             end
 
            # if doesn't have click events, add click events 
-        #    if !contains(rect.clickEvents, clickEvents)
-        #         for event in clickEvents
-        #             UI.add_click_event(rect, event)
-        #         end
-        #     end
+            if clickEvent !== nothing
+                rect.clickEvents = Function[]
+                UI.add_click_event(rect, clickEvent)
+            end
+            if hoverEnterEvent !== nothing
+                rect.hoverEnterEvents = Function[]
+                push!(rect.hoverEnterEvents, hoverEnterEvent)
+            end
+            if hoverExitEvent !== nothing
+                rect.hoverExitEvents = Function[]
+                push!(rect.hoverExitEvents, hoverExitEvent)
+            end
             
             return rect
         else
@@ -616,9 +641,9 @@ module ImmediateUIModule
                 borderColor=borderColor,
                 isActive=isActive,
                 persistentBetweenScenes=persistentBetweenScenes,
-                clickEvents=clickEvents,
-                hoverEnterEvents=hoverEnterEvents,
-                hoverExitEvents=hoverExitEvents,
+                clickEvents=clickEvent !== nothing ? Function[clickEvent] : Function[],
+                hoverEnterEvents=hoverEnterEvent !== nothing ? Function[hoverEnterEvent] : Function[],
+                hoverExitEvents=hoverExitEvent !== nothing ? Function[hoverExitEvent] : Function[],
                 parent=parent,
                 size=size
             )
