@@ -5,7 +5,7 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
     if fieldName in unusedFields
         return
     end
-    Value = getfield(selectedScreenButton, screenButtonField)
+    Value = getproperty(selectedScreenButton, screenButtonField)
 
     if fieldName == "text" || fieldName == "name" 
         buf = "$(Value)"*"\0"^(64)
@@ -19,7 +19,7 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
                 break
             end
         end
-        setfield!(selectedScreenButton, screenButtonField, currentTextInTextBox)
+        setproperty!(selectedScreenButton, screenButtonField, currentTextInTextBox)
         
         if currentTextInTextBox != Value
             # JulGame.update_text(selectedScreenButton, selectedScreenButton.text)
@@ -28,7 +28,7 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
     elseif fieldName == "alpha"
         x = Cint(Value)
         @c CImGui.SliderInt("$(screenButtonField)", &x, 0, 255)
-        setfield!(selectedScreenButton, screenButtonField, convert(Int32, round(x)))
+        setproperty!(selectedScreenButton, screenButtonField, convert(Int32, round(x)))
 
         if x != Value
             # JulGame.update_text(selectedScreenButton, selectedScreenButton.text)
@@ -49,7 +49,7 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
                        Int(abs(round(colorCfloat[3] * 255))), 
                        Int(abs(round(colorCfloat[4] * 255))))
            
-           setfield!(selectedScreenButton, screenButtonField, Color(convert(Int32, round(r)), convert(Int32, round(g)), convert(Int32, round(b)), convert(Int32, round(a))))
+           setproperty!(selectedScreenButton, screenButtonField, Color(convert(Int32, round(r)), convert(Int32, round(g)), convert(Int32, round(b)), convert(Int32, round(a))))
         end
     elseif fieldName == "position" || fieldName == "size"
         x = Cint(Value.x)
@@ -59,14 +59,14 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
         
         if x != Value.x || y != Value.y
             #selectedScreenButton.setVector2Value(screenButtonField, convert(Float64, x), convert(Float64, y))
-            setfield!(selectedScreenButton, screenButtonField, Vector2(x, y))
+            setproperty!(selectedScreenButton, screenButtonField, Vector2(x, y))
             # JulGame.update_text(selectedScreenButton, selectedScreenButton.text)
         end
     elseif fieldName == "autoSizeText" || fieldName == "isCentered"
         @c CImGui.Checkbox("$(screenButtonField)", &Value)
 
-        if Value != getfield(selectedScreenButton, screenButtonField)
-            setfield!(selectedScreenButton, screenButtonField, Value)
+        if Value != getproperty(selectedScreenButton, screenButtonField)
+            setproperty!(selectedScreenButton, screenButtonField, Value)
             # JulGame.update_text(selectedScreenButton, selectedScreenButton.text)
         end
     end

@@ -241,8 +241,8 @@ module SceneBuilderModule
     
     function create_new_screen_button(this::Scene)
         screenButton = ScreenButton(
-            Function[]; # No click event defined here by default
-            name="name", 
+            nothing; # No click event defined here by default
+            name="New Button", 
             buttonUpSpritePath="ButtonUp.png", 
             buttonDownSpritePath="ButtonDown.png", 
             size=Math.Vector2(256, 64), 

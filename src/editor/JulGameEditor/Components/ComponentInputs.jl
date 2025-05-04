@@ -386,7 +386,15 @@ function show_textbox_fields(textbox)
 end
 
 function show_screenbutton_fields1(screenButton)
+    fields = []
     for field in fieldnames(typeof(screenButton))
+        push!(fields, field)
+    end
+    for field in fieldnames(UI.UIElementInstance)
+        push!(fields, field)
+    end
+    
+    for field in fields
         fieldString = "$(field)"
 
         # TODO: if fieldString == "fontPath" || 
