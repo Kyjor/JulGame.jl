@@ -4,9 +4,7 @@ module ScreenButtonModule
     import ..UI
 
     export ScreenButton
-    mutable struct ScreenButton
-        color::NTuple{4, Int}
-        clickEvents::Vector{Function}
+    mutable struct ScreenButton <: UI.UIElement
         currentTexture
         buttonDownSprite
         buttonDownSpritePath::String
@@ -17,21 +15,34 @@ module ScreenButtonModule
         buttonUpTexture
         fontPath::Union{String, Ptr{Nothing}}
         fontSize::Int
-        id::String
-        isActive::Bool
-        isHovered::Bool
         isInitialized::Bool
-        layer::Int
-        name::String
-        persistentBetweenScenes::Bool
-        position::Math.Vector2
-        size::Math.Vector2
         text::String
         textOffset::Math.Vector2
         textSize::Math.Vector2
         textTexture
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0); color::NTuple{4, Int}=(255, 255, 255, 255), id::String=JulGame.generate_uuid(), fontSize::Int=24, layer::Int=0)
+        function ScreenButton(clickEvent::Union{Function, Nothing} = nothing; 
+            id::String=JulGame.generate_uuid(), 
+            name::String="Button",
+            anchor::Symbol = :none,
+            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            isWorldEntity::Bool=false, 
+            layer::Int=0,
+            position::Math.Vector2 = Math.Vector2(0,0), 
+            buttonUpSpritePath::String="Default", 
+            buttonDownSpritePath::String="Default", 
+            hoverEnterEvent::Union{Function, Nothing} = nothing,
+            hoverExitEvent::Union{Function, Nothing} = nothing,
+            isActive::Bool=true,
+            persistentBetweenScenes::Bool=false,
+            color::NTuple{4, Int}=(255, 255, 255, 255), 
+            fontPath::Union{String, Ptr{Nothing}} = C_NULL, 
+            fontSize::Int=24, 
+            size::Math.Vector2=Math.Vector2(0,0), 
+            text::String="", 
+            textOffset::Math.Vector2=Math.Vector2(0,0), 
+            parent::Union{UI.UIElement, Nothing}=nothing
+        )
             this = new()
             
             this.buttonDownSpritePath = buttonDownSpritePath
@@ -40,7 +51,29 @@ module ScreenButtonModule
             this.buttonUpSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonUpSpritePath)
             # TODO: if buttonUp/DownSpritePath is not found, use a default sprite
 
-            this.clickEvents = []
+            this.anchor = JulGame.Enum{Any}(
+                :center,
+                :top,
+                :bottom,
+                :left,
+                :right,
+                :topLeft,
+                :topRight,
+                :bottomLeft,
+                :bottomRight,
+                :centerLeft,
+                :centerRight,
+                :centerTop,
+                :centerBottom,
+                :none
+            )
+
+            this.anchor.current_state = anchor
+            this.anchorOffset = anchorOffset
+
+            this.clickEvents = Function[]
+            this.hoverEnterEvents = Function[]
+            this.hoverExitEvents = Function[]
             this.currentTexture = C_NULL
             this.fontSize = fontSize
             this.id = id
@@ -53,11 +86,23 @@ module ScreenButtonModule
             this.textTexture = C_NULL
             this.textSize = Math.Vector2(0, 0)
             this.isInitialized = false
-            this.persistentBetweenScenes = false
+            this.persistentBetweenScenes = persistentBetweenScenes
             this.isHovered = false
-            this.isActive = true
+            this.isActive = isActive
             this.layer = layer
             this.color = color
+            this.isWorldEntity = isWorldEntity
+            this.parent = parent
+            if clickEvent !== nothing
+                push!(this.clickEvents, clickEvent)
+            end
+            if hoverEnterEvent !== nothing
+                push!(this.hoverEnterEvents, hoverEnterEvent)
+            end
+            if hoverExitEvent !== nothing
+                push!(this.hoverExitEvents, hoverExitEvent)
+            end
+
             # If the textOffset is at (0,0), we'll consider it as "should center text"
             # This ensures text is centered by default if no explicit offset is provided
             if this.textOffset == Math.Vector2(0, 0) && this.text != ""

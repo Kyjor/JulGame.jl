@@ -244,15 +244,20 @@ module ImmediateUIModule
     - `buttonUpPath::String`: Image for button normal state (optional)
     - `buttonDownPath::String`: Image for button pressed state (optional)
     - `textOffset::Math.Vector2`: Offset for positioning the text
-    - `alpha::Int`: Transparency (0-255)
+    - `color::NTuple{4, Int}`: Color of the button (r,g,b,a)
+    - `isActive::Bool`: Whether the button is active/visible
     - `layer::Int`: Rendering layer (higher values render on top)
     - `lifetime::Int`: How long the component should persist without updates (ms)
     
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, callback::Union{Function, Nothing}=nothing; 
+    function immediate_button(id::String, clickEvent::Union{Function, Nothing}=nothing; 
         text::String="", 
+        name::String="Button",
+        anchor::Symbol=:none,
+        anchorOffset::Math.Vector2=Math.Vector2(0,0),
+        isWorldEntity::Bool=false,
         fontPath::String="Default", 
         fontSize::Int=16, 
         position::Math.Vector2=Math.Vector2(0,0),
@@ -260,9 +265,13 @@ module ImmediateUIModule
         isCentered::Bool=true, 
         buttonUpPath::String="", 
         buttonDownPath::String="", 
+        hoverEnterEvent::Union{Function, Nothing}=nothing,
+        hoverExitEvent::Union{Function, Nothing}=nothing,
         textOffset::Math.Vector2=Math.Vector2(0,0),
         color::NTuple{4, Int}=(255, 255, 255, 255),
         isActive::Bool=true, 
+        persistentBetweenScenes::Bool=false,
+        
         layer::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing}=nothing
@@ -344,15 +353,9 @@ module ImmediateUIModule
             end
             
             # Update click handler
-            if !isempty(button.clickEvents)
-                if callback != nothing
-                    button.clickEvents[1] = callback
-                end
-            else
-                if callback != nothing
-                    UI.add_click_event(button, callback)
-                end
-            end
+            # if callback !== nothing
+            #     UI.add_click_event(button, callback)
+            # end
             
             # Ensure the component is in the scene's uiElements
             if !(button in MAIN.scene.uiElements)
@@ -371,16 +374,39 @@ module ImmediateUIModule
             end
             
             # Create new button component
-            button = ScreenButton("immediate_$(id)", buttonUpPath, buttonDownPath, size, adjusted_position, 
-                                 fontPath, text, textOffset; id=id, fontSize=fontSize, layer=layer)
+            button = ScreenButton(
+                clickEvent; 
+                id=id, # Use id from function args
+                name=name, # Use generated name
+                anchor=anchor, # Default for immediate mode unless specified otherwise
+                anchorOffset=anchorOffset, # Default
+                isWorldEntity=isWorldEntity, # Default
+                layer=layer,
+                position=adjusted_position, 
+                buttonUpSpritePath=buttonUpPath, 
+                buttonDownSpritePath=buttonDownPath, 
+                hoverEnterEvent=hoverEnterEvent, 
+                hoverExitEvent=hoverExitEvent, 
+                isActive=isActive, 
+                persistentBetweenScenes=persistentBetweenScenes, # Immediate components are not persistent
+                color=color, 
+                fontPath=fontPath, 
+                fontSize=fontSize, 
+                size=size, 
+                text=text, 
+                textOffset=textOffset, 
+                parent=parent
+            )
             
-            # Set button properties
-            JulGame.UI.set_color(button; a=color[4])
-            button.persistentBetweenScenes = false
-            UI.add_click_event(button, callback)
+            # Set button properties - These are now handled by the constructor or defaults
+            # JulGame.UI.set_color(button; a=color[4]) # Handled by color=color
+            # button.persistentBetweenScenes = false # Handled by persistentBetweenScenes=false
+            # UI.add_click_event(button, callback) # Handled by clickEvent=clickEvent
             
-            # Initialize the button to load sprites
-            UI.initialize(button)
+            # Initialize the button - Constructor likely handles this, but check if needed
+            if !button.isInitialized
+                 UI.initialize(button)
+            end
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = (element = button, lifetime = lifetime)

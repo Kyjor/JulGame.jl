@@ -240,8 +240,21 @@ module SceneBuilderModule
     end
     
     function create_new_screen_button(this::Scene)
-        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"))
-        JulGame.initialize(screenButton)
+        screenButton = ScreenButton(
+            Function[]; # No click event defined here by default
+            name="name", 
+            buttonUpSpritePath="ButtonUp.png", 
+            buttonDownSpritePath="ButtonDown.png", 
+            size=Math.Vector2(256, 64), 
+            position=Math.Vector2(0, 0), 
+            fontPath=joinpath("FiraCode-Regular.ttf"),
+            # text="", # Default
+            # textOffset=Math.Vector2(0,0), # Default
+            # Other parameters use defaults (anchor, layer, color, fontSize, etc.)
+        )
+        if !screenButton.isInitialized
+            JulGame.initialize(screenButton)
+        end
         push!(MAIN.scene.uiElements, screenButton)
     end
 

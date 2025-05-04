@@ -183,22 +183,30 @@ module SceneReaderModule
                     end
                     
                     newUIElement = ScreenButton(
-                        uiElement.name, 
-                        uiElement.buttonUpSpritePath, 
-                        uiElement.buttonDownSpritePath, 
-                        Vector2(uiElement.size.x, uiElement.size.y), 
-                        Vector2(uiElement.position.x, uiElement.position.y), 
-                        uiElement.fontPath, 
-                        uiElement.text, 
-                        textOffset; 
+                        nothing; # clickEvent - Assuming none from scene file directly
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
-                        fontSize=Int(get(uiElement, "fontSize", 24))
+                        name=get(uiElement, "name", "Button"),
+                        anchor=Symbol(get(uiElement, "anchor", "none")),
+                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        isWorldEntity=get(uiElement, "isWorldEntity", false),
+                        layer=Int(get(uiElement, "layer", 0)),
+                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        buttonUpSpritePath=get(uiElement, "buttonUpSpritePath", "Default"),
+                        buttonDownSpritePath=get(uiElement, "buttonDownSpritePath", "Default"),
+                        # hoverEnterEvent=nothing, # Default
+                        # hoverExitEvent=nothing, # Default
+                        isActive=get(uiElement, "isActive", true),
+                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false), # Keep the value from JSON if it exists
+                        #color=color_tuple,
+                        fontPath=get(uiElement, "fontPath", C_NULL),
+                        fontSize=Int(get(uiElement, "fontSize", 24)),
+                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        text=get(uiElement, "text", ""),
+                        textOffset=textOffset,
+                        # parent=nothing # Default
                     )
                     
-                    # Make sure the button is initialized properly
-                    if !newUIElement.isInitialized
-                        JulGame.UI.initialize(newUIElement)
-                    end
+                    # Make sure the button is initialized properly - Constructor likely handles this
                 end
                 newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 push!(res, newUIElement)
