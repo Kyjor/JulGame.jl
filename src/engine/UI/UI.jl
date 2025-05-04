@@ -4,7 +4,7 @@
 
     import ..JulGame: 
         add_click_event,
-        center_text,
+        align_to_anchor,
         destroy,
         handle_event,
         handle_window_resize,
@@ -18,6 +18,7 @@
         update_button_text,
         update_font_size
 
+    include("UIElement.jl")
     include("ScreenButton.jl")
     include("TextBox.jl")
     #include("Draggable.jl")

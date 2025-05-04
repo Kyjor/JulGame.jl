@@ -34,6 +34,10 @@
         return nothing
     end
 
+    function get_entity_by_name(name)
+        return get_entity_by_name(MAIN.scene, name)
+    end
+
     function get_entities_by_name(this::Scene, name)
         entities = []
         for entity in this.entities
@@ -48,6 +52,10 @@
         return entities
     end
 
+    function get_entities_by_name(name)
+        return get_entities_by_name(MAIN.scene, name)
+    end
+
     function get_entity_by_id(this::Scene, id)
         for entity in this.entities
             if entity.id == id
@@ -57,6 +65,10 @@
 
         @warn "No entity with id $id found"
         return nothing
+    end
+
+    function get_entity_by_id(id::String)
+        return get_entity_by_id(MAIN.scene, id)
     end
 
     function get_ui_element_by_name(this::Scene, name)
@@ -70,5 +82,8 @@
         return nothing
     end
 
+    function get_ui_element_by_name(name)
+        return get_ui_element_by_name(MAIN.scene, name)
+    end
 end
 

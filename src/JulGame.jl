@@ -9,6 +9,7 @@ module JulGame
     IS_EDITOR_PLAY_MODE::Bool = false
     IS_DEBUG::Bool = false
     IS_PACKAGE_COMPILED::Bool = false
+    IS_CHANGING_SCENE::Bool = false
 
     # Temporary variable for recent project path selection
     TEMP_SELECTED_PATH::String = ""
@@ -21,6 +22,9 @@ module JulGame
     IMAGE_CACHE::Dict = Dict{String, Any}()
     FONT_CACHE::Dict = Dict{String, Any}()
     AUDIO_CACHE::Dict = Dict{String, Any}()
+
+    BUILT_IN_ASSETS::Dict = Dict{String, Any}()
+    BUILT_IN_ASSETS["Font"] = read(joinpath(@__DIR__, "engine", "Assets", "Fonts", "FiraCode-Regular.ttf"))
 
     Coroutines::Vector = []
 

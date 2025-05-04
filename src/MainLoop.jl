@@ -268,6 +268,7 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 - `sceneFileName::String`: The name of the scene file to load.
 """
 function JulGame.change_scene(sceneFileName::String)
+	JulGame.IS_CHANGING_SCENE = true
 	this::MainLoop = MAIN
 	@debug "Changing scene to: $(sceneFileName)"
 	this.close = true
@@ -350,6 +351,7 @@ function JulGame.change_scene(sceneFileName::String)
 	if JulGame.IS_EDITOR
 		initialize_new_scene(this)
 	end
+	JulGame.IS_CHANGING_SCENE = false
 end
 
 """
@@ -396,6 +398,10 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 			break
 		end
 	end
+end
+
+function JulGame.destroy_entity(entity)
+    JulGame.destroy_entity(MAIN, entity)
 end
 
 function JulGame.destroy_ui_element(this::MainLoop, uiElement)
@@ -633,10 +639,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				]
 
 				if length(this.debugTextBoxes) == 0
-				 	fontPath = "FiraCode-Regular.ttf"
-
 					for i = eachindex(statTexts)
-				 		textBox = UI.TextBoxModule.TextBox("Debug text", fontPath, 40, Math.Vector2(0, 35 * i), statTexts[i], false, false)
+				 		textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 16, position = Math.Vector2(0, 35 * i))
 				 		push!(this.debugTextBoxes, textBox)
                          JulGame.initialize(textBox)
 				 	end

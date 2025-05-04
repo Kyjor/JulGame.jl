@@ -342,7 +342,16 @@ and updates the `sprite.fontPath` field with the current text in the text box.
 
 """
 function show_textbox_fields(textbox)
+    # combine fields from UIElement and TextBox
+    fields = []
     for field in fieldnames(typeof(textbox))
+        push!(fields, field)
+    end
+    for field in fieldnames(UI.UIElementInstance)
+        push!(fields, field)
+    end
+    
+    for field in fields
         fieldString = "$(field)"
 
         if fieldString == "fontPath"
@@ -377,7 +386,15 @@ function show_textbox_fields(textbox)
 end
 
 function show_screenbutton_fields1(screenButton)
+    fields = []
     for field in fieldnames(typeof(screenButton))
+        push!(fields, field)
+    end
+    for field in fieldnames(UI.UIElementInstance)
+        push!(fields, field)
+    end
+    
+    for field in fields
         fieldString = "$(field)"
 
         # TODO: if fieldString == "fontPath" || 

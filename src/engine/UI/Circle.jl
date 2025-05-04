@@ -4,24 +4,25 @@ module CircleModule
     import ..UI
     
     export Circle
-    mutable struct Circle
-        color::NTuple{4, Int}
+    mutable struct Circle <: UI.UIElement
         fillMode::Bool
         id::String
-        isActive::Bool
-        isWorldEntity::Bool
-        name::String
-        persistentBetweenScenes::Bool
-        center::Math.Vector2
+        center::Math.Vector2f
         radius::Float32
         borderWidth::Int
         borderColor::NTuple{4, Int}
-        layer::Int
         
-        function Circle(name::String, center::Math.Vector2, radius::Float32, color::NTuple{4, Int}=(255, 255, 255, 255), 
-                       fillMode::Bool=true; id::String=JulGame.generate_uuid(), isWorldEntity::Bool=false, 
-                       borderWidth::Int=0, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
-                       layer::Int=0)
+        function Circle(center::Math.Vector2f;
+            id::String=JulGame.generate_uuid(), 
+            name::String="Circle", 
+            radius::Float64 = 1.0, 
+            color::NTuple{4, Int}=(255, 255, 255, 255), 
+            fillMode::Bool=true, 
+            isWorldEntity::Bool=false, 
+            borderWidth::Int=0, 
+            borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+            layer::Int=0
+        )
             this = new()
             
             this.color = color
@@ -31,7 +32,7 @@ module CircleModule
             this.isWorldEntity = isWorldEntity
             this.name = name
             this.persistentBetweenScenes = false
-            this.center = center
+            this.position = center
             this.radius = radius
             this.borderWidth = borderWidth
             this.borderColor = borderColor
@@ -62,104 +63,12 @@ module CircleModule
             scaledRadius = this.radius
         end
         
-        # Save current render draw color
-        r = Ref(UInt8(0))
-        g = Ref(UInt8(0))
-        b = Ref(UInt8(0))
-        a = Ref(UInt8(0))
-        SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, r, g, b, a)
-        
-        # Set new color
-        SDL2.SDL_SetRenderDrawColor(
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-            UInt8(this.color[1]), 
-            UInt8(this.color[2]), 
-            UInt8(this.color[3]), 
-            UInt8(this.color[4])
-        )
-        SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
-        
-        # Draw circle using the Midpoint Circle Algorithm
-        if this.fillMode
-            # Fill the circle
-            for y in -scaledRadius:scaledRadius
-                height = sqrt(scaledRadius^2 - y^2)
-                for x in -height:height
-                    SDL2.SDL_RenderDrawPointF(
-                        JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
-                        Float32(centerX + x),
-                        Float32(centerY + y)
-                    )
-                end
-            end
-        else
-            # Draw just the outline
-            x = 0
-            y = (scaledRadius)
-            p = 3 - 2 * (scaledRadius)
-            
-            while x <= y
-                # These points complete the octants of the circle
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + x), Float32(centerY - y))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + y), Float32(centerY - x))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + y), Float32(centerY + x))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + x), Float32(centerY + y))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - x), Float32(centerY + y))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - y), Float32(centerY + x))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - y), Float32(centerY - x))
-                SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - x), Float32(centerY - y))
-                
-                if p < 0
-                    p += 4 * x + 6
-                else
-                    p += 4 * (x - y) + 10
-                    y -= 1
-                end
-                x += 1
-            end
-        end
-        
         # Draw border if borderWidth > 0
         if this.borderWidth > 0
-            # Set border color
-            SDL2.SDL_SetRenderDrawColor(
-                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-                UInt8(this.borderColor[1]), 
-                UInt8(this.borderColor[2]), 
-                UInt8(this.borderColor[3]), 
-                UInt8(this.borderColor[4])
-            )
-            
-            # Draw border (just the outline with increased radius)
-            for i in 0:this.borderWidth-1
-                x = 0
-                y = (scaledRadius + i)
-                p = 3 - 2 * (scaledRadius + i)
-                
-                while x <= y
-                    # These points complete the octants of the circle
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + x), Float32(centerY - y))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + y), Float32(centerY - x))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + y), Float32(centerY + x))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX + x), Float32(centerY + y))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - x), Float32(centerY + y))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - y), Float32(centerY + x))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - y), Float32(centerY - x))
-                    SDL2.SDL_RenderDrawPointF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Float32(centerX - x), Float32(centerY - y))
-                    
-                    if p < 0
-                        p += 4 * x + 6
-                    else
-                        p += 4 * (x - y) + 10
-                        y -= 1
-                    end
-                    x += 1
-                end
-            end
+            SDL2.aacircleRGBA(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, centerX, centerY, scaledRadius, UInt8(this.borderColor[1]), UInt8(this.borderColor[2]), UInt8(this.borderColor[3]), UInt8(this.borderColor[4]))
         end
-        
-        # Restore original color
-        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, r[], g[], b[], a[])
+
+        SDL2.aacircleRGBA(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, centerX, centerY, scaledRadius, UInt8(this.color[1]), UInt8(this.color[2]), UInt8(this.color[3]), UInt8(this.color[4]))
     end
     
     function UI.initialize(this::Circle)

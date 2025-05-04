@@ -54,13 +54,15 @@ module SceneWriterModule
             else
                 push!(uiElementsDict, Dict(
                     "id" => string(uiElement.id), 
+                    "layer" => uiElement.layer,
+                    "anchor" => uiElement.anchor.current_state,
                     "anchorOffset" => Dict("x" => uiElement.anchorOffset.x, "y" => uiElement.anchorOffset.y),
+                    "maxLineWidth" => uiElement.maxLineWidth,
+                    "wrapWords" => uiElement.wrapWords,
                     "color" => Dict("r" => uiElement.color[1], "g" => uiElement.color[2], "b" => uiElement.color[3], "a" => uiElement.color[4]),
                     "fontPath" => normalize_path(uiElement.fontPath), 
                     "fontSize" => uiElement.fontSize, 
                     "isActive" => uiElement.isActive,
-                    "isCenteredX" => uiElement.isCenteredX,
-                    "isCenteredY" => uiElement.isCenteredY,
                     "isWorldEntity" => uiElement.isWorldEntity,
                     "name" => uiElement.name,
                     "persistentBetweenScenes" => uiElement.persistentBetweenScenes,

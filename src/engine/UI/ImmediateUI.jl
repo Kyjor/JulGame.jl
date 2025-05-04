@@ -18,53 +18,74 @@ module ImmediateUIModule
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
     
     # Lifetime in milliseconds before an unused immediate component is removed (default: 5 seconds)
-    const DEFAULT_LIFETIME = 200
+    const DEFAULT_LIFETIME = 1000
 
     """
-    immediate_text(id::String, text::String, fontPath::String, fontSize::Int, 
-        position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Int=255, 
-        isActive::Bool=true, color::NTuple{4, Int}=(255, 255, 255, 255),
-        maxLineWidth::Int=0, wrapWords::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
+    immediate_text(id::String, text::String; 
+        name::String = "TextBox", 
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0,0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255), 
+        fontPath::String = "Default", 
+        fontSize::Int = 16, 
+        maxLineWidth::Int=0, 
+        wrapWords::Bool=true,
+        lifetime::Int=DEFAULT_LIFETIME)
 
-    Creates or updates an immediate text component.
+    Creates or updates a text component that will be rendered on the screen. This can be called once (short-lived text) or be placed in an update loop for continuous rendering.
     
     # Arguments
     - `id::String`: Unique identifier for this immediate component
     - `text::String`: The text to display
-    - `fontPath::String`: Path to the font file
-    - `fontSize::Int`: Size of the font
-    - `position::Math.Vector2`: Position of the text
-    - `isCenteredX::Bool`: Whether to center the text horizontally
-    - `isCenteredY::Bool`: Whether to center the text vertically
+    - `name::String`: Name of the text box
+    - `anchor::Symbol`: Anchor point for positioning (:center, :top, :bottom, :left, :right, :topLeft, :topRight, :bottomLeft, :bottomRight)
     - `anchorOffset::Math.Vector2`: Offset from the anchor point
     - `isWorldEntity::Bool`: Whether this text should be positioned in world space
-    - `alpha::Int`: Transparency (0-255)
-    - `color::Tuple{<:Int, <:Int, <:Int, <:Int}`: Color of the text (r,g,b,a)
-    - `maxLineWidth::<:Int`: Maximum width before text wrapping (0 for no wrapping)
+    - `layer::Int`: Rendering layer (higher values render on top)
+    - `position::Math.Vector2`: Position of the text
+    - `clickEvents::Vector{Function}`: Functions to call when clicked
+    - `hoverEnterEvents::Vector{Function}`: Functions to call when hover starts
+    - `hoverExitEvents::Vector{Function}`: Functions to call when hover ends
+    - `isActive::Bool`: Whether the text is active/visible
+    - `persistentBetweenScenes::Bool`: Whether the text persists between scene changes
+    - `color::NTuple{4, Int}`: Color of the text (r,g,b,a)
+    - `fontPath::String`: Path to the font file
+    - `fontSize::Int`: Size of the font
+    - `maxLineWidth::Int`: Maximum width before text wrapping (0 for no wrapping)
     - `wrapWords::Bool`: Whether to wrap at word boundaries (true) or characters (false)
-    - `layer::<:Int`: Rendering layer (higher values render on top)
     - `lifetime::Int`: How long the component should persist without updates (ms)
     
     # Returns
     The TextBox object
     """
-    function immediate_text(id::String, text::String, fontPath::String, fontSize::Int, 
-        position::Math.Vector2, isCenteredX::Bool=false, isCenteredY::Bool=false; 
-        anchorOffset::Math.Vector2=Math.Vector2(0,0), isWorldEntity::Bool=false, alpha::Int=255, 
-        isActive::Bool=true, color::NTuple{4, Int}=(255, 255, 255, 255),
-        maxLineWidth::Int=0, wrapWords::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
-        
-        # Convert color to Int32 tuple
-        color = (color[1],
-                color[2],
-                color[3],
-                color[4])
-        
-        # Convert other integer parameters
-        maxLineWidth = maxLineWidth
-        layer = layer
-        alpha = alpha
+    function immediate_text(id::String, text::String = "TextBox"; 
+        name::String = "TextBox", 
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0,0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255), 
+        fontPath::String = "Default", 
+        fontSize::Int = 16, 
+        maxLineWidth::Int=0, 
+        wrapWords::Bool=true,
+        lifetime::Int=DEFAULT_LIFETIME,
+        parent::Union{UI.UIElement, Nothing}=nothing,
+    )
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -99,9 +120,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            if textBox.isCenteredX != isCenteredX || textBox.isCenteredY != isCenteredY
-                textBox.isCenteredX = isCenteredX
-                textBox.isCenteredY = isCenteredY
+            if textBox.anchor.current_state != anchor
+                textBox.anchor.current_state = anchor
                 needsUpdate = true
             end
             
@@ -115,8 +135,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            if textBox.color[4] != alpha
-                JulGame.UI.set_color(textBox; a=alpha)
+            if textBox.color != color
+                textBox.color = color
                 needsUpdate = true
             end
 
@@ -130,13 +150,6 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            # Check color update
-            if textBox.color != color
-                textBox.color = color
-                needsUpdate = true
-            end
-            
-            # Check line wrapping updates
             if textBox.maxLineWidth != maxLineWidth
                 textBox.maxLineWidth = maxLineWidth
                 needsUpdate = true
@@ -146,37 +159,65 @@ module ImmediateUIModule
                 textBox.wrapWords = wrapWords
                 needsUpdate = true
             end
+
+            if textBox.parent != parent
+                textBox.parent = parent
+                needsUpdate = true
+            end 
             
             if needsUpdate
                 # Reload font and regenerate texture
-                UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
-                UI.rerender_text(textBox)
-                
-                if isCenteredX || isCenteredY
-                    UI.center_text(textBox)
+                if textBox.fontSize != fontSize
+                    UI.load_font(textBox, joinpath(BasePath, "assets", "fonts"), fontPath)
                 end
+                UI.rerender_text(textBox)
             end
             
             # Ensure the component is in the scene's uiElements
             if !(textBox in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, textBox)
             end
+
+            # if doesn't have click events, add click events 
+            # if !contains(textBox.clickEvents, clickEvents)
+            #     for event in clickEvents
+            #         UI.add_click_event(textBox, event)
+            #     end
+            # end
             
             return textBox
         else
+            @debug "creating new text component with id $(composite_id): $(length(IMMEDIATE_UI_CACHE))"
             # Create new text component
-            textBox = TextBox("immediate_$(id)", fontPath, fontSize, position, text, isCenteredX, isCenteredY; 
-                             anchorOffset=anchorOffset, id=id, isWorldEntity=isWorldEntity, layer=layer,
-                             color=color, maxLineWidth=maxLineWidth, wrapWords=wrapWords)
-            
-            JulGame.UI.set_color(textBox; a=alpha)
-            textBox.persistentBetweenScenes = false
+            textBox = TextBox(text; 
+                id=id,
+                name=name,
+                anchor=anchor,
+                anchorOffset=anchorOffset,
+                isWorldEntity=isWorldEntity,
+                layer=layer,
+                position=position,
+                clickEvents=clickEvents,
+                hoverEnterEvents=hoverEnterEvents,
+                hoverExitEvents=hoverExitEvents,
+                isActive=isActive,
+                persistentBetweenScenes=persistentBetweenScenes,
+                color=color,
+                fontPath=fontPath,
+                fontSize=fontSize,
+                maxLineWidth=maxLineWidth,
+                wrapWords=wrapWords,
+                parent=parent)
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = (element = textBox, lifetime = lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, textBox)
+
+            if textBox.anchor.current_state != :none
+                UI.align_to_anchor(textBox)
+            end
             
             return textBox
         end
@@ -203,17 +244,38 @@ module ImmediateUIModule
     - `buttonUpPath::String`: Image for button normal state (optional)
     - `buttonDownPath::String`: Image for button pressed state (optional)
     - `textOffset::Math.Vector2`: Offset for positioning the text
-    - `alpha::Int`: Transparency (0-255)
+    - `color::NTuple{4, Int}`: Color of the button (r,g,b,a)
+    - `isActive::Bool`: Whether the button is active/visible
     - `layer::Int`: Rendering layer (higher values render on top)
     - `lifetime::Int`: How long the component should persist without updates (ms)
     
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, text::String, fontPath::String, fontSize::Int, position::Math.Vector2,
-                             width::Int, height::Int, isCentered::Bool=true, callback::Function=() -> nothing;
-                             buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
-                             alpha::Int=255, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
+    function immediate_button(id::String, clickEvent::Union{Function, Nothing}=nothing; 
+        text::String="", 
+        name::String="Button",
+        anchor::Symbol=:none,
+        anchorOffset::Math.Vector2=Math.Vector2(0,0),
+        isWorldEntity::Bool=false,
+        fontPath::String="Default", 
+        fontSize::Int=16, 
+        position::Math.Vector2=Math.Vector2(0,0),
+        size::Math.Vector2=Math.Vector2(2, 1),
+        isCentered::Bool=true, 
+        buttonUpPath::String="", 
+        buttonDownPath::String="", 
+        hoverEnterEvent::Union{Function, Nothing}=nothing,
+        hoverExitEvent::Union{Function, Nothing}=nothing,
+        textOffset::Math.Vector2=Math.Vector2(0,0),
+        color::NTuple{4, Int}=(255, 255, 255, 255),
+        isActive::Bool=true, 
+        persistentBetweenScenes::Bool=false,
+        
+        layer::Int=0, 
+        lifetime::Int=DEFAULT_LIFETIME,
+        parent::Union{UI.UIElement, Nothing}=nothing
+    )
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -221,12 +283,10 @@ module ImmediateUIModule
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
         
-        size = Math.Vector2(width, height)
-        
         # Center if requested
         local adjusted_position = position
         if isCentered
-            adjusted_position = Math.Vector2(position.x - width/2, position.y - height/2)
+            adjusted_position = Math.Vector2(position.x - size.x/2, position.y - size.y/2)
         end
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
@@ -260,8 +320,8 @@ module ImmediateUIModule
                 button.textOffset = textOffset
             end
             
-            if button.color[4] != alpha
-                JulGame.UI.set_color(button; a=alpha)
+            if button.color[4] != color[4]
+                JulGame.UI.set_color(button; a=color[4])
             end
 
             if button.isActive != isActive
@@ -293,11 +353,9 @@ module ImmediateUIModule
             end
             
             # Update click handler
-            if !isempty(button.clickEvents)
-                button.clickEvents[1] = callback
-            else
-                UI.add_click_event(button, callback)
-            end
+            # if callback !== nothing
+            #     UI.add_click_event(button, callback)
+            # end
             
             # Ensure the component is in the scene's uiElements
             if !(button in MAIN.scene.uiElements)
@@ -316,23 +374,49 @@ module ImmediateUIModule
             end
             
             # Create new button component
-            button = ScreenButton("immediate_$(id)", buttonUpPath, buttonDownPath, size, adjusted_position, 
-                                 fontPath, text, textOffset; id=id, fontSize=fontSize, layer=layer)
+            button = ScreenButton(
+                clickEvent; 
+                id=id, # Use id from function args
+                name=name, # Use generated name
+                anchor=anchor, # Default for immediate mode unless specified otherwise
+                anchorOffset=anchorOffset, # Default
+                isWorldEntity=isWorldEntity, # Default
+                layer=layer,
+                position=adjusted_position, 
+                buttonUpSpritePath=buttonUpPath, 
+                buttonDownSpritePath=buttonDownPath, 
+                hoverEnterEvent=hoverEnterEvent, 
+                hoverExitEvent=hoverExitEvent, 
+                isActive=isActive, 
+                persistentBetweenScenes=persistentBetweenScenes, # Immediate components are not persistent
+                color=color, 
+                fontPath=fontPath, 
+                fontSize=fontSize, 
+                size=size, 
+                text=text, 
+                textOffset=textOffset, 
+                parent=parent
+            )
             
-            # Set button properties
-            JulGame.UI.set_color(button; a=alpha)
-            button.persistentBetweenScenes = false
-            UI.add_click_event(button, callback)
+            # Set button properties - These are now handled by the constructor or defaults
+            # JulGame.UI.set_color(button; a=color[4]) # Handled by color=color
+            # button.persistentBetweenScenes = false # Handled by persistentBetweenScenes=false
+            # UI.add_click_event(button, callback) # Handled by clickEvent=clickEvent
             
-            # Initialize the button to load sprites
-            UI.initialize(button)
+            # Initialize the button - Constructor likely handles this, but check if needed
+            if !button.isInitialized
+                 UI.initialize(button)
+            end
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = (element = button, lifetime = lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, button)
-            
+           #=  if textBox.anchor.current_state != :none
+                UI.align_to_anchor(button)
+            end =#
+
             return button
         end
     end
@@ -364,11 +448,28 @@ module ImmediateUIModule
     # Returns
     The Rectangle object
     """
-    function immediate_rect(id::String, x::Int, y::Int, width::Int, height::Int,
-                           color::NTuple{4, Int}=(255, 255, 255, 255),
-                           borderWidth::Int=0, fillMode::Bool=true;
-                           isWorldEntity::Bool=false, borderColor::NTuple{4, Int}=(0, 0, 0, 255),
-                           borderRadius::Int=0, isActive::Bool=true, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
+    function immediate_rect(
+        id::String;
+        name::String = "Rectangle",
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0, 0),
+        isWorldEntity::Bool=false, 
+        layer::Int=0,
+        position::Math.Vector2 = Math.Vector2(0, 0), 
+        clickEvents::Vector{Function} = Function[],
+        hoverEnterEvents::Vector{Function} = Function[],
+        hoverExitEvents::Vector{Function} = Function[],
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 255),
+        borderWidth::Int=0, 
+        fillMode::Bool=true,
+        borderColor::NTuple{4, Int}=(0, 0, 0, 255),
+        borderRadius::Int=0, 
+        lifetime::Int=DEFAULT_LIFETIME,
+        parent::Union{UI.UIElement, Nothing}=nothing,
+        size::Math.Vector2 = Math.Vector2(1, 1)
+    )
         
         # Convert colors to Int32 tuples
         color = (color[1],
@@ -391,9 +492,6 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
-        position = Math.Vector2(x, y)
-        size = Math.Vector2(width, height)
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing rect component
@@ -453,18 +551,77 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
+            if rect.parent != parent
+                rect.parent = parent
+                needsUpdate = true
+            end
+
+            if rect.name != name
+                rect.name = name
+                needsUpdate = true
+            end
+
+            if rect.anchor.current_state != anchor
+                println("anchor: $anchor")
+                rect.anchor.current_state = anchor
+                needsUpdate = true
+            end
+            
+            if rect.anchorOffset != anchorOffset
+                rect.anchorOffset = anchorOffset
+                needsUpdate = true
+            end
+
+            if rect.position != position
+                rect.position = position
+                needsUpdate = true
+            end
+
+            if rect.size != size
+                rect.size = size
+                needsUpdate = true
+            end
+
+            if needsUpdate
+                UI.align_to_anchor(rect)
+            end
+
             # Ensure the component is in the scene's uiElements
             if !(rect in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, rect)
             end
+
+           # if doesn't have click events, add click events 
+        #    if !contains(rect.clickEvents, clickEvents)
+        #         for event in clickEvents
+        #             UI.add_click_event(rect, event)
+        #         end
+        #     end
             
             return rect
         else
             # Create new rect component
-            rect = Rectangle("immediate_$(id)", position, size, color, fillMode; 
-                            id=id, isWorldEntity=isWorldEntity, 
-                            borderRadius=borderRadius, borderWidth=borderWidth, borderColor=borderColor,
-                            layer=layer)
+            rect = Rectangle(;
+                id="immediate_$(id)", 
+                name=name,
+                anchor=anchor,
+                anchorOffset=anchorOffset,
+                isWorldEntity=isWorldEntity, 
+                layer=layer,
+                position=position, 
+                color=color, 
+                fillMode=fillMode,
+                borderRadius=borderRadius, 
+                borderWidth=borderWidth, 
+                borderColor=borderColor,
+                isActive=isActive,
+                persistentBetweenScenes=persistentBetweenScenes,
+                clickEvents=clickEvents,
+                hoverEnterEvents=hoverEnterEvents,
+                hoverExitEvents=hoverExitEvents,
+                parent=parent,
+                size=size
+            )
             
             rect.isActive = isActive
             rect.persistentBetweenScenes = false
@@ -474,7 +631,11 @@ module ImmediateUIModule
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, rect)
-            
+
+            if rect.anchor.current_state != :none
+                UI.align_to_anchor(rect)
+            end
+
             return rect
         end
     end
@@ -932,26 +1093,16 @@ module ImmediateUIModule
         component_layers = Dict{String, Int}()
         
         # First pass: collect layers for each component and check expiration
-        for (id, component) in IMMEDIATE_UI_CACHE
-            # Skip if the component is not properly initialized
-            if !isdefined(component.element, :isActive) || component.element === nothing
-                push!(expired_ids, id)
-                continue
-            end
-            
+        for (composite_id, component) in IMMEDIATE_UI_CACHE     
             # Check if this component hasn't been used for a while
-            if !haskey(IMMEDIATE_UI_TIMESTAMPS, id) || current_time - IMMEDIATE_UI_TIMESTAMPS[id] > component.lifetime
-                push!(expired_ids, id)
-                continue
-            end
-            
-            # Skip inactive components
-            if isdefined(component.element, :isActive) && !component.element.isActive
+            if !haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime
+                @info "component $(composite_id) expired from lifetime $(component.lifetime)"
+                push!(expired_ids, composite_id)
                 continue
             end
             
             # Store the layer for sorting
-            component_layers[id] = isdefined(component.element, :layer) ? component.element.layer : 0
+            component_layers[composite_id] = component.element.layer
         end
         
         # Sort component IDs by layer

@@ -150,19 +150,14 @@ module SceneBuilderModule
         MAIN.scene.uiElements = scene[2]
         MAIN.scene.camera = scene[3]
         
-        if size.x < MAIN.scene.camera.size.x && size.x > 0
-            MAIN.scene.camera.size = Vector2(size.x, MAIN.scene.camera.size.y)
-        end
-        if size.y < MAIN.scene.camera.size.y && size.y > 0
-            MAIN.scene.camera.size = Vector2(MAIN.scene.camera.size.x, size.y)
-        end
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+            @info "Setting logical size to $(MAIN.scene.camera.size.x)x$(MAIN.scene.camera.size.y)"
             SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, MAIN.scene.camera.size.x, MAIN.scene.camera.size.y)
         end
         
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
-                UI.center_text(uiElement)
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -203,7 +198,7 @@ module SceneBuilderModule
 
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
-                UI.center_text(uiElement)
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -245,8 +240,21 @@ module SceneBuilderModule
     end
     
     function create_new_screen_button(this::Scene)
-        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"))
-        JulGame.initialize(screenButton)
+        screenButton = ScreenButton(
+            nothing; # No click event defined here by default
+            name="New Button", 
+            buttonUpSpritePath="ButtonUp.png", 
+            buttonDownSpritePath="ButtonDown.png", 
+            size=Math.Vector2(256, 64), 
+            position=Math.Vector2(0, 0), 
+            fontPath=joinpath("FiraCode-Regular.ttf"),
+            # text="", # Default
+            # textOffset=Math.Vector2(0,0), # Default
+            # Other parameters use defaults (anchor, layer, color, fontSize, etc.)
+        )
+        if !screenButton.isInitialized
+            JulGame.initialize(screenButton)
+        end
         push!(MAIN.scene.uiElements, screenButton)
     end
 
