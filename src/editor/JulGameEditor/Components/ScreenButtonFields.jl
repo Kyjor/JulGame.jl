@@ -35,21 +35,22 @@ function show_screenbutton_fields(selectedScreenButton, screenButtonField)
         end
 
     elseif fieldName == "color"
-       # Instead of using a function from another module, use CImGui directly here
-       colorCfloat = Cfloat[Value[1]/255, Value[2]/255, Value[3]/255, Value[4]/255]
+        # Instead of using a function from another module, use CImGui directly here
+        colorCfloat = Cfloat[Value[1]/255, Value[2]/255, Value[3]/255, Value[4]/255]
         
-       # Configure color editor options
-       misc_flags = CImGui.ImGuiColorEditFlags_AlphaPreview | 
-                   CImGui.ImGuiColorEditFlags_AlphaBar | 
-                   CImGui.ImGuiColorEditFlags_DisplayRGB
-       
-       if CImGui.ColorEdit4("$(screenButtonField)", colorCfloat, misc_flags)
-           newColor = (Int(abs(round(colorCfloat[1] * 255))), 
-                       Int(abs(round(colorCfloat[2] * 255))), 
-                       Int(abs(round(colorCfloat[3] * 255))), 
-                       Int(abs(round(colorCfloat[4] * 255))))
-           
-           setproperty!(selectedScreenButton, screenButtonField, Color(convert(Int32, round(r)), convert(Int32, round(g)), convert(Int32, round(b)), convert(Int32, round(a))))
+        # Configure color editor options
+        misc_flags = CImGui.ImGuiColorEditFlags_AlphaPreview | 
+                    CImGui.ImGuiColorEditFlags_AlphaBar | 
+                    CImGui.ImGuiColorEditFlags_DisplayRGB
+        
+        if CImGui.ColorEdit4("ScreenButtonColor", colorCfloat, misc_flags)
+            newColor = (Int(abs(round(colorCfloat[1] * 255))), 
+                        Int(abs(round(colorCfloat[2] * 255))), 
+                        Int(abs(round(colorCfloat[3] * 255))), 
+                        Int(abs(round(colorCfloat[4] * 255))))
+            
+            selectedScreenButton.color = newColor
+            selectedScreenButton.text = selectedScreenButton.text  # Trigger update
         end
     elseif fieldName == "position" || fieldName == "size"
         x = Cint(Value.x)
