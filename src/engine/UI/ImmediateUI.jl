@@ -339,6 +339,30 @@ module ImmediateUIModule
                 button.layer = layer
             end
             
+            if button.anchor.current_state != anchor
+                button.anchor.current_state = anchor
+            end
+            
+            if button.anchorOffset != anchorOffset
+                button.anchorOffset = anchorOffset
+            end
+
+            if button.isWorldEntity != isWorldEntity
+                button.isWorldEntity = isWorldEntity
+            end
+
+            if button.layer != layer
+                button.layer = layer
+            end
+
+            if button.parent != parent
+                button.parent = parent
+            end
+
+            if button.name != name
+                button.name = name
+            end
+
             # Check if button sprites need updating
             if (buttonUpPath != "" && button.buttonUpSpritePath != buttonUpPath) ||
                (buttonDownPath != "" && button.buttonDownSpritePath != buttonDownPath)
