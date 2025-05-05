@@ -193,7 +193,9 @@ function ImGui_ImplSDL2_NewFrame()
     # end
 
     ImGui_ImplSDL2_UpdateMouseData()
-    ImGui_ImplSDL2_UpdateMouseCursor() #TODO: If in game window, give up control to game. Also check the above function too
+    if !JulGame.IS_EDITOR_PLAY_MODE
+        ImGui_ImplSDL2_UpdateMouseCursor() #TODO: If in game window, give up control to game. Also check the above function too
+    end
 
     # Update game controllers (if enabled and available)
     #ImGui_ImplSDL2_UpdateGamepads()

@@ -155,7 +155,38 @@ module InputModule
                     scaled_y = 0
                 end
                 #@info "scaled_x: $scaled_x, scaled_y: $scaled_y"
-                this.mousePosition = Math.Vector2(scaled_x, scaled_y)
+                this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+            else
+                # Calculate mouse position relative to the game view window
+                raw_mouse_x = x[1] - JulGame.EditorGameViewPosition.x
+                raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
+
+                # Clamp relative position to the bounds of the game view
+                clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
+                clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
+
+                # Get camera size
+                camera_size = MAIN.scene.camera.size
+
+                # Scale the clamped mouse position from the game view size to the camera size
+                if JulGame.EditorGameViewSize.x > 0 && JulGame.EditorGameViewSize.y > 0 # Avoid division by zero
+                    scale_x = camera_size.x / JulGame.EditorGameViewSize.x
+                    scale_y = camera_size.y / JulGame.EditorGameViewSize.y
+
+                    scaled_x = clamped_mouse_x * scale_x
+                    scaled_y = clamped_mouse_y * scale_y
+
+                    # Update the mouse position
+                    this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+                else
+                    # If game view size is zero, set mouse position to 0,0 or handle as error
+                    this.mousePosition = Math.Vector2(0, 0)
+                end
+
+                # Debug printing (optional)
+                # println("Raw Mouse: (", x[1], ", ", y[1], ") | View Pos: (", JulGame.EditorGameViewPosition.x, ", ", JulGame.EditorGameViewPosition.y, ") | View Size: (", JulGame.EditorGameViewSize.x, ", ", JulGame.EditorGameViewSize.y, ")")
+                # println("Relative Mouse: (", raw_mouse_x, ", ", raw_mouse_y, ") | Clamped: (", clamped_mouse_x, ", ", clamped_mouse_y, ") | Scaled: (", this.mousePosition.x, ", ", this.mousePosition.y, ")")
+
             end
             
             if this.editorCallback !== nothing
@@ -191,12 +222,12 @@ module InputModule
                         mouseY = this.mousePosition.y
 
                         # UI Element position and size in screen space (MUST BE SCALED)
-                        screenElementX = (uiElement.position.x + this.mousePositionEditorGameWindowOffset.x)
-                        screenElementY = (uiElement.position.y + this.mousePositionEditorGameWindowOffset.y)
+                        screenElementX = uiElement.position.x # Use game world coordinates directly now
+                        screenElementY = uiElement.position.y
                         screenElementWidth = uiElement.size.x
                         screenElementHeight = uiElement.size.y
 
-                        # Check if the mouse is inside the UI element
+                        # Check if the mouse is inside the UI element (using game world coordinates)
                         if mouseX < screenElementX
                             eventWasInsideThisButton = false
                         elseif mouseX > screenElementX + screenElementWidth
@@ -222,7 +253,7 @@ module InputModule
                         JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
                         if evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition)"
-                            @info "clicked on $(uiElement.name), skipping rest of event loop"
+                            @debug "clicked on $(uiElement.name), skipping rest of event loop"
                             break
                         end
                     end

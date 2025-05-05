@@ -5,15 +5,13 @@ module JulGame
     MAIN = nothing
 
     IS_WEB::Bool = false
-    IS_EDITOR::Bool = false
-    IS_EDITOR_PLAY_MODE::Bool = false
     IS_DEBUG::Bool = false
     IS_PACKAGE_COMPILED::Bool = false
     IS_CHANGING_SCENE::Bool = false
-
+    
     # Temporary variable for recent project path selection
     TEMP_SELECTED_PATH::String = ""
-
+    
     DELTA_TIME = 0.0
     # TODO: Create a globals file
     
@@ -22,10 +20,13 @@ module JulGame
     IMAGE_CACHE::Dict = Dict{String, Any}()
     FONT_CACHE::Dict = Dict{String, Any}()
     AUDIO_CACHE::Dict = Dict{String, Any}()
-
+    
     BUILT_IN_ASSETS::Dict = Dict{String, Any}()
     BUILT_IN_ASSETS["Font"] = read(joinpath(@__DIR__, "engine", "Assets", "Fonts", "FiraCode-Regular.ttf"))
-
+    
+    IS_EDITOR::Bool = false
+    IS_EDITOR_PLAY_MODE::Bool = false
+    
     Coroutines::Vector = []
 
     ProjectModule = ""
@@ -77,6 +78,22 @@ module JulGame
     include("Math/Math.jl")
     using .Math: Math
     export Math
+
+    EditorGameWindowSize::Math.Vector2 = Math.Vector2(0, 0)
+
+    """
+        EditorGameViewPosition::Math.Vector2
+
+    Stores the top-left screen coordinate of the editor's game view panel. Updated by `GameViewer.jl`.
+    """
+    EditorGameViewPosition = Math.Vector2(0,0)
+
+    """
+        EditorGameViewSize::Math.Vector2
+
+    Stores the rendered size (potentially scaled/letterboxed) of the editor's game view panel. Updated by `GameViewer.jl`.
+    """
+    EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
 
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule
