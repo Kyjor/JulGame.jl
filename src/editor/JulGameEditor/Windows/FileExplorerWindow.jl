@@ -147,7 +147,7 @@ function show_window(show_file_explorer::Ref{Bool})
                          # Perform the move operation
                          try
                              dest_path = joinpath(target_folder_path, basename(source_path))
-                             @info "Moving '$source_path' to '$dest_path'"
+                             @debug "Moving '$source_path' to '$dest_path'"
                              mv(source_path, dest_path; force=true) # Use force to overwrite if needed? Be careful.
                              # Maybe add confirmation for overwrite?
                              selected_item_path[] = "" # Clear selection after move
@@ -234,7 +234,7 @@ function handle_popups()
                         old_path = selected_item_path[]
                         new_path = joinpath(dirname(old_path), new_name)
                         mv(old_path, new_path)
-                        @info "Renamed '$old_path' to '$new_path'"
+                        @debug "Renamed '$old_path' to '$new_path'"
                         selected_item_path[] = new_path # Update selection to new path
                     catch e
                         @error "Error renaming item: $e"
@@ -272,7 +272,7 @@ function handle_popups()
                         new_folder_path = joinpath(current_path[], folder_name)
                         if !exists(new_folder_path)
                              mkdir(new_folder_path)
-                             @info "Created folder: $new_folder_path"
+                             @debug "Created folder: $new_folder_path"
                         else
                             @warn "Folder '$folder_name' already exists."
                             # Show warning popup?
@@ -311,7 +311,7 @@ function handle_popups()
                 try
                     path_to_delete = item_to_delete[]
                     rm(path_to_delete; recursive=true, force=true) # Use recursive for folders, force for potential issues
-                    @info "Deleted: $path_to_delete"
+                    @debug "Deleted: $path_to_delete"
                     # Clear selection if the deleted item was selected
                     if selected_item_path[] == path_to_delete
                         selected_item_path[] = ""

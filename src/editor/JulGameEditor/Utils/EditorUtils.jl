@@ -175,7 +175,7 @@ function select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, d
             scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(dir))
             # Update BasePath when directly loading a project
             JulGame.BasePath = string(dir)
-            @info("Base path updated: $(JulGame.BasePath)")
+            @debug("Base path updated: $(JulGame.BasePath)")
         end
     end
 
@@ -198,7 +198,7 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
                     scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir)
                     # Update BasePath when selecting a project
                     JulGame.BasePath = dir
-                    @info("Base path updated: $(JulGame.BasePath)")
+                    @debug("Base path updated: $(JulGame.BasePath)")
                 end
                 return dir
             end
@@ -254,7 +254,7 @@ function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPa
             scenesLoadedFromFolder[] = get_all_scenes_from_base_folder(joinpath(newProjectPath, newProjectText[]))
             # Update BasePath when creating a new project
             JulGame.BasePath = newProjectPath
-            @info("Base path updated: $(JulGame.BasePath)")
+            @debug("Base path updated: $(JulGame.BasePath)")
         end
 
         if pathAlreadyExists
@@ -454,7 +454,7 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
 
             for origin in origin
                 if !hasDropConflict(filteredEntities, origin, destination) && filteredEntities[origin].parent != filteredEntities[destination] && filteredEntities[origin] != filteredEntities[destination]
-                    @info "Moving entity $(filteredEntities[origin].name) to $(filteredEntities[destination].name)"
+                    @debug "Moving entity $(filteredEntities[origin].name) to $(filteredEntities[destination].name)"
                     filteredEntities[origin].parent = filteredEntities[destination]
                 end
             end
@@ -559,7 +559,7 @@ function handle_parent_entity_selection(entity, children, hierarchyEntitySelecti
             
             origin = unsafe_load(Ptr{Cint}(payload.Data))
             if !hasDropConflict(filteredEntities, origin, n) && filteredEntities[origin].parent != entity && filteredEntities[origin] != entity
-                @info "Moving entity $(filteredEntities[origin].name) to $(entity.name)"
+                @debug "Moving entity $(filteredEntities[origin].name) to $(entity.name)"
                 # Set the parent of the dragged entity to this entity
                 filteredEntities[origin].parent = entity
             end

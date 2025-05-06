@@ -53,7 +53,7 @@ module MainLoopModule
 		function MainLoop()
 			this::MainLoop = new()
 
-			@info "Initializing SDL"
+			@debug "Initializing SDL"
 			if SDL2.SDL_Init(SDL2.SDL_INIT_EVERYTHING) != 0
 				@error "Failed to initialize SDL, $(unsafe_string(SDL2.SDL_GetError()))"
 			end

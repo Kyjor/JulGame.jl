@@ -39,10 +39,10 @@ module SceneBuilderModule
     
     function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false, preloadAllScenes::Bool=false)
         if config === nothing
-            @info("Config is nothing, parsing config")
+            @debug("Config is nothing, parsing config")
             config = parse_config()
         else
-            @info("Config is not nothing, using provided config")
+            @debug("Config is not nothing, using provided config")
         end
 
         config = fill_in_config(config)
@@ -89,7 +89,7 @@ module SceneBuilderModule
 
             # Preload all scenes if requested
             if preloadAllScenes
-                @info "Preloading all scenes..."
+                @debug "Preloading all scenes..."
                 scenesDir = joinpath(BasePath, "scenes")
                 if isdir(scenesDir)
                     for file in readdir(scenesDir)
@@ -99,7 +99,7 @@ module SceneBuilderModule
                             SceneReaderModule.preload_scene(scenePath)
                         end
                     end
-                    @info "Finished preloading scenes"
+                    @debug "Finished preloading scenes"
                 else
                     @warn "Scenes directory not found: $scenesDir"
                 end
@@ -117,7 +117,7 @@ module SceneBuilderModule
             @debug "Deserializing scene"
             # Use preloaded scene if available
             if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
-                @info "Using preloaded scene: $(this.scene)"
+                @debug "Using preloaded scene: $(this.scene)"
                 scene = JulGame.PRELOADED_SCENES[this.scene]
             else
                 scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
@@ -151,7 +151,7 @@ module SceneBuilderModule
         MAIN.scene.camera = scene[3]
         
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
-            @info "Setting logical size to $(MAIN.scene.camera.size.x)x$(MAIN.scene.camera.size.y)"
+            @debug "Setting logical size to $(MAIN.scene.camera.size.x)x$(MAIN.scene.camera.size.y)"
             SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, MAIN.scene.camera.size.x, MAIN.scene.camera.size.y)
         end
         

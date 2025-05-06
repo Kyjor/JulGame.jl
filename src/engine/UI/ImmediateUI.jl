@@ -1142,7 +1142,7 @@ module ImmediateUIModule
         for (composite_id, component) in IMMEDIATE_UI_CACHE     
             # Check if this component hasn't been used for a while
             if !haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime
-                @info "component $(composite_id) expired from lifetime $(component.lifetime)"
+                @debug "component $(composite_id) expired from lifetime $(component.lifetime)"
                 push!(expired_ids, composite_id)
                 continue
             end

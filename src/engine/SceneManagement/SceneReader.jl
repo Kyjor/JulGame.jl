@@ -51,7 +51,7 @@ module SceneReaderModule
     function deserialize_scene(filePath)
         try
             if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
-                @info "deserialize_scene: Using preloaded scene: $(basename(filePath))"
+                @debug "deserialize_scene: Using preloaded scene: $(basename(filePath))"
                 return JulGame.PRELOADED_SCENES[basename(filePath)]
             end
 

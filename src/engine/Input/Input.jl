@@ -119,11 +119,11 @@ module InputModule
             evt = event_ref[]
             handle_window_events(this, evt)
 
-            # @info "polling input"
+            # @debug "polling input"
             x,y = Int32[1], Int32[1]
             SDL2.SDL_GetMouseState(pointer(x), pointer(y))
             this.mousePosition = Math.Vector2(x[1], y[1])
-            #@info "new mouse pos: $(this.mousePosition)"
+            #@debug "new mouse pos: $(this.mousePosition)"
 
             if !JulGame.IS_EDITOR
                 # Get current window size
@@ -154,7 +154,7 @@ module InputModule
                     scaled_x = 0
                     scaled_y = 0
                 end
-                #@info "scaled_x: $scaled_x, scaled_y: $scaled_y"
+                #@debug "scaled_x: $scaled_x, scaled_y: $scaled_y"
                 this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
             else
                 # Calculate mouse position relative to the game view window
@@ -648,12 +648,12 @@ module InputModule
             raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
             if rw != C_NULL
-                @info("loading cursor from cache")
+                @debug("loading cursor from cache")
                 @debug("comma separated path: ", get_comma_separated_path(imagePath))
                 surface = SDL2.IMG_Load_RW(rw, 1)
             end
         else 
-            @info("loading cursor from disk")
+            @debug("loading cursor from disk")
             surface = SDL2.IMG_Load(pointer(joinpath(JulGame.BasePath, "assets", "images", imagePath)))
         end
         @debug "Loading image from disk $(fullPath) for sprite, there are $(length(JulGame.IMAGE_CACHE)) images in cache"
@@ -693,7 +693,7 @@ module InputModule
         if cursor != C_NULL
             set_cursor(cursor)
             this.defaultCursor = cursor
-            @info "Cursor set successfully! Scaled by $(scale_factor)x, Hotspot: ($new_x, $new_y)"
+            @debug "Cursor set successfully! Scaled by $(scale_factor)x, Hotspot: ($new_x, $new_y)"
         else
             @error "Issue loading cursor: $(unsafe_string(SDL2.SDL_GetError()))"
         end

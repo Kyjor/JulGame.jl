@@ -130,7 +130,7 @@ module Editor
                 currentSelectedProjectPath[] = most_recent_project
                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(most_recent_project))
                 JulGame.BasePath = most_recent_project
-                @info("Base path: $(JulGame.BasePath)")
+                @debug("Base path: $(JulGame.BasePath)")
                 # Update window title
                 SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(most_recent_project)")
                 # Show notification
@@ -372,7 +372,7 @@ module Editor
                                     scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
                                     # Update BasePath when selecting a recent project
                                     JulGame.BasePath = currentSelectedProjectPath[]
-                                    @info("Base path updated: $(JulGame.BasePath)")
+                                    @debug("Base path updated: $(JulGame.BasePath)")
                                 end
                                 CImGui.SetItemDefaultFocus()
                                 CImGui.SameLine()
@@ -967,7 +967,7 @@ module Editor
                     condition, watch_task = start_file_watcher(string(currentSelectedProjectPath[]), filesToReload)
                     # Update BasePath when project changes
                     JulGame.BasePath = currentSelectedProjectPath[]
-                    @info("Base path updated: $(JulGame.BasePath)")
+                    @debug("Base path updated: $(JulGame.BasePath)")
                     
                 elseif current_path !== nothing && current_path != "" && condition !== nothing && !istaskdone(watch_task)
                     notify(condition)
@@ -1327,7 +1327,7 @@ module Editor
 
     function start_file_watcher(path::String, filesToReload)
         try
-            @info "Starting file watcher"
+            @debug "Starting file watcher"
             condition = Condition()
             watch_task = @task poll_files(condition, path, filesToReload) # FileWatching.watch_folder(joinpath(currentSelectedProjectPath[], "scripts"), 0.1)
             schedule(watch_task)
