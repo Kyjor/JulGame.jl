@@ -466,20 +466,6 @@ module RectangleModule
         push!(this.hoverEvents, event)
     end =#
 
-    function UI.handle_event(this::Rectangle, evt, x, y)    
-        if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-            for eventToCall in this.clickEvents
-                @debug("calling event $(eventToCall) with $(evt) and $(x) and $(y)")
-                try
-                    Base.invokelatest(eventToCall, (evt = evt, x = x, y = y))
-                catch 
-                    Base.invokelatest(eventToCall)
-                end
-            end
-        end
-    end
-
     function UI.destroy(this::Rectangle)
         # Nothing needed for cleanup
     end

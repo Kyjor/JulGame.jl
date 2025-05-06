@@ -31,6 +31,7 @@ module SpriteModule
         offset::Math.Vector2f
         parent::Any # Entity
         position::Math.Vector2f
+        lastRenderedScreenPosition::Math.Vector2f
         rotation::Float64
         pixelsPerUnit::Int
         size::Math.Vector2
@@ -55,6 +56,7 @@ module SpriteModule
             this.rotation = rotation
             this.texture = C_NULL
             this.isFloatPrecision = false
+            this.lastRenderedScreenPosition = Math.Vector2f(0,0)
 
             if isCreatedInEditor
                 return this
@@ -153,6 +155,7 @@ module SpriteModule
             Ref(SDL2.SDL_Point(Math.TypeConversions.safe_int32_convert(round(calculatedCenter.x)), Math.TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
             Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
     
+        this.lastRenderedScreenPosition = Math.Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
         # Render with appropriate precision
         renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if renderFn(

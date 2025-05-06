@@ -31,6 +31,8 @@ mutable struct UIElementInstance
     function UIElementInstance()
         this = new()
 
+        this.hoverEnterEvents = Function[]
+        this.hoverExitEvents = Function[]
 
         return this
     end
@@ -54,13 +56,17 @@ end
 function Base.setproperty!(script::UIElement, property::Symbol, value)
     add_relationship_if_not_exists(script)
 
-    if hasfield(typeof(relationships[script]), property)
+    if hasfield(typeof(relationships[script]), property) # this is the child type TextBox, Rectangle, etc
         #println("setproperty! from parent: $(property) ")
         setfield!(relationships[script], property, value)
-    else
+        if property == :isHovered
+            UI.handle_hover_event(script, value)
+        end
+    else # this is the parent type UIElement
         #println("setproperty! from child: $(property) ")
         setfield!(script, property, value)
     end
+
 
     if contains("$(typeof(script))", "TextBox")
         @debug "rerendering text for $(script)"
@@ -177,5 +183,48 @@ function UI.align_to_anchor(this::UIElement)
         @debug "No anchor set for textbox $(this.name)"
     else
         @error "Invalid anchor state: $(this.anchor.current_state)"
+    end
+end
+
+function UI.add_hover_enter_event(this::UIElement, event)
+    push!(this.hoverEnterEvents, event)
+end
+
+function UI.add_hover_exit_event(this::UIElement, event)
+    push!(this.hoverExitEvents, event)
+end
+
+function UI.handle_event(this::UIElement, evt, x, y)
+    isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
+    if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
+        if isScreenButton
+            this.currentTexture = this.buttonDownTexture
+        end
+    elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
+        if isScreenButton
+            this.currentTexture = this.buttonUpTexture
+        end
+        for eventToCall in this.clickEvents
+            try
+                Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+            catch e
+                Base.invokelatest(eventToCall)
+            end
+        end
+    elseif evt.type == SDL2.SDL_MOUSEMOTION
+        if this.isHovered == false
+            this.isHovered = true
+        end
+    end 
+end
+
+function UI.handle_hover_event(this::UIElement, isEntering::Bool)
+    events = isEntering ? this.hoverEnterEvents : this.hoverExitEvents
+    for event in events
+        try
+            Base.invokelatest(event)
+        catch e
+            @error "Error calling hover event: $(e)"
+        end
     end
 end

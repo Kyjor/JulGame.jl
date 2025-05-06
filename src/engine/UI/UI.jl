@@ -4,9 +4,12 @@
 
     import ..JulGame: 
         add_click_event,
+        add_hover_enter_event,
+        add_hover_exit_event,
         align_to_anchor,
         destroy,
         handle_event,
+        handle_hover_event,
         handle_window_resize,
         initialize,
         load_button_sprite_editor,

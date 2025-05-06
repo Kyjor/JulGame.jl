@@ -78,6 +78,7 @@ module TextBoxModule
             this.color = color
             this.maxLineWidth = maxLineWidth
             this.wrapWords = wrapWords
+            this.isHovered = false
             
             this.textTexture = C_NULL
             this.renderText = C_NULL
@@ -151,9 +152,6 @@ module TextBoxModule
     end
 
     function UI.load_font(this::TextBox, basePath::String, fontPath::String)
-        if JulGame.IS_CHANGING_SCENE
-            return
-        end
         @debug string("loading font from $(basePath)\\$(fontPath)")
         # Calculate the true font size based on window resolution
         #trueFontSize = get_true_font_size(this.fontSize)
@@ -221,21 +219,6 @@ module TextBoxModule
         push!(this.clickEvents, event)
     end
 
-    function UI.handle_event(this::TextBox, evt, x, y)
-        if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-            for eventToCall in this.clickEvents
-                try
-                    Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
-                catch e
-                    Base.invokelatest(eventToCall)
-                end
-            end
-        elseif evt.type == SDL2.SDL_MOUSEMOTION
-            this.isHovered = true
-        end 
-    end
-
     function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
             if fontPath == "Default" || fontPath == ""
@@ -280,7 +263,7 @@ module TextBoxModule
     # Examples
     """
     function UI.rerender_text(this::TextBox)
-        if JulGame.IS_CHANGING_SCENE || this.font == C_NULL || this.text == ""
+        if JulGame.IS_CHANGING_SCENE
             return
         end
         free_text_resources(this)

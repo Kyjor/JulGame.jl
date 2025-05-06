@@ -298,23 +298,6 @@ module ScreenButtonModule
         push!(this.clickEvents, event)
     end
 
-    function UI.handle_event(this::ScreenButton, evt, x, y)
-        if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        this.currentTexture = this.buttonDownTexture
-        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-            this.currentTexture = this.buttonUpTexture
-            for eventToCall in this.clickEvents
-                try
-                    Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
-                catch
-                    Base.invokelatest(eventToCall)
-                end
-            end
-        elseif evt.type == SDL2.SDL_MOUSEMOTION
-            this.isHovered = true
-        end 
-    end
-    
     function UI.destroy(this::ScreenButton)
         if this.buttonDownTexture != C_NULL
             SDL2.SDL_DestroyTexture(this.buttonDownTexture)

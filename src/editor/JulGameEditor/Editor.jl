@@ -30,7 +30,10 @@ module Editor
     # Include editor scripts
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "EditorScripts"); join=true)))
     
-    include("src/additional_precompile.jl")
+    if get(ENV, "PRECOMPILE", "false") == "true"
+        include("src/additional_precompile.jl")
+    end
+    
     # Import modules we need
     using .CodeEditorModule
 

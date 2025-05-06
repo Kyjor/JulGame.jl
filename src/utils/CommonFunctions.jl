@@ -3,6 +3,8 @@ function add_circle_collider end
 function add_click_event end
 function add_collider end
 function add_collision_event end
+function add_hover_enter_event end
+function add_hover_exit_event end
 function add_mesh3d end
 function add_rigidbody end
 function add_script end
@@ -33,6 +35,7 @@ function get_type end
 function get_velocity end
 function get_window_size end
 function handle_event end
+function handle_hover_event end
 function handle_window_resize end
 function initialize end
 function load_button_sprite_editor end

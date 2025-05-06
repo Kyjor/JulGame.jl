@@ -216,7 +216,7 @@ module InputModule
                             continue
                         end
                         # Check position of button to see which we are interacting with
-                        eventWasInsideThisButton = true
+                        eventWasInsideThisElement = true
 
                         mouseX = this.mousePosition.x
                         mouseY = this.mousePosition.y
@@ -229,18 +229,20 @@ module InputModule
 
                         # Check if the mouse is inside the UI element (using game world coordinates)
                         if mouseX < screenElementX
-                            eventWasInsideThisButton = false
+                            eventWasInsideThisElement = false
                         elseif mouseX > screenElementX + screenElementWidth
-                            eventWasInsideThisButton = false
+                            eventWasInsideThisElement = false
                         elseif mouseY < screenElementY
-                            eventWasInsideThisButton = false
+                            eventWasInsideThisElement = false
                         elseif mouseY > screenElementY + screenElementHeight
-                            eventWasInsideThisButton = false
+                            eventWasInsideThisElement = false
                         end
 
 
-                        if !eventWasInsideThisButton
-                            uiElement.isHovered = false
+                        if !eventWasInsideThisElement
+                            if uiElement.isHovered
+                                uiElement.isHovered = false
+                            end
                             continue
                         end
                         insideAnyElement = true

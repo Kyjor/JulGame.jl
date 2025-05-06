@@ -640,7 +640,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if length(this.debugTextBoxes) == 0
 					for i = eachindex(statTexts)
-				 		textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 16, position = Math.Vector2(0, 35 * i))
+				 		textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 24, position = Math.Vector2(0, 35 * i))
 				 		push!(this.debugTextBoxes, textBox)
                          JulGame.initialize(textBox)
 				 	end
