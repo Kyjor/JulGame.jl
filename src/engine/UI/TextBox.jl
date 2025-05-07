@@ -268,20 +268,19 @@ module TextBoxModule
         end
         free_text_resources(this)
 
+        if this.text == ""
+            this.text = " "
+        end
+
         # Check if we need to wrap text
-        if this.maxLineWidth > 0
-            # Use SDL_TTF's word wrapping functionality
-            if this.wrapWords
-                this.renderText = SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])), Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
-            else
-                # For character wrapping, we need to manually handle it
-                # First measure each character and determine where line breaks should occur
-                wrapped_text = wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords)
-                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, wrapped_text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
-            end
-        else
+        color = SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4]))
+        this.renderText = if this.maxLineWidth > 0 && this.font != C_NULL && this.text != ""
+            SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
+        elseif this.font != C_NULL && this.text != ""
             # No wrapping needed
-            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
+            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
+        else
+            C_NULL
         end
 
         if this.renderText == C_NULL
