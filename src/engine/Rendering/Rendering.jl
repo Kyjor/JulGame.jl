@@ -5,7 +5,7 @@ using ..JulGame
 #     function_to_modify,
 
 
-    function queue_render_function(render_function::Function; first_render::Bool = true, isWorldEntity::Bool = true, layer::Int = 0)
-        push!(JulGame.RENDER_FUNCTIONS, (function_to_call = render_function, first_render = first_render, isWorldEntity = isWorldEntity, layer = layer))
+    function queue_render_function(render_function::Function; isWorldEntity::Bool = true, layer::Int = 0)
+        push!(JulGame.RENDER_FUNCTIONS, (function_to_call = render_function, isWorldEntity = isWorldEntity, layer = layer))
     end
 end

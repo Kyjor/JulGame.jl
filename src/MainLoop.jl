@@ -617,32 +617,41 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 			#region UI
 			# Sort UI elements by layer before rendering
-			render_functions_to_call = filter(x -> !x.isWorldEntity && x.first_render, JulGame.RENDER_FUNCTIONS)
+			uiRenderingOrder = []
+			for uiElement in this.scene.uiElements
+				push!(uiRenderingOrder, (uiElement.layer, uiElement))
+			end
+			render_functions_to_call = filter(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
+			filter!(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			for render_function in render_functions_to_call
+				push!(uiRenderingOrder, (render_function.layer, render_function))
+			end
+
+			sort!(uiRenderingOrder, by = x -> x[1])
+			for i = eachindex(uiRenderingOrder)
 				try
-					render_function.function_to_call()
+					if uiRenderingOrder[i][2] isa NamedTuple
+						uiRenderingOrder[i][2].function_to_call()
+					else
+						JulGame.render(uiRenderingOrder[i][2])
+					end
 				catch e
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
+					if this.testMode
+						rethrow(e)
+					else
+						parent_info = ""
+						if isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)
+							parent_info = "a queued render function ($(uiRenderingOrder[i][2].function_to_call))"
+						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
+							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
+						end
+						println(parent_info, " has a problem with it's render function")
+						@error string(e)
+						Base.show_backtrace(stdout, catch_backtrace())
+					end
 				end
-				# remove the function from the render functions
-				filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
 			end
-			sorted_ui_elements = sort(this.scene.uiElements, by = x -> isdefined(x, :layer) ? x.layer : 0)
-			for uiElement in sorted_ui_elements
-                JulGame.render(uiElement)
-			end
-			render_functions_to_call = filter(x -> !x.isWorldEntity && !x.first_render, JulGame.RENDER_FUNCTIONS)
-			for render_function in render_functions_to_call
-				try
-					render_function.function_to_call()
-				catch e
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
-				end
-				# remove the function from the render functions
-				filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
-			end
+			
 
 			# Render all immediate UI components
 			UI.ImmediateUIModule.render_all_immediate_components()
@@ -762,49 +771,43 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 		end
 
-		sort!(renderOrder, by = x -> x[1])
-		sort!(JulGame.RENDER_FUNCTIONS, by = x -> x.layer)
-		render_functions_to_call = filter(x -> x.isWorldEntity && x.first_render, JulGame.RENDER_FUNCTIONS)
+		render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
+		filter!(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 		for render_function in render_functions_to_call
-			try
-				println("Calling render function: ", render_function.function_to_call)
-				render_function.function_to_call()
-			catch e
-				@error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
-			end
-			# remove the function from the render functions
-			filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
+			push!(renderOrder, (render_function.layer, render_function))
 		end
+		sort!(renderOrder, by = x -> x[1])
+		
 		for i = eachindex(renderOrder)
 			try
 				rendercount += 1
 				if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
 					Component.render(renderOrder[i][2], this)
-				else
+				elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
 					Component.draw(renderOrder[i][2], camera)
+				elseif renderOrder[i][2] isa NamedTuple
+					renderOrder[i][2].function_to_call()
+				else
+					println("Unknown item type: ", typeof(renderOrder[i][2]))
 				end
 			catch e
 				if this.testMode
 					rethrow(e)
 				else
-					println(renderOrder[i][2].parent.name, " with id: ", renderOrder[i][2].parent.id, " has a problem with it's component")
+					parent_info = ""
+					if isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)
+						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
+					elseif hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== nothing && isa(renderOrder[i][2].parent, JulGame.EntityModule.Entity)
+						parent_info = "$(renderOrder[i][2].parent.name) with id: $(renderOrder[i][2].parent.id)"
+					else 
+						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
+					end
+					println(parent_info, " has a problem with it's component")
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 				end
 			end
 		end
-	end
-	render_functions_to_call = filter(x -> x.isWorldEntity && !x.first_render, JulGame.RENDER_FUNCTIONS)
-	for render_function in render_functions_to_call
-		try
-			render_function.function_to_call()
-		catch e
-			@error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
-		end
-		# remove the function from the render functions
-		filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
 	end
 
 	function start_game_in_editor(this::MainLoop, path::String)
