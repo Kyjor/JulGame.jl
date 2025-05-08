@@ -631,7 +631,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			for i = eachindex(uiRenderingOrder)
 				try
 					if uiRenderingOrder[i][2] isa NamedTuple
-						uiRenderingOrder[i][2].function_to_call()
+						func = uiRenderingOrder[i][2].function_to_call
+						Base.invokelatest(func)
 					else
 						JulGame.render(uiRenderingOrder[i][2])
 					end
@@ -786,7 +787,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
 					Component.draw(renderOrder[i][2], camera)
 				elseif renderOrder[i][2] isa NamedTuple
-					renderOrder[i][2].function_to_call()
+					# get the params	
+					func = renderOrder[i][2].function_to_call
+					Base.invokelatest(func)
 				else
 					println("Unknown item type: ", typeof(renderOrder[i][2]))
 				end
@@ -802,7 +805,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					else 
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					end
-					println(parent_info, " has a problem with it's component")
+					println(parent_info, " has a problem with rendering")
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 				end
