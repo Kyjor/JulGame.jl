@@ -284,7 +284,7 @@ module TextBoxModule
         end
 
         if this.renderText == C_NULL
-            error("Failed to render text for textbox $(this.name)")
+            @debug("Failed to render text for textbox $(this.name)")
             return
         end
 

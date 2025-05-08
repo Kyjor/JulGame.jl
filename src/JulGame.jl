@@ -28,6 +28,7 @@ module JulGame
     IS_EDITOR_PLAY_MODE::Bool = false
     
     Coroutines::Vector = []
+    RENDER_FUNCTIONS::Vector = []
 
     ProjectModule = ""
     ScriptModule = Module(:Scripts)
@@ -128,7 +129,11 @@ module JulGame
     include("engine/SceneManagement/SceneManagement.jl")
     using .SceneManagement
     export SceneBuilderModule, SceneLoaderModule, SceneReaderModule, SceneWriterModule 
-    
+
+    include("engine/Rendering/Rendering.jl")
+    using .Rendering
+    export Rendering
+
     include("MainLoop.jl") 
     using .MainLoopModule: MainLoop
     export MainLoop

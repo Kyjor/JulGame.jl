@@ -617,9 +617,31 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 			#region UI
 			# Sort UI elements by layer before rendering
+			render_functions_to_call = filter(x -> !x.isWorldEntity && x.first_render, JulGame.RENDER_FUNCTIONS)
+			for render_function in render_functions_to_call
+				try
+					render_function.function_to_call()
+				catch e
+					@error string(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+				# remove the function from the render functions
+				filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
+			end
 			sorted_ui_elements = sort(this.scene.uiElements, by = x -> isdefined(x, :layer) ? x.layer : 0)
 			for uiElement in sorted_ui_elements
                 JulGame.render(uiElement)
+			end
+			render_functions_to_call = filter(x -> !x.isWorldEntity && !x.first_render, JulGame.RENDER_FUNCTIONS)
+			for render_function in render_functions_to_call
+				try
+					render_function.function_to_call()
+				catch e
+					@error string(e)
+					Base.show_backtrace(stdout, catch_backtrace())
+				end
+				# remove the function from the render functions
+				filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
 			end
 
 			# Render all immediate UI components
@@ -637,6 +659,14 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					"Raw Mouse pos: $(rawMousePos.x),$(rawMousePos.y)",
 					"Mouse pos world: $(this.input.mousePositionWorld.x),$(this.input.mousePositionWorld.y)"
 				]
+
+				# Draw a gray rect under the debug textboxes
+				rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
+				SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
+				currentColor = (r = rgba.r[], g = rgba.g[], b = rgba.b[], a = rgba.a[])
+				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 100, 100, 100, 255)
+				SDL2.SDL_RenderFillRect(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(0, 35, 400, 35 * length(statTexts))))
+				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, currentColor[1], currentColor[2], currentColor[3], currentColor[4])
 
 				if length(this.debugTextBoxes) == 0
 					for i = eachindex(statTexts)
@@ -733,6 +763,19 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		end
 
 		sort!(renderOrder, by = x -> x[1])
+		sort!(JulGame.RENDER_FUNCTIONS, by = x -> x.layer)
+		render_functions_to_call = filter(x -> x.isWorldEntity && x.first_render, JulGame.RENDER_FUNCTIONS)
+		for render_function in render_functions_to_call
+			try
+				println("Calling render function: ", render_function.function_to_call)
+				render_function.function_to_call()
+			catch e
+				@error string(e)
+				Base.show_backtrace(stdout, catch_backtrace())
+			end
+			# remove the function from the render functions
+			filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
+		end
 		for i = eachindex(renderOrder)
 			try
 				rendercount += 1
@@ -751,6 +794,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 			end
 		end
+	end
+	render_functions_to_call = filter(x -> x.isWorldEntity && !x.first_render, JulGame.RENDER_FUNCTIONS)
+	for render_function in render_functions_to_call
+		try
+			render_function.function_to_call()
+		catch e
+			@error string(e)
+			Base.show_backtrace(stdout, catch_backtrace())
+		end
+		# remove the function from the render functions
+		filter!(x -> x != render_function, JulGame.RENDER_FUNCTIONS)
 	end
 
 	function start_game_in_editor(this::MainLoop, path::String)
