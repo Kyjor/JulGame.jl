@@ -115,6 +115,10 @@ module JulGame
     include("engine/Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule
+
+    include("engine/FX/FX.jl")
+    using .FX
+    export ImageFXModule
     
     include("engine/Camera/Camera.jl")
     using .CameraModule: Camera

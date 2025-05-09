@@ -15,6 +15,7 @@ module SpriteModule
         rotation::Float64
         pixelsPerUnit::Int
         center::Math.Vector2f
+        anchor::Symbol
     end
 
     export InternalSprite
@@ -36,8 +37,9 @@ module SpriteModule
         pixelsPerUnit::Int
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+        anchor::Symbol
         
-        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=-1, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5))
+        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=-1, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center)
             this = new()
 
             this.offset = Math.Vector2f()
@@ -57,6 +59,7 @@ module SpriteModule
             this.texture = C_NULL
             this.isFloatPrecision = false
             this.lastRenderedScreenPosition = Math.Vector2f(0,0)
+            this.anchor = anchor
 
             if isCreatedInEditor
                 return this
@@ -132,10 +135,45 @@ module SpriteModule
             scaledHeight = cropHeight * scaleFactor * scaleY
         end
     
-        # Compute centered position
-        # Adjust for scaling to keep the sprite centered on the transform
-        centeredX = adjustedX - (scaledWidth - SCALE_UNITS * scaleX) / 2
-        centeredY = adjustedY - (scaledHeight - SCALE_UNITS * scaleY) / 2
+        # Compute position based on anchor
+        centeredX = adjustedX
+        centeredY = adjustedY
+        
+        # Apply anchor positioning
+        if this.anchor == :center
+            # Center anchor (default behavior)
+            centeredX -= (scaledWidth - SCALE_UNITS * scaleX) / 2
+            centeredY -= (scaledHeight - SCALE_UNITS * scaleY) / 2
+        elseif this.anchor == :top
+            # Top anchor
+            centeredX -= (scaledWidth - SCALE_UNITS * scaleX) / 2
+            # No adjustment for Y
+        elseif this.anchor == :bottom
+            # Bottom anchor
+            centeredX -= (scaledWidth - SCALE_UNITS * scaleX) / 2
+            centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+        elseif this.anchor == :left
+            # Left anchor
+            centeredY -= (scaledHeight - SCALE_UNITS * scaleY) / 2
+            # No adjustment for X
+        elseif this.anchor == :right
+            # Right anchor
+            centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
+            centeredY -= (scaledHeight - SCALE_UNITS * scaleY) / 2
+        elseif this.anchor == :topleft
+            # Top-left anchor
+            # No adjustment needed
+        elseif this.anchor == :topright
+            # Top-right anchor
+            centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
+        elseif this.anchor == :bottomleft
+            # Bottom-left anchor
+            centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+        elseif this.anchor == :bottomright
+            # Bottom-right anchor
+            centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
+            centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+        end
     
         # Select float or integer precision
         if this.isFloatPrecision
