@@ -341,371 +341,13 @@ module ImageFXModule
         SDL2.SDL_imageFilterAddByte(pointer(src), pointer(dest), Cuint(length), Cuint(byte))
     end
     
-    # Advanced health bar implementations using SDL2_gfx
-    export create_gradient_health_bar
-    """
-    Creates a health bar with gradient effects based on health percentage
+    # Global cache to store original textures for sprites
+    const ORIGINAL_SPRITE_CACHE = Dict{String, Ptr{SDL2.LibSDL2.SDL_Surface}}()
     
-    # Arguments
-    - `sprite::SpriteModule.InternalSprite`: The sprite to modify
-    - `percentage::Float64`: Health percentage (0.0 to 1.0)
-    - `low_color::NTuple{3, Int}`: RGB color for low health (Default: red)
-    - `high_color::NTuple{3, Int}`: RGB color for high health (Default: green)
-    
-    # Returns
-    - The original sprite with updated pixel data and texture
-    """
-    function create_gradient_health_bar(sprite::SpriteModule.InternalSprite, percentage::Float64;
-                                         low_color::NTuple{3,Int}=(255,0,0), 
-                                         high_color::NTuple{3,Int}=(0,255,0))
-        if sprite.image == C_NULL
-            @error "Cannot create gradient health bar: sprite has no image"
-            return sprite
-        end
-        
-        percentage = clamp(percentage, 0.0, 1.0)
-        
-        # Access the raw pixel data from the SDL_Surface
-        surface = unsafe_wrap(Array, sprite.image, 10; own = false)[1]
-        pixels_ptr = surface.pixels
-        pixels_format = surface.format
-        format = unsafe_wrap(Array, pixels_format, 10; own = false)[1]
-        bytes_per_pixel = format.BytesPerPixel
-        width = surface.w
-        height = surface.h
-        pitch = surface.pitch
-        
-        # Calculate the height based on percentage
-        visible_height = round(Int, height * percentage)
-        
-        # Create a new SDL_Surface for the modified pixels
-        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 
-                                                        Int32(format.BitsPerPixel), 
-                                                        format.format)
-        
-        if new_surface == C_NULL
-            @error "Failed to create new surface for health bar"
-            return sprite
-        end
-        
-        new_surface_array = unsafe_wrap(Array, new_surface, 10; own = false)
-        new_pixels_ptr = new_surface_array[1].pixels
-        
-        # Calculate colors based on percentage
-        # Interpolate between low_color and high_color
-        r = round(Int, low_color[1] * (1.0 - percentage) + high_color[1] * percentage)
-        g = round(Int, low_color[2] * (1.0 - percentage) + high_color[2] * percentage)
-        b = round(Int, low_color[3] * (1.0 - percentage) + high_color[3] * percentage)
-        
-        # Fill the new surface with a background color (dark gray)
-        # Use Ref to get a pointer to the format
-        format_ptr = pixels_format
-        SDL2.SDL_FillRect(new_surface, C_NULL, SDL2.SDL_MapRGB(format_ptr, 50, 50, 50))
-        
-        # Create a rect for the visible part of the health bar
-        visible_rect = Ref(SDL2.SDL_Rect(0, height - visible_height, width, visible_height))
-        
-        # Fill the visible part with the interpolated color
-        SDL2.SDL_FillRect(new_surface, visible_rect, SDL2.SDL_MapRGB(format_ptr, UInt8(r), UInt8(g), UInt8(b)))
-        
-        # Add a highlight effect at the top of the bar
-        if visible_height > 2
-            highlight_rect = Ref(SDL2.SDL_Rect(1, height - visible_height + 1, width - 2, 2))
-            highlight_color = SDL2.SDL_MapRGB(format_ptr, 
-                UInt8(min(r + 40, 255)), 
-                UInt8(min(g + 40, 255)), 
-                UInt8(min(b + 40, 255)))
-            SDL2.SDL_FillRect(new_surface, highlight_rect, highlight_color)
-        end
-        
-        # Add a shadow effect at the bottom of the visible part
-        if visible_height > 4
-            shadow_rect = Ref(SDL2.SDL_Rect(1, height - 4, width - 2, 2))
-            shadow_color = SDL2.SDL_MapRGB(format_ptr, 
-                UInt8(max(r - 40, 0)), 
-                UInt8(max(g - 40, 0)), 
-                UInt8(max(b - 40, 0)))
-            SDL2.SDL_FillRect(new_surface, shadow_rect, shadow_color)
-        end
-        
-        # Clean up previous texture if it exists
-        if sprite.texture != C_NULL
-            SDL2.SDL_DestroyTexture(sprite.texture)
-        end
-        
-        # Clean up previous image if it exists
-        if sprite.image != C_NULL
-            SDL2.SDL_FreeSurface(sprite.image)
-        end
-        
-        # Set the new image and create a new texture
-        sprite.image = new_surface
-        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-        
-        # Set the sprite's size
-        sprite.size = Math.Vector2(width, height)
-        
-        # Update the color
-        SpriteModule.Component.set_color(sprite)
-        
-        return sprite
-    end
-    
-    export create_dynamic_health_bar
-    """
-    Creates a health bar with dynamic effects based on health percentage
-    
-    # Arguments
-    - `sprite::SpriteModule.InternalSprite`: The sprite to modify
-    - `percentage::Float64`: Health percentage (0.0 to 1.0)
-    - `critical_threshold::Float64`: Threshold below which health is considered critical (Default: 0.3)
-    
-    # Returns
-    - The original sprite with updated pixel data and texture
-    """
-    function create_dynamic_health_bar(sprite::SpriteModule.InternalSprite, percentage::Float64;
-                                      critical_threshold::Float64=0.3)
-        if sprite.image == C_NULL
-            @error "Cannot create dynamic health bar: sprite has no image"
-            return sprite
-        end
-        
-        percentage = clamp(percentage, 0.0, 1.0)
-        
-        # Access the raw pixel data from the SDL_Surface
-        surface = unsafe_wrap(Array, sprite.image, 10; own = false)[1]
-        pixels_ptr = surface.pixels
-        pixels_format = surface.format
-        format = unsafe_wrap(Array, pixels_format, 10; own = false)[1]
-        bytes_per_pixel = format.BytesPerPixel
-        width = surface.w
-        height = surface.h
-        pitch = surface.pitch
-        
-        # Calculate the height based on percentage
-        visible_height = round(Int, height * percentage)
-        
-        # Create a new SDL_Surface for the modified pixels
-        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 
-                                                        Int32(format.BitsPerPixel), 
-                                                        format.format)
-        
-        if new_surface == C_NULL
-            @error "Failed to create new surface for health bar"
-            return sprite
-        end
-        
-        new_surface_array = unsafe_wrap(Array, new_surface, 10; own = false)
-        new_pixels_ptr = new_surface_array[1].pixels
-        
-        # Get proper format pointer
-        format_ptr = pixels_format
-        
-        # Fill the new surface with a background color (black with some transparency)
-        bg_color = SDL2.SDL_MapRGBA(format_ptr, 0, 0, 0, 200)
-        SDL2.SDL_FillRect(new_surface, C_NULL, bg_color)
-        
-        # Determine the color based on health percentage
-        # Green > Yellow > Red as health decreases
-        r, g, b = 0, 0, 0
-        
-        if percentage > 0.6
-            # Green to Yellow transition
-            g = 255
-            r = UInt8(255 * (1.0 - (percentage - 0.6) / 0.4))
-        elseif percentage > 0.3
-            # Yellow to Red transition
-            r = 255
-            g = UInt8(255 * ((percentage - 0.3) / 0.3))
-        else
-            # Red, possibly with pulsing effect for critical health
-            r = 255
-            g = 0
-            
-            # Add pulsing effect for critical health
-            if percentage < critical_threshold
-                # Make the bar pulse by modulating its brightness
-                # This would normally be done based on time, but we'll use percentage as a proxy
-                pulse_factor = abs(sin(percentage * 10)) * 0.3 + 0.7
-                r = UInt8(r * pulse_factor)
-            end
-        end
-        
-        # Create a rect for the visible part of the health bar
-        visible_rect = Ref(SDL2.SDL_Rect(0, height - visible_height, width, visible_height))
-        
-        # Fill the visible part with the color
-        bar_color = SDL2.SDL_MapRGB(format_ptr, UInt8(r), UInt8(g), UInt8(b))
-        SDL2.SDL_FillRect(new_surface, visible_rect, bar_color)
-        
-        # Add segmentation to the health bar (like notches or segments)
-        segment_count = 10
-        segment_height = height / segment_count
-        segment_color = SDL2.SDL_MapRGBA(format_ptr, 0, 0, 0, 50)
-        
-        for i in 1:segment_count-1
-            segment_y = round(Int, i * segment_height)
-            if segment_y < visible_height
-                segment_rect = Ref(SDL2.SDL_Rect(0, height - segment_y, width, 1))
-                SDL2.SDL_FillRect(new_surface, segment_rect, segment_color)
-            end
-        end
-        
-        # Add a border
-        # Use boxRGBA instead of rectangleRGBA to avoid direct renderer access
-        SDL2.LibSDL2.boxRGBA(JulGame.Renderer, 0, 0, width-1, height-1, 50, 50, 50, 255)
-        SDL2.LibSDL2.rectangleRGBA(JulGame.Renderer, 0, 0, width-1, height-1, 255, 255, 255, 255)
-        
-        # Add a highlight effect at the top of the visible bar
-        if visible_height > 3
-            highlight_rect = Ref(SDL2.SDL_Rect(1, height - visible_height + 1, width - 2, 2))
-            highlight_color = SDL2.SDL_MapRGBA(format_ptr, 
-                UInt8(min(r + 40, 255)), 
-                UInt8(min(g + 40, 255)), 
-                UInt8(min(b + 40, 255)),
-                230)
-            SDL2.SDL_FillRect(new_surface, highlight_rect, highlight_color)
-        end
-        
-        # Clean up previous texture if it exists
-        if sprite.texture != C_NULL
-            SDL2.SDL_DestroyTexture(sprite.texture)
-        end
-        
-        # Clean up previous image if it exists
-        if sprite.image != C_NULL && sprite.image != new_surface
-            SDL2.SDL_FreeSurface(sprite.image)
-        end
-        
-        # Set the new image and create a new texture
-        sprite.image = new_surface
-        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-        
-        # Set the sprite's size
-        sprite.size = Math.Vector2(width, height)
-        
-        # Update the color
-        SpriteModule.Component.set_color(sprite)
-        
-        # Set anchor to bottom to keep the health bar positioned correctly
-        sprite.anchor = :bottom
-        
-        return sprite
-    end
-
-    export simple_health_bar_crop
-    """
-    Simply crops the sprite based on health percentage, keeping the bar in place.
-    
-    # Arguments
-    - `sprite::SpriteModule.InternalSprite`: The sprite to crop
-    - `percentage::Float64`: Health percentage (0.0 to 1.0)
-    
-    # Returns
-    - The sprite with an updated crop value
-    """
-    function simple_health_bar_crop(sprite::SpriteModule.InternalSprite, percentage::Float64)
-        percentage = clamp(percentage, 0.0, 1.0)
-        
-        # Get original sprite dimensions
-        originalWidth = sprite.size.x
-        originalHeight = sprite.size.y
-        
-        # Calculate visible height based on percentage
-        visibleHeight = round(Int, originalHeight * percentage)
-        
-        # For bottom-up health bar, set crop from the bottom of the image
-        yStart = originalHeight - visibleHeight
-        
-        # Create simple crop Vector4 (x, y, width, height)
-        sprite.crop = Math.Vector4(0, yStart, originalWidth, visibleHeight)
-        
-        # Keep everything else the same - no color changes, no fancy effects
-        return sprite
-    end
-
-    export alpha_mask_health_bar
-    """
-    Creates a health bar effect by making a portion of the sprite transparent.
-    
-    # Arguments
-    - `sprite::SpriteModule.InternalSprite`: The sprite to modify
-    - `percentage::Float64`: Health percentage (0.0 to 1.0)
-    
-    # Returns
-    - The sprite with modified alpha values
-    """
-    function alpha_mask_health_bar(sprite::SpriteModule.InternalSprite, percentage::Float64)
-        percentage = clamp(percentage, 0.0, 1.0)
-        
-        if sprite.image == C_NULL
-            @error "Cannot apply alpha mask: sprite has no image"
-            return sprite
-        end
-        
-        # Access the raw pixel data from the SDL_Surface
-        surface = unsafe_wrap(Array, sprite.image, 10; own = false)[1]
-        width = surface.w
-        height = surface.h
-        format = surface.format
-        
-        # Create a new surface with alpha support
-        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        
-        if new_surface == C_NULL
-            @error "Failed to create new surface for health bar"
-            return sprite
-        end
-        
-        # Copy the original surface to the new one
-        SDL2.SDL_BlitSurface(sprite.image, C_NULL, new_surface, C_NULL)
-        
-        # Calculate the height boundary for transparency
-        transparent_start = round(Int, height * percentage)
-        
-        # Lock the surface to access the pixels
-        SDL2.SDL_LockSurface(new_surface)
-        
-        # Get the pixel data
-        pixels = unsafe_wrap(Array, convert(Ptr{UInt32}, unsafe_load(new_surface).pixels), (width, height))
-        
-        # Loop through the pixels and set alpha = 0 for the portion we want to make transparent
-        for y in 1:transparent_start
-            for x in 1:width
-                # Set alpha to 0 (completely transparent) for this pixel
-                # We preserve RGB values but set alpha to 0
-                # RGBA is stored as 0xAABBGGRR in memory
-                pixels[x, y] = pixels[x, y] & 0x00FFFFFF
-            end
-        end
-        
-        # Unlock the surface
-        SDL2.SDL_UnlockSurface(new_surface)
-        
-        # Clean up existing texture
-        if sprite.texture != C_NULL
-            SDL2.SDL_DestroyTexture(sprite.texture)
-            sprite.texture = C_NULL
-        end
-        
-        # Clean up previous image
-        if sprite.image != C_NULL && sprite.image != new_surface
-            SDL2.SDL_FreeSurface(sprite.image)
-        end
-        
-        # Update sprite with new surface
-        sprite.image = new_surface
-        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-        
-        # Make sure the sprite's texture has alpha blending enabled
-        SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
-        
-        return sprite
-    end
-
     export gfx_filter_health_bar
     """
     Creates a health bar using SDL2 GFX image filter functions.
+    Uses a cached original image to support both increasing and decreasing health.
     
     # Arguments
     - `sprite::SpriteModule.InternalSprite`: The sprite to modify
@@ -722,8 +364,26 @@ module ImageFXModule
             return sprite
         end
         
+        # Create cache key from sprite's image path
+        cache_key = sprite.imagePath
+        
+        # Cache the original surface if not already cached
+        if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
+            # Make a backup of the original surface
+            original_surface = SDL2.SDL_DuplicateSurface(sprite.image)
+            if original_surface == C_NULL
+                @error "Failed to duplicate original surface for caching"
+                return sprite
+            end
+            ORIGINAL_SPRITE_CACHE[cache_key] = original_surface
+            @debug "Cached original surface for sprite: $cache_key"
+        end
+        
+        # Get the original surface from cache
+        original_surface = ORIGINAL_SPRITE_CACHE[cache_key]
+        
         # Access the raw pixel data from the SDL_Surface
-        surface = unsafe_wrap(Array, sprite.image, 10; own = false)[1]
+        surface = unsafe_wrap(Array, original_surface, 10; own = false)[1]
         width = surface.w
         height = surface.h
         pitch = surface.pitch
@@ -739,14 +399,14 @@ module ImageFXModule
         end
         
         # Copy original surface to new surface
-        SDL2.SDL_BlitSurface(sprite.image, C_NULL, new_surface, C_NULL)
+        SDL2.SDL_BlitSurface(original_surface, C_NULL, new_surface, C_NULL)
         
         # Lock the surface to access the pixels
         SDL2.SDL_LockSurface(new_surface)
         
         # Get pixel data as bytes
         pixels_ptr = convert(Ptr{UInt8}, unsafe_load(new_surface).pixels)
-        total_bytes = height * width * bpp  # 4 bytes per pixel in RGBA8888
+        total_bytes = height * width * bpp  # 4      bytes per pixel in RGBA8888
         
         # Create buffer arrays for processing
         src_buffer = Vector{UInt8}(undef, total_bytes)
@@ -766,9 +426,9 @@ module ImageFXModule
         if empty_bytes > 0
             # Use the threshold filter to make the empty portion transparent
             SDL2.SDL_imageFilterBinarizeUsingThreshold(
-                pointer(src_buffer), 
-                pointer(dest_buffer), 
-                Cuint(empty_bytes), 
+                pointer(src_buffer),
+                pointer(dest_buffer),
+                Cuint(empty_bytes),
                 Cuint(1)
             )
             
@@ -798,7 +458,7 @@ module ImageFXModule
         end
         
         # Clean up previous image
-        if sprite.image != C_NULL && sprite.image != new_surface
+        if sprite.image != C_NULL && sprite.image != original_surface
             SDL2.SDL_FreeSurface(sprite.image)
         end
         
@@ -810,5 +470,15 @@ module ImageFXModule
         SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
         
         return sprite
+    end
+    
+    # Function to clean up the cache when needed
+    export clear_sprite_cache
+    function clear_sprite_cache()
+        for (_, surface) in ORIGINAL_SPRITE_CACHE
+            SDL2.SDL_FreeSurface(surface)
+        end
+        empty!(ORIGINAL_SPRITE_CACHE)
+        @debug "Cleared sprite cache"
     end
 end
