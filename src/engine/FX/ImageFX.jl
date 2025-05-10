@@ -481,4 +481,164 @@ module ImageFXModule
         empty!(ORIGINAL_SPRITE_CACHE)
         @debug "Cleared sprite cache"
     end
+    
+    export gfx_radial_wipe
+    """
+    Creates a radial wipe effect that reveals a sprite from the center outward.
+    Uses the cached original image for consistent transitions.
+    
+    # Arguments
+    - `sprite::SpriteModule.InternalSprite`: The sprite to modify
+    - `percentage::Float64`: Completion percentage (0.0 = fully transparent, 1.0 = fully visible)
+    - `origin::Symbol`: Origin point of the wipe effect (:center, :topleft, :topright, :bottomleft, :bottomright)
+    
+    # Returns
+    - The sprite with modified pixel data
+    """
+    function gfx_radial_wipe(sprite::SpriteModule.InternalSprite, percentage::Float64; origin::Symbol=:center)
+        percentage = clamp(percentage, 0.0, 1.0)
+        
+        if sprite.image == C_NULL
+            @error "Cannot apply radial wipe: sprite has no image"
+            return sprite
+        end
+        
+        # Create cache key from sprite's image path
+        cache_key = sprite.imagePath
+        
+        # Cache the original surface if not already cached
+        if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
+            # Make a backup of the original surface
+            original_surface = SDL2.SDL_DuplicateSurface(sprite.image)
+            if original_surface == C_NULL
+                @error "Failed to duplicate original surface for caching"
+                return sprite
+            end
+            ORIGINAL_SPRITE_CACHE[cache_key] = original_surface
+            @debug "Cached original surface for sprite: $cache_key"
+        end
+        
+        # Get the original surface from cache
+        original_surface = ORIGINAL_SPRITE_CACHE[cache_key]
+        
+        # Access the raw pixel data from the SDL_Surface
+        surface = unsafe_wrap(Array, original_surface, 10; own = false)[1]
+        width = surface.w
+        height = surface.h
+        format = unsafe_wrap(Array, surface.format, 10; own = false)[1]
+        bpp = format.BytesPerPixel
+        
+        # Create a new surface to work with
+        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, format.format)
+        
+        if new_surface == C_NULL
+            @error "Failed to create new surface for radial wipe"
+            return sprite
+        end
+        
+        # Copy original surface to new surface
+        SDL2.SDL_BlitSurface(original_surface, C_NULL, new_surface, C_NULL)
+        
+        # Lock the surface to access the pixels
+        SDL2.SDL_LockSurface(new_surface)
+        
+        # Get pixel data as bytes
+        pixels_ptr = convert(Ptr{UInt8}, unsafe_load(new_surface).pixels)
+        total_bytes = height * width * bpp
+        
+        # Create buffer arrays for processing
+        src_buffer = Vector{UInt8}(undef, total_bytes)
+        dest_buffer = Vector{UInt8}(undef, total_bytes)
+        
+        # Copy pixel data to our buffer
+        unsafe_copyto!(pointer(src_buffer), pixels_ptr, total_bytes)
+        
+        # Set origin coordinates based on the provided origin parameter
+        origin_x = 0.0
+        origin_y = 0.0
+        
+        if origin == :center
+            origin_x = width / 2
+            origin_y = height / 2
+        elseif origin == :topleft
+            origin_x = 0
+            origin_y = 0
+        elseif origin == :topright
+            origin_x = width
+            origin_y = 0
+        elseif origin == :bottomleft
+            origin_x = 0
+            origin_y = height
+        elseif origin == :bottomright
+            origin_x = width
+            origin_y = height
+        end
+        
+        # Calculate max possible distance for normalization
+        max_distance = sqrt((width - origin_x)^2 + (height - origin_y)^2)
+        # Calculate radius threshold based on percentage
+        radius_threshold = max_distance * percentage
+        
+        # Copy the buffer to destination first
+        dest_buffer .= src_buffer
+        
+        # Process each pixel
+        for y in 0:(height-1)
+            for x in 0:(width-1)
+                # Calculate distance from origin to this pixel
+                distance = sqrt((x - origin_x)^2 + (y - origin_y)^2)
+                
+                # Get the pixel's byte index
+                pixel_index = (y * width + x) * bpp
+                
+                # If distance is greater than the threshold, make pixel transparent
+                if distance > radius_threshold
+                    # Set alpha channel to zero (every 4th byte in RGBA)
+                    alpha_index = pixel_index + (bpp - 1)  # Last byte is alpha
+                    if alpha_index < length(dest_buffer) && (alpha_index % bpp) == (bpp - 1)
+                        dest_buffer[alpha_index + 1] = 0
+                    end
+                else
+                    # Optional: create a soft edge by fading transparency at the boundary
+                    edge_width = max_distance * 0.05  # 5% of max distance for edge width
+                    if distance > (radius_threshold - edge_width) && radius_threshold > edge_width
+                        # Calculate alpha based on distance from edge
+                        edge_factor = (radius_threshold - distance) / edge_width
+                        alpha_index = pixel_index + (bpp - 1)
+                        if alpha_index < length(dest_buffer) && (alpha_index % bpp) == (bpp - 1)
+                            # Get original alpha and scale it
+                            original_alpha = src_buffer[alpha_index + 1]
+                            dest_buffer[alpha_index + 1] = UInt8(clamp(round(original_alpha * edge_factor), 0, 255))
+                        end
+                    end
+                end
+            end
+        end
+        
+        # Copy our processed buffer back to the surface
+        unsafe_copyto!(pixels_ptr, pointer(dest_buffer), total_bytes)
+        
+        # Unlock the surface
+        SDL2.SDL_UnlockSurface(new_surface)
+        
+        # Clean up existing texture
+        if sprite.texture != C_NULL
+            SDL2.SDL_DestroyTexture(sprite.texture)
+            sprite.texture = C_NULL
+        end
+        
+        # Clean up previous image
+        if sprite.image != C_NULL && sprite.image != original_surface
+            SDL2.SDL_FreeSurface(sprite.image)
+        end
+        
+        # Update sprite with new surface
+        sprite.image = new_surface
+        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
+        
+        # Enable alpha blending
+        SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+        
+        return sprite
+    end
 end
