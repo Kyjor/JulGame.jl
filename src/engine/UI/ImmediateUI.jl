@@ -278,7 +278,7 @@ module ImmediateUIModule
         color::NTuple{4, Int}=(255, 255, 255, 255),
         isActive::Bool=true, 
         persistentBetweenScenes::Bool=false,
-        
+        rotation::Float64=0.0,
         layer::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing}=nothing
@@ -363,6 +363,10 @@ module ImmediateUIModule
                 button.name = name
             end
 
+            if button.rotation != rotation
+                button.rotation = rotation
+            end
+
             # Check if button sprites need updating
             if (buttonUpPath != "" && button.buttonUpSpritePath != buttonUpPath) ||
                (buttonDownPath != "" && button.buttonDownSpritePath != buttonDownPath)
@@ -437,7 +441,8 @@ module ImmediateUIModule
                 size=size, 
                 text=text, 
                 textOffset=textOffset, 
-                parent=parent
+                parent=parent,
+                rotation=rotation
             )
             
             # Set button properties - These are now handled by the constructor or defaults

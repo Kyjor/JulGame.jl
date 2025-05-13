@@ -40,7 +40,8 @@ module ScreenButtonModule
             size::Math.Vector2=Math.Vector2(0,0), 
             text::String="", 
             textOffset::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing}=nothing
+            parent::Union{UI.UIElement, Nothing}=nothing,
+            rotation::Float64=0.0
         )
             this = new()
             
@@ -92,6 +93,7 @@ module ScreenButtonModule
             this.color = color
             this.isWorldEntity = isWorldEntity
             this.parent = parent
+            this.rotation = rotation
             if clickEvent !== nothing
                 push!(this.clickEvents, clickEvent)
             end
@@ -141,7 +143,7 @@ module ScreenButtonModule
             this.currentTexture, 
             C_NULL, 
             Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
-            0.0, 
+            this.rotation, 
             C_NULL, 
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 

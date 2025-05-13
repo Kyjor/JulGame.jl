@@ -12,6 +12,7 @@ mutable struct UIElementInstance
     layer::Int
     parent::Union{UIElement, Nothing}
     position::Vector2
+    rotation::Float64
     size::Vector2
 
     # events
