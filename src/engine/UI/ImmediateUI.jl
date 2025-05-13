@@ -9,7 +9,7 @@ module ImmediateUIModule
     using ..UI.ProgressBarModule
     import ..UI
 
-    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, render_all_immediate_components, cleanup_all_immediate_components
+    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, manage_all_immediate_components, cleanup_all_immediate_components
 
     # Dictionary to store active immediate UI components by their id and type
     const IMMEDIATE_UI_CACHE = Dict{String, Any}()
@@ -1122,7 +1122,7 @@ module ImmediateUIModule
     end
 
     """
-    render_all_immediate_components(debug::Bool=false)
+    manage_all_immediate_components(debug::Bool=false)
     
     Renders all active immediate UI components.
     Should be called once per frame in the main render loop.
@@ -1131,7 +1131,7 @@ module ImmediateUIModule
     # Arguments
     - `debug::Bool`: Whether to draw debug visualizations
     """
-    function render_all_immediate_components()
+    function manage_all_immediate_components()
         current_time = SDL2.SDL_GetTicks()
         expired_ids = String[]
         
@@ -1155,15 +1155,18 @@ module ImmediateUIModule
         sorted_ids = sort(collect(keys(component_layers)), by = id -> component_layers[id])
         
         # Second pass: render components in layer order
+        itemsToRender = []
         for id in sorted_ids
             component = IMMEDIATE_UI_CACHE[id].element
-            UI.render(component)
+            push!(itemsToRender, component)
         end
         
         # Clean up expired components
         for id in expired_ids
             cleanup_immediate_component(id)
         end
+
+        return itemsToRender
     end
 
     """

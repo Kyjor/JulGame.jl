@@ -626,6 +626,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			for render_function in render_functions_to_call
 				push!(uiRenderingOrder, (render_function.layer, render_function))
 			end
+			immediateUIComponents = UI.ImmediateUIModule.manage_all_immediate_components()
+			for immediateUIComponent in immediateUIComponents
+				push!(uiRenderingOrder, (immediateUIComponent.layer, immediateUIComponent))
+			end
 
 			sort!(uiRenderingOrder, by = x -> x[1])
 			for i = eachindex(uiRenderingOrder)
@@ -653,10 +657,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 			end
 			
-
-			# Render all immediate UI components
-			UI.ImmediateUIModule.render_all_immediate_components()
-
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x - this.input.mousePositionEditorGameWindowOffset.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y - this.input.mousePositionEditorGameWindowOffset.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
