@@ -211,8 +211,9 @@ module InputModule
                     insideAnyElement = false
                         
                     uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    clickedAnElementAlready = false
                     for uiElement in uiElementsOrderedByLayerDescending
-                        if !uiElement.isActive
+                        if !uiElement.isActive || (clickedAnElementAlready && !uiElement.forceClickCheck)
                             continue
                         end
                         # Check position of button to see which we are interacting with
@@ -256,7 +257,7 @@ module InputModule
                         if evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition)"
                             @debug "clicked on $(uiElement.name), skipping rest of event loop"
-                            break
+                            clickedAnElementAlready = true
                         end
                     end
 

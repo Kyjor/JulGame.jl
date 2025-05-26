@@ -19,6 +19,7 @@ mutable struct UIElementInstance
     clickEvents::Vector{Function}
     hoverEnterEvents::Vector{Function}
     hoverExitEvents::Vector{Function}
+    forceClickCheck::Bool
 
     # state
     isActive::Bool
@@ -34,7 +35,8 @@ mutable struct UIElementInstance
 
         this.hoverEnterEvents = Function[]
         this.hoverExitEvents = Function[]
-
+        this.forceClickCheck = false
+        
         return this
     end
 end

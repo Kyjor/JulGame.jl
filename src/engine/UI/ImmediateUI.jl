@@ -274,6 +274,7 @@ module ImmediateUIModule
         buttonDownPath::String="", 
         hoverEnterEvent::Union{Function, Nothing}=nothing,
         hoverExitEvent::Union{Function, Nothing}=nothing,
+        forceClickCheck::Bool=false,
         textOffset::Math.Vector2=Math.Vector2(0,0),
         color::NTuple{4, Int}=(255, 255, 255, 255),
         isActive::Bool=true, 
@@ -365,6 +366,10 @@ module ImmediateUIModule
 
             if button.rotation != rotation
                 button.rotation = rotation
+            end
+
+            if button.forceClickCheck != forceClickCheck
+                button.forceClickCheck = forceClickCheck
             end
 
             # Check if button sprites need updating
