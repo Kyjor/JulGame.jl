@@ -19,6 +19,7 @@ module ScreenButtonModule
         textOffset::Math.Vector2
         textSize::Math.Vector2
         textTexture
+        textColor::NTuple{4, Int}
 
         function ScreenButton(clickEvent::Union{Function, Nothing} = nothing; 
             id::String=JulGame.generate_uuid(), 
@@ -35,6 +36,7 @@ module ScreenButtonModule
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
+            textColor::NTuple{4, Int}=(255, 255, 255, 255),
             fontPath::Union{String, Ptr{Nothing}} = C_NULL, 
             fontSize::Int=24, 
             size::Math.Vector2=Math.Vector2(0,0), 
@@ -91,6 +93,7 @@ module ScreenButtonModule
             this.isActive = isActive
             this.layer = layer
             this.color = color
+            this.textColor = textColor
             this.isWorldEntity = isWorldEntity
             this.parent = parent
             this.rotation = rotation
@@ -137,6 +140,15 @@ module ScreenButtonModule
         if !this.isWorldEntity
             UI.align_to_anchor(this)
         end
+
+         # Check and set color if necessary
+         colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+         alphaRef = Ref(UInt8(0))
+         SDL2.SDL_GetTextureColorMod(this.currentTexture, colorRefs...)
+         SDL2.SDL_GetTextureAlphaMod(this.currentTexture, alphaRef)
+         if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
+             UI.set_color(this, r=this.color[1], g=this.color[2], b=this.color[3], a=this.color[4])
+         end
 
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
@@ -187,7 +199,7 @@ module ScreenButtonModule
             
             if font != C_NULL
                 # Render the text
-                textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255, 255, 255, 255))
+                textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(this.textColor[1], this.textColor[2], this.textColor[3], this.textColor[4]))
                 
                 if textSurface != C_NULL
                     # Get the size of the rendered text
@@ -266,7 +278,18 @@ module ScreenButtonModule
     end
 
     function UI.set_color(this::ScreenButton; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
+        #@info "setting color to $(r), $(g), $(b), $(a)"
         this.color = (r%256, g%256, b%256, a%256)
+        if this.buttonDownTexture != C_NULL
+            #@info "setting color of button down texture to $(r), $(g), $(b), $(a)"
+            SDL2.SDL_SetTextureColorMod(this.buttonDownTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
+            SDL2.SDL_SetTextureAlphaMod(this.buttonDownTexture, UInt8(clamp(this.color[4], 0, 255)));
+        end
+        if this.buttonUpTexture != C_NULL
+            #@info "setting color of button up texture to $(r), $(g), $(b), $(a)"
+            SDL2.SDL_SetTextureColorMod(this.buttonUpTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
+            SDL2.SDL_SetTextureAlphaMod(this.buttonUpTexture, UInt8(clamp(this.color[4], 0, 255)));
+        end
     end
 
     function load_image_sdl(fullPath::String, imagePath::String)

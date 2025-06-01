@@ -333,7 +333,7 @@ module ImmediateUIModule
             end
             
             if button.color[4] != color[4]
-                JulGame.UI.set_color(button; a=color[4])
+                JulGame.UI.set_color(button; r=color[1], g=color[2], b=color[3], a=color[4])
             end
 
             if button.isActive != isActive
@@ -565,7 +565,7 @@ module ImmediateUIModule
             
             if rect.color != color
                 rect.color = color
-                JulGame.UI.set_color(rect; a=color[4])
+                JulGame.UI.set_color(rect; r=color[1], g=color[2], b=color[3], a=color[4])
                 needsUpdate = true
             end
             
@@ -766,7 +766,7 @@ module ImmediateUIModule
             
             if line.color != color
                 line.color = color
-                JulGame.UI.set_color(line; a=color[4])
+                JulGame.UI.set_color(line; r=color[1], g=color[2], b=color[3], a=color[4])
                 needsUpdate = true
             end
             
@@ -887,7 +887,7 @@ module ImmediateUIModule
             
             if circle.color != color
                 circle.color = color
-                JulGame.UI.set_color(circle; a=color[4])
+                JulGame.UI.set_color(circle; r=color[1], g=color[2], b=color[3], a=color[4])
                 needsUpdate = true
             end
             
@@ -1053,7 +1053,7 @@ module ImmediateUIModule
             
             if progressBar.fillColor != fillColor
                 progressBar.fillColor = fillColor
-                JulGame.UI.set_color(progressBar; a=fillColor[4])
+                JulGame.UI.set_color(progressBar; r=fillColor[1], g=fillColor[2], b=fillColor[3], a=fillColor[4])
                 needsUpdate = true
             end
             
