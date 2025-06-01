@@ -16,9 +16,11 @@ module ImmediateUIModule
     
     # Stores the last update timestamp for each component
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
+    const IMMEDIATE_UI_FRAME_COUNT = Dict{String, Int}()
     
-    # Lifetime in milliseconds before an unused immediate component is removed (default: 5 seconds)
-    const DEFAULT_LIFETIME = 1000
+    # Lifetime in milliseconds before an unused immediate component is removed (default: -1 means remove the component the first time it is not used)
+    const DEFAULT_LIFETIME = -1
+    last_timestamp = 0
 
     """
     immediate_text(id::String, text::String; 
@@ -92,7 +94,8 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
+
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing text component
             textBox = IMMEDIATE_UI_CACHE[composite_id].element
@@ -290,7 +293,8 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
+
         # Center if requested
         local adjusted_position = position
         if isCentered
@@ -541,7 +545,7 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing rect component
             rect = IMMEDIATE_UI_CACHE[composite_id].element
@@ -739,7 +743,7 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
         startPoint = Math.Vector2(x1, y1)
         endPoint = Math.Vector2(x2, y2)
         
@@ -861,7 +865,7 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
         center = Math.Vector2(x, y)
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
@@ -1021,7 +1025,7 @@ module ImmediateUIModule
         
         # Update timestamp
         IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
-        
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
         position = Math.Vector2(x, y)
         size = Math.Vector2(width, height)
         
@@ -1151,7 +1155,15 @@ module ImmediateUIModule
         # First pass: collect layers for each component and check expiration
         for (composite_id, component) in IMMEDIATE_UI_CACHE     
             # Check if this component hasn't been used for a while
-            if !haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime
+            if component.lifetime == -1
+                if !haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) || abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount) > 2
+                    @debug "component $(composite_id) expired from frame difference $(abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount))"
+                    push!(expired_ids, composite_id)
+                    continue
+                else 
+                    @debug "component $(composite_id) is still active"
+                end
+            elseif !haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime
                 @debug "component $(composite_id) expired from lifetime $(component.lifetime)"
                 push!(expired_ids, composite_id)
                 continue
@@ -1176,6 +1188,7 @@ module ImmediateUIModule
             cleanup_immediate_component(id)
         end
 
+        last_timestamp = current_time
         return itemsToRender
     end
 

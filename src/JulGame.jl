@@ -36,6 +36,9 @@ module JulGame
 
     EditorState = Dict{String, Any}()
 
+    FrameCount = 0
+    UserGlobals = Dict{String, Any}()
+
     include("engine/Logging/Logging.jl")
     using .Logging
     export ErrorLoggerModule

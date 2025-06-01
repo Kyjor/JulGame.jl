@@ -494,6 +494,7 @@ Parameters:
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 """
 function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+	JulGame.FrameCount += 1
 	if this.shouldChangeScene && !JulGame.IS_EDITOR
 		this.shouldChangeScene = false
 		initialize_new_scene(this)
