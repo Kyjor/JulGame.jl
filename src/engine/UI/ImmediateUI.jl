@@ -615,7 +615,7 @@ module ImmediateUIModule
             end
 
             if rect.anchor.current_state != anchor
-                println("anchor: $anchor")
+                #println("anchor: $anchor")
                 rect.anchor.current_state = anchor
                 needsUpdate = true
             end
