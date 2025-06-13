@@ -121,7 +121,7 @@ module JulGame
 
     include("engine/FX/FX.jl")
     using .FX
-    export ImageFXModule
+    export ImageFXModule, BackgroundFXModule
     
     include("engine/Camera/Camera.jl")
     using .CameraModule: Camera

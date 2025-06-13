@@ -6,7 +6,9 @@ using ..JulGame
 
 
 include("ImageFX.jl")
+include("BackgroundFX.jl")
 
 export ImageFXModule
+export BackgroundFXModule
 
 end

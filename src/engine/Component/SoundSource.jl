@@ -58,18 +58,25 @@ module SoundSourceModule
     end
 
     function Component.toggle_sound(this::InternalSoundSource, loops = 0)
-        if this.isMusic
-            if SDL2.Mix_PlayingMusic() == 0
-                SDL2.Mix_PlayMusic( this.sound, Math.TypeConversions.safe_int32_convert(-1) )
-            else
-                if SDL2.Mix_PausedMusic() == 1 
-                    SDL2.Mix_ResumeMusic()
+        try
+            if this.isMusic
+                if SDL2.Mix_PlayingMusic() == 0
+                    SDL2.Mix_PlayMusic( this.sound, Math.TypeConversions.safe_int32_convert(-1) )
                 else
-                    SDL2.Mix_PauseMusic()
+                    if SDL2.Mix_PausedMusic() == 1 
+                        SDL2.Mix_ResumeMusic()
+                    else
+                        SDL2.Mix_PauseMusic()
+                    end
+                end
+            else
+                if SDL2.Mix_PlayChannel(Math.TypeConversions.safe_int32_convert(this.channel), this.sound, Math.TypeConversions.safe_int32_convert(loops)) == -1
+                    @error "Error playing channel $(unsafe_string(SDL2.SDL_GetError()))"
+                    throw(e)
                 end
             end
-        else
-            SDL2.Mix_PlayChannel( Math.TypeConversions.safe_int32_convert(this.channel), this.sound, Math.TypeConversions.safe_int32_convert(loops) )
+        catch e
+            @error "Error in toggle_sound" exception=(e, catch_backtrace())
         end
     end
     
@@ -128,11 +135,11 @@ module SoundSourceModule
         this.sound = C_NULL
     end
 
-    function Component.set_volume(this::InternalSoundSource, volume::Int = 100, channel::Int = -1)
+    function Component.set_volume(this::InternalSoundSource, volume::Int = 128, channel::Int = -1)
         # Convert volume to Int32 for SDL
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
-        
+
         this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 

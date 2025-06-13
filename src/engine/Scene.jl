@@ -30,7 +30,7 @@
             end
         end
 
-        @warn "No entity with name $name found"
+        @debug "No entity with name $name found"
         return nothing
     end
 
@@ -47,7 +47,7 @@
         end
 
         if length(entities) == 0
-            @warn "No entity with name $name found"
+            @debug "No entity with name $name found"
         end
         return entities
     end
@@ -63,7 +63,7 @@
             end
         end
 
-        @warn "No entity with id $id found"
+        @debug "No entity with id $id found"
         return nothing
     end
 
@@ -78,7 +78,7 @@
             end
         end
 
-        @warn "No entity with name $name found"
+        @debug "No entity with name $name found"
         return nothing
     end
 

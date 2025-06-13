@@ -59,30 +59,26 @@ Navigate to your project, and cd to the directory with `Entry.jl`, and run `juli
 ### 2D Engine
 #### General
 - [ ] Entities can be children of other entities, with editor support
-- [ ] Tests
 - [ ] Prefabs (like Unity Engine)
 - [ ] Engine time system
 #### Visuals
 - [X] Simple Rendering
 - [ ] Basic particle system
 #### Physics
-- [ ] Better physics in general
-- [ ] More efficient collision handling
-- [ ] Raycasting
+- [ ] 3rd party physics library integration
 #### Animation
 - [ ] More options than just item crop
+- [ ] Aseprite integration
 #### Input
-- [ ] Controller support
+- [ ] Controller management system
 #### Scene Management
 - [ ] Multiple scene support
 #### Editor Features
-- [ ] Sprite cropping tool for animations
-- [ ] Hot reloading with [Revise.jl](https://github.com/timholy/Revise.jl) if possible
+- [X] Sprite cropping tool for animations
+- [X] Hot reloading
 - [ ] Profiling 
 - [ ] Debug console
-- [ ] A better way to display the scene. There is no SDL backend support for the port of CImGui, so we are stuck rendering two separate windows at the moment
-- [ ] Scene Grid
-- [ ] API
+- [X] Scene Display
 - [ ] Tile map editor
 - [ ] Multi-select entities
 - [ ] Right click context menus
@@ -91,8 +87,8 @@ Navigate to your project, and cd to the directory with `Entry.jl`, and run `juli
 - [ ] A robust list of 3D engine features...
 ### Build Support
 - [X] Windows
-- [ ] Mac
-- [ ] Linux - May have to use LDTK
+- [X] Mac
+- [X] Linux
 - [ ] Web ???
 - [ ] Mobile ???
 - [ ] Console ???
