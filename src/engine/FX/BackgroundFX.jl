@@ -5,6 +5,8 @@ module BackgroundFXModule
     using ..FX.JulGame
     import ..Math
     using ..FX.SDL2  # Use SDL2 directly
+    
+    include("Easings.jl")
 
     export MovingCirclesEffect, create_moving_circles_effect, update_moving_circles_effect, render_moving_circles_effect
 
@@ -39,6 +41,8 @@ module BackgroundFXModule
         is_filled::Bool
         is_world_entity::Bool  # Whether to use world coordinates or screen coordinates
         last_spawn_time::Float64  # Track time since last spawn for backup spawning
+        size_easing::Symbol    # Easing function for size interpolation
+        color_easing::Symbol   # Easing function for color interpolation
         
         MovingCirclesEffect() = new(
             Vector{CircleData}(),
@@ -54,7 +58,9 @@ module BackgroundFXModule
             90.0,   # Default line angle (vertical line for horizontal movement)
             true,   # Filled circles by default
             false,  # Screen coordinates by default
-            0.0     # Initial spawn time
+            0.0,    # Initial spawn time
+            :ease_out_quad,  # Default size easing
+            :ease_in_out_sine  # Default color easing
         )
     end
 
@@ -72,6 +78,8 @@ module BackgroundFXModule
     - `screen_height::Float64`: Screen height for spawning circles
     - `direction::Symbol`: Movement direction (:left_to_right, :right_to_left, :top_to_bottom, :bottom_to_top, :top_left_to_bottom_right, :top_right_to_bottom_left, :bottom_left_to_top_right, :bottom_right_to_top_left)
     - `line_angle::Float64`: Angle in degrees for the line of circles (0 = horizontal, 90 = vertical, 45 = diagonal). If nothing, uses logical defaults based on direction.
+    - `size_easing::Symbol`: Easing function for size interpolation (e.g., :ease_out_quad, :ease_in_out_cubic, :linear)
+    - `color_easing::Symbol`: Easing function for color interpolation (e.g., :ease_in_out_sine, :ease_out_bounce, :linear)
     - `is_filled::Bool`: Whether circles are filled or just outlines
     - `is_world_entity::Bool`: Whether to use world coordinates
     
@@ -89,6 +97,8 @@ module BackgroundFXModule
         screen_height::Float64 = 600.0,
         direction::Symbol = :left_to_right,
         line_angle::Union{Float64, Nothing} = nothing,
+        size_easing::Symbol = :ease_out_quad,
+        color_easing::Symbol = :ease_in_out_sine,
         is_filled::Bool = true,
         is_world_entity::Bool = false
     )
@@ -114,6 +124,8 @@ module BackgroundFXModule
         effect.is_filled = is_filled
         effect.is_world_entity = is_world_entity
         effect.last_spawn_time = 0.0
+        effect.size_easing = size_easing
+        effect.color_easing = color_easing
         
         return effect
     end
@@ -162,6 +174,76 @@ module BackgroundFXModule
     end
 
     # Helper functions
+
+    function get_easing_function(easing_symbol::Symbol)
+        if easing_symbol == :linear
+            return x -> x
+        elseif easing_symbol == :ease_in_sine
+            return ease_in_sine
+        elseif easing_symbol == :ease_out_sine
+            return ease_out_sine
+        elseif easing_symbol == :ease_in_out_sine
+            return ease_in_out_sine
+        elseif easing_symbol == :ease_in_quad
+            return ease_in_quad
+        elseif easing_symbol == :ease_out_quad
+            return ease_out_quad
+        elseif easing_symbol == :ease_in_out_quad
+            return ease_in_out_quad
+        elseif easing_symbol == :ease_in_cubic
+            return ease_in_cubic
+        elseif easing_symbol == :ease_out_cubic
+            return ease_out_cubic
+        elseif easing_symbol == :ease_in_out_cubic
+            return ease_in_out_cubic
+        elseif easing_symbol == :ease_in_quart
+            return ease_in_quart
+        elseif easing_symbol == :ease_out_quart
+            return ease_out_quart
+        elseif easing_symbol == :ease_in_out_quart
+            return ease_in_out_quart
+        elseif easing_symbol == :ease_in_quint
+            return ease_in_quint
+        elseif easing_symbol == :ease_out_quint
+            return ease_out_quint
+        elseif easing_symbol == :ease_in_out_quint
+            return ease_in_out_quint
+        elseif easing_symbol == :ease_in_expo
+            return ease_in_expo
+        elseif easing_symbol == :ease_out_expo
+            return ease_out_expo
+        elseif easing_symbol == :ease_in_out_expo
+            return ease_in_out_expo
+        elseif easing_symbol == :ease_in_circ
+            return ease_in_circ
+        elseif easing_symbol == :ease_out_circ
+            return ease_out_circ
+        elseif easing_symbol == :ease_in_out_circ
+            return ease_in_out_circ
+        elseif easing_symbol == :ease_in_back
+            return ease_in_back
+        elseif easing_symbol == :ease_out_back
+            return ease_out_back
+        elseif easing_symbol == :ease_in_out_back
+            return ease_in_out_back
+        elseif easing_symbol == :ease_in_elastic
+            return ease_in_elastic
+        elseif easing_symbol == :ease_out_elastic
+            return ease_out_elastic
+        elseif easing_symbol == :ease_in_out_elastic
+            return ease_in_out_elastic
+        elseif easing_symbol == :ease_in_bounce
+            return ease_in_bounce
+        elseif easing_symbol == :ease_out_bounce
+            return ease_out_bounce
+        elseif easing_symbol == :ease_in_out_bounce
+            return ease_in_out_bounce
+        else
+            # Default to linear if unknown
+            @warn "Unknown easing function: $easing_symbol, using linear"
+            return x -> x
+        end
+    end
 
     function get_default_line_angle(direction::Symbol)
         if direction in [:left_to_right, :right_to_left]
@@ -361,14 +443,22 @@ module BackgroundFXModule
         # Calculate progress based on how far the circle has traveled across the screen
         circle.progress = calculate_progress(circle, effect)
         
-        # Interpolate size and color based on progress
-        circle.size = effect.start_size + (effect.target_size - effect.start_size) * circle.progress
+        # Apply easing to interpolations
+        size_easing_func = get_easing_function(effect.size_easing)
+        color_easing_func = get_easing_function(effect.color_easing)
         
-        # Interpolate color with proper clamping and rounding
-        r = UInt8(clamp(round(effect.start_color[1] + (Int64(effect.target_color[1]) - Int64(effect.start_color[1])) * circle.progress), 0, 255))
-        g = UInt8(clamp(round(effect.start_color[2] + (Int64(effect.target_color[2]) - Int64(effect.start_color[2])) * circle.progress), 0, 255))
-        b = UInt8(clamp(round(effect.start_color[3] + (Int64(effect.target_color[3]) - Int64(effect.start_color[3])) * circle.progress), 0, 255))
-        a = UInt8(clamp(round(effect.start_color[4] + (Int64(effect.target_color[4]) - Int64(effect.start_color[4])) * circle.progress), 0, 255))
+        # Apply easing to progress for different aspects
+        eased_size_progress = size_easing_func(circle.progress)
+        eased_color_progress = color_easing_func(circle.progress)
+        
+        # Interpolate size with easing
+        circle.size = effect.start_size + (effect.target_size - effect.start_size) * eased_size_progress
+        
+        # Interpolate color with easing and proper clamping and rounding
+        r = UInt8(clamp(round(effect.start_color[1] + (Int64(effect.target_color[1]) - Int64(effect.start_color[1])) * eased_color_progress), 0, 255))
+        g = UInt8(clamp(round(effect.start_color[2] + (Int64(effect.target_color[2]) - Int64(effect.start_color[2])) * eased_color_progress), 0, 255))
+        b = UInt8(clamp(round(effect.start_color[3] + (Int64(effect.target_color[3]) - Int64(effect.start_color[3])) * eased_color_progress), 0, 255))
+        a = UInt8(clamp(round(effect.start_color[4] + (Int64(effect.target_color[4]) - Int64(effect.start_color[4])) * eased_color_progress), 0, 255))
         
         circle.color = (r, g, b, a)
     end
@@ -385,6 +475,10 @@ module BackgroundFXModule
         end
         
         radius = Int32(round(circle.size))
+        
+        # Save current render draw color before drawing
+        rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(0)))
+        SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
         
         # Use SDL GFX functions to draw the circle
         if effect.is_filled
@@ -410,6 +504,9 @@ module BackgroundFXModule
                 circle.color[4]
             )
         end
+        
+        # Restore the original render draw color
+        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[])
     end
 
 end 
