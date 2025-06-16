@@ -43,6 +43,8 @@ module BackgroundFXModule
         last_spawn_time::Float64  # Track time since last spawn for backup spawning
         size_easing::Symbol    # Easing function for size interpolation
         color_easing::Symbol   # Easing function for color interpolation
+        use_geometry::Bool     # Whether to use SDL_RenderGeometry for smooth circles
+        circle_segments::Int   # Number of segments for geometry-based circles (more = smoother)
         
         MovingCirclesEffect() = new(
             Vector{CircleData}(),
@@ -60,7 +62,9 @@ module BackgroundFXModule
             false,  # Screen coordinates by default
             0.0,    # Initial spawn time
             :ease_out_quad,  # Default size easing
-            :ease_in_out_sine  # Default color easing
+            :ease_in_out_sine,  # Default color easing
+            false,  # Use SDL2_gfx by default
+            24      # Default circle segments for smooth geometry
         )
     end
 
@@ -80,8 +84,10 @@ module BackgroundFXModule
     - `line_angle::Float64`: Angle in degrees for the line of circles (0 = horizontal, 90 = vertical, 45 = diagonal). If nothing, uses logical defaults based on direction.
     - `size_easing::Symbol`: Easing function for size interpolation (e.g., :ease_out_quad, :ease_in_out_cubic, :linear)
     - `color_easing::Symbol`: Easing function for color interpolation (e.g., :ease_in_out_sine, :ease_out_bounce, :linear)
-    - `is_filled::Bool`: Whether circles are filled or just outlines
+    - `is_filled::Bool`: Whether circles are filled or just outlines (only applies to SDL2_gfx method)
     - `is_world_entity::Bool`: Whether to use world coordinates
+    - `use_geometry::Bool`: Whether to use SDL_RenderGeometry for smooth circles instead of SDL2_gfx
+    - `circle_segments::Int`: Number of segments for geometry-based circles (more = smoother, but slower)
     
     # Returns
     - A new MovingCirclesEffect instance
@@ -100,7 +106,9 @@ module BackgroundFXModule
         size_easing::Symbol = :ease_out_quad,
         color_easing::Symbol = :ease_in_out_sine,
         is_filled::Bool = true,
-        is_world_entity::Bool = false
+        is_world_entity::Bool = false,
+        use_geometry::Bool = false,
+        circle_segments::Int = 24
     )
         effect = MovingCirclesEffect()
         effect.spacing = spacing
@@ -126,6 +134,8 @@ module BackgroundFXModule
         effect.last_spawn_time = 0.0
         effect.size_easing = size_easing
         effect.color_easing = color_easing
+        effect.use_geometry = use_geometry
+        effect.circle_segments = max(6, circle_segments)  # Minimum 6 segments for reasonable circle shape
         
         return effect
     end
@@ -429,8 +439,6 @@ module BackgroundFXModule
          end
      end
 
-
-
     function update_circle(circle::CircleData, effect::MovingCirclesEffect, delta_time::Float64)
         # Get movement vector based on direction
         dx, dy = get_movement_vector(effect.direction)
@@ -469,39 +477,118 @@ module BackgroundFXModule
             # Convert world coordinates to screen coordinates
             world_x = circle.x - (camera.position.x + camera.offset.x) * SCALE_UNITS
             world_y = circle.y - (camera.position.y + camera.offset.y) * SCALE_UNITS
-            (Int32(round(world_x)), Int32(round(world_y)))
+            (Float32(world_x), Float32(world_y))
         else
-            (Int32(round(circle.x)), Int32(round(circle.y)))
+            (Float32(circle.x), Float32(circle.y))
         end
         
-        radius = Int32(round(circle.size))
+        radius = Float32(circle.size)
         
+        if effect.use_geometry
+            render_circle_geometry(screen_x, screen_y, radius, circle.color, effect.circle_segments)
+        else
+            render_circle_gfx(screen_x, screen_y, radius, circle.color, effect.is_filled)
+        end
+    end
+
+    function render_circle_geometry(center_x::Float32, center_y::Float32, radius::Float32, color::NTuple{4, UInt8}, segments::Int)
+        # Save current render draw color
+        rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(0)))
+        SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
+        
+        # Create SDL color for vertices
+        sdl_color = SDL2.SDL_Color(color[1], color[2], color[3], color[4])
+        
+        # Create vertices for a triangle fan
+        vertices = Vector{SDL2.SDL_Vertex}()
+        
+        # Center vertex
+        center_vertex = SDL2.SDL_Vertex(
+            SDL2.SDL_FPoint(center_x, center_y),
+            sdl_color,
+            SDL2.SDL_FPoint(0.5f0, 0.5f0)  # Center UV coordinate
+        )
+        
+        # Calculate outer vertices
+        for i in 0:segments
+            angle = Float32(2π * i / segments)
+            outer_x = center_x + radius * cos(angle)
+            outer_y = center_y + radius * sin(angle)
+            
+            # UV coordinates for circle edge (not really needed for solid color, but required)
+            u = 0.5f0 + 0.5f0 * cos(angle)
+            v = 0.5f0 + 0.5f0 * sin(angle)
+            
+            outer_vertex = SDL2.SDL_Vertex(
+                SDL2.SDL_FPoint(outer_x, outer_y),
+                sdl_color,
+                SDL2.SDL_FPoint(u, v)
+            )
+            
+            # Create triangle: center, current outer, next outer
+            if i < segments
+                next_angle = Float32(2π * (i + 1) / segments)
+                next_outer_x = center_x + radius * cos(next_angle)
+                next_outer_y = center_y + radius * sin(next_angle)
+                
+                next_u = 0.5f0 + 0.5f0 * cos(next_angle)
+                next_v = 0.5f0 + 0.5f0 * sin(next_angle)
+                
+                next_outer_vertex = SDL2.SDL_Vertex(
+                    SDL2.SDL_FPoint(next_outer_x, next_outer_y),
+                    sdl_color,
+                    SDL2.SDL_FPoint(next_u, next_v)
+                )
+                
+                # Add triangle vertices
+                push!(vertices, center_vertex)
+                push!(vertices, outer_vertex)
+                push!(vertices, next_outer_vertex)
+            end
+        end
+        
+        # Set blend mode for proper rendering
+        SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
+        
+        # Render the geometry (no texture, just solid color)
+        SDL2.SDL_RenderGeometry(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, C_NULL, vertices, length(vertices), C_NULL, 0)
+        
+        # Restore the original render draw color
+        SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[])
+    end
+
+    function render_circle_gfx(screen_x::Float32, screen_y::Float32, radius::Float32, color::NTuple{4, UInt8}, is_filled::Bool)
         # Save current render draw color before drawing
         rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(0)))
         SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
         
+        # Convert to Int32 for SDL2_gfx functions
+        screen_x_int = Int32(round(screen_x))
+        screen_y_int = Int32(round(screen_y))
+        radius_int = Int32(round(radius))
+        
         # Use SDL GFX functions to draw the circle
-        if effect.is_filled
+        if is_filled
             SDL2.LibSDL2.filledCircleRGBA(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
-                screen_x,
-                screen_y,
-                radius,
-                circle.color[1],
-                circle.color[2],
-                circle.color[3],
-                circle.color[4]
+                screen_x_int,
+                screen_y_int,
+                radius_int,
+                color[1],
+                color[2],
+                color[3],
+                color[4]
             )
         else
             SDL2.LibSDL2.aacircleRGBA(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
-                screen_x,
-                screen_y,
-                radius,
-                circle.color[1],
-                circle.color[2],
-                circle.color[3],
-                circle.color[4]
+                screen_x_int,
+                screen_y_int,
+                radius_int,
+                color[1],
+                color[2],
+                color[3],
+                color[4]
             )
         end
         
