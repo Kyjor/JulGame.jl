@@ -231,15 +231,42 @@ module SoftwareRenderer3DModule
         end
     end
 
+    # Material for faces
+    mutable struct RenderMaterial
+        diffuse_color::Vec3D
+        ambient_color::Vec3D
+        specular_color::Vec3D
+        alpha::Float64
+        
+        function RenderMaterial(diffuse::Vec3D = Vec3D(0.8, 0.8, 0.8), 
+                               ambient::Vec3D = Vec3D(0.2, 0.2, 0.2), 
+                               specular::Vec3D = Vec3D(0.0, 0.0, 0.0), 
+                               alpha::Float64 = 1.0)
+            new(diffuse, ambient, specular, alpha)
+        end
+    end
+
+    # Face with material information
+    mutable struct MaterialFace
+        vertex_indices::Vector{Int}
+        material_name::String
+        
+        function MaterialFace(indices::Vector{Int}, material::String = "default")
+            new(indices, material)
+        end
+    end
+
     # Mesh structure for rendering loaded 3D files
     mutable struct RenderMesh
         vertices::Vector{Vec3D}
-        faces::Vector{Vector{Int}}  # Each face is a vector of vertex indices
+        faces::Vector{MaterialFace}  # Each face has material information
+        materials::Dict{String, RenderMaterial}
+        use_materials::Bool
         position::Vec3D
         rotation::Vec3D
         scale::Vec3D
-        fill_color::SDL_Color
-        stroke_color::SDL_Color
+        default_fill_color::SDL_Color
+        default_stroke_color::SDL_Color
         file_path::String
 
         function RenderMesh(file_path::String = "", 
@@ -248,7 +275,7 @@ module SoftwareRenderer3DModule
                            scale::Vec3D = Vec3D(1, 1, 1),
                            fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
                            stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))
-            new(Vec3D[], Vector{Int}[], position, rotation, scale, fill_color, stroke_color, file_path)
+            new(Vec3D[], MaterialFace[], Dict{String, RenderMaterial}(), false, position, rotation, scale, fill_color, stroke_color, file_path)
         end
     end
 
@@ -438,6 +465,120 @@ module SoftwareRenderer3DModule
         return aabb
     end
 
+    # Helper function to convert Vec3D color to SDL_Color
+    function vec3d_to_sdl_color(color::Vec3D, alpha::Float64 = 1.0)::SDL_Color
+        r = clamp(round(Int, color.x * 255), 0, 255)
+        g = clamp(round(Int, color.y * 255), 0, 255)
+        b = clamp(round(Int, color.z * 255), 0, 255)
+        a = clamp(round(Int, alpha * 255), 0, 255)
+        return SDL_Color(r, g, b, a)
+    end
+
+    # Parse OBJ file to extract material usage per face
+    function parse_obj_materials(obj_path::String)::Dict{Int, String}
+        face_materials = Dict{Int, String}()
+        
+        if !isfile(obj_path)
+            return face_materials
+        end
+        
+        current_material = "default"
+        face_index = 0
+        
+        for line in eachline(obj_path)
+            stripped = strip(line)
+            if isempty(stripped) || startswith(stripped, "#")
+                continue
+            end
+            
+            tokens = split(stripped)
+            if isempty(tokens)
+                continue
+            end
+            
+            if tokens[1] == "usemtl" && length(tokens) >= 2
+                current_material = tokens[2]
+                @info "OBJ: Switching to material '$current_material'"
+            elseif tokens[1] == "f" && length(tokens) >= 4
+                # Face definition - assign current material
+                face_index += 1
+                face_materials[face_index] = current_material
+                
+                # Check if it's a quad (will be split into 2 triangles)
+                if length(tokens) == 5  # f v1 v2 v3 v4
+                    face_index += 1
+                    face_materials[face_index] = current_material
+                end
+            end
+        end
+        
+        @info "OBJ: Parsed material assignments for $(length(face_materials)) faces"
+        return face_materials
+    end
+
+    # Parse MTL file for materials
+    function parse_mtl_file(mtl_path::String)::Dict{String, RenderMaterial}
+        materials = Dict{String, RenderMaterial}()
+        
+        if !isfile(mtl_path)
+            return materials
+        end
+        
+        current_material = nothing
+        current_name = ""
+        
+        for line in eachline(mtl_path)
+            tokens = split(strip(line))
+            if isempty(tokens) || startswith(tokens[1], "#")
+                continue
+            end
+            
+            if tokens[1] == "newmtl" && length(tokens) >= 2
+                # Save previous material if exists
+                if current_material !== nothing && current_name != ""
+                    materials[current_name] = current_material
+                end
+                
+                # Start new material
+                current_name = tokens[2]
+                current_material = RenderMaterial()
+                
+            elseif tokens[1] == "Kd" && length(tokens) >= 4 && current_material !== nothing
+                # Diffuse color
+                r = parse(Float64, tokens[2])
+                g = parse(Float64, tokens[3])
+                b = parse(Float64, tokens[4])
+                current_material.diffuse_color = Vec3D(r, g, b)
+                
+            elseif tokens[1] == "Ka" && length(tokens) >= 4 && current_material !== nothing
+                # Ambient color
+                r = parse(Float64, tokens[2])
+                g = parse(Float64, tokens[3])
+                b = parse(Float64, tokens[4])
+                current_material.ambient_color = Vec3D(r, g, b)
+                
+            elseif tokens[1] == "Ks" && length(tokens) >= 4 && current_material !== nothing
+                # Specular color
+                r = parse(Float64, tokens[2])
+                g = parse(Float64, tokens[3])
+                b = parse(Float64, tokens[4])
+                current_material.specular_color = Vec3D(r, g, b)
+                
+            elseif (tokens[1] == "d" || tokens[1] == "Tr") && length(tokens) >= 2 && current_material !== nothing
+                # Alpha/transparency
+                alpha = parse(Float64, tokens[2])
+                current_material.alpha = tokens[1] == "Tr" ? (1.0 - alpha) : alpha
+            end
+        end
+        
+        # Save last material
+        if current_material !== nothing && current_name != ""
+            materials[current_name] = current_material
+        end
+        
+        return materials
+    end
+
     # Load mesh from file using MeshIO
     function load_mesh_from_file!(renderer::SoftwareRenderer3D, file_path::String, 
                                  position::Vec3D = Vec3D(0, 0, 0),
@@ -463,6 +604,123 @@ module SoftwareRenderer3DModule
             # Create our RenderMesh
             render_mesh = RenderMesh(file_path, position, rotation, scale, fill_color, stroke_color)
             
+            # Check if this is a MetaMesh with material support (OBJ files)
+            face_materials = Dict{Int, String}()
+            
+            # Try to extract materials from MetaMesh if available
+            if isa(mesh_data, GeometryBasics.MetaMesh) && haskey(mesh_data, :materials)
+                @info "Found materials in MetaMesh"
+                
+                # Extract materials from MetaMesh
+                for (material_name, material_data) in mesh_data[:materials]
+                    material = RenderMaterial()
+                    
+                    # Extract diffuse color
+                    if haskey(material_data, "diffuse")
+                        diffuse = material_data["diffuse"]
+                        if isa(diffuse, AbstractVector) && length(diffuse) >= 3
+                            material.diffuse_color = Vec3D(diffuse[1], diffuse[2], diffuse[3])
+                        end
+                    end
+                    
+                    # Extract ambient color
+                    if haskey(material_data, "ambient")
+                        ambient = material_data["ambient"]
+                        if isa(ambient, AbstractVector) && length(ambient) >= 3
+                            material.ambient_color = Vec3D(ambient[1], ambient[2], ambient[3])
+                        end
+                    end
+                    
+                    # Extract specular color
+                    if haskey(material_data, "specular")
+                        specular = material_data["specular"]
+                        if isa(specular, AbstractVector) && length(specular) >= 3
+                            material.specular_color = Vec3D(specular[1], specular[2], specular[3])
+                        end
+                    end
+                    
+                    render_mesh.materials[string(material_name)] = material
+                    @info "Material '$material_name': diffuse=$(material.diffuse_color)"
+                end
+                
+                # Extract material assignments per submesh
+                if haskey(mesh_data, :material_names)
+                    material_names = mesh_data[:material_names]
+                    @info "Found material assignments: $material_names"
+                    
+                    # Split the mesh to get submeshes with their materials
+                    submeshes = GeometryBasics.split_mesh(mesh_data.mesh)
+                    @info "Split mesh into $(length(submeshes)) submeshes"
+                    
+                    # Process each submesh with its material
+                    face_counter = 0
+                    for (i, submesh) in enumerate(submeshes)
+                        material_name = string(material_names[i])
+                        @info "Processing submesh $i with material '$material_name'"
+                        
+                        # Add vertices for this submesh
+                        vertex_offset = length(render_mesh.vertices)
+                        vertices = GeometryBasics.coordinates(submesh)
+                        for vertex in vertices
+                            if length(vertex) >= 3
+                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
+                            else
+                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
+                            end
+                        end
+                        
+                        # Add faces for this submesh with material assignment
+                        faces = GeometryBasics.faces(submesh)
+                        for face in faces
+                            face_indices = Int[]
+                            if isa(face, GeometryBasics.TriangleFace)
+                                push!(face_indices, convert(Int, face[1]) + vertex_offset, convert(Int, face[2]) + vertex_offset, convert(Int, face[3]) + vertex_offset)
+                                push!(render_mesh.faces, MaterialFace(face_indices, material_name))
+                            elseif isa(face, GeometryBasics.QuadFace)
+                                # Split quad into two triangles
+                                push!(face_indices, convert(Int, face[1]) + vertex_offset, convert(Int, face[2]) + vertex_offset, convert(Int, face[3]) + vertex_offset)
+                                push!(render_mesh.faces, MaterialFace(copy(face_indices), material_name))
+                                face_indices = [convert(Int, face[1]) + vertex_offset, convert(Int, face[3]) + vertex_offset, convert(Int, face[4]) + vertex_offset]
+                                push!(render_mesh.faces, MaterialFace(face_indices, material_name))
+                            end
+                        end
+                    end
+                    
+                    render_mesh.use_materials = !isempty(render_mesh.materials)
+                    @info "Successfully loaded $(length(render_mesh.materials)) materials with proper assignments"
+                    
+                    # Skip the normal mesh processing since we handled it above
+                    if !isempty(render_mesh.vertices) && !isempty(render_mesh.faces)
+                        push!(renderer.meshes, render_mesh)
+                        @info "Successfully loaded mesh from $file_path: $(length(render_mesh.vertices)) vertices, $(length(render_mesh.faces)) faces"
+                        return render_mesh
+                    end
+                end
+            else
+                @info "No materials found in mesh data, using fallback material loading"
+                
+                # Fallback: Try to load materials from MTL file and parse OBJ for material usage
+                mtl_path = splitext(file_path)[1] * ".mtl"
+                
+                if isfile(mtl_path)
+                    @info "Loading materials from $mtl_path"
+                    render_mesh.materials = parse_mtl_file(mtl_path)
+                    render_mesh.use_materials = !isempty(render_mesh.materials)
+                    @info "Parsed $(length(render_mesh.materials)) materials"
+                    for (name, material) in render_mesh.materials
+                        @info "Material '$name': diffuse=($(material.diffuse_color.x), $(material.diffuse_color.y), $(material.diffuse_color.z))"
+                    end
+                    
+                    # Parse OBJ file for material usage if it's an OBJ file
+                    if lowercase(splitext(file_path)[2]) == ".obj"
+                        face_materials = parse_obj_materials(file_path)
+                    end
+                else
+                    @info "No material file found (looked for: $mtl_path)"
+                    render_mesh.use_materials = false
+                end
+            end
+            
             # Extract vertices and faces based on mesh type
             if isa(mesh_data, GeometryBasics.Mesh)
                 # Standard GeometryBasics Mesh
@@ -479,17 +737,27 @@ module SoftwareRenderer3DModule
                     end
                 end
                 
-                # Convert faces to our format
+                                                    # Convert faces to our format
+                face_counter = 0
                 for face in faces
                     # Convert to 1-based indexing and handle different face types
                     face_indices = Int[]
                     if isa(face, GeometryBasics.TriangleFace)
                         push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                        face_counter += 1
+                        material_name = get(face_materials, face_counter, "default")
+                        push!(render_mesh.faces, MaterialFace(face_indices, material_name))
                     elseif isa(face, GeometryBasics.QuadFace)
                         # Split quad into two triangles
                         push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                        push!(render_mesh.faces, copy(face_indices))
+                        face_counter += 1
+                        material_name = get(face_materials, face_counter, "default")
+                        push!(render_mesh.faces, MaterialFace(copy(face_indices), material_name))
                         face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
+                        face_counter += 1
+                        material_name = get(face_materials, face_counter, "default")
+                        push!(render_mesh.faces, MaterialFace(face_indices, material_name))
+                        continue
                     else
                         # Generic face - try to extract indices
                         for i in 1:length(face)
@@ -499,12 +767,17 @@ module SoftwareRenderer3DModule
                         if length(face_indices) > 3
                             for i in 2:(length(face_indices)-1)
                                 triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
-                                push!(render_mesh.faces, triangle_indices)
+                                face_counter += 1
+                                material_name = get(face_materials, face_counter, "default")
+                                push!(render_mesh.faces, MaterialFace(triangle_indices, material_name))
                             end
                             continue
+                        else
+                            face_counter += 1
+                            material_name = get(face_materials, face_counter, "default")
+                            push!(render_mesh.faces, MaterialFace(face_indices, material_name))
                         end
                     end
-                    push!(render_mesh.faces, face_indices)
                 end
                 
             elseif isa(mesh_data, GeometryBasics.MetaMesh)
@@ -528,33 +801,33 @@ module SoftwareRenderer3DModule
                         end
                     end
                     
-                    # Convert faces to our format
-                    for face in faces
-                        face_indices = Int[]
-                        if isa(face, GeometryBasics.TriangleFace)
-                            # Handle GLIndex conversion properly
-                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                        elseif isa(face, GeometryBasics.QuadFace)
-                            # Split quad into two triangles
-                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                            push!(render_mesh.faces, copy(face_indices))
-                            face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
-                        else
-                            # Generic face - try to extract indices
-                            for i in 1:length(face)
-                                push!(face_indices, convert(Int, face[i]))
-                            end
-                            # If more than 3 vertices, triangulate (simple fan triangulation)
-                            if length(face_indices) > 3
-                                for i in 2:(length(face_indices)-1)
-                                    triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
-                                    push!(render_mesh.faces, triangle_indices)
+                                            # Convert faces to our format
+                        for face in faces
+                            face_indices = Int[]
+                            if isa(face, GeometryBasics.TriangleFace)
+                                # Handle GLIndex conversion properly
+                                push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                            elseif isa(face, GeometryBasics.QuadFace)
+                                # Split quad into two triangles
+                                push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                                push!(render_mesh.faces, MaterialFace(copy(face_indices), "default"))
+                                face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
+                            else
+                                # Generic face - try to extract indices
+                                for i in 1:length(face)
+                                    push!(face_indices, convert(Int, face[i]))
                                 end
-                                continue
+                                # If more than 3 vertices, triangulate (simple fan triangulation)
+                                if length(face_indices) > 3
+                                    for i in 2:(length(face_indices)-1)
+                                        triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
+                                        push!(render_mesh.faces, MaterialFace(triangle_indices, "default"))
+                                    end
+                                    continue
+                                end
                             end
+                            push!(render_mesh.faces, MaterialFace(face_indices, "default"))
                         end
-                        push!(render_mesh.faces, face_indices)
-                    end
                 catch expand_error
                     @warn "Failed to expand MetaMesh, trying alternative approach: $expand_error"
                     
@@ -576,7 +849,7 @@ module SoftwareRenderer3DModule
                         # Convert faces
                         for face in faces
                             face_indices = [convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3])]
-                            push!(render_mesh.faces, face_indices)
+                            push!(render_mesh.faces, MaterialFace(face_indices, "default"))
                         end
                     else
                         @error "Cannot extract mesh data from MetaMesh"
@@ -601,15 +874,15 @@ module SoftwareRenderer3DModule
                 for face in faces
                     face_indices = [Int(i) for i in face]
                     if length(face_indices) == 3
-                        push!(render_mesh.faces, face_indices)
+                        push!(render_mesh.faces, MaterialFace(face_indices, "default"))
                     elseif length(face_indices) == 4
                         # Split quad into two triangles
-                        push!(render_mesh.faces, [face_indices[1], face_indices[2], face_indices[3]])
-                        push!(render_mesh.faces, [face_indices[1], face_indices[3], face_indices[4]])
+                        push!(render_mesh.faces, MaterialFace([face_indices[1], face_indices[2], face_indices[3]], "default"))
+                        push!(render_mesh.faces, MaterialFace([face_indices[1], face_indices[3], face_indices[4]], "default"))
                     else
                         # Triangulate polygon using fan method
                         for i in 2:(length(face_indices)-1)
-                            push!(render_mesh.faces, [face_indices[1], face_indices[i], face_indices[i+1]])
+                            push!(render_mesh.faces, MaterialFace([face_indices[1], face_indices[i], face_indices[i+1]], "default"))
                         end
                     end
                 end
@@ -642,8 +915,8 @@ module SoftwareRenderer3DModule
         old_transform = renderer.state.transform
         
         # Apply mesh transformation
-        renderer.state.fill_color = mesh.fill_color
-        renderer.state.stroke_color = mesh.stroke_color
+        renderer.state.fill_color = mesh.default_fill_color
+        renderer.state.stroke_color = mesh.default_stroke_color
         
         # Apply transformations
         mesh_transform = translation_matrix(mesh.position.x, mesh.position.y, mesh.position.z) *
@@ -656,14 +929,30 @@ module SoftwareRenderer3DModule
         aabb = AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         
         for face in mesh.faces
-            if length(face) >= 3
+            if length(face.vertex_indices) >= 3
                 # Get vertices for this face
-                v1 = mesh.vertices[face[1]]
-                v2 = mesh.vertices[face[2]]
-                v3 = mesh.vertices[face[3]]
+                v1 = mesh.vertices[face.vertex_indices[1]]
+                v2 = mesh.vertices[face.vertex_indices[2]]
+                v3 = mesh.vertices[face.vertex_indices[3]]
                 
-                # Add triangle
-                face_aabb = add_triangle!(renderer, renderer.state.fill_color, v1, v2, v3)
+                # Determine color to use
+                face_color = renderer.state.fill_color
+                if mesh.use_materials && haskey(mesh.materials, face.material_name)
+                    material = mesh.materials[face.material_name]
+                    face_color = vec3d_to_sdl_color(material.diffuse_color, material.alpha)
+                    # Debug: only print for first few faces to avoid spam
+                    if length(renderer.triangles) < 3
+                        @info "Using material '$(face.material_name)' with color $(material.diffuse_color)"
+                    end
+                else
+                    # Debug: only print for first few faces to avoid spam
+                    if length(renderer.triangles) < 3
+                        @info "No material found for face material '$(face.material_name)', using default color"
+                    end
+                end
+                
+                # Add triangle with material color
+                face_aabb = add_triangle!(renderer, face_color, v1, v2, v3)
                 aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
             end
         end
