@@ -447,6 +447,11 @@ function destroy_entity_components(this::MainLoop, entity)
 	if entityMesh3D != C_NULL
 		Component.destroy(entityMesh3D)
 	end
+
+	entitySoftwareRenderer3D = entity.softwareRenderer3d
+	if entitySoftwareRenderer3D != C_NULL
+		Component.destroy(entitySoftwareRenderer3D)
+	end
 end
 
 export create_entity
@@ -738,7 +743,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
 			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
 			mesh3dExists = entity.mesh3d != C_NULL && entity.mesh3d !== nothing
-			if !entity.isActive || (!spriteExists && !shapeExists && !mesh3dExists)
+			softwareRenderer3dExists = entity.softwareRenderer3d != C_NULL && entity.softwareRenderer3d !== nothing
+			if !entity.isActive || (!spriteExists && !shapeExists && !mesh3dExists && !softwareRenderer3dExists)
 				continue
 			end
 
@@ -747,10 +753,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			sprite = entity.sprite
 			shape = entity.shape
 			mesh3d = entity.mesh3d
+			softwareRenderer3d = entity.softwareRenderer3d
 
 			skipSprite = false
 			skipShape = false
 			skipMesh3d = false
+			skipSoftwareRenderer3d = false
 
 			# TODO: consider offset
 			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
@@ -771,6 +779,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			if !skipMesh3d && mesh3dExists
 				push!(renderOrder, (mesh3d.layer, mesh3d))
 			end
+			if !skipSoftwareRenderer3d && softwareRenderer3dExists
+				push!(renderOrder, (softwareRenderer3d.layer, softwareRenderer3d))
+			end
 		end
 
 		render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
@@ -784,6 +795,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			try
 				rendercount += 1
 				if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
+					Component.render(renderOrder[i][2], this)
+				elseif renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
 					Component.render(renderOrder[i][2], this)
 				elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
 					Component.draw(renderOrder[i][2], camera)

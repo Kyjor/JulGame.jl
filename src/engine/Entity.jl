@@ -11,6 +11,7 @@ module EntityModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
     using ..JulGame.Mesh3DModule
+    using ..JulGame.SoftwareRenderer3DModule
     import ..JulGame: Component
     import ..JulGame
 
@@ -22,6 +23,7 @@ module EntityModule
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         isActive::Bool
         mesh3d::Union{Mesh3D, Ptr{Nothing}}
+        softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
         name::String
         parent::Union{Entity, Ptr{Nothing}}
         persistentBetweenScenes::Bool
@@ -42,6 +44,7 @@ module EntityModule
             this.collider = C_NULL
             this.isActive = true
             this.mesh3d = C_NULL
+            this.softwareRenderer3d = C_NULL
             this.scripts = []
             this.transform = transform
             for script in scripts
@@ -184,6 +187,19 @@ module EntityModule
         Component.initialize(mesh3d, JulGame.MAIN)
 
         return this.mesh3d
+    end
+
+    function JulGame.add_software_renderer3d(this::Entity, softwareRenderer3d::SoftwareRenderer3D = SoftwareRenderer3D())
+        if this.softwareRenderer3d != C_NULL
+            println("SoftwareRenderer3D already exists on entity named ", this.name)
+            return
+        end
+
+        this.softwareRenderer3d = softwareRenderer3d
+        softwareRenderer3d.parent = this
+        Component.initialize(softwareRenderer3d, JulGame.MAIN)
+
+        return this.softwareRenderer3d
     end
 
     function JulGame.generate_uuid()

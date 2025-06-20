@@ -596,7 +596,6 @@ module Mesh3DModule
     end
 
     function Component.render(this::Mesh3D, main)
-        Component.update(this, 0.167)
         # Clear triangles to raster
         empty!(this.vecTrianglesToRaster)
 
@@ -605,25 +604,34 @@ module Mesh3DModule
         scale = this.parent.transform.scale
         rot = this.parent.transform.rotation
 
-        # Create world matrix
+        # Create world matrix (correct order: Scale -> Rotation -> Translation)
+        matScale = MatrixOps.matrix_make_scale(scale.x, scale.y, scale.z)
+        matRotX = MatrixOps.matrix_make_rotation_x(rot.x * π / 180.0)  # Convert to radians
+        matRotY = MatrixOps.matrix_make_rotation_y(rot.y * π / 180.0)
+        matRotZ = MatrixOps.matrix_make_rotation_z(rot.z * π / 180.0)
         matTrans = MatrixOps.matrix_make_translation(pos.x, pos.y, pos.z)
-        matScale = MatrixOps.matrix_make_scale(scale.x, scale.y, 1.0)
-        matRotZ = MatrixOps.matrix_make_rotation_z(rot.z)
-        this.matWorld = MatrixOps.matrix_multiply_matrix(matRotZ, matScale)
+        
+        # Combine matrices in correct order
+        this.matWorld = MatrixOps.matrix_multiply_matrix(matScale, matRotX)
+        this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matRotY)
+        this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matRotZ)
         this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matTrans)
 
         # Get camera position and create view matrix
         cameraPos = vec3d(main.scene.camera.position.x, main.scene.camera.position.y, main.scene.camera.position.z)
         vUp = vec3d(0, 1, 0)
-        vTarget = vec3d(0, 0, 1)
+        vForward = vec3d(0, 0, 1)
 
-        # Create rotation matrices for camera
-        matCameraRotY = MatrixOps.matrix_make_rotation_y(main.scene.camera.yaw)
-        matCameraRotX = MatrixOps.matrix_make_rotation_x(main.scene.camera.pitch)
+        # Create rotation matrices for camera (convert degrees to radians)
+        matCameraRotY = MatrixOps.matrix_make_rotation_y(main.scene.camera.yaw * π / 180.0)
+        matCameraRotX = MatrixOps.matrix_make_rotation_x(main.scene.camera.pitch * π / 180.0)
 
-        # Apply rotations to target
-        vTarget = MatrixOps.matrix_multiply_vector(matCameraRotY, vTarget)
-        vTarget = MatrixOps.matrix_multiply_vector(matCameraRotX, vTarget)
+        # Apply rotations to forward vector
+        vForward = MatrixOps.matrix_multiply_vector(matCameraRotY, vForward)
+        vForward = MatrixOps.matrix_multiply_vector(matCameraRotX, vForward)
+        
+        # Calculate target position (not direction)
+        vTarget = MatrixOps.vector_add(cameraPos, vForward)
 
         # Create camera matrix
         matCamera = MatrixOps.matrix_point_at(cameraPos, vTarget, vUp)
@@ -689,15 +697,20 @@ module Mesh3DModule
                         triProjected.p[2] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[2])
                         triProjected.p[3] = MatrixOps.matrix_multiply_vector(this.matProj, clipped[][i].p[3])
 
-                        # Scale into view
+                        # Store the view-space z values for depth testing BEFORE perspective divide
+                        viewZ1 = clipped[][i].p[1].z
+                        viewZ2 = clipped[][i].p[2].z
+                        viewZ3 = clipped[][i].p[3].z
+
+                        # Scale into view (perspective divide)
                         triProjected.p[1] = MatrixOps.vector_div(triProjected.p[1], triProjected.p[1].w)
                         triProjected.p[2] = MatrixOps.vector_div(triProjected.p[2], triProjected.p[2].w)
                         triProjected.p[3] = MatrixOps.vector_div(triProjected.p[3], triProjected.p[3].w)
 
-                        # Store the original z values for depth testing
-                        triProjected.p[1].z = triViewed[].p[1].z
-                        triProjected.p[2].z = triViewed[].p[2].z
-                        triProjected.p[3].z = triViewed[].p[3].z
+                        # Use view-space Z for depth sorting
+                        triProjected.p[1].z = viewZ1
+                        triProjected.p[2].z = viewZ2
+                        triProjected.p[3].z = viewZ3
 
                         # Scale to screen
                         windowSize = main.windowManager.windowSize

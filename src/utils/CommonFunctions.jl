@@ -9,6 +9,7 @@ function add_mesh3d end
 function add_rigidbody end
 function add_script end
 function add_shape end
+function add_software_renderer3d end
 function add_sound_source end
 function add_sprite end
 function append_array end

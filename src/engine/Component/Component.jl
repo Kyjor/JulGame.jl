@@ -11,6 +11,7 @@ module Component
     include("Shape.jl")
     include("SoundSource.jl")
     include("Mesh3D.jl")
+    include("SoftwareRenderer3D.jl")
     
     export AnimationModule
     export AnimatorModule
@@ -22,4 +23,5 @@ module Component
     export SpriteModule
     export TransformModule
     export Mesh3DModule
+    export SoftwareRenderer3DModule
 end

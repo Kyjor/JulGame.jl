@@ -1,0 +1,651 @@
+module SoftwareRenderer3DModule
+    using ..JulGame
+    using ..JulGame.Math
+    using ..JulGame.SDL2
+    using ..JulGame.SDL2.LibSDL2
+    using ..JulGame.Component
+    using ..JulGame.InputModule
+
+    export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox
+
+    # 3D Vector structure
+    mutable struct Vec3D
+        x::Float64
+        y::Float64
+        z::Float64
+        w::Float64
+
+        function Vec3D(x::Number = 0.0, y::Number = 0.0, z::Number = 0.0, w::Number = 1.0)
+            new(convert(Float64, x), convert(Float64, y), convert(Float64, z), convert(Float64, w))
+        end
+    end
+
+    # Vector operations
+    Base.:+(a::Vec3D, b::Vec3D) = Vec3D(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w)
+    Base.:-(a::Vec3D, b::Vec3D) = Vec3D(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w)
+    Base.:*(a::Vec3D, s::Number) = Vec3D(a.x * s, a.y * s, a.z * s, a.w * s)
+    Base.:*(s::Number, a::Vec3D) = a * s
+    Base.:-(a::Vec3D) = Vec3D(-a.x, -a.y, -a.z, -a.w)
+
+    function dot(a::Vec3D, b::Vec3D)::Float64
+        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+    end
+
+    function length_of(v::Vec3D)::Float64
+        return sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w)
+    end
+
+    function normalize(v::Vec3D, new_length::Float64 = 1.0)::Vec3D
+        len = length_of(v)
+        if len == 0.0
+            return Vec3D(0, 0, 0, 0)
+        end
+        return v * (new_length / len)
+    end
+
+    function min_pairwise(a::Vec3D, b::Vec3D)::Vec3D
+        return Vec3D(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w))
+    end
+
+    function max_pairwise(a::Vec3D, b::Vec3D)::Vec3D
+        return Vec3D(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w))
+    end
+
+    # 4x4 Matrix structure
+    mutable struct Mat4x4
+        rows::Vector{Vec3D}
+
+        function Mat4x4()
+            new([Vec3D(1, 0, 0, 0), Vec3D(0, 1, 0, 0), Vec3D(0, 0, 1, 0), Vec3D(0, 0, 0, 1)])
+        end
+
+        function Mat4x4(r1::Vec3D, r2::Vec3D, r3::Vec3D, r4::Vec3D)
+            new([r1, r2, r3, r4])
+        end
+    end
+
+    # Matrix operations
+    function Base.:*(m::Mat4x4, v::Vec3D)::Vec3D
+        return Vec3D(
+            dot(m.rows[1], v),
+            dot(m.rows[2], v),
+            dot(m.rows[3], v),
+            dot(m.rows[4], v)
+        )
+    end
+
+    function Base.:*(a::Mat4x4, b::Mat4x4)::Mat4x4
+        # Get columns of b
+        col1 = Vec3D(b.rows[1].x, b.rows[2].x, b.rows[3].x, b.rows[4].x)
+        col2 = Vec3D(b.rows[1].y, b.rows[2].y, b.rows[3].y, b.rows[4].y)
+        col3 = Vec3D(b.rows[1].z, b.rows[2].z, b.rows[3].z, b.rows[4].z)
+        col4 = Vec3D(b.rows[1].w, b.rows[2].w, b.rows[3].w, b.rows[4].w)
+
+        return Mat4x4(
+            Vec3D(dot(a.rows[1], col1), dot(a.rows[1], col2), dot(a.rows[1], col3), dot(a.rows[1], col4)),
+            Vec3D(dot(a.rows[2], col1), dot(a.rows[2], col2), dot(a.rows[2], col3), dot(a.rows[2], col4)),
+            Vec3D(dot(a.rows[3], col1), dot(a.rows[3], col2), dot(a.rows[3], col3), dot(a.rows[3], col4)),
+            Vec3D(dot(a.rows[4], col1), dot(a.rows[4], col2), dot(a.rows[4], col3), dot(a.rows[4], col4))
+        )
+    end
+
+    # Matrix creation functions
+    function translation_matrix(x::Float64, y::Float64, z::Float64)::Mat4x4
+        return Mat4x4(
+            Vec3D(1, 0, 0, x),
+            Vec3D(0, 1, 0, y),
+            Vec3D(0, 0, 1, z),
+            Vec3D(0, 0, 0, 1)
+        )
+    end
+
+    function scaling_matrix(x::Float64, y::Float64, z::Float64)::Mat4x4
+        return Mat4x4(
+            Vec3D(x, 0, 0, 0),
+            Vec3D(0, y, 0, 0),
+            Vec3D(0, 0, z, 0),
+            Vec3D(0, 0, 0, 1)
+        )
+    end
+
+    function x_rotation_matrix(radians::Float64)::Mat4x4
+        c = cos(radians)
+        s = sin(radians)
+        return Mat4x4(
+            Vec3D(1, 0, 0, 0),
+            Vec3D(0, c, -s, 0),
+            Vec3D(0, s, c, 0),
+            Vec3D(0, 0, 0, 1)
+        )
+    end
+
+    function y_rotation_matrix(radians::Float64)::Mat4x4
+        c = cos(radians)
+        s = sin(radians)
+        return Mat4x4(
+            Vec3D(c, 0, s, 0),
+            Vec3D(0, 1, 0, 0),
+            Vec3D(-s, 0, c, 0),
+            Vec3D(0, 0, 0, 1)
+        )
+    end
+
+    function z_rotation_matrix(radians::Float64)::Mat4x4
+        c = cos(radians)
+        s = sin(radians)
+        return Mat4x4(
+            Vec3D(c, -s, 0, 0),
+            Vec3D(s, c, 0, 0),
+            Vec3D(0, 0, 1, 0),
+            Vec3D(0, 0, 0, 1)
+        )
+    end
+
+    function rotation_matrix(x::Float64, y::Float64, z::Float64)::Mat4x4
+        return x_rotation_matrix(x) * y_rotation_matrix(y) * z_rotation_matrix(z)
+    end
+
+    function viewport_matrix(width::Float64, height::Float64)::Mat4x4
+        return Mat4x4(
+            Vec3D(width / 2.0, 0, 0, width / 2.0),
+            Vec3D(0, -height / 2.0, 0, height / 2.0),
+            Vec3D(0, 0, -1, 0),
+            Vec3D(0, 0, 0, 1)
+        )
+    end
+
+    function perspective_matrix(fov::Float64, aspect::Float64, near::Float64, far::Float64)::Mat4x4
+        f = 1.0 / tan(fov / 2.0)
+        nf = 1.0 / (near - far)
+        return Mat4x4(
+            Vec3D(f / aspect, 0, 0, 0),
+            Vec3D(0, f, 0, 0),
+            Vec3D(0, 0, (far + near) * nf, 2 * far * near * nf),
+            Vec3D(0, 0, -1, 0)
+        )
+    end
+
+    # Vertex structure for rendering
+    mutable struct Vertex3D
+        x::Float64
+        y::Float64
+        z::Float64
+        color::SDL_Color
+        u::Float64
+        v::Float64
+
+        function Vertex3D(x::Float64, y::Float64, z::Float64, color::SDL_Color, u::Float64 = 0.0, v::Float64 = 0.0)
+            new(x, y, z, color, u, v)
+        end
+    end
+
+    # Triangle structure
+    mutable struct Triangle3D
+        vertices::Vector{Vertex3D}
+
+        function Triangle3D(v1::Vertex3D, v2::Vertex3D, v3::Vertex3D)
+            new([v1, v2, v3])
+        end
+    end
+
+    # AABB structure
+    mutable struct AABB
+        min::Vec3D
+        max::Vec3D
+
+        function AABB(min::Vec3D, max::Vec3D)
+            new(min, max)
+        end
+    end
+
+    # Render state
+    mutable struct RenderState
+        transform::Mat4x4
+        fill_color::SDL_Color
+        stroke_color::SDL_Color
+
+        function RenderState()
+            new(Mat4x4(), SDL_Color(255, 255, 255, 255), SDL_Color(0, 0, 0, 255))
+        end
+    end
+
+    # Box structure for rendering
+    mutable struct RenderBox
+        dimensions::Vec3D
+        position::Vec3D
+        rotation::Vec3D
+        fill_color::SDL_Color
+        stroke_color::SDL_Color
+
+        function RenderBox(dimensions::Vec3D = Vec3D(1, 1, 1), position::Vec3D = Vec3D(0, 0, 0), 
+                          rotation::Vec3D = Vec3D(0, 0, 0), 
+                          fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
+                          stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))
+            new(dimensions, position, rotation, fill_color, stroke_color)
+        end
+    end
+
+    # Main Software Renderer component
+    mutable struct SoftwareRenderer3D
+        parent
+        layer::Int
+        isWorldEntity::Bool
+        
+        # Rendering properties
+        triangles::Vector{Triangle3D}
+        state::RenderState
+        state_stack::Vector{RenderState}
+        boxes::Vector{RenderBox}
+        
+        # Camera properties
+        camera_position::Vec3D
+        camera_rotation::Vec3D
+        camera_zoom::Vec3D
+        perspective_enabled::Bool
+        reverse_sort_triangles::Bool
+        
+        # Projection properties
+        fov::Float64
+        aspect_ratio::Float64
+        near::Float64
+        far::Float64
+
+        function SoftwareRenderer3D()
+            this = new()
+            this.parent = C_NULL
+            this.layer = 0
+            this.isWorldEntity = true
+            
+            this.triangles = Triangle3D[]
+            this.state = RenderState()
+            this.state_stack = RenderState[]
+            this.boxes = RenderBox[]
+            
+            this.camera_position = Vec3D(0, 0, 0)
+            this.camera_rotation = Vec3D(0, 0, 0)
+            this.camera_zoom = Vec3D(1, 1, 1)
+            this.perspective_enabled = true
+            this.reverse_sort_triangles = false
+            
+            this.fov = π / 3.0  # 60 degrees
+            this.aspect_ratio = 1.0
+            this.near = 1.0 / 1024.0
+            this.far = 1024.0
+            
+            return this
+        end
+    end
+
+    # Perspective divide
+    function perspective_divide!(v::Vec3D)
+        if v.w != 0.0
+            v.x /= v.w
+            v.y /= v.w
+            v.z /= v.w
+            v.w = 1.0
+        end
+    end
+
+    # Add triangle to render queue
+    function add_triangle!(renderer::SoftwareRenderer3D, color::SDL_Color, 
+                          a::Vec3D, b::Vec3D, c::Vec3D,
+                          u1::Float64 = 0.0, v1::Float64 = 0.0,
+                          u2::Float64 = 0.0, v2::Float64 = 0.0,
+                          u3::Float64 = 0.0, v3::Float64 = 0.0)::AABB
+        
+        if color.a == 0
+            return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        end
+        
+        # Transform vertices
+        ta = renderer.state.transform * a
+        tb = renderer.state.transform * b
+        tc = renderer.state.transform * c
+        
+        # Check if behind camera
+        if ta.w <= 0 || tb.w <= 0 || tc.w <= 0
+            return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        end
+        
+        # Perspective divide
+        perspective_divide!(ta)
+        perspective_divide!(tb)
+        perspective_divide!(tc)
+        
+        # Frustum culling (basic)
+        windowSize = JulGame.MAIN.windowManager.windowSize
+        width = windowSize.x
+        height = windowSize.y
+        
+        if (ta.x < 0 && tb.x < 0 && tc.x < 0) ||
+           (ta.x > width && tb.x > width && tc.x > width) ||
+           (ta.y < 0 && tb.y < 0 && tc.y < 0) ||
+           (ta.y > height && tb.y > height && tc.y > height)
+            return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        end
+        
+        # Create triangle
+        triangle = Triangle3D(
+            Vertex3D(ta.x, ta.y, ta.z, color, u1, v1),
+            Vertex3D(tb.x, tb.y, tb.z, color, u2, v2),
+            Vertex3D(tc.x, tc.y, tc.z, color, u3, v3)
+        )
+        
+        push!(renderer.triangles, triangle)
+        
+        return AABB(min_pairwise(ta, min_pairwise(tb, tc)), max_pairwise(ta, max_pairwise(tb, tc)))
+    end
+
+    # Add rectangle
+    function add_fill_rectangle!(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D, d::Vec3D)::AABB
+        aabb1 = add_triangle!(renderer, renderer.state.fill_color, a, b, c, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5)
+        aabb2 = add_triangle!(renderer, renderer.state.fill_color, d, a, c, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5)
+        return AABB(min_pairwise(aabb1.min, aabb2.min), max_pairwise(aabb1.max, aabb2.max))
+    end
+
+    function add_stroke_rectangle!(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D, d::Vec3D)::AABB
+        aabb1 = add_triangle!(renderer, renderer.state.stroke_color, a, b, c, 0.5, 0.5, 1.0, 0.5, 1.0, 1.0)
+        aabb2 = add_triangle!(renderer, renderer.state.stroke_color, d, a, c, 0.5, 1.0, 0.5, 0.5, 1.0, 1.0)
+        return AABB(min_pairwise(aabb1.min, aabb2.min), max_pairwise(aabb1.max, aabb2.max))
+    end
+
+    # Add box
+    function add_box!(renderer::SoftwareRenderer3D, box::RenderBox)::AABB
+        # Box vertices
+        p1 = Vec3D(-0.5, +0.5, +0.5, 1.0)
+        p2 = Vec3D(+0.5, +0.5, +0.5, 1.0)
+        p3 = Vec3D(+0.5, -0.5, +0.5, 1.0)
+        p4 = Vec3D(-0.5, -0.5, +0.5, 1.0)
+        p5 = Vec3D(-0.5, +0.5, -0.5, 1.0)
+        p6 = Vec3D(+0.5, +0.5, -0.5, 1.0)
+        p7 = Vec3D(+0.5, -0.5, -0.5, 1.0)
+        p8 = Vec3D(-0.5, -0.5, -0.5, 1.0)
+        
+        # Save current state
+        old_fill = renderer.state.fill_color
+        old_stroke = renderer.state.stroke_color
+        old_transform = renderer.state.transform
+        
+        # Apply box transformation
+        renderer.state.fill_color = box.fill_color
+        renderer.state.stroke_color = box.stroke_color
+        
+        # Apply transformations
+        box_transform = translation_matrix(box.position.x, box.position.y, box.position.z) *
+                       rotation_matrix(box.rotation.x, box.rotation.y, box.rotation.z) *
+                       scaling_matrix(box.dimensions.x, box.dimensions.y, box.dimensions.z)
+        
+        renderer.state.transform = old_transform * box_transform
+        
+        # Add faces
+        aabb = AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        
+        # Fill faces
+        faces = [
+            (p1, p2, p3, p4),  # front
+            (p2, p6, p7, p3),  # right
+            (p6, p5, p8, p7),  # back
+            (p5, p1, p4, p8),  # left
+            (p5, p6, p2, p1),  # top
+            (p4, p3, p7, p8)   # bottom
+        ]
+        
+        for face in faces
+            face_aabb = add_fill_rectangle!(renderer, face[1], face[2], face[3], face[4])
+            aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
+        end
+        
+        # Stroke faces
+        for face in faces
+            face_aabb = add_stroke_rectangle!(renderer, face[1], face[2], face[3], face[4])
+            aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
+        end
+        
+        # Restore state
+        renderer.state.fill_color = old_fill
+        renderer.state.stroke_color = old_stroke
+        renderer.state.transform = old_transform
+        
+        return aabb
+    end
+
+    # Push/pop state
+    function push_state!(renderer::SoftwareRenderer3D)
+        push!(renderer.state_stack, RenderState())
+        renderer.state_stack[end].transform = renderer.state.transform
+        renderer.state_stack[end].fill_color = renderer.state.fill_color
+        renderer.state_stack[end].stroke_color = renderer.state.stroke_color
+    end
+
+    function pop_state!(renderer::SoftwareRenderer3D)
+        if !isempty(renderer.state_stack)
+            renderer.state = pop!(renderer.state_stack)
+        end
+    end
+
+    function apply_transform!(renderer::SoftwareRenderer3D, matrix::Mat4x4)
+        renderer.state.transform = renderer.state.transform * matrix
+    end
+
+    # Flush triangles (render them)
+    function flush_triangles!(renderer::SoftwareRenderer3D)::Int
+        if isempty(renderer.triangles)
+            return 0
+        end
+        
+        # Sort vertices in each triangle by z
+        for triangle in renderer.triangles
+            sort!(triangle.vertices, by = v -> v.z)
+        end
+        
+        # Sort triangles by average z
+        sort!(renderer.triangles, by = tri -> sum(v.z for v in tri.vertices) / 3)
+        
+        if renderer.reverse_sort_triangles
+            reverse!(renderer.triangles)
+        end
+        
+        # Render triangles using SDL
+        triangle_count = 0
+        for triangle in renderer.triangles
+            vertices = triangle.vertices
+            
+            # Convert to SDL vertices
+            sdl_vertices = [
+                SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(vertices[1].u, vertices[1].v)),
+                SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(vertices[2].u, vertices[2].v)),
+                SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(vertices[3].u, vertices[3].v))
+            ]
+            
+            # Render the geometry
+            result = SDL_RenderGeometry(JulGame.Renderer, C_NULL, sdl_vertices, length(sdl_vertices), C_NULL, 0)
+            if result < 0
+                println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
+            else
+                triangle_count += 1
+            end
+        end
+        
+        # Clear triangles
+        empty!(renderer.triangles)
+        
+        return triangle_count
+    end
+
+    # Component interface implementations
+    function Component.initialize(this::SoftwareRenderer3D, main)
+        windowSize = main.windowManager.windowSize
+        this.aspect_ratio = windowSize.x / windowSize.y
+        
+        # Add some default boxes for demonstration
+        push!(this.boxes, RenderBox(
+            Vec3D(1, 1, 1),
+            Vec3D(0, 0, -5),
+            Vec3D(0, 0, 0),
+            SDL_Color(255, 200, 150, 255),
+            SDL_Color(0, 0, 0, 255)
+        ))
+        
+        # Add a ground plane
+        push!(this.boxes, RenderBox(
+            Vec3D(10, 0.1, 10),
+            Vec3D(0, -2, -5),
+            Vec3D(0, 0, 0),
+            SDL_Color(100, 100, 100, 255),
+            SDL_Color(50, 50, 50, 255)
+        ))
+    end
+
+    function Component.update(this::SoftwareRenderer3D, deltaTime::Float64)
+        if !this.parent.isActive
+            return
+        end
+
+        # Only use internal camera controls if no engine camera is available
+        if JulGame.IS_DEBUG && JulGame.MAIN.scene.camera === nothing
+            move_speed = 5.0 * deltaTime
+            rot_speed = π * deltaTime
+            
+            # Movement
+            if JulGame.InputModule.get_button_held_down("A")
+                this.camera_position.x -= move_speed
+            elseif JulGame.InputModule.get_button_held_down("D")
+                this.camera_position.x += move_speed
+            end
+            
+            if JulGame.InputModule.get_button_held_down("W")
+                this.camera_position.z -= move_speed
+            elseif JulGame.InputModule.get_button_held_down("S")
+                this.camera_position.z += move_speed
+            end
+            
+            if JulGame.InputModule.get_button_held_down("Q")
+                this.camera_position.y -= move_speed
+            elseif JulGame.InputModule.get_button_held_down("E")
+                this.camera_position.y += move_speed
+            end
+            
+            # Rotation
+            if JulGame.InputModule.get_button_held_down("Left")
+                this.camera_rotation.y += rot_speed
+            elseif JulGame.InputModule.get_button_held_down("Right")
+                this.camera_rotation.y -= rot_speed
+            end
+            
+            if JulGame.InputModule.get_button_held_down("Up")
+                this.camera_rotation.x += rot_speed
+            elseif JulGame.InputModule.get_button_held_down("Down")
+                this.camera_rotation.x -= rot_speed
+            end
+            
+            # Reset camera
+            if JulGame.InputModule.get_button_pressed("R")
+                this.camera_position = Vec3D(0, 0, 0)
+                this.camera_rotation = Vec3D(0, 0, 0)
+                this.camera_zoom = Vec3D(1, 1, 1)
+            end
+        end
+        
+        # Handle perspective toggle regardless of camera system
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("P")
+            this.perspective_enabled = !this.perspective_enabled
+            this.reverse_sort_triangles = !this.perspective_enabled
+        end
+        
+        # Animate the first box
+        if !isempty(this.boxes)
+            this.boxes[1].rotation.y += π * deltaTime
+            this.boxes[1].rotation.x += π * 0.5 * deltaTime
+        end
+    end
+
+    function Component.render(this::SoftwareRenderer3D, main)
+        windowSize = main.windowManager.windowSize
+        width = Float64(windowSize.x)
+        height = Float64(windowSize.y)
+        
+        # Clear triangles
+        empty!(this.triangles)
+        
+        # Setup render state
+        push_state!(this)
+        
+        # Apply viewport transform
+        apply_transform!(this, viewport_matrix(Float64(width), Float64(height)))
+        
+        # Apply projection
+        if this.perspective_enabled
+            apply_transform!(this, perspective_matrix(this.fov, this.aspect_ratio, this.near, this.far))
+        else
+            # Orthographic projection
+            scale = 0.04 * height / width
+            apply_transform!(this, scaling_matrix(Float64(scale), Float64(scale), Float64(scale)))
+        end
+        
+        # Use engine's camera if available, otherwise fall back to internal camera
+        if main.scene.camera !== nothing
+            # Use the engine's camera system (controlled by Manager.jl)
+            engine_camera = main.scene.camera
+            camera_pos = Vec3D(Float64(engine_camera.position.x), Float64(engine_camera.position.y), Float64(engine_camera.position.z))
+            camera_yaw = Float64(engine_camera.yaw)
+            camera_pitch = Float64(engine_camera.pitch)
+            
+            # Convert yaw/pitch to rotation radians
+            yaw_rad = deg2rad(camera_yaw)
+            pitch_rad = deg2rad(camera_pitch)
+            
+            # Apply camera transform
+            apply_transform!(this, scaling_matrix(Float64(this.camera_zoom.x), Float64(this.camera_zoom.y), 1.0))
+            apply_transform!(this, translation_matrix(0.0, 0.0, -20.0))
+            apply_transform!(this, rotation_matrix(-pitch_rad, -yaw_rad, 0.0))
+            apply_transform!(this, translation_matrix(-camera_pos.x, -camera_pos.y, -camera_pos.z))
+        else
+            # Fall back to internal camera system
+            apply_transform!(this, scaling_matrix(Float64(this.camera_zoom.x), Float64(this.camera_zoom.y), 1.0))
+            apply_transform!(this, translation_matrix(0.0, 0.0, -20.0))
+            apply_transform!(this, rotation_matrix(Float64(-this.camera_rotation.x), Float64(-this.camera_rotation.y), Float64(-this.camera_rotation.z)))
+            apply_transform!(this, translation_matrix(Float64(-this.camera_position.x), Float64(-this.camera_position.y), Float64(-this.camera_position.z)))
+        end
+        
+        # Render all boxes
+        for box in this.boxes
+            add_box!(this, box)
+        end
+        
+        pop_state!(this)
+        
+        # Flush all triangles
+        triangle_count = flush_triangles!(this)
+        
+        if JulGame.IS_DEBUG
+            println("Rendered $triangle_count triangles")
+        end
+    end
+
+    function Component.destroy(this::SoftwareRenderer3D)
+        empty!(this.triangles)
+        empty!(this.boxes)
+        empty!(this.state_stack)
+    end
+
+    # Utility functions for users
+    function add_box!(renderer::SoftwareRenderer3D, position::Vec3D, dimensions::Vec3D, rotation::Vec3D, 
+                     fill_color::SDL_Color, stroke_color::SDL_Color)
+        box = RenderBox(dimensions, position, rotation, fill_color, stroke_color)
+        push!(renderer.boxes, box)
+        return box
+    end
+
+    function clear_boxes!(renderer::SoftwareRenderer3D)
+        empty!(renderer.boxes)
+    end
+
+    function set_camera_position!(renderer::SoftwareRenderer3D, position::Vec3D)
+        renderer.camera_position = position
+    end
+
+    function set_camera_rotation!(renderer::SoftwareRenderer3D, rotation::Vec3D)
+        renderer.camera_rotation = rotation
+    end
+
+end 
