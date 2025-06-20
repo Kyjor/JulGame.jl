@@ -5,8 +5,14 @@ module SoftwareRenderer3DModule
     using ..JulGame.SDL2.LibSDL2
     using ..JulGame.Component
     using ..JulGame.InputModule
+    
+    # Import MeshIO and FileIO for 3D file loading
+        using FileIO, MeshIO
+        using GeometryBasics
+        global MESHIO_AVAILABLE = true
+    
 
-    export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox
+    export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox, RenderMesh, load_mesh_from_file!
 
     # 3D Vector structure
     mutable struct Vec3D
@@ -225,6 +231,27 @@ module SoftwareRenderer3DModule
         end
     end
 
+    # Mesh structure for rendering loaded 3D files
+    mutable struct RenderMesh
+        vertices::Vector{Vec3D}
+        faces::Vector{Vector{Int}}  # Each face is a vector of vertex indices
+        position::Vec3D
+        rotation::Vec3D
+        scale::Vec3D
+        fill_color::SDL_Color
+        stroke_color::SDL_Color
+        file_path::String
+
+        function RenderMesh(file_path::String = "", 
+                           position::Vec3D = Vec3D(0, 0, 0), 
+                           rotation::Vec3D = Vec3D(0, 0, 0),
+                           scale::Vec3D = Vec3D(1, 1, 1),
+                           fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
+                           stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))
+            new(Vec3D[], Vector{Int}[], position, rotation, scale, fill_color, stroke_color, file_path)
+        end
+    end
+
     # Main Software Renderer component
     mutable struct SoftwareRenderer3D
         parent
@@ -236,6 +263,7 @@ module SoftwareRenderer3DModule
         state::RenderState
         state_stack::Vector{RenderState}
         boxes::Vector{RenderBox}
+        meshes::Vector{RenderMesh}
         
         # Camera properties
         camera_position::Vec3D
@@ -260,6 +288,7 @@ module SoftwareRenderer3DModule
             this.state = RenderState()
             this.state_stack = RenderState[]
             this.boxes = RenderBox[]
+            this.meshes = RenderMesh[]
             
             this.camera_position = Vec3D(0, 0, 0)
             this.camera_rotation = Vec3D(0, 0, 0)
@@ -399,6 +428,244 @@ module SoftwareRenderer3DModule
         for face in faces
             face_aabb = add_stroke_rectangle!(renderer, face[1], face[2], face[3], face[4])
             aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
+        end
+        
+        # Restore state
+        renderer.state.fill_color = old_fill
+        renderer.state.stroke_color = old_stroke
+        renderer.state.transform = old_transform
+        
+        return aabb
+    end
+
+    # Load mesh from file using MeshIO
+    function load_mesh_from_file!(renderer::SoftwareRenderer3D, file_path::String, 
+                                 position::Vec3D = Vec3D(0, 0, 0),
+                                 rotation::Vec3D = Vec3D(0, 0, 0),
+                                 scale::Vec3D = Vec3D(1, 1, 1),
+                                 fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
+                                 stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))::Union{RenderMesh, Nothing}
+        
+        if !MESHIO_AVAILABLE
+            @error "MeshIO not available. Cannot load 3D files. Install with: using Pkg; Pkg.add([\"FileIO\", \"MeshIO\"])"
+            return nothing
+        end
+        
+        if !isfile(file_path)
+            @error "Mesh file not found: $file_path"
+            return nothing
+        end
+        
+        try
+            # Load the mesh using FileIO/MeshIO
+            mesh_data = load(file_path)
+            println(mesh_data)
+            # Create our RenderMesh
+            render_mesh = RenderMesh(file_path, position, rotation, scale, fill_color, stroke_color)
+            
+            # Extract vertices and faces based on mesh type
+            if isa(mesh_data, GeometryBasics.Mesh)
+                # Standard GeometryBasics Mesh
+                vertices = GeometryBasics.coordinates(mesh_data)
+                faces = GeometryBasics.faces(mesh_data)
+                
+                # Convert vertices to our Vec3D format
+                for vertex in vertices
+                    # Handle different vertex types
+                    if length(vertex) >= 3
+                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
+                    else
+                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
+                    end
+                end
+                
+                # Convert faces to our format
+                for face in faces
+                    # Convert to 1-based indexing and handle different face types
+                    face_indices = Int[]
+                    if isa(face, GeometryBasics.TriangleFace)
+                        push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                    elseif isa(face, GeometryBasics.QuadFace)
+                        # Split quad into two triangles
+                        push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                        push!(render_mesh.faces, copy(face_indices))
+                        face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
+                    else
+                        # Generic face - try to extract indices
+                        for i in 1:length(face)
+                            push!(face_indices, convert(Int, face[i]))
+                        end
+                        # If more than 3 vertices, triangulate (simple fan triangulation)
+                        if length(face_indices) > 3
+                            for i in 2:(length(face_indices)-1)
+                                triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
+                                push!(render_mesh.faces, triangle_indices)
+                            end
+                            continue
+                        end
+                    end
+                    push!(render_mesh.faces, face_indices)
+                end
+                
+            elseif isa(mesh_data, GeometryBasics.MetaMesh)
+                # Handle MetaMesh format (common for OBJ files with materials/groups)
+                @info "Loading MetaMesh format"
+                
+                # Try to extract the mesh using GeometryBasics.expand_faceviews
+                try
+                    expanded_mesh = GeometryBasics.expand_faceviews(mesh_data)
+                    
+                    # Now work with the expanded mesh as a regular Mesh
+                    vertices = GeometryBasics.coordinates(expanded_mesh)
+                    faces = GeometryBasics.faces(expanded_mesh)
+                    
+                    # Convert vertices to our Vec3D format
+                    for vertex in vertices
+                        if length(vertex) >= 3
+                            push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
+                        else
+                            push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
+                        end
+                    end
+                    
+                    # Convert faces to our format
+                    for face in faces
+                        face_indices = Int[]
+                        if isa(face, GeometryBasics.TriangleFace)
+                            # Handle GLIndex conversion properly
+                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                        elseif isa(face, GeometryBasics.QuadFace)
+                            # Split quad into two triangles
+                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                            push!(render_mesh.faces, copy(face_indices))
+                            face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
+                        else
+                            # Generic face - try to extract indices
+                            for i in 1:length(face)
+                                push!(face_indices, convert(Int, face[i]))
+                            end
+                            # If more than 3 vertices, triangulate (simple fan triangulation)
+                            if length(face_indices) > 3
+                                for i in 2:(length(face_indices)-1)
+                                    triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
+                                    push!(render_mesh.faces, triangle_indices)
+                                end
+                                continue
+                            end
+                        end
+                        push!(render_mesh.faces, face_indices)
+                    end
+                catch expand_error
+                    @warn "Failed to expand MetaMesh, trying alternative approach: $expand_error"
+                    
+                    # Alternative approach: try to access the mesh directly
+                    if hasfield(typeof(mesh_data), :mesh)
+                        base_mesh = mesh_data.mesh
+                        vertices = GeometryBasics.coordinates(base_mesh)
+                        faces = GeometryBasics.faces(base_mesh)
+                        
+                        # Convert vertices
+                        for vertex in vertices
+                            if length(vertex) >= 3
+                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
+                            else
+                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
+                            end
+                        end
+                        
+                        # Convert faces
+                        for face in faces
+                            face_indices = [convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3])]
+                            push!(render_mesh.faces, face_indices)
+                        end
+                    else
+                        @error "Cannot extract mesh data from MetaMesh"
+                        return nothing
+                    end
+                end
+            elseif hasfield(typeof(mesh_data), :position) && hasfield(typeof(mesh_data), :faces)
+                # Other mesh formats with position and faces fields
+                vertices = mesh_data.position
+                faces = mesh_data.faces
+                
+                # Convert vertices
+                for vertex in vertices
+                    if length(vertex) >= 3
+                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
+                    else
+                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
+                    end
+                end
+                
+                # Convert faces
+                for face in faces
+                    face_indices = [Int(i) for i in face]
+                    if length(face_indices) == 3
+                        push!(render_mesh.faces, face_indices)
+                    elseif length(face_indices) == 4
+                        # Split quad into two triangles
+                        push!(render_mesh.faces, [face_indices[1], face_indices[2], face_indices[3]])
+                        push!(render_mesh.faces, [face_indices[1], face_indices[3], face_indices[4]])
+                    else
+                        # Triangulate polygon using fan method
+                        for i in 2:(length(face_indices)-1)
+                            push!(render_mesh.faces, [face_indices[1], face_indices[i], face_indices[i+1]])
+                        end
+                    end
+                end
+            else
+                @error "Unsupported mesh format for file: $file_path"
+                return nothing
+            end
+            
+            # Add to renderer
+            push!(renderer.meshes, render_mesh)
+            
+            @info "Successfully loaded mesh from $file_path: $(length(render_mesh.vertices)) vertices, $(length(render_mesh.faces)) faces"
+            return render_mesh
+            
+        catch e
+            @error "Failed to load mesh from $file_path: $e"
+            return nothing
+        end
+    end
+
+    # Render a mesh
+    function add_mesh!(renderer::SoftwareRenderer3D, mesh::RenderMesh)::AABB
+        if isempty(mesh.vertices) || isempty(mesh.faces)
+            return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        end
+        
+        # Save current state
+        old_fill = renderer.state.fill_color
+        old_stroke = renderer.state.stroke_color
+        old_transform = renderer.state.transform
+        
+        # Apply mesh transformation
+        renderer.state.fill_color = mesh.fill_color
+        renderer.state.stroke_color = mesh.stroke_color
+        
+        # Apply transformations
+        mesh_transform = translation_matrix(mesh.position.x, mesh.position.y, mesh.position.z) *
+                        rotation_matrix(mesh.rotation.x, mesh.rotation.y, mesh.rotation.z) *
+                        scaling_matrix(mesh.scale.x, mesh.scale.y, mesh.scale.z)
+        
+        renderer.state.transform = old_transform * mesh_transform
+        
+        # Render all faces
+        aabb = AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        
+        for face in mesh.faces
+            if length(face) >= 3
+                # Get vertices for this face
+                v1 = mesh.vertices[face[1]]
+                v2 = mesh.vertices[face[2]]
+                v3 = mesh.vertices[face[3]]
+                
+                # Add triangle
+                face_aabb = add_triangle!(renderer, renderer.state.fill_color, v1, v2, v3)
+                aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
+            end
         end
         
         # Restore state
@@ -612,6 +879,11 @@ module SoftwareRenderer3DModule
             add_box!(this, box)
         end
         
+        # Render all meshes
+        for mesh in this.meshes
+            add_mesh!(this, mesh)
+        end
+        
         pop_state!(this)
         
         # Flush all triangles
@@ -625,6 +897,7 @@ module SoftwareRenderer3DModule
     function Component.destroy(this::SoftwareRenderer3D)
         empty!(this.triangles)
         empty!(this.boxes)
+        empty!(this.meshes)
         empty!(this.state_stack)
     end
 
@@ -640,12 +913,52 @@ module SoftwareRenderer3DModule
         empty!(renderer.boxes)
     end
 
+    function clear_meshes!(renderer::SoftwareRenderer3D)
+        empty!(renderer.meshes)
+    end
+
+    function clear_all!(renderer::SoftwareRenderer3D)
+        empty!(renderer.boxes)
+        empty!(renderer.meshes)
+    end
+
     function set_camera_position!(renderer::SoftwareRenderer3D, position::Vec3D)
         renderer.camera_position = position
     end
 
     function set_camera_rotation!(renderer::SoftwareRenderer3D, rotation::Vec3D)
         renderer.camera_rotation = rotation
+    end
+
+    # Convenience function to load and add a mesh in one call
+    function add_mesh_from_file!(renderer::SoftwareRenderer3D, file_path::String, 
+                                position::Vec3D = Vec3D(0, 0, 0),
+                                rotation::Vec3D = Vec3D(0, 0, 0),
+                                scale::Vec3D = Vec3D(1, 1, 1),
+                                fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
+                                stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))::Union{RenderMesh, Nothing}
+        return load_mesh_from_file!(renderer, file_path, position, rotation, scale, fill_color, stroke_color)
+    end
+
+    # Get mesh by file path
+    function get_mesh_by_path(renderer::SoftwareRenderer3D, file_path::String)::Union{RenderMesh, Nothing}
+        for mesh in renderer.meshes
+            if mesh.file_path == file_path
+                return mesh
+            end
+        end
+        return nothing
+    end
+
+    # Remove mesh by file path
+    function remove_mesh_by_path!(renderer::SoftwareRenderer3D, file_path::String)::Bool
+        for (i, mesh) in enumerate(renderer.meshes)
+            if mesh.file_path == file_path
+                deleteat!(renderer.meshes, i)
+                return true
+            end
+        end
+        return false
     end
 
 end 
