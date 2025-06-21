@@ -7,291 +7,31 @@ module SoftwareRenderer3DModule
     using ..JulGame.InputModule
     
     # Import MeshIO and FileIO for 3D file loading
-        using FileIO, MeshIO
-        using GeometryBasics
-        global MESHIO_AVAILABLE = true
+    using FileIO, MeshIO
+    using GeometryBasics
+    global MESHIO_AVAILABLE = true
     
+    # Import our 3D modules
+    include("Math3D.jl")
+    include("Geometry3D.jl") 
+    include("Materials3D.jl")
+    include("MeshLoader3D.jl")
+    include("MeshLoaderIntegration.jl")
+    
+    using .Math3DModule
+    using .Geometry3DModule
+    using .Materials3DModule
+    using .MeshLoader3DModule
+    using .MeshLoaderIntegrationModule
 
     export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox, RenderMesh, load_mesh_from_file!
 
-    # 3D Vector structure
-    mutable struct Vec3D
-        x::Float64
-        y::Float64
-        z::Float64
-        w::Float64
-
-        function Vec3D(x::Number = 0.0, y::Number = 0.0, z::Number = 0.0, w::Number = 1.0)
-            new(convert(Float64, x), convert(Float64, y), convert(Float64, z), convert(Float64, w))
-        end
-    end
-
-    # Vector operations
-    Base.:+(a::Vec3D, b::Vec3D) = Vec3D(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w)
-    Base.:-(a::Vec3D, b::Vec3D) = Vec3D(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w)
-    Base.:*(a::Vec3D, s::Number) = Vec3D(a.x * s, a.y * s, a.z * s, a.w * s)
-    Base.:*(s::Number, a::Vec3D) = a * s
-    Base.:-(a::Vec3D) = Vec3D(-a.x, -a.y, -a.z, -a.w)
-
-    function dot(a::Vec3D, b::Vec3D)::Float64
-        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
-    end
-
-    function cross(a::Vec3D, b::Vec3D)::Vec3D
-        return Vec3D(
-            a.y * b.z - a.z * b.y,
-            a.z * b.x - a.x * b.z,
-            a.x * b.y - a.y * b.x,
-            0.0 # w component is 0 for a direction vector
-        )
-    end
-
-    function length_of(v::Vec3D)::Float64
-        return sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w)
-    end
-
-    function normalize(v::Vec3D, new_length::Float64 = 1.0)::Vec3D
-        len = length_of(v)
-        if len == 0.0
-            return Vec3D(0, 0, 0, 0)
-        end
-        return v * (new_length / len)
-    end
-
-    function min_pairwise(a::Vec3D, b::Vec3D)::Vec3D
-        return Vec3D(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z), min(a.w, b.w))
-    end
-
-    function max_pairwise(a::Vec3D, b::Vec3D)::Vec3D
-        return Vec3D(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z), max(a.w, b.w))
-    end
-
-    # 4x4 Matrix structure
-    mutable struct Mat4x4
-        rows::Vector{Vec3D}
-
-        function Mat4x4()
-            new([Vec3D(1, 0, 0, 0), Vec3D(0, 1, 0, 0), Vec3D(0, 0, 1, 0), Vec3D(0, 0, 0, 1)])
-        end
-
-        function Mat4x4(r1::Vec3D, r2::Vec3D, r3::Vec3D, r4::Vec3D)
-            new([r1, r2, r3, r4])
-        end
-    end
-
-    # Matrix operations
-    function Base.:*(m::Mat4x4, v::Vec3D)::Vec3D
-        return Vec3D(
-            dot(m.rows[1], v),
-            dot(m.rows[2], v),
-            dot(m.rows[3], v),
-            dot(m.rows[4], v)
-        )
-    end
-
-    function Base.:*(a::Mat4x4, b::Mat4x4)::Mat4x4
-        # Get columns of b
-        col1 = Vec3D(b.rows[1].x, b.rows[2].x, b.rows[3].x, b.rows[4].x)
-        col2 = Vec3D(b.rows[1].y, b.rows[2].y, b.rows[3].y, b.rows[4].y)
-        col3 = Vec3D(b.rows[1].z, b.rows[2].z, b.rows[3].z, b.rows[4].z)
-        col4 = Vec3D(b.rows[1].w, b.rows[2].w, b.rows[3].w, b.rows[4].w)
-
-        return Mat4x4(
-            Vec3D(dot(a.rows[1], col1), dot(a.rows[1], col2), dot(a.rows[1], col3), dot(a.rows[1], col4)),
-            Vec3D(dot(a.rows[2], col1), dot(a.rows[2], col2), dot(a.rows[2], col3), dot(a.rows[2], col4)),
-            Vec3D(dot(a.rows[3], col1), dot(a.rows[3], col2), dot(a.rows[3], col3), dot(a.rows[3], col4)),
-            Vec3D(dot(a.rows[4], col1), dot(a.rows[4], col2), dot(a.rows[4], col3), dot(a.rows[4], col4))
-        )
-    end
-
-    # Matrix creation functions
-    function translation_matrix(x::Float64, y::Float64, z::Float64)::Mat4x4
-        return Mat4x4(
-            Vec3D(1, 0, 0, x),
-            Vec3D(0, 1, 0, y),
-            Vec3D(0, 0, 1, z),
-            Vec3D(0, 0, 0, 1)
-        )
-    end
-
-    function scaling_matrix(x::Float64, y::Float64, z::Float64)::Mat4x4
-        return Mat4x4(
-            Vec3D(x, 0, 0, 0),
-            Vec3D(0, y, 0, 0),
-            Vec3D(0, 0, z, 0),
-            Vec3D(0, 0, 0, 1)
-        )
-    end
-
-    function x_rotation_matrix(radians::Float64)::Mat4x4
-        c = cos(radians)
-        s = sin(radians)
-        return Mat4x4(
-            Vec3D(1, 0, 0, 0),
-            Vec3D(0, c, -s, 0),
-            Vec3D(0, s, c, 0),
-            Vec3D(0, 0, 0, 1)
-        )
-    end
-
-    function y_rotation_matrix(radians::Float64)::Mat4x4
-        c = cos(radians)
-        s = sin(radians)
-        return Mat4x4(
-            Vec3D(c, 0, s, 0),
-            Vec3D(0, 1, 0, 0),
-            Vec3D(-s, 0, c, 0),
-            Vec3D(0, 0, 0, 1)
-        )
-    end
-
-    function z_rotation_matrix(radians::Float64)::Mat4x4
-        c = cos(radians)
-        s = sin(radians)
-        return Mat4x4(
-            Vec3D(c, -s, 0, 0),
-            Vec3D(s, c, 0, 0),
-            Vec3D(0, 0, 1, 0),
-            Vec3D(0, 0, 0, 1)
-        )
-    end
-
-    function rotation_matrix(x::Float64, y::Float64, z::Float64)::Mat4x4
-        return x_rotation_matrix(x) * y_rotation_matrix(y) * z_rotation_matrix(z)
-    end
-
-    function viewport_matrix(width::Float64, height::Float64)::Mat4x4
-        return Mat4x4(
-            Vec3D(width / 2.0, 0, 0, width / 2.0),
-            Vec3D(0, -height / 2.0, 0, height / 2.0),
-            Vec3D(0, 0, -1, 0),
-            Vec3D(0, 0, 0, 1)
-        )
-    end
-
-    function perspective_matrix(fov::Float64, aspect::Float64, near::Float64, far::Float64)::Mat4x4
-        f = 1.0 / tan(fov / 2.0)
-        nf = 1.0 / (near - far)
-        return Mat4x4(
-            Vec3D(f / aspect, 0, 0, 0),
-            Vec3D(0, f, 0, 0),
-            Vec3D(0, 0, (far + near) * nf, 2 * far * near * nf),
-            Vec3D(0, 0, -1, 0)
-        )
-    end
-
-    # Vertex structure for rendering
-    mutable struct Vertex3D
-        x::Float64
-        y::Float64
-        z::Float64
-        color::SDL_Color
-        u::Float64
-        v::Float64
-
-        function Vertex3D(x::Float64, y::Float64, z::Float64, color::SDL_Color, u::Float64 = 0.0, v::Float64 = 0.0)
-            new(x, y, z, color, u, v)
-        end
-    end
-
-    # Triangle structure
-    mutable struct Triangle3D
-        vertices::Vector{Vertex3D}
-        texture::Ptr{SDL_Texture}
-
-        function Triangle3D(v1::Vertex3D, v2::Vertex3D, v3::Vertex3D, texture::Ptr{SDL_Texture} = C_NULL)
-            new([v1, v2, v3], texture)
-        end
-    end
-
-    # AABB structure
-    mutable struct AABB
-        min::Vec3D
-        max::Vec3D
-
-        function AABB(min::Vec3D, max::Vec3D)
-            new(min, max)
-        end
-    end
-
-    # Render state
-    mutable struct RenderState
-        transform::Mat4x4
-        fill_color::SDL_Color
-        stroke_color::SDL_Color
-
-        function RenderState()
-            new(Mat4x4(), SDL_Color(255, 255, 255, 255), SDL_Color(0, 0, 0, 255))
-        end
-    end
-
-    # Box structure for rendering
-    mutable struct RenderBox
-        dimensions::Vec3D
-        position::Vec3D
-        rotation::Vec3D
-        fill_color::SDL_Color
-        stroke_color::SDL_Color
-
-        function RenderBox(dimensions::Vec3D = Vec3D(1, 1, 1), position::Vec3D = Vec3D(0, 0, 0), 
-                          rotation::Vec3D = Vec3D(0, 0, 0), 
-                          fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
-                          stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))
-            new(dimensions, position, rotation, fill_color, stroke_color)
-        end
-    end
-
-    # Material for faces
-    mutable struct RenderMaterial
-        diffuse_color::Vec3D
-        ambient_color::Vec3D
-        specular_color::Vec3D
-        alpha::Float64
-        has_texture::Bool
-        texture_path::String
-        
-        function RenderMaterial(diffuse::Vec3D = Vec3D(0.8, 0.8, 0.8), 
-                               ambient::Vec3D = Vec3D(0.2, 0.2, 0.2), 
-                               specular::Vec3D = Vec3D(0.0, 0.0, 0.0), 
-                               alpha::Float64 = 1.0,
-                               has_texture::Bool = false,
-                               texture_path::String = "")
-            new(diffuse, ambient, specular, alpha, has_texture, texture_path)
-        end
-    end
-
-    # Face with material information
-    mutable struct MaterialFace
-        vertex_indices::Vector{Int}
-        material_name::String
-        
-        function MaterialFace(indices::Vector{Int}, material::String = "default")
-            new(indices, material)
-        end
-    end
-
-    # Mesh structure for rendering loaded 3D files
-    mutable struct RenderMesh
-        vertices::Vector{Vec3D}
-        faces::Vector{MaterialFace}  # Each face has material information
-        materials::Dict{String, RenderMaterial}
-        use_materials::Bool
-        position::Vec3D
-        rotation::Vec3D
-        scale::Vec3D
-        default_fill_color::SDL_Color
-        default_stroke_color::SDL_Color
-        file_path::String
-
-        function RenderMesh(file_path::String = "", 
-                           position::Vec3D = Vec3D(0, 0, 0), 
-                           rotation::Vec3D = Vec3D(0, 0, 0),
-                           scale::Vec3D = Vec3D(1, 1, 1),
-                           fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
-                           stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))
-            new(Vec3D[], MaterialFace[], Dict{String, RenderMaterial}(), false, position, rotation, scale, fill_color, stroke_color, file_path)
-        end
-    end
+    # Re-export from modules
+    using .Math3DModule: dot, cross, length_of, normalize, min_pairwise, max_pairwise, 
+                        translation_matrix, scaling_matrix, x_rotation_matrix, y_rotation_matrix, 
+                        z_rotation_matrix, rotation_matrix, viewport_matrix, perspective_matrix, 
+                        perspective_divide!
+    using .MeshLoader3DModule: parse_obj_file, parse_mtl_file, parse_obj_materials, load_texture_average_color
 
     # Main Software Renderer component
     mutable struct SoftwareRenderer3D
@@ -364,15 +104,7 @@ module SoftwareRenderer3DModule
         end
     end
 
-    # Perspective divide
-    function perspective_divide!(v::Vec3D)
-        if v.w != 0.0
-            v.x /= v.w
-            v.y /= v.w
-            v.z /= v.w
-            v.w = 1.0
-        end
-    end
+
 
     # Calculate perspective-correct UV coordinates using subdivision
     function calculate_perspective_correct_uv(u::Float64, v::Float64, z::Float64)::Tuple{Float64, Float64}
@@ -593,77 +325,7 @@ module SoftwareRenderer3DModule
         return SDL_Color(r, g, b, a)
     end
 
-    # Extract dominant color from texture image by sampling multiple pixels
-    # This handles textures with multiple colors like golf courses (green + brown)
-    function load_texture_average_color(texture_path::String)::Vec3D
-        try
-            # Load the image using SDL to get the actual color
-            surface = SDL2.IMG_Load(texture_path)
-            if surface == C_NULL
-                @warn "Failed to load texture for color extraction: $texture_path"
-                return Vec3D(0.8, 0.8, 0.8)  # Default gray
-            end
-            
-            # Get surface information
-            surface_ref = unsafe_load(surface)
-            width = surface_ref.w
-            height = surface_ref.h
-            format = unsafe_load(surface_ref.format)
-            
-            pixel_data = surface_ref.pixels
-            bytes_per_pixel = format.BytesPerPixel
-            
-            if bytes_per_pixel >= 3  # RGB or RGBA
-                # Sample multiple pixels to get a better representation
-                total_r = 0.0
-                total_g = 0.0
-                total_b = 0.0
-                sample_count = 0
-                
-                # Sample every pixel for small textures (8x8), or sample a grid for larger ones
-                sample_step = max(1, div(min(width, height), 4))  # Sample at least 4x4 grid
-                
-                for y in 1:sample_step:height
-                    for x in 1:sample_step:width
-                        pixel_offset = ((y-1) * surface_ref.pitch + (x-1) * bytes_per_pixel)
-                        
-                        r = unsafe_load(Ptr{UInt8}(pixel_data + pixel_offset + 0)) / 255.0
-                        g = unsafe_load(Ptr{UInt8}(pixel_data + pixel_offset + 1)) / 255.0
-                        b = unsafe_load(Ptr{UInt8}(pixel_data + pixel_offset + 2)) / 255.0
-                        
-                        total_r += r
-                        total_g += g
-                        total_b += b
-                        sample_count += 1
-                    end
-                end
-                
-                # Calculate average color
-                if sample_count > 0
-                    avg_r = total_r / sample_count
-                    avg_g = total_g / sample_count
-                    avg_b = total_b / sample_count
-                    
-                    SDL_FreeSurface(surface)
-                    
-                    @info "Extracted average color from texture '$texture_path' ($(sample_count) samples): RGB($avg_r, $avg_g, $avg_b)"
-                    return Vec3D(avg_r, avg_g, avg_b)
-                else
-                    SDL_FreeSurface(surface)
-                    @warn "No pixels sampled from texture: $texture_path"
-                    return Vec3D(0.8, 0.8, 0.8)  # Default gray
-                end
-            else
-                SDL_FreeSurface(surface)
-                @warn "Unsupported pixel format for texture: $texture_path"
-                return Vec3D(0.8, 0.8, 0.8)  # Default gray
-            end
-            
-        catch e
-            @warn "Failed to extract color from texture $texture_path: $e"
-            return Vec3D(0.8, 0.8, 0.8)  # Default gray
-        end
-    end
+
 
     # Load SDL texture for rendering
     function load_sdl_texture(renderer::SoftwareRenderer3D, texture_path::String)::Ptr{SDL_Texture}
@@ -695,137 +357,7 @@ module SoftwareRenderer3DModule
         return texture
     end
 
-    # Parse OBJ file to extract material usage per face
-    function parse_obj_materials(obj_path::String)::Dict{Int, String}
-        face_materials = Dict{Int, String}()
-        
-        if !isfile(obj_path)
-            return face_materials
-        end
-        
-        current_material = "default"
-        face_index = 0
-        
-        for line in eachline(obj_path)
-            stripped = strip(line)
-            if isempty(stripped) || startswith(stripped, "#")
-                continue
-            end
-            
-            tokens = split(stripped)
-            if isempty(tokens)
-                continue
-            end
-            
-            if tokens[1] == "usemtl" && length(tokens) >= 2
-                current_material = tokens[2]
-                @info "OBJ: Switching to material '$current_material'"
-            elseif tokens[1] == "f" && length(tokens) >= 4
-                # Face definition - assign current material
-                face_index += 1
-                face_materials[face_index] = current_material
-                
-                # Check if it's a quad (will be split into 2 triangles)
-                if length(tokens) == 5  # f v1 v2 v3 v4
-                    face_index += 1
-                    face_materials[face_index] = current_material
-                end
-            end
-        end
-        
-        @info "OBJ: Parsed material assignments for $(length(face_materials)) faces"
-        return face_materials
-    end
-
-    # Parse MTL file for materials
-    function parse_mtl_file(mtl_path::String)::Dict{String, RenderMaterial}
-        materials = Dict{String, RenderMaterial}()
-        
-        if !isfile(mtl_path)
-            return materials
-        end
-        
-        current_material = nothing
-        current_name = ""
-        
-        for line in eachline(mtl_path)
-            tokens = split(strip(line))
-            if isempty(tokens) || startswith(tokens[1], "#")
-                continue
-            end
-            
-            if tokens[1] == "newmtl" && length(tokens) >= 2
-                # Save previous material if exists
-                if current_material !== nothing && current_name != ""
-                    materials[current_name] = current_material
-                end
-                
-                # Start new material
-                current_name = tokens[2]
-                current_material = RenderMaterial()
-                
-            elseif tokens[1] == "Kd" && length(tokens) >= 4 && current_material !== nothing
-                # Diffuse color
-                r = parse(Float64, tokens[2])
-                g = parse(Float64, tokens[3])
-                b = parse(Float64, tokens[4])
-                current_material.diffuse_color = Vec3D(r, g, b)
-                
-            elseif tokens[1] == "Ka" && length(tokens) >= 4 && current_material !== nothing
-                # Ambient color
-                r = parse(Float64, tokens[2])
-                g = parse(Float64, tokens[3])
-                b = parse(Float64, tokens[4])
-                current_material.ambient_color = Vec3D(r, g, b)
-                
-            elseif tokens[1] == "Ks" && length(tokens) >= 4 && current_material !== nothing
-                # Specular color
-                r = parse(Float64, tokens[2])
-                g = parse(Float64, tokens[3])
-                b = parse(Float64, tokens[4])
-                current_material.specular_color = Vec3D(r, g, b)
-                
-            elseif (tokens[1] == "d" || tokens[1] == "Tr") && length(tokens) >= 2 && current_material !== nothing
-                # Alpha/transparency
-                alpha = parse(Float64, tokens[2])
-                current_material.alpha = tokens[1] == "Tr" ? (1.0 - alpha) : alpha
-                
-            elseif tokens[1] == "map_Kd" && length(tokens) >= 2 && current_material !== nothing
-                # Diffuse texture map
-                texture_filename = join(tokens[2:end], " ")  # Handle filenames with spaces
-                
-                # Resolve texture path relative to MTL file
-                mtl_dir = dirname(mtl_path)
-                if isabs(texture_filename)
-                    texture_path = texture_filename
-                else
-                    texture_path = joinpath(mtl_dir, texture_filename)
-                end
-                
-                # Check if texture file exists and extract color
-                if isfile(texture_path)
-                    current_material.has_texture = true
-                    current_material.texture_path = texture_path
-                    
-                    # Extract color from texture and use it as the diffuse color
-                    texture_color = load_texture_average_color(texture_path)
-                    current_material.diffuse_color = texture_color
-                    @info "Material '$current_name' texture color extracted: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
-                else
-                    @warn "Texture file not found: $texture_path"
-                end
-            end
-        end
-        
-        # Save last material
-        if current_material !== nothing && current_name != ""
-            materials[current_name] = current_material
-        end
-        
-        return materials
-    end
-
-    # Load mesh from file using MeshIO
+    # Delegate to the MeshLoaderIntegration module
     function load_mesh_from_file!(renderer::SoftwareRenderer3D, file_path::String, 
                                  position::Vec3D = Vec3D(0, 0, 0),
                                  rotation::Vec3D = Vec3D(0, 0, 0),
@@ -838,345 +370,7 @@ module SoftwareRenderer3DModule
             return nothing
         end
         
-        if !isfile(file_path)
-            @error "Mesh file not found: $file_path"
-            return nothing
-        end
-        
-        try
-            # Load the mesh using FileIO/MeshIO
-            mesh_data = load(file_path)
-            println(mesh_data)
-            # Create our RenderMesh
-            render_mesh = RenderMesh(file_path, position, rotation, scale, fill_color, stroke_color)
-            
-            # Check if this is a MetaMesh with material support (OBJ files)
-            face_materials = Dict{Int, String}()
-            
-            # Try to extract materials from MetaMesh if available
-            if isa(mesh_data, GeometryBasics.MetaMesh) && haskey(mesh_data, :materials)
-                @info "Found materials in MetaMesh"
-                
-                # Extract materials from MetaMesh
-                for (material_name, material_data) in mesh_data[:materials]
-                    material = RenderMaterial()
-                    
-                    # Extract diffuse color
-                    if haskey(material_data, "diffuse")
-                        diffuse = material_data["diffuse"]
-                        if isa(diffuse, AbstractVector) && length(diffuse) >= 3
-                            material.diffuse_color = Vec3D(diffuse[1], diffuse[2], diffuse[3])
-                        end
-                    end
-                    
-                    # Extract ambient color
-                    if haskey(material_data, "ambient")
-                        ambient = material_data["ambient"]
-                        if isa(ambient, AbstractVector) && length(ambient) >= 3
-                            material.ambient_color = Vec3D(ambient[1], ambient[2], ambient[3])
-                        end
-                    end
-                    
-                    # Extract specular color
-                    if haskey(material_data, "specular")
-                        specular = material_data["specular"]
-                        if isa(specular, AbstractVector) && length(specular) >= 3
-                            material.specular_color = Vec3D(specular[1], specular[2], specular[3])
-                        end
-                    end
-                    
-                    # Extract texture information
-                    if haskey(material_data, "diffuse map") && haskey(material_data["diffuse map"], "filename")
-                        texture_filename = material_data["diffuse map"]["filename"]
-                        
-                        # Resolve texture path relative to OBJ file
-                        obj_dir = dirname(file_path)
-                        if isabspath(texture_filename)
-                            texture_path = texture_filename
-                        else
-                            texture_path = joinpath(obj_dir, texture_filename)
-                        end
-                        
-                        # Check if texture file exists and extract color
-                        if isfile(texture_path)
-                            material.has_texture = true
-                            material.texture_path = texture_path
-                            
-                            # Extract color from texture and use it as the diffuse color
-                            texture_color = load_texture_average_color(texture_path)
-                            material.diffuse_color = texture_color
-                            @info "Material '$material_name' texture color extracted: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
-                        else
-                            @warn "Texture file not found: $texture_path"
-                        end
-                    end
-                    
-                    render_mesh.materials[string(material_name)] = material
-                    if material.has_texture
-                        @info "Material '$material_name': diffuse=$(material.diffuse_color), texture=$(material.texture_path)"
-                    else
-                        @info "Material '$material_name': diffuse=$(material.diffuse_color)"
-                    end
-                end
-                
-                # Extract material assignments per submesh
-                if haskey(mesh_data, :material_names)
-                    material_names = mesh_data[:material_names]
-                    @info "Found material assignments: $material_names"
-                    
-                    # Split the mesh to get submeshes with their materials
-                    submeshes = GeometryBasics.split_mesh(mesh_data.mesh)
-                    @info "Split mesh into $(length(submeshes)) submeshes"
-                    
-                    # Process each submesh with its material
-                    face_counter = 0
-                    for (i, submesh) in enumerate(submeshes)
-                        material_name = string(material_names[i])
-                        @info "Processing submesh $i with material '$material_name'"
-                        
-                        # Add vertices for this submesh
-                        vertex_offset = length(render_mesh.vertices)
-                        vertices = GeometryBasics.coordinates(submesh)
-                        for vertex in vertices
-                            if length(vertex) >= 3
-                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
-                            else
-                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
-                            end
-                        end
-                        
-                        # Add faces for this submesh with material assignment
-                        faces = GeometryBasics.faces(submesh)
-                        for face in faces
-                            face_indices = Int[]
-                            if isa(face, GeometryBasics.TriangleFace)
-                                push!(face_indices, convert(Int, face[1]) + vertex_offset, convert(Int, face[2]) + vertex_offset, convert(Int, face[3]) + vertex_offset)
-                                push!(render_mesh.faces, MaterialFace(face_indices, material_name))
-                            elseif isa(face, GeometryBasics.QuadFace)
-                                # Split quad into two triangles
-                                push!(face_indices, convert(Int, face[1]) + vertex_offset, convert(Int, face[2]) + vertex_offset, convert(Int, face[3]) + vertex_offset)
-                                push!(render_mesh.faces, MaterialFace(copy(face_indices), material_name))
-                                face_indices = [convert(Int, face[1]) + vertex_offset, convert(Int, face[3]) + vertex_offset, convert(Int, face[4]) + vertex_offset]
-                                push!(render_mesh.faces, MaterialFace(face_indices, material_name))
-                            end
-                        end
-                    end
-                    
-                    render_mesh.use_materials = !isempty(render_mesh.materials)
-                    @info "Successfully loaded $(length(render_mesh.materials)) materials with proper assignments"
-                    
-                    # Skip the normal mesh processing since we handled it above
-                    if !isempty(render_mesh.vertices) && !isempty(render_mesh.faces)
-                        push!(renderer.meshes, render_mesh)
-                        @info "Successfully loaded mesh from $file_path: $(length(render_mesh.vertices)) vertices, $(length(render_mesh.faces)) faces"
-                        return render_mesh
-                    end
-                end
-            else
-                @info "No materials found in mesh data, using fallback material loading"
-                
-                # Fallback: Try to load materials from MTL file and parse OBJ for material usage
-                mtl_path = splitext(file_path)[1] * ".mtl"
-                
-                if isfile(mtl_path)
-                    @info "Loading materials from $mtl_path"
-                    render_mesh.materials = parse_mtl_file(mtl_path)
-                    render_mesh.use_materials = !isempty(render_mesh.materials)
-                    @info "Parsed $(length(render_mesh.materials)) materials"
-                    for (name, material) in render_mesh.materials
-                        @info "Material '$name': diffuse=($(material.diffuse_color.x), $(material.diffuse_color.y), $(material.diffuse_color.z))"
-                    end
-                    
-                    # Parse OBJ file for material usage if it's an OBJ file
-                    if lowercase(splitext(file_path)[2]) == ".obj"
-                        face_materials = parse_obj_materials(file_path)
-                    end
-                else
-                    @info "No material file found (looked for: $mtl_path)"
-                    render_mesh.use_materials = false
-                end
-            end
-            
-            # Extract vertices and faces based on mesh type
-            if isa(mesh_data, GeometryBasics.Mesh)
-                # Standard GeometryBasics Mesh
-                vertices = GeometryBasics.coordinates(mesh_data)
-                faces = GeometryBasics.faces(mesh_data)
-                
-                # Convert vertices to our Vec3D format
-                for vertex in vertices
-                    # Handle different vertex types
-                    if length(vertex) >= 3
-                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
-                    else
-                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
-                    end
-                end
-                
-                                                    # Convert faces to our format
-                face_counter = 0
-                for face in faces
-                    # Convert to 1-based indexing and handle different face types
-                    face_indices = Int[]
-                    if isa(face, GeometryBasics.TriangleFace)
-                        push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                        face_counter += 1
-                        material_name = get(face_materials, face_counter, "default")
-                        push!(render_mesh.faces, MaterialFace(face_indices, material_name))
-                    elseif isa(face, GeometryBasics.QuadFace)
-                        # Split quad into two triangles
-                        push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                        face_counter += 1
-                        material_name = get(face_materials, face_counter, "default")
-                        push!(render_mesh.faces, MaterialFace(copy(face_indices), material_name))
-                        face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
-                        face_counter += 1
-                        material_name = get(face_materials, face_counter, "default")
-                        push!(render_mesh.faces, MaterialFace(face_indices, material_name))
-                        continue
-                    else
-                        # Generic face - try to extract indices
-                        for i in 1:length(face)
-                            push!(face_indices, convert(Int, face[i]))
-                        end
-                        # If more than 3 vertices, triangulate (simple fan triangulation)
-                        if length(face_indices) > 3
-                            for i in 2:(length(face_indices)-1)
-                                triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
-                                face_counter += 1
-                                material_name = get(face_materials, face_counter, "default")
-                                push!(render_mesh.faces, MaterialFace(triangle_indices, material_name))
-                            end
-                            continue
-                        else
-                            face_counter += 1
-                            material_name = get(face_materials, face_counter, "default")
-                            push!(render_mesh.faces, MaterialFace(face_indices, material_name))
-                        end
-                    end
-                end
-                
-            elseif isa(mesh_data, GeometryBasics.MetaMesh)
-                # Handle MetaMesh format (common for OBJ files with materials/groups)
-                @info "Loading MetaMesh format"
-                
-                # Try to extract the mesh using GeometryBasics.expand_faceviews
-                try
-                    expanded_mesh = GeometryBasics.expand_faceviews(mesh_data)
-                    
-                    # Now work with the expanded mesh as a regular Mesh
-                    vertices = GeometryBasics.coordinates(expanded_mesh)
-                    faces = GeometryBasics.faces(expanded_mesh)
-                    
-                    # Convert vertices to our Vec3D format
-                    for vertex in vertices
-                        if length(vertex) >= 3
-                            push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
-                        else
-                            push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
-                        end
-                    end
-                    
-                    # Convert faces to our format
-                    for face in faces
-                        face_indices = Int[]
-                        if isa(face, GeometryBasics.TriangleFace)
-                            # Handle GLIndex conversion properly
-                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                        elseif isa(face, GeometryBasics.QuadFace)
-                            # Split quad into two triangles
-                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                            push!(render_mesh.faces, MaterialFace(copy(face_indices), "default"))
-                            face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
-                        else
-                            # Generic face - try to extract indices
-                            for i in 1:length(face)
-                                push!(face_indices, convert(Int, face[i]))
-                            end
-                            # If more than 3 vertices, triangulate (simple fan triangulation)
-                            if length(face_indices) > 3
-                                for i in 2:(length(face_indices)-1)
-                                    triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
-                                    push!(render_mesh.faces, MaterialFace(triangle_indices, "default"))
-                                end
-                                continue
-                            end
-                        end
-                        push!(render_mesh.faces, MaterialFace(face_indices, "default"))
-                    end
-                catch expand_error
-                    @warn "Failed to expand MetaMesh, trying alternative approach: $expand_error"
-                    
-                    # Alternative approach: try to access the mesh directly
-                    if hasfield(typeof(mesh_data), :mesh)
-                        base_mesh = mesh_data.mesh
-                        vertices = GeometryBasics.coordinates(base_mesh)
-                        faces = GeometryBasics.faces(base_mesh)
-                        
-                        # Convert vertices
-                        for vertex in vertices
-                            if length(vertex) >= 3
-                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
-                            else
-                                push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
-                            end
-                        end
-                        
-                        # Convert faces
-                        for face in faces
-                            face_indices = [Int(i) for i in face]
-                            push!(render_mesh.faces, MaterialFace(face_indices, "default"))
-                        end
-                    else
-                        @error "Cannot extract mesh data from MetaMesh"
-                        return nothing
-                    end
-                end
-            elseif hasfield(typeof(mesh_data), :position) && hasfield(typeof(mesh_data), :faces)
-                # Other mesh formats with position and faces fields
-                vertices = mesh_data.position
-                faces = mesh_data.faces
-                
-                # Convert vertices
-                for vertex in vertices
-                    if length(vertex) >= 3
-                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), Float64(vertex[3])))
-                    else
-                        push!(render_mesh.vertices, Vec3D(Float64(vertex[1]), Float64(vertex[2]), 0.0))
-                    end
-                end
-                
-                # Convert faces
-                for face in faces
-                    face_indices = [Int(i) for i in face]
-                    if length(face_indices) == 3
-                        push!(render_mesh.faces, MaterialFace(face_indices, "default"))
-                    elseif length(face_indices) == 4
-                        # Split quad into two triangles
-                        push!(render_mesh.faces, MaterialFace([face_indices[1], face_indices[2], face_indices[3]], "default"))
-                        push!(render_mesh.faces, MaterialFace([face_indices[1], face_indices[3], face_indices[4]], "default"))
-                    else
-                        # Triangulate polygon using fan method
-                        for i in 2:(length(face_indices)-1)
-                            push!(render_mesh.faces, MaterialFace([face_indices[1], face_indices[i], face_indices[i+1]], "default"))
-                        end
-                    end
-                end
-            else
-                @error "Unsupported mesh format for file: $file_path"
-                return nothing
-            end
-            
-            # Add to renderer
-            push!(renderer.meshes, render_mesh)
-            
-            @info "Successfully loaded mesh from $file_path: $(length(render_mesh.vertices)) vertices, $(length(render_mesh.faces)) faces"
-            return render_mesh
-            
-        catch e
-            @error "Failed to load mesh from $file_path: $e"
-            return nothing
-        end
+        return MeshLoaderIntegrationModule.load_mesh_from_file!(renderer, file_path, position, rotation, scale, fill_color, stroke_color)
     end
 
     # Render a mesh
@@ -1286,6 +480,41 @@ module SoftwareRenderer3DModule
                     @info "Face $face_idx: Final color after lighting: RGBA($(final_color.r), $(final_color.g), $(final_color.b), $(final_color.a))"
                 end
 
+                # Get UV coordinates for this face
+                u1, v1_uv, u2, v2_uv, u3, v3_uv = 0.0, 0.0, 1.0, 0.0, 1.0, 1.0  # Default UV coordinates
+                
+                # Use actual UV coordinates if available
+                if !isempty(mesh.uv_coordinates) && length(face.uv_indices) >= 3
+                    try
+                        # Get UV coordinates from the mesh (handle 0-based indices from OBJ)
+                        uv1_idx = face.uv_indices[1]
+                        uv2_idx = face.uv_indices[2]  
+                        uv3_idx = face.uv_indices[3]
+                        
+                        if uv1_idx > 0 && uv1_idx <= length(mesh.uv_coordinates)
+                            uv1 = mesh.uv_coordinates[uv1_idx]
+                            u1, v1_uv = uv1.u, uv1.v
+                        end
+                        
+                        if uv2_idx > 0 && uv2_idx <= length(mesh.uv_coordinates)
+                            uv2 = mesh.uv_coordinates[uv2_idx]
+                            u2, v2_uv = uv2.u, uv2.v
+                        end
+                        
+                        if uv3_idx > 0 && uv3_idx <= length(mesh.uv_coordinates)
+                            uv3 = mesh.uv_coordinates[uv3_idx]
+                            u3, v3_uv = uv3.u, uv3.v
+                        end
+                        
+                        # Debug UV coordinates for first few faces
+                        if face_idx <= 3
+                            @info "Face $face_idx UV coordinates: ($(u1), $(v1_uv)), ($(u2), $(v2_uv)), ($(u3), $(v3_uv))"
+                        end
+                    catch e
+                        @warn "Error getting UV coordinates for face $face_idx: $e, using defaults"
+                    end
+                end
+
                 # Add triangle with material color and texture
                 # Check for invalid values before calling add_triangle!
                 if any(isnan, [v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z]) || 
@@ -1294,7 +523,7 @@ module SoftwareRenderer3DModule
                     continue
                 end
                 
-                face_aabb = add_triangle!(renderer, final_color, v1, v2, v3, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, face_texture)
+                face_aabb = add_triangle!(renderer, final_color, v1, v2, v3, u1, v1_uv, u2, v2_uv, u3, v3_uv, face_texture)
                 aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
             end
         end
@@ -1387,7 +616,7 @@ module SoftwareRenderer3DModule
             end
             
             # Render all triangles with this texture in one call
-            result = SDL_RenderGeometry(JulGame.Renderer, texture, sdl_vertices, length(sdl_vertices), Ptr{Cint}(C_NULL), 0)
+            result = SDL_RenderGeometry(JulGame.Renderer, texture, sdl_vertices, length(sdl_vertices), C_NULL, 0)
             if result < 0
                 println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
             else
@@ -1405,24 +634,6 @@ module SoftwareRenderer3DModule
     function Component.initialize(this::SoftwareRenderer3D, main)
         windowSize = main.windowManager.windowSize
         this.aspect_ratio = windowSize.x / windowSize.y
-        
-        # Add some default boxes for demonstration
-        push!(this.boxes, RenderBox(
-            Vec3D(1, 1, 1),
-            Vec3D(0, 0, -5),
-            Vec3D(0, 0, 0),
-            SDL_Color(255, 200, 150, 255),
-            SDL_Color(0, 0, 0, 255)
-        ))
-        
-        # Add a ground plane
-        push!(this.boxes, RenderBox(
-            Vec3D(10, 0.1, 10),
-            Vec3D(0, -2, -5),
-            Vec3D(0, 0, 0),
-            SDL_Color(100, 100, 100, 255),
-            SDL_Color(50, 50, 50, 255)
-        ))
     end
 
     function Component.update(this::SoftwareRenderer3D, deltaTime::Float64)
