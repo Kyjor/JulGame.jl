@@ -46,7 +46,34 @@ module MeshLoaderIntegrationModule
                 @info "Parsed $(length(render_mesh.materials)) materials"
             end
             
-            # Extract vertices and faces based on mesh type
+            # For OBJ files, use custom parser that preserves material assignments
+            if lowercase(splitext(file_path)[2]) == ".obj"
+                @info "Using custom OBJ parser for material preservation"
+                vertices, uv_coords, faces_with_materials = parse_obj_file(file_path)
+                
+                # Convert vertices to our format
+                for vertex in vertices
+                    push!(render_mesh.vertices, vertex)
+                end
+                
+                # Convert UV coordinates
+                for uv in uv_coords
+                    push!(render_mesh.uv_coordinates, uv)
+                end
+                
+                # Convert faces with proper material assignments
+                for (vertex_indices, uv_indices, material_name) in faces_with_materials
+                    push!(render_mesh.faces, MaterialFace(vertex_indices, uv_indices, material_name))
+                end
+                
+                @info "Custom OBJ parser loaded $(length(render_mesh.vertices)) vertices, $(length(render_mesh.uv_coordinates)) UVs, $(length(render_mesh.faces)) faces"
+                
+                # Add to renderer and return early
+                push!(renderer.meshes, render_mesh)
+                return render_mesh
+            end
+            
+            # Extract vertices and faces based on mesh type (for non-OBJ files)
             if isa(mesh_data, GeometryBasics.Mesh)
                 # Standard GeometryBasics Mesh
                 vertices = GeometryBasics.coordinates(mesh_data)

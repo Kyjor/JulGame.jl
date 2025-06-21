@@ -283,15 +283,19 @@ module MeshLoader3DModule
                     texture_path = joinpath(mtl_dir, texture_filename)
                 end
                 
-                # Check if texture file exists and extract color
+                # Check if texture file exists
                 if isfile(texture_path)
                     current_material.has_texture = true
                     current_material.texture_path = texture_path
                     
-                    # Extract color from texture and use it as the diffuse color
-                    texture_color = load_texture_average_color(texture_path)
-                    current_material.diffuse_color = texture_color
-                    @info "Material '$current_name' texture color extracted: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
+                    # Only extract color from texture if no Kd color was specified
+                    if current_material.diffuse_color == Vec3D(0.8, 0.8, 0.8)  # Default color
+                        texture_color = load_texture_average_color(texture_path)
+                        current_material.diffuse_color = texture_color
+                        @info "Material '$current_name' no Kd specified, using texture color: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
+                    else
+                        @info "Material '$current_name' using specified Kd color: RGB($(current_material.diffuse_color.x), $(current_material.diffuse_color.y), $(current_material.diffuse_color.z)) with texture: $texture_path"
+                    end
                 else
                     @warn "Texture file not found: $texture_path"
                 end

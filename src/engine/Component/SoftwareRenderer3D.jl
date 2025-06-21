@@ -440,18 +440,17 @@ module SoftwareRenderer3DModule
                     if material.has_texture && isfile(material.texture_path)
                         face_texture = load_sdl_texture(renderer, material.texture_path)
                         if face_texture != Ptr{SDL_Texture}(C_NULL)
-                            # Use white color to let texture show through
-                            face_color_vec = Vec3D(1.0, 1.0, 1.0) # White for texturing
+                            # Use material diffuse color with texture (not white!)
+                            face_color_vec = material.diffuse_color
                             # Debug: only print for first few faces to avoid spam
                             if face_idx <= 3
-                                @info "Face $face_idx: Using SDL texture '$(material.texture_path)' for material '$(face.material_name)'"
+                                @info "Face $face_idx: Using SDL texture '$(material.texture_path)' with material color $(material.diffuse_color) for material '$(face.material_name)'"
                             end
                         else
-                            # Fallback to texture average color if SDL texture loading failed
-                            texture_color = load_texture_average_color(material.texture_path)
-                            face_color_vec = texture_color
+                            # Fallback to diffuse color if SDL texture loading failed
+                            face_color_vec = material.diffuse_color
                             if face_idx <= 3
-                                @info "Face $face_idx: SDL texture failed, using average color for '$(face.material_name)'"
+                                @info "Face $face_idx: SDL texture failed, using material diffuse color $(material.diffuse_color) for '$(face.material_name)'"
                             end
                         end
                     else
