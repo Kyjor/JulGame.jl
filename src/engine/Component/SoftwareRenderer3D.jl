@@ -37,6 +37,15 @@ module SoftwareRenderer3DModule
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
     end
 
+    function cross(a::Vec3D, b::Vec3D)::Vec3D
+        return Vec3D(
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x,
+            0.0 # w component is 0 for a direction vector
+        )
+    end
+
     function length_of(v::Vec3D)::Float64
         return sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w)
     end
@@ -188,9 +197,10 @@ module SoftwareRenderer3DModule
     # Triangle structure
     mutable struct Triangle3D
         vertices::Vector{Vertex3D}
+        texture::Ptr{SDL_Texture}
 
-        function Triangle3D(v1::Vertex3D, v2::Vertex3D, v3::Vertex3D)
-            new([v1, v2, v3])
+        function Triangle3D(v1::Vertex3D, v2::Vertex3D, v3::Vertex3D, texture::Ptr{SDL_Texture} = C_NULL)
+            new([v1, v2, v3], texture)
         end
     end
 
@@ -237,12 +247,16 @@ module SoftwareRenderer3DModule
         ambient_color::Vec3D
         specular_color::Vec3D
         alpha::Float64
+        has_texture::Bool
+        texture_path::String
         
         function RenderMaterial(diffuse::Vec3D = Vec3D(0.8, 0.8, 0.8), 
                                ambient::Vec3D = Vec3D(0.2, 0.2, 0.2), 
                                specular::Vec3D = Vec3D(0.0, 0.0, 0.0), 
-                               alpha::Float64 = 1.0)
-            new(diffuse, ambient, specular, alpha)
+                               alpha::Float64 = 1.0,
+                               has_texture::Bool = false,
+                               texture_path::String = "")
+            new(diffuse, ambient, specular, alpha, has_texture, texture_path)
         end
     end
 
@@ -292,6 +306,15 @@ module SoftwareRenderer3DModule
         boxes::Vector{RenderBox}
         meshes::Vector{RenderMesh}
         
+        # Texture cache
+        texture_cache::Dict{String, Ptr{SDL_Texture}}
+        
+        # Perspective correction settings
+        enable_perspective_subdivision::Bool
+        subdivision_threshold_area::Float64
+        subdivision_threshold_z_ratio::Float64
+        max_subdivision_depth::Int
+        
         # Camera properties
         camera_position::Vec3D
         camera_rotation::Vec3D
@@ -304,6 +327,7 @@ module SoftwareRenderer3DModule
         aspect_ratio::Float64
         near::Float64
         far::Float64
+        light_direction::Vec3D
 
         function SoftwareRenderer3D()
             this = new()
@@ -316,6 +340,13 @@ module SoftwareRenderer3DModule
             this.state_stack = RenderState[]
             this.boxes = RenderBox[]
             this.meshes = RenderMesh[]
+            this.texture_cache = Dict{String, Ptr{SDL_Texture}}()
+            
+            # Initialize perspective correction settings
+            this.enable_perspective_subdivision = true
+            this.subdivision_threshold_area = 10000.0  # Pixels
+            this.subdivision_threshold_z_ratio = 1.5   # Z depth variation ratio
+            this.max_subdivision_depth = 3            # Maximum recursion depth
             
             this.camera_position = Vec3D(0, 0, 0)
             this.camera_rotation = Vec3D(0, 0, 0)
@@ -327,6 +358,7 @@ module SoftwareRenderer3DModule
             this.aspect_ratio = 1.0
             this.near = 1.0 / 1024.0
             this.far = 1024.0
+            this.light_direction = normalize(Vec3D(0.0, 0.5, -1.0, 0.0))
             
             return this
         end
@@ -342,12 +374,78 @@ module SoftwareRenderer3DModule
         end
     end
 
-    # Add triangle to render queue
-    function add_triangle!(renderer::SoftwareRenderer3D, color::SDL_Color, 
-                          a::Vec3D, b::Vec3D, c::Vec3D,
-                          u1::Float64 = 0.0, v1::Float64 = 0.0,
-                          u2::Float64 = 0.0, v2::Float64 = 0.0,
-                          u3::Float64 = 0.0, v3::Float64 = 0.0)::AABB
+    # Calculate perspective-correct UV coordinates using subdivision
+    function calculate_perspective_correct_uv(u::Float64, v::Float64, z::Float64)::Tuple{Float64, Float64}
+        # For now, return original coordinates - subdivision will handle perspective correction
+        return (u, v)
+    end
+
+    # Subdivide triangle for better perspective-correct texture mapping approximation
+    function subdivide_triangle_for_perspective(renderer::SoftwareRenderer3D, color::SDL_Color,
+                                              a::Vec3D, b::Vec3D, c::Vec3D,
+                                              u1::Float64, v1::Float64,
+                                              u2::Float64, v2::Float64,
+                                              u3::Float64, v3::Float64,
+                                              texture::Ptr{SDL_Texture},
+                                              depth::Int = 0)::AABB
+        
+        # Check if subdivision is enabled
+        if !renderer.enable_perspective_subdivision
+            return add_triangle_direct!(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture)
+        end
+        
+        # Calculate triangle size in screen space to determine if subdivision is needed
+        screen_area = abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y))
+        
+        # Calculate depth variation to determine if perspective correction is needed
+        z_min = min(a.z, b.z, c.z)
+        z_max = max(a.z, b.z, c.z)
+        z_ratio = z_max / max(z_min, 0.001)  # Avoid division by zero
+        
+        # Subdivide if:
+        # 1. Triangle is large in screen space (configurable threshold)
+        # 2. There's significant depth variation (configurable ratio)
+        # 3. We haven't reached maximum subdivision depth (configurable)
+        should_subdivide = (screen_area > renderer.subdivision_threshold_area || 
+                           z_ratio > renderer.subdivision_threshold_z_ratio) && 
+                          depth < renderer.max_subdivision_depth
+        
+        if !should_subdivide
+            # Base case: add the triangle without further subdivision
+            return add_triangle_direct!(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture)
+        end
+        
+        # Subdivide triangle into 4 smaller triangles
+        # Calculate midpoints
+        mid_ab = Vec3D((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2, 1.0)
+        mid_bc = Vec3D((b.x + c.x) / 2, (b.y + c.y) / 2, (b.z + c.z) / 2, 1.0)
+        mid_ca = Vec3D((c.x + a.x) / 2, (c.y + a.y) / 2, (c.z + a.z) / 2, 1.0)
+        
+        # Calculate midpoint UV coordinates
+        u_ab, v_ab = (u1 + u2) / 2, (v1 + v2) / 2
+        u_bc, v_bc = (u2 + u3) / 2, (v2 + v3) / 2
+        u_ca, v_ca = (u3 + u1) / 2, (v3 + v1) / 2
+        
+        # Recursively subdivide the 4 triangles
+        aabb1 = subdivide_triangle_for_perspective(renderer, color, a, mid_ab, mid_ca, u1, v1, u_ab, v_ab, u_ca, v_ca, texture, depth + 1)
+        aabb2 = subdivide_triangle_for_perspective(renderer, color, mid_ab, b, mid_bc, u_ab, v_ab, u2, v2, u_bc, v_bc, texture, depth + 1)
+        aabb3 = subdivide_triangle_for_perspective(renderer, color, mid_ca, mid_bc, c, u_ca, v_ca, u_bc, v_bc, u3, v3, texture, depth + 1)
+        aabb4 = subdivide_triangle_for_perspective(renderer, color, mid_ab, mid_bc, mid_ca, u_ab, v_ab, u_bc, v_bc, u_ca, v_ca, texture, depth + 1)
+        
+        # Combine AABBs
+        combined_min = min_pairwise(min_pairwise(aabb1.min, aabb2.min), min_pairwise(aabb3.min, aabb4.min))
+        combined_max = max_pairwise(max_pairwise(aabb1.max, aabb2.max), max_pairwise(aabb3.max, aabb4.max))
+        
+        return AABB(combined_min, combined_max)
+    end
+
+    # Direct triangle addition without subdivision (internal function)
+    function add_triangle_direct!(renderer::SoftwareRenderer3D, color::SDL_Color, 
+                                 a::Vec3D, b::Vec3D, c::Vec3D,
+                                 u1::Float64, v1::Float64,
+                                 u2::Float64, v2::Float64,
+                                 u3::Float64, v3::Float64,
+                                 texture::Ptr{SDL_Texture})::AABB
         
         if color.a == 0
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
@@ -362,6 +460,9 @@ module SoftwareRenderer3DModule
         if ta.w <= 0 || tb.w <= 0 || tc.w <= 0
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         end
+        
+        # Store Z values for depth
+        z1, z2, z3 = ta.z, tb.z, tc.z
         
         # Perspective divide
         perspective_divide!(ta)
@@ -382,9 +483,10 @@ module SoftwareRenderer3DModule
         
         # Create triangle
         triangle = Triangle3D(
-            Vertex3D(ta.x, ta.y, ta.z, color, u1, v1),
-            Vertex3D(tb.x, tb.y, tb.z, color, u2, v2),
-            Vertex3D(tc.x, tc.y, tc.z, color, u3, v3)
+            Vertex3D(ta.x, ta.y, z1, color, u1, v1),
+            Vertex3D(tb.x, tb.y, z2, color, u2, v2),
+            Vertex3D(tc.x, tc.y, z3, color, u3, v3),
+            texture
         )
         
         push!(renderer.triangles, triangle)
@@ -392,16 +494,33 @@ module SoftwareRenderer3DModule
         return AABB(min_pairwise(ta, min_pairwise(tb, tc)), max_pairwise(ta, max_pairwise(tb, tc)))
     end
 
+    # Add triangle to render queue with perspective-correct texture coordinates
+    function add_triangle!(renderer::SoftwareRenderer3D, color::SDL_Color, 
+                          a::Vec3D, b::Vec3D, c::Vec3D,
+                          u1::Float64 = 0.0, v1::Float64 = 0.0,
+                          u2::Float64 = 0.0, v2::Float64 = 0.0,
+                          u3::Float64 = 0.0, v3::Float64 = 0.0,
+                          texture::Ptr{SDL_Texture} = Ptr{SDL_Texture}(C_NULL))::AABB
+        
+        if color.a == 0
+            return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        end
+        
+        # Use subdivision for better perspective-correct texture mapping
+        # This approximates perspective correction by subdividing large or depth-varying triangles
+        return subdivide_triangle_for_perspective(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture, 0)
+    end
+
     # Add rectangle
-    function add_fill_rectangle!(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D, d::Vec3D)::AABB
-        aabb1 = add_triangle!(renderer, renderer.state.fill_color, a, b, c, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5)
-        aabb2 = add_triangle!(renderer, renderer.state.fill_color, d, a, c, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5)
+    function add_fill_rectangle!(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D, d::Vec3D, texture::Ptr{SDL_Texture} = Ptr{SDL_Texture}(C_NULL))::AABB
+        aabb1 = add_triangle!(renderer, renderer.state.fill_color, a, b, c, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5, texture)
+        aabb2 = add_triangle!(renderer, renderer.state.fill_color, d, a, c, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, texture)
         return AABB(min_pairwise(aabb1.min, aabb2.min), max_pairwise(aabb1.max, aabb2.max))
     end
 
-    function add_stroke_rectangle!(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D, d::Vec3D)::AABB
-        aabb1 = add_triangle!(renderer, renderer.state.stroke_color, a, b, c, 0.5, 0.5, 1.0, 0.5, 1.0, 1.0)
-        aabb2 = add_triangle!(renderer, renderer.state.stroke_color, d, a, c, 0.5, 1.0, 0.5, 0.5, 1.0, 1.0)
+    function add_stroke_rectangle!(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D, d::Vec3D, texture::Ptr{SDL_Texture} = Ptr{SDL_Texture}(C_NULL))::AABB
+        aabb1 = add_triangle!(renderer, renderer.state.stroke_color, a, b, c, 0.5, 0.5, 1.0, 0.5, 1.0, 1.0, texture)
+        aabb2 = add_triangle!(renderer, renderer.state.stroke_color, d, a, c, 0.5, 1.0, 0.5, 0.5, 1.0, 1.0, texture)
         return AABB(min_pairwise(aabb1.min, aabb2.min), max_pairwise(aabb1.max, aabb2.max))
     end
 
@@ -472,6 +591,108 @@ module SoftwareRenderer3DModule
         b = clamp(round(Int, color.z * 255), 0, 255)
         a = clamp(round(Int, alpha * 255), 0, 255)
         return SDL_Color(r, g, b, a)
+    end
+
+    # Extract dominant color from texture image by sampling multiple pixels
+    # This handles textures with multiple colors like golf courses (green + brown)
+    function load_texture_average_color(texture_path::String)::Vec3D
+        try
+            # Load the image using SDL to get the actual color
+            surface = SDL2.IMG_Load(texture_path)
+            if surface == C_NULL
+                @warn "Failed to load texture for color extraction: $texture_path"
+                return Vec3D(0.8, 0.8, 0.8)  # Default gray
+            end
+            
+            # Get surface information
+            surface_ref = unsafe_load(surface)
+            width = surface_ref.w
+            height = surface_ref.h
+            format = unsafe_load(surface_ref.format)
+            
+            pixel_data = surface_ref.pixels
+            bytes_per_pixel = format.BytesPerPixel
+            
+            if bytes_per_pixel >= 3  # RGB or RGBA
+                # Sample multiple pixels to get a better representation
+                total_r = 0.0
+                total_g = 0.0
+                total_b = 0.0
+                sample_count = 0
+                
+                # Sample every pixel for small textures (8x8), or sample a grid for larger ones
+                sample_step = max(1, div(min(width, height), 4))  # Sample at least 4x4 grid
+                
+                for y in 1:sample_step:height
+                    for x in 1:sample_step:width
+                        pixel_offset = ((y-1) * surface_ref.pitch + (x-1) * bytes_per_pixel)
+                        
+                        r = unsafe_load(Ptr{UInt8}(pixel_data + pixel_offset + 0)) / 255.0
+                        g = unsafe_load(Ptr{UInt8}(pixel_data + pixel_offset + 1)) / 255.0
+                        b = unsafe_load(Ptr{UInt8}(pixel_data + pixel_offset + 2)) / 255.0
+                        
+                        total_r += r
+                        total_g += g
+                        total_b += b
+                        sample_count += 1
+                    end
+                end
+                
+                # Calculate average color
+                if sample_count > 0
+                    avg_r = total_r / sample_count
+                    avg_g = total_g / sample_count
+                    avg_b = total_b / sample_count
+                    
+                    SDL_FreeSurface(surface)
+                    
+                    @info "Extracted average color from texture '$texture_path' ($(sample_count) samples): RGB($avg_r, $avg_g, $avg_b)"
+                    return Vec3D(avg_r, avg_g, avg_b)
+                else
+                    SDL_FreeSurface(surface)
+                    @warn "No pixels sampled from texture: $texture_path"
+                    return Vec3D(0.8, 0.8, 0.8)  # Default gray
+                end
+            else
+                SDL_FreeSurface(surface)
+                @warn "Unsupported pixel format for texture: $texture_path"
+                return Vec3D(0.8, 0.8, 0.8)  # Default gray
+            end
+            
+        catch e
+            @warn "Failed to extract color from texture $texture_path: $e"
+            return Vec3D(0.8, 0.8, 0.8)  # Default gray
+        end
+    end
+
+    # Load SDL texture for rendering
+    function load_sdl_texture(renderer::SoftwareRenderer3D, texture_path::String)::Ptr{SDL_Texture}
+        # Check cache first
+        if haskey(renderer.texture_cache, texture_path)
+            return renderer.texture_cache[texture_path]
+        end
+        
+        # Load texture using SDL_image
+        surface = SDL2.IMG_Load(texture_path)
+        if surface == C_NULL
+            @warn "Failed to load texture: $texture_path - $(unsafe_string(SDL_GetError()))"
+            return Ptr{SDL_Texture}(C_NULL)
+        end
+        
+        # Create texture from surface
+        texture = SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+        SDL_FreeSurface(surface)
+        
+        if texture == C_NULL
+            @warn "Failed to create texture from surface: $texture_path - $(unsafe_string(SDL_GetError()))"
+            return Ptr{SDL_Texture}(C_NULL)
+        end
+        
+        # Cache the texture
+        renderer.texture_cache[texture_path] = texture
+        @info "Loaded SDL texture: $texture_path"
+        
+        return texture
     end
 
     # Parse OBJ file to extract material usage per face
@@ -568,6 +789,31 @@ module SoftwareRenderer3DModule
                 # Alpha/transparency
                 alpha = parse(Float64, tokens[2])
                 current_material.alpha = tokens[1] == "Tr" ? (1.0 - alpha) : alpha
+                
+            elseif tokens[1] == "map_Kd" && length(tokens) >= 2 && current_material !== nothing
+                # Diffuse texture map
+                texture_filename = join(tokens[2:end], " ")  # Handle filenames with spaces
+                
+                # Resolve texture path relative to MTL file
+                mtl_dir = dirname(mtl_path)
+                if isabs(texture_filename)
+                    texture_path = texture_filename
+                else
+                    texture_path = joinpath(mtl_dir, texture_filename)
+                end
+                
+                # Check if texture file exists and extract color
+                if isfile(texture_path)
+                    current_material.has_texture = true
+                    current_material.texture_path = texture_path
+                    
+                    # Extract color from texture and use it as the diffuse color
+                    texture_color = load_texture_average_color(texture_path)
+                    current_material.diffuse_color = texture_color
+                    @info "Material '$current_name' texture color extracted: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
+                else
+                    @warn "Texture file not found: $texture_path"
+                end
             end
         end
         
@@ -639,8 +885,38 @@ module SoftwareRenderer3DModule
                         end
                     end
                     
+                    # Extract texture information
+                    if haskey(material_data, "diffuse map") && haskey(material_data["diffuse map"], "filename")
+                        texture_filename = material_data["diffuse map"]["filename"]
+                        
+                        # Resolve texture path relative to OBJ file
+                        obj_dir = dirname(file_path)
+                        if isabspath(texture_filename)
+                            texture_path = texture_filename
+                        else
+                            texture_path = joinpath(obj_dir, texture_filename)
+                        end
+                        
+                        # Check if texture file exists and extract color
+                        if isfile(texture_path)
+                            material.has_texture = true
+                            material.texture_path = texture_path
+                            
+                            # Extract color from texture and use it as the diffuse color
+                            texture_color = load_texture_average_color(texture_path)
+                            material.diffuse_color = texture_color
+                            @info "Material '$material_name' texture color extracted: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
+                        else
+                            @warn "Texture file not found: $texture_path"
+                        end
+                    end
+                    
                     render_mesh.materials[string(material_name)] = material
-                    @info "Material '$material_name': diffuse=$(material.diffuse_color)"
+                    if material.has_texture
+                        @info "Material '$material_name': diffuse=$(material.diffuse_color), texture=$(material.texture_path)"
+                    else
+                        @info "Material '$material_name': diffuse=$(material.diffuse_color)"
+                    end
                 end
                 
                 # Extract material assignments per submesh
@@ -801,33 +1077,33 @@ module SoftwareRenderer3DModule
                         end
                     end
                     
-                                            # Convert faces to our format
-                        for face in faces
-                            face_indices = Int[]
-                            if isa(face, GeometryBasics.TriangleFace)
-                                # Handle GLIndex conversion properly
-                                push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                            elseif isa(face, GeometryBasics.QuadFace)
-                                # Split quad into two triangles
-                                push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
-                                push!(render_mesh.faces, MaterialFace(copy(face_indices), "default"))
-                                face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
-                            else
-                                # Generic face - try to extract indices
-                                for i in 1:length(face)
-                                    push!(face_indices, convert(Int, face[i]))
-                                end
-                                # If more than 3 vertices, triangulate (simple fan triangulation)
-                                if length(face_indices) > 3
-                                    for i in 2:(length(face_indices)-1)
-                                        triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
-                                        push!(render_mesh.faces, MaterialFace(triangle_indices, "default"))
-                                    end
-                                    continue
-                                end
+                    # Convert faces to our format
+                    for face in faces
+                        face_indices = Int[]
+                        if isa(face, GeometryBasics.TriangleFace)
+                            # Handle GLIndex conversion properly
+                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                        elseif isa(face, GeometryBasics.QuadFace)
+                            # Split quad into two triangles
+                            push!(face_indices, convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3]))
+                            push!(render_mesh.faces, MaterialFace(copy(face_indices), "default"))
+                            face_indices = [convert(Int, face[1]), convert(Int, face[3]), convert(Int, face[4])]
+                        else
+                            # Generic face - try to extract indices
+                            for i in 1:length(face)
+                                push!(face_indices, convert(Int, face[i]))
                             end
-                            push!(render_mesh.faces, MaterialFace(face_indices, "default"))
+                            # If more than 3 vertices, triangulate (simple fan triangulation)
+                            if length(face_indices) > 3
+                                for i in 2:(length(face_indices)-1)
+                                    triangle_indices = [face_indices[1], face_indices[i], face_indices[i+1]]
+                                    push!(render_mesh.faces, MaterialFace(triangle_indices, "default"))
+                                end
+                                continue
+                            end
                         end
+                        push!(render_mesh.faces, MaterialFace(face_indices, "default"))
+                    end
                 catch expand_error
                     @warn "Failed to expand MetaMesh, trying alternative approach: $expand_error"
                     
@@ -848,7 +1124,7 @@ module SoftwareRenderer3DModule
                         
                         # Convert faces
                         for face in faces
-                            face_indices = [convert(Int, face[1]), convert(Int, face[2]), convert(Int, face[3])]
+                            face_indices = [Int(i) for i in face]
                             push!(render_mesh.faces, MaterialFace(face_indices, "default"))
                         end
                     else
@@ -918,41 +1194,107 @@ module SoftwareRenderer3DModule
         renderer.state.fill_color = mesh.default_fill_color
         renderer.state.stroke_color = mesh.default_stroke_color
         
-        # Apply transformations
-        mesh_transform = translation_matrix(mesh.position.x, mesh.position.y, mesh.position.z) *
-                        rotation_matrix(mesh.rotation.x, mesh.rotation.y, mesh.rotation.z) *
-                        scaling_matrix(mesh.scale.x, mesh.scale.y, mesh.scale.z)
-        
-        renderer.state.transform = old_transform * mesh_transform
+        # Apply transformations with safety checks
+        try
+            mesh_transform = translation_matrix(mesh.position.x, mesh.position.y, mesh.position.z) *
+                            rotation_matrix(mesh.rotation.x, mesh.rotation.y, mesh.rotation.z) *
+                            scaling_matrix(mesh.scale.x, mesh.scale.y, mesh.scale.z)
+            
+            renderer.state.transform = old_transform * mesh_transform
+        catch e
+            @error "Error creating mesh transformation matrix: $e"
+            # Use identity transform as fallback
+            renderer.state.transform = old_transform
+        end
         
         # Render all faces
         aabb = AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         
-        for face in mesh.faces
+        # Debug: Print mesh information
+        if length(renderer.triangles) == 0  # Only print once per frame
+            @info "Rendering mesh: use_materials=$(mesh.use_materials), materials=$(length(mesh.materials)), faces=$(length(mesh.faces))"
+            @info "Default fill color: $(mesh.default_fill_color)"
+            if !isempty(mesh.materials)
+                for (name, material) in mesh.materials
+                    @info "Material '$name': has_texture=$(material.has_texture), texture_path='$(material.texture_path)', diffuse=$(material.diffuse_color)"
+                end
+            end
+        end
+        
+        for (face_idx, face) in enumerate(mesh.faces)
             if length(face.vertex_indices) >= 3
                 # Get vertices for this face
                 v1 = mesh.vertices[face.vertex_indices[1]]
                 v2 = mesh.vertices[face.vertex_indices[2]]
                 v3 = mesh.vertices[face.vertex_indices[3]]
                 
-                # Determine color to use
-                face_color = renderer.state.fill_color
+                # Calculate face normal for lighting
+                edge1 = v2 - v1
+                edge2 = v3 - v1
+                normal = normalize(cross(edge1, edge2))
+
+                # Determine color and texture to use
+                face_color_vec = Vec3D(1,1,1) # Default to white
+                face_texture = Ptr{SDL_Texture}(C_NULL)
+                alpha = 1.0
+
                 if mesh.use_materials && haskey(mesh.materials, face.material_name)
                     material = mesh.materials[face.material_name]
-                    face_color = vec3d_to_sdl_color(material.diffuse_color, material.alpha)
-                    # Debug: only print for first few faces to avoid spam
-                    if length(renderer.triangles) < 3
-                        @info "Using material '$(face.material_name)' with color $(material.diffuse_color)"
+                    alpha = material.alpha
+                    
+                    # Load SDL texture if available
+                    if material.has_texture && isfile(material.texture_path)
+                        face_texture = load_sdl_texture(renderer, material.texture_path)
+                        if face_texture != Ptr{SDL_Texture}(C_NULL)
+                            # Use white color to let texture show through
+                            face_color_vec = Vec3D(1.0, 1.0, 1.0) # White for texturing
+                            # Debug: only print for first few faces to avoid spam
+                            if face_idx <= 3
+                                @info "Face $face_idx: Using SDL texture '$(material.texture_path)' for material '$(face.material_name)'"
+                            end
+                        else
+                            # Fallback to texture average color if SDL texture loading failed
+                            texture_color = load_texture_average_color(material.texture_path)
+                            face_color_vec = texture_color
+                            if face_idx <= 3
+                                @info "Face $face_idx: SDL texture failed, using average color for '$(face.material_name)'"
+                            end
+                        end
+                    else
+                        # Use solid diffuse color
+                        face_color_vec = material.diffuse_color
+                        # Debug: only print for first few faces to avoid spam
+                        if face_idx <= 3
+                            @info "Face $face_idx: Using material '$(face.material_name)' with diffuse color $(material.diffuse_color)"
+                        end
                     end
                 else
+                    # Fallback to default mesh color if no material is found
+                    face_color_vec = Vec3D(mesh.default_fill_color.r/255.0, mesh.default_fill_color.g/255.0, mesh.default_fill_color.b/255.0)
+                    alpha = mesh.default_fill_color.a/255.0
                     # Debug: only print for first few faces to avoid spam
-                    if length(renderer.triangles) < 3
-                        @info "No material found for face material '$(face.material_name)', using default color"
+                    if face_idx <= 3
+                        @info "Face $face_idx: No material found for face material '$(face.material_name)', using default color $(face_color_vec)"
                     end
                 end
                 
-                # Add triangle with material color
-                face_aabb = add_triangle!(renderer, face_color, v1, v2, v3)
+                # Apply lighting
+                light_adjusted_color = apply_lighting(face_color_vec, normal, renderer.light_direction)
+                final_color = vec3d_to_sdl_color(light_adjusted_color, alpha)
+                
+                if face_idx <= 3 # Log the final color for the first 3 faces of each mesh
+                    @info "Face $face_idx: Final color after lighting: RGBA($(final_color.r), $(final_color.g), $(final_color.b), $(final_color.a))"
+                end
+
+                # Add triangle with material color and texture
+                # Check for invalid values before calling add_triangle!
+                if any(isnan, [v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z]) || 
+                   any(isinf, [v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z])
+                    @warn "Skipping triangle with invalid vertex coordinates: v1=$v1, v2=$v2, v3=$v3"
+                    continue
+                end
+                
+                face_aabb = add_triangle!(renderer, final_color, v1, v2, v3, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, face_texture)
                 aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
             end
         end
@@ -967,6 +1309,12 @@ module SoftwareRenderer3DModule
 
     # Push/pop state
     function push_state!(renderer::SoftwareRenderer3D)
+        # Prevent stack overflow by limiting stack depth
+        if length(renderer.state_stack) > 10
+            @warn "State stack depth exceeded 10, clearing stack to prevent overflow"
+            empty!(renderer.state_stack)
+        end
+        
         push!(renderer.state_stack, RenderState())
         renderer.state_stack[end].transform = renderer.state.transform
         renderer.state_stack[end].fill_color = renderer.state.fill_color
@@ -980,7 +1328,20 @@ module SoftwareRenderer3DModule
     end
 
     function apply_transform!(renderer::SoftwareRenderer3D, matrix::Mat4x4)
-        renderer.state.transform = renderer.state.transform * matrix
+        new_transform = renderer.state.transform * matrix
+        
+        # Check for matrix overflow/invalid values
+        for row in new_transform.rows
+            for val in [row.x, row.y, row.z, row.w]
+                if isnan(val) || isinf(val) || abs(val) > 1e12
+                    @warn "Transform matrix overflow detected, resetting to identity"
+                    renderer.state.transform = Mat4x4()
+                    return
+                end
+            end
+        end
+        
+        renderer.state.transform = new_transform
     end
 
     # Flush triangles (render them)
@@ -1001,24 +1362,36 @@ module SoftwareRenderer3DModule
             reverse!(renderer.triangles)
         end
         
-        # Render triangles using SDL
-        triangle_count = 0
+        # Group triangles by texture
+        texture_groups = Dict{Ptr{SDL_Texture}, Vector{Triangle3D}}()
         for triangle in renderer.triangles
-            vertices = triangle.vertices
+            texture = triangle.texture
+            if !haskey(texture_groups, texture)
+                texture_groups[texture] = Triangle3D[]
+            end
+            push!(texture_groups[texture], triangle)
+        end
+        
+        # Render triangles grouped by texture
+        triangle_count = 0
+        for (texture, triangles) in texture_groups
+            # Convert all triangles for this texture to SDL vertices
+            sdl_vertices = SDL_Vertex[]
+            for triangle in triangles
+                vertices = triangle.vertices
+                append!(sdl_vertices, [
+                    SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(vertices[1].u, vertices[1].v)),
+                    SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(vertices[2].u, vertices[2].v)),
+                    SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(vertices[3].u, vertices[3].v))
+                ])
+            end
             
-            # Convert to SDL vertices
-            sdl_vertices = [
-                SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(vertices[1].u, vertices[1].v)),
-                SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(vertices[2].u, vertices[2].v)),
-                SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(vertices[3].u, vertices[3].v))
-            ]
-            
-            # Render the geometry
-            result = SDL_RenderGeometry(JulGame.Renderer, C_NULL, sdl_vertices, length(sdl_vertices), C_NULL, 0)
+            # Render all triangles with this texture in one call
+            result = SDL_RenderGeometry(JulGame.Renderer, texture, sdl_vertices, length(sdl_vertices), Ptr{Cint}(C_NULL), 0)
             if result < 0
                 println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
             else
-                triangle_count += 1
+                triangle_count += length(triangles)
             end
         end
         
@@ -1123,6 +1496,12 @@ module SoftwareRenderer3DModule
         # Clear triangles
         empty!(this.triangles)
         
+        # Clear state stack to prevent accumulation
+        empty!(this.state_stack)
+        
+        # Reset transform to identity matrix to prevent overflow
+        this.state.transform = Mat4x4()
+        
         # Setup render state
         push_state!(this)
         
@@ -1184,6 +1563,14 @@ module SoftwareRenderer3DModule
     end
 
     function Component.destroy(this::SoftwareRenderer3D)
+        # Clean up cached textures
+        for (path, texture) in this.texture_cache
+            if texture != C_NULL
+                SDL_DestroyTexture(texture)
+            end
+        end
+        empty!(this.texture_cache)
+        
         empty!(this.triangles)
         empty!(this.boxes)
         empty!(this.meshes)
@@ -1248,6 +1635,45 @@ module SoftwareRenderer3DModule
             end
         end
         return false
+    end
+
+    # Perspective correction configuration functions
+    function enable_perspective_subdivision!(renderer::SoftwareRenderer3D, enable::Bool = true)
+        renderer.enable_perspective_subdivision = enable
+    end
+
+    function set_subdivision_thresholds!(renderer::SoftwareRenderer3D; 
+                                        area_threshold::Float64 = 10000.0,
+                                        z_ratio_threshold::Float64 = 1.5,
+                                        max_depth::Int = 3)
+        renderer.subdivision_threshold_area = area_threshold
+        renderer.subdivision_threshold_z_ratio = z_ratio_threshold
+        renderer.max_subdivision_depth = max_depth
+    end
+
+    # Get current perspective correction settings
+    function get_perspective_settings(renderer::SoftwareRenderer3D)
+        return (
+            enabled = renderer.enable_perspective_subdivision,
+            area_threshold = renderer.subdivision_threshold_area,
+            z_ratio_threshold = renderer.subdivision_threshold_z_ratio,
+            max_depth = renderer.max_subdivision_depth
+        )
+    end
+
+    # Simple lighting calculation
+    function apply_lighting(color::Vec3D, normal::Vec3D, light_dir::Vec3D)::Vec3D
+        # Normalize light direction
+        light_dir_normalized = normalize(light_dir)
+        
+        # Calculate dot product (how much the face is pointing towards the light)
+        dp = dot(normal, light_dir_normalized)
+        
+        # Clamp the dot product to be between ambient and full brightness
+        intensity = clamp(dp, 0.2, 1.0) # Using 0.2 for some ambient light
+        
+        # Apply intensity to the color
+        return Vec3D(color.x * intensity, color.y * intensity, color.z * intensity, color.w)
     end
 
 end 
