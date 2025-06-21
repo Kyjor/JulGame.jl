@@ -48,7 +48,7 @@ module MeshLoaderIntegrationModule
             
             # For OBJ files, use custom parser that preserves material assignments
             if lowercase(splitext(file_path)[2]) == ".obj"
-                @info "Using custom OBJ parser for material preservation"
+                @info "🔧 USING CUSTOM OBJ PARSER for material preservation - file: $file_path"
                 vertices, uv_coords, faces_with_materials = parse_obj_file(file_path)
                 
                 # Convert vertices to our format
@@ -62,8 +62,15 @@ module MeshLoaderIntegrationModule
                 end
                 
                 # Convert faces with proper material assignments
-                for (vertex_indices, uv_indices, material_name) in faces_with_materials
-                    push!(render_mesh.faces, MaterialFace(vertex_indices, uv_indices, material_name))
+                for (face_idx, (vertex_indices, uv_indices, material_name)) in enumerate(faces_with_materials)
+                    if face_idx <= 3  # Debug first few faces
+                        @info "MeshLoader: Converting face $face_idx: vertex_indices=$vertex_indices, uv_indices=$uv_indices, material='$material_name'"
+                    end
+                    face = MaterialFace(vertex_indices, uv_indices, material_name)
+                    if face_idx <= 3  # Debug first few faces  
+                        @info "MeshLoader: Created MaterialFace $face_idx: vertex_indices=$(face.vertex_indices), uv_indices=$(face.uv_indices), material='$(face.material_name)'"
+                    end
+                    push!(render_mesh.faces, face)
                 end
                 
                 @info "Custom OBJ parser loaded $(length(render_mesh.vertices)) vertices, $(length(render_mesh.uv_coordinates)) UVs, $(length(render_mesh.faces)) faces"

@@ -440,17 +440,19 @@ module SoftwareRenderer3DModule
                     if material.has_texture && isfile(material.texture_path)
                         face_texture = load_sdl_texture(renderer, material.texture_path)
                         if face_texture != Ptr{SDL_Texture}(C_NULL)
-                            # Use material diffuse color with texture (not white!)
+                            # Use texture with Kd color as tint/modulation
+                            # For white Kd (1,1,1): texture shows at full intensity
+                            # For colored Kd: texture gets tinted by that color
                             face_color_vec = material.diffuse_color
                             # Debug: only print for first few faces to avoid spam
                             if face_idx <= 3
-                                @info "Face $face_idx: Using SDL texture '$(material.texture_path)' with material color $(material.diffuse_color) for material '$(face.material_name)'"
+                                @info "Face $face_idx: Using texture '$(material.texture_path)' tinted with Kd $(material.diffuse_color) for material '$(face.material_name)'"
                             end
                         else
                             # Fallback to diffuse color if SDL texture loading failed
                             face_color_vec = material.diffuse_color
                             if face_idx <= 3
-                                @info "Face $face_idx: SDL texture failed, using material diffuse color $(material.diffuse_color) for '$(face.material_name)'"
+                                @info "Face $face_idx: Texture '$(material.texture_path)' failed to load, using Kd color $(material.diffuse_color) for '$(face.material_name)'"
                             end
                         end
                     else
@@ -471,8 +473,9 @@ module SoftwareRenderer3DModule
                     end
                 end
                 
-                # Apply lighting
-                light_adjusted_color = apply_lighting(face_color_vec, normal, renderer.light_direction)
+                # Apply lighting (temporarily disabled for debugging)
+                # light_adjusted_color = apply_lighting(face_color_vec, normal, renderer.light_direction)
+                light_adjusted_color = face_color_vec  # Use raw color without lighting
                 final_color = vec3d_to_sdl_color(light_adjusted_color, alpha)
                 
                 if face_idx <= 3 # Log the final color for the first 3 faces of each mesh
@@ -492,17 +495,29 @@ module SoftwareRenderer3DModule
                         
                         if uv1_idx > 0 && uv1_idx <= length(mesh.uv_coordinates)
                             uv1 = mesh.uv_coordinates[uv1_idx]
-                            u1, v1_uv = uv1.u, uv1.v
+                            u1, v1_uv = uv1.u, 1.0 - uv1.v  # Flip V coordinate
+                        else
+                            if face_idx <= 3
+                                @warn "Face $face_idx: UV1 index $uv1_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
+                            end
                         end
                         
                         if uv2_idx > 0 && uv2_idx <= length(mesh.uv_coordinates)
                             uv2 = mesh.uv_coordinates[uv2_idx]
-                            u2, v2_uv = uv2.u, uv2.v
+                            u2, v2_uv = uv2.u, 1.0 - uv2.v  # Flip V coordinate
+                        else
+                            if face_idx <= 3
+                                @warn "Face $face_idx: UV2 index $uv2_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
+                            end
                         end
                         
                         if uv3_idx > 0 && uv3_idx <= length(mesh.uv_coordinates)
                             uv3 = mesh.uv_coordinates[uv3_idx]
-                            u3, v3_uv = uv3.u, uv3.v
+                            u3, v3_uv = uv3.u, 1.0 - uv3.v  # Flip V coordinate
+                        else
+                            if face_idx <= 3
+                                @warn "Face $face_idx: UV3 index $uv3_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
+                            end
                         end
                         
                         # Debug UV coordinates for first few faces

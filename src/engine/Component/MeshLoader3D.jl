@@ -145,9 +145,16 @@ module MeshLoader3DModule
                     
                     # UV index (optional)
                     if length(parts) >= 2 && !isempty(parts[2])
-                        push!(uv_indices, parse(Int, parts[2]))
+                        uv_idx = parse(Int, parts[2])
+                        push!(uv_indices, uv_idx)
+                        if length(uv_indices) <= 3  # Debug first few
+                            @info "OBJ: Face vertex $(length(vertex_indices)) has UV index: $uv_idx (from parts[2]='$(parts[2])')"
+                        end
                     else
                         push!(uv_indices, 0)  # No UV coordinate
+                        if length(uv_indices) <= 3  # Debug first few
+                            @info "OBJ: Face vertex $(length(vertex_indices)) has NO UV index, defaulting to 0"
+                        end
                     end
                 end
                 
@@ -175,6 +182,24 @@ module MeshLoader3DModule
         end
         
         @info "OBJ: Parsed $(length(vertices)) vertices, $(length(uv_coords)) UV coordinates, $(length(faces_with_materials)) faces"
+        
+        # Debug: Print some UV coordinates
+        if !isempty(uv_coords)
+            @info "First few UV coordinates:"
+            for i in 1:min(5, length(uv_coords))
+                @info "  UV $i: ($(uv_coords[i].u), $(uv_coords[i].v))"
+            end
+        end
+        
+        # Debug: Print some face UV indices
+        if !isempty(faces_with_materials)
+            @info "First few face UV indices:"
+            for i in 1:min(3, length(faces_with_materials))
+                vertex_indices, uv_indices, material = faces_with_materials[i]
+                @info "  Face $i: UV indices = $uv_indices, Material = '$material'"
+            end
+        end
+        
         return (vertices, uv_coords, faces_with_materials)
     end
 
