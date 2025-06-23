@@ -756,14 +756,14 @@ module SoftwareRenderer3DModule
             
             # Apply camera transform
             apply_transform!(this, scaling_matrix(Float64(this.camera_zoom.x), Float64(this.camera_zoom.y), 1.0))
-            apply_transform!(this, translation_matrix(0.0, 0.0, -20.0))
             apply_transform!(this, rotation_matrix(-pitch_rad, -yaw_rad, 0.0))
+            apply_transform!(this, translation_matrix(0.0, 0.0, -20.0))
             apply_transform!(this, translation_matrix(-camera_pos.x, -camera_pos.y, -camera_pos.z))
         else
             # Fall back to internal camera system
             apply_transform!(this, scaling_matrix(Float64(this.camera_zoom.x), Float64(this.camera_zoom.y), 1.0))
-            apply_transform!(this, translation_matrix(0.0, 0.0, -20.0))
             apply_transform!(this, rotation_matrix(Float64(-this.camera_rotation.x), Float64(-this.camera_rotation.y), Float64(-this.camera_rotation.z)))
+            apply_transform!(this, translation_matrix(0.0, 0.0, -20.0))
             apply_transform!(this, translation_matrix(Float64(-this.camera_position.x), Float64(-this.camera_position.y), Float64(-this.camera_position.z)))
         end
         
