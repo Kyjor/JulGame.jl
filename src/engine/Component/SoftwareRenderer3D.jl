@@ -26,6 +26,17 @@ module SoftwareRenderer3DModule
 
     export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox, RenderMesh, load_mesh_from_file!
 
+    # UV coordinate normalization function
+    function normalize_uv_coordinate(uv_coord::Float64)::Float64
+        # For coordinates in the typical range [-1, 1], normalize to [0, 1]
+        # This handles common cases like coordinates from -1 to 1
+        if uv_coord >= -1.0 && uv_coord <= 1.0
+            return (uv_coord + 1.0) * 0.5
+        end
+        # For coordinates outside [-1, 1], use modulo wrapping as fallback
+        return mod(uv_coord, 1.0)
+    end
+
     # Re-export from modules
     using .Math3DModule: dot, cross, length_of, normalize, min_pairwise, max_pairwise, 
                         translation_matrix, scaling_matrix, x_rotation_matrix, y_rotation_matrix, 
@@ -471,14 +482,15 @@ module SoftwareRenderer3DModule
                                  rotation::Vec3D = Vec3D(0, 0, 0),
                                  scale::Vec3D = Vec3D(1, 1, 1),
                                  fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
-                                 stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))::Union{RenderMesh, Nothing}
+                                 stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255),
+                                 normalize_uv::Bool = false)::Union{RenderMesh, Nothing}
         
         if !MESHIO_AVAILABLE
             @error "MeshIO not available. Cannot load 3D files. Install with: using Pkg; Pkg.add([\"FileIO\", \"MeshIO\"])"
             return nothing
         end
         
-        return MeshLoaderIntegrationModule.load_mesh_from_file!(renderer, file_path, position, rotation, scale, fill_color, stroke_color)
+        return MeshLoaderIntegrationModule.load_mesh_from_file!(renderer, file_path, position, rotation, scale, fill_color, stroke_color, normalize_uv)
     end
 
     # Render a mesh
@@ -603,7 +615,14 @@ module SoftwareRenderer3DModule
                         
                         if uv1_idx > 0 && uv1_idx <= length(mesh.uv_coordinates)
                             uv1 = mesh.uv_coordinates[uv1_idx]
-                            u1, v1_uv = uv1.u, 1.0 - uv1.v  # Flip V coordinate
+                            # Flip V coordinate and optionally normalize UV coordinates to [0,1] range
+                            if mesh.normalize_uv_coordinates
+                                u1 = normalize_uv_coordinate(uv1.u)
+                                v1_uv = normalize_uv_coordinate(1.0 - uv1.v)
+                            else
+                                # Original behavior: use UV coordinates as-is (just flip V)
+                                u1, v1_uv = uv1.u, 1.0 - uv1.v
+                            end
                         else
                             if face_idx <= 3
                                 @warn "Face $face_idx: UV1 index $uv1_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
@@ -612,7 +631,14 @@ module SoftwareRenderer3DModule
                         
                         if uv2_idx > 0 && uv2_idx <= length(mesh.uv_coordinates)
                             uv2 = mesh.uv_coordinates[uv2_idx]
-                            u2, v2_uv = uv2.u, 1.0 - uv2.v  # Flip V coordinate
+                            # Flip V coordinate and optionally normalize UV coordinates to [0,1] range
+                            if mesh.normalize_uv_coordinates
+                                u2 = normalize_uv_coordinate(uv2.u)
+                                v2_uv = normalize_uv_coordinate(1.0 - uv2.v)
+                            else
+                                # Original behavior: use UV coordinates as-is (just flip V)
+                                u2, v2_uv = uv2.u, 1.0 - uv2.v
+                            end
                         else
                             if face_idx <= 3
                                 @warn "Face $face_idx: UV2 index $uv2_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
@@ -621,7 +647,14 @@ module SoftwareRenderer3DModule
                         
                         if uv3_idx > 0 && uv3_idx <= length(mesh.uv_coordinates)
                             uv3 = mesh.uv_coordinates[uv3_idx]
-                            u3, v3_uv = uv3.u, 1.0 - uv3.v  # Flip V coordinate
+                            # Flip V coordinate and optionally normalize UV coordinates to [0,1] range
+                            if mesh.normalize_uv_coordinates
+                                u3 = normalize_uv_coordinate(uv3.u)
+                                v3_uv = normalize_uv_coordinate(1.0 - uv3.v)
+                            else
+                                # Original behavior: use UV coordinates as-is (just flip V)
+                                u3, v3_uv = uv3.u, 1.0 - uv3.v
+                            end
                         else
                             if face_idx <= 3
                                 @warn "Face $face_idx: UV3 index $uv3_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
@@ -974,8 +1007,9 @@ module SoftwareRenderer3DModule
                                 rotation::Vec3D = Vec3D(0, 0, 0),
                                 scale::Vec3D = Vec3D(1, 1, 1),
                                 fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
-                                stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))::Union{RenderMesh, Nothing}
-        return load_mesh_from_file!(renderer, file_path, position, rotation, scale, fill_color, stroke_color)
+                                stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255),
+                                normalize_uv::Bool = false)::Union{RenderMesh, Nothing}
+        return load_mesh_from_file!(renderer, file_path, position, rotation, scale, fill_color, stroke_color, normalize_uv)
     end
 
     # Get mesh by file path

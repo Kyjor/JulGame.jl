@@ -22,7 +22,8 @@ module MeshLoaderIntegrationModule
                                  rotation::Vec3D = Vec3D(0, 0, 0),
                                  scale::Vec3D = Vec3D(1, 1, 1),
                                  fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
-                                 stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))::Union{RenderMesh, Nothing}
+                                 stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255),
+                                 normalize_uv::Bool = false)::Union{RenderMesh, Nothing}
         
         if !isfile(file_path)
             @error "Mesh file not found: $file_path"
@@ -35,7 +36,7 @@ module MeshLoaderIntegrationModule
             println("Loaded mesh data of type: ", typeof(mesh_data))
             
             # Create our RenderMesh
-            render_mesh = RenderMesh(file_path, position, rotation, scale, fill_color, stroke_color)
+            render_mesh = RenderMesh(file_path, position, rotation, scale, fill_color, stroke_color, normalize_uv)
             
             # Check for MTL file and parse it
             mtl_path = splitext(file_path)[1] * ".mtl"

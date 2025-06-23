@@ -65,14 +65,16 @@ module Materials3DModule
         default_fill_color::SDL_Color
         default_stroke_color::SDL_Color
         file_path::String
+        normalize_uv_coordinates::Bool  # Whether to normalize UV coordinates to [0,1] range
 
         function RenderMesh(file_path::String = "", 
                            position::Vec3D = Vec3D(0, 0, 0), 
                            rotation::Vec3D = Vec3D(0, 0, 0),
                            scale::Vec3D = Vec3D(1, 1, 1),
                            fill_color::SDL_Color = SDL_Color(255, 255, 255, 255),
-                           stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255))
-            new(Vec3D[], UV[], MaterialFace[], Dict{String, RenderMaterial}(), false, position, rotation, scale, fill_color, stroke_color, file_path)
+                           stroke_color::SDL_Color = SDL_Color(0, 0, 0, 255),
+                           normalize_uv::Bool = false)
+            new(Vec3D[], UV[], MaterialFace[], Dict{String, RenderMaterial}(), false, position, rotation, scale, fill_color, stroke_color, file_path, normalize_uv)
         end
     end
 
