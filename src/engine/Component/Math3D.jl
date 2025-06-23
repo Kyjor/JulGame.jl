@@ -19,6 +19,8 @@ module Math3DModule
     Base.:*(a::Vec3D, s::Number) = Vec3D(a.x * s, a.y * s, a.z * s, a.w * s)
     Base.:*(s::Number, a::Vec3D) = a * s
     Base.:-(a::Vec3D) = Vec3D(-a.x, -a.y, -a.z, -a.w)
+    # Scalar division for Vec3D
+    Base.:/(a::Vec3D, s::Number) = Vec3D(a.x / s, a.y / s, a.z / s, a.w / s)
 
     function dot(a::Vec3D, b::Vec3D)::Float64
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w

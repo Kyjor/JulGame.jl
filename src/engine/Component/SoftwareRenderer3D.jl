@@ -61,6 +61,8 @@ module SoftwareRenderer3DModule
         camera_zoom::Vec3D
         perspective_enabled::Bool
         reverse_sort_triangles::Bool
+        enable_backface_culling::Bool  # Add backculling toggle
+        clockwise_front_faces::Bool    # Add winding order configuration
         
         # Projection properties
         fov::Float64
@@ -93,6 +95,8 @@ module SoftwareRenderer3DModule
             this.camera_zoom = Vec3D(1, 1, 1)
             this.perspective_enabled = true
             this.reverse_sort_triangles = false
+            this.enable_backface_culling = true
+            this.clockwise_front_faces = false
             
             this.fov = π / 3.0  # 60 degrees
             this.aspect_ratio = 1.0
@@ -110,6 +114,99 @@ module SoftwareRenderer3DModule
     function calculate_perspective_correct_uv(u::Float64, v::Float64, z::Float64)::Tuple{Float64, Float64}
         # For now, return original coordinates - subdivision will handle perspective correction
         return (u, v)
+    end
+
+    # Backface culling check - returns true if triangle should be culled
+    function should_cull_triangle(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D)::Bool
+        # Skip culling if disabled
+        if !renderer.enable_backface_culling
+            return false
+        end
+        
+        # Calculate triangle normal in view space
+        edge1 = Vec3D(b.x - a.x, b.y - a.y, b.z - a.z, 0.0)
+        edge2 = Vec3D(c.x - a.x, c.y - a.y, c.z - a.z, 0.0)
+        normal = cross(edge1, edge2)
+        
+        # View vector (assuming camera looks down -Z in view space)
+        view_dir = Vec3D(0.0, 0.0, -1.0, 0.0)
+        
+        # Cull if triangle faces away from camera
+        # INVERTED: Your meshes use clockwise winding, so we cull when dot < 0
+        return dot(normal, view_dir) < 0.0
+    end
+
+    # Check if triangle vertices are in counter-clockwise order when viewed from front
+    function is_ccw_winding(a::Vec3D, b::Vec3D, c::Vec3D)::Bool
+        # Calculate signed area in screen space (2D projection)
+        signed_area = (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)
+        return signed_area > 0.0
+    end
+
+    # Screen-space backface culling (more accurate after perspective divide)
+    function should_cull_triangle_screen_space(renderer::SoftwareRenderer3D, a::Vec3D, b::Vec3D, c::Vec3D)::Bool
+        if !renderer.enable_backface_culling
+            return false
+        end
+        
+        # Calculate signed area in screen space
+        signed_area = (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)
+        
+        # Cull based on winding order configuration
+        # If clockwise_front_faces is true: cull when area is negative (CCW triangles)
+        # If clockwise_front_faces is false: cull when area is positive (CW triangles)
+        return renderer.clockwise_front_faces ? (signed_area < 0.0) : (signed_area > 0.0)
+    end
+
+    # Ensure consistent winding order for a triangle
+    function ensure_winding_order!(vertices::Vector{Vertex3D}, target_ccw::Bool = true)
+        if length(vertices) != 3
+            return
+        end
+        
+        a = Vec3D(vertices[1].x, vertices[1].y, vertices[1].z, 1.0)
+        b = Vec3D(vertices[2].x, vertices[2].y, vertices[2].z, 1.0)
+        c = Vec3D(vertices[3].x, vertices[3].y, vertices[3].z, 1.0)
+        
+        is_ccw = is_ccw_winding(a, b, c)
+        
+        # Swap vertices if winding order doesn't match target
+        if is_ccw != target_ccw
+            vertices[2], vertices[3] = vertices[3], vertices[2]
+        end
+    end
+
+    # Improved triangle sorting with proper depth handling
+    function sort_triangles_by_depth!(renderer::SoftwareRenderer3D)
+        # Sort by minimum Z (closest point) for better ordering
+        sort!(renderer.triangles, by = tri -> minimum(v.z for v in tri.vertices))
+        
+        if renderer.reverse_sort_triangles
+            reverse!(renderer.triangles)
+        end
+    end
+
+    # Split triangles that intersect for proper ordering (simplified BSP approach)
+    function split_intersecting_triangles!(renderer::SoftwareRenderer3D)
+        # This is a simplified approach - for production use, implement full BSP
+        # For now, we'll use a heuristic: split large triangles that span significant depth
+        new_triangles = Triangle3D[]
+        
+        for triangle in renderer.triangles
+            z_min = minimum(v.z for v in triangle.vertices)
+            z_max = maximum(v.z for v in triangle.vertices)
+            z_range = z_max - z_min
+            
+            # If triangle spans too much depth, it might intersect others
+            if z_range > 5.0  # Threshold for splitting
+                # Keep original triangle for now - full BSP implementation would split here
+                push!(new_triangles, triangle)
+            else
+                push!(new_triangles, triangle)
+            end
+        end
+        
+        renderer.triangles = new_triangles
     end
 
     # Subdivide triangle for better perspective-correct texture mapping approximation
@@ -201,6 +298,11 @@ module SoftwareRenderer3DModule
         perspective_divide!(tb)
         perspective_divide!(tc)
         
+        # Perform backface culling in screen space (after perspective divide)
+        if should_cull_triangle_screen_space(renderer, ta, tb, tc)
+            return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
+        end
+        
         # Frustum culling (basic)
         windowSize = JulGame.MAIN.windowManager.windowSize
         width = windowSize.x
@@ -220,6 +322,12 @@ module SoftwareRenderer3DModule
             Vertex3D(tc.x, tc.y, z3, color, u3, v3),
             texture
         )
+        
+        # Apply small depth bias based on triangle index to prevent z-fighting
+        depth_bias = length(renderer.triangles) * 0.0001
+        for vertex in triangle.vertices
+            vertex.z += depth_bias
+        end
         
         push!(renderer.triangles, triangle)
         
@@ -406,11 +514,11 @@ module SoftwareRenderer3DModule
         
         # Debug: Print mesh information
         if length(renderer.triangles) == 0  # Only print once per frame
-            @info "Rendering mesh: use_materials=$(mesh.use_materials), materials=$(length(mesh.materials)), faces=$(length(mesh.faces))"
-            @info "Default fill color: $(mesh.default_fill_color)"
+            # @info "Rendering mesh: use_materials=$(mesh.use_materials), materials=$(length(mesh.materials)), faces=$(length(mesh.faces))"
+            # @info "Default fill color: $(mesh.default_fill_color)"
             if !isempty(mesh.materials)
                 for (name, material) in mesh.materials
-                    @info "Material '$name': has_texture=$(material.has_texture), texture_path='$(material.texture_path)', diffuse=$(material.diffuse_color)"
+                   # @info "Material '$name': has_texture=$(material.has_texture), texture_path='$(material.texture_path)', diffuse=$(material.diffuse_color)"
                 end
             end
         end
@@ -446,13 +554,13 @@ module SoftwareRenderer3DModule
                             face_color_vec = material.diffuse_color
                             # Debug: only print for first few faces to avoid spam
                             if face_idx <= 3
-                                @info "Face $face_idx: Using texture '$(material.texture_path)' tinted with Kd $(material.diffuse_color) for material '$(face.material_name)'"
+                                # @info "Face $face_idx: Using texture '$(material.texture_path)' tinted with Kd $(material.diffuse_color) for material '$(face.material_name)'"
                             end
                         else
                             # Fallback to diffuse color if SDL texture loading failed
                             face_color_vec = material.diffuse_color
                             if face_idx <= 3
-                                @info "Face $face_idx: Texture '$(material.texture_path)' failed to load, using Kd color $(material.diffuse_color) for '$(face.material_name)'"
+                                # @info "Face $face_idx: Texture '$(material.texture_path)' failed to load, using Kd color $(material.diffuse_color) for '$(face.material_name)'"
                             end
                         end
                     else
@@ -460,7 +568,7 @@ module SoftwareRenderer3DModule
                         face_color_vec = material.diffuse_color
                         # Debug: only print for first few faces to avoid spam
                         if face_idx <= 3
-                            @info "Face $face_idx: Using material '$(face.material_name)' with diffuse color $(material.diffuse_color)"
+                            # @info "Face $face_idx: Using material '$(face.material_name)' with diffuse color $(material.diffuse_color)"
                         end
                     end
                 else
@@ -469,7 +577,7 @@ module SoftwareRenderer3DModule
                     alpha = mesh.default_fill_color.a/255.0
                     # Debug: only print for first few faces to avoid spam
                     if face_idx <= 3
-                        @info "Face $face_idx: No material found for face material '$(face.material_name)', using default color $(face_color_vec)"
+                        # @info "Face $face_idx: No material found for face material '$(face.material_name)', using default color $(face_color_vec)"
                     end
                 end
                 
@@ -479,7 +587,7 @@ module SoftwareRenderer3DModule
                 final_color = vec3d_to_sdl_color(light_adjusted_color, alpha)
                 
                 if face_idx <= 3 # Log the final color for the first 3 faces of each mesh
-                    @info "Face $face_idx: Final color after lighting: RGBA($(final_color.r), $(final_color.g), $(final_color.b), $(final_color.a))"
+                    # @info "Face $face_idx: Final color after lighting: RGBA($(final_color.r), $(final_color.g), $(final_color.b), $(final_color.a))"
                 end
 
                 # Get UV coordinates for this face
@@ -522,7 +630,7 @@ module SoftwareRenderer3DModule
                         
                         # Debug UV coordinates for first few faces
                         if face_idx <= 3
-                            @info "Face $face_idx UV coordinates: ($(u1), $(v1_uv)), ($(u2), $(v2_uv)), ($(u3), $(v3_uv))"
+                            # @info "Face $face_idx UV coordinates: ($(u1), $(v1_uv)), ($(u2), $(v2_uv)), ($(u3), $(v3_uv))"
                         end
                     catch e
                         @warn "Error getting UV coordinates for face $face_idx: $e, using defaults"
@@ -593,17 +701,16 @@ module SoftwareRenderer3DModule
             return 0
         end
         
-        # Sort vertices in each triangle by z
-        for triangle in renderer.triangles
-            sort!(triangle.vertices, by = v -> v.z)
-        end
+        # Count initial triangles (only in debug mode)
+        initial_count = JulGame.IS_DEBUG ? length(renderer.triangles) : 0
         
-        # Sort triangles by average z
-        sort!(renderer.triangles, by = tri -> sum(v.z for v in tri.vertices) / 3)
+        # Sort vertices in each triangle by z (removed - not needed for SDL rendering)
+        # for triangle in renderer.triangles
+        #     sort!(triangle.vertices, by = v -> v.z)
+        # end
         
-        if renderer.reverse_sort_triangles
-            reverse!(renderer.triangles)
-        end
+        # Use improved depth sorting
+        sort_triangles_by_depth!(renderer)
         
         # Group triangles by texture
         texture_groups = Dict{Ptr{SDL_Texture}, Vector{Triangle3D}}()
@@ -706,6 +813,18 @@ module SoftwareRenderer3DModule
             this.reverse_sort_triangles = !this.perspective_enabled
         end
         
+        # Handle backface culling toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("B")
+            this.enable_backface_culling = !this.enable_backface_culling
+            println("Backface culling: ", this.enable_backface_culling ? "ON" : "OFF")
+        end
+        
+        # Handle winding order toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("G")
+            this.clockwise_front_faces = !this.clockwise_front_faces
+            println("Front face winding: ", this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")
+        end
+        
         # Animate the first box
         if !isempty(this.boxes)
             this.boxes[1].rotation.y += π * deltaTime
@@ -714,6 +833,24 @@ module SoftwareRenderer3DModule
     end
 
     function Component.render(this::SoftwareRenderer3D, main)
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("P")
+            this.perspective_enabled = !this.perspective_enabled
+            this.reverse_sort_triangles = !this.perspective_enabled
+        end
+        
+        # Handle backface culling toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("B")
+            this.enable_backface_culling = !this.enable_backface_culling
+            println("Backface culling: ", this.enable_backface_culling ? "ON" : "OFF")
+        end
+        
+        # Handle winding order toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("G")
+            this.clockwise_front_faces = !this.clockwise_front_faces
+            println("Front face winding: ", this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")
+        end
+        
+        
         windowSize = main.windowManager.windowSize
         width = Float64(windowSize.x)
         height = Float64(windowSize.y)
@@ -783,7 +920,7 @@ module SoftwareRenderer3DModule
         triangle_count = flush_triangles!(this)
         
         if JulGame.IS_DEBUG
-            println("Rendered $triangle_count triangles")
+            # println("Rendered $triangle_count triangles")
         end
     end
 
