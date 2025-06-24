@@ -25,6 +25,42 @@ module SoftwareRenderer3DModule
     using .MeshLoaderIntegrationModule
 
     export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox, RenderMesh, load_mesh_from_file!
+    export LightType, Light3D, add_light!, remove_light!, clear_lights!, set_ambient_light!
+    export enable_lighting!, disable_lighting!, enable_shadows!, disable_shadows!
+
+    # Lighting system enums and structures
+    @enum LightType begin
+        DIRECTIONAL_LIGHT = 1
+        POINT_LIGHT = 2
+        SPOT_LIGHT = 3
+    end
+
+    # Light structure for the lighting system
+    mutable struct Light3D
+        type::LightType
+        position::Vec3D          # Position in world space (for point/spot lights)
+        direction::Vec3D         # Direction (for directional/spot lights)
+        color::Vec3D            # RGB color (0.0 to 1.0)
+        intensity::Float64      # Light intensity multiplier
+        range::Float64          # Range for point/spot lights
+        spot_angle::Float64     # Cone angle for spot lights (in radians)
+        cast_shadows::Bool      # Whether this light casts shadows
+        shadow_bias::Float64    # Bias to prevent shadow acne
+        enabled::Bool           # Whether this light is active
+        
+        function Light3D(type::LightType = DIRECTIONAL_LIGHT, 
+                        position::Vec3D = Vec3D(0, 10, 0), 
+                        direction::Vec3D = Vec3D(0, -1, 0),
+                        color::Vec3D = Vec3D(1, 1, 1),
+                        intensity::Float64 = 1.0,
+                        range::Float64 = 100.0,
+                        spot_angle::Float64 = π/4,
+                        cast_shadows::Bool = true,
+                        shadow_bias::Float64 = 0.001,
+                        enabled::Bool = true)
+            new(type, position, normalize(direction), color, intensity, range, spot_angle, cast_shadows, shadow_bias, enabled)
+        end
+    end
 
     # UV coordinate normalization function
     function normalize_uv_coordinate(uv_coord::Float64)::Float64
@@ -80,7 +116,15 @@ module SoftwareRenderer3DModule
         aspect_ratio::Float64
         near::Float64
         far::Float64
-        light_direction::Vec3D
+        
+        # Enhanced lighting system
+        lights::Vector{Light3D}
+        ambient_light::Vec3D
+        lighting_enabled::Bool
+        shadows_enabled::Bool
+        shadow_quality::Int  # 1 = low, 2 = medium, 3 = high
+        shadow_map_size::Int
+        max_shadow_distance::Float64
 
         function SoftwareRenderer3D()
             this = new()
@@ -113,13 +157,23 @@ module SoftwareRenderer3DModule
             this.aspect_ratio = 1.0
             this.near = 1.0 / 1024.0
             this.far = 1024.0
-            this.light_direction = normalize(Vec3D(0.0, 0.5, -1.0, 0.0))
+            
+            # Initialize enhanced lighting system
+            this.lights = Light3D[]
+            this.ambient_light = Vec3D(0.2, 0.2, 0.2)  # Default ambient light
+            this.lighting_enabled = true
+            this.shadows_enabled = true
+            this.shadow_quality = 2  # Medium quality by default
+            this.shadow_map_size = 1024
+            this.max_shadow_distance = 100.0
+            
+            # Add default directional light
+            default_light = Light3D(DIRECTIONAL_LIGHT, Vec3D(0, 10, 0), Vec3D(0.0, -0.5, -1.0), Vec3D(1.0, 1.0, 0.9), 0.8)
+            push!(this.lights, default_light)
             
             return this
         end
     end
-
-
 
     # Calculate perspective-correct UV coordinates using subdivision
     function calculate_perspective_correct_uv(u::Float64, v::Float64, z::Float64)::Tuple{Float64, Float64}
@@ -444,8 +498,6 @@ module SoftwareRenderer3DModule
         return SDL_Color(r, g, b, a)
     end
 
-
-
     # Load SDL texture for rendering
     function load_sdl_texture(renderer::SoftwareRenderer3D, texture_path::String)::Ptr{SDL_Texture}
         # Check cache first
@@ -593,9 +645,26 @@ module SoftwareRenderer3DModule
                     end
                 end
                 
-                # Apply lighting (temporarily disabled for debugging)
-                # light_adjusted_color = apply_lighting(face_color_vec, normal, renderer.light_direction)
-                light_adjusted_color = face_color_vec  # Use raw color without lighting
+                # Apply enhanced lighting system
+                if renderer.lighting_enabled
+                    # Calculate lighting factor (0.0 to 1.0) instead of modifying color directly
+                    lighting_factor = calculate_lighting_factor(renderer, normal, v1, v2, v3)
+                    
+                    # For textured surfaces, we'll apply lighting in the vertex colors
+                    if face_texture != Ptr{SDL_Texture}(C_NULL)
+                        # Keep original color for textured surfaces, lighting will be applied via vertex colors
+                        light_adjusted_color = face_color_vec
+                    else
+                        # For non-textured surfaces, apply lighting to the material color
+                        light_adjusted_color = Vec3D(face_color_vec.x * lighting_factor,
+                                                   face_color_vec.y * lighting_factor,
+                                                   face_color_vec.z * lighting_factor,
+                                                   face_color_vec.w)
+                    end
+                else
+                    light_adjusted_color = face_color_vec  # Use raw color without lighting
+                    lighting_factor = 1.0
+                end
                 final_color = vec3d_to_sdl_color(light_adjusted_color, alpha)
                 
                 if face_idx <= 3 # Log the final color for the first 3 faces of each mesh
@@ -678,7 +747,14 @@ module SoftwareRenderer3DModule
                     continue
                 end
                 
-                face_aabb = add_triangle!(renderer, final_color, v1, v2, v3, u1, v1_uv, u2, v2_uv, u3, v3_uv, face_texture)
+                # For textured surfaces, pass the lighting factor to be applied to vertex colors
+                if face_texture != Ptr{SDL_Texture}(C_NULL) && renderer.lighting_enabled
+                    # Create vertex colors with lighting applied
+                    lit_color = vec3d_to_sdl_color(Vec3D(lighting_factor, lighting_factor, lighting_factor), alpha)
+                    face_aabb = add_triangle!(renderer, lit_color, v1, v2, v3, u1, v1_uv, u2, v2_uv, u3, v3_uv, face_texture)
+                else
+                    face_aabb = add_triangle!(renderer, final_color, v1, v2, v3, u1, v1_uv, u2, v2_uv, u3, v3_uv, face_texture)
+                end
                 aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
             end
         end
@@ -790,56 +866,7 @@ module SoftwareRenderer3DModule
         this.aspect_ratio = windowSize.x / windowSize.y
     end
 
-    function Component.update(this::SoftwareRenderer3D, deltaTime::Float64)
-        if !this.parent.isActive
-            return
-        end
-
-        # Only use internal camera controls if no engine camera is available
-        if JulGame.IS_DEBUG && JulGame.MAIN.scene.camera === nothing
-            move_speed = 5.0 * deltaTime
-            rot_speed = π * deltaTime
-            
-            # Movement
-            if JulGame.InputModule.get_button_held_down("A")
-                this.camera_position.x -= move_speed
-            elseif JulGame.InputModule.get_button_held_down("D")
-                this.camera_position.x += move_speed
-            end
-            
-            if JulGame.InputModule.get_button_held_down("W")
-                this.camera_position.z -= move_speed
-            elseif JulGame.InputModule.get_button_held_down("S")
-                this.camera_position.z += move_speed
-            end
-            
-            if JulGame.InputModule.get_button_held_down("Q")
-                this.camera_position.y -= move_speed
-            elseif JulGame.InputModule.get_button_held_down("E")
-                this.camera_position.y += move_speed
-            end
-            
-            # Rotation
-            if JulGame.InputModule.get_button_held_down("Left")
-                this.camera_rotation.y += rot_speed
-            elseif JulGame.InputModule.get_button_held_down("Right")
-                this.camera_rotation.y -= rot_speed
-            end
-            
-            if JulGame.InputModule.get_button_held_down("Up")
-                this.camera_rotation.x += rot_speed
-            elseif JulGame.InputModule.get_button_held_down("Down")
-                this.camera_rotation.x -= rot_speed
-            end
-            
-            # Reset camera
-            if JulGame.InputModule.get_button_pressed("R")
-                this.camera_position = Vec3D(0, 0, 0)
-                this.camera_rotation = Vec3D(0, 0, 0)
-                this.camera_zoom = Vec3D(1, 1, 1)
-            end
-        end
-        
+    function update(this::SoftwareRenderer3D, deltaTime::Float64)
         # Handle perspective toggle regardless of camera system
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("P")
             this.perspective_enabled = !this.perspective_enabled
@@ -858,32 +885,53 @@ module SoftwareRenderer3DModule
             println("Front face winding: ", this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")
         end
         
-        # Animate the first box
-        if !isempty(this.boxes)
-            this.boxes[1].rotation.y += π * deltaTime
-            this.boxes[1].rotation.x += π * 0.5 * deltaTime
+        # Handle lighting toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("L")
+            this.lighting_enabled = !this.lighting_enabled
+            println("Lighting: ", this.lighting_enabled ? "ON" : "OFF")
+        end
+        
+        # Handle shadows toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("K")
+            this.shadows_enabled = !this.shadows_enabled
+            println("Shadows: ", this.shadows_enabled ? "ON" : "OFF")
+        end
+        
+        # Handle shadow quality adjustment
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("J")
+            this.shadow_quality = this.shadow_quality % 3 + 1  # Cycle through 1, 2, 3
+            println("Shadow quality: ", this.shadow_quality, " (", 
+                   this.shadow_quality == 1 ? "LOW" : this.shadow_quality == 2 ? "MEDIUM" : "HIGH", ")")
+        end
+        
+        # Light manipulation controls
+        if JulGame.IS_DEBUG && !isempty(this.lights)
+            light = this.lights[1]  # Control the first light
+            light_move_speed = 3.0 * 0.016
+            
+            # Move light with number keys
+            if JulGame.InputModule.get_button_held_down("1")
+                light.position.x -= light_move_speed
+            elseif JulGame.InputModule.get_button_held_down("2")
+                light.position.x += light_move_speed
+            end
+            
+            if JulGame.InputModule.get_button_held_down("3")
+                light.position.y -= light_move_speed
+            elseif JulGame.InputModule.get_button_held_down("4")
+                light.position.y += light_move_speed
+            end
+            
+            if JulGame.InputModule.get_button_held_down("5")
+                light.position.z -= light_move_speed
+            elseif JulGame.InputModule.get_button_held_down("6")
+                light.position.z += light_move_speed
+            end
         end
     end
 
     function Component.render(this::SoftwareRenderer3D, main)
-        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("P")
-            this.perspective_enabled = !this.perspective_enabled
-            this.reverse_sort_triangles = !this.perspective_enabled
-        end
-        
-        # Handle backface culling toggle
-        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("B")
-            this.enable_backface_culling = !this.enable_backface_culling
-            println("Backface culling: ", this.enable_backface_culling ? "ON" : "OFF")
-        end
-        
-        # Handle winding order toggle
-        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("G")
-            this.clockwise_front_faces = !this.clockwise_front_faces
-            println("Front face winding: ", this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")
-        end
-        
-        
+        update(this, 0.0)
         windowSize = main.windowManager.windowSize
         width = Float64(windowSize.x)
         height = Float64(windowSize.y)
@@ -1057,7 +1105,295 @@ module SoftwareRenderer3DModule
         )
     end
 
-    # Simple lighting calculation
+    # Enhanced lighting system functions
+    
+    # Calculate lighting contribution from a single light
+    function calculate_light_contribution(light::Light3D, surface_pos::Vec3D, normal::Vec3D)::Vec3D
+        if !light.enabled
+            return Vec3D(0, 0, 0)
+        end
+        
+        light_contribution = Vec3D(0, 0, 0)
+        
+        if light.type == DIRECTIONAL_LIGHT
+            # Directional light - light direction is constant
+            light_dir = normalize(light.direction)
+            dp = dot(normal, -light_dir)  # Negative because light direction points away from light
+            
+            if dp > 0  # Only contribute if surface faces the light
+                intensity = dp * light.intensity
+                light_contribution = Vec3D(light.color.x * intensity, light.color.y * intensity, light.color.z * intensity)
+            end
+            
+        elseif light.type == POINT_LIGHT
+            # Point light - calculate direction from surface to light
+            light_vec = Vec3D(light.position.x - surface_pos.x, 
+                             light.position.y - surface_pos.y, 
+                             light.position.z - surface_pos.z)
+            distance = length_of(light_vec)
+            
+            if distance > 0 && distance < light.range
+                light_dir = Vec3D(light_vec.x / distance, light_vec.y / distance, light_vec.z / distance)
+                dp = dot(normal, light_dir)
+                
+                if dp > 0  # Only contribute if surface faces the light
+                    # Apply distance attenuation
+                    attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance)
+                    intensity = dp * light.intensity * attenuation
+                    light_contribution = Vec3D(light.color.x * intensity, light.color.y * intensity, light.color.z * intensity)
+                end
+            end
+            
+        elseif light.type == SPOT_LIGHT
+            # Spot light - like point light but with cone angle restriction
+            light_vec = Vec3D(light.position.x - surface_pos.x, 
+                             light.position.y - surface_pos.y, 
+                             light.position.z - surface_pos.z)
+            distance = length_of(light_vec)
+            
+            if distance > 0 && distance < light.range
+                light_dir = Vec3D(light_vec.x / distance, light_vec.y / distance, light_vec.z / distance)
+                
+                # Check if within spot cone
+                spot_factor = dot(-light_dir, normalize(light.direction))
+                cos_spot_angle = cos(light.spot_angle)
+                
+                if spot_factor > cos_spot_angle
+                    dp = dot(normal, light_dir)
+                    
+                    if dp > 0  # Only contribute if surface faces the light
+                        # Apply distance attenuation and spot cone falloff
+                        attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance)
+                        cone_factor = (spot_factor - cos_spot_angle) / (1.0 - cos_spot_angle)
+                        intensity = dp * light.intensity * attenuation * cone_factor
+                        light_contribution = Vec3D(light.color.x * intensity, light.color.y * intensity, light.color.z * intensity)
+                    end
+                end
+            end
+        end
+        
+        return light_contribution
+    end
+    
+    # Simple shadow calculation using ray casting
+    function calculate_shadow_factor(renderer::SoftwareRenderer3D, light::Light3D, surface_pos::Vec3D)::Float64
+        if !renderer.shadows_enabled || !light.cast_shadows
+            return 1.0  # No shadow
+        end
+        
+        shadow_factor = 1.0
+        
+        # For directional lights, use light direction
+        # For point/spot lights, calculate direction from surface to light
+        shadow_ray_dir = if light.type == DIRECTIONAL_LIGHT
+            normalize(-light.direction)
+        else
+            light_vec = Vec3D(light.position.x - surface_pos.x, 
+                             light.position.y - surface_pos.y, 
+                             light.position.z - surface_pos.z)
+            distance = length_of(light_vec)
+            if distance > 0
+                Vec3D(light_vec.x / distance, light_vec.y / distance, light_vec.z / distance)
+            else
+                Vec3D(0, 1, 0)  # Default up direction
+            end
+        end
+        
+        # Simple shadow casting - check if any triangles block the light
+        # This is a basic implementation - in production you'd use shadow maps
+        shadow_ray_start = Vec3D(surface_pos.x + shadow_ray_dir.x * light.shadow_bias,
+                                surface_pos.y + shadow_ray_dir.y * light.shadow_bias,
+                                surface_pos.z + shadow_ray_dir.z * light.shadow_bias)
+        
+        # For performance, we limit shadow ray distance based on light type
+        max_shadow_distance = if light.type == DIRECTIONAL_LIGHT
+            renderer.max_shadow_distance
+        else
+            min(light.range, renderer.max_shadow_distance)
+        end
+        
+        # Sample multiple points along the shadow ray for soft shadows
+        samples = renderer.shadow_quality * 2  # Quality affects sample count
+        shadow_hits = 0
+        
+        for i in 1:samples
+            sample_distance = (Float64(i) / Float64(samples)) * max_shadow_distance
+            sample_pos = Vec3D(shadow_ray_start.x + shadow_ray_dir.x * sample_distance,
+                              shadow_ray_start.y + shadow_ray_dir.y * sample_distance,
+                              shadow_ray_start.z + shadow_ray_dir.z * sample_distance)
+            
+            # Simple occlusion test - check if sample point is inside any mesh bounding box
+            # This is very basic - a real implementation would do proper ray-triangle intersection
+            for mesh in renderer.meshes
+                if is_point_in_mesh_bounds(sample_pos, mesh)
+                    shadow_hits += 1
+                    break  # One hit per sample is enough
+                end
+            end
+        end
+        
+        # Calculate shadow factor based on hit ratio
+        if samples > 0
+            shadow_factor = 1.0 - (Float64(shadow_hits) / Float64(samples))
+        end
+        
+        return clamp(shadow_factor, 0.1, 1.0)  # Always allow some light through
+    end
+    
+    # Check if a point is within mesh bounds (very basic bounds check)
+    function is_point_in_mesh_bounds(point::Vec3D, mesh::RenderMesh)::Bool
+        if isempty(mesh.vertices)
+            return false
+        end
+        
+        # Calculate simple bounding box
+        min_bounds = mesh.vertices[1]
+        max_bounds = mesh.vertices[1]
+        
+        for vertex in mesh.vertices
+            min_bounds = Vec3D(min(min_bounds.x, vertex.x), min(min_bounds.y, vertex.y), min(min_bounds.z, vertex.z))
+            max_bounds = Vec3D(max(max_bounds.x, vertex.x), max(max_bounds.y, vertex.y), max(max_bounds.z, vertex.z))
+        end
+        
+        # Apply mesh transformation
+        transformed_point = point  # Simplified - would need inverse transform in real implementation
+        
+        return (transformed_point.x >= min_bounds.x && transformed_point.x <= max_bounds.x &&
+                transformed_point.y >= min_bounds.y && transformed_point.y <= max_bounds.y &&
+                transformed_point.z >= min_bounds.z && transformed_point.z <= max_bounds.z)
+    end
+    
+    # Calculate lighting factor for a surface (returns 0.0 to 1.0)
+    function calculate_lighting_factor(renderer::SoftwareRenderer3D, normal::Vec3D, v1::Vec3D, v2::Vec3D, v3::Vec3D)::Float64
+        # Calculate surface center position for lighting calculations
+        surface_pos = Vec3D((v1.x + v2.x + v3.x) / 3.0, (v1.y + v2.y + v3.y) / 3.0, (v1.z + v2.z + v3.z) / 3.0)
+        
+        # Start with ambient light intensity
+        total_intensity = (renderer.ambient_light.x + renderer.ambient_light.y + renderer.ambient_light.z) / 3.0
+        
+        # Add contribution from each light
+        for light in renderer.lights
+            if light.enabled
+                # Calculate light contribution
+                light_contrib = calculate_light_contribution(light, surface_pos, normal)
+                
+                # Apply shadows if enabled
+                shadow_factor = calculate_shadow_factor(renderer, light, surface_pos)
+                
+                # Add light intensity (average RGB as overall intensity)
+                light_intensity = (light_contrib.x + light_contrib.y + light_contrib.z) / 3.0 * shadow_factor
+                total_intensity += light_intensity
+            end
+        end
+        
+        # Clamp to reasonable range
+        return clamp(total_intensity, 0.1, 1.0)
+    end
+    
+    # Apply enhanced lighting to a surface (legacy function for non-textured surfaces)
+    function apply_enhanced_lighting(renderer::SoftwareRenderer3D, base_color::Vec3D, normal::Vec3D, v1::Vec3D, v2::Vec3D, v3::Vec3D)::Vec3D
+        lighting_factor = calculate_lighting_factor(renderer, normal, v1, v2, v3)
+        
+        return Vec3D(base_color.x * lighting_factor,
+                    base_color.y * lighting_factor,
+                    base_color.z * lighting_factor,
+                    base_color.w)
+    end
+    
+    # Lighting system management functions
+    function add_light!(renderer::SoftwareRenderer3D, light::Light3D)::Int
+        push!(renderer.lights, light)
+        return length(renderer.lights)
+    end
+    
+    function remove_light!(renderer::SoftwareRenderer3D, index::Int)::Bool
+        if index > 0 && index <= length(renderer.lights)
+            deleteat!(renderer.lights, index)
+            return true
+        end
+        return false
+    end
+    
+    function clear_lights!(renderer::SoftwareRenderer3D)
+        empty!(renderer.lights)
+    end
+    
+    function set_ambient_light!(renderer::SoftwareRenderer3D, color::Vec3D)
+        renderer.ambient_light = color
+    end
+    
+    function enable_lighting!(renderer::SoftwareRenderer3D, enable::Bool = true)
+        renderer.lighting_enabled = enable
+    end
+    
+    function disable_lighting!(renderer::SoftwareRenderer3D)
+        renderer.lighting_enabled = false
+    end
+    
+    function enable_shadows!(renderer::SoftwareRenderer3D, enable::Bool = true)
+        renderer.shadows_enabled = enable
+    end
+    
+    function disable_shadows!(renderer::SoftwareRenderer3D)
+        renderer.shadows_enabled = false
+    end
+    
+    function set_shadow_quality!(renderer::SoftwareRenderer3D, quality::Int)
+        renderer.shadow_quality = clamp(quality, 1, 3)
+    end
+    
+    function set_max_shadow_distance!(renderer::SoftwareRenderer3D, distance::Float64)
+        renderer.max_shadow_distance = max(distance, 1.0)
+    end
+    
+    # Convenience functions for creating common light types
+    function create_directional_light(direction::Vec3D = Vec3D(0, -1, 0), color::Vec3D = Vec3D(1, 1, 1), intensity::Float64 = 1.0)::Light3D
+        return Light3D(DIRECTIONAL_LIGHT, Vec3D(0, 0, 0), direction, color, intensity, 100.0, π/4, true, 0.001, true)
+    end
+    
+    function create_point_light(position::Vec3D, color::Vec3D = Vec3D(1, 1, 1), intensity::Float64 = 1.0, range::Float64 = 10.0)::Light3D
+        return Light3D(POINT_LIGHT, position, Vec3D(0, -1, 0), color, intensity, range, π/4, true, 0.001, true)
+    end
+    
+    function create_spot_light(position::Vec3D, direction::Vec3D, color::Vec3D = Vec3D(1, 1, 1), intensity::Float64 = 1.0, range::Float64 = 10.0, angle::Float64 = π/6)::Light3D
+        return Light3D(SPOT_LIGHT, position, direction, color, intensity, range, angle, true, 0.001, true)
+    end
+    
+    # Get lighting system information
+    function get_lighting_info(renderer::SoftwareRenderer3D)::String
+        info = "=== LIGHTING SYSTEM INFO ===\n"
+        info *= "Lighting enabled: $(renderer.lighting_enabled)\n"
+        info *= "Shadows enabled: $(renderer.shadows_enabled)\n"
+        info *= "Shadow quality: $(renderer.shadow_quality) ($(renderer.shadow_quality == 1 ? "LOW" : renderer.shadow_quality == 2 ? "MEDIUM" : "HIGH"))\n"
+        info *= "Ambient light: RGB($(renderer.ambient_light.x), $(renderer.ambient_light.y), $(renderer.ambient_light.z))\n"
+        info *= "Number of lights: $(length(renderer.lights))\n"
+        
+        for (i, light) in enumerate(renderer.lights)
+            light_type = light.type == DIRECTIONAL_LIGHT ? "DIRECTIONAL" : 
+                        light.type == POINT_LIGHT ? "POINT" : "SPOT"
+            info *= "Light $i: $light_type, Enabled: $(light.enabled), Intensity: $(light.intensity)\n"
+            if light.type != DIRECTIONAL_LIGHT
+                info *= "  Position: ($(light.position.x), $(light.position.y), $(light.position.z))\n"
+            end
+            if light.type != POINT_LIGHT
+                info *= "  Direction: ($(light.direction.x), $(light.direction.y), $(light.direction.z))\n"
+            end
+            info *= "  Color: RGB($(light.color.x), $(light.color.y), $(light.color.z))\n"
+            info *= "  Casts shadows: $(light.cast_shadows)\n"
+        end
+        
+        info *= "\n=== DEBUG CONTROLS ===\n"
+        info *= "L - Toggle lighting\n"
+        info *= "K - Toggle shadows\n"  
+        info *= "J - Cycle shadow quality\n"
+        info *= "1/2 - Move light left/right\n"
+        info *= "3/4 - Move light down/up\n"
+        info *= "5/6 - Move light back/forward\n"
+        
+        return info
+    end
+
+    # Simple lighting calculation (legacy function, kept for compatibility)
     function apply_lighting(color::Vec3D, normal::Vec3D, light_dir::Vec3D)::Vec3D
         # Normalize light direction
         light_dir_normalized = normalize(light_dir)
