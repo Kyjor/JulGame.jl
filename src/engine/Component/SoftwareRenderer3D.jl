@@ -125,6 +125,10 @@ module SoftwareRenderer3DModule
         shadow_quality::Int  # 1 = low, 2 = medium, 3 = high
         shadow_map_size::Int
         max_shadow_distance::Float64
+        
+        # Depth bias configuration for z-fighting prevention
+        depth_bias_factor::Float64
+        enable_depth_bias::Bool
 
         function SoftwareRenderer3D()
             this = new()
@@ -170,6 +174,10 @@ module SoftwareRenderer3DModule
             # Add default directional light
             default_light = Light3D(DIRECTIONAL_LIGHT, Vec3D(0, 10, 0), Vec3D(0.0, -0.5, -1.0), Vec3D(1.0, 1.0, 0.9), 0.8)
             push!(this.lights, default_light)
+            
+            # Initialize depth bias configuration
+            this.depth_bias_factor = 0.00001  # Small factor for fine-tuning
+            this.enable_depth_bias = true     # Enable by default
             
             return this
         end
@@ -243,8 +251,24 @@ module SoftwareRenderer3DModule
 
     # Improved triangle sorting with proper depth handling
     function sort_triangles_by_depth!(renderer::SoftwareRenderer3D)
-        # Sort by minimum Z (closest point) for better ordering
-        sort!(renderer.triangles, by = tri -> minimum(v.z for v in tri.vertices))
+        # Sort by average Z (centroid) for better ordering of coplanar triangles
+        # This works better for objects sitting on flat surfaces like grass planes
+        sort!(renderer.triangles, by = tri -> (tri.vertices[1].z + tri.vertices[2].z + tri.vertices[3].z) / 3.0)
+        
+        if renderer.reverse_sort_triangles
+            reverse!(renderer.triangles)
+        end
+    end
+    
+    # Enhanced triangle sorting with stability for coplanar triangles
+    function sort_triangles_by_depth_stable!(renderer::SoftwareRenderer3D)
+        # Stable sort that preserves order for triangles at same depth
+        # This helps maintain correct rendering order for objects on flat surfaces
+        sort!(renderer.triangles, by = tri -> begin
+            avg_z = (tri.vertices[1].z + tri.vertices[2].z + tri.vertices[3].z) / 3.0
+            # Add a tiny offset based on triangle's original position to maintain stability
+            return avg_z
+        end, alg=MergeSort)  # MergeSort is stable
         
         if renderer.reverse_sort_triangles
             reverse!(renderer.triangles)
@@ -388,10 +412,14 @@ module SoftwareRenderer3DModule
             texture
         )
         
-        # Apply small depth bias based on triangle index to prevent z-fighting
-        depth_bias = length(renderer.triangles) * 0.0001
-        for vertex in triangle.vertices
-            vertex.z += depth_bias
+        # Apply improved depth bias system to prevent z-fighting
+        if renderer.enable_depth_bias
+            # Use a small bias that moves triangles slightly closer to the camera (negative Z)
+            # This ensures objects added later (like items on grass) appear on top
+            depth_bias = -length(renderer.triangles) * renderer.depth_bias_factor
+            for vertex in triangle.vertices
+                vertex.z += depth_bias
+            end
         end
         
         push!(renderer.triangles, triangle)
@@ -818,8 +846,8 @@ module SoftwareRenderer3DModule
         #     sort!(triangle.vertices, by = v -> v.z)
         # end
         
-        # Use improved depth sorting
-        sort_triangles_by_depth!(renderer)
+        # Use improved stable depth sorting for better handling of coplanar triangles
+        sort_triangles_by_depth_stable!(renderer)
         
         # Group triangles by texture
         texture_groups = Dict{Ptr{SDL_Texture}, Vector{Triangle3D}}()
@@ -1102,6 +1130,23 @@ module SoftwareRenderer3DModule
             area_threshold = renderer.subdivision_threshold_area,
             z_ratio_threshold = renderer.subdivision_threshold_z_ratio,
             max_depth = renderer.max_subdivision_depth
+        )
+    end
+
+    # Depth bias configuration functions
+    function set_depth_bias!(renderer::SoftwareRenderer3D, factor::Float64, enabled::Bool = true)
+        renderer.depth_bias_factor = factor
+        renderer.enable_depth_bias = enabled
+    end
+
+    function enable_depth_bias!(renderer::SoftwareRenderer3D, enabled::Bool = true)
+        renderer.enable_depth_bias = enabled
+    end
+
+    function get_depth_bias_settings(renderer::SoftwareRenderer3D)
+        return (
+            enabled = renderer.enable_depth_bias,
+            factor = renderer.depth_bias_factor
         )
     end
 
