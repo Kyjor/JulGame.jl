@@ -763,9 +763,9 @@ module SoftwareRenderer3DModule
             for triangle in triangles
                 vertices = triangle.vertices
                 append!(sdl_vertices, [
-                    SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(vertices[1].u, vertices[1].v)),
-                    SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(vertices[2].u, vertices[2].v)),
-                    SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(vertices[3].u, vertices[3].v))
+                    SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(clamp(vertices[1].u, 0.0, 1.0), clamp(vertices[1].v, 0.0, 1.0))),
+                    SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(clamp(vertices[2].u, 0.0, 1.0), clamp(vertices[2].v, 0.0, 1.0))),
+                    SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(clamp(vertices[3].u, 0.0, 1.0), clamp(vertices[3].v, 0.0, 1.0)))
                 ])
             end
             
