@@ -126,6 +126,9 @@ module Editor
         # Variable to track if file explorer window is open
         show_file_explorer = Ref(true)
         
+        # Variable to track if hot reload is enabled
+        hot_reload_enabled = Ref(true)
+        
         # Auto-load the most recent project if there is one
         if !is_test_mode && AUTO_LOAD_LAST_PROJECT
             most_recent_project = get_most_recent_project()
@@ -200,6 +203,23 @@ module Editor
                     end
                     
                     show_main_menu_bar(events, currentSceneMain, recent_projects)
+                    
+                    # Hot reload toggle in top right corner
+                    CImGui.SetNextWindowPos(ImVec2(unsafe_load(CImGui.GetIO().DisplaySize).x - 200, 25), CImGui.ImGuiCond_Always, ImVec2(1.0, 0.0))
+                    CImGui.SetNextWindowBgAlpha(0.7)
+                    hot_reload_window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                             CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                             CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                             CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                             CImGui.ImGuiWindowFlags_NoNav
+                    
+                    CImGui.Begin("HotReloadToggle", C_NULL, hot_reload_window_flags)
+                    CImGui.Checkbox("Hot Reload", hot_reload_enabled)
+                    if CImGui.IsItemHovered()
+                        CImGui.SetTooltip("Toggle automatic script reloading when files change")
+                    end
+                    CImGui.End()
+                    
                     ################################# END MAIN MENU BAR
                     if !isPackageCompiled
                         #@c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
@@ -977,7 +997,7 @@ module Editor
                     yield()
                 end
 
-                if length(filesToReload[]) > 0
+                if length(filesToReload[]) > 0 && hot_reload_enabled[]
                     for file in filesToReload[]
                         classname = split(file, ".")[begin]
                         try
@@ -1031,7 +1051,6 @@ module Editor
                         else
                             @debug "Skipping script reload as no scene is currently loaded"
                         end
-
                     end
 
                     filesToReload[] = []

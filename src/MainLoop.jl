@@ -549,7 +549,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						JulGame.update(rigidbody, deltaTime)
+						Base.invokelatest(JulGame.update, rigidbody, deltaTime)
 					catch e
 						if this.testMode
 							rethrow(e)
@@ -576,7 +576,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
-                        JulGame.update(entity, deltaTime)
+                        Base.invokelatest(JulGame.update, entity, deltaTime)
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"
 							return
@@ -592,7 +592,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					end
 					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
-                        JulGame.update(entityAnimator, currentRenderTime, deltaTime)
+                        Base.invokelatest(JulGame.update, entityAnimator, currentRenderTime, deltaTime)
 					end
 				end
 			end

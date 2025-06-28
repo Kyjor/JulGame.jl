@@ -84,7 +84,6 @@ function show_camera_window(this::CameraWindow)
                     
                 CImGui.ColorEdit4("Background##2", colorCfloat, CImGui.ImGuiColorEditFlags_DisplayRGB | misc_flags)
                 if CImGui.IsItemEdited()
-                    println("Color changed to: ", color)
                     # update the camera background color rgba
                     this.camera.backgroundColor = (Int(round(colorCfloat[1]*255)), Int(round(colorCfloat[2]*255)), Int(round(colorCfloat[3]*255)), Int(round(colorCfloat[4]*255)))
                 end
