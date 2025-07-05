@@ -1020,17 +1020,36 @@ module Editor
                                             @debug("reloading script: $(script_name)")
                                             module_name = getfield(JulGame.ScriptModule, Symbol("$(classname)Module"))
                                             constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
-                                            new_script = Base.invokelatest(constructor)
+                                            @info "typeof constructor: $(typeof(constructor))"
+                                            new_script::constructor = Base.invokelatest(constructor)
+                                            @info "typeof new_script: $(typeof(new_script))"
 
                                             # Copy all fields from old_script to the new script
                                             for fieldname in fieldnames(typeof(entity.scripts[i]))
                                                 if fieldname != :parent  # Skip the `parent` field to avoid overwriting it
                                                     try
                                                         if isdefined(entity.scripts[i], Symbol(fieldname))
-                                                            setfield!(new_script, fieldname, getfield(entity.scripts[i], fieldname))
+                                                            if typeof(getfield(entity.scripts[i], fieldname)) != fieldtype(typeof(new_script), Symbol(fieldname)) && fieldtype(typeof(new_script), Symbol(fieldname)) != Any
+                                                                @warn "Type mismatch for field: $(fieldname)"
+                                                                # @warn "Type of old script: $(typeof(entity.scripts[i])) field: $(fieldname) type: $(fieldtype(typeof(entity.scripts[i]), Symbol(fieldname)))"
+                                                                # @warn "Type of new script: $(typeof(new_script)) field: $(fieldname) type: $(fieldtype(typeof(new_script), Symbol(fieldname)))"
+                                                                @warn "This is probably a complex type, so we will skip it"
+                                                                inner_type = typeof(getfield(entity.scripts[i], fieldname))
+                                                                inner_script_replacement = setfield!(new_script, fieldname, fieldtype(typeof(new_script), Symbol(fieldname))())
+                                                                for field in fieldnames(inner_type)
+                                                                    @warn "Field: $(field) needs to be mapped"
+                                                                    if isdefined(inner_type, Symbol(field))
+                                                                        # set new_script.fieldname.field = entity.scripts[i].fieldname.field
+                                                                        setfield!(inner_script_replacement, Symbol(field), getfield(getfield(entity.scripts[i], fieldname), Symbol(field)))
+                                                                    end
+                                                                end
+                                                            else
+                                                                setfield!(new_script, fieldname, getfield(entity.scripts[i], fieldname))
+                                                            end
                                                         end
                                                     catch e
                                                         @error("issue with field: $(fieldname): $e")
+                                                        Base.show_backtrace(stderr, catch_backtrace())
                                                     end
                                                 end
                                             end
@@ -1040,7 +1059,9 @@ module Editor
 
                                             @debug "script reloaded successfully"
                                         catch e
-                                            @error "Error reloading script: $(script_name): $(first(string(e), 1000))"
+                                            # replace everything after the first closing parenthesis
+                                            error_message = replace(string(e), r"\).*" => ")")
+                                            @error "Error reloading script: $(script_name): $(error_message)"
                                             Base.show_backtrace(stderr, catch_backtrace())
                                         end
                                     end

@@ -193,6 +193,12 @@ module InputModule
                 this.editorCallback(evt)
             end
 
+            if evt.type == SDL2.SDL_DROPFILE
+                @info "Dropped file: $(unsafe_string(evt.drop.file))"
+                # TODO: Handle dropped file
+                SDL2.SDL_free(evt.drop.file)
+            end
+
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                 this.didMouseEventOccur = true
                 if evt.type == SDL2.SDL_MOUSEMOTION
