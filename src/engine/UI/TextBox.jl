@@ -208,7 +208,6 @@ module TextBoxModule
     function UI.initialize(this::TextBox)
         # Ensure font is properly scaled for the current window size
         UI.handle_window_resize(this)
-        
         # Only center screen-space UI, not world entities
         if !this.isWorldEntity
             UI.align_to_anchor(this)

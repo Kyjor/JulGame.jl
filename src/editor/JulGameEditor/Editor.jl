@@ -1029,7 +1029,7 @@ module Editor
                                                 if fieldname != :parent  # Skip the `parent` field to avoid overwriting it
                                                     try
                                                         if isdefined(entity.scripts[i], Symbol(fieldname))
-                                                            if typeof(getfield(entity.scripts[i], fieldname)) != fieldtype(typeof(new_script), Symbol(fieldname)) && fieldtype(typeof(new_script), Symbol(fieldname)) != Any
+                                                            if typeof(getfield(entity.scripts[i], fieldname)) != JulGame.EntityModule.Entity && typeof(getfield(entity.scripts[i], fieldname)) != JulGame.UI.UIElement && typeof(getfield(entity.scripts[i], fieldname)) != fieldtype(typeof(new_script), Symbol(fieldname)) && fieldtype(typeof(new_script), Symbol(fieldname)) != Any
                                                                 @warn "Type mismatch for field: $(fieldname)"
                                                                 # @warn "Type of old script: $(typeof(entity.scripts[i])) field: $(fieldname) type: $(fieldtype(typeof(entity.scripts[i]), Symbol(fieldname)))"
                                                                 # @warn "Type of new script: $(typeof(new_script)) field: $(fieldname) type: $(fieldtype(typeof(new_script), Symbol(fieldname)))"
