@@ -30,14 +30,26 @@ end
 
 function ImGui_ImplSDLRenderer2_Shutdown()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
-#    @assert bd != C_NULL # "No renderer backend to shutdown, or already shutdown?"
+    @assert bd != Ptr{ImGui_ImplSDLRenderer2_Data}(C_NULL) "No renderer backend to shutdown, or already shutdown?"
     io = CImGui.GetIO()
 
-    ImGui_ImplSDLRenderer2_DestroyDeviceObjects()
+    if bd.ClipboardTextData != Ptr{Cchar}(C_NULL)
+        SDL2.SDL_free(bd.ClipboardTextData)
+        bd.ClipboardTextData = Ptr{Cchar}(C_NULL)
+    end
+    for i = 0:CImGui.ImGuiMouseCursor_COUNT-1
+        if bd.MouseCursors[i] != Ptr{SDL2.SDL_Cursor}(C_NULL)
+            SDL2.SDL_FreeCursor(bd.MouseCursors[i])
+            bd.MouseCursors[i] = Ptr{SDL2.SDL_Cursor}(C_NULL)
+        end
+    end
 
     io.BackendRendererName = C_NULL
     io.BackendRendererUserData = C_NULL
-    io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset
+    io.BackendFlags &= ~CImGui.ImGuiBackendFlags_HasMouseCursors
+    io.BackendFlags &= ~CImGui.ImGuiBackendFlags_HasSetMousePos
+    io.BackendFlags &= ~CImGui.ImGuiBackendFlags_HasGamepad
+    CImGui.IM_DELETE(bd)
 end
 
 function ImGui_ImplSDLRenderer2_SetupRenderState()
@@ -148,7 +160,7 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 color = Ptr{Int}(Ptr{Cvoid}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + col_offset))
                     
                 tex = Ptr{SDL2.SDL_Texture}(CImGui.ImDrawCmd_GetTexID(pcmd))
-                offset = unsafe_load(pcmd.IdxOffset)*2
+                offset = unsafe_load(pcmd.IdxOffset)*2 # TODO: understand why this is necessary to multiply by 2
                
                 elem_count = Int(unsafe_load(pcmd.ElemCount))
                 indices = Ptr{CImGui.ImDrawIdx}(idx_buffer.Data + (offset)) 
@@ -158,15 +170,14 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
 
                 res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
                 tex,
-                xy, Cint(sizeof(CImGui.ImDrawVert)),
-                color, Cint(sizeof(CImGui.ImDrawVert)),
-                uv, Cint(sizeof(CImGui.ImDrawVert)),
+                xy, Int32(sizeof(CImGui.ImDrawVert)),
+                color, Int32(sizeof(CImGui.ImDrawVert)),
+                uv, Int32(sizeof(CImGui.ImDrawVert)),
                 num_vertices,
                 indices, elem_count, sizeof(CImGui.ImDrawIdx))
 
                 if res != 0
-                    @error "Error rendering imgui:" exception=unsafe_string(SDL2.SDL_GetError())
-                    Base.show_backtrace(stderr, catch_backtrace())
+                    println("error: ", unsafe_string(SDL2.SDL_GetError()))
                 end
             end
         end
@@ -211,7 +222,7 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
     # Build texture atlas
     fonts = unsafe_load(io.Fonts)
     pixels = Ptr{Cuchar}(C_NULL)
-    width, height = Cint(0), Cint(0)
+    width, height = Int32(0), Int32(0)
     @c CImGui.ImFontAtlas_GetTexDataAsRGBA32(fonts, &pixels, &width, &height, C_NULL)
 
     # Upload texture to graphics system
@@ -222,7 +233,7 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
         println("error creating texture")
         return false
     end
-    
+    println("font texture: ", bd.FontTexture)
     SDL2.SDL_UpdateTexture(bd.FontTexture, C_NULL, pixels, 4 * width)
     SDL2.SDL_SetTextureBlendMode(bd.FontTexture, SDL2.SDL_BLENDMODE_BLEND)
     SDL2.SDL_SetTextureScaleMode(bd.FontTexture, SDL2.SDL_ScaleModeLinear)
@@ -249,9 +260,4 @@ end
 
 function ImGui_ImplSDLRenderer2_DestroyDeviceObjects()
     ImGui_ImplSDLRenderer2_DestroyFontsTexture()
-end
-
-@generated function offsetof(::Type{X}, ::Val{field}) where {X,field}
-    idx = findfirst(f->f==field, fieldnames(X))
-    return fieldoffset(X, idx)
 end
