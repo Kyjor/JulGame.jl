@@ -583,7 +583,7 @@ module ImageFXModule
         dest_buffer .= src_buffer
         
         # Process each pixel
-        for y in 0:(height-1)
+        @inbounds for y in 0:(height-1)
             for x in 0:(width-1)
                 # Calculate distance from origin to this pixel
                 distance = sqrt((x - origin_x)^2 + (y - origin_y)^2)
@@ -638,6 +638,91 @@ module ImageFXModule
         
         # Enable alpha blending
         SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+        
+        return sprite
+    end
+
+    # void invert_colors(SDL_Surface* surface) {
+    # if (SDL_MUSTLOCK(surface)) SDL_LockSurface(surface);
+
+    # Uint8 r, g, b;
+    # Uint32* pixels = (Uint32*)surface->pixels;
+    # for (int y = 0; y < surface->h; ++y) {
+    #     for (int x = 0; x < surface->w; ++x) {
+    #         Uint32* pixel = pixels + y * surface->pitch / 4 + x;
+    #         SDL_GetRGB(*pixel, surface->format, &r, &g, &b);
+    #         r = 255 - r;
+    #         g = 255 - g;
+    #         b = 255 - b;
+    #         *pixel = SDL_MapRGB(surface->format, r, g, b);
+    #     }
+    # }
+
+#     if (SDL_MUSTLOCK(surface)) SDL_UnlockSurface(surface);
+# }
+
+    function gfx_invert_colors(sprite::SpriteModule.InternalSprite)
+        println("Inverting colors")
+        if sprite.image == C_NULL
+            @error "Cannot apply invert colors: sprite has no image"
+            return sprite
+        end
+        
+        # Create cache key from sprite's image path
+        cache_key = sprite.imagePath
+        
+        # Cache the original surface if not already cached
+        if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
+            # Make a backup of the original surface
+            original_surface = SDL2.SDL_DuplicateSurface(sprite.image)
+            if original_surface == C_NULL
+                @error "Failed to duplicate original surface for caching"
+                return sprite
+            end
+            ORIGINAL_SPRITE_CACHE[cache_key] = original_surface
+            @debug "Cached original surface for sprite: $cache_key"
+        end
+
+        # Get the original surface from cache
+        original_surface = ORIGINAL_SPRITE_CACHE[cache_key]
+        
+        # Lock the surface to access the pixels
+        SDL2.SDL_LockSurface(original_surface)
+        
+        # Get surface properties
+        surface_struct = unsafe_load(original_surface)
+        width = surface_struct.w
+        height = surface_struct.h
+        pitch = surface_struct.pitch
+        pixels_ptr = surface_struct.pixels
+        format = surface_struct.format
+        
+        # Get pixels as 32-bit integers (assuming 32-bit surface)
+        pixels_array = unsafe_wrap(Array, Ptr{UInt32}(pixels_ptr), (pitch ÷ 4 * height,); own = false)
+        
+        # Invert colors for each pixel
+        for i in 1:length(pixels_array)
+            pixel = pixels_array[i]
+            
+            # Extract RGBA components using SDL's format functions
+            r = Ref{UInt8}()
+            g = Ref{UInt8}()
+            b = Ref{UInt8}()
+            a = Ref{UInt8}()
+            SDL2.SDL_GetRGBA(pixel, format, r, g, b, a)
+            
+            # Invert RGB components (keep alpha unchanged)
+            inverted_r = 255 - r[]
+            inverted_g = 255 - g[]
+            inverted_b = 255 - b[]
+            
+            # Map back to pixel format
+            inverted_pixel = SDL2.SDL_MapRGBA(format, inverted_r, inverted_g, inverted_b, a[])
+            pixels_array[i] = inverted_pixel
+        end
+        
+        # Unlock the surface
+        SDL2.SDL_UnlockSurface(original_surface)
         
         return sprite
     end

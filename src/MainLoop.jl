@@ -890,7 +890,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	function JulGame.cleanup_sdl_resources()
 		SDL2.SDL_ClearError()
 		@debug "Closing window"
-		if JulGame.Renderer != C_NULL
+		if JulGame.Renderer != Ptr{SDL2.SDL_Renderer}(C_NULL)
 			SDL2.SDL_DestroyRenderer(JulGame.Renderer)
 			if unsafe_string(SDL2.SDL_GetError()) != ""
 				@error "Failed to destroy renderer, $(unsafe_string(SDL2.SDL_GetError()))"

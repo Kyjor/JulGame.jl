@@ -245,7 +245,6 @@ module InputModule
                             eventWasInsideThisElement = false
                         end
 
-
                         if !eventWasInsideThisElement
                             if uiElement.isHovered
                                 uiElement.isHovered = false
@@ -257,7 +256,6 @@ module InputModule
                         if JulGame.IS_DEBUG
                             SDL2.SDL_SetCursor(this.cursorBank["crosshair"])
                         end
-
 
                         JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
                         if evt.type == SDL2.SDL_MOUSEBUTTONUP
@@ -328,9 +326,6 @@ module InputModule
                         @debug("Hat $i: $(hat)")
                     end
                 end
-                
-            #end
-
             if evt.type == SDL2.SDL_QUIT
                 this.quit = true
                 return -1
@@ -343,6 +338,7 @@ module InputModule
             keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
             handle_key_event(this, keyboardState)
         end
+        
         if this.isTestButtonClicked
             lift_mouse_after_simulated_click(this)
         end
