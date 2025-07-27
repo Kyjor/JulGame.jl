@@ -64,6 +64,20 @@ function Base.setproperty!(x::Ptr{ImGui_ImplSDL2_Data}, f::Symbol, v::Any)
     f === :WantUpdateGamepadsList && return unsafe_store!(Ptr{Bool}(x + offsetof(ImGui_ImplSDL2_Data, Val(:WantUpdateGamepadsList))), v)
 end
 
+struct ImGui_ImplSDLRenderer2_Data
+    SDLRenderer::Ptr{SDL2.SDL_Renderer}
+    FontTexture::Ptr{SDL2.SDL_Texture}
+end
+
+function Base.getproperty(x::Ptr{ImGui_ImplSDLRenderer2_Data}, f::Symbol)
+    f === :SDLRenderer && return unsafe_load(Ptr{Ptr{SDL2.SDL_Renderer}}(x + offsetof(ImGui_ImplSDLRenderer2_Data, Val(:SDLRenderer))))
+    f === :FontTexture && return unsafe_load(Ptr{Ptr{SDL2.SDL_Texture}}(x + offsetof(ImGui_ImplSDLRenderer2_Data, Val(:FontTexture))))
+end
+
+function Base.setproperty!(x::Ptr{ImGui_ImplSDLRenderer2_Data}, f::Symbol, v::Any)
+    f === :SDLRenderer && return unsafe_store!(Ptr{Ptr{SDL2.SDL_Renderer}}(x + offsetof(ImGui_ImplSDLRenderer2_Data, Val(:SDLRenderer))), v)
+    f === :FontTexture && return unsafe_store!(Ptr{Ptr{SDL2.SDL_Texture}}(x + offsetof(ImGui_ImplSDLRenderer2_Data, Val(:FontTexture))), v)
+end
 
 function SDL_VERSION_ATLEAST(major::Int32, minor::Int32, patch::Int32)::Bool
     sdl_version_ptr::Ptr{SDL2.SDL_version} = Libc.malloc(sizeof(SDL2.SDL_version))
