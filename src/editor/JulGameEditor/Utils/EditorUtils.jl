@@ -12,7 +12,7 @@ function init_sdl_and_imgui(windowTitle::String)
 
     window = SDL2.SDL_CreateWindow(
     windowTitle, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
-    SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
+    SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE
     )
     if window == C_NULL 
         println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))

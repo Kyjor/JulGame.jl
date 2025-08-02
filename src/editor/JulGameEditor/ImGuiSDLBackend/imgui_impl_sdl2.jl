@@ -281,21 +281,57 @@ function ImGui_ImplSDL2_NewFrame()
     bd = ImGui_ImplSDL2_GetBackendData()
     @assert bd != C_NULL "Did you call ImGui_ImplSDL2_Init()?"
     io = CImGui.GetIO()
+    
+    println("Backend window pointer: ", bd.Window)
+    println("Backend renderer pointer: ", bd.Renderer)
+    
     # Setup display size (every frame to accommodate for window resizing)
     w, h = Int32(0), Int32(0)
     display_w, display_h = Int32(0), Int32(0)
+    
+    if bd.Window == C_NULL
+        println("ERROR: Window pointer is C_NULL!")
+        return
+    end
+    
+    window_flags = SDL2.SDL_GetWindowFlags(bd.Window)
+    
     @c SDL2.SDL_GetWindowSize(bd.Window, &w, &h)
+    
+    # On macOS, the window might not be ready yet, so we need a fallback
+    # But we should keep trying to get the real size
+    if w == 0 || h == 0
+        println("Window size is 0, using fallback temporarily")
+        # Try to get the size from the window creation parameters or use a default
+        # This is a workaround for macOS timing issues
+        w = Int32(1280)  # Default width from window creation
+        h = Int32(720)   # Default height from window creation
+        println("Using fallback window size: ", w, " x ", h)
+    else
+        println("Real window size detected: ", w, " x ", h)
+    end
+    
     if SDL2.SDL_GetWindowFlags(bd.Window) & SDL2.SDL_WINDOW_MINIMIZED != 0
         w = h = 0
     end
+    
     if bd.Renderer != C_NULL
         @c SDL2.SDL_GetRendererOutputSize(bd.Renderer, &display_w, &display_h)
+        
+        # Fallback for renderer output size if it's 0
+        if display_w == 0 || display_h == 0
+            println("Renderer output size is 0, using window size as fallback")
+            display_w = w
+            display_h = h
+            println("Using fallback renderer output size: ", display_w, " x ", display_h)
+        end
     #if SDL_HAS_VULKAN
     # else if (SDL_GetWindowFlags(window) & SDL_WINDOW_VULKAN)
     #     SDL_Vulkan_GetDrawableSize(window, &display_w, &display_h);
     #endif
     else
         @c SDL2.SDL_GL_GetDrawableSize(bd.Window, &display_w, &display_h)
+        println("SDL GL drawable size: ", display_w, " x ", display_h)
     end
     
     io.DisplaySize = ImVec2(Cfloat(w), Cfloat(h))
