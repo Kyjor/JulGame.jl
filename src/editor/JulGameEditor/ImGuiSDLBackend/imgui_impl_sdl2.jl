@@ -407,8 +407,8 @@ function ImGui_ImplSDL2_ProcessEvent(event::SDL2.SDL_Event)::Bool
         if ImGui_ImplSDL2_GetViewportForWindowID(event.wheel.windowID) == Ptr{CImGui.ImGuiViewport}(C_NULL)
             return false
         end
-        wheel_x = SDL2.SDL_VERSION_ATLEAST(2, 0, 18) ? -event.wheel.preciseX : -(Cfloat(event.wheel.x))
-        wheel_y = SDL2.SDL_VERSION_ATLEAST(2, 0, 18) ? event.wheel.preciseY : Cfloat(event.wheel.y)
+        wheel_x = SDL_VERSION_ATLEAST(Int32(2), Int32(0), Int32(18)) ? -event.wheel.preciseX : -(Cfloat(event.wheel.x))
+        wheel_y = SDL_VERSION_ATLEAST(Int32(2), Int32(0), Int32(18)) ? event.wheel.preciseY : Cfloat(event.wheel.y)
         # if __EMSCRIPTEN__
         # wheel_x /= 100.0f 
         # end

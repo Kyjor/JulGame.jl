@@ -40,6 +40,7 @@ module Editor
     function run(is_test_mode::Bool=false)
         isPackageCompiled = ccall(:jl_generating_output, Cint, ()) == 1
         windowTitle = "JulGame Editor v0.1.0"
+        JulGame.IS_EDITOR = true
 
         info = init_sdl_and_imgui(windowTitle)
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
@@ -137,6 +138,11 @@ module Editor
                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(most_recent_project))
                 JulGame.BasePath = most_recent_project
                 @debug("Base path: $(JulGame.BasePath)")
+                println("Base path: $(JulGame.BasePath)")
+                # Get the last part of the path
+                last_part = basename(most_recent_project)
+
+                include(joinpath(most_recent_project, "src", "$(last_part).jl"))
                 # Update window title
                 SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(most_recent_project)")
                 # Show notification
@@ -282,7 +288,6 @@ module Editor
                                     currentSceneName = name
                                     currentScenePath = scene
                                     if currentSceneMain === nothing
-                                        JulGame.IS_EDITOR = true
                                         JulGame.PIXELS_PER_UNIT = 16
                                         currentDialog[] = "Open Scene"
                                         currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
