@@ -17,12 +17,12 @@ function ImGui_ImplSDLRenderer2_Init(renderer::Ptr{SDL2.SDL_Renderer})
     # Setup backend capabilities flags
     bd = ImGui_ImplSDLRenderer2_Data(renderer, C_NULL)
     bd_ptr = Ptr{ImGui_ImplSDLRenderer2_Data}(Libc.malloc(sizeof(ImGui_ImplSDLRenderer2_Data)))
-    println("Backend data pointer: ", bd_ptr)
+    #println("Backend data pointer: ", bd_ptr)
     unsafe_store!(bd_ptr, bd)
 
     io.BackendRendererUserData = bd_ptr
-    println("Backend data stored: ", io.BackendRendererUserData)
-    println("Renderer pointer: ", renderer)
+    #println("Backend data stored: ", io.BackendRendererUserData)
+    #println("Renderer pointer: ", renderer)
     io.BackendRendererName = pointer("imgui_impl_sdlrenderer2")
     io.BackendFlags = unsafe_load(io.BackendFlags) | CImGui.ImGuiBackendFlags_RendererHasVtxOffset # We can honor the  CImGui.ImDrawCmd::VtxOffset field, allowing for large meshes.
     ImGui_ImplSDLRenderer2_CreateFontsTexture(bd_ptr)
@@ -98,11 +98,11 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
     rsx = Cfloat(1.0)
     rsy = Cfloat(1.0)
     @c SDL2.SDL_RenderGetScale(bd.SDLRenderer, &rsx, &rsy)
-    println("SDL render scale: rsx=", rsx, " rsy=", rsy)
+    #println("SDL render scale: rsx=", rsx, " rsy=", rsy)
     
     framebuffer_scale_x = unsafe_load(draw_data.FramebufferScale.x)
     framebuffer_scale_y = unsafe_load(draw_data.FramebufferScale.y)
-    println("Framebuffer scale: ", framebuffer_scale_x, " x ", framebuffer_scale_y)
+    #println("Framebuffer scale: ", framebuffer_scale_x, " x ", framebuffer_scale_y)
     
     render_scale = ImVec2((rsx == 1.0) ? framebuffer_scale_x : 1.0,(rsy == 1.0) ? framebuffer_scale_y : 1.0)
 
@@ -115,8 +115,8 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
     fb_width = Int(display_size_x * render_scale.x) 
     fb_height = Int(display_size_y * render_scale.y)
     if fb_width == 0 || fb_height == 0
-        println("Error: Framebuffer width or height is 0 in RenderDrawData")
-        println("  fb_width: ", fb_width, " fb_height: ", fb_height)
+        #println("Error: Framebuffer width or height is 0 in RenderDrawData")
+        #println("  fb_width: ", fb_width, " fb_height: ", fb_height)
         return
     end
 

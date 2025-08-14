@@ -664,7 +664,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 			
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
-			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x - this.input.mousePositionEditorGameWindowOffset.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y - this.input.mousePositionEditorGameWindowOffset.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
+			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
 			#region Debug
 			if JulGame.IS_DEBUG
@@ -891,6 +891,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		SDL2.SDL_ClearError()
 		@debug "Closing window"
 		if JulGame.Renderer != Ptr{SDL2.SDL_Renderer}(C_NULL)
+			@debug "Destroying renderer: $(JulGame.Renderer)"
 			SDL2.SDL_DestroyRenderer(JulGame.Renderer)
 			if unsafe_string(SDL2.SDL_GetError()) != ""
 				@error "Failed to destroy renderer, $(unsafe_string(SDL2.SDL_GetError()))"

@@ -267,15 +267,23 @@ module SceneBuilderModule
         
         # Only load scripts for non-persistent entities or if package is not compiled
         if !JulGame.IS_PACKAGE_COMPILED
-            @debug "Package not compiled, loading scripts"
+            @info "Package not compiled, loading scripts"
+            @time begin
+                count = 0
             foreach(file -> try
+            count += 1
+            println("Trying to load $count scripts")
                 if !(file in JulGame.LoadedScripts)
-                    Base.include(JulGame.ScriptModule, file)
+                    println("Loading $file")
+                    @time Base.include(JulGame.ScriptModule, file)
+                    println("Finished loading $file")
                     push!(JulGame.LoadedScripts, file)
                 end
             catch e
                 println("Error including $file: ", e)
-            end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+                end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+            end
+            @info "Finished loading scripts"
         end
 
         if JulGame.ProjectModule != ""
