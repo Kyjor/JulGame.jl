@@ -350,6 +350,9 @@ module Editor
                                     if CImGui.MenuItem("Screen Button")
                                         JulGame.MainLoop.create_new_screen_button(currentSceneMain)
                                     end
+                                    if CImGui.MenuItem("Image")
+                                        JulGame.MainLoop.create_new_image(currentSceneMain)
+                                    end
                                     
                                     CImGui.EndMenu()
                                 end
@@ -431,6 +434,8 @@ module Editor
                                     
                                     if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
                                         show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                                    elseif contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "Image")
+                                        show_image_fields(currentSceneMain.scene.uiElements[uiElementIndex])
                                     else
                                         show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
                                     end

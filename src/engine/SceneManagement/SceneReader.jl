@@ -13,6 +13,7 @@ module SceneReaderModule
     using ...SpriteModule
     using ...UI.TextBoxModule
     using ...UI.ScreenButtonModule
+    using ...UI.ImageModule
     using ...TransformModule
     using ...JulGame
 
@@ -115,6 +116,10 @@ module SceneReaderModule
                     newUIElement.isWorldEntity = uiElement.isWorldEntity    
                     isActive::Bool = !haskey(uiElement, "isActive") ? true : uiElement.isActive
                     newUIElement.isActive = isActive    
+                elseif uiElement.type == "Image"
+                    newUIElement = Image(uiElement.name, uiElement.imagePath, Vector2(uiElement.size.x, uiElement.size.y), Vector2(uiElement.position.x, uiElement.position.y))
+                    newUIElement.alpha = get(uiElement, "alpha", 255)
+                    newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 else
                     newUIElement = ScreenButton(uiElement.name, uiElement.buttonUpSpritePath, uiElement.buttonDownSpritePath, Vector2(uiElement.size.x, uiElement.size.y), Vector2(uiElement.position.x, uiElement.position.y), uiElement.fontPath, uiElement.text, Vector2(uiElement.textOffset.x, uiElement.textOffset.y))
                 end

@@ -43,6 +43,17 @@ module SceneWriterModule
                     "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
                     "type" => "ScreenButton"
                     ))
+            elseif "$(typeof(uiElement))" == "JulGame.UI.ImageModule.Image"
+                push!(uiElementsDict, Dict(
+                    "id" => count, 
+                    "alpha" => uiElement.alpha, 
+                    "imagePath" => normalize_path(uiElement.imagePath), 
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "type" => "Image"
+                    ))
             else
                 push!(uiElementsDict, Dict(
                     "id" => count, 

@@ -473,6 +473,42 @@ function show_screenbutton_fields1(screenButton)
 end
 
 """
+    show_image_fields(image)
+
+Iterates over the fields of the `image` object and displays input fields for each field.
+If the field is `imagePath`, it displays an input text field for the image path, a button to load the image,
+and updates the `image.imagePath` field with the current text in the text box.
+
+# Arguments
+- `image`: The image component to display the fields for.
+
+"""
+function show_image_fields(image)
+    for field in fieldnames(typeof(image))
+        fieldString = "$(field)"
+
+        if fieldString == "imagePath"
+            nameToDisplay = image.imagePath == "" ? "No image" : image.imagePath
+            CImGui.Text("Current image: $(nameToDisplay)")
+
+            imageMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "images"), "images", "image")
+            if imageMenuValue != ""
+                @info String("loading image: $imageMenuValue")
+                # remove joinpath("assets", "images") from imageMenuValue and set it to imagePath
+                imagePath = replace(imageMenuValue, joinpath(JulGame.BasePath, "assets", "images") => "")
+                if imagePath[1] == '\\' || imagePath[1] == '/'
+                    imagePath = imagePath[2:end]
+                end
+
+                UI.load_image_sprite_editor(image, imagePath)
+            end 
+        else 
+            show_image_fields(image, field)
+        end  
+    end
+end
+
+"""
     show_sound_source_fields(soundSource)
 
 Display the fields of a `soundSource` object and provide user input for each field.

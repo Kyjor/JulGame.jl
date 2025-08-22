@@ -8,6 +8,7 @@ module UI
         initialize,
         load_button_sprite_editor,
         load_font,
+        load_image_sprite_editor,
         render, 
         rerender_text,
         set_color,
@@ -16,7 +17,9 @@ module UI
 
     include("ScreenButton.jl")
     include("TextBox.jl")
+    include("Image.jl")
     
     export ScreenButtonModule
     export TextBoxModule
+    export ImageModule
 end

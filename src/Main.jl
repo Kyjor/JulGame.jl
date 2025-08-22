@@ -178,6 +178,11 @@ module MainLoop
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
+	function create_new_image(this::Main)
+		@debug "Creating new image"
+		SceneBuilderModule.create_new_image(this.level)
+	end
+
     function update_viewport(this::Main, x,y)
 		@debug "Updating viewport"
         if !this.autoScaleZoom

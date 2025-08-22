@@ -7,6 +7,7 @@ module SceneBuilderModule
     using ...RigidbodyModule
     using ...TextBoxModule
     using ...ScreenButtonModule
+    using ...ImageModule
     using ..SceneReaderModule
     using JSON3
 
@@ -193,6 +194,12 @@ module SceneBuilderModule
         screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"), "test")
         JulGame.initialize(screenButton)
         push!(MAIN.scene.uiElements, screenButton)
+    end
+
+    function create_new_image(this::Scene)
+        image = Image("Image", "default.png", Vector2(100, 100), Vector2(100, 100))
+        JulGame.initialize(image)
+        push!(MAIN.scene.uiElements, image)
     end
 
     function add_scripts_to_entities(path::String)
