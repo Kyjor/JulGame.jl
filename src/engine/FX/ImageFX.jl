@@ -662,7 +662,6 @@ module ImageFXModule
 # }
 
     function gfx_invert_colors(sprite::SpriteModule.InternalSprite)
-        println("Inverting colors")
         if sprite.image == C_NULL
             @error "Cannot apply invert colors: sprite has no image"
             return sprite
