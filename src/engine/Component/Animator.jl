@@ -63,6 +63,17 @@
 
         @warn "Animation index out of bounds"
     end
+
+    function Component.duplicate(this::InternalAnimator, parent::Any)
+        newAnimator = InternalAnimator(parent, this.animations)
+        newAnimator.currentAnimation = this.currentAnimation
+        newAnimator.lastFrame = this.lastFrame
+        newAnimator.lastUpdate = this.lastUpdate
+        newAnimator.playOnce = this.playOnce
+        newAnimator.sprite = this.sprite
+
+        return newAnimator
+    end
     
     
     """

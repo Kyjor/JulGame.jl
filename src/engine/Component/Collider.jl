@@ -247,4 +247,10 @@ module ColliderModule
 
         return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
     end
+
+    function Component.duplicate(this::InternalCollider, parent::Any)
+        newCollider = InternalCollider(parent, this.size, this.offset, this.tag, this.isTrigger, this.isPlatformerCollider, this.enabled)
+        newCollider.collisionEvents = this.collisionEvents
+        return newCollider
+    end
    end

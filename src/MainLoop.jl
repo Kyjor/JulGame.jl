@@ -896,6 +896,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			if unsafe_string(SDL2.SDL_GetError()) != ""
 				@error "Failed to destroy renderer, $(unsafe_string(SDL2.SDL_GetError()))"
 			end
+			JulGame.Renderer = C_NULL
+		else
+			@debug "Renderer is already destroyed"
+			return
 		end
 		SDL2.SDL_ClearError()
 		

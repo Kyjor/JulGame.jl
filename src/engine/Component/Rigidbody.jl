@@ -108,4 +108,14 @@
         end
     end
     export set_velocity
+
+    function Component.duplicate(this::InternalRigidbody, parent::Any)
+        newRigidbody = InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)
+        newRigidbody.acceleration = this.acceleration
+        newRigidbody.drag = this.drag
+        newRigidbody.grounded = this.grounded
+        newRigidbody.mass = this.mass
+        newRigidbody.offset = this.offset
+        return newRigidbody
+    end
 end

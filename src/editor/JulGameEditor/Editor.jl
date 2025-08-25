@@ -911,9 +911,7 @@ module Editor
                                 duplicationMode = !duplicationMode
                                 if duplicationMode
                                     @debug "Duplication mode on"
-                                    copy = deepcopy(currentSceneMain.selectedEntity)
-                                    copy.id = JulGame.generate_uuid()
-                                    push!(currentSceneMain.scene.entities, copy)
+                                    copy = JulGame.duplicate(currentSceneMain.selectedEntity)
                                     currentSceneMain.selectedEntity = copy
                                 else
                                     @debug "Duplication mode off"

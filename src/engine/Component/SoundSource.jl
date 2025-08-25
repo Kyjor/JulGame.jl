@@ -1,5 +1,5 @@
 module SoundSourceModule
-    using ..JulGame
+    using ..Component.JulGame
     import ..Component
     
     export SoundSource
@@ -159,5 +159,11 @@ module SoundSourceModule
         volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
         SDL2.Mix_MasterVolume(volume)
         SDL2.Mix_VolumeMusic(volume)
+    end
+
+    function Component.duplicate(this::InternalSoundSource, parent::Any)
+        newSoundSource = InternalSoundSource(parent, this.path, this.channel, this.volume, this.isMusic, this.playOnStart)
+        newSoundSource.isPlaying = this.isPlaying
+        return newSoundSource
     end
 end

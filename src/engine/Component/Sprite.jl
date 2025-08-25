@@ -331,6 +331,12 @@ module SpriteModule
         SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[4], 0, 255)));
     end
 
+    function Component.duplicate(this::InternalSprite, parent::Any)
+        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, isWorldEntity=this.isWorldEntity, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
+        Component.initialize(newSprite)
+        return newSprite
+    end
+
     function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")
         try

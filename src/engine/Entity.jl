@@ -48,7 +48,7 @@ module EntityModule
             this.scripts = []
             this.transform = transform
             for script in scripts
-                add_script(this, script)
+                JulGame.add_script(this, script)
             end
             this.shape = C_NULL
             this.soundSource = C_NULL
@@ -200,6 +200,57 @@ module EntityModule
         Component.initialize(softwareRenderer3d, JulGame.MAIN)
 
         return this.softwareRenderer3d
+    end
+
+    function JulGame.duplicate(this::Entity, id::String = JulGame.generate_uuid())
+        newEntity = Entity(this.name, id, deepcopy(this.transform))
+        # animator::Union{InternalAnimator, Ptr{Nothing}}
+        if this.animator != C_NULL && this.animator !== nothing
+            newEntity.animator = Component.duplicate(this.animator, newEntity)
+        end
+        # collider::Union{InternalCollider, Ptr{Nothing}}
+        if this.collider != C_NULL && this.collider !== nothing
+            newEntity.collider = Component.duplicate(this.collider, newEntity)
+        end
+        # circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
+        # if this.circleCollider != C_NULL && this.circleCollider !== nothing
+        #     newEntity.circleCollider = Component.duplicate(this.circleCollider, newEntity)
+        # end
+        # isActive::Bool
+        newEntity.isActive = this.isActive
+        # mesh3d::Union{Mesh3D, Ptr{Nothing}}
+        if this.mesh3d != C_NULL && this.mesh3d !== nothing
+            #newEntity.mesh3d = Component.duplicate(this.mesh3d, newEntity)
+        end
+        # softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
+        if this.softwareRenderer3d != C_NULL && this.softwareRenderer3d !== nothing
+            newEntity.softwareRenderer3d = this.softwareRenderer3d
+        end
+        # persistentBetweenScenes::Bool
+        newEntity.persistentBetweenScenes = this.persistentBetweenScenes
+        # rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
+        if this.rigidbody != C_NULL && this.rigidbody !== nothing
+            newEntity.rigidbody = Component.duplicate(this.rigidbody, newEntity)
+        end
+        # scripts::Vector{Any}
+        for script in this.scripts
+            JulGame.add_script(newEntity, script)
+        end
+        # shape::Union{InternalShape, Ptr{Nothing}}
+        if this.shape != C_NULL && this.shape !== nothing
+            newEntity.shape = Component.duplicate(this.shape, newEntity)
+        end
+        # soundSource::Union{InternalSoundSource, Ptr{Nothing}}
+        if this.soundSource != C_NULL && this.soundSource !== nothing
+            newEntity.soundSource = Component.duplicate(this.soundSource, newEntity)
+        end
+        # sprite::Union{InternalSprite, Ptr{Nothing}}
+        if this.sprite != C_NULL && this.sprite !== nothing
+            newEntity.sprite = Component.duplicate(this.sprite, newEntity)
+        end
+        
+        push!(JulGame.MAIN.scene.entities, newEntity)
+        return newEntity
     end
 
     function JulGame.generate_uuid()
