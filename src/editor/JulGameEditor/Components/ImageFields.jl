@@ -4,7 +4,7 @@ function show_image_fields(selectedImage, imageField)
     if fieldName in unusedFields
         return
     end
-    Value = getfield(selectedImage, imageField)
+    Value = getproperty(selectedImage, imageField)
 
     if fieldName == "imagePath" || fieldName == "name" 
         buf = "$(Value)"*"\\0"^(64)
@@ -18,7 +18,7 @@ function show_image_fields(selectedImage, imageField)
                 break
             end
         end
-        setfield!(selectedImage, imageField, currentTextInTextBox)
+        setproperty!(selectedImage, imageField, currentTextInTextBox)
         
         if currentTextInTextBox != Value && fieldName == "imagePath"
             # Update the image when path changes
@@ -33,7 +33,7 @@ function show_image_fields(selectedImage, imageField)
         @c CImGui.ColorEdit4("$(imageField)", &x, &y, &z, &w)
         
         new_color = (convert(Int32, round(x*255)), convert(Int32, round(y*255)), convert(Int32, round(z*255)), convert(Int32, round(w*255)))
-        setfield!(selectedImage, imageField, new_color)
+        setproperty!(selectedImage, imageField, new_color)
 
         if new_color != Value
             # Update color when changed
@@ -46,20 +46,20 @@ function show_image_fields(selectedImage, imageField)
         @c CImGui.InputInt("$(imageField) y", &y, 1)
         
         if x != Value.x || y != Value.y
-            setfield!(selectedImage, imageField, Vector2(x, y))
+            setproperty!(selectedImage, imageField, Vector2(x, y))
         end
     elseif fieldName == "rotation"
         x = Cfloat(Value)
         @c CImGui.SliderFloat("$(imageField)", &x, 0.0, 360.0)
-        setfield!(selectedImage, imageField, convert(Float64, x))
+        setproperty!(selectedImage, imageField, convert(Float64, x))
     elseif fieldName == "layer"
         x = Cint(Value)
         @c CImGui.InputInt("$(imageField)", &x, 1)
-        setfield!(selectedImage, imageField, convert(Int32, x))
+        setproperty!(selectedImage, imageField, convert(Int32, x))
     elseif fieldName == "isActive" || fieldName == "isWorldEntity" || fieldName == "persistentBetweenScenes"
         x = Value
         @c CImGui.Checkbox("$(imageField)", &x)
-        setfield!(selectedImage, imageField, x)
+        setproperty!(selectedImage, imageField, x)
     elseif fieldName == "anchor"
         current_anchor = string(Value.current_state)
         anchor_options = ["center", "top", "bottom", "left", "right", "topLeft", "topRight", "bottomLeft", "bottomRight", "centerLeft", "centerRight", "centerTop", "centerBottom", "none"]
