@@ -7,6 +7,7 @@ module SceneBuilderModule
     using ...RigidbodyModule
     using ...TextBoxModule
     using ...ScreenButtonModule
+    using ...ImageModule
     using ..SceneReaderModule
     using JSON3
 
@@ -256,6 +257,20 @@ module SceneBuilderModule
             JulGame.initialize(screenButton)
         end
         push!(MAIN.scene.uiElements, screenButton)
+    end
+
+    function create_new_image(this::Scene)
+        image = Image(
+            name="New Image", 
+            imagePath="", # No default image path
+            size=Math.Vector2(100, 100), 
+            position=Math.Vector2(0, 0)
+            # Other parameters use defaults (anchor, layer, color, etc.)
+        )
+        if !image.isInitialized
+            JulGame.initialize(image)
+        end
+        push!(MAIN.scene.uiElements, image)
     end
 
     function add_scripts_to_entities(path::String)

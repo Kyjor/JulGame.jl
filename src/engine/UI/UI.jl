@@ -24,6 +24,7 @@
     include("UIElement.jl")
     include("ScreenButton.jl")
     include("TextBox.jl")
+    include("Image.jl")
     #include("Draggable.jl")
     include("Rectangle.jl")
     include("Line.jl")
@@ -34,6 +35,7 @@
     
     export ScreenButtonModule
     export TextBoxModule
+    export ImageModule
     export ImmediateUIModule
     #export DraggableModule
     export RectangleModule
@@ -41,9 +43,9 @@
     export CircleModule
     export ProgressBarModule
 
-    export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
+    export create_text_box, create_screen_button, create_image, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components
-    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar#, Draggable
+    export TextBox, ScreenButton, Image, Rectangle, Line, Circle, ProgressBar#, Draggable
 end

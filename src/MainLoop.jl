@@ -201,6 +201,11 @@ module MainLoopModule
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
+	function create_new_image(this::MainLoop)
+		@debug "Creating new image"
+		SceneBuilderModule.create_new_image(this.level)
+	end
+
 
 	function initialize_scripts_and_components()
 		this::MainLoop = MAIN

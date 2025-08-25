@@ -11,6 +11,7 @@ using ..UI.LineModule
 using ..UI.CircleModule
 using ..UI.TextBoxModule
 using ..UI.ScreenButtonModule
+using ..UI.ImageModule
 
 """
     create_progress_bar(position::Vector2, size::Vector2, progress::Number=0.5, 
@@ -205,3 +206,51 @@ function create_circle(center::Vector2, radius::Number,
     
     return circle
 end 
+
+"""
+    create_image(position::Vector2, size::Vector2, imagePath::String,
+                color::NTuple{4, Int}=(255, 255, 255, 255);
+                name::String="Image", id::String="", isWorldEntity::Bool=false,
+                rotation::Float64=0.0, layer::Int=0, anchor::Symbol=:none,
+                anchorOffset::Vector2=Vector2(0,0))
+
+Create a new image UI element.
+
+# Arguments
+- `position::Vector2`: The position of the image
+- `size::Vector2`: The size of the image
+- `imagePath::String`: The path to the image file (relative to assets/images/)
+- `color::NTuple{4, Int}=(255, 255, 255, 255)`: The tint color of the image in RGBA format
+- `name::String="Image"`: The name of the image
+- `id::String=""`: The unique identifier for the image. If empty, a UUID will be generated
+- `isWorldEntity::Bool=false`: Whether the image should be positioned in world space
+- `rotation::Float64=0.0`: The rotation angle in degrees
+- `layer::Int=0`: The rendering layer (higher values render on top)
+- `anchor::Symbol=:none`: The anchor point for positioning
+- `anchorOffset::Vector2=Vector2(0,0)`: The offset from the anchor point
+
+# Returns
+The newly created Image object
+"""
+function create_image(position::Vector2, size::Vector2, imagePath::String,
+                     color::NTuple{4, Int}=(255, 255, 255, 255);
+                     name::String="Image", id::String="", isWorldEntity::Bool=false,
+                     rotation::Float64=0.0, layer::Int=0, anchor::Symbol=:none,
+                     anchorOffset::Vector2=Vector2(0,0))
+    
+    # Create a UUID if not provided
+    if id == ""
+        id = JulGame.generate_uuid()
+    end
+    
+    # Create the image
+    image = Image(id=id, name=name, anchor=anchor, anchorOffset=anchorOffset,
+                 isWorldEntity=isWorldEntity, layer=layer, position=position,
+                 imagePath=imagePath, isActive=true, persistentBetweenScenes=false,
+                 color=color, size=size, parent=nothing, rotation=rotation)
+    
+    # Add the image to the scene
+    push!(MAIN.scene.uiElements, image)
+    
+    return image
+end
