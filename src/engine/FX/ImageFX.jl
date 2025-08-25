@@ -482,6 +482,201 @@ module ImageFXModule
         @debug "Cleared sprite cache"
     end
     
+    export gfx_clock_hand_sweep
+    """
+    Creates a clock-hand sweep effect that reveals/hides a sprite like a closing pacman mouth.
+    Uses the cached original image for consistent transitions.
+    
+    # Arguments
+    - `sprite::SpriteModule.InternalSprite`: The sprite to modify
+    - `percentage::Float64`: Visibility percentage (0.0 = fully hidden, 1.0 = fully visible)
+    - `start_angle::Float64`: Starting angle in degrees (0 = top/12 o'clock, 90 = right/3 o'clock, etc.)
+    - `clockwise::Bool`: Direction of sweep (true = clockwise, false = counterclockwise)
+    
+    # Returns
+    - The sprite with modified pixel data
+    """
+    function gfx_clock_hand_sweep(sprite::SpriteModule.InternalSprite, percentage::Float64; start_angle::Float64=0.0, clockwise::Bool=true)
+        percentage = clamp(percentage, 0.0, 1.0)
+        
+        if sprite.image == C_NULL
+            @error "Cannot apply clock hand sweep: sprite has no image"
+            return sprite
+        end
+        
+        # Create cache key from sprite's image path
+        cache_key = sprite.imagePath
+        
+        # Cache the original surface if not already cached
+        if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
+            # Make a backup of the original surface
+            original_surface = SDL2.SDL_DuplicateSurface(sprite.image)
+            if original_surface == C_NULL
+                @error "Failed to duplicate original surface for caching"
+                return sprite
+            end
+            ORIGINAL_SPRITE_CACHE[cache_key] = original_surface
+            @debug "Cached original surface for sprite: $cache_key"
+        end
+        
+        # Get the original surface from cache
+        original_surface = ORIGINAL_SPRITE_CACHE[cache_key]
+        
+        # Access the raw pixel data from the SDL_Surface
+        surface = unsafe_wrap(Array, original_surface, 10; own = false)[1]
+        width = surface.w
+        height = surface.h
+        format = unsafe_wrap(Array, surface.format, 10; own = false)[1]
+        bpp = format.BytesPerPixel
+        
+        # Create a new surface to work with
+        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, format.format)
+        
+        if new_surface == C_NULL
+            @error "Failed to create new surface for clock hand sweep"
+            return sprite
+        end
+        
+        # Copy original surface to new surface
+        SDL2.SDL_BlitSurface(original_surface, C_NULL, new_surface, C_NULL)
+        
+        # Lock the surface to access the pixels
+        SDL2.SDL_LockSurface(new_surface)
+        
+        # Get pixel data as bytes
+        pixels_ptr = convert(Ptr{UInt8}, unsafe_load(new_surface).pixels)
+        total_bytes = height * width * bpp
+        
+        # Create buffer arrays for processing
+        src_buffer = Vector{UInt8}(undef, total_bytes)
+        dest_buffer = Vector{UInt8}(undef, total_bytes)
+        
+        # Copy pixel data to our buffer
+        unsafe_copyto!(pointer(src_buffer), pixels_ptr, total_bytes)
+        
+        # Center point for the sweep
+        center_x = width / 2
+        center_y = height / 2
+        
+        # Convert start angle to radians and adjust for coordinate system
+        # SDL coordinate system has (0,0) at top-left, so we need to adjust
+        start_rad = deg2rad(start_angle - 90)  # -90 to make 0° point up instead of right
+        
+        # Calculate sweep angle based on percentage
+        # When percentage = 1.0, we want full 360° visible (sweep_angle = 0)
+        # When percentage = 0.0, we want 0° visible (sweep_angle = 360°)
+        sweep_angle_deg = 360.0 * (1.0 - percentage)
+        sweep_angle_rad = deg2rad(sweep_angle_deg)
+        
+        # Copy the buffer to destination first
+        dest_buffer .= src_buffer
+        
+        # Early exit if nothing should be hidden (percentage = 1.0)
+        if percentage >= 1.0
+            # Copy our processed buffer back to the surface
+            unsafe_copyto!(pixels_ptr, pointer(dest_buffer), total_bytes)
+            
+            # Unlock the surface
+            SDL2.SDL_UnlockSurface(new_surface)
+            
+            # Clean up existing texture
+            if sprite.texture != C_NULL
+                SDL2.SDL_DestroyTexture(sprite.texture)
+                sprite.texture = C_NULL
+            end
+            
+            # Clean up previous image
+            if sprite.image != C_NULL && sprite.image != original_surface
+                SDL2.SDL_FreeSurface(sprite.image)
+            end
+            
+            # Update sprite with new surface
+            sprite.image = new_surface
+            sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
+            
+            # Enable alpha blending
+            SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+            
+            return sprite
+        end
+        
+        # Process each pixel
+        @inbounds for y in 0:(height-1)
+            for x in 0:(width-1)
+                # Calculate angle from center to this pixel
+                dx = x - center_x
+                dy = y - center_y
+                pixel_angle = atan(dy, dx)
+                
+                # Normalize angle to [0, 2π]
+                pixel_angle = pixel_angle < 0 ? pixel_angle + 2π : pixel_angle
+                start_angle_norm = start_rad < 0 ? start_rad + 2π : start_rad
+                
+                # Calculate if this pixel should be hidden based on sweep
+                should_hide = false
+                
+                if clockwise
+                    # For clockwise sweep, hide pixels between start_angle and (start_angle + sweep_angle)
+                    end_angle = start_angle_norm + sweep_angle_rad
+                    if end_angle <= 2π
+                        # No wraparound
+                        should_hide = pixel_angle >= start_angle_norm && pixel_angle <= end_angle
+                    else
+                        # Wraparound case
+                        end_angle_wrapped = end_angle - 2π
+                        should_hide = pixel_angle >= start_angle_norm || pixel_angle <= end_angle_wrapped
+                    end
+                else
+                    # For counterclockwise sweep, hide pixels between (start_angle - sweep_angle) and start_angle
+                    end_angle = start_angle_norm - sweep_angle_rad
+                    if end_angle >= 0
+                        # No wraparound
+                        should_hide = pixel_angle >= end_angle && pixel_angle <= start_angle_norm
+                    else
+                        # Wraparound case
+                        end_angle_wrapped = end_angle + 2π
+                        should_hide = pixel_angle >= end_angle_wrapped || pixel_angle <= start_angle_norm
+                    end
+                end
+                
+                # Get the pixel's byte index
+                pixel_index = (y * width + x) * bpp
+                alpha_index = pixel_index + (bpp - 1)
+                
+                if should_hide && alpha_index < length(dest_buffer)
+                    # Hard edge - simply make pixel fully transparent
+                    dest_buffer[alpha_index + 1] = 0
+                end
+            end
+        end
+        
+        # Copy our processed buffer back to the surface
+        unsafe_copyto!(pixels_ptr, pointer(dest_buffer), total_bytes)
+        
+        # Unlock the surface
+        SDL2.SDL_UnlockSurface(new_surface)
+        
+        # Clean up existing texture
+        if sprite.texture != C_NULL
+            SDL2.SDL_DestroyTexture(sprite.texture)
+            sprite.texture = C_NULL
+        end
+        
+        # Clean up previous image
+        if sprite.image != C_NULL && sprite.image != original_surface
+            SDL2.SDL_FreeSurface(sprite.image)
+        end
+        
+        # Update sprite with new surface
+        sprite.image = new_surface
+        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
+        
+        # Enable alpha blending
+        SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+        
+        return sprite
+    end
+
     export gfx_radial_wipe
     """
     Creates a radial wipe effect that reveals a sprite from the center outward.
