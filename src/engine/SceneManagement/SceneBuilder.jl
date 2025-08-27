@@ -271,16 +271,14 @@ module SceneBuilderModule
             @time begin
                 count = 0
             foreach(file -> try
-            count += 1
-            println("Trying to load $count scripts")
                 if !(file in JulGame.LoadedScripts)
-                    println("Loading $file")
+                    @debug("Loading $file")
                     @time Base.include(JulGame.ScriptModule, file)
-                    println("Finished loading $file")
+                    @debug("Finished loading $file")
                     push!(JulGame.LoadedScripts, file)
                 end
             catch e
-                println("Error including $file: ", e)
+                @error("Error including $file: ", e)
                 end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
             end
             @info "Finished loading scripts"
