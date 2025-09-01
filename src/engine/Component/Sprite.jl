@@ -337,6 +337,11 @@ module SpriteModule
         return newSprite
     end
 
+    function Component.is_mouse_hovering(this::InternalSprite)
+       # TODO: check if the mouse is hovering over any of the sprites pixels
+       return false
+    end
+
     function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")
         try

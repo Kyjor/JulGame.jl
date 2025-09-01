@@ -40,6 +40,7 @@ function handle_event end
 function handle_hover_event end
 function handle_window_resize end
 function initialize end
+function is_mouse_hovering end
 function load_button_sprite_editor end
 function load_font end
 function load_image end

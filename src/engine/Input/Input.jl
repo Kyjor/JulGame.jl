@@ -477,6 +477,14 @@ module InputModule
         return get_mouse_position(MAIN.input)
     end
 
+    function get_mouse_position_in_world_space(this::Input)
+        return this.mousePositionWorld
+    end
+
+    function get_mouse_position_in_world_space()
+        return get_mouse_position_in_world_space(MAIN.input)
+    end
+
     function create_cursor_bank(this::Input)
         this.cursorBank["arrow"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
         this.cursorBank["ibeam"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
