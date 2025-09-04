@@ -10,7 +10,7 @@ mutable struct UIElementInstance
     anchorOffset::Vector2
     isWorldEntity::Bool
     layer::Int
-    parent::Union{UIElement, Nothing}
+    parent::Union{UIElement, Nothing, Any}
     position::Vector2
     rotation::Float64
     size::Vector2
@@ -112,9 +112,18 @@ function UI.align_to_anchor(this::UIElement)
 
     size = MAIN.scene.camera.size
     parent_pos = Math.Vector2(0, 0)
-    if this.parent !== nothing
-        size = this.parent.size
-        parent_pos = this.parent.position
+    if this.parent !== nothing 
+        if typeof(this.parent) <: UIElement
+            size = this.parent.size
+            parent_pos = this.parent.position
+        else 
+            if this.parent.lastRenderedScreenSize === nothing || this.parent.lastRenderedScreenPosition === nothing
+                @info "No last rendered screen size or position found for parent of $(this.name)"
+                return
+            end
+            size = this.parent.lastRenderedScreenSize
+            parent_pos = this.parent.lastRenderedScreenPosition
+        end
     end
 
     if this.anchor.current_state == :center

@@ -86,7 +86,7 @@ module ImmediateUIModule
         maxLineWidth::Int=0, 
         wrapWords::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing}=nothing,
+        parent::Union{UI.UIElement, Nothing, Any}=nothing,
     )
         
         # Generate a composite ID that includes the component type
@@ -285,7 +285,7 @@ module ImmediateUIModule
         rotation::Float64=0.0,
         layer::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing}=nothing
+        parent::Union{UI.UIElement, Nothing, Any}=nothing
     )
         
         # Generate a composite ID that includes the component type

@@ -782,6 +782,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			if !skipSoftwareRenderer3d && softwareRenderer3dExists
 				push!(renderOrder, (softwareRenderer3d.layer, softwareRenderer3d))
 			end
+			if skipSprite && spriteExists
+				sprite.lastRenderedScreenPosition = nothing
+				sprite.lastRenderedScreenSize = nothing
+			end
 		end
 
 		render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)

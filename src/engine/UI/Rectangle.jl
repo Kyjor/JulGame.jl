@@ -33,7 +33,7 @@ module RectangleModule
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
-            parent::Union{UI.UIElement, Nothing}=nothing,
+            parent::Union{UI.UIElement, Nothing, Any}=nothing,
             fillMode::Bool=true,
             borderRadius::Int=0, 
             borderWidth::Int=0, 

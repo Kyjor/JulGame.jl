@@ -34,7 +34,7 @@ module TextBoxModule
             fontSize::Int = 16, 
             maxLineWidth::Int=0, 
             wrapWords::Bool=true,
-            parent::Union{UI.UIElement, Nothing}=nothing
+            parent::Union{UI.UIElement, Nothing, Any}=nothing
         )
 
             this = new()
@@ -99,6 +99,9 @@ module TextBoxModule
     function UI.render(this::TextBox)
         if this.textTexture == C_NULL || !this.isActive || JulGame.IS_CHANGING_SCENE
             return
+        end
+        if !this.isWorldEntity
+            UI.align_to_anchor(this)
         end
 
         if JulGame.IS_DEBUG
