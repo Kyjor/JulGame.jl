@@ -214,14 +214,13 @@ module InputModule
                         continue
                     end
 
-                    insideAnyElement = false
-                        
                     uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
                     clickedAnElementAlready = false
                     for uiElement in uiElementsOrderedByLayerDescending
-                        if !uiElement.isActive || (clickedAnElementAlready && !uiElement.forceClickCheck)
+                        if !uiElement.isActive
                             continue
                         end
+
                         # Check position of button to see which we are interacting with
                         eventWasInsideThisElement = true
 
@@ -251,22 +250,16 @@ module InputModule
                             end
                             continue
                         end
-                        insideAnyElement = true
 
-                        if JulGame.IS_DEBUG
-                            SDL2.SDL_SetCursor(this.cursorBank["crosshair"])
+                        if !clickedAnElementAlready || uiElement.forceClickCheck
+                            JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
                         end
 
-                        JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
                         if evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition)"
                             @debug "clicked on $(uiElement.name), skipping rest of event loop"
                             clickedAnElementAlready = true
                         end
-                    end
-
-                    if JulGame.IS_DEBUG && !insideAnyElement
-                        SDL2.SDL_SetCursor(this.defaultCursor)
                     end
                 end
 
