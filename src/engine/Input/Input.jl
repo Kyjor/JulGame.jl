@@ -214,6 +214,23 @@ module InputModule
                         continue
                     end
 
+                    # allUIElements = UI.UIElement[]
+                    # for uiElement in MAIN.scene.uiElements
+                    #     if isa(uiElement, UI.Canvas)
+                    #         # Add the canvas itself
+                    #         push!(allUIElements, uiElement)
+                    #         # Add all its children recursively
+                    #         collect_canvas_children(uiElement, allUIElements)
+                    #     else
+                    #         # Only add non-Canvas children (Canvas children are handled by their parent)
+                    #         if uiElement.parent === nothing || !isa(uiElement.parent, UI.Canvas)
+                    #             push!(allUIElements, uiElement)
+                    #         end
+                    #     end
+                    # end
+
+                    # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
+                    
                     uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
                     clickedAnElementAlready = false
                     for uiElement in uiElementsOrderedByLayerDescending
@@ -718,4 +735,19 @@ module InputModule
     function set_cursor(cursor)
         SDL2.SDL_SetCursor(cursor)
     end
+
+    """
+    collect_canvas_children(canvas::UI.Canvas, allElements::Vector{UI.UIElement})
+    
+    Recursively collects all children of a canvas and its sub-canvases.
+    """
+    # function collect_canvas_children(canvas::UI.Canvas, allElements::Vector{UI.UIElement})
+    #     for child in canvas.children
+    #         push!(allElements, child)
+    #         # If the child is also a canvas, collect its children recursively
+    #         if isa(child, UI.Canvas)
+    #             collect_canvas_children(child, allElements)
+    #         end
+    #     end
+    # end
 end # module InputModule

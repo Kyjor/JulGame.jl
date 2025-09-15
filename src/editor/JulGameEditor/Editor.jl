@@ -598,6 +598,9 @@ module Editor
                                     if CImGui.MenuItem("Screen Button")
                                         JulGame.MainLoopModule.create_new_screen_button(currentSceneMain)
                                     end
+                                    if CImGui.MenuItem("Canvas")
+                                        JulGame.MainLoopModule.create_new_canvas(currentSceneMain)
+                                    end
                                     
                                     CImGui.EndMenu()
                                 end
@@ -619,18 +622,54 @@ module Editor
 
                             for n = eachindex(currentSceneMain.scene.uiElements)
                                 CImGui.PushID(n)
-                                buf = "$(n): $(currentSceneMain.scene.uiElements[n].name)"
-                                if CImGui.Selectable(buf, hierarchyUISelections[n])
-                                    # clear selection when CTRL is not held
-                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
-                                    hierarchyUISelections[n] ⊻= 1
-                                    uiSelected = true
-                                    # currentSceneMain.selectedEntity = currentSceneMain.scene.uiElements[n]
-                                end
+                                uiElement = currentSceneMain.scene.uiElements[n]
                                 
-                                # Add right-click context menu for UI elements
-                                if hierarchyUISelections[n]
-                                    show_ui_element_context_menu(currentSceneMain, n, ui_delete_confirmation_modal, hierarchyUISelections)
+                                # TODO: Handle Canvas elements with children
+                                if false && isa(uiElement, UI.Canvas) && length(uiElement.children) > 0
+                                    # Show Canvas as a tree node
+                                    treeNodeOpen = CImGui.TreeNodeEx("$(n): $(uiElement.name) (Canvas)", CImGui.ImGuiTreeNodeFlags_None)
+                                    
+                                    # Handle Canvas selection
+                                    if CImGui.IsItemClicked() && !CImGui.IsItemToggledOpen()
+                                        !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
+                                        hierarchyUISelections[n] ⊻= 1
+                                        uiSelected = true
+                                    end
+                                    
+                                    # Add right-click context menu for Canvas
+                                    if hierarchyUISelections[n]
+                                        show_ui_element_context_menu(currentSceneMain, n, ui_delete_confirmation_modal, hierarchyUISelections)
+                                    end
+                                    
+                                    if treeNodeOpen
+                                        # Show Canvas children
+                                        for (childIndex, child) in enumerate(uiElement.children)
+                                            CImGui.PushID("child_$(childIndex)")
+                                            childBuf = "  $(childIndex): $(child.name)"
+                                            if CImGui.Selectable(childBuf, false)
+                                                # Select the child's parent canvas instead
+                                                !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
+                                                hierarchyUISelections[n] = true
+                                                uiSelected = true
+                                            end
+                                            CImGui.PopID()
+                                        end
+                                        CImGui.TreePop()
+                                    end
+                                else
+                                    # Handle regular UI elements
+                                    buf = "$(n): $(uiElement.name)"
+                                    if CImGui.Selectable(buf, hierarchyUISelections[n])
+                                        # clear selection when CTRL is not held
+                                        !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
+                                        hierarchyUISelections[n] ⊻= 1
+                                        uiSelected = true
+                                    end
+                                    
+                                    # Add right-click context menu for UI elements
+                                    if hierarchyUISelections[n]
+                                        show_ui_element_context_menu(currentSceneMain, n, ui_delete_confirmation_modal, hierarchyUISelections)
+                                    end
                                 end
                                 
                                 CImGui.PopID()
@@ -691,6 +730,8 @@ module Editor
                                     
                                     if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
                                         show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                                    elseif contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "Canvas")
+                                        show_canvas_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
                                     else
                                         show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
                                     end

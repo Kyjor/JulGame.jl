@@ -201,6 +201,10 @@ module MainLoopModule
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
+	function create_new_canvas(this::MainLoop)
+		@debug "Creating new canvas"
+		SceneBuilderModule.create_new_canvas(this.level)
+	end
 
 	function initialize_scripts_and_components()
 		this::MainLoop = MAIN
@@ -625,7 +629,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			# Sort UI elements by layer before rendering
 			uiRenderingOrder = []
 			for uiElement in this.scene.uiElements
-				push!(uiRenderingOrder, (uiElement.layer, uiElement))
+				# TODO: Only render UI elements that are not children of a Canvas
+				# Canvas children will be rendered by their parent Canvas
+				#if uiElement.parent === nothing || !isa(uiElement.parent, UI.Canvas)
+					push!(uiRenderingOrder, (uiElement.layer, uiElement))
+				#end
 			end
 			render_functions_to_call = filter(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			filter!(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)

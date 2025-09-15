@@ -113,7 +113,7 @@ module JulGame
 
     include("engine/UI/UI.jl")
     using .UI
-    export ScreenButtonModule, TextBoxModule, ImmediateUIModule
+    export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule
 
     include("engine/Component/Component.jl")
     using .Component

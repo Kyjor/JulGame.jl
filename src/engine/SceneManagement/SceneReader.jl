@@ -150,7 +150,38 @@ module SceneReaderModule
         for uiElement in jsonUIElements
             try
                 newUIElement = nothing
-                if uiElement.type == "TextBox"
+                if uiElement.type == "Canvas"
+                    # Parse color, default to white if not present or malformed
+                    color_tuple = (255, 255, 255, 100)
+                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
+                         color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
+                    end
+
+                    newUIElement = Canvas(
+                        id = string(get(uiElement, "id", JulGame.generate_uuid())),
+                        name = get(uiElement, "name", "Canvas"), 
+                        anchor = Symbol(get(uiElement, "anchor", "none")),
+                        anchorOffset = Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        isWorldEntity = get(uiElement, "isWorldEntity", false),
+                        layer = Int(get(uiElement, "layer", 0)),
+                        position = Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        size = Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        isActive = get(uiElement, "isActive", true),
+                        persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
+                        color = color_tuple,
+                        isVisible = get(uiElement, "isVisible", true),
+                        clipChildren = get(uiElement, "clipChildren", false),
+                        rotation = get(uiElement, "rotation", 0.0)
+                    )
+                    
+                    # Deserialize children if they exist
+                    if haskey(uiElement, "children") && length(uiElement.children) > 0
+                        children = deserialize_canvas_children(uiElement.children, newUIElement)
+                        for child in children
+                            CanvasModule.add_child(newUIElement, child)
+                        end
+                    end
+                elseif uiElement.type == "TextBox"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
                     if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
@@ -288,5 +319,117 @@ module SceneReaderModule
             @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
         end
+    end
+
+    """
+    deserialize_canvas_children(jsonChildren, parentCanvas)
+    
+    Recursively deserializes Canvas children.
+    """
+    function deserialize_canvas_children(jsonChildren, parentCanvas)
+        children = UI.UIElement[]
+        default_Vector2 = Vector2(0,0)
+        
+        for child in jsonChildren
+            try
+                newChild = nothing
+                if child.type == "Canvas"
+                    # Parse color, default to white if not present or malformed
+                    color_tuple = (255, 255, 255, 100)
+                    if haskey(child, "color") && typeof(child.color) <: Dict && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
+                         color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
+                    end
+
+                    newChild = Canvas(
+                        id = string(get(child, "id", JulGame.generate_uuid())),
+                        name = get(child, "name", "Canvas"), 
+                        anchor = Symbol(get(child, "anchor", "none")),
+                        anchorOffset = Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        isWorldEntity = get(child, "isWorldEntity", false),
+                        layer = Int(get(child, "layer", 0)),
+                        position = Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
+                        size = Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
+                        isActive = get(child, "isActive", true),
+                        persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
+                        color = color_tuple,
+                        isVisible = get(child, "isVisible", true),
+                        clipChildren = get(child, "clipChildren", false),
+                        rotation = get(child, "rotation", 0.0),
+                        parent = parentCanvas
+                    )
+                    
+                    # Recursively deserialize children if they exist
+                    if haskey(child, "children") && length(child.children) > 0
+                        grandChildren = deserialize_canvas_children(child.children, newChild)
+                        for grandChild in grandChildren
+                            CanvasModule.add_child(newChild, grandChild)
+                        end
+                    end
+                elseif child.type == "ScreenButton"
+                    # For text offset, check if it should be centered (if not specified or all zeros)
+                    textOffset = Vector2(child.textOffset.x, child.textOffset.y)
+                    if !haskey(child, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
+                        # Use (-1,-1) as a special value to indicate the text should be centered
+                        textOffset = Vector2(-1, -1)
+                    end
+                    
+                    newChild = ScreenButton(
+                        nothing; # clickEvent - Assuming none from scene file directly
+                        id=string(get(child, "id", JulGame.generate_uuid())),
+                        name=get(child, "name", "Button"),
+                        anchor=Symbol(get(child, "anchor", "none")),
+                        anchorOffset=Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        isWorldEntity=get(child, "isWorldEntity", false),
+                        layer=Int(get(child, "layer", 0)),
+                        position=Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
+                        buttonUpSpritePath=get(child, "buttonUpSpritePath", "Default"),
+                        buttonDownSpritePath=get(child, "buttonDownSpritePath", "Default"),
+                        isActive=get(child, "isActive", true),
+                        persistentBetweenScenes=get(child, "persistentBetweenScenes", false),
+                        fontPath=get(child, "fontPath", C_NULL),
+                        fontSize=Int(get(child, "fontSize", 24)),
+                        size=Math.Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
+                        text=get(child, "text", ""),
+                        textOffset=textOffset,
+                        parent = parentCanvas
+                    )
+                else
+                    # TextBox
+                    # Parse color, default to white if not present or malformed
+                    color_tuple = (255, 255, 255, 255)
+                    if haskey(child, "color") && typeof(child.color) <: Dict && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
+                         color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
+                    end
+
+                    newChild = TextBox(
+                        get(child, "text", " ");
+                        id = string(get(child, "id", JulGame.generate_uuid())),
+                        name = get(child, "name", "TextBox"), 
+                        anchor = Symbol(get(child, "anchor", "none")),
+                        anchorOffset = Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        isWorldEntity = get(child, "isWorldEntity", false),
+                        layer = Int(get(child, "layer", 0)),
+                        position = Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y), 
+                        isActive = get(child, "isActive", true),
+                        persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
+                        color = color_tuple,
+                        fontPath = get(child, "fontPath", "Default"), 
+                        fontSize = Int(get(child, "fontSize", 20)),
+                        maxLineWidth = Int(get(child, "maxLineWidth", 0)),
+                        wrapWords = get(child, "wrapWords", true),
+                        parent = parentCanvas
+                    )
+                end
+                
+                if newChild !== nothing
+                    push!(children, newChild)
+                end
+            catch e 
+                @error string(e)
+                Base.show_backtrace(stdout, catch_backtrace())
+            end
+        end
+        
+        return children
     end
 end

@@ -14,6 +14,7 @@ include("FieldInputHandler.jl")
 # Legacy includes - to be updated
 #include("TextBoxFields.jl")
 #include("ScreenButtonFields.jl")
+include("CanvasFields.jl")
 
 """
 show_field_editor(entity, field)

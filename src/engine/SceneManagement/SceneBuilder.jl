@@ -7,6 +7,7 @@ module SceneBuilderModule
     using ...RigidbodyModule
     using ...TextBoxModule
     using ...ScreenButtonModule
+    using ...CanvasModule
     using ..SceneReaderModule
     using JSON3
 
@@ -256,6 +257,16 @@ module SceneBuilderModule
             JulGame.initialize(screenButton)
         end
         push!(MAIN.scene.uiElements, screenButton)
+    end
+
+    function create_new_canvas(this::Scene)
+        canvas = Canvas(
+            name="New Canvas",
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(100, 100),
+            color=(255, 255, 255, 100)  # Semi-transparent white
+        )
+        push!(MAIN.scene.uiElements, canvas)
     end
 
     function add_scripts_to_entities(path::String)

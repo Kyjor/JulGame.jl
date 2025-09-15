@@ -29,6 +29,7 @@
     include("Line.jl")
     include("Circle.jl")
     include("ProgressBar.jl")
+    include("Canvas.jl")
     include("ImmediateUI.jl")
     include("Factory.jl")
     
@@ -40,10 +41,11 @@
     export LineModule
     export CircleModule
     export ProgressBarModule
+    export CanvasModule
 
     export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components
-    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar#, Draggable
+    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Canvas#, Draggable
 end

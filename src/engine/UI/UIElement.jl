@@ -118,7 +118,7 @@ function UI.align_to_anchor(this::UIElement)
             parent_pos = this.parent.position
         else 
             if this.parent.lastRenderedScreenSize === nothing || this.parent.lastRenderedScreenPosition === nothing
-                @info "No last rendered screen size or position found for parent of $(this.name)"
+                @debug "No last rendered screen size or position found for parent of $(this.name)"
                 return
             end
             size = this.parent.lastRenderedScreenSize

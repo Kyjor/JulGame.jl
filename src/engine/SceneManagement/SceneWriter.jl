@@ -35,7 +35,26 @@ module SceneWriterModule
 
         count = 1
         for uiElement in uiElements
-            if "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+            if "$(typeof(uiElement))" == "JulGame.UI.CanvasModule.Canvas"
+                push!(uiElementsDict, Dict(
+                    "id" => string(uiElement.id), 
+                    "anchor" => uiElement.anchor.current_state,
+                    "anchorOffset" => Dict("x" => uiElement.anchorOffset.x, "y" => uiElement.anchorOffset.y),
+                    "isActive" => uiElement.isActive,
+                    "isVisible" => uiElement.isVisible,
+                    "clipChildren" => uiElement.clipChildren,
+                    "isWorldEntity" => uiElement.isWorldEntity,
+                    "layer" => uiElement.layer,
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "color" => Dict("r" => uiElement.color[1], "g" => uiElement.color[2], "b" => uiElement.color[3], "a" => uiElement.color[4]),
+                    "rotation" => uiElement.rotation,
+                    "type" => "Canvas",
+                    #"children" => serialize_canvas_children(uiElement.children)
+                    ))
+            elseif "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
                 push!(uiElementsDict, Dict(
                     "id" => string(uiElement.id), 
                     # TODO: "alpha" => uiElement.alpha, 
@@ -289,4 +308,76 @@ module SceneWriterModule
             return false
         end
     end
+
+    """
+    serialize_canvas_children(children::Vector{UI.UIElement})
+    
+    Recursively serializes Canvas children.
+    """
+    # function serialize_canvas_children(children::Vector{UI.UIElement})
+    #     childrenDict = []
+    #     for child in children
+    #         if "$(typeof(child))" == "JulGame.UI.CanvasModule.Canvas"
+    #             push!(childrenDict, Dict(
+    #                 "id" => string(child.id), 
+    #                 "anchor" => child.anchor.current_state,
+    #                 "anchorOffset" => Dict("x" => child.anchorOffset.x, "y" => child.anchorOffset.y),
+    #                 "isActive" => child.isActive,
+    #                 "isVisible" => child.isVisible,
+    #                 "clipChildren" => child.clipChildren,
+    #                 "isWorldEntity" => child.isWorldEntity,
+    #                 "layer" => child.layer,
+    #                 "name" => child.name,
+    #                 "persistentBetweenScenes" => child.persistentBetweenScenes,
+    #                 "position" => Dict("x" => child.position.x, "y" => child.position.y),
+    #                 "size" => Dict("x" => child.size.x, "y" => child.size.y),
+    #                 "color" => Dict("r" => child.color[1], "g" => child.color[2], "b" => child.color[3], "a" => child.color[4]),
+    #                 "rotation" => child.rotation,
+    #                 "type" => "Canvas",
+    #                 #"children" => serialize_canvas_children(child.children)
+    #                 ))
+    #         elseif "$(typeof(child))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+    #             push!(childrenDict, Dict(
+    #                 "id" => string(child.id), 
+    #                 "anchor" => child.anchor.current_state,
+    #                 "anchorOffset" => Dict("x" => child.anchorOffset.x, "y" => child.anchorOffset.y),
+    #                 "buttonDownSpritePath" => normalize_path(child.buttonDownSpritePath), 
+    #                 "buttonUpSpritePath" => normalize_path(child.buttonUpSpritePath), 
+    #                 "fontPath" => normalize_path(child.fontPath), 
+    #                 "isActive" => child.isActive,
+    #                 "isWorldEntity" => child.isWorldEntity,
+    #                 "layer" => child.layer,
+    #                 "name" => child.name,
+    #                 "persistentBetweenScenes" => child.persistentBetweenScenes,
+    #                 "position" => Dict("x" => child.position.x, "y" => child.position.y),
+    #                 "size" => Dict("x" => child.size.x, "y" => child.size.y),
+    #                 "text" => child.text,
+    #                 "textOffset" => Dict("x" => child.textOffset.x, "y" => child.textOffset.y),
+    #                 "type" => "ScreenButton"
+    #                 ))
+    #         else
+    #             # TextBox or other UI elements
+    #             push!(childrenDict, Dict(
+    #                 "id" => string(child.id), 
+    #                 "layer" => child.layer,
+    #                 "anchor" => child.anchor.current_state,
+    #                 "anchorOffset" => Dict("x" => child.anchorOffset.x, "y" => child.anchorOffset.y),
+    #                 "maxLineWidth" => child.maxLineWidth,
+    #                 "wrapWords" => child.wrapWords,
+    #                 "color" => Dict("r" => child.color[1], "g" => child.color[2], "b" => child.color[3], "a" => child.color[4]),
+    #                 "fontPath" => normalize_path(child.fontPath), 
+    #                 "fontSize" => child.fontSize, 
+    #                 "isActive" => child.isActive,
+    #                 "isWorldEntity" => child.isWorldEntity,
+    #                 "name" => child.name,
+    #                 "persistentBetweenScenes" => child.persistentBetweenScenes,
+    #                 "position" => Dict("x" => child.position.x, "y" => child.position.y),
+    #                 "size" => Dict("x" => child.size.x, "y" => child.size.y),
+    #                 "text" => child.text,
+    #                 "type" => "TextBox"
+    #                 ))
+    #         end
+    #     end
+    #     return childrenDict
+    # end
 end # module

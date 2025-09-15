@@ -7,9 +7,10 @@ module ImmediateUIModule
     using ..UI.LineModule
     using ..UI.CircleModule
     using ..UI.ProgressBarModule
+    using ..UI.CanvasModule
     import ..UI
 
-    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, manage_all_immediate_components, cleanup_all_immediate_components
+    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, immediate_canvas, manage_all_immediate_components, cleanup_all_immediate_components
 
     # Dictionary to store active immediate UI components by their id and type
     const IMMEDIATE_UI_CACHE = Dict{String, Any}()
@@ -1136,6 +1137,217 @@ module ImmediateUIModule
     end
 
     """
+    immediate_canvas(id::String; 
+        name::String="Canvas",
+        anchor::Symbol=:none,
+        anchorOffset::Math.Vector2=Math.Vector2(0, 0),
+        isWorldEntity::Bool=false,
+        layer::Int=0,
+        position::Math.Vector2=Math.Vector2(0, 0),
+        size::Math.Vector2=Math.Vector2(400, 300),
+        clickEvent::Union{Function, Nothing}=nothing,
+        hoverEnterEvent::Union{Function, Nothing}=nothing,
+        hoverExitEvent::Union{Function, Nothing}=nothing,
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 100),
+        isVisible::Bool=true,
+        clipChildren::Bool=false,
+        parent::Union{UI.UIElement, Nothing, Any}=nothing,
+        rotation::Float64=0.0,
+        lifetime::Int=DEFAULT_LIFETIME
+    )
+
+    Creates or updates an immediate canvas component.
+    
+    # Arguments
+    - `id::String`: Unique identifier for this immediate component
+    - `name::String`: Name of the canvas
+    - `anchor::Symbol`: Anchor point for positioning
+    - `anchorOffset::Math.Vector2`: Offset from the anchor point
+    - `isWorldEntity::Bool`: Whether this canvas should be positioned in world space
+    - `layer::Int`: Rendering layer (higher values render on top)
+    - `position::Math.Vector2`: Position of the canvas
+    - `size::Math.Vector2`: Size of the canvas
+    - `clickEvent::Union{Function, Nothing}`: Function to call when clicked
+    - `hoverEnterEvent::Union{Function, Nothing}`: Function to call when hover starts
+    - `hoverExitEvent::Union{Function, Nothing}`: Function to call when hover ends
+    - `isActive::Bool`: Whether the canvas is active/visible
+    - `persistentBetweenScenes::Bool`: Whether the canvas persists between scene changes
+    - `color::NTuple{4, Int}`: Color of the canvas (r,g,b,a)
+    - `isVisible::Bool`: Whether the canvas itself is visible
+    - `clipChildren::Bool`: Whether to clip children to canvas bounds
+    - `parent::Union{UI.UIElement, Nothing, Any}`: Parent UI element
+    - `rotation::Float64`: Rotation of the canvas
+    - `lifetime::Int`: How long the component should persist without updates (ms)
+    
+    # Returns
+    The Canvas object
+    """
+    function immediate_canvas(id::String; 
+        name::String="Canvas",
+        anchor::Symbol=:none,
+        anchorOffset::Math.Vector2=Math.Vector2(0, 0),
+        isWorldEntity::Bool=false,
+        layer::Int=0,
+        position::Math.Vector2=Math.Vector2(0, 0),
+        size::Math.Vector2=Math.Vector2(400, 300),
+        clickEvent::Union{Function, Nothing}=nothing,
+        hoverEnterEvent::Union{Function, Nothing}=nothing,
+        hoverExitEvent::Union{Function, Nothing}=nothing,
+        isActive::Bool=true,
+        persistentBetweenScenes::Bool=false,
+        color::NTuple{4, Int}=(255, 255, 255, 100),
+        isVisible::Bool=true,
+        clipChildren::Bool=false,
+        parent::Union{UI.UIElement, Nothing, Any}=nothing,
+        rotation::Float64=0.0,
+        lifetime::Int=DEFAULT_LIFETIME
+    )
+        
+        # Generate a composite ID that includes the component type
+        composite_id = "canvas_$(id)"
+        
+        # Update timestamp
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
+
+        if haskey(IMMEDIATE_UI_CACHE, composite_id)
+            # Update existing canvas component
+            canvas = IMMEDIATE_UI_CACHE[composite_id].element
+            
+            # Only update if something has changed
+            needsUpdate = false
+            
+            if canvas.position != position
+                canvas.position = position
+                needsUpdate = true
+            end
+            
+            if canvas.size != size
+                canvas.size = size
+                needsUpdate = true
+            end
+            
+            if canvas.color != color
+                canvas.color = color
+                needsUpdate = true
+            end
+            
+            if canvas.isActive != isActive
+                canvas.isActive = isActive
+                needsUpdate = true
+            end
+            
+            if canvas.isVisible != isVisible
+                canvas.isVisible = isVisible
+                needsUpdate = true
+            end
+            
+            if canvas.clipChildren != clipChildren
+                canvas.clipChildren = clipChildren
+                needsUpdate = true
+            end
+            
+            if canvas.layer != layer
+                canvas.layer = layer
+                needsUpdate = true
+            end
+            
+            if canvas.parent != parent
+                canvas.parent = parent
+                needsUpdate = true
+            end
+
+            if canvas.name != name
+                canvas.name = name
+                needsUpdate = true
+            end
+
+            if canvas.anchor.current_state != anchor
+                canvas.anchor.current_state = anchor
+                needsUpdate = true
+            end
+            
+            if canvas.anchorOffset != anchorOffset
+                canvas.anchorOffset = anchorOffset
+                needsUpdate = true
+            end
+
+            if canvas.isWorldEntity != isWorldEntity
+                canvas.isWorldEntity = isWorldEntity
+                needsUpdate = true
+            end
+
+            if canvas.rotation != rotation
+                canvas.rotation = rotation
+                needsUpdate = true
+            end
+
+            if needsUpdate
+                UI.align_to_anchor(canvas)
+            end
+
+            # Ensure the component is in the scene's uiElements
+            if !(canvas in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, canvas)
+            end
+
+            # Update click handler
+            if clickEvent !== nothing
+                canvas.clickEvents = Function[]
+                UI.add_click_event(canvas, clickEvent)
+            end
+
+            if hoverEnterEvent !== nothing
+                canvas.hoverEnterEvents = Function[]
+                push!(canvas.hoverEnterEvents, hoverEnterEvent)
+            end
+
+            if hoverExitEvent !== nothing
+                canvas.hoverExitEvents = Function[]
+                push!(canvas.hoverExitEvents, hoverExitEvent)
+            end
+            
+            return canvas
+        else
+            # Create new canvas component
+            canvas = Canvas(
+                id=id,
+                name=name,
+                anchor=anchor,
+                anchorOffset=anchorOffset,
+                isWorldEntity=isWorldEntity,
+                layer=layer,
+                position=position,
+                size=size,
+                clickEvent=clickEvent,
+                hoverEnterEvent=hoverEnterEvent,
+                hoverExitEvent=hoverExitEvent,
+                isActive=isActive,
+                persistentBetweenScenes=persistentBetweenScenes,
+                color=color,
+                isVisible=isVisible,
+                clipChildren=clipChildren,
+                parent=parent,
+                rotation=rotation
+            )
+            
+            # Store in cache
+            IMMEDIATE_UI_CACHE[composite_id] = (element = canvas, lifetime = lifetime)
+            
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, canvas)
+
+            if canvas.anchor.current_state != :none
+                UI.align_to_anchor(canvas)
+            end
+            
+            return canvas
+        end
+    end
+
+    """
     manage_all_immediate_components(debug::Bool=false)
     
     Renders all active immediate UI components.
@@ -1208,9 +1420,7 @@ module ImmediateUIModule
             end
             
             # Clean up component resources using appropriate destroy method
-            if component isa TextBox
-                UI.destroy(component)
-            elseif component isa ScreenButton
+            if component isa TextBox || component isa ScreenButton || component isa Canvas
                 UI.destroy(component)
             end
             

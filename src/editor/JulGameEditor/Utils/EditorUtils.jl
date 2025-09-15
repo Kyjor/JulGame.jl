@@ -894,6 +894,16 @@ function show_ui_element_context_menu(main, ui_element_index, ui_delete_confirma
                     # Add button property editing here if needed
                     action_taken = true
                 end
+            elseif contains("$(typeof(ui_element))", "Canvas")
+                CImGui.Separator()
+                if CImGui.MenuItem("Add Child Element")
+                    # Add child element functionality here if needed
+                    action_taken = true
+                end
+                if CImGui.MenuItem("Toggle Visibility")
+                    ui_element.isVisible = !ui_element.isVisible
+                    action_taken = true
+                end
             end
         end
         
