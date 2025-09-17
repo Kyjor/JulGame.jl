@@ -15,4 +15,7 @@ ToolTips = Dict{Symbol, String}(
     :shape => "The shape of the entity",
     :soundSource => "The sound source of the entity",
     :sprite => "The sprite of the entity",
+    :AddComponent => "Add a new component to the entity",
+    :Duplicate => "Duplicate the entity",
+    :Delete => "Delete the entity",
 )

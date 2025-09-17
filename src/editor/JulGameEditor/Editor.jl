@@ -692,6 +692,10 @@ module Editor
                     try
                         #region Entity Inspector
                             show_inspector(currentSceneMain)
+                            if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing
+                                show_entity_context_menu_inspector(currentSceneMain.selectedEntity)
+                            end
+
                         # show_help_marker("This is where we will display editable properties of entities")
                         # if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
                         #     CImGui.PushID("AddMenu")

@@ -21,7 +21,7 @@ module ShapeModule
         layer::Int
         offset::Math.Vector2f
         position::Math.Vector2f
-        parent::Any # Entity
+        parent::JulGame.IEntity
         size::Math.Vector2f
         alpha::Int # 0-255
         

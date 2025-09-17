@@ -16,7 +16,7 @@ module EntityModule
     import ..JulGame
 
     export Entity
-    mutable struct Entity
+    mutable struct Entity <: JulGame.IEntity
         id::String
         name::String
         isActive::Bool

@@ -39,6 +39,8 @@ module JulGame
     FrameCount = 0
     UserGlobals = Dict{String, Any}()
 
+
+
     include("engine/Logging/Logging.jl")
     using .Logging
     export ErrorLoggerModule
@@ -99,6 +101,9 @@ module JulGame
     """
     EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
 
+    include("utils/Interfaces.jl")
+    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D
+    
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule
     export PrefHandlerModule

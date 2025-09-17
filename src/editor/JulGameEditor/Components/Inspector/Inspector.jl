@@ -1,16 +1,71 @@
 EditableStructure = Union{Entity, UI.UIElement, TransformModule.Transform}
 include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Fields"); join=true)))
+include(joinpath(@__DIR__, "..", "EntityContextMenu.jl"))
 
 function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
+    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowMinSize, CImGui.ImVec2(0, 0))
+    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(0, 0))
     CImGui.Begin("Inspector") 
     if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing
+        display_inspector_header(currentSceneMain.selectedEntity)
         display_fields(currentSceneMain.selectedEntity)
     end
+    CImGui.PopStyleVar(2)
     CImGui.End()
 end
 
+function display_inspector_header(structure::EditableStructure)
+    #add component, duplicate, delete buttons
+    #CImGui.PushStyleVar(CImGui.ImGuiStyleVar_CellPadding, CImGui.ImVec2(100, 100))
+    table_flags = CImGui.ImGuiTableFlags_SizingFixedFit | CImGui.ImGuiTableFlags_NoPadOuterX
+    # CImGui.SetNextItemWidth(CImGui.GetContentRegionAvail().x)
+    available_width = CImGui.GetContentRegionAvail().x
+    if CImGui.BeginTable("Inspector Header", 3, table_flags)#, CImGui.ImVec2(available_width, 0))
+        CImGui.TableSetupColumn("Add Component",CImGui.ImGuiTableColumnFlags_WidthStretch)
+        CImGui.TableSetupColumn("Duplicate",CImGui.ImGuiTableColumnFlags_WidthStretch)
+        CImGui.TableSetupColumn("Delete",CImGui.ImGuiTableColumnFlags_WidthStretch)
+        CImGui.TableNextRow(CImGui.ImGuiTableRowFlags_Headers)
+        column_selected = [false, false, false]
+        for column = 0:2
+            CImGui.TableSetColumnIndex(column)
+            column_name = CImGui.TableGetColumnName(column)
+            CImGui.PushID(column)
+            # CImGui.PushStyleVar(CImGui.ImGuiStyleVar_FramePadding, CImGui.ImVec2(0, 0))
+            # @c CImGui.Checkbox("##checkall", &column_selected[column])
+            # CImGui.PopStyleVar()
+            CImGui.SameLine(0.0f0, unsafe_load(CImGui.GetStyle().ItemInnerSpacing.x))
+            CImGui.TableHeader(column_name)
+            if CImGui.IsItemHovered()
+                CImGui.BeginTooltip()
+                CImGui.PushTextWrapPos(CImGui.GetFontSize() * 35.0)
+                CImGui.TextUnformatted(ToolTips[Symbol(replace(column_name, " " => ""))])
+                CImGui.PopTextWrapPos()
+                CImGui.EndTooltip()
+            end
+            if CImGui.IsItemClicked()
+                handle_column_click(column_name, structure)
+            end
+            CImGui.PopID()
+        end
+               
+        CImGui.EndTable()
+    end
+end
+
+function handle_column_click(column_name, structure)
+    if column_name == "Add Component"
+        @info "Adding component"
+        CImGui.OpenPopup("##entity_context_menu_inspector")
+    elseif column_name == "Duplicate"
+        JulGame.duplicate(structure)
+    elseif column_name == "Delete"
+        JulGame.destroy_entity(structure)
+    end
+end
 
 function display_fields(structure::EditableStructure)
+    CImGui.Indent(8.0f0)  # Left padding
+    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_ItemSpacing, CImGui.ImVec2(8, 8))
     for field in fieldnames(typeof(structure))
         structureType = split(string(typeof(structure)), ".")[end]
         if get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])
@@ -18,18 +73,33 @@ function display_fields(structure::EditableStructure)
         end
         show_field(structure, field, getfield(structure, field))
     end
+    CImGui.Unindent(8.0f0)
+    CImGui.PopStyleVar()
 end
 
 function show_field(structure::EditableStructure, field::Symbol, value::Any)
     #unmapped fields
 end
 
-function show_field(structure::EditableStructure, field::Symbol, value::TransformModule.Transform)
-    if CImGui.CollapsingHeader("Transform")
+function show_field(structure::EditableStructure, field::Symbol, value::Union{TransformModule.Transform, ShapeModule.Shape})
+    typeName = split(string(typeof(value)), ".")[end]
+    if CImGui.CollapsingHeader(typeName)
         display_fields(value)
     end
-    #unmapped fields
 end
+
+function show_field(structure::EditableStructure, field::Symbol, value::Union{ShapeModule.InternalShape})
+    typeName = split(string(typeof(value)), ".")[end]
+    closableHeader = Ref(true)
+    if CImGui.CollapsingHeader(typeName, closableHeader)
+        display_fields(value)
+    end
+    if !closableHeader[]
+        # remove the component from the structure
+        setfield!(structure, field, C_NULL)
+    end
+end
+
 
 function show_field_label(field::Symbol)
     # capitalize the first letter
