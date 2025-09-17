@@ -15,15 +15,15 @@ module ShapeModule
 
     export InternalShape
     mutable struct InternalShape
-        color::Math.Vector3
+        position::Math.Vector2f
         isFilled::Bool
         isWorldEntity::Bool
         layer::Int
+        color::Math.Vector3
+        alpha::Int # 0-255
         offset::Math.Vector2f
-        position::Math.Vector2f
         parent::JulGame.IEntity
         size::Math.Vector2f
-        alpha::Int # 0-255
         
         function InternalShape(parent::Any, color::Math.Vector3 = Math.Vector3(255,0,0), isFilled::Bool = true, offset::Math.Vector2f = Math.Vector2f(0,0), size::Math.Vector2f = Math.Vector2f(1,1); isWorldEntity::Bool = true, position::Math.Vector2f = Math.Vector2f(0,0), layer::Int = 0, alpha::Int = 255)
             this = new()

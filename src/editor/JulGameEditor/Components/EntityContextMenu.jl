@@ -7,7 +7,6 @@ show_entity_context_menu_inspector(currentEntitySelected)
 Show menu that allows user to add new components to an entity
 """
 function show_entity_context_menu_inspector(currentEntitySelected)
-    if CImGui.BeginPopup("##entity_context_menu_inspector")
         if CImGui.MenuItem("Animator")
             JulGame.add_animator(currentEntitySelected)
         end
@@ -26,12 +25,4 @@ function show_entity_context_menu_inspector(currentEntitySelected)
         if CImGui.MenuItem("Sprite")
             JulGame.add_sprite(currentEntitySelected, true)
         end
-        
-        # Close on escape or click outside
-        if CImGui.IsKeyPressed(CImGui.ImGuiKey_Escape)
-            CImGui.CloseCurrentPopup()
-        end
-        
-        CImGui.EndPopup()
-    end
 end
