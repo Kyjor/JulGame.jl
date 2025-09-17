@@ -12,7 +12,8 @@ end
 
 function display_fields(structure::EditableStructure)
     for field in fieldnames(typeof(structure))
-        if get(FieldExclusions, string(typeof(structure)), []) |> contains(field)
+        structureType = string(split(typeof(structure), ".")[end])
+        if get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])
             continue
         end
         show_field(structure, field, getfield(structure, field))
