@@ -18,21 +18,21 @@ module EntityModule
     export Entity
     mutable struct Entity
         id::String
+        name::String
+        isActive::Bool
+        persistentBetweenScenes::Bool
+        transform::Transform
+        scripts::Vector{Any}
+        parent::Union{Entity, Ptr{Nothing}}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
-        isActive::Bool
         mesh3d::Union{Mesh3D, Ptr{Nothing}}
         softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
-        name::String
-        parent::Union{Entity, Ptr{Nothing}}
-        persistentBetweenScenes::Bool
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
-        scripts::Vector{Any}
         shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
-        transform::Transform
 
         function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
             this = new()

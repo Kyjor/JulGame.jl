@@ -23,6 +23,7 @@ module Editor
     
     # Components includes (contains the ConfirmationModal used for all confirmation dialogs)
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
+    include(joinpath(@__DIR__, "Components", "Inspector", "Inspector.jl"))
     
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
@@ -690,81 +691,79 @@ module Editor
                     
                     try
                         #region Entity Inspector
-                        CImGui.Begin("Entity Inspector") 
-                        
-                        show_help_marker("This is where we will display editable properties of entities")
-                        if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
-                            CImGui.PushID("AddMenu")
-                            if CImGui.BeginMenu("Add")
-                                ShowEntityContextMenu(currentSceneMain.selectedEntity)
-                                CImGui.EndMenu()
-                            end
-                            CImGui.PopID()
-                            CImGui.Separator()
-                            for entityField in fieldnames(Entity)
-                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict, newScriptText)
-                            end
+                            show_inspector(currentSceneMain)
+                        # show_help_marker("This is where we will display editable properties of entities")
+                        # if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
+                        #     CImGui.PushID("AddMenu")
+                        #     if CImGui.BeginMenu("Add")
+                        #         ShowEntityContextMenu(currentSceneMain.selectedEntity)
+                        #         CImGui.EndMenu()
+                        #     end
+                        #     CImGui.PopID()
+                        #     CImGui.Separator()
+                        #     for entityField in fieldnames(Entity)
+                        #         show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict, newScriptText)
+                        #     end
         
-                            CImGui.Separator()
-                            if CImGui.Button("Duplicate") 
-                                copy = duplicate_entity(currentSceneMain.selectedEntity)
-                                push!(currentSceneMain.scene.entities, copy)
-                                currentSceneMain.selectedEntity = copy
-                            end
-                        end
-                        CImGui.End()
+                        #     CImGui.Separator()
+                        #     if CImGui.Button("Duplicate") 
+                        #         copy = duplicate_entity(currentSceneMain.selectedEntity)
+                        #         push!(currentSceneMain.scene.entities, copy)
+                        #         currentSceneMain.selectedEntity = copy
+                        #     end
+                        # end
                     catch e
-                        handle_editor_exceptions("Entity inspector window:", latest_exceptions, e, is_test_mode)
+                        handle_editor_exceptions("Inspector window:", latest_exceptions, e, is_test_mode)
                     end
 
-                    try
+                    # try
                         
-                        #region UI Inspector
-                        CImGui.Begin("UI Inspector") 
-                            show_help_marker("This is where we will display editable properties of textboxes and screen buttons")
-                            for uiElementIndex = eachindex(hierarchyUISelections)
-                                if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
-                                    if length(currentSceneMain.scene.uiElements) < uiElementIndex
-                                        break
-                                    end
+                    #     #region UI Inspector
+                    #     CImGui.Begin("UI Inspector") 
+                    #         show_help_marker("This is where we will display editable properties of textboxes and screen buttons")
+                    #         for uiElementIndex = eachindex(hierarchyUISelections)
+                    #             if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
+                    #                 if length(currentSceneMain.scene.uiElements) < uiElementIndex
+                    #                     break
+                    #                 end
                                     
-                                    if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
-                                        show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    elseif contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "Canvas")
-                                        show_canvas_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    else
-                                        show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    end
+                    #                 if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
+                    #                     show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
+                    #                 elseif contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "Canvas")
+                    #                     show_canvas_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
+                    #                 else
+                    #                     show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
+                    #                 end
 
-                                    CImGui.Separator()
-                                    CImGui.Text("Delete UI Element")
-                                    if CImGui.Button("Delete")
-                                        CImGui.OpenPopup("Delete UI Element Confirmation")
-                                    end
+                    #                 CImGui.Separator()
+                    #                 CImGui.Text("Delete UI Element")
+                    #                 if CImGui.Button("Delete")
+                    #                     CImGui.OpenPopup("Delete UI Element Confirmation")
+                    #                 end
                                     
-                                    if CImGui.BeginPopupModal("Delete UI Element Confirmation", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
-                                        CImGui.Text("Are you sure you want to delete this UI element?\nThis cannot be undone.\n\n")
-                                        CImGui.NewLine()
-                                        if CImGui.Button("Delete", (120, 0))
-                                            JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
-                                            CImGui.CloseCurrentPopup()
-                                            break
-                                        end
-                                        CImGui.SetItemDefaultFocus()
-                                        CImGui.SameLine()
-                                        if CImGui.Button("Cancel",(120, 0))
-                                            CImGui.CloseCurrentPopup()
-                                        end
-                                        CImGui.EndPopup()
-                                    end
+                    #                 if CImGui.BeginPopupModal("Delete UI Element Confirmation", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+                    #                     CImGui.Text("Are you sure you want to delete this UI element?\nThis cannot be undone.\n\n")
+                    #                     CImGui.NewLine()
+                    #                     if CImGui.Button("Delete", (120, 0))
+                    #                         JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
+                    #                         CImGui.CloseCurrentPopup()
+                    #                         break
+                    #                     end
+                    #                     CImGui.SetItemDefaultFocus()
+                    #                     CImGui.SameLine()
+                    #                     if CImGui.Button("Cancel",(120, 0))
+                    #                         CImGui.CloseCurrentPopup()
+                    #                     end
+                    #                     CImGui.EndPopup()
+                    #                 end
                                     
-                                    break # TODO: Remove this when we can select multiple entities and edit them all at once
-                                end
-                            end
-                        CImGui.End()
-                    catch e
-                        handle_editor_exceptions("UI inspector window:", latest_exceptions, e, is_test_mode)
-                    end
+                    #                 break # TODO: Remove this when we can select multiple entities and edit them all at once
+                    #             end
+                    #         end
+                    #     CImGui.End()
+                    # catch e
+                    #     handle_editor_exceptions("UI inspector window:", latest_exceptions, e, is_test_mode)
+                    # end
 
                     try
                         show_camera_window(cameraWindow)

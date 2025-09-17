@@ -42,7 +42,7 @@ module MainLoopModule
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
-		selectedEntity::Union{Entity, Nothing}
+		selectedEntity::Union{Entity, UI.UIElement, Nothing}
 		selectedUIElementIndex::Int64
 		shouldChangeScene::Bool
 		spriteLayers::Dict
