@@ -12,7 +12,7 @@ end
 
 function display_fields(structure::EditableStructure)
     for field in fieldnames(typeof(structure))
-        structureType = string(split(typeof(structure), ".")[end])
+        structureType = split(string(typeof(structure)), ".")[end]
         if get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])
             continue
         end
@@ -25,7 +25,9 @@ function show_field(structure::EditableStructure, field::Symbol, value::Any)
 end
 
 function show_field(structure::EditableStructure, field::Symbol, value::TransformModule.Transform)
-    display_fields(value)
+    if CImGui.CollapsingHeader("Transform")
+        display_fields(value)
+    end
     #unmapped fields
 end
 

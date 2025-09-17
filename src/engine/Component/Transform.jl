@@ -9,7 +9,6 @@ module TransformModule
         rotation::Math.Vector3f
         screenPosition::Math.Vector2
         screenRotation::Math.Vector2
-        screenSize::Math.Vector2
             
         function Transform(position::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), scale::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(1.0, 1.0, 1.0), rotation::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0))
             this = new()
@@ -19,7 +18,6 @@ module TransformModule
             this.rotation = rotation
             this.screenPosition = Math.Vector2(0.0, 0.0)
             this.screenRotation = Math.Vector2(0.0, 0.0)
-            this.screenSize = Math.Vector2(0.0, 0.0)
             
             return this
         end   

@@ -3,9 +3,6 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 using Dates
 
-# Import the get_raw_recents function
-using ..Editor: get_raw_recents
-
 """
     ShowAppMainMenuBar(events)
 Create a fullscreen menu bar and populate it.
