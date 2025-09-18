@@ -1,4 +1,5 @@
-EditableStructure = Union{Entity, ShapeModule.InternalShape, UI.UIElement, TransformModule.Transform}
+EditableComponent = Union{AnimatorModule.InternalAnimator, ColliderModule.InternalCollider, ShapeModule.InternalShape, RigidbodyModule.InternalRigidbody, SoundSourceModule.InternalSoundSource, SpriteModule.InternalSprite, TransformModule.Transform}
+EditableStructure = Union{Entity, UI.UIElement, EditableComponent}
 include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Fields"); join=true)))
 include(joinpath(@__DIR__, "..", "EntityContextMenu.jl"))
 
@@ -104,14 +105,16 @@ function show_field(structure::EditableStructure, field::Symbol, value::Any)
     #unmapped fields
 end
 
-function show_field(structure::EditableStructure, field::Symbol, value::Union{TransformModule.Transform, ShapeModule.Shape})
+# Non-removable fields
+function show_field(structure::EditableStructure, field::Symbol, value::Union{TransformModule.Transform})
     typeName = split(string(typeof(value)), ".")[end]
     if CImGui.CollapsingHeader(replace(typeName, "Internal" => ""))
         display_fields(value)
     end
 end
 
-function show_field(structure::EditableStructure, field::Symbol, value::Union{ShapeModule.InternalShape})
+# Removable fields
+function show_field(structure::EditableStructure, field::Symbol, value::Union{EditableComponent})
     typeName = split(string(typeof(value)), ".")[end]
     closableHeader = Ref(true)
     if CImGui.CollapsingHeader(replace(typeName, "Internal" => ""), closableHeader)
