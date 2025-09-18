@@ -2,7 +2,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{In
     show_field_label(field)
     ftype = typeof(value)
     val = convert(Int32, value)
-    @c CImGui.InputInt("##$(string(field))", &val, 1)
+    @c CImGui.InputInt("##$(string(field))_$(string(typeof(structure)))", &val, 1)
 
     if val != convert(Int32, value)
         finalValue = convert(ftype, val)

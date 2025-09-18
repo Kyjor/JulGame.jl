@@ -691,28 +691,7 @@ module Editor
                     
                     try
                         #region Entity Inspector
-                            show_inspector(currentSceneMain)
-
-                        # show_help_marker("This is where we will display editable properties of entities")
-                        # if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
-                        #     CImGui.PushID("AddMenu")
-                        #     if CImGui.BeginMenu("Add")
-                        #         ShowEntityContextMenu(currentSceneMain.selectedEntity)
-                        #         CImGui.EndMenu()
-                        #     end
-                        #     CImGui.PopID()
-                        #     CImGui.Separator()
-                        #     for entityField in fieldnames(Entity)
-                        #         show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict, newScriptText)
-                        #     end
-        
-                        #     CImGui.Separator()
-                        #     if CImGui.Button("Duplicate") 
-                        #         copy = duplicate_entity(currentSceneMain.selectedEntity)
-                        #         push!(currentSceneMain.scene.entities, copy)
-                        #         currentSceneMain.selectedEntity = copy
-                        #     end
-                        # end
+                        show_inspector(currentSceneMain)
                     catch e
                         handle_editor_exceptions("Inspector window:", latest_exceptions, e, is_test_mode)
                     end

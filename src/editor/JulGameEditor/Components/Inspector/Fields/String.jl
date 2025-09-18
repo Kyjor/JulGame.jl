@@ -2,7 +2,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::String)
     buf = "$(value)"*"\0"^(64)
     show_field_label(field)
     CImGui.PushItemWidth(-1)  # fill remaining width
-    @c CImGui.InputText("##$(string(field))", buf, length(buf))
+    @c CImGui.InputText("##$(string(field))_$(string(typeof(structure)))", buf, length(buf))
     CImGui.PopItemWidth()
     
     if buf != value
