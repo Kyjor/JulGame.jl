@@ -166,7 +166,6 @@ module SceneBuilderModule
         MAIN.scene.colliders = InternalCollider[]
         add_scripts_to_entities(BasePath)
 
-        MAIN.assets = joinpath(BasePath, "assets")
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
     end
 

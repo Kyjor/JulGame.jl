@@ -40,7 +40,6 @@ module JulGame
     UserGlobals = Dict{String, Any}()
 
 
-
     include("engine/Logging/Logging.jl")
     using .Logging
     export ErrorLoggerModule

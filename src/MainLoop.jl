@@ -31,7 +31,6 @@ module MainLoopModule
 
 	export MainLoop
 	mutable struct MainLoop
-		assets::String
 		close::Bool
 		coroutine_condition::Condition
 		currentTestTime::Float64
@@ -43,7 +42,6 @@ module MainLoopModule
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
 		selectedEntity::Union{Entity, UI.UIElement, Nothing}
-		selectedUIElementIndex::Int64
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		testLength::Float64
@@ -72,7 +70,6 @@ module MainLoopModule
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
 			this.optimizeSpriteRendering = false
 			this.selectedEntity = nothing
-			this.selectedUIElementIndex = -1
 			this.shouldChangeScene = false
 			this.input.main = this
 			this.isGameModeRunningInEditor = false
