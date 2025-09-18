@@ -3,6 +3,10 @@ EditableStructure = Union{Entity, UI.UIElement, EditableComponent}
 include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Fields"); join=true)))
 include(joinpath(@__DIR__, "..", "EntityContextMenu.jl"))
 
+const CONFIRMATION_DIALOG = "confimation_dialog"
+const DELETE_CONFIRMATION = "delete_confirmation"
+const INSPECTOR_LEFT_CLICK_MENU = "inspector_left_click_menu"
+
 function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowMinSize, CImGui.ImVec2(0, 0))
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(0, 0))
@@ -15,16 +19,34 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
         # Check if left mouse button is clicked in the Inspector window
         if display_context_menu == 1
             @info "Opening entity context menu"
-            CImGui.OpenPopup("inspector_left_click_menu")
+            CImGui.OpenPopup(INSPECTOR_LEFT_CLICK_MENU)
+        elseif get(JulGame.EditorState, DELETE_CONFIRMATION, nothing) !== nothing
+            CImGui.OpenPopup(CONFIRMATION_DIALOG)
         end
         
         # # Define the popup content
-        if CImGui.BeginPopup("inspector_left_click_menu")
-            CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(10, 10))
+        CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(5, 5))
+        if CImGui.BeginPopup(INSPECTOR_LEFT_CLICK_MENU)
             show_entity_context_menu_inspector(currentSceneMain.selectedEntity)
-            CImGui.PopStyleVar()
             CImGui.EndPopup()
         end
+        if CImGui.BeginPopup(CONFIRMATION_DIALOG)
+            CImGui.Text("Are you sure you want to delete this?")
+            CImGui.SameLine()
+            if CImGui.Button("Yes", (120, 0))
+                if JulGame.EditorState[DELETE_CONFIRMATION] !== nothing
+                    JulGame.EditorState[DELETE_CONFIRMATION]()
+                end
+                JulGame.EditorState[DELETE_CONFIRMATION] = nothing
+                CImGui.CloseCurrentPopup()
+            end
+            CImGui.SameLine()
+            if CImGui.Button("No", (120, 0))
+                CImGui.CloseCurrentPopup()
+            end
+            CImGui.EndPopup()
+        end
+        CImGui.PopStyleVar()
     end
     CImGui.PopStyleVar(2)
     CImGui.End()
@@ -77,6 +99,7 @@ function handle_column_click(column_name, structure)
     elseif column_name == "Duplicate"
         JulGame.duplicate(structure)
     elseif column_name == "Delete"
+        JulGame.EditorState[DELETE_CONFIRMATION] = () -> JulGame.destroy_entity(structure)
         return 2
     end
 
@@ -122,7 +145,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{Ed
     end
     if !closableHeader[]
         # remove the component from the structure
-        setfield!(structure, field, C_NULL)
+        JulGame.EditorState[DELETE_CONFIRMATION] = () -> setfield!(structure, field, C_NULL)
     end
 end
 
