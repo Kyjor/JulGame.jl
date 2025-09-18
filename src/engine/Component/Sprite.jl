@@ -20,24 +20,24 @@ module SpriteModule
 
     export InternalSprite
     mutable struct InternalSprite
+        imagePath::String
+        layer::Int
+        offset::Math.Vector2f
         center::Math.Vector2f
+        rotation::Float64
         color::NTuple{4, Int}
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         isFloatPrecision::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
-        imagePath::String
-        isWorldEntity::Bool
-        layer::Int
-        offset::Math.Vector2f
         parent::Any # Entity
-        position::Math.Vector2f
         lastRenderedScreenPosition::Union{Math.Vector2f, Nothing}
         lastRenderedScreenSize::Union{Math.Vector2f, Nothing}
-        rotation::Float64
         pixelsPerUnit::Int
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+        isWorldEntity::Bool
+        position::Math.Vector2f
         anchor::Symbol
         
         function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0))

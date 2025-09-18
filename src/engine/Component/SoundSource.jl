@@ -13,12 +13,12 @@ module SoundSourceModule
 
     export InternalSoundSource
     mutable struct InternalSoundSource
-        channel::Int
-        isMusic::Bool
-        isPlaying::Bool
-        parent::Any
         path::String
+        isMusic::Bool
+        channel::Int
+        isPlaying::Bool
         playOnStart::Bool
+        parent::Any
         sound::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
         volume::Int
 
