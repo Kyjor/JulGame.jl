@@ -24,6 +24,8 @@ module Editor
     # Components includes (contains the ConfirmationModal used for all confirmation dialogs)
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
     include(joinpath(@__DIR__, "Components", "Inspector", "Inspector.jl"))
+    include(joinpath(@__DIR__, "Components", "Hierarchy", "Hierarchy.jl"))
+    include(joinpath(@__DIR__, "Components", "ImportFile", "ImportFile.jl"))
     
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
@@ -511,174 +513,8 @@ module Editor
                         handle_editor_exceptions("Show modal/scene window:", latest_exceptions, e, is_test_mode)
                     end
                     
-                    try
-                        #region Hierarchy
-                        CImGui.Begin("Hierarchy") 
-                        
-                        show_help_marker("This is where we will display a list of entities and textboxes for the scene")
-                        currentSceneMain === nothing && CImGui.Text("No scene loaded.")
-                        if currentSceneMain !== nothing && CImGui.TreeNode("Entities")
-                            # remove other entities from hierarchyEntitySelections if currentSceneMain.selectedEntity is not in hierarchyEntitySelections
-                            # this happens if we select an entity in the scene view
-                            if currentSceneMain.selectedEntity !== nothing && any(entity -> (entity[1] == currentSceneMain.selectedEntity && entity[2] == false), hierarchyEntitySelections)
-                                for index in eachindex(hierarchyEntitySelections)
-                                    hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], currentSceneMain.selectedEntity == hierarchyEntitySelections[index][1])
-                                end
-                            end 
-                             
-                            CImGui.SameLine()
-                            show_help_marker("This is a list of all entities in the scene. Click on an entity to select it.")
-                            CImGui.SameLine()
-                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
-                                CImGui.MenuItem("Add", C_NULL, false, false)
-                                if CImGui.BeginMenu("New")
-                                    if CImGui.MenuItem("Entity")
-                                        JulGame.MainLoopModule.create_new_entity(currentSceneMain)
-                                    end
-                                    
-                                    CImGui.EndMenu()
-                                end
-                                CImGui.EndMenu()
-                            end
-                            
-                           
-                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-
-                            currentHierarchyFilterText = hierarchyFilterText[]
-                            text_input_single_line("get_scene_file_name_from_full_scene_path", hierarchyFilterText) 
-                            updateSelectionsBasedOnFilter = hierarchyFilterText[] != currentHierarchyFilterText
-                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText[]) || contains(lowercase(entity.name), lowercase(hierarchyFilterText[]))), currentSceneMain.scene.entities)
-                            entitiesWithParents = filter(entity -> entity.parent != C_NULL, currentSceneMain.scene.entities)
-
-                            show_help_marker("Hold CTRL and click to select multiple items.")
-                            if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
-                                hierarchyEntitySelections= []
-                                for entity in filteredEntities
-                                    push!(hierarchyEntitySelections, (entity, false))
-                                end
-                            end
-
-                            # Add bulk delete button
-                            selected_count = count(es -> es[2], hierarchyEntitySelections)
-                            if selected_count > 0 && CImGui.Button("Delete Selected ($(selected_count))")
-                                delete_confirmation_modal.open = true
-                            end
-                            CImGui.NewLine()
-
-                            for n = eachindex(filteredEntities)
-                                if filteredEntities[n].parent != C_NULL
-                                    continue
-                                end
-
-                                children = filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
-                                if length(children) == 0
-                                    handle_childless_entity_selection(filteredEntities[n], hierarchyEntitySelections, n, currentSceneMain, delete_confirmation_modal)
-                                else
-                                    handle_parent_entity_selection(filteredEntities[n], children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal)
-                                end
-                                handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
-                            end
-
-                            #CImGui.PopStyleVar()
-                            CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
-                            CImGui.TreePop()
-                        end
-
-                        CImGui.NewLine()
-                         
-                        #region UI Elements
-                        if currentSceneMain !== nothing && CImGui.TreeNode("UI Elements")
-                            CImGui.NewLine()
-
-                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
-                                CImGui.MenuItem("Add", C_NULL, false, false)
-                                if CImGui.BeginMenu("New")
-                                    if CImGui.MenuItem("TextBox")
-                                        JulGame.MainLoopModule.create_new_text_box(currentSceneMain) 
-                                    end
-                                    if CImGui.MenuItem("Screen Button")
-                                        JulGame.MainLoopModule.create_new_screen_button(currentSceneMain)
-                                    end
-                                    if CImGui.MenuItem("Canvas")
-                                        JulGame.MainLoopModule.create_new_canvas(currentSceneMain)
-                                    end
-                                    
-                                    CImGui.EndMenu()
-                                end
-                                CImGui.EndMenu()
-                            end
-                            
-                            # Add bulk delete button for UI elements
-                            selected_ui_count = count(hierarchyUISelections)
-                            if selected_ui_count > 0 && CImGui.Button("Delete Selected ($(selected_ui_count))")
-                                CImGui.SameLine()
-                                ui_delete_confirmation_modal.open = true
-                            end
-                            
-                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-
-                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.uiElements) # || updateUISelectionsBasedOnFilter
-                                hierarchyUISelections=fill(false, length(currentSceneMain.scene.uiElements))
-                            end
-
-                            for n = eachindex(currentSceneMain.scene.uiElements)
-                                CImGui.PushID(n)
-                                uiElement = currentSceneMain.scene.uiElements[n]
-                                
-                                # TODO: Handle Canvas elements with children
-                                if false && isa(uiElement, UI.Canvas) && length(uiElement.children) > 0
-                                    # Show Canvas as a tree node
-                                    treeNodeOpen = CImGui.TreeNodeEx("$(n): $(uiElement.name) (Canvas)", CImGui.ImGuiTreeNodeFlags_None)
-                                    
-                                    # Handle Canvas selection
-                                    if CImGui.IsItemClicked() && !CImGui.IsItemToggledOpen()
-                                        !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
-                                        hierarchyUISelections[n] ⊻= 1
-                                        uiSelected = true
-                                    end
-                                    
-                                    # Add right-click context menu for Canvas
-                                    if hierarchyUISelections[n]
-                                        show_ui_element_context_menu(currentSceneMain, n, ui_delete_confirmation_modal, hierarchyUISelections)
-                                    end
-                                    
-                                    if treeNodeOpen
-                                        # Show Canvas children
-                                        for (childIndex, child) in enumerate(uiElement.children)
-                                            CImGui.PushID("child_$(childIndex)")
-                                            childBuf = "  $(childIndex): $(child.name)"
-                                            if CImGui.Selectable(childBuf, false)
-                                                # Select the child's parent canvas instead
-                                                !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
-                                                hierarchyUISelections[n] = true
-                                                uiSelected = true
-                                            end
-                                            CImGui.PopID()
-                                        end
-                                        CImGui.TreePop()
-                                    end
-                                else
-                                    # Handle regular UI elements
-                                    buf = "$(n): $(uiElement.name)"
-                                    if CImGui.Selectable(buf, hierarchyUISelections[n])
-                                        # clear selection when CTRL is not held
-                                        !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
-                                        hierarchyUISelections[n] ⊻= 1
-                                        uiSelected = true
-                                    end
-                                    
-                                    # Add right-click context menu for UI elements
-                                    if hierarchyUISelections[n]
-                                        show_ui_element_context_menu(currentSceneMain, n, ui_delete_confirmation_modal, hierarchyUISelections)
-                                    end
-                                end
-                                
-                                CImGui.PopID()
-                            end
-
-                            CImGui.TreePop()
-                        end
-                    CImGui.End()
+                try
+                    show_hierarchy(currentSceneMain, hierarchyEntitySelections)        
                 catch e
                     handle_editor_exceptions("Hierarchy window:", latest_exceptions, e, is_test_mode)
                 end
@@ -695,56 +531,6 @@ module Editor
                     catch e
                         handle_editor_exceptions("Inspector window:", latest_exceptions, e, is_test_mode)
                     end
-
-                    # try
-                        
-                    #     #region UI Inspector
-                    #     CImGui.Begin("UI Inspector") 
-                    #         show_help_marker("This is where we will display editable properties of textboxes and screen buttons")
-                    #         for uiElementIndex = eachindex(hierarchyUISelections)
-                    #             if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
-                    #                 if length(currentSceneMain.scene.uiElements) < uiElementIndex
-                    #                     break
-                    #                 end
-                                    
-                    #                 if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
-                    #                     show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
-                    #                 elseif contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "Canvas")
-                    #                     show_canvas_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
-                    #                 else
-                    #                     show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
-                    #                 end
-
-                    #                 CImGui.Separator()
-                    #                 CImGui.Text("Delete UI Element")
-                    #                 if CImGui.Button("Delete")
-                    #                     CImGui.OpenPopup("Delete UI Element Confirmation")
-                    #                 end
-                                    
-                    #                 if CImGui.BeginPopupModal("Delete UI Element Confirmation", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
-                    #                     CImGui.Text("Are you sure you want to delete this UI element?\nThis cannot be undone.\n\n")
-                    #                     CImGui.NewLine()
-                    #                     if CImGui.Button("Delete", (120, 0))
-                    #                         JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
-                    #                         CImGui.CloseCurrentPopup()
-                    #                         break
-                    #                     end
-                    #                     CImGui.SetItemDefaultFocus()
-                    #                     CImGui.SameLine()
-                    #                     if CImGui.Button("Cancel",(120, 0))
-                    #                         CImGui.CloseCurrentPopup()
-                    #                     end
-                    #                     CImGui.EndPopup()
-                    #                 end
-                                    
-                    #                 break # TODO: Remove this when we can select multiple entities and edit them all at once
-                    #             end
-                    #         end
-                    #     CImGui.End()
-                    # catch e
-                    #     handle_editor_exceptions("UI inspector window:", latest_exceptions, e, is_test_mode)
-                    # end
-
                     try
                         show_camera_window(cameraWindow)
                     catch e
@@ -794,6 +580,12 @@ module Editor
                         gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoopModule.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     catch e
                         handle_editor_exceptions("Game loop:", latest_exceptions, e, is_test_mode)
+                    end
+
+                    try
+                        handle_dropped_files(renderer)
+                    catch e
+                        handle_editor_exceptions("Dropped files:", latest_exceptions, e, is_test_mode)
                     end
                     
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
@@ -1099,7 +891,6 @@ module Editor
 
                     filesToReload[] = []
                 end
-                #println("loop")
             end
         catch e
             backup_file_name = backup_file_name = "$(replace(currentSceneName, ".json" => ""))-backup-$(replace(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"), ":" => "-")).json"
@@ -1109,7 +900,6 @@ module Editor
             Base.show_backtrace(stderr, catch_backtrace())
         finally
             #TODO: fix these: ImGui_ImplSDLRenderer2_Shutdown();
-            # ImGui_ImplSDL2_Shutdown();
 
             CImGui.DestroyContext(ctx)
             SDL2.SDL_DestroyTexture(sceneTexture)

@@ -182,22 +182,41 @@ module InputModule
                     # If game view size is zero, set mouse position to 0,0 or handle as error
                     this.mousePosition = Math.Vector2(0, 0)
                 end
-
-                # Debug printing (optional)
-                # println("Raw Mouse: (", x[1], ", ", y[1], ") | View Pos: (", JulGame.EditorGameViewPosition.x, ", ", JulGame.EditorGameViewPosition.y, ") | View Size: (", JulGame.EditorGameViewSize.x, ", ", JulGame.EditorGameViewSize.y, ")")
-                # println("Relative Mouse: (", raw_mouse_x, ", ", raw_mouse_y, ") | Clamped: (", clamped_mouse_x, ", ", clamped_mouse_y, ") | Scaled: (", this.mousePosition.x, ", ", this.mousePosition.y, ")")
-
             end
             
             if this.editorCallback !== nothing
                 this.editorCallback(evt)
             end
 
+            dropped_files = "dropped_files"
+            dropped_texts = "dropped_texts"
             if evt.type == SDL2.SDL_DROPFILE
-                @info "Dropped file: $(unsafe_string(evt.drop.file))"
+                @debug "Dropped file: $(unsafe_string(evt.drop.file))"
+                if JulGame.IS_EDITOR
+                    if get(JulGame.EditorState, dropped_files, nothing) === nothing
+                        JulGame.EditorState[dropped_files] = [unsafe_string(evt.drop.file)]
+                    else
+                        push!(JulGame.EditorState[dropped_files], unsafe_string(evt.drop.file))
+                    end
+                end
                 # TODO: Handle dropped file
                 SDL2.SDL_free(evt.drop.file)
+            elseif evt.type == SDL2.SDL_DROPTEXT
+                @debug "Dropped text: $(unsafe_string(evt.drop.file))"
+                if JulGame.IS_EDITOR
+                    if get(JulGame.EditorState, dropped_texts, nothing) === nothing
+                        JulGame.EditorState[dropped_texts] = [unsafe_string(evt.drop.file)]
+                    else
+                        push!(JulGame.EditorState[dropped_texts], unsafe_string(evt.drop.file))
+                    end
+                end
+                SDL2.SDL_free(evt.drop.file)
+            elseif evt.type == SDL2.SDL_DROPBEGIN
+                @debug "Drop begin"
+            elseif evt.type == SDL2.SDL_DROPCOMPLETE
+                @debug "Drop complete"
             end
+            
 
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                 this.didMouseEventOccur = true
