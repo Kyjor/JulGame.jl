@@ -31,9 +31,11 @@ mutable struct FileImportDialog
     audio_preview::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
     is_audio_playing::Bool
     conflict_error::String
+    add_to_scene::Bool
+    create_as_ui_element::Bool
     
     function FileImportDialog()
-        new(false, "", "assets", Ref(""), C_NULL, ImVec2(0, 0), false, false, C_NULL, false, "")
+        new(false, "", "assets", Ref(""), C_NULL, ImVec2(0, 0), false, false, C_NULL, false, "", false, false)
     end
 end
 
@@ -375,10 +377,62 @@ function import_current_file()
     try
         cp(dialog.current_file, dest_file)
         @info "File imported successfully: $(basename(dest_file)) to $(dialog.destination_folder)"
+        
+        # Add to scene if requested
+        if dialog.add_to_scene
+            # We need to get the current scene from the caller
+            # For now, we'll store it in the dialog state
+            current_scene_main = get(JulGame.EditorState, "current_scene_main", nothing)
+            if current_scene_main !== nothing
+                add_imported_file_to_scene(dest_file, current_scene_main)
+            end
+        end
+        
         return true
     catch e
         dialog.conflict_error = "Failed to copy file: $(e)"
         return false
+    end
+end
+
+"""
+    add_imported_file_to_scene(file_path::String, current_scene_main)
+
+Add the imported file to the current scene as an entity or UI element.
+"""
+function add_imported_file_to_scene(file_path::String, current_scene_main)
+    dialog = JulGame.EditorState["file_import_dialog"]
+    
+    if current_scene_main === nothing
+        @warn "No scene loaded - cannot add file to scene"
+        return
+    end
+    
+    # Get the relative path for the asset
+    relative_path = relpath(file_path, JulGame.BasePath)
+    entity_name = replace(splitext(basename(file_path))[1], " " => "_")
+    
+    try
+        if dialog.is_image
+            if dialog.create_as_ui_element
+                # Create ScreenButton UI element
+                screen_button = create_ui_screenbutton(relative_path, entity_name)
+                push!(current_scene_main.scene.uiElements, screen_button)
+                @info "Added ScreenButton UI element: $(entity_name)"
+            else
+                # Create entity with sprite
+                entity = create_entity_with_sprite(relative_path, entity_name)
+                push!(current_scene_main.scene.entities, entity)
+                @info "Added entity with sprite: $(entity_name)"
+            end
+        elseif dialog.is_audio
+            # Create entity with sound source
+            entity = create_entity_with_sound(relative_path, entity_name)
+            push!(current_scene_main.scene.entities, entity)
+            @info "Added entity with sound source: $(entity_name)"
+        end
+    catch e
+        @error "Failed to add file to scene: $(e)"
     end
 end
 
@@ -404,6 +458,87 @@ function cancel_current_import()
 end
 
 """
+    create_entity_with_sprite(image_path::String, entity_name::String) -> Entity
+
+Create a new entity with a sprite component using the imported image.
+"""
+function create_entity_with_sprite(image_path::String, entity_name::String)
+    # Create new entity
+    entity = JulGame.Entity(entity_name)
+    
+    # Add sprite component
+    JulGame.add_sprite(entity, true)
+    
+    # Set the image path (relative to assets folder)
+    if startswith(image_path, "assets/")
+        relative_path = replace(image_path, "assets/" => "")
+    else
+        relative_path = image_path
+    end
+    
+    entity.sprite.imagePath = relative_path
+    JulGame.Component.load_image(entity.sprite, relative_path)
+    
+    return entity
+end
+
+"""
+    create_ui_screenbutton(image_path::String, button_name::String) -> ScreenButton
+
+Create a new ScreenButton UI element using the imported image.
+"""
+function create_ui_screenbutton(image_path::String, button_name::String)
+    # Set the image path (relative to assets folder)
+    if startswith(image_path, "assets/")
+        relative_path = replace(image_path, "assets/" => "")
+    else
+        relative_path = image_path
+    end
+    
+    # Create ScreenButton with the imported image
+    screenButton = JulGame.UI.ScreenButton(
+        nothing; # No click event defined here by default
+        name=button_name, 
+        buttonUpSpritePath=relative_path, 
+        buttonDownSpritePath=relative_path, # Use same image for both states
+        size=JulGame.Math.Vector2(256, 64), 
+        position=JulGame.Math.Vector2(0, 0), 
+        fontPath=joinpath("FiraCode-Regular.ttf"),
+    )
+    
+    if !screenButton.isInitialized
+        JulGame.initialize(screenButton)
+    end
+    
+    return screenButton
+end
+
+"""
+    create_entity_with_sound(audio_path::String, entity_name::String) -> Entity
+
+Create a new entity with a SoundSource component using the imported audio.
+"""
+function create_entity_with_sound(audio_path::String, entity_name::String)
+    # Create new entity
+    entity = JulGame.Entity(entity_name)
+    
+    # Add SoundSource component
+    JulGame.add_sound_source(entity)
+    
+    # Set the audio path (relative to assets folder)
+    if startswith(audio_path, "assets/")
+        relative_path = replace(audio_path, "assets/" => "")
+    else
+        relative_path = audio_path
+    end
+    
+    entity.soundSource.path = relative_path
+    JulGame.Component.load_sound(entity.soundSource, relative_path, false) # false = not music
+    
+    return entity
+end
+
+"""
     cleanup_import_queue()
 
 Clean up the import queue when all files are processed.
@@ -421,18 +556,21 @@ function cleanup_import_queue()
     dialog.current_file = ""
     dialog.new_filename[] = ""
     dialog.conflict_error = ""
+    dialog.add_to_scene = false
+    dialog.create_as_ui_element = false
 end
 
 """
-    show_file_import_dialog(renderer) -> Bool
+    show_file_import_dialog(renderer, current_scene_main=nothing) -> Bool
 
 Show the file import dialog. Returns true if dialog is still active.
 """
-function show_file_import_dialog(renderer)
+function show_file_import_dialog(renderer, current_scene_main=nothing)
     # Initialize if needed
     initialize_import_dialog()
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
     if dropped_files === nothing || isempty(dropped_files)
+        @info "No dropped files found, returning false"
         return false
     end
     dialog = JulGame.EditorState["file_import_dialog"]
@@ -600,6 +738,40 @@ function show_file_import_dialog(renderer)
             CImGui.TextColored((1.0, 0.3, 0.3, 1.0), "Error: $(dialog.conflict_error)")
         end
         
+        # Add to Scene options
+        CImGui.Separator()
+        CImGui.Text("Scene Options:")
+        
+        # Check if a scene is loaded
+        if current_scene_main === nothing
+            CImGui.TextColored((0.8, 0.6, 0.0, 1.0), "No scene loaded - cannot add to scene")
+            CImGui.Checkbox("Add to Scene", Ref(false))  # Disabled checkbox
+        else
+            if CImGui.Checkbox("Add to Scene", Ref(dialog.add_to_scene))
+                dialog.add_to_scene = !dialog.add_to_scene
+            end
+            
+            if dialog.add_to_scene
+                CImGui.Indent()
+                
+                if dialog.is_image
+                    CImGui.Text("Create as:")
+                    CImGui.SameLine()
+                    if CImGui.RadioButton("Entity (Sprite)", !dialog.create_as_ui_element)
+                        dialog.create_as_ui_element = false
+                    end
+                    CImGui.SameLine()
+                    if CImGui.RadioButton("UI Element (Button)", dialog.create_as_ui_element)
+                        dialog.create_as_ui_element = true
+                    end
+                elseif dialog.is_audio
+                    CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "Will create entity with SoundSource component")
+                end
+                
+                CImGui.Unindent()
+            end
+        end
+        
         # Queue info
         queue_index = JulGame.EditorState["import_queue_index"]
         total_files = length(dropped_files)
@@ -688,15 +860,19 @@ function show_file_import_dialog(renderer)
 end
 
 """
-    handle_dropped_files(renderer)
+    handle_dropped_files(renderer, current_scene_main=nothing)
 
 Main function to call from the editor loop to handle dropped files.
 This should be called where the current file drop handling is done.
 """
-function handle_dropped_files(renderer)
+function handle_dropped_files(renderer, current_scene_main=nothing)
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
     if dropped_files !== nothing && !isempty(dropped_files)
-        return show_file_import_dialog(renderer)
+        # Store current scene in EditorState for access during import
+        if current_scene_main !== nothing
+            JulGame.EditorState["current_scene_main"] = current_scene_main
+        end
+        return show_file_import_dialog(renderer, current_scene_main)
     end
     return false
 end

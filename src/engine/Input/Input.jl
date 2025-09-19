@@ -215,6 +215,8 @@ module InputModule
                 @debug "Drop begin"
             elseif evt.type == SDL2.SDL_DROPCOMPLETE
                 @debug "Drop complete"
+            elseif evt.type == SDL2.SDL_CLIPBOARDUPDATE
+                @debug "Clipboard update"
             end
             
 

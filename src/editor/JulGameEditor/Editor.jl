@@ -583,7 +583,7 @@ module Editor
                     end
 
                     try
-                        handle_dropped_files(renderer)
+                        handle_dropped_files(renderer, currentSceneMain)
                     catch e
                         handle_editor_exceptions("Dropped files:", latest_exceptions, e, is_test_mode)
                     end
