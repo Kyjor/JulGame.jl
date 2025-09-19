@@ -33,9 +33,10 @@ mutable struct FileImportDialog
     conflict_error::String
     add_to_scene::Bool
     create_as_ui_element::Bool
+    temp_files_to_cleanup::Vector{String}  # Track temporary files for cleanup
     
     function FileImportDialog()
-        new(false, "", "assets", Ref(""), C_NULL, ImVec2(0, 0), false, false, C_NULL, false, "", false, false)
+        new(false, "", "assets", Ref(""), C_NULL, ImVec2(0, 0), false, false, C_NULL, false, "", false, false, String[])
     end
 end
 
@@ -207,6 +208,15 @@ function cleanup_all_previews()
 end
 
 """
+    is_temp_file(filepath::String) -> Bool
+
+Check if a file is a temporary file (from clipboard paste).
+"""
+function is_temp_file(filepath::String)
+    return occursin("clipboard_image_", basename(filepath)) || startswith(dirname(filepath), tempdir())
+end
+
+"""
     setup_next_file(renderer)
 
 Set up the dialog for the next file in the queue.
@@ -246,6 +256,11 @@ function setup_next_file(renderer)
     dialog.is_image = is_image_file(current_file)
     dialog.is_audio = is_audio_file(current_file)
     dialog.conflict_error = ""
+    
+    # Track temporary files for cleanup
+    if is_temp_file(current_file) && !(current_file in dialog.temp_files_to_cleanup)
+        push!(dialog.temp_files_to_cleanup, current_file)
+    end
     
     # Set default destination folder based on file type
     if dialog.is_image
@@ -414,6 +429,18 @@ function add_imported_file_to_scene(file_path::String, current_scene_main)
     
     try
         if dialog.is_image
+            if startswith(relative_path, "assets/")
+                relative_path = replace(relative_path, "assets/" => "")
+            end
+            if startswith(relative_path, "assets\\")
+                relative_path = replace(relative_path, "assets\\" => "")
+            end
+            if startswith(relative_path, "images/")
+                relative_path = replace(relative_path, "images/" => "")
+            end
+            if startswith(relative_path, "images\\")
+                relative_path = replace(relative_path, "images\\" => "")
+            end
             if dialog.create_as_ui_element
                 # Create ScreenButton UI element
                 screen_button = create_ui_screenbutton(relative_path, entity_name)
@@ -427,6 +454,18 @@ function add_imported_file_to_scene(file_path::String, current_scene_main)
             end
         elseif dialog.is_audio
             # Create entity with sound source
+            if startswith(relative_path, "assets/")
+                relative_path = replace(relative_path, "assets/" => "")
+            end
+            if startswith(relative_path, "assets\\")
+                relative_path = replace(relative_path, "assets\\" => "")
+            end
+            if startswith(relative_path, "sounds/")
+                relative_path = replace(relative_path, "sounds/" => "")
+            end
+            if startswith(relative_path, "sounds\\")
+                relative_path = replace(relative_path, "sounds\\" => "")
+            end
             entity = create_entity_with_sound(relative_path, entity_name)
             push!(current_scene_main.scene.entities, entity)
             @info "Added entity with sound source: $(entity_name)"
@@ -452,6 +491,21 @@ Cancel the current file import and move to the next file.
 """
 function cancel_current_import()
     dialog = JulGame.EditorState["file_import_dialog"]
+    
+    # Clean up temporary file if it's from clipboard
+    if is_temp_file(dialog.current_file)
+        try
+            if isfile(dialog.current_file)
+                rm(dialog.current_file, force=true)
+                @debug "Cleaned up cancelled clipboard file: $(dialog.current_file)"
+            end
+            # Remove from cleanup list
+            filter!(f -> f != dialog.current_file, dialog.temp_files_to_cleanup)
+        catch e
+            @warn "Failed to clean up cancelled clipboard file: $(e)"
+        end
+    end
+    
     cleanup_all_previews()
     advance_queue()
     dialog.is_open = false
@@ -469,15 +523,9 @@ function create_entity_with_sprite(image_path::String, entity_name::String)
     # Add sprite component
     JulGame.add_sprite(entity, true)
     
-    # Set the image path (relative to assets folder)
-    if startswith(image_path, "assets/")
-        relative_path = replace(image_path, "assets/" => "")
-    else
-        relative_path = image_path
-    end
-    
-    entity.sprite.imagePath = relative_path
-    JulGame.Component.load_image(entity.sprite, relative_path)
+    entity.sprite.imagePath = image_path
+    entity.sprite.pixelsPerUnit = 0
+    JulGame.Component.load_image(entity.sprite, image_path)
     
     return entity
 end
@@ -488,19 +536,12 @@ end
 Create a new ScreenButton UI element using the imported image.
 """
 function create_ui_screenbutton(image_path::String, button_name::String)
-    # Set the image path (relative to assets folder)
-    if startswith(image_path, "assets/")
-        relative_path = replace(image_path, "assets/" => "")
-    else
-        relative_path = image_path
-    end
-    
     # Create ScreenButton with the imported image
     screenButton = JulGame.UI.ScreenButton(
         nothing; # No click event defined here by default
         name=button_name, 
-        buttonUpSpritePath=relative_path, 
-        buttonDownSpritePath=relative_path, # Use same image for both states
+        buttonUpSpritePath=image_path, 
+        buttonDownSpritePath=image_path, # Use same image for both states
         size=JulGame.Math.Vector2(256, 64), 
         position=JulGame.Math.Vector2(0, 0), 
         fontPath=joinpath("FiraCode-Regular.ttf"),
@@ -525,17 +566,36 @@ function create_entity_with_sound(audio_path::String, entity_name::String)
     # Add SoundSource component
     JulGame.add_sound_source(entity)
     
-    # Set the audio path (relative to assets folder)
-    if startswith(audio_path, "assets/")
-        relative_path = replace(audio_path, "assets/" => "")
-    else
-        relative_path = audio_path
-    end
-    
-    entity.soundSource.path = relative_path
-    JulGame.Component.load_sound(entity.soundSource, relative_path, false) # false = not music
+    entity.soundSource.path = audio_path
+    JulGame.Component.load_sound(entity.soundSource, audio_path, false) # false = not music
     
     return entity
+end
+
+"""
+    cleanup_temp_files()
+
+Clean up temporary files created from clipboard paste.
+"""
+function cleanup_temp_files()
+    dialog = JulGame.EditorState["file_import_dialog"]
+    for temp_file in dialog.temp_files_to_cleanup
+        try
+            if isfile(temp_file)
+                rm(temp_file, force=true)
+                @debug "Cleaned up temporary file: $(temp_file)"
+            end
+            # Also try to remove the parent temp directory if it's empty
+            temp_dir = dirname(temp_file)
+            if isdir(temp_dir) && isempty(readdir(temp_dir))
+                rm(temp_dir, force=true)
+                @debug "Cleaned up temporary directory: $(temp_dir)"
+            end
+        catch e
+            @warn "Failed to clean up temporary file $(temp_file): $(e)"
+        end
+    end
+    empty!(dialog.temp_files_to_cleanup)
 end
 
 """
@@ -546,6 +606,9 @@ Clean up the import queue when all files are processed.
 function cleanup_import_queue()
     # Clean up any remaining previews
     cleanup_all_previews()
+    
+    # Clean up temporary files
+    cleanup_temp_files()
     
     # Clear the dropped files and reset queue
     JulGame.EditorState["dropped_files"] = nothing
@@ -590,9 +653,19 @@ function show_file_import_dialog(renderer, current_scene_main=nothing)
         CImGui.SameLine()
         CImGui.TextColored((0.7, 0.9, 1.0, 1.0), basename(dialog.current_file))
         
+        # Show special indicator for clipboard files
+        if is_temp_file(dialog.current_file)
+            CImGui.SameLine()
+            CImGui.TextColored((0.3, 1.0, 0.3, 1.0), "(from clipboard)")
+        end
+        
         CImGui.Text("From:")
         CImGui.SameLine()
-        CImGui.TextColored((0.8, 0.8, 0.8, 1.0), dirname(dialog.current_file))
+        if is_temp_file(dialog.current_file)
+            CImGui.TextColored((0.8, 0.8, 0.8, 1.0), "Clipboard → Temporary file")
+        else
+            CImGui.TextColored((0.8, 0.8, 0.8, 1.0), dirname(dialog.current_file))
+        end
         
         # File type indicator
         if dialog.is_image
@@ -820,6 +893,20 @@ function show_file_import_dialog(renderer, current_scene_main=nothing)
         CImGui.SameLine()
         
         if CImGui.Button("Skip", ImVec2(100, 0))
+            # Clean up temporary file if it's from clipboard
+            if is_temp_file(dialog.current_file)
+                try
+                    if isfile(dialog.current_file)
+                        rm(dialog.current_file, force=true)
+                        @debug "Cleaned up skipped clipboard file: $(dialog.current_file)"
+                    end
+                    # Remove from cleanup list
+                    filter!(f -> f != dialog.current_file, dialog.temp_files_to_cleanup)
+                catch e
+                    @warn "Failed to clean up skipped clipboard file: $(e)"
+                end
+            end
+            
             # Remove current file from queue without importing
             deleteat!(dropped_files, queue_index)
             
