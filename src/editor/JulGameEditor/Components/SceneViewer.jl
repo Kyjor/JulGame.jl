@@ -77,8 +77,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     
     # Handle drag-and-drop from file explorer (if available)
     try
-        if isdefined(Main, :handle_scene_viewer_drop_target)
-            Main.handle_scene_viewer_drop_target()
+        if haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
+            JulGame.EditorState["handle_scene_viewer_drop_target"]()
         end
     catch e
         # Silently ignore if drag-drop integration not available
