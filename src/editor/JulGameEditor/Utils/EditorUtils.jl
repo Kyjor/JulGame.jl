@@ -647,8 +647,7 @@ function show_entity_context_menu(main, hierarchyEntitySelections, delete_confir
             
             if CImGui.MenuItem("Duplicate Selected ($(selected_count))")
                 for entity in selected_entities
-                    copy = duplicate_entity(entity)
-                    push!(main.scene.entities, copy)
+                    JulGame.duplicate(entity)
                 end
                 action_taken = true
             end
@@ -662,8 +661,7 @@ function show_entity_context_menu(main, hierarchyEntitySelections, delete_confir
                 end
                 
                 if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
-                    copy = duplicate_entity(entity)
-                    push!(main.scene.entities, copy)
+                    copy = JulGame.duplicate(entity)
                     main.selectedEntity = copy
                     action_taken = true
                 end

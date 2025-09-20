@@ -69,10 +69,7 @@ module Editor
         gameInfo = []
         ##############################
         # Hierarchy variables
-        filteredEntities = Entity[]
         hierarchyFilterText = Ref("")
-        hierarchyEntitySelections = []
-        hierarchyUISelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
         latest_exceptions = Ref([])
@@ -461,31 +458,6 @@ module Editor
                             end
                         end
                         
-                        # Handle bulk delete confirmation
-                        if show_modal(delete_confirmation_modal)
-                            # Get all selected entities
-                            entities_to_delete = [entity[1] for entity in hierarchyEntitySelections if entity[2]]
-                            
-                            # Delete entities using our helper function
-                            bulk_delete_entities(currentSceneMain, entities_to_delete)
-                            
-                            # Reset selections
-                            hierarchyEntitySelections = []
-                            currentSceneMain.selectedEntity = nothing
-                        end
-                        
-                        # Handle UI elements bulk delete confirmation
-                        if show_modal(ui_delete_confirmation_modal)
-                            # Get all selected UI element indices
-                            ui_indices_to_delete = findall(hierarchyUISelections)
-                            
-                            # Delete UI elements using our helper function
-                            bulk_delete_ui_elements(currentSceneMain, ui_indices_to_delete)
-                            
-                            # Reset selections
-                            hierarchyUISelections = fill(false, length(currentSceneMain.scene.uiElements))
-                        end
-                        
                         sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, camera)
                         if JulGame.IS_EDITOR_PLAY_MODE != wasPlaying && currentSceneMain !== nothing
                             if JulGame.IS_EDITOR_PLAY_MODE
@@ -514,7 +486,7 @@ module Editor
                     end
                     
                 try
-                    show_hierarchy(currentSceneMain, hierarchyEntitySelections)        
+                    show_hierarchy(currentSceneMain)        
                 catch e
                     handle_editor_exceptions("Hierarchy window:", latest_exceptions, e, is_test_mode)
                 end
@@ -708,15 +680,15 @@ module Editor
                             end
                             # delete selected entity
                             if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
-                                if currentSceneMain.selectedEntity !== nothing
-                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                if currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0
+                                   for entity in currentSceneMain.selectedEntities
+                                    JulGame.destroy_entity(currentSceneMain, entity)
+                                   end
                                 end
                             end
                             # duplicate selected entity with ctrl+d
                             if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                                copy = duplicate_entity(currentSceneMain.selectedEntity)
-                                push!(currentSceneMain.scene.entities, copy)
-                                currentSceneMain.selectedEntity = copy
+                                JulGame.duplicate(currentSceneMain.selectedEntity)
                             end
                             # turn on duplication mode with ctrl+shift+d
                             if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing

@@ -41,7 +41,7 @@ module MainLoopModule
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
-		selectedEntity::Union{Entity, UI.UIElement, Nothing}
+		selectedEntities::Union{Vector{Entity}, Vector{UI.UIElement}, Nothing}
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		testLength::Float64
@@ -69,7 +69,7 @@ module MainLoopModule
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
 			this.optimizeSpriteRendering = false
-			this.selectedEntity = nothing
+			this.selectedEntities = Union{Entity, UI.UIElement}[]
 			this.shouldChangeScene = false
 			this.input.main = this
 			this.isGameModeRunningInEditor = false
@@ -395,7 +395,7 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 		if this.scene.entities[i] == entity
 			destroy_entity_components(this, entity)
 			deleteat!(this.scene.entities, i)
-			this.selectedEntity = nothing
+			deleteat!(this.selectedEntities, findfirst(x -> x == entity, this.selectedEntities))
 			break
 		end
 	end
