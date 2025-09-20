@@ -4,7 +4,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{Ma
     max_value = is_float ? typemax(Cfloat) : typemax(Cint)
     array_type = is_float ? Cfloat : Cint
     fields = fieldnames(typeof(value))
-    val = array_type[getfield(value, fname) for fname in fields]
+    val = array_type[getproperty(value, fname) for fname in fields]
     
     # Custom multi-component layout
     available_width = CImGui.CalcItemWidth()
@@ -29,9 +29,9 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{Ma
     end
    
     changed = false
-    if any(val[i] != getfield(value, fname) for (i, fname) in enumerate(fields))
+    if any(val[i] != getproperty(value, fname) for (i, fname) in enumerate(fields))
         new_value = typeof(value)(val...)  # Construct new vector with updated values
-        setfield!(structure, field, new_value)
+        setproperty!(structure, field, new_value)
         changed = true
     end
 

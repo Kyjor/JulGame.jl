@@ -112,12 +112,18 @@ end
 function display_fields(structure::EditableStructure)
     CImGui.Indent(8.0f0)  # Left padding
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_ItemSpacing, CImGui.ImVec2(8, 8))
-    for field in fieldnames(typeof(structure))
+
+    fields = [fieldnames(typeof(structure))...]
+    if isa(structure, UI.UIElement)
+        uiFields = [fieldnames(UI.UIElementInstance)...]
+        prepend!(fields, uiFields)
+    end
+    for field in fields
         structureType = split(string(typeof(structure)), ".")[end]
-        if get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])
+        if (get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])) || (isa(structure, UI.UIElement) && field in get(FieldExclusions, "UIElement", []))
             continue
         end
-        show_field(structure, field, getfield(structure, field))
+        show_field(structure, field, getproperty(structure, field))
     end
     CImGui.Unindent(8.0f0)
     CImGui.PopStyleVar()
@@ -148,7 +154,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{Ed
     end
     if !closableHeader[]
         # remove the component from the structure
-        JulGame.EditorState[DELETE_CONFIRMATION] = () -> setfield!(structure, field, C_NULL)
+        JulGame.EditorState[DELETE_CONFIRMATION] = () -> setproperty!(structure, field, C_NULL)
     end
 end
 

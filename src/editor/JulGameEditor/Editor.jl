@@ -107,7 +107,6 @@ module Editor
         confirmation_modal = ConfirmationModal("Start/Stop Game"; message="Are you sure you want to start/stop the game? Any unsaved progress will be lost.", confirmText="Yes", cancelText="No", open=false, type="Warning")
         delete_confirmation_modal = ConfirmationModal("Delete Entities"; message="Are you sure you want to delete the selected entities? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
         ui_delete_confirmation_modal = ConfirmationModal("Delete UI Elements"; message="Are you sure you want to delete the selected UI elements? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
-        cameraWindow = CameraWindow(true, gameCamera)
         currentProjectConfig = (
             Width=Ref(Math.TypeConversions.safe_int32_convert(800)), 
             Height=Ref(Math.TypeConversions.safe_int32_convert(600)), 
@@ -341,7 +340,6 @@ module Editor
                                 end
                                 if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
                                     gameCamera = currentSceneMain.scene.camera
-                                    cameraWindow.camera = gameCamera
                                 else 
                                     currentSceneMain = nothing
                                     @error "Main not loaded properly"
@@ -370,7 +368,6 @@ module Editor
                                     
                                     if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
                                         gameCamera = currentSceneMain.scene.camera
-                                        cameraWindow.camera = gameCamera
                                     else 
                                         currentSceneMain = nothing
                                         @error "Main not loaded properly"
@@ -504,11 +501,6 @@ module Editor
                         show_inspector(currentSceneMain)
                     catch e
                         handle_editor_exceptions("Inspector window:", latest_exceptions, e, is_test_mode)
-                    end
-                    try
-                        show_camera_window(cameraWindow)
-                    catch e
-                        handle_editor_exceptions("Camera window:", latest_exceptions, e, is_test_mode)
                     end
 
                     #region Config Window
@@ -674,7 +666,6 @@ module Editor
                         if currentSceneMain !== nothing
                             if currentSceneMain.scene.camera != gameCamera
                                 gameCamera = currentSceneMain.scene.camera
-                                cameraWindow.camera = gameCamera
                             end
                             if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
                                 @debug string("Saving scene")

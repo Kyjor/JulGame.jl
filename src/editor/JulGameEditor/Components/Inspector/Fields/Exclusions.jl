@@ -8,4 +8,5 @@ FieldExclusions = Dict{String, Vector{Symbol}}(
     "InternalSprite" => [:parent, :lastRenderedScreenPosition, :lastRenderedScreenSize, :size, :texture],
     "TextBox" => [:font,:isConstructed, :renderText, :textTexture],
     "Transform" => [:screenPosition, :screenRotation, :screenSize, :parent],
+    "UIElement" => [],
 )

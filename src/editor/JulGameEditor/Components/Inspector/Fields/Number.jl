@@ -6,7 +6,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{In
 
     if val != convert(Int32, value)
         finalValue = convert(ftype, val)
-        setfield!(structure, field, finalValue)
+        setproperty!(structure, field, finalValue)
     end
     
     return val != convert(Int32, value)

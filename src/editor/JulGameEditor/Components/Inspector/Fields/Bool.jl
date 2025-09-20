@@ -4,7 +4,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::Bool)
     @c CImGui.Checkbox("##$(string(field))_$(string(typeof(structure)))", &val)
 
     if val != value
-        setfield!(structure, field, val)
+        setproperty!(structure, field, val)
     end
     
     return val != value

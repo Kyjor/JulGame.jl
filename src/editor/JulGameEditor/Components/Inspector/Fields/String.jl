@@ -17,7 +17,7 @@ function show_field(structure::EditableStructure, field::Symbol, value::String)
             end
         end
         
-        setfield!(structure, field, currentTextInTextBox)
+        setproperty!(structure, field, currentTextInTextBox)
     end
     
     return buf != value
