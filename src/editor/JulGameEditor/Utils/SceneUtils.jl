@@ -13,6 +13,8 @@ function load_scene(scenePath::String)
     try
         game = SceneLoaderModule.load_scene_from_editor(scenePath);
     catch e
+        @error "Error loading scene: $(e)"
+        Base.show_backtrace(stderr, catch_backtrace())
     end
 
     return game

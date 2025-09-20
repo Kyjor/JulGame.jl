@@ -349,21 +349,22 @@ module Editor
                                         currentSceneMain = load_scene(currentScenePath, renderer)
                                     catch e
                                         @error "Error loading scene: $(e)"
-                                        Base.show_backtrace(stdout, catch_backtrace())
+                                        Base.show_backtrace(stderr, catch_backtrace())
                                     end
                                 else
                                     try
                                         JulGame.change_scene(String(currentSceneName))
                                     catch e
                                         @error "Error changing scene: $(e)"
-                                        Base.show_backtrace(stdout, catch_backtrace())
+                                        Base.show_backtrace(stderr, catch_backtrace())
                                     end
                                 end
                                 if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
                                     gameCamera = currentSceneMain.scene.camera
                                 else 
+                                    @error "Main not loaded properly, currentSceneMain: $(currentSceneMain)"
                                     currentSceneMain = nothing
-                                    @error "Main not loaded properly"
+                                    Base.show_backtrace(stderr, catch_backtrace())
                                 end
                             end
                         elseif currentDialog[] == "New Scene"
