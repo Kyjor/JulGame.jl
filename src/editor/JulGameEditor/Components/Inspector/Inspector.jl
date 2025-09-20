@@ -11,7 +11,7 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowMinSize, CImGui.ImVec2(0, 0))
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(0, 0))
     CImGui.Begin("Inspector") 
-    if currentSceneMain !== nothing && length(currentSceneMain.selectedEntities)== 1
+    if currentSceneMain !== nothing && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) == 1
         selectedEntity = currentSceneMain.selectedEntities[1]
         display_context_menu = display_inspector_header(selectedEntity)
         display_fields(selectedEntity)
@@ -48,7 +48,7 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
             CImGui.EndPopup()
         end
         CImGui.PopStyleVar()
-    elseif currentSceneMain !== nothing && length(currentSceneMain.selectedEntities) > 1
+    elseif currentSceneMain !== nothing && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 1
         CImGui.Text("Please select only one entity to inspect.")
     end
     CImGui.PopStyleVar(2)

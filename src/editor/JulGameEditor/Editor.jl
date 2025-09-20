@@ -329,12 +329,14 @@ module Editor
                                         currentSceneMain = load_scene(currentScenePath, renderer)
                                     catch e
                                         @error "Error loading scene: $(e)"
+                                        Base.show_backtrace(stdout, catch_backtrace())
                                     end
                                 else
                                     try
                                         JulGame.change_scene(String(currentSceneName))
                                     catch e
                                         @error "Error changing scene: $(e)"
+                                        Base.show_backtrace(stdout, catch_backtrace())
                                     end
                                 end
                                 if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
@@ -687,13 +689,13 @@ module Editor
                                 end
                             end
                             # duplicate selected entity with ctrl+d
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && length(currentSceneMain.selectedEntities) > 0
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0
                                 for entity in currentSceneMain.selectedEntities
                                     JulGame.duplicate(entity)
                                 end
                             end
                             # turn on duplication mode with ctrl+shift+d
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && length(currentSceneMain.selectedEntities) > 0
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0
                                 duplicationMode = !duplicationMode
                                 if duplicationMode
                                     @debug "Duplication mode on"

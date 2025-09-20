@@ -69,7 +69,7 @@ module MainLoopModule
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
 			this.optimizeSpriteRendering = false
-			this.selectedEntities = Union{Entity, UI.UIElement}[]
+			this.selectedEntities = JulGame.Entity[]
 			this.shouldChangeScene = false
 			this.input.main = this
 			this.isGameModeRunningInEditor = false
@@ -395,7 +395,10 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 		if this.scene.entities[i] == entity
 			destroy_entity_components(this, entity)
 			deleteat!(this.scene.entities, i)
-			deleteat!(this.selectedEntities, findfirst(x -> x == entity, this.selectedEntities))
+			entity_index = findfirst(x -> x == entity, this.selectedEntities)
+			if entity_index !== nothing
+				deleteat!(this.selectedEntities, entity_index)
+			end
 			break
 		end
 	end

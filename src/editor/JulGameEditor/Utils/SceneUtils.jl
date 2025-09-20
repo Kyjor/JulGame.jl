@@ -105,6 +105,8 @@ function load_scene(scenePath::String, renderer)
     try
         game = SceneLoaderModule.load_scene_from_editor(scenePath, renderer);
     catch e
+        @error "Failed to load scene from $scenePath: $e"
+        rethrow(e)
     end
 
     return game

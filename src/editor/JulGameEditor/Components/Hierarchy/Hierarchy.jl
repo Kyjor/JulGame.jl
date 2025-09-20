@@ -74,7 +74,7 @@ end
 function handle_childless_entity_selection(entity)
     CImGui.PushID(entity.id)
 
-    selected = length(JulGame.MAIN.selectedEntities) > 0 && entity in JulGame.MAIN.selectedEntities
+    selected = JulGame.MAIN.selectedEntities !== nothing && length(JulGame.MAIN.selectedEntities) > 0 && entity in JulGame.MAIN.selectedEntities
     if CImGui.Selectable(entity.name, selected)
         # clear selection when CTRL is not held
         #(!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)

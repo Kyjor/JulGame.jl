@@ -173,7 +173,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     end
 
     if CImGui.BeginPopup("context")
-        if CImGui.MenuItem("Delete", "", false, length(main.selectedEntities) > 0)
+        if CImGui.MenuItem("Delete", "", false, main.selectedEntities !== nothing && length(main.selectedEntities) > 0)
             for entity in main.selectedEntities
                 JulGame.destroy(entity)
             end
@@ -265,7 +265,7 @@ function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
         
         # get the nearest entity
         if clicked_pos.x >= entity.transform.position.x && clicked_pos.x <= entity.transform.position.x + size.x && clicked_pos.y >= entity.transform.position.y && clicked_pos.y <= entity.transform.position.y + size.y
-            if main.selectedEntities[1] == entity
+            if length(main.selectedEntities) > 0 && main.selectedEntities[1] == entity
                 continue
             end
             return entity
@@ -304,7 +304,7 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
         return
     end
     # if selected entity is nothing, return
-    if length(main.selectedEntities) < 1
+    if main.selectedEntities === nothing || length(main.selectedEntities) < 1
         return
     end
     for entity in main.selectedEntities
