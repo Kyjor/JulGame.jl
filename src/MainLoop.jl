@@ -41,7 +41,7 @@ module MainLoopModule
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
-		selectedEntities::Union{Vector{Entity}, Vector{UI.UIElement}, Nothing}
+		selectedEntities#::Union{Vector{Entity}, Vector{UI.UIElement}, Nothing}
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		testLength::Float64
@@ -69,7 +69,7 @@ module MainLoopModule
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
 			this.optimizeSpriteRendering = false
-			this.selectedEntities = JulGame.Entity[]
+			this.selectedEntities = []
 			this.shouldChangeScene = false
 			this.input.main = this
 			this.isGameModeRunningInEditor = false

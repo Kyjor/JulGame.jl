@@ -31,7 +31,7 @@ function show_hierarchy(currentSceneMain::Union{MainLoop, Nothing})
 
             children = [] # filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
             if length(children) == 0
-                handle_childless_entity_selection(filteredEntities[n])
+                display_selectable_element(filteredEntities[n])
             else
                 #handle_parent_entity_selection(filteredEntities[n], children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal, visible_index)
             end
@@ -46,8 +46,18 @@ function show_hierarchy(currentSceneMain::Union{MainLoop, Nothing})
      
     #region UI Elements
     if currentSceneMain !== nothing && CImGui.CollapsingHeader("UI Elements")
-       # show_ui_elements_hierarchy(currentSceneMain)
+        filteredUIElements = currentSceneMain.scene.uiElements
+        for n = eachindex(filteredUIElements)
+            display_selectable_element(filteredUIElements[n])
+        end
     end
+
+    CImGui.NewLine()
+
+    if currentSceneMain !== nothing && CImGui.CollapsingHeader("Cameras")
+        display_selectable_element(currentSceneMain.scene.camera)
+    end
+
 CImGui.End()
 end
 
@@ -71,28 +81,26 @@ function hasDropConflict(filteredEntities, origin, destination)
     return false
 end
 
-function handle_childless_entity_selection(entity)
-    CImGui.PushID(entity.id)
+function display_selectable_element(element)
+    CImGui.PushID(element.id)
 
-    selected = JulGame.MAIN.selectedEntities !== nothing && length(JulGame.MAIN.selectedEntities) > 0 && entity in JulGame.MAIN.selectedEntities
-    if CImGui.Selectable(entity.name, selected)
-        # clear selection when CTRL is not held
-        #(!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
-        #hierarchyEntitySelections[entityIndex] = (hierarchyEntitySelections[entityIndex][1], true)
-        #unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
-        JulGame.MAIN.selectedEntities = [entity]
+    selected = JulGame.MAIN.selectedEntities !== nothing && length(JulGame.MAIN.selectedEntities) > 0 && element in JulGame.MAIN.selectedEntities
+    if CImGui.Selectable(element.name, selected)
+        # clear selection when CTRL is not held or current selection type is not the same as the entity type
+        if length(JulGame.MAIN.selectedEntities) > 0 && typeof(JulGame.MAIN.selectedEntities[1]) != typeof(element)
+            JulGame.MAIN.selectedEntities = []
+        end
+        if !unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)
+            JulGame.MAIN.selectedEntities = []
+        end
+        push!(JulGame.MAIN.selectedEntities, element)
+        #unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(JulGame.MAIN.selectedEntities, entityIndex)
     end
     
     CImGui.PopID()
 end
 
-function deselect_all_entities(hierarchyEntitySelections)
-    for index in eachindex(hierarchyEntitySelections)
-        hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], false)
-    end
-end
-
-function select_all_elements_in_between(hierarchyEntitySelections, lastSelectedIndex)
+function select_all_elements_in_between(lastSelectedIndex)
     start = 0
     for i in 1:lastSelectedIndex
         if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex

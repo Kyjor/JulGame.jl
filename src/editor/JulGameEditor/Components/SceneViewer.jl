@@ -281,10 +281,11 @@ function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_le
         return
     end
     # if selected entity is nothing, return
-    if main.selectedEntities === nothing || length(main.selectedEntities) == 0
+    if main.selectedEntities === nothing || length(main.selectedEntities) == 0 || main.selectedEntities[1] isa UI.UIElement || main.selectedEntities[1] isa JulGame.CameraModule.Camera
         return
     end
     entity = main.selectedEntities[1]
+
     
     # Scale factor adjusted by zoom level
     scale_factor = 64.0 * zoom_level[]

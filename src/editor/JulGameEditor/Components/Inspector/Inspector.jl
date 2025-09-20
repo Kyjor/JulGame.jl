@@ -1,5 +1,5 @@
 EditableComponent = Union{AnimatorModule.InternalAnimator, ColliderModule.InternalCollider, ShapeModule.InternalShape, RigidbodyModule.InternalRigidbody, SoundSourceModule.InternalSoundSource, SpriteModule.InternalSprite, TransformModule.Transform}
-EditableStructure = Union{Entity, UI.UIElement, EditableComponent}
+EditableStructure = Union{JulGame.CameraModule.Camera, Entity, UI.UIElement, EditableComponent}
 include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Fields"); join=true)))
 include(joinpath(@__DIR__, "..", "EntityContextMenu.jl"))
 

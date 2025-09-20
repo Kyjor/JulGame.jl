@@ -4,6 +4,8 @@ module CameraModule
 
     export Camera
     mutable struct Camera
+        id::String
+        name::String
 		backgroundColor::NTuple{4, Int}
         offset::Vector2f
         position::Vector3f
@@ -19,6 +21,8 @@ module CameraModule
         function Camera(size::Vector2, initialPosition::Vector3f, offset::Vector2f, target)
             this = new()
             
+            this.id = JulGame.generate_uuid()
+            this.name = "Camera"
             this.backgroundColor = (0,0,0, 255)
             this.size = size
             this.position = initialPosition

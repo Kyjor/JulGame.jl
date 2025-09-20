@@ -6,5 +6,6 @@ FieldExclusions = Dict{String, Vector{Symbol}}(
     "InternalShape" => [:parent],
     "InternalSoundSource" => [:isPlaying, :sound, :parent],
     "InternalSprite" => [:parent, :lastRenderedScreenPosition, :lastRenderedScreenSize, :size, :texture],
+    "TextBox" => [:font,:isConstructed, :renderText, :textTexture],
     "Transform" => [:screenPosition, :screenRotation, :screenSize, :parent],
 )
