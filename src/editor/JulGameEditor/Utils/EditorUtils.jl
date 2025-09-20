@@ -652,25 +652,30 @@ function show_entity_context_menu(main, hierarchyEntitySelections, delete_confir
                 action_taken = true
             end
         else
-            entity = main.selectedEntity
-            
-            if entity !== nothing
-                if CImGui.MenuItem("Delete \"$(entity.name)\"")
-                    CImGui.OpenPopup("Delete Single Entity")
-                    action_taken = true
-                end
-                
-                if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
-                    copy = JulGame.duplicate(entity)
-                    main.selectedEntity = copy
-                    action_taken = true
-                end
-                
-                CImGui.Separator()
-                
-                if CImGui.MenuItem("Add Component")
-                    CImGui.OpenPopup("Add Component")
-                    action_taken = true
+            count = 1
+            for entity in selected_entities
+                if entity !== nothing
+                    if CImGui.MenuItem("Delete \"$(entity.name)\"")
+                        CImGui.OpenPopup("Delete Entities")
+                        action_taken = true
+                    end
+                    
+                    if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
+                        copy = JulGame.duplicate(entity)
+                        if count == 1
+                            main.selectedEntities = [copy]
+                        else
+                            push!(main.selectedEntities, copy)
+                        end
+                        action_taken = true
+                    end
+                    
+                    CImGui.Separator()
+                    
+                    if CImGui.MenuItem("Add Component")
+                        CImGui.OpenPopup("Add Component")
+                        action_taken = true
+                    end
                 end
             end
         end
@@ -679,14 +684,17 @@ function show_entity_context_menu(main, hierarchyEntitySelections, delete_confir
     end
     
     # Handle the single entity delete confirmation
-    if CImGui.BeginPopupModal("Delete Single Entity", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
-        entity = main.selectedEntity
-        if entity !== nothing
-            CImGui.Text("Are you sure you want to delete \"$(entity.name)\"?\nThis cannot be undone.\n\n")
+    if CImGui.BeginPopupModal("Delete Entities", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        if length(main.selectedEntities) > 0
+            CImGui.Text("Are you sure you want to delete:")
+            CImGui.Text("$(join(map(entity -> entity.name, main.selectedEntities), ", "))")
+            CImGui.Text("This cannot be undone.\n\n")
             CImGui.NewLine()
             if CImGui.Button("Delete", (120, 0))
-                JulGame.destroy_entity(main, entity)
-                main.selectedEntity = nothing
+                for entity in main.selectedEntities
+                    JulGame.destroy(entity)
+                end
+                main.selectedEntities = []
                 CImGui.CloseCurrentPopup()
             end
             CImGui.SetItemDefaultFocus()

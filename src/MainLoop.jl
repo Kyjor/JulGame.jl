@@ -401,6 +401,14 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 	end
 end
 
+function JulGame.destroy(this::MainLoop, entity::JulGame.Entity)
+	JulGame.destroy_entity(this, entity)
+end
+
+function JulGame.destroy(entity::JulGame.Entity)
+	JulGame.destroy(MAIN, entity)
+end
+
 function JulGame.destroy_entity(entity)
     JulGame.destroy_entity(MAIN, entity)
 end

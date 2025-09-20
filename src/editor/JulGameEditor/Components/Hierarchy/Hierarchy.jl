@@ -74,13 +74,13 @@ end
 function handle_childless_entity_selection(entity)
     CImGui.PushID(entity.id)
 
-    selected = JulGame.MAIN.selectedEntity !== nothing && JulGame.MAIN.selectedEntity == entity
+    selected = length(JulGame.MAIN.selectedEntities) > 0 && entity in JulGame.MAIN.selectedEntities
     if CImGui.Selectable(entity.name, selected)
         # clear selection when CTRL is not held
         #(!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
         #hierarchyEntitySelections[entityIndex] = (hierarchyEntitySelections[entityIndex][1], true)
         #unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
-        JulGame.MAIN.selectedEntity = entity
+        JulGame.MAIN.selectedEntities = [entity]
     end
     
     CImGui.PopID()

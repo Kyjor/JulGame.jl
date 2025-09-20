@@ -687,19 +687,21 @@ module Editor
                                 end
                             end
                             # duplicate selected entity with ctrl+d
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                                JulGame.duplicate(currentSceneMain.selectedEntity)
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && length(currentSceneMain.selectedEntities) > 0
+                                for entity in currentSceneMain.selectedEntities
+                                    JulGame.duplicate(entity)
+                                end
                             end
                             # turn on duplication mode with ctrl+shift+d
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && length(currentSceneMain.selectedEntities) > 0
                                 duplicationMode = !duplicationMode
                                 if duplicationMode
                                     @debug "Duplication mode on"
-                                    copy = JulGame.duplicate(currentSceneMain.selectedEntity)
-                                    currentSceneMain.selectedEntity = copy
+                                    copy = JulGame.duplicate(currentSceneMain.selectedEntities[1])
+                                    currentSceneMain.selectedEntities[1] = copy
                                 else
                                     @debug "Duplication mode off"
-                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntities[1])
                                 end
                             end
                             

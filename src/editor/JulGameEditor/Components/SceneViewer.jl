@@ -173,9 +173,10 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     end
 
     if CImGui.BeginPopup("context")
-        if CImGui.MenuItem("Delete", "", false, main.selectedEntity !== nothing)
-            println("Delete selected entity")
-            JulGame.destroy_entity(main, main.selectedEntity)
+        if CImGui.MenuItem("Delete", "", false, length(main.selectedEntities) > 0)
+            for entity in main.selectedEntities
+                JulGame.destroy(entity)
+            end
         end
         CImGui.EndPopup()
     end
@@ -289,7 +290,6 @@ function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_le
     scale_factor = 64.0 * zoom_level[]
     
     # draw rect around selected entity
-    # size = selectedEntity.collider != C_NULL ? JulGame.get_size(selectedEntity.collider) : selectedEntity.transform.scale
     CImGui.AddRect(draw_list, 
                   ImVec2(canvas_p0.x + (entity.transform.position.x * scale_factor) - camPos.x, 
                          canvas_p0.y + entity.transform.position.y * scale_factor - camPos.y), 
@@ -304,25 +304,25 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
         return
     end
     # if selected entity is nothing, return
-    if main.selectedEntity === nothing
+    if length(main.selectedEntities) < 1
         return
     end
-    entity = main.selectedEntity
-    
-    # Same logic as in get_nearest_entity: camPos is already scaled by zoom_level
-    # mouse_pos_in_canvas_zoom_adjusted is already adjusted for zoom
-    scale_unit_factor = 64.0
-    mouse_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/scale_unit_factor, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/scale_unit_factor)
-    
-    if unsafe_load(CImGui.GetIO().KeyCtrl)
-        mouse_pos = ImVec2(floor(mouse_pos.x), floor(mouse_pos.y))
+    for entity in main.selectedEntities
+        # Same logic as in get_nearest_entity: camPos is already scaled by zoom_level
+        # mouse_pos_in_canvas_zoom_adjusted is already adjusted for zoom
+        scale_unit_factor = 64.0
+        mouse_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/scale_unit_factor, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/scale_unit_factor)
+        
+        if unsafe_load(CImGui.GetIO().KeyCtrl)
+            mouse_pos = ImVec2(floor(mouse_pos.x), floor(mouse_pos.y))
+        end
+        # get the selected entity position
+        entity_pos = entity.transform.position
+        # get the difference between the mouse position and the entity position
+        diff = ImVec2(mouse_pos.x - entity_pos.x, mouse_pos.y - entity_pos.y)
+        # update the entity position
+        entity.transform.position = Math.Vector2f(entity_pos.x + diff.x, entity_pos.y + diff.y)
     end
-    # get the selected entity position
-    entity_pos = entity.transform.position
-    # get the difference between the mouse position and the entity position
-    diff = ImVec2(mouse_pos.x - entity_pos.x, mouse_pos.y - entity_pos.y)
-    # update the entity position
-    entity.transform.position = Math.Vector2f(entity_pos.x + diff.x, entity_pos.y + diff.y)
 end
 
 # New function to draw debug panel

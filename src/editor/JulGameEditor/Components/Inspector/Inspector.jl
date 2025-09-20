@@ -11,9 +11,10 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowMinSize, CImGui.ImVec2(0, 0))
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(0, 0))
     CImGui.Begin("Inspector") 
-    if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing
-        display_context_menu = display_inspector_header(currentSceneMain.selectedEntity)
-        display_fields(currentSceneMain.selectedEntity)
+    if currentSceneMain !== nothing && length(currentSceneMain.selectedEntities)== 1
+        selectedEntity = currentSceneMain.selectedEntities[1]
+        display_context_menu = display_inspector_header(selectedEntity)
+        display_fields(selectedEntity)
         
         # Left-click context menu for adding components
         # Check if left mouse button is clicked in the Inspector window
@@ -27,7 +28,7 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
         # # Define the popup content
         CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, CImGui.ImVec2(5, 5))
         if CImGui.BeginPopup(INSPECTOR_LEFT_CLICK_MENU)
-            show_entity_context_menu_inspector(currentSceneMain.selectedEntity)
+            show_entity_context_menu_inspector(selectedEntity)
             CImGui.EndPopup()
         end
         if CImGui.BeginPopup(CONFIRMATION_DIALOG)
@@ -47,6 +48,8 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
             CImGui.EndPopup()
         end
         CImGui.PopStyleVar()
+    elseif currentSceneMain !== nothing && length(currentSceneMain.selectedEntities) > 1
+        CImGui.Text("Please select only one entity to inspect.")
     end
     CImGui.PopStyleVar(2)
     CImGui.End()
