@@ -27,6 +27,9 @@ module Editor
     include(joinpath(@__DIR__, "Components", "Hierarchy", "Hierarchy.jl"))
     include(joinpath(@__DIR__, "Components", "ImportFile", "ImportFile.jl"))
     
+    # Include FileExplorer components
+    include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerIntegration.jl"))
+    
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
     
@@ -60,6 +63,14 @@ module Editor
         
         style_imGui()
         showDemoWindow = false
+        
+        # Initialize the comprehensive file explorer system
+        try
+            initialize_file_explorer_system()
+            setup_editor_integration()
+        catch e
+            @error "Failed to initialize file explorer system: $e"
+        end
         ##############################
         # Project variables
         currentSceneMain = nothing
@@ -234,7 +245,17 @@ module Editor
                     CodeEditorModule.show_code_editor()
 
                     # Show the file explorer window if it's open
-                    FileExplorerWindow.show_window(show_file_explorer)
+                    # Use the new comprehensive file explorer
+                    show_file_explorer_window(show_file_explorer, renderer)
+                    
+                    # Optimize file explorer performance periodically
+                    if testFrameCount % 300 == 0  # Every ~5 seconds at 60fps
+                        try
+                            optimize_file_explorer_performance()
+                        catch e
+                            @debug "Error during performance optimization: $e"
+                        end
+                    end
 
                     try 
                         @cstatic begin
@@ -868,6 +889,13 @@ module Editor
         finally
             #TODO: fix these: ImGui_ImplSDLRenderer2_Shutdown();
 
+            # Cleanup file explorer system
+            try
+                cleanup_file_explorer_system()
+            catch e
+                @error "Error during file explorer cleanup: $e"
+            end
+            
             CImGui.DestroyContext(ctx)
             SDL2.SDL_DestroyTexture(sceneTexture)
             SDL2.SDL_DestroyTexture(gameTexture)

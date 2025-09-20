@@ -74,6 +74,16 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     CImGui.InvisibleButton("canvas", canvas_sz, CImGui.ImGuiButtonFlags_MouseButtonLeft | CImGui.ImGuiButtonFlags_MouseButtonRight)
     is_hovered = CImGui.IsItemHovered()  # Hovered
     is_active = CImGui.IsItemActive()  # Held
+    
+    # Handle drag-and-drop from file explorer (if available)
+    try
+        if isdefined(Main, :handle_scene_viewer_drop_target)
+            Main.handle_scene_viewer_drop_target()
+        end
+    catch e
+        # Silently ignore if drag-drop integration not available
+        @debug "Drag-drop integration not available: $e"
+    end
     # origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
     # scrolling[] = ImVec2(min(scrolling[].x, 0.0), min(scrolling[].y, 0.0))
     # scrolling[] = ImVec2(max(scrolling[].x, -canvas_max.x), max(scrolling[].y, -canvas_max.y))
