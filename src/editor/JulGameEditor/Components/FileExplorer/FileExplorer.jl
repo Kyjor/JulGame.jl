@@ -119,8 +119,13 @@ function initialize_file_explorer()
     
     # Set initial path to project base if available
     explorer = JulGame.EditorState["file_explorer"]
-    if explorer.current_path == "" && JulGame.BasePath != ""
-        explorer.current_path = abspath(JulGame.BasePath)
+    if explorer.current_path == ""
+        if JulGame.BasePath != ""
+            explorer.current_path = abspath(JulGame.BasePath)
+        else
+            # Fallback to current working directory
+            explorer.current_path = pwd()
+        end
         push!(explorer.path_history, explorer.current_path)
         explorer.history_index = 1
     end
@@ -227,8 +232,8 @@ function load_thumbnail_preview(filepath::String, renderer, size::Float32 = 64.0
     # Check cache first
     if haskey(explorer.preview_cache, filepath)
         texture, cached_size, timestamp = explorer.preview_cache[filepath]
-        # Check if file was modified since cache
-        if stat(filepath).mtime <= timestamp && texture != C_NULL
+        # Check if file was modified since cache (convert mtime to milliseconds)
+        if UInt64(round(stat(filepath).mtime * 1000)) <= timestamp && texture != C_NULL
             return texture, cached_size
         else
             # Cleanup old texture
@@ -249,7 +254,7 @@ function load_thumbnail_preview(filepath::String, renderer, size::Float32 = 64.0
             
             # Cache the preview
             if should_cache_preview(filepath)
-                explorer.preview_cache[filepath] = (texture, scaled_size, UInt64(time()))
+                explorer.preview_cache[filepath] = (texture, scaled_size, UInt64(round(time() * 1000)))
             end
             
             return texture, scaled_size

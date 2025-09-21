@@ -332,11 +332,11 @@ end
 function show_quick_navigation_buttons()
     # Common project directories
     project_dirs = [
-        ("📁 Assets", joinpath(JulGame.BasePath, "assets")),
-        ("🖼️ Images", joinpath(JulGame.BasePath, "assets", "images")),
-        ("🔊 Audio", joinpath(JulGame.BasePath, "assets", "audio")),
-        ("📜 Scripts", joinpath(JulGame.BasePath, "scripts")),
-        ("🎬 Scenes", joinpath(JulGame.BasePath, "scenes"))
+        ("Assets", joinpath(JulGame.BasePath, "assets")),
+        ("Images", joinpath(JulGame.BasePath, "assets", "images")),
+        ("Audio", joinpath(JulGame.BasePath, "assets", "audio")),
+        ("Scripts", joinpath(JulGame.BasePath, "scripts")),
+        ("Scenes", joinpath(JulGame.BasePath, "scenes"))
     ]
     
     for (label, path) in project_dirs
@@ -406,10 +406,9 @@ function show_asset_suggestions(context::Symbol = :general)
     
     for (i, path) in enumerate(suggestions)
         file_type = get_file_type(path)
-        icon = get_file_type_icon(file_type)
         display_name = basename(path)
         
-        if CImGui.Selectable("$icon $display_name##suggestion_$i")
+        if CImGui.Selectable("$display_name##suggestion_$i")
             navigate_to_path(dirname(path))
             explorer = JulGame.EditorState["file_explorer"]
             empty!(explorer.selected_items)

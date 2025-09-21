@@ -425,7 +425,22 @@ end
 function show_file_list_panel(renderer)
     explorer = JulGame.EditorState["file_explorer"]
     
+    # Debug info
+    if explorer.current_path == ""
+        CImGui.TextColored((1.0, 0.5, 0.0, 1.0), "Current path is empty!")
+        CImGui.Text("BasePath: $(JulGame.BasePath)")
+        return
+    elseif !isdir(explorer.current_path)
+        CImGui.TextColored((1.0, 0.5, 0.0, 1.0), "Current path is not a directory!")
+        CImGui.Text("Path: $(explorer.current_path)")
+        return
+    end
+    
     items = get_filtered_and_sorted_items(explorer.current_path)
+    
+    # Debug info
+    CImGui.Text("Current path: $(explorer.current_path)")
+    CImGui.Text("Found $(length(items)) items")
     
     if isempty(items)
         CImGui.TextColored((0.6, 0.6, 0.6, 1.0), "No items to display")
@@ -436,19 +451,10 @@ function show_file_list_panel(renderer)
     item_height = explorer.show_previews ? explorer.preview_size + 40.0 : 20.0
     items_per_row = explorer.show_previews ? max(1, Int(floor(CImGui.GetContentRegionAvail().x / (explorer.preview_size + 20.0)))) : 1
     
-    # Virtual scrolling for performance
-    # clipper = CImGui.ImGuiListClipper()
-    # CImGui.Begin(clipper, length(items))
-    
-    # while CImGui.Step(clipper)
-    #     for i in (clipper.DisplayStart + 1):(clipper.DisplayEnd)
-    #         if i <= length(items)
-    #             show_file_item(items[i], renderer, i)
-    #         end
-    #     end
-    # end
-    
-    # CImGui.End(clipper)
+    # Display items (simplified without virtual scrolling for now)
+    for (i, item) in enumerate(items)
+        show_file_item(item, renderer, i)
+    end
     
     # Handle drag and drop for scene integration
     handle_file_list_drag_drop()

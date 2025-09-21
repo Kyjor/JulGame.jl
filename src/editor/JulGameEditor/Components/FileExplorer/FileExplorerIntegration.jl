@@ -228,7 +228,7 @@ function optimize_file_explorer_performance()
         return
     end
     
-    current_time = UInt64(time())
+    current_time = UInt64(round(time() * 1000))
     cache_lifetime = 300_000  # 5 minutes in milliseconds
     
     # Clean up old preview cache entries

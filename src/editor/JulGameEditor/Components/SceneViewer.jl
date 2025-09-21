@@ -299,7 +299,9 @@ function highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_le
     
     # Scale factor adjusted by zoom level
     scale_factor = 64.0 * zoom_level[]
-    
+    if entity === nothing
+        return
+    end
     # draw rect around selected entity
     CImGui.AddRect(draw_list, 
                   ImVec2(canvas_p0.x + (entity.transform.position.x * scale_factor) - camPos.x, 
