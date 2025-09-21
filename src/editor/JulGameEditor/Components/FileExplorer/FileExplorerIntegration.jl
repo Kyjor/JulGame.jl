@@ -123,21 +123,21 @@ This creates the necessary connections between file explorer and other systems.
 """
 function setup_editor_integration()
     # Make drag-drop functions available globally for SceneViewer integration
-    if !isdefined(Main, :handle_scene_viewer_drop_target)
-        Main.handle_scene_viewer_drop_target = handle_scene_viewer_drop_target
+    if !haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
+        JulGame.EditorState["handle_scene_viewer_drop_target"] = handle_scene_viewer_drop_target
     end
     
-    if !isdefined(Main, :handle_hierarchy_drop_target)
-        Main.handle_hierarchy_drop_target = handle_hierarchy_drop_target
+    if !haskey(JulGame.EditorState, "handle_hierarchy_drop_target")
+        JulGame.EditorState["handle_hierarchy_drop_target"] = handle_hierarchy_drop_target
     end
     
-    if !isdefined(Main, :handle_inspector_drop_target)
-        Main.handle_inspector_drop_target = handle_inspector_drop_target
+    if !haskey(JulGame.EditorState, "handle_inspector_drop_target")
+        JulGame.EditorState["handle_inspector_drop_target"] = handle_inspector_drop_target
     end
     
     # Make file explorer functions available for menu integration
-    if !isdefined(Main, :show_file_explorer_window)
-        Main.show_file_explorer_window = show_file_explorer_window
+    if !haskey(JulGame.EditorState, "show_file_explorer_window")
+        JulGame.EditorState["show_file_explorer_window"] = show_file_explorer_window
     end
 end
 
