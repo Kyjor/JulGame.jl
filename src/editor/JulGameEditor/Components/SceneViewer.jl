@@ -75,14 +75,18 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     is_hovered = CImGui.IsItemHovered()  # Hovered
     is_active = CImGui.IsItemActive()  # Held
     
-    # Handle drag-and-drop from file explorer (if available)
+    # Handle drag-and-drop from file explorer (if available) - must be called immediately after the button
     try
         if haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
-            JulGame.EditorState["handle_scene_viewer_drop_target"]()
+            drop_handled = JulGame.EditorState["handle_scene_viewer_drop_target"]()
+            if drop_handled
+                @info "Successfully handled drag-drop in scene viewer"
+            end
+        else
+            @debug "handle_scene_viewer_drop_target not found in EditorState"
         end
     catch e
-        # Silently ignore if drag-drop integration not available
-        @debug "Drag-drop integration not available: $e"
+        @error "Error in drag-drop integration: $e"
     end
     # origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
     # scrolling[] = ImVec2(min(scrolling[].x, 0.0), min(scrolling[].y, 0.0))

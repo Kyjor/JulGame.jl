@@ -25,6 +25,8 @@ function show_file_explorer_window(show_file_explorer::Ref{Bool}, renderer)
         return
     end
     
+    @info "FileExplorer window is being shown"
+    
     # Initialize if needed
     initialize_file_explorer()
     explorer = JulGame.EditorState["file_explorer"]
@@ -441,6 +443,7 @@ function show_file_list_panel(renderer)
     # Debug info
     CImGui.Text("Current path: $(explorer.current_path)")
     CImGui.Text("Found $(length(items)) items")
+    @info "FileExplorer: Current path = $(explorer.current_path), Found $(length(items)) items"
     
     if isempty(items)
         CImGui.TextColored((0.6, 0.6, 0.6, 1.0), "No items to display")
@@ -464,6 +467,7 @@ end
     Individual file item display with preview and metadata
 """
 function show_file_item(filepath::String, renderer, index::Int)
+    @info "Showing file item: $filepath"
     explorer = JulGame.EditorState["file_explorer"]
     
     file_type = get_file_type(filepath)
@@ -479,7 +483,7 @@ function show_file_item(filepath::String, renderer, index::Int)
     item_width = explorer.show_previews ? explorer.preview_size + 10.0 : CImGui.GetContentRegionAvail().x
     item_height = explorer.show_previews ? explorer.preview_size + 40.0 : 20.0
     
-    if CImGui.BeginChild("Item_$index", ImVec2(item_width, item_height), false)
+    if CImGui.BeginChild("Item_$index", ImVec2(item_width, item_height), true)
         
         # Preview thumbnail
         if explorer.show_previews && file_type in [:image, :audio]
@@ -513,20 +517,22 @@ function show_file_item(filepath::String, renderer, index::Int)
             CImGui.EndPopup()
         end
         
-        # Drag source for scene integration
-        if CImGui.BeginDragDropSource()
-            # Set payload (following existing FileExplorerWindow pattern)
-            payload_bytes = Vector{UInt8}(filepath)
-            payload_ptr = pointer(payload_bytes)
-            payload_size = length(payload_bytes)
-            
-            CImGui.SetDragDropPayload("FILE_PATH", payload_ptr, payload_size)
-            CImGui.Text("Moving: $filename")
-            CImGui.EndDragDropSource()
-        end
     end
     
     CImGui.EndChild()
+    
+    # Drag source for scene integration - must be after EndChild()
+    if CImGui.BeginDragDropSource()
+        @info "Starting drag operation for file: $filepath"
+        # Set payload using the constant from DragDropIntegration
+        payload_bytes = Vector{UInt8}(filepath)
+        payload_ptr = pointer(payload_bytes)
+        payload_size = length(payload_bytes)
+        
+        CImGui.SetDragDropPayload("FILE_PATH", payload_ptr, payload_size)
+        CImGui.Text("Dragging: $filename")
+        CImGui.EndDragDropSource()
+    end
     
     if is_selected
         CImGui.PopStyleColor()

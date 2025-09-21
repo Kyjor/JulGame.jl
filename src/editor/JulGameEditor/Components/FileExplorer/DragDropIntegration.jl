@@ -88,8 +88,11 @@ function handle_scene_viewer_drop_target()::Bool
         return false
     end
     
+    @debug "Scene viewer drop target activated"
+    
     current_scene_main = get(JulGame.EditorState, "current_scene_main", nothing)
     if current_scene_main === nothing
+        @debug "No current scene available for drop"
         CImGui.EndDragDropTarget()
         return false
     end
@@ -97,7 +100,9 @@ function handle_scene_viewer_drop_target()::Bool
     # Handle single file drops
     single_file_payload = CImGui.AcceptDragDropPayload(DRAG_DROP_FILE_PATH)
     if single_file_payload != C_NULL
+        @info "Received drag-drop payload for single file"
         filepath = extract_file_path_from_payload(single_file_payload)
+        @info "Extracted filepath: $filepath"
         if filepath != ""
             create_scene_entity_from_file(filepath, current_scene_main)
             CImGui.EndDragDropTarget()
