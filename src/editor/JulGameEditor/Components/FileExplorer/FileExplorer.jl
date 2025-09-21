@@ -263,7 +263,8 @@ end
     Navigation system with breadcrumbs and history
 """
 
-function navigate_to_path(path::String)
+function navigate_to_path(path::Union{String, SubString{String}})
+    path = string(path)
     explorer = JulGame.EditorState["file_explorer"]
     
     if isdir(path)

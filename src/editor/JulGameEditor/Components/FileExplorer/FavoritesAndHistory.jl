@@ -236,7 +236,7 @@ function show_quick_access_toolbar()
     explorer = JulGame.EditorState["file_explorer"]
     
     # Favorites dropdown
-    if CImGui.Button("⭐ Favorites")
+    if CImGui.Button("Favorites")
         CImGui.OpenPopup("FavoritesPopup")
     end
     
@@ -248,7 +248,7 @@ function show_quick_access_toolbar()
     CImGui.SameLine()
     
     # Recent files dropdown
-    if CImGui.Button("🕒 Recent")
+    if CImGui.Button("Recent")
         CImGui.OpenPopup("RecentPopup")
     end
     
@@ -355,11 +355,11 @@ end
 
 function add_favorites_context_menu_items(filepath::String)
     if is_favorite(filepath)
-        if CImGui.MenuItem("⭐ Remove from Favorites")
+        if CImGui.MenuItem("Remove from Favorites")
             remove_from_favorites(filepath)
         end
     else
-        if CImGui.MenuItem("⭐ Add to Favorites")
+        if CImGui.MenuItem("Add to Favorites")
             add_to_favorites(filepath)
         end
     end

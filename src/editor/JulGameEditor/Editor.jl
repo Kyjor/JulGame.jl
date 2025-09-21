@@ -29,6 +29,7 @@ module Editor
     
     # Include FileExplorer components
     include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerIntegration.jl"))
+    include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerUI.jl"))
     
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))

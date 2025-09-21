@@ -107,7 +107,7 @@ function show_navigation_toolbar(renderer)
     CImGui.SameLine()
     available_width = CImGui.GetContentRegionAvail().x
     button_width = 30.0
-    spacing = CImGui.GetStyle().ItemSpacing.x
+    spacing = unsafe_load(CImGui.GetStyle().ItemSpacing.x)
     total_button_width = button_width * 4 + spacing * 3
     
     if available_width > total_button_width
@@ -327,10 +327,10 @@ function show_main_content_area(renderer)
     main_width = available_width - tree_width - metadata_width
     
     if tree_width > 0
-        main_width -= CImGui.GetStyle().ItemSpacing.x
+        main_width -= unsafe_load(CImGui.GetStyle().ItemSpacing.x)
     end
     if metadata_width > 0
-        main_width -= CImGui.GetStyle().ItemSpacing.x
+        main_width -= unsafe_load(CImGui.GetStyle().ItemSpacing.x)
     end
     
     # Tree view panel
@@ -437,18 +437,18 @@ function show_file_list_panel(renderer)
     items_per_row = explorer.show_previews ? max(1, Int(floor(CImGui.GetContentRegionAvail().x / (explorer.preview_size + 20.0)))) : 1
     
     # Virtual scrolling for performance
-    clipper = CImGui.ImGuiListClipper()
-    CImGui.Begin(clipper, length(items))
+    # clipper = CImGui.ImGuiListClipper()
+    # CImGui.Begin(clipper, length(items))
     
-    while CImGui.Step(clipper)
-        for i in (clipper.DisplayStart + 1):(clipper.DisplayEnd)
-            if i <= length(items)
-                show_file_item(items[i], renderer, i)
-            end
-        end
-    end
+    # while CImGui.Step(clipper)
+    #     for i in (clipper.DisplayStart + 1):(clipper.DisplayEnd)
+    #         if i <= length(items)
+    #             show_file_item(items[i], renderer, i)
+    #         end
+    #     end
+    # end
     
-    CImGui.End(clipper)
+    # CImGui.End(clipper)
     
     # Handle drag and drop for scene integration
     handle_file_list_drag_drop()
