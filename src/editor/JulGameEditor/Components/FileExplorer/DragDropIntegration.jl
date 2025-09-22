@@ -97,7 +97,7 @@ function handle_scene_viewer_drop_target()::Bool
             filepath = extract_file_path_from_payload(single_file_payload)
             @debug "Extracted filepath: $filepath"
             if filepath != ""
-                create_scene_entity_from_file(filepath, current_scene_main)
+            create_scene_entity_from_file(filepath, current_scene_main, JulGame.InputModule.get_mouse_position_in_world_space())
                 CImGui.EndDragDropTarget()
                 return true
             end
@@ -108,7 +108,7 @@ function handle_scene_viewer_drop_target()::Bool
         if multi_file_payload != C_NULL
             filepaths = extract_multiple_file_paths_from_payload(multi_file_payload)
             if !isempty(filepaths)
-                create_multiple_scene_entities(filepaths, current_scene_main)
+                create_multiple_scene_entities(filepaths, current_scene_main, JulGame.InputModule.get_mouse_position_in_world_space())
                 CImGui.EndDragDropTarget()
                 return true
             end
@@ -139,7 +139,7 @@ function handle_hierarchy_drop_target(target_entity = nothing)::Bool
     if single_file_payload != C_NULL
         filepath = extract_file_path_from_payload(single_file_payload)
         if filepath != ""
-            entity = create_scene_entity_from_file(filepath, current_scene_main)
+            entity = create_scene_entity_from_file(filepath, current_scene_main, JulGame.InputModule.get_mouse_position_in_world_space())
             
             # If dropped onto another entity, make it a child
             if target_entity !== nothing && entity !== nothing
@@ -184,7 +184,7 @@ end
     Entity creation from dropped files (extends ImportFile patterns)
 """
 
-function create_scene_entity_from_file(filepath::String, current_scene_main, position::Math.Vector2 = Math.Vector2(0.0, 0.0))
+function create_scene_entity_from_file(filepath::String, current_scene_main, position = Math.Vector2f(0.0, 0.0))
     file_type = get_file_type(filepath)
     relative_path = get_asset_relative_path(filepath)
     entity_name = generate_entity_name_from_file(filepath)
@@ -192,23 +192,20 @@ function create_scene_entity_from_file(filepath::String, current_scene_main, pos
     @info "file_type: $file_type"
     @info "relative_path: $relative_path"
     @info "entity_name: $entity_name"
+    @info "position: $position"
     try
         entity = nothing
         
         if file_type == :image
             # Use existing ImportFile function
             entity = create_entity_with_sprite(relative_path, entity_name)
-            entity.transform.position = position
             push!(current_scene_main.scene.entities, entity)
             @debug "Created sprite entity: $(entity_name)"
-            
         elseif file_type == :audio
             # Use existing ImportFile function
             entity = create_entity_with_sound(relative_path, entity_name)
-            entity.transform.position = position
             push!(current_scene_main.scene.entities, entity)
             @debug "Created sound entity: $(entity_name)"
-            
         elseif file_type == :script
             # Create entity with script component
             entity = JulGame.Entity(entity_name)
@@ -218,12 +215,12 @@ function create_scene_entity_from_file(filepath::String, current_scene_main, pos
         elseif file_type == :scene
             # TODO: Implement scene loading/merging
             @debug "Scene file dropped: $filepath"
-            
         else
             @warn "Unsupported file type for entity creation: $file_type"
             return nothing
         end
-        
+
+        entity.transform.position = Math.Vector3f(position.x, position.y, 0.0)
         return entity
         
     catch e
@@ -232,11 +229,11 @@ function create_scene_entity_from_file(filepath::String, current_scene_main, pos
     end
 end
 
-function create_multiple_scene_entities(filepaths::Vector{String}, current_scene_main)
+function create_multiple_scene_entities(filepaths::Vector{String}, current_scene_main, position::Math.Vector2 = Math.Vector2(0.0, 0.0))
     created_entities = []
     
     for filepath in filepaths
-        entity = create_scene_entity_from_file(filepath, current_scene_main)
+        entity = create_scene_entity_from_file(filepath, current_scene_main, position)
         if entity !== nothing
             push!(created_entities, entity)
         end

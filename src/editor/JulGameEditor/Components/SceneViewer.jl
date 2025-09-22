@@ -65,7 +65,20 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
                      text)
     end
 
-    
+    mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - canvas_p0.x, unsafe_load(io.MousePos).y - canvas_p0.y)
+    # Calculate mouse position adjusted for zoom - this is the mouse position in the zoomed canvas coordinate system
+    mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / zoom_level[]), floor(mouse_pos_in_canvas.y / zoom_level[]))
+    # Add first and second point
+    # Add debug panel in the top right corner
+    draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos_in_canvas_zoom_adjusted, camera, main, zoom_level)
+    # Pan
+    mouse_threshold_for_pan = -1.0 
+    mouse_drag_movement = ImVec2(0, 0)
+    scale_unit_factor = 64.0 * zoom_level[]
+    old_zoom = zoom_level[]
+    scale_factor = 64.0 * old_zoom
+    mouse_world_pos_x = (mouse_pos_in_canvas.x + (camera.position.x * scale_factor)) / scale_factor
+    mouse_world_pos_y = (mouse_pos_in_canvas.y + (camera.position.y * scale_factor)) / scale_factor
 
     # Draw border around actual image that is being edited TODO: Fix this
     # CImGui.AddRect(draw_list, ImVec2(canvas_p0.x + (my_tex_w * zoom_level[]), canvas_p0.y + (my_tex_h * zoom_level[])), ImVec2(canvas_p0.x, canvas_p0.y), IM_COL32(255, 255, 255, 255))
@@ -85,7 +98,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
                 filepath = extract_file_path_from_payload(single_file_payload)
                 @debug "Extracted filepath: $filepath"
                 if filepath != ""
-                    create_scene_entity_from_file(filepath, main)
+                    create_scene_entity_from_file(filepath, main, Math.Vector2f(mouse_world_pos_x, mouse_world_pos_y))
                 end
             end
             
@@ -94,7 +107,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
             if multi_file_payload != C_NULL
                 filepaths = extract_multiple_file_paths_from_payload(multi_file_payload)
                 if !isempty(filepaths)
-                    create_multiple_scene_entities(filepaths, main)
+                    create_multiple_scene_entities(filepaths, main, Math.Vector2f(mouse_world_pos_x, mouse_world_pos_y))
                 end
             end
         
@@ -102,38 +115,8 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         end
     end
 
-    # try
-    #     if haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
-    #         CImGui.Text("Drop here")
-    #         drop_handler = JulGame.EditorState["handle_scene_viewer_drop_target"]
-    #         if drop_handler !== nothing
-    #             drop_handled = drop_handler()
-    #             if drop_handled
-    #                 @info "Successfully handled drag-drop in scene viewer"
-    #             end
-    #         end
-    #     else
-    #         @debug "handle_scene_viewer_drop_target not found in EditorState"
-    #     end
-    # catch e
-    #     @error "Error in drag-drop integration: $e"
-    #     Base.show_backtrace(stderr, catch_backtrace())
-    # end
-    # origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
-    # scrolling[] = ImVec2(min(scrolling[].x, 0.0), min(scrolling[].y, 0.0))
-    # scrolling[] = ImVec2(max(scrolling[].x, -canvas_max.x), max(scrolling[].y, -canvas_max.y))
-    mouse_pos_in_canvas = ImVec2(unsafe_load(io.MousePos).x - canvas_p0.x, unsafe_load(io.MousePos).y - canvas_p0.y)
 
-    # Calculate mouse position adjusted for zoom - this is the mouse position in the zoomed canvas coordinate system
-    mouse_pos_in_canvas_zoom_adjusted = ImVec2(floor(mouse_pos_in_canvas.x / zoom_level[]), floor(mouse_pos_in_canvas.y / zoom_level[]))
-    #rounded = ImVec2(round(mouse_pos_in_canvas_zoom_adjusted.x/ zoom_level[]) * zoom_level[], round(mouse_pos_in_canvas_zoom_adjusted.y/ zoom_level[]) * zoom_level[])
-    # Add first and second point
-    # Add debug panel in the top right corner
-    draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos_in_canvas_zoom_adjusted, camera, main, zoom_level)
-    # Pan
-    mouse_threshold_for_pan = -1.0 
-    mouse_drag_movement = ImVec2(0, 0)
-    scale_unit_factor = 64.0 * zoom_level[]
+    
    
     if is_active && CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Right, mouse_threshold_for_pan)
         scrolling[] = ImVec2(scrolling[].x + unsafe_load(io.MouseDelta).x, scrolling[].y + unsafe_load(io.MouseDelta).y)
@@ -152,10 +135,6 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     # Zoom
     if unsafe_load(io.KeyCtrl)
         # Get mouse position in world space before zoom
-        old_zoom = zoom_level[]
-        scale_factor = 64.0 * old_zoom
-        mouse_world_pos_x = (mouse_pos_in_canvas.x + (camera.position.x * scale_factor)) / scale_factor
-        mouse_world_pos_y = (mouse_pos_in_canvas.y + (camera.position.y * scale_factor)) / scale_factor
 
         # Update zoom level
         zoom_level[] += unsafe_load(io.MouseWheel) * 0.1

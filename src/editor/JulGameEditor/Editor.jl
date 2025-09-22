@@ -17,6 +17,7 @@ module Editor
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
 
+    include(joinpath(@__DIR__, "Constants.jl"))
     include(joinpath("..","..","utils","Macros.jl"))
 
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "ImGuiSDLBackend"); join=true)))
@@ -30,6 +31,8 @@ module Editor
     # Include FileExplorer components
     include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerIntegration.jl"))
     include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerUI.jl"))
+    
+    include(joinpath(@__DIR__, "Components", "SharedDialogs", "SharedDialogs.jl"))
     
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
@@ -575,6 +578,12 @@ module Editor
                         handle_dropped_files(renderer, currentSceneMain)
                     catch e
                         handle_editor_exceptions("Dropped files:", latest_exceptions, e, is_test_mode)
+                    end
+                    
+                    try
+                        display_confirmation_dialog()
+                    catch e
+                        handle_editor_exceptions("Shared dialogs:", latest_exceptions, e, is_test_mode)
                     end
                     
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)

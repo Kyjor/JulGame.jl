@@ -246,7 +246,7 @@ function show_search_and_filter_bar()
     CImGui.SameLine()
     
     # Clear search button
-    if CImGui.SmallButton("✖")
+    if CImGui.SmallButton("x")
         explorer.search_query[] = ""
     end
     
@@ -348,7 +348,7 @@ function show_main_content_area(renderer)
     CImGui.EndChild()
     
     # Metadata panel
-    if explorer.show_metadata_panel
+    if true #explorer.show_metadata_panel
         CImGui.SameLine()
         CImGui.BeginChild("MetadataPanel", ImVec2(metadata_width, 0), true)
         show_metadata_panel()
@@ -652,13 +652,9 @@ function show_file_context_menu(filepath::String)
         # Direct scene integration
         try
             if file_type == :image
-                entity = create_entity_with_sprite(relpath(filepath, JulGame.BasePath), replace(splitext(filename)[1], " " => "_"))
-                push!(current_scene_main.scene.entities, entity)
-                @info "Added entity with sprite: $(entity.name)"
+                create_scene_entity_from_file(filepath, current_scene_main)
             elseif file_type == :audio
-                entity = create_entity_with_sound(relpath(filepath, JulGame.BasePath), replace(splitext(filename)[1], " " => "_"))
-                push!(current_scene_main.scene.entities, entity)
-                @info "Added entity with sound: $(entity.name)"
+                create_scene_entity_from_file(filepath, current_scene_main)
             end
         catch e
             @error "Failed to add file to scene: $e"
@@ -673,17 +669,22 @@ function show_file_context_menu(filepath::String)
     end
     
     if CImGui.MenuItem("Delete")
-        # TODO: Implement delete confirmation
+        @info "Deleting file: $filepath"
+        JulGame.EditorState[DELETE_CONFIRMATION] = () -> rm(filepath; force=true)
     end
     
     if CImGui.MenuItem("Copy Path")
-        # TODO: Implement clipboard copy
+        @info "Copying path: $filepath"
+        CImGui.SetClipboardText(filepath)
     end
     
     CImGui.Separator()
     
-    if CImGui.MenuItem("Show in System Explorer")
-        # TODO: Implement system file explorer opening
+    if CImGui.MenuItem("Open")
+        open_file_in_system_explorer(filepath)
+    end
+    if CImGui.MenuItem("Reveal in File Manager")
+        reveal_in_file_manager(filepath)
     end
 end
 
@@ -713,10 +714,44 @@ function handle_file_list_drag_drop()
                 push!(explorer.selected_items, dest_path)
             catch e
                 @error "Error moving item: $e"
-                # TODO: Show error dialog
+                #JulGame.EditorState[ERROR_DIALOG] = () -> show_error_dialog("Error moving item: $e")
             end
         end
         CImGui.EndDragDropTarget()
+    end
+end
+
+function open_file_in_system_explorer(filepath::String)
+    if isfile(filepath)
+        if Sys.iswindows()
+            Base.run(`explorer $filepath`)
+        elseif Sys.isapple()
+            Base.run(`open $filepath`)
+        else
+            Base.run(`xdg-open $filepath`)
+        end
+    end
+end
+
+function reveal_in_file_manager(filepath::String)
+    if isfile(filepath) || isdir(filepath)
+        if Sys.iswindows()
+            path = replace(filepath, "/" => "\\")
+            if isfile(filepath)
+                Base.run(`explorer /select,$path`)
+            else
+                Base.run(`explorer $path`)
+            end
+        elseif Sys.isapple()
+            if isfile(filepath)
+                Base.run(`/usr/bin/open -R $filepath`)
+            else
+                Base.run(`/usr/bin/open $filepath`)
+            end
+        else
+            dir = isdir(filepath) ? filepath : dirname(filepath)
+            Base.run(`xdg-open $dir`)
+        end
     end
 end
 

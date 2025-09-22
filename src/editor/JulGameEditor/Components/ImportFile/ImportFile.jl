@@ -628,7 +628,7 @@ end
 
 Show the file import dialog. Returns true if dialog is still active.
 """
-function show_file_import_dialog(renderer, current_scene_main=nothing)
+function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_asset_manager=false)
     # Initialize if needed
     initialize_import_dialog()
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
