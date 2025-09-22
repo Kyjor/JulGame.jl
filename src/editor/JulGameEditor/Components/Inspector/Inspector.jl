@@ -13,8 +13,11 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
     CImGui.Begin("Inspector") 
     if currentSceneMain !== nothing && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) == 1
         selectedEntity = currentSceneMain.selectedEntities[1]
-        display_context_menu = display_inspector_header(selectedEntity)
-        display_fields(selectedEntity)
+        display_context_menu = 0
+        if selectedEntity !== nothing
+            display_context_menu = display_inspector_header(selectedEntity)
+            display_fields(selectedEntity)
+        end
         
         # Left-click context menu for adding components
         # Check if left mouse button is clicked in the Inspector window

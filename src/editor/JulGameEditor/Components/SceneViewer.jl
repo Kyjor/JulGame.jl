@@ -76,22 +76,54 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     is_active = CImGui.IsItemActive()  # Held
     
     # Handle drag-and-drop from file explorer (if available) - must be called immediately after the button
-    try
-        if haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
-            drop_handler = JulGame.EditorState["handle_scene_viewer_drop_target"]
-            if drop_handler !== nothing
-                drop_handled = drop_handler()
-                if drop_handled
-                    @info "Successfully handled drag-drop in scene viewer"
-                end
+    if main !== nothing
+    #CImGui.Text("Drop here")
+    if CImGui.BeginDragDropTarget()
+        # Handle single file drops
+        single_file_payload = CImGui.AcceptDragDropPayload("FILE_PATH")
+        if single_file_payload != C_NULL
+            @debug "Received drag-drop payload for single file"
+            filepath = extract_file_path_from_payload(single_file_payload)
+            @debug "Extracted filepath: $filepath"
+            if filepath != ""
+                create_scene_entity_from_file(filepath, main)
+                CImGui.EndDragDropTarget()
+                return true
             end
-        else
-            @debug "handle_scene_viewer_drop_target not found in EditorState"
         end
-    catch e
-        @error "Error in drag-drop integration: $e"
-        Base.show_backtrace(stderr, catch_backtrace())
+        
+        # Handle multiple file drops
+        multi_file_payload = CImGui.AcceptDragDropPayload("MULTIPLE_FILES")
+        if multi_file_payload != C_NULL
+            filepaths = extract_multiple_file_paths_from_payload(multi_file_payload)
+            if !isempty(filepaths)
+                create_multiple_scene_entities(filepaths, main)
+                CImGui.EndDragDropTarget()
+                return true
+            end
+        end
+    
+        CImGui.EndDragDropTarget()
     end
+    end
+
+    # try
+    #     if haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
+    #         CImGui.Text("Drop here")
+    #         drop_handler = JulGame.EditorState["handle_scene_viewer_drop_target"]
+    #         if drop_handler !== nothing
+    #             drop_handled = drop_handler()
+    #             if drop_handled
+    #                 @info "Successfully handled drag-drop in scene viewer"
+    #             end
+    #         end
+    #     else
+    #         @debug "handle_scene_viewer_drop_target not found in EditorState"
+    #     end
+    # catch e
+    #     @error "Error in drag-drop integration: $e"
+    #     Base.show_backtrace(stderr, catch_backtrace())
+    # end
     # origin = ImVec2(canvas_p0.x + scrolling[].x, canvas_p0.y + scrolling[].y)  # Lock scrolled origin
     # scrolling[] = ImVec2(min(scrolling[].x, 0.0), min(scrolling[].y, 0.0))
     # scrolling[] = ImVec2(max(scrolling[].x, -canvas_max.x), max(scrolling[].y, -canvas_max.y))

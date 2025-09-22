@@ -82,45 +82,40 @@ end
 """
 
 function handle_scene_viewer_drop_target()::Bool
-    if !CImGui.BeginDragDropTarget()
-        @debug "Scene viewer: No drag-drop target active"
-        return false
-    end
-    
     @debug "Scene viewer drop target activated"
-    
     current_scene_main = get(JulGame.EditorState, "current_scene_main", nothing)
     if current_scene_main === nothing
         @debug "No current scene available for drop"
-        CImGui.EndDragDropTarget()
         return false
     end
-    
-    # Handle single file drops
-    single_file_payload = CImGui.AcceptDragDropPayload(DRAG_DROP_FILE_PATH)
-    if single_file_payload != C_NULL
-        @debug "Received drag-drop payload for single file"
-        filepath = extract_file_path_from_payload(single_file_payload)
-        @debug "Extracted filepath: $filepath"
-        if filepath != ""
-            create_scene_entity_from_file(filepath, current_scene_main)
-            CImGui.EndDragDropTarget()
-            return true
+
+    if CImGui.BeginDragDropTarget()
+        # Handle single file drops
+        single_file_payload = CImGui.AcceptDragDropPayload(DRAG_DROP_FILE_PATH)
+        if single_file_payload != C_NULL
+            @debug "Received drag-drop payload for single file"
+            filepath = extract_file_path_from_payload(single_file_payload)
+            @debug "Extracted filepath: $filepath"
+            if filepath != ""
+                create_scene_entity_from_file(filepath, current_scene_main)
+                CImGui.EndDragDropTarget()
+                return true
+            end
         end
-    end
-    
-    # Handle multiple file drops
-    multi_file_payload = CImGui.AcceptDragDropPayload(DRAG_DROP_MULTIPLE_FILES)
-    if multi_file_payload != C_NULL
-        filepaths = extract_multiple_file_paths_from_payload(multi_file_payload)
-        if !isempty(filepaths)
-            create_multiple_scene_entities(filepaths, current_scene_main)
-            CImGui.EndDragDropTarget()
-            return true
+        
+        # Handle multiple file drops
+        multi_file_payload = CImGui.AcceptDragDropPayload(DRAG_DROP_MULTIPLE_FILES)
+        if multi_file_payload != C_NULL
+            filepaths = extract_multiple_file_paths_from_payload(multi_file_payload)
+            if !isempty(filepaths)
+                create_multiple_scene_entities(filepaths, current_scene_main)
+                CImGui.EndDragDropTarget()
+                return true
+            end
         end
-    end
     
     CImGui.EndDragDropTarget()
+    end
     return false
 end
 

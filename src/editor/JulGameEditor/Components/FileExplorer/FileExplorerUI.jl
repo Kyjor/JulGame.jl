@@ -444,7 +444,7 @@ function show_file_list_panel(renderer)
     
     CImGui.Text("Drop here")
     if CImGui.BeginDragDropTarget()
-        payload = CImGui.AcceptDragDropPayload("TEST")
+        payload = CImGui.AcceptDragDropPayload("FILE_PATH")
         if payload != C_NULL
             n = unsafe_load(Ptr{Cint}(payload.Data))
             println("Dropped $n!")
@@ -645,13 +645,6 @@ function show_file_context_menu(filepath::String)
     
     CImGui.Text("$filename")
     CImGui.Separator()
-    
-    # Import to project (using existing ImportFile workflow)
-    if file_type in [:image, :audio] && CImGui.MenuItem("Import to Project")
-        # Trigger ImportFile dialog for this specific file
-        JulGame.EditorState["dropped_files"] = [filepath]
-        JulGame.EditorState["import_queue_index"] = 1
-    end
     
     # Add to scene directly (if supported)
     current_scene_main = get(JulGame.EditorState, "current_scene_main", nothing)
