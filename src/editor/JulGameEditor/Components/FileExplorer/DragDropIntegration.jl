@@ -114,7 +114,7 @@ function handle_scene_viewer_drop_target()::Bool
             end
         end
     
-    CImGui.EndDragDropTarget()
+        CImGui.EndDragDropTarget()
     end
     return false
 end
@@ -184,23 +184,28 @@ end
     Entity creation from dropped files (extends ImportFile patterns)
 """
 
-function create_scene_entity_from_file(filepath::String, current_scene_main)
+function create_scene_entity_from_file(filepath::String, current_scene_main, position::Math.Vector2 = Math.Vector2(0.0, 0.0))
     file_type = get_file_type(filepath)
     relative_path = get_asset_relative_path(filepath)
     entity_name = generate_entity_name_from_file(filepath)
-    
+    @info "Creating scene entity from file: $filepath"
+    @info "file_type: $file_type"
+    @info "relative_path: $relative_path"
+    @info "entity_name: $entity_name"
     try
         entity = nothing
         
         if file_type == :image
             # Use existing ImportFile function
             entity = create_entity_with_sprite(relative_path, entity_name)
+            entity.transform.position = position
             push!(current_scene_main.scene.entities, entity)
             @debug "Created sprite entity: $(entity_name)"
             
         elseif file_type == :audio
             # Use existing ImportFile function
             entity = create_entity_with_sound(relative_path, entity_name)
+            entity.transform.position = position
             push!(current_scene_main.scene.entities, entity)
             @debug "Created sound entity: $(entity_name)"
             
@@ -210,7 +215,6 @@ function create_scene_entity_from_file(filepath::String, current_scene_main)
             # TODO: Add script component when available
             push!(current_scene_main.scene.entities, entity)
             @debug "Created script entity: $(entity_name)"
-            
         elseif file_type == :scene
             # TODO: Implement scene loading/merging
             @debug "Scene file dropped: $filepath"
@@ -381,7 +385,30 @@ function get_asset_relative_path(filepath::String)::String
     if startswith(relative_path, "assets\\")
         relative_path = replace(relative_path, "assets\\" => "")
     end
-    
+    if startswith(relative_path, "images/")
+        relative_path = replace(relative_path, "images/" => "")
+    end
+    if startswith(relative_path, "images\\")
+        relative_path = replace(relative_path, "images\\" => "")
+    end
+    if startswith(relative_path, "audio/")
+        relative_path = replace(relative_path, "audio/" => "")
+    end
+    if startswith(relative_path, "audio\\")
+        relative_path = replace(relative_path, "audio\\" => "")
+    end
+    if startswith(relative_path, "scripts/")
+        relative_path = replace(relative_path, "scripts/" => "")
+    end
+    if startswith(relative_path, "scripts\\")
+        relative_path = replace(relative_path, "scripts\\" => "")
+    end
+    if startswith(relative_path, "scenes/")
+        relative_path = replace(relative_path, "scenes/" => "")
+    end
+    if startswith(relative_path, "scenes\\")
+        relative_path = replace(relative_path, "scenes\\" => "")
+    end
     return relative_path
 end
 
