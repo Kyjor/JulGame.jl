@@ -98,7 +98,11 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
                 filepath = extract_file_path_from_payload(single_file_payload)
                 @debug "Extracted filepath: $filepath"
                 if filepath != ""
-                    create_scene_entity_from_file(filepath, main, Math.Vector2f(mouse_world_pos_x, mouse_world_pos_y))
+                    JulGame.EditorState["is_from_scene_viewer"] = true
+                    JulGame.EditorState["dropped_files"] = [filepath]
+                    JulGame.EditorState["mouse_world_pos"] = Math.Vector2f(mouse_world_pos_x, mouse_world_pos_y)
+                    JulGame.EditorState["mouse_pos_in_canvas"] = Math.Vector2f(mouse_pos_in_canvas.x, mouse_pos_in_canvas.y)
+                    #create_scene_entity_from_file(filepath, main, Math.Vector2f(mouse_world_pos_x, mouse_world_pos_y))
                 end
             end
             

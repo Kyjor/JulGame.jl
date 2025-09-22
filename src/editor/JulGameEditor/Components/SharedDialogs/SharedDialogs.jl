@@ -21,3 +21,14 @@ function display_confirmation_dialog()
         CImGui.EndPopup()
     end
 end
+
+function add_element_to_scene_dialog()
+    if get(JulGame.EditorState, ADD_ELEMENT_TO_SCENE, nothing) !== nothing
+        CImGui.OpenPopup(ADD_ELEMENT_TO_SCENE_DIALOG)
+    end
+
+    if CImGui.BeginPopup(ADD_ELEMENT_TO_SCENE_DIALOG)
+        CImGui.Text("Add element to scene")
+        CImGui.EndPopup()
+    end
+end

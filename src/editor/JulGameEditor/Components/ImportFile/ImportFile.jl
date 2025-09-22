@@ -122,14 +122,15 @@ function load_image_preview(filepath::String, renderer)
         end
         
         # Calculate preview size (max 200x200, maintaining aspect ratio)
+        min_size = 64.0
         max_size = 200.0
         aspect_ratio = width / height
         
         if width > height
-            preview_width = min(width, max_size)
+            preview_width = min(width, max_size, min_size)
             preview_height = preview_width / aspect_ratio
         else
-            preview_height = min(height, max_size)
+            preview_height = min(height, max_size, min_size)
             preview_width = preview_height * aspect_ratio
         end
         
@@ -415,7 +416,7 @@ end
 
 Add the imported file to the current scene as an entity or UI element.
 """
-function add_imported_file_to_scene(file_path::String, current_scene_main)
+function add_imported_file_to_scene(file_path::String, current_scene_main, position = Math.Vector2f(0.0, 0.0))
     dialog = JulGame.EditorState["file_import_dialog"]
     
     if current_scene_main === nothing
@@ -444,12 +445,14 @@ function add_imported_file_to_scene(file_path::String, current_scene_main)
             if dialog.create_as_ui_element
                 # Create ScreenButton UI element
                 screen_button = create_ui_screenbutton(relative_path, entity_name)
+                screen_button.position = Math.Vector2(round(Int, position.x), round(Int, position.y))
                 push!(current_scene_main.scene.uiElements, screen_button)
                 @info "Added ScreenButton UI element: $(entity_name)"
             else
                 # Create entity with sprite
                 entity = create_entity_with_sprite(relative_path, entity_name)
                 push!(current_scene_main.scene.entities, entity)
+                entity.transform.position = Math.Vector3f(position.x, position.y, 0.0)
                 @info "Added entity with sprite: $(entity_name)"
             end
         elseif dialog.is_audio
@@ -468,6 +471,7 @@ function add_imported_file_to_scene(file_path::String, current_scene_main)
             end
             entity = create_entity_with_sound(relative_path, entity_name)
             push!(current_scene_main.scene.entities, entity)
+            entity.transform.position = Math.Vector3f(position.x, position.y, 0.0)
             @info "Added entity with sound source: $(entity_name)"
         end
     catch e
@@ -612,6 +616,9 @@ function cleanup_import_queue()
     
     # Clear the dropped files and reset queue
     JulGame.EditorState["dropped_files"] = nothing
+    JulGame.EditorState["is_from_scene_viewer"] = false
+    JulGame.EditorState["mouse_world_pos"] = Math.Vector2f(0.0, 0.0)
+    JulGame.EditorState["mouse_pos_in_canvas"] = Math.Vector2f(0.0, 0.0)
     JulGame.EditorState["import_queue_index"] = 1
     
     dialog = JulGame.EditorState["file_import_dialog"]
@@ -624,11 +631,11 @@ function cleanup_import_queue()
 end
 
 """
-    show_file_import_dialog(renderer, current_scene_main=nothing) -> Bool
+    show_file_import_dialog(renderer, current_scene_main=nothing, is_from_scene_viewer=false) -> Bool
 
 Show the file import dialog. Returns true if dialog is still active.
 """
-function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_asset_manager=false)
+function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_scene_viewer=false)
     # Initialize if needed
     initialize_import_dialog()
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
@@ -751,26 +758,28 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
         end
         
         # Destination folder selection
-        CImGui.Text("Destination folder:")
-        folders = get_project_folders()
-        current_folder_index = findfirst(x -> x == dialog.destination_folder, folders)
-        if current_folder_index === nothing
-            current_folder_index = 1
-            dialog.destination_folder = folders[1]
-        end
-        
-        folder_names = [folder for folder in folders]
-        selected_index = Ref(Int32(current_folder_index - 1))  # ImGui uses 0-based indexing and expects Int32
-        
-        CImGui.SetNextItemWidth(250)
-        if CImGui.Combo("##destination", selected_index, folder_names, length(folder_names))
-            dialog.destination_folder = folders[selected_index[] + 1]
-            # Clear conflict error when destination changes
-            dialog.conflict_error = ""
+        if !is_from_scene_viewer
+            CImGui.Text("Destination folder:")
+            folders = get_project_folders()
+            current_folder_index = findfirst(x -> x == dialog.destination_folder, folders)
+            if current_folder_index === nothing
+                current_folder_index = 1
+                dialog.destination_folder = folders[1]
+            end
+            
+            folder_names = [folder for folder in folders]
+            selected_index = Ref(Int32(current_folder_index - 1))  # ImGui uses 0-based indexing and expects Int32
+            
+            CImGui.SetNextItemWidth(250)
+            if CImGui.Combo("##destination", selected_index, folder_names, length(folder_names))
+                dialog.destination_folder = folders[selected_index[] + 1]
+                # Clear conflict error when destination changes
+                dialog.conflict_error = ""
+            end
         end
         
         CImGui.SameLine()
-        if CImGui.Button("Browse...")
+        if !is_from_scene_viewer && CImGui.Button("Browse...")
             selected_path = show_file_browser_dialog("Select Destination Folder", JulGame.BasePath)
             if selected_path != ""
                 # Convert to relative path if possible
@@ -790,7 +799,7 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
         
         # Create a proper buffer for InputText
         buf = "$(dialog.new_filename[])" * "\0"^256
-        if CImGui.InputText("##filename", buf, length(buf))
+        if !is_from_scene_viewer && CImGui.InputText("##filename", buf, length(buf))
             # Extract the string up to the first null character
             current_text = ""
             for character_index in eachindex(buf)
@@ -805,9 +814,13 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
             # Clear conflict error when filename changes
             dialog.conflict_error = ""
         end
+        if is_from_scene_viewer
+            CImGui.SameLine()
+            CImGui.Text(dialog.new_filename[])
+        end
         
         # Show conflict error if any
-        if dialog.conflict_error != ""
+        if !is_from_scene_viewer && dialog.conflict_error != ""
             CImGui.TextColored((1.0, 0.3, 0.3, 1.0), "Error: $(dialog.conflict_error)")
         end
         
@@ -820,11 +833,11 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
             CImGui.TextColored((0.8, 0.6, 0.0, 1.0), "No scene loaded - cannot add to scene")
             CImGui.Checkbox("Add to Scene", Ref(false))  # Disabled checkbox
         else
-            if CImGui.Checkbox("Add to Scene", Ref(dialog.add_to_scene))
+            if !is_from_scene_viewer && CImGui.Checkbox("Add to Scene", Ref(dialog.add_to_scene))
                 dialog.add_to_scene = !dialog.add_to_scene
             end
             
-            if dialog.add_to_scene
+            if dialog.add_to_scene || is_from_scene_viewer
                 CImGui.Indent()
                 
                 if dialog.is_image
@@ -854,14 +867,14 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
         
         # Buttons
         # Check for conflicts before enabling import button
-        has_conflict = check_filename_conflict()
+        has_conflict = check_filename_conflict() && !is_from_scene_viewer
         
         if has_conflict
             # Disabled button style for conflicts
             CImGui.PushStyleVar(CImGui.ImGuiStyleVar_Alpha, unsafe_load(CImGui.GetStyle().Alpha) * 0.5)
             CImGui.Button("Import", ImVec2(100, 0))  # Disabled button
             CImGui.PopStyleVar()
-        else
+        elseif !is_from_scene_viewer
             # Normal import button
             CImGui.PushStyleColor(CImGui.ImGuiCol_Button, (0.2, 0.7, 0.2, 1.0))
             CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.3, 0.8, 0.3, 1.0))
@@ -886,7 +899,37 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
                     end
                 end
             end
-            
+
+            CImGui.PopStyleColor(3)
+        end
+
+        if is_from_scene_viewer && CImGui.Button("Add to Scene", ImVec2(100, 0))
+            CImGui.PushStyleColor(CImGui.ImGuiCol_Button, (0.2, 0.7, 0.2, 1.0))
+            CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.3, 0.8, 0.3, 1.0))
+            CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.9, 0.4, 1.0))
+            wpos = get(JulGame.EditorState, "mouse_world_pos", Math.Vector2f(0.0, 0.0))
+            mpos = get(JulGame.EditorState, "mouse_pos_in_canvas", Math.Vector2f(0.0, 0.0))
+            pos = if dialog.create_as_ui_element
+                mpos
+            else
+                wpos
+            end
+            add_imported_file_to_scene(dialog.current_file, current_scene_main, pos)
+
+            deleteat!(dropped_files, queue_index)
+                    
+            # Check if there are more files
+            if queue_index <= length(dropped_files)
+                # More files to process, set up next file
+                dialog.is_open = false  # This will trigger setup_next_file on next call
+            else
+                # No more files, cleanup
+                cleanup_import_queue()
+                CImGui.CloseCurrentPopup()
+                CImGui.PopStyleColor(3)
+                CImGui.EndPopup()
+                return false
+            end
             CImGui.PopStyleColor(3)
         end
         
@@ -929,7 +972,7 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_a
         CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.8, 0.3, 0.3, 1.0))
         CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.9, 0.4, 0.4, 1.0))
         
-        if CImGui.Button("Cancel All", ImVec2(100, 0))
+        if length(dropped_files) > 1 && CImGui.Button("Cancel All", ImVec2(100, 0))
             cleanup_import_queue()
             CImGui.CloseCurrentPopup()
             CImGui.PopStyleColor(3)
@@ -954,12 +997,13 @@ This should be called where the current file drop handling is done.
 """
 function handle_dropped_files(renderer, current_scene_main=nothing)
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
+    is_from_scene_viewer = get(JulGame.EditorState, "is_from_scene_viewer", false)
     if dropped_files !== nothing && !isempty(dropped_files)
         # Store current scene in EditorState for access during import
         if current_scene_main !== nothing
             JulGame.EditorState["current_scene_main"] = current_scene_main
         end
-        return show_file_import_dialog(renderer, current_scene_main)
+        return show_file_import_dialog(renderer, current_scene_main, is_from_scene_viewer)
     end
     return false
 end
