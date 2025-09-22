@@ -101,7 +101,7 @@ function load_image_preview(filepath::String, renderer)
         # Load the image surface
         surface = SDL2.IMG_Load(filepath)
         if surface == C_NULL
-            @warn "Failed to load image surface: $(filepath)"
+            #@warn "Failed to load image surface: $(filepath)"
             return C_NULL, ImVec2(0, 0)
         end
         

@@ -204,17 +204,17 @@ end
 
 function get_file_type_icon(file_type::Symbol)::String
     icons = Dict(
-        :directory => "📁",
-        :image => "🖼️",
-        :audio => "🔊",
-        :script => "📜",
-        :scene => "🎬",
-        :font => "🔤",
-        :model => "🎲",
-        :config => "⚙️",
-        :unknown => "📄"
+        :directory => "Dir",
+        :image => "Image",
+        :audio => "Audio",
+        :script => "Script",
+        :scene => "Scene",
+        :font => "Font",
+        :model => "Model",
+        :config => "Config",
+        :unknown => "Unknown"
     )
-    return get(icons, file_type, "📄")
+    return get(icons, file_type, "Unknown")
 end
 
 """

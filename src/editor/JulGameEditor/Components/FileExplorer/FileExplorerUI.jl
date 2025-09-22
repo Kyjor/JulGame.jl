@@ -13,6 +13,7 @@ using CImGui: ImVec2, ImVec4, IM_COL32
 using JulGame: SDL2
 
 include("FileExplorer.jl")
+include("DragDropIntegration.jl")
 
 """
     show_file_explorer_window(show_file_explorer::Ref{Bool}, renderer)
@@ -24,8 +25,6 @@ function show_file_explorer_window(show_file_explorer::Ref{Bool}, renderer)
     if !show_file_explorer[]
         return
     end
-    
-    @info "FileExplorer window is being shown"
     
     # Initialize if needed
     initialize_file_explorer()
@@ -66,10 +65,10 @@ function show_navigation_toolbar(renderer)
     # Back/Forward buttons (matching ImportFile button styling)
     if !can_navigate_back()
         CImGui.PushStyleVar(CImGui.ImGuiStyleVar_Alpha, unsafe_load(CImGui.GetStyle().Alpha) * 0.5)
-        CImGui.Button("◀", ImVec2(30, 0))
+        CImGui.Button("Back", ImVec2(30, 0))
         CImGui.PopStyleVar()
     else
-        if CImGui.Button("◀", ImVec2(30, 0))
+        if CImGui.Button("Back", ImVec2(30, 0))
             navigate_back()
         end
     end
@@ -78,10 +77,10 @@ function show_navigation_toolbar(renderer)
     
     if !can_navigate_forward()
         CImGui.PushStyleVar(CImGui.ImGuiStyleVar_Alpha, unsafe_load(CImGui.GetStyle().Alpha) * 0.5)
-        CImGui.Button("▶", ImVec2(30, 0))
+        CImGui.Button("Forward", ImVec2(30, 0))
         CImGui.PopStyleVar()
     else
-        if CImGui.Button("▶", ImVec2(30, 0))
+        if CImGui.Button("Forward", ImVec2(30, 0))
             navigate_forward()
         end
     end
@@ -89,14 +88,14 @@ function show_navigation_toolbar(renderer)
     CImGui.SameLine()
     
     # Up button
-    if CImGui.Button("⬆", ImVec2(30, 0))
+    if CImGui.Button("Up", ImVec2(30, 0))
         navigate_up()
     end
     
     CImGui.SameLine()
     
     # Home button (go to project root)
-    if CImGui.Button("🏠", ImVec2(30, 0))
+    if CImGui.Button("Home", ImVec2(30, 0))
         navigate_to_path(JulGame.BasePath)
     end
     
@@ -123,7 +122,7 @@ function show_navigation_toolbar(renderer)
         CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.9, 0.4, 1.0))
     end
     
-    if CImGui.Button("🌳", ImVec2(button_width, 0))
+    if CImGui.Button("Show Tree", ImVec2(button_width, 0))
         explorer.show_tree_view = !explorer.show_tree_view
     end
     
@@ -140,7 +139,7 @@ function show_navigation_toolbar(renderer)
         CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.9, 0.4, 1.0))
     end
     
-    if CImGui.Button("👁", ImVec2(button_width, 0))
+    if CImGui.Button("Show Previews", ImVec2(button_width, 0))
         explorer.show_previews = !explorer.show_previews
     end
     
@@ -157,7 +156,7 @@ function show_navigation_toolbar(renderer)
         CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.9, 0.4, 1.0))
     end
     
-    if CImGui.Button("ℹ", ImVec2(button_width, 0))
+    if CImGui.Button("Show Metadata", ImVec2(button_width, 0))
         explorer.show_metadata_panel = !explorer.show_metadata_panel
     end
     
@@ -168,7 +167,7 @@ function show_navigation_toolbar(renderer)
     CImGui.SameLine()
     
     # Settings/Options button
-    if CImGui.Button("⚙", ImVec2(button_width, 0))
+    if CImGui.Button("Options", ImVec2(button_width, 0))
         CImGui.OpenPopup("Explorer Options")
     end
     
@@ -273,7 +272,7 @@ function show_search_and_filter_bar()
     CImGui.SameLine()
     
     # Sort direction
-    sort_icon = explorer.sort_ascending ? "⬆" : "⬇"
+    sort_icon = explorer.sort_ascending ? "Ascending" : "Descending"
     if CImGui.SmallButton(sort_icon)
         explorer.sort_ascending = !explorer.sort_ascending
     end
@@ -441,10 +440,18 @@ function show_file_list_panel(renderer)
     items = get_filtered_and_sorted_items(explorer.current_path)
     
     # Debug info
-    CImGui.Text("Current path: $(explorer.current_path)")
     CImGui.Text("Found $(length(items)) items")
-    @info "FileExplorer: Current path = $(explorer.current_path), Found $(length(items)) items"
     
+    CImGui.Text("Drop here")
+    if CImGui.BeginDragDropTarget()
+        payload = CImGui.AcceptDragDropPayload("TEST")
+        if payload != C_NULL
+            n = unsafe_load(Ptr{Cint}(payload.Data))
+            println("Dropped $n!")
+        end
+        CImGui.EndDragDropTarget()
+    end
+
     if isempty(items)
         CImGui.TextColored((0.6, 0.6, 0.6, 1.0), "No items to display")
         return
@@ -467,7 +474,6 @@ end
     Individual file item display with preview and metadata
 """
 function show_file_item(filepath::String, renderer, index::Int)
-    @info "Showing file item: $filepath"
     explorer = JulGame.EditorState["file_explorer"]
     
     file_type = get_file_type(filepath)
@@ -482,8 +488,10 @@ function show_file_item(filepath::String, renderer, index::Int)
     # Calculate item size
     item_width = explorer.show_previews ? explorer.preview_size + 10.0 : CImGui.GetContentRegionAvail().x
     item_height = explorer.show_previews ? explorer.preview_size + 40.0 : 20.0
-    
     if CImGui.BeginChild("Item_$index", ImVec2(item_width, item_height), true)
+        
+        # Drag source wrapping the file elements
+        is_multi_select = length(explorer.selected_items) > 1 && filepath in explorer.selected_items
         
         # Preview thumbnail
         if explorer.show_previews && file_type in [:image, :audio]
@@ -494,17 +502,24 @@ function show_file_item(filepath::String, renderer, index::Int)
             color = get_file_type_color(file_type)
             CImGui.TextColored(color, icon)
         end
+        if CImGui.IsItemClicked()
+            handle_item_selection(filepath)
+        elseif CImGui.IsItemHovered() && CImGui.IsMouseDoubleClicked(0)
+            handle_item_double_click(filepath)
+        end
         
-        # Filename (with text wrapping for long names)
+
         if explorer.show_previews
-            CImGui.TextWrapped(filename)
+            if CImGui.Selectable(filename)
+            end
+            begin_file_drag_source(filepath, is_multi_select)
         else
             CImGui.SameLine()
             color = get_file_type_color(file_type)
             CImGui.TextColored(color, filename)
         end
         
-        # Handle item interaction
+        # Handle item interaction (must be after all content is drawn)
         if CImGui.IsItemClicked()
             handle_item_selection(filepath)
         elseif CImGui.IsItemHovered() && CImGui.IsMouseDoubleClicked(0)
@@ -520,20 +535,6 @@ function show_file_item(filepath::String, renderer, index::Int)
     end
     
     CImGui.EndChild()
-    
-    # Drag source for scene integration - must be after EndChild()
-    if CImGui.BeginDragDropSource()
-        @info "Starting drag operation for file: $filepath"
-        # Set payload using the constant from DragDropIntegration
-        payload_bytes = Vector{UInt8}(filepath)
-        payload_ptr = pointer(payload_bytes)
-        payload_size = length(payload_bytes)
-        
-        CImGui.SetDragDropPayload("FILE_PATH", payload_ptr, payload_size)
-        CImGui.Text("Dragging: $filename")
-        CImGui.EndDragDropSource()
-    end
-    
     if is_selected
         CImGui.PopStyleColor()
     end

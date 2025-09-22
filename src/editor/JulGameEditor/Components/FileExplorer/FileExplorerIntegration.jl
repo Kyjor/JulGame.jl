@@ -8,8 +8,8 @@ This file ensures all components work together seamlessly with ImportFile.jl pat
 
 # Load all FileExplorer components in the correct order
 include("FileExplorer.jl")
+include("DragDropIntegration.jl")  # Load this early so UI can use it
 include("BatchOperations.jl")
-include("DragDropIntegration.jl")
 include("AssetMetadata.jl")
 include("FavoritesAndHistory.jl")
 
@@ -122,23 +122,31 @@ Set up integration points with the existing editor components.
 This creates the necessary connections between file explorer and other systems.
 """
 function setup_editor_integration()
+    @info "Setting up file explorer editor integration..."
+    
     # Make drag-drop functions available globally for SceneViewer integration
     if !haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
         JulGame.EditorState["handle_scene_viewer_drop_target"] = handle_scene_viewer_drop_target
+        @info "Registered handle_scene_viewer_drop_target"
     end
     
     if !haskey(JulGame.EditorState, "handle_hierarchy_drop_target")
         JulGame.EditorState["handle_hierarchy_drop_target"] = handle_hierarchy_drop_target
+        @info "Registered handle_hierarchy_drop_target"
     end
     
     if !haskey(JulGame.EditorState, "handle_inspector_drop_target")
         JulGame.EditorState["handle_inspector_drop_target"] = handle_inspector_drop_target
+        @info "Registered handle_inspector_drop_target"
     end
     
     # Make file explorer functions available for menu integration
     if !haskey(JulGame.EditorState, "show_file_explorer_window")
         JulGame.EditorState["show_file_explorer_window"] = show_file_explorer_window
+        @info "Registered show_file_explorer_window"
     end
+    
+    @info "File explorer editor integration setup complete"
 end
 
 """

@@ -27,56 +27,54 @@ const DRAG_DROP_ASSET_REFERENCE = "ASSET_REFERENCE"
     Enhanced drag source handling for file explorer items
 """
 
-function begin_file_drag_source(filepath::String, is_multi_select::Bool = false)::Bool
-    if !CImGui.BeginDragDropSource()
-        return false
-    end
-    
-    explorer = JulGame.EditorState["file_explorer"]
-    
-    if is_multi_select && length(explorer.selected_items) > 1
-        # Multi-file drag
-        selected_files = collect(explorer.selected_items)
-        files_data = join(selected_files, "\n")
-        payload_bytes = Vector{UInt8}(files_data)
+function begin_file_drag_source(filepath::String, is_multi_select::Bool = false)
+    if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+        @debug "Begin file drag source: $filepath"
+        explorer = JulGame.EditorState["file_explorer"]
         
-        CImGui.SetDragDropPayload(DRAG_DROP_MULTIPLE_FILES, pointer(payload_bytes), length(payload_bytes))
-        
-        # Visual feedback for multiple files
-        CImGui.Text("Moving $(length(selected_files)) items:")
-        for (i, file) in enumerate(selected_files)
-            if i > 5  # Show max 5 files
-                CImGui.Text("... and $(length(selected_files) - 5) more")
-                break
+        if is_multi_select && length(explorer.selected_items) > 1
+            # Multi-file drag
+            selected_files = collect(explorer.selected_items)
+            files_data = join(selected_files, "\n")
+            payload_bytes = Vector{UInt8}(files_data)
+            
+            CImGui.SetDragDropPayload(DRAG_DROP_MULTIPLE_FILES, pointer(payload_bytes), length(payload_bytes))
+            
+            # Visual feedback for multiple files
+            CImGui.Text("Moving $(length(selected_files)) items:")
+            for (i, file) in enumerate(selected_files)
+                if i > 5  # Show max 5 files
+                    CImGui.Text("... and $(length(selected_files) - 5) more")
+                    break
+                end
+                CImGui.Text("• $(basename(file))")
             end
-            CImGui.Text("• $(basename(file))")
+        else
+            # Single file drag (following existing pattern)
+            payload_bytes = Vector{UInt8}(filepath)
+            CImGui.SetDragDropPayload(DRAG_DROP_FILE_PATH, pointer(payload_bytes), length(payload_bytes))
+            
+            # Visual feedback
+            filename = basename(filepath)
+            file_type = get_file_type(filepath)
+            icon = get_file_type_icon(file_type)
+            
+            CImGui.Text("$icon $filename")
+            
+            # Show what can be created from this file type
+            if file_type == :image
+                CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "Sprite Entity or UI Button")
+            elseif file_type == :audio
+                CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "Sound Entity")
+            elseif file_type == :script
+                CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "Script Component")
+            elseif file_type == :scene
+                CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "Load Scene")
+            end
         end
-    else
-        # Single file drag (following existing pattern)
-        payload_bytes = Vector{UInt8}(filepath)
-        CImGui.SetDragDropPayload(DRAG_DROP_FILE_PATH, pointer(payload_bytes), length(payload_bytes))
         
-        # Visual feedback
-        filename = basename(filepath)
-        file_type = get_file_type(filepath)
-        icon = get_file_type_icon(file_type)
-        
-        CImGui.Text("$icon $filename")
-        
-        # Show what can be created from this file type
-        if file_type == :image
-            CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "→ Sprite Entity or UI Button")
-        elseif file_type == :audio
-            CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "→ Sound Entity")
-        elseif file_type == :script
-            CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "→ Script Component")
-        elseif file_type == :scene
-            CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "→ Load Scene")
-        end
+        CImGui.EndDragDropSource()
     end
-    
-    CImGui.EndDragDropSource()
-    return true
 end
 
 """
@@ -85,6 +83,7 @@ end
 
 function handle_scene_viewer_drop_target()::Bool
     if !CImGui.BeginDragDropTarget()
+        @debug "Scene viewer: No drag-drop target active"
         return false
     end
     
@@ -100,9 +99,9 @@ function handle_scene_viewer_drop_target()::Bool
     # Handle single file drops
     single_file_payload = CImGui.AcceptDragDropPayload(DRAG_DROP_FILE_PATH)
     if single_file_payload != C_NULL
-        @info "Received drag-drop payload for single file"
+        @debug "Received drag-drop payload for single file"
         filepath = extract_file_path_from_payload(single_file_payload)
-        @info "Extracted filepath: $filepath"
+        @debug "Extracted filepath: $filepath"
         if filepath != ""
             create_scene_entity_from_file(filepath, current_scene_main)
             CImGui.EndDragDropTarget()
@@ -150,7 +149,7 @@ function handle_hierarchy_drop_target(target_entity = nothing)::Bool
             # If dropped onto another entity, make it a child
             if target_entity !== nothing && entity !== nothing
                 # TODO: Implement parent-child relationships
-                @info "Would make $(entity.name) a child of $(target_entity.name)"
+                @debug "Would make $(entity.name) a child of $(target_entity.name)"
             end
             
             CImGui.EndDragDropTarget()
@@ -202,24 +201,24 @@ function create_scene_entity_from_file(filepath::String, current_scene_main)
             # Use existing ImportFile function
             entity = create_entity_with_sprite(relative_path, entity_name)
             push!(current_scene_main.scene.entities, entity)
-            @info "Created sprite entity: $(entity_name)"
+            @debug "Created sprite entity: $(entity_name)"
             
         elseif file_type == :audio
             # Use existing ImportFile function
             entity = create_entity_with_sound(relative_path, entity_name)
             push!(current_scene_main.scene.entities, entity)
-            @info "Created sound entity: $(entity_name)"
+            @debug "Created sound entity: $(entity_name)"
             
         elseif file_type == :script
             # Create entity with script component
             entity = JulGame.Entity(entity_name)
             # TODO: Add script component when available
             push!(current_scene_main.scene.entities, entity)
-            @info "Created script entity: $(entity_name)"
+            @debug "Created script entity: $(entity_name)"
             
         elseif file_type == :scene
             # TODO: Implement scene loading/merging
-            @info "Scene file dropped: $filepath"
+            @debug "Scene file dropped: $filepath"
             
         else
             @warn "Unsupported file type for entity creation: $file_type"
@@ -247,7 +246,7 @@ function create_multiple_scene_entities(filepaths::Vector{String}, current_scene
     if !isempty(created_entities)
         # Arrange entities in a grid pattern
         arrange_entities_in_grid(created_entities)
-        @info "Created $(length(created_entities)) entities from dropped files"
+        @debug "Created $(length(created_entities)) entities from dropped files"
     end
     
     return created_entities
@@ -273,7 +272,7 @@ function create_ui_element_from_file(filepath::String, current_scene_main, ui_ty
             # Use existing ImportFile function
             screen_button = create_ui_screenbutton(relative_path, element_name)
             push!(current_scene_main.scene.uiElements, screen_button)
-            @info "Created UI button: $(element_name)"
+            @debug "Created UI button: $(element_name)"
             return screen_button
         end
         # TODO: Add other UI element types
@@ -299,18 +298,18 @@ function add_component_from_file(entity, filepath::String)
             entity.sprite.imagePath = relative_path
             entity.sprite.pixelsPerUnit = 0
             JulGame.Component.load_image(entity.sprite, relative_path)
-            @info "Added sprite component to $(entity.name)"
+            @debug "Added sprite component to $(entity.name)"
             
         elseif file_type == :audio && !JulGame.has_sound_source(entity)
             # Add sound source component
             JulGame.add_sound_source(entity)
             entity.soundSource.path = relative_path
             JulGame.Component.load_sound(entity.soundSource, relative_path, false)
-            @info "Added sound source component to $(entity.name)"
+            @debug "Added sound source component to $(entity.name)"
             
         elseif file_type == :script
             # TODO: Add script component
-            @info "Would add script component to $(entity.name): $relative_path"
+            @debug "Would add script component to $(entity.name): $relative_path"
             
         else
             @warn "Cannot add component of type $file_type to entity"
@@ -397,7 +396,7 @@ function generate_entity_name_from_file(filepath::String)::String
     return replace(base_name, " " => "_")
 end
 
-function arrange_entities_in_grid(entities::Vector, grid_spacing::Float32 = 100.0)
+function arrange_entities_in_grid(entities::Vector, grid_spacing::Float32 = 100.0f0)
     # Arrange entities in a grid pattern
     grid_size = Int(ceil(sqrt(length(entities))))
     
