@@ -1,3 +1,13 @@
+# Global state for manipulation arrows
+mutable struct SceneManipulationState
+    grid_snap::Int32
+    manipulation_mode::EntityManipulationMode
+    
+    SceneManipulationState() = new(Int32(10), Both)
+end
+
+const SCENE_MANIPULATION_STATE = SceneManipulationState()
+
 function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicationMode, camera)::ImVec2
   #  CImGui.SetNextWindowSize((350, 560), CImGui.ImGuiCond_FirstUseEver)
     if JulGame.IS_EDITOR_PLAY_MODE
@@ -8,6 +18,10 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     else
         CImGui.Begin("Scene") || (CImGui.End(); return ImVec2(0,0))
     end
+    
+    # Add manipulation controls at the top
+    render_manipulation_controls()
+    CImGui.Separator()
     # GET SIZE OF SCENE TEXTURE
     # w, h = Ref{Int32}(0), Ref{Int32}(0)
     # SDL2.SDL_QueryTexture(scene_tex_id[], Ref{UInt32}(0), Ref{Int32}(0), w, h)
@@ -197,7 +211,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     
     # if left click and drag
     if is_hovered && (CImGui.IsMouseDragging(CImGui.ImGuiMouseButton_Left, mouse_threshold_for_pan) || duplicationMode)
-        drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+        #drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     end
 
     if CImGui.BeginPopup("context")
@@ -231,8 +245,16 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
      CImGui.PopClipRect(draw_list)
      
     
-    # Draw square around selected entity
+    # Draw square around selected entity and manipulation arrows
     highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
+    
+    # Handle manipulation arrows for selected entity
+    if main !== nothing && main.selectedEntities !== nothing && length(main.selectedEntities) > 0
+        entity = main.selectedEntities[1]
+        if !(entity isa UI.UIElement) && !(entity isa JulGame.CameraModule.Camera)
+            handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_level)
+        end
+    end
 
     CImGui.End()
 
@@ -353,6 +375,107 @@ function drag_selected_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_
         diff = ImVec2(mouse_pos.x - entity_pos.x, mouse_pos.y - entity_pos.y)
         # update the entity position
         entity.transform.position = Math.Vector2f(entity_pos.x + diff.x, entity_pos.y + diff.y)
+    end
+end
+
+"""
+    render_manipulation_controls()
+
+Renders UI controls for manipulation settings in the scene viewer.
+"""
+function render_manipulation_controls()
+    # Grid snap control
+    CImGui.SetNextItemWidth(100)
+    @c CImGui.DragInt("Grid Snap", &SCENE_MANIPULATION_STATE.grid_snap, 1, 0, 100, "%d")
+    
+    CImGui.SameLine()
+    
+    # Manipulation mode control
+    mode_names = ["Position", "Scale", "Both"]
+    current_mode = Int32(SCENE_MANIPULATION_STATE.manipulation_mode)
+    
+    CImGui.SetNextItemWidth(100)
+    if @c CImGui.Combo("Mode", &current_mode, mode_names, length(mode_names))
+        SCENE_MANIPULATION_STATE.manipulation_mode = EntityManipulationMode(current_mode)
+    end
+    
+    CImGui.SameLine()
+    
+    # Clear selection button
+    if CImGui.SmallButton("Clear Selection")
+        # Clear selection by setting to empty array
+        if JulGame.EditorState["main"] !== nothing
+            JulGame.EditorState["main"].selectedEntities = []
+        end
+    end
+end
+
+"""
+    handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_level)
+
+Handles manipulation arrows for an entity in the scene viewer.
+"""
+function handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_level)
+    if entity === nothing
+        return
+    end
+    transform = entity.transform
+    scale_factor = 64.0 * zoom_level[]
+    
+    # Convert entity position to screen coordinates
+    screen_pos = Math.Vector2(
+        round(Int, canvas_p0.x + (transform.position.x * scale_factor) - camPos.x),
+        round(Int, canvas_p0.y + (transform.position.y * scale_factor) - camPos.y)
+    )
+    
+    # Set cursor position to entity position for manipulation arrows
+    CImGui.SetCursorScreenPos(CImGui.ImVec2(screen_pos.x, screen_pos.y))
+    
+    # Create a dummy item to represent the entity for manipulation
+    entity_size = Math.Vector2(transform.scale.x * scale_factor, transform.scale.y * scale_factor)
+    CImGui.Dummy(CImGui.ImVec2(entity_size.x, entity_size.y))
+    
+    # Handle position manipulation
+    if SCENE_MANIPULATION_STATE.manipulation_mode == Position || SCENE_MANIPULATION_STATE.manipulation_mode == Both
+        # Convert current world position to screen coordinates for manipulation
+        screen_pos_ref = Ref(Math.Vector2f(
+            Float32(screen_pos.x - canvas_p0.x),  # Relative to canvas
+            Float32(screen_pos.y - canvas_p0.y)
+        ))
+        
+        original_screen_pos = screen_pos_ref[]
+        if draw_position_arrows(screen_pos_ref, Int(SCENE_MANIPULATION_STATE.grid_snap))
+            # Calculate the screen space delta
+            screen_delta = screen_pos_ref[] - original_screen_pos
+            
+            # Convert screen delta back to world coordinates
+            world_delta_x = screen_delta.x / scale_factor
+            world_delta_y = screen_delta.y / scale_factor
+            
+            # Apply the delta to the current world position
+            new_world_pos = Math.Vector3f(
+                transform.position.x + world_delta_x,
+                transform.position.y + world_delta_y,
+                transform.position.z
+            )
+            entity.transform.position = new_world_pos
+            # Mark scene as modified
+            JulGame.EditorState["scene_modified"] = true
+        end
+    end
+    
+    # Handle scale manipulation
+    if SCENE_MANIPULATION_STATE.manipulation_mode == Scale || SCENE_MANIPULATION_STATE.manipulation_mode == Both
+        if hasfield(typeof(transform), :scale)
+            scale_ref = Ref(Math.Vector2f(transform.scale.x, transform.scale.y))
+            widget_pos = Math.Vector2f(transform.position.x, transform.position.y)
+            draw_resize_handles(widget_pos, scale_ref, Int(SCENE_MANIPULATION_STATE.grid_snap), Default)
+            if scale_ref[] != Math.Vector2f(transform.scale.x, transform.scale.y)
+                entity.transform.scale = Math.Vector3f(scale_ref[].x, scale_ref[].y, transform.scale.z)
+                # Mark scene as modified
+                JulGame.EditorState["scene_modified"] = true
+            end
+        end
     end
 end
 

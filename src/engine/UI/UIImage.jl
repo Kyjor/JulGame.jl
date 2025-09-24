@@ -53,7 +53,6 @@ module UIImageModule
             this.rotation = rotation
             this.size = size
             this.texture = C_NULL
-            this.anchor = anchor
 
             UI.load_image(this::UIImage, path::String)
             if this.surface == C_NULL

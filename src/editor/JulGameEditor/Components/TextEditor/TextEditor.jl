@@ -27,7 +27,7 @@ end
 
 # Internal enums
 @enum PaletteIndex begin
-    Default = 1
+    Def = 1
     Keyword
     Number
     String_
@@ -1108,7 +1108,7 @@ function colorizeRange(editor::TextEditor, fromLine::Int, toLine::Int)
              start_idx = word_match.offset
              if start_idx > current_pos
                   for char in line_text[current_pos:start_idx-1]
-                      push!(temp_line, Glyph(char, Default)) # Or Punctuation?
+                      push!(temp_line, Glyph(char, Def)) # Or Punctuation?
                   end
              end
 
@@ -1118,7 +1118,7 @@ function colorizeRange(editor::TextEditor, fromLine::Int, toLine::Int)
                      push!(temp_line, Glyph(char, Keyword))
                  end
              else # Treat as identifier or other
-                 color = Default
+                 color = Def
                  # Simple check for numbers (improve with regex later)
                  if all(isdigit, word) || (startswith(word, '.') && length(word)>1 && all(isdigit, word[2:end])) || (startswith(word, '-') && length(word)>1 && all(isdigit, word[2:end]))
                      color = Number
@@ -1142,7 +1142,7 @@ function colorizeRange(editor::TextEditor, fromLine::Int, toLine::Int)
          # Add any remaining characters at the end
          if current_pos <= length(line_text)
               for char in line_text[current_pos:end]
-                   push!(temp_line, Glyph(char, Default))
+                   push!(temp_line, Glyph(char, Def))
               end
          end
 
@@ -1524,7 +1524,7 @@ function render(editor::TextEditor, title::String, parentIsFocused::Bool = false
     # Render Background
     bg_col = editor.mPalette[Int(Background)]
     CImGui.PushStyleColor(CImGui.ImGuiCol_ChildBg, bg_col) # Set background color
-    # CImGui.PushStyleColor(CImGui.ImGuiCol_Text, editor.mPalette[Int(Default)])
+    # CImGui.PushStyleColor(CImGui.ImGuiCol_Text, editor.mPalette[Int(Def)])
 
     # Calculate render range
     renderStartLine = editor.mFirstVisibleLine
