@@ -210,7 +210,6 @@ module SceneWriterModule
                     "isFlipped" => component.isFlipped, 
                     "imagePath" => normalize_path(component.imagePath),
                     "layer" => component.layer,
-                    "isWorldEntity" => component.isWorldEntity,
                     "pixelsPerUnit" => component.pixelsPerUnit,
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
                     "position" => Dict("x" => component.position.x, "y" => component.position.y),

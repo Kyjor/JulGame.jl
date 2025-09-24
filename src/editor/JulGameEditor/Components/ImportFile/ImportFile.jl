@@ -546,7 +546,6 @@ function create_ui_screenbutton(image_path::String, button_name::String)
         name=button_name, 
         buttonUpSpritePath=image_path, 
         buttonDownSpritePath=image_path, # Use same image for both states
-        size=JulGame.Math.Vector2(256, 64), 
         position=JulGame.Math.Vector2(0, 0), 
         fontPath=joinpath("FiraCode-Regular.ttf"),
     )

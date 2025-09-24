@@ -280,7 +280,6 @@ module SceneReaderModule
             elseif component.type == "Sprite"
                 color = !haskey(component, "color") || isempty(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
-                isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
                 layer = !haskey(component, "layer") ? 0 : component.layer
                 offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
@@ -289,7 +288,7 @@ module SceneReaderModule
                 center = !haskey(component, "center") ? Vector2f(0.5,0.5) : Vector2f(component.center.x, component.center.y)
                 anchor = !haskey(component, "anchor") ? :center : Symbol(component.anchor)
                 
-                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f, anchor::Symbol)
+                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f, anchor::Symbol)
             elseif component.type == "Shape"
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 layer = !haskey(component, "layer") ? 0 : component.layer

@@ -58,6 +58,9 @@ module JulGame
     include("utils/Types.jl")
     export Script
 
+    include("utils/Helpers.jl")
+    export get_comma_separated_path
+
     include("utils/Utils.jl")
     export CallSDLFunction
 
@@ -106,6 +109,10 @@ module JulGame
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule
     export PrefHandlerModule
+
+    include("engine/Resource/Resource.jl")
+    using .ResourceModule
+    export ImageModule
 
     include("engine/Window/WindowManager.jl")
     using .WindowManagerModule: WindowManager
