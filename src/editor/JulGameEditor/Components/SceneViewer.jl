@@ -428,8 +428,15 @@ function handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_lev
         round(Int, canvas_p0.y + (transform.position.y * scale_factor) - camPos.y)
     )
     
-    # Set cursor position to entity position for manipulation arrows
-    CImGui.SetCursorScreenPos(CImGui.ImVec2(screen_pos.x, screen_pos.y))
+    # Convert screen position to window-relative coordinates for ImGui
+    window_pos = CImGui.GetWindowPos()
+    cursor_pos = CImGui.ImVec2(
+        screen_pos.x - window_pos.x,
+        screen_pos.y - window_pos.y
+    )
+    
+    # Set cursor position relative to window
+    CImGui.SetCursorPos(cursor_pos)
     
     # Create a dummy item to represent the entity for manipulation
     entity_size = Math.Vector2(transform.scale.x * scale_factor, transform.scale.y * scale_factor)
@@ -437,10 +444,10 @@ function handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_lev
     
     # Handle position manipulation
     if SCENE_MANIPULATION_STATE.manipulation_mode == Position || SCENE_MANIPULATION_STATE.manipulation_mode == Both
-        # Convert current world position to screen coordinates for manipulation
+        # Use window-relative coordinates for manipulation arrows
         screen_pos_ref = Ref(Math.Vector2f(
-            Float32(screen_pos.x - canvas_p0.x),  # Relative to canvas
-            Float32(screen_pos.y - canvas_p0.y)
+            Float32(cursor_pos.x),  # Window-relative position
+            Float32(cursor_pos.y)
         ))
         
         original_screen_pos = screen_pos_ref[]

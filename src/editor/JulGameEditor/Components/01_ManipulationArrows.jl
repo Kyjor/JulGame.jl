@@ -52,7 +52,7 @@ function draw_border(id::String, color::NTuple{4, Int}, size::Math.Vector2f, rou
     )
     
     # Reserve space for the item
-    CImGui.SetCursorScreenPos(CImGui.ImVec2(cursor_pos.x + size.x, cursor_pos.y + size.y))
+    #CImGui.SetCursorScreenPos(CImGui.ImVec2(cursor_pos.x + size.x, cursor_pos.y + size.y))
     CImGui.Dummy(CImGui.ImVec2(size.x, size.y))
 end
 
@@ -78,9 +78,14 @@ function draw_position_arrows(position::Ref{Math.Vector2f}, positioning::Int = 0
         if state.need_update
             window_pos = CImGui.GetWindowPos()
             mouse_pos = CImGui.GetMousePos()
+            # Convert mouse position to window-relative coordinates
+            mouse_window_pos = Math.Vector2f(
+                mouse_pos.x - window_pos.x,
+                mouse_pos.y - window_pos.y
+            )
             state.offset = Math.Vector2f(
-                (position[].x + window_pos.x) - mouse_pos.x,
-                (position[].y + window_pos.y) - mouse_pos.y
+                position[].x - mouse_window_pos.x,
+                position[].y - mouse_window_pos.y
             )
             state.need_update = false
         end
@@ -131,42 +136,32 @@ function draw_position_arrows(position::Ref{Math.Vector2f}, positioning::Int = 0
         
         if state.mode == 0  # X-axis only
             mouse_local_x = mouse_pos.x - window_pos.x
+            new_x = mouse_local_x + state.offset.x
             if positioning > 0
-                position[] = Math.Vector2f(
-                    Float64(div(Int(mouse_local_x + state.offset.x), positioning) * positioning),
-                    position[].y
-                )
-            else
-                position[] = Math.Vector2f(mouse_local_x + state.offset.x, position[].y)
+                new_x = Float64(div(Int(new_x), positioning) * positioning)
             end
+            position[] = Math.Vector2f(new_x, position[].y)
             modified = true
             
         elseif state.mode == 1  # Y-axis only
             mouse_local_y = mouse_pos.y - window_pos.y
+            new_y = mouse_local_y + state.offset.y
             if positioning > 0
-                position[] = Math.Vector2f(
-                    position[].x,
-                    Float64(div(Int(mouse_local_y + state.offset.y), positioning) * positioning)
-                )
-            else
-                position[] = Math.Vector2f(position[].x, mouse_local_y + state.offset.y)
+                new_y = Float64(div(Int(new_y), positioning) * positioning)
             end
+            position[] = Math.Vector2f(position[].x, new_y)
             modified = true
             
         elseif state.mode == 2  # Both axes
             mouse_local_x = mouse_pos.x - window_pos.x
             mouse_local_y = mouse_pos.y - window_pos.y
+            new_x = mouse_local_x + state.offset.x
+            new_y = mouse_local_y + state.offset.y
             if positioning > 0
-                position[] = Math.Vector2f(
-                    Float64(div(Int(mouse_local_x + state.offset.x), positioning) * positioning),
-                    Float64(div(Int(mouse_local_y + state.offset.y), positioning) * positioning)
-                )
-            else
-                position[] = Math.Vector2f(
-                    mouse_local_x + state.offset.x,
-                    mouse_local_y + state.offset.y
-                )
+                new_x = Float64(div(Int(new_x), positioning) * positioning)
+                new_y = Float64(div(Int(new_y), positioning) * positioning)
             end
+            position[] = Math.Vector2f(new_x, new_y)
             modified = true
         end
     end
