@@ -52,7 +52,6 @@ function draw_border(id::String, color::NTuple{4, Int}, size::Math.Vector2f, rou
     )
     
     # Reserve space for the item
-    #CImGui.SetCursorScreenPos(CImGui.ImVec2(cursor_pos.x + size.x, cursor_pos.y + size.y))
     CImGui.Dummy(CImGui.ImVec2(size.x, size.y))
 end
 

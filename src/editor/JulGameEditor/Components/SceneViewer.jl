@@ -3,7 +3,7 @@ mutable struct SceneManipulationState
     grid_snap::Int32
     manipulation_mode::EntityManipulationMode
     
-    SceneManipulationState() = new(Int32(10), Both)
+    SceneManipulationState() = new(Int32(0), Both)
 end
 
 const SCENE_MANIPULATION_STATE = SceneManipulationState()
@@ -474,11 +474,25 @@ function handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_lev
     # Handle scale manipulation
     if SCENE_MANIPULATION_STATE.manipulation_mode == Scale || SCENE_MANIPULATION_STATE.manipulation_mode == Both
         if hasfield(typeof(transform), :scale)
-            scale_ref = Ref(Math.Vector2f(transform.scale.x, transform.scale.y))
-            widget_pos = Math.Vector2f(transform.position.x, transform.position.y)
+            # Convert world scale to screen pixels for manipulation
+            screen_scale = Math.Vector2f(
+                transform.scale.x * scale_factor,
+                transform.scale.y * scale_factor
+            )
+            scale_ref = Ref(screen_scale)
+            
+            # Use the same window-relative coordinates as position arrows
+            widget_pos = Math.Vector2f(cursor_pos.x, cursor_pos.y)
             draw_resize_handles(widget_pos, scale_ref, Int(SCENE_MANIPULATION_STATE.grid_snap), Default)
-            if scale_ref[] != Math.Vector2f(transform.scale.x, transform.scale.y)
-                entity.transform.scale = Math.Vector3f(scale_ref[].x, scale_ref[].y, transform.scale.z)
+            
+            # Convert screen scale back to world scale
+            new_world_scale = Math.Vector2f(
+                scale_ref[].x / scale_factor,
+                scale_ref[].y / scale_factor
+            )
+            
+            if new_world_scale != Math.Vector2f(transform.scale.x, transform.scale.y)
+                entity.transform.scale = Math.Vector3f(new_world_scale.x, new_world_scale.y, transform.scale.z)
                 # Mark scene as modified
                 JulGame.EditorState["scene_modified"] = true
             end
