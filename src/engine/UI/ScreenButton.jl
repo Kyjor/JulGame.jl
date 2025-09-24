@@ -53,22 +53,7 @@ module ScreenButtonModule
             this.buttonUpSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonUpSpritePath)
             # TODO: if buttonUp/DownSpritePath is not found, use a default sprite
 
-            this.anchor = JulGame.Enum{Any}(
-                :center,
-                :top,
-                :bottom,
-                :left,
-                :right,
-                :topLeft,
-                :topRight,
-                :bottomLeft,
-                :bottomRight,
-                :centerLeft,
-                :centerRight,
-                :centerTop,
-                :centerBottom,
-                :none
-            )
+            this.anchor = UI.anchor_types
             this.isInitialized = false
 
             this.anchor.current_state = anchor
@@ -124,12 +109,11 @@ module ScreenButtonModule
             UI.initialize(this)
         end
 
-        if !this.isActive
-            return
-        end
-
-        if this.currentTexture == C_NULL || 
-            this.currentTexture === nothing
+        if (
+            this.currentTexture == C_NULL || 
+            this.currentTexture === nothing || 
+            !this.isActive
+        )
             return
         end
 

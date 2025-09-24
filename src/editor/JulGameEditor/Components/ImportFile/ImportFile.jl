@@ -33,10 +33,11 @@ mutable struct FileImportDialog
     conflict_error::String
     add_to_scene::Bool
     create_as_ui_element::Bool
+    create_as_ui_image::Bool
     temp_files_to_cleanup::Vector{String}  # Track temporary files for cleanup
     
     function FileImportDialog()
-        new(false, "", "assets", Ref(""), C_NULL, ImVec2(0, 0), false, false, C_NULL, false, "", false, false, String[])
+        new(false, "", "assets", Ref(""), C_NULL, ImVec2(0, 0), false, false, C_NULL, false, "", false, false, false, String[])
     end
 end
 
@@ -123,14 +124,16 @@ function load_image_preview(filepath::String, renderer)
         
         # Calculate preview size (max 200x200, maintaining aspect ratio)
         min_size = 64.0
-        max_size = 200.0
+        max_size = 400.0
         aspect_ratio = width / height
         
         if width > height
-            preview_width = min(width, max_size, min_size)
+            preview_width = max(width, min_size)
+            preview_width = min(preview_width, max_size)
             preview_height = preview_width / aspect_ratio
         else
-            preview_height = min(height, max_size, min_size)
+            preview_height = max(height, min_size)
+            preview_height = min(preview_height, max_size)
             preview_width = preview_height * aspect_ratio
         end
         
@@ -448,6 +451,12 @@ function add_imported_file_to_scene(file_path::String, current_scene_main, posit
                 screen_button.position = Math.Vector2(round(Int, position.x), round(Int, position.y))
                 push!(current_scene_main.scene.uiElements, screen_button)
                 @info "Added ScreenButton UI element: $(entity_name)"
+            elseif dialog.create_as_ui_image
+                # Create UIImage UI element
+                image = create_ui_image(relative_path, entity_name)
+                image.position = Math.Vector2(round(Int, position.x), round(Int, position.y))
+                push!(current_scene_main.scene.uiElements, image)
+                @info "Added UIImage UI element: $(entity_name)"
             else
                 # Create entity with sprite
                 entity = create_entity_with_sprite(relative_path, entity_name)
@@ -476,6 +485,7 @@ function add_imported_file_to_scene(file_path::String, current_scene_main, posit
         end
     catch e
         @error "Failed to add file to scene: $(e)"
+        Base.show_backtrace(stderr, catch_backtrace())
     end
 end
 
@@ -507,6 +517,7 @@ function cancel_current_import()
             filter!(f -> f != dialog.current_file, dialog.temp_files_to_cleanup)
         catch e
             @warn "Failed to clean up cancelled clipboard file: $(e)"
+            Base.show_backtrace(stderr, catch_backtrace())
         end
     end
     
@@ -556,6 +567,19 @@ function create_ui_screenbutton(image_path::String, button_name::String)
     
     return screenButton
 end
+
+"""
+    create_ui_image(image_path::String, image_name::String) -> UIImage
+
+Create a new UIImage UI element using the imported image.
+"""
+function create_ui_image(image_path::String, image_name::String)
+    # Create UIImage with the imported image
+    image = JulGame.UI.UIImageModule.UIImage(image_path)
+    @info "Added UIImage UI element: $(image_name)"
+    return image
+end
+
 
 """
     create_entity_with_sound(audio_path::String, entity_name::String) -> Entity
@@ -627,6 +651,7 @@ function cleanup_import_queue()
     dialog.conflict_error = ""
     dialog.add_to_scene = false
     dialog.create_as_ui_element = false
+    dialog.create_as_ui_image = false
 end
 
 """
@@ -842,12 +867,19 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_s
                 if dialog.is_image
                     CImGui.Text("Create as:")
                     CImGui.SameLine()
-                    if CImGui.RadioButton("Entity (Sprite)", !dialog.create_as_ui_element)
+                    if CImGui.RadioButton("Entity (Sprite)", !dialog.create_as_ui_element && !dialog.create_as_ui_image)
                         dialog.create_as_ui_element = false
+                        dialog.create_as_ui_image = false
                     end
                     CImGui.SameLine()
-                    if CImGui.RadioButton("UI Element (Button)", dialog.create_as_ui_element)
+                    if CImGui.RadioButton("UI Element (Button)", dialog.create_as_ui_element && !dialog.create_as_ui_image)
                         dialog.create_as_ui_element = true
+                        dialog.create_as_ui_image = false
+                    end
+                    CImGui.SameLine()
+                    if CImGui.RadioButton("UI Element (Image)", dialog.create_as_ui_image && !dialog.create_as_ui_element)
+                        dialog.create_as_ui_image = true
+                        dialog.create_as_ui_element = false
                     end
                 elseif dialog.is_audio
                     CImGui.TextColored((0.7, 0.9, 1.0, 1.0), "Will create entity with SoundSource component")
@@ -908,7 +940,7 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_s
             CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.9, 0.4, 1.0))
             wpos = get(JulGame.EditorState, "mouse_world_pos", Math.Vector2f(0.0, 0.0))
             mpos = get(JulGame.EditorState, "mouse_pos_in_canvas", Math.Vector2f(0.0, 0.0))
-            pos = if dialog.create_as_ui_element
+            pos = if dialog.create_as_ui_element || dialog.create_as_ui_image
                 mpos
             else
                 wpos

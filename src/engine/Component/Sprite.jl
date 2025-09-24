@@ -105,7 +105,7 @@ module SpriteModule
             Math.Vector2(0, 0)
     
         # Calculate position
-        position = this.position
+        position = this.parent.transform.position
     
         # Calculate source rectangle
         srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))

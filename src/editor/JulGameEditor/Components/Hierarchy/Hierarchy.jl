@@ -40,6 +40,16 @@ function show_hierarchy(currentSceneMain::Union{MainLoop, Nothing})
             # Pop the style colors after processing the entity (now 3 colors instead of 2)
             CImGui.PopStyleColor(3)
         end
+
+        # add context menu to add new entity or ui element
+        if CImGui.BeginPopupContextItem("entity_context_menu")
+            if CImGui.MenuItem("Add Entity")
+                @info "Adding entity"
+            end
+            if CImGui.MenuItem("Add UI Element")
+                @info "Adding ui element"
+            end
+        end
     end
 
     CImGui.NewLine()

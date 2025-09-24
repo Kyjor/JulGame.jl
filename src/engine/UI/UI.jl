@@ -8,18 +8,37 @@
         add_hover_exit_event,
         align_to_anchor,
         destroy,
+        duplicate,
         handle_event,
         handle_hover_event,
         handle_window_resize,
         initialize,
         load_button_sprite_editor,
         load_font,
+        load_image,
         render, 
         rerender_text,
         set_color,
         set_position,
         update_button_text,
         update_font_size
+
+    const anchor_types = JulGame.Enum{Any}(
+        :center,
+        :top,
+        :bottom,
+        :left,
+        :right,
+        :topLeft,
+        :topRight,
+        :bottomLeft,
+        :bottomRight,
+        :centerLeft,
+        :centerRight,
+        :centerTop,
+        :centerBottom,
+        :none
+    )
 
     include("UIElement.jl")
     include("ScreenButton.jl")
@@ -32,7 +51,8 @@
     include("Canvas.jl")
     include("ImmediateUI.jl")
     include("Factory.jl")
-    
+    include("UIImage.jl")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
     export ScreenButtonModule
     export TextBoxModule
     export ImmediateUIModule
@@ -42,10 +62,11 @@
     export CircleModule
     export ProgressBarModule
     export CanvasModule
+    export UIImageModule
 
     export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components
-    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Canvas#, Draggable
+    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Canvas, UIImage#, Draggable
 end
