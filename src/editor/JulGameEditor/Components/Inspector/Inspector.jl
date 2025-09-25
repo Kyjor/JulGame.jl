@@ -97,7 +97,7 @@ function display_fields(structure::EditableStructure)
 
     fields = [fieldnames(typeof(structure))...]
     if isa(structure, UI.UIElement)
-        uiFields = [fieldnames(UI.UIElementInstance)...]
+        uiFields = [fieldnames(JulGame.UI.UIElementInstance)...]
         prepend!(fields, uiFields)
     end
     for field in fields

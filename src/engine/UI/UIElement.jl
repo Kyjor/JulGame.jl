@@ -6,7 +6,7 @@ mutable struct UIElementInstance
     name::String
 
     # positioning
-    anchor::Union{JulGame.Enum, Nothing} # JulGame.EntityModule.Entity, Nothing}
+    anchor::Union{JulGame.Enum, Nothing}
     anchorOffset::Vector2
     isWorldEntity::Bool
     layer::Int

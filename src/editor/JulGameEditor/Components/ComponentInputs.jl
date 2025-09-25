@@ -7,13 +7,9 @@ using JulGame.UI
 using FileWatching
 
 # Include field input helpers first
-include("VectorFieldInputs.jl")
-include("ScalarFieldInputs.jl")
 include("FieldInputHandler.jl")
 
 # Legacy includes - to be updated
-#include("TextBoxFields.jl")
-#include("ScreenButtonFields.jl")
 include("CanvasFields.jl")
 
 """

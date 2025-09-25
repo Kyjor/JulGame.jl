@@ -9,5 +9,6 @@ FieldExclusions = Dict{String, Vector{Symbol}}(
     "ScreenButton" => [:isInitialized],
     "TextBox" => [:font,:isConstructed, :renderText, :textTexture],
     "Transform" => [:screenPosition, :screenRotation, :screenSize, :parent],
-    "UIElement" => [:isHovered],
+    "UIImage" => [:surface, :texture],
+    "UIElement" => [:isHovered, :parent, :clickEvents, :hoverEnterEvents, :hoverExitEvents],
 )

@@ -1,6 +1,7 @@
 module SceneWriterModule
     using ...JulGame
     using JSON3
+    include("../../editor/JulGameEditor/Components/Inspector/Fields/Exclusions.jl")
     
     export serialize_entities
     """
@@ -35,6 +36,11 @@ module SceneWriterModule
 
         count = 1
         for uiElement in uiElements
+            structureType = split(string(typeof(uiElement)), ".")[end]
+            fields = [fieldnames(typeof(uiElement))...]
+            uiFields = [fieldnames(JulGame.UI.UIElementInstance)...]
+            prepend!(fields, uiFields)
+            
             if "$(typeof(uiElement))" == "JulGame.UI.CanvasModule.Canvas"
                 push!(uiElementsDict, Dict(
                     "id" => string(uiElement.id), 
@@ -75,6 +81,15 @@ module SceneWriterModule
                     "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
                     "type" => "ScreenButton"
                     ))
+            elseif "$(typeof(uiElement))" == "JulGame.UI.UIImageModule.UIImage"
+                dict = Dict()
+                for field in fields
+                    if(get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, []) || field in get(FieldExclusions, "UIElement", []))
+                        continue
+                    end
+                    dict[string(field)] = extract_value(uiElement, field)
+                end
+                push!(uiElementsDict, dict)
             else
                 push!(uiElementsDict, Dict(
                     "id" => string(uiElement.id), 
@@ -295,6 +310,23 @@ module SceneWriterModule
         end
 
         return scriptsDict
+    end
+
+    function extract_value(element, field)
+        if isstructtype(typeof(getproperty(element, field)))
+            dict = Dict()
+            for subfield in fieldnames(typeof(getproperty(element, field)))
+                if subfield == :parent
+                    continue
+                end
+                @info "extracting value for $(subfield) from $(typeof(getproperty(element, field)))"
+                dict[string(subfield)] = extract_value(getproperty(element, field), subfield)
+            end
+            return dict
+        end
+        
+        @info "bottom:extracting value for $(field) from $(typeof(getproperty(element, field)))"
+        return getproperty(element, field)
     end
 
     function set_undefined_field(script, field)
