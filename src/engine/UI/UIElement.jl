@@ -33,6 +33,7 @@ mutable struct UIElementInstance
     function UIElementInstance()
         this = new()
 
+        this.clickEvents = Function[]
         this.hoverEnterEvents = Function[]
         this.hoverExitEvents = Function[]
         this.forceClickCheck = false

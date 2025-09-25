@@ -859,6 +859,36 @@ function render_ui_element_in_world_space(ui_element, draw_list, screen_pos, scr
     ))
     
     # Render based on UI element type
+    if isa(ui_element, JulGame.UI.UIImageModule.UIImage)
+        # Ensure texture is initialized
+        if ui_element.texture == C_NULL && ui_element.surface != C_NULL
+            try
+                JulGame.UI.initialize(ui_element)
+            catch
+            end
+        end
+        if ui_element.texture != C_NULL
+            CImGui.AddImage(
+                draw_list,
+                ui_element.texture,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                CImGui.ImVec2(0, 0),
+                CImGui.ImVec2(1, 1),
+                color
+            )
+            return
+        end
+        # Fallback to block-out if no texture
+        CImGui.AddRectFilled(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            color
+        )
+        return
+    end
+    
     if isa(ui_element, JulGame.UI.ScreenButtonModule.ScreenButton)
         # Draw button as filled rectangle with border
         CImGui.AddRectFilled(

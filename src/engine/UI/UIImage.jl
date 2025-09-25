@@ -104,7 +104,7 @@ module UIImageModule
     
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-            this.currentTexture, 
+            this.texture, 
             C_NULL, 
             Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
             this.rotation, 
