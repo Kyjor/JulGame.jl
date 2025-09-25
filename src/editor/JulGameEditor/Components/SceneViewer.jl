@@ -890,28 +890,64 @@ function render_ui_element_in_world_space(ui_element, draw_list, screen_pos, scr
     end
     
     if isa(ui_element, JulGame.UI.ScreenButtonModule.ScreenButton)
-        # Draw button as filled rectangle with border
-        CImGui.AddRectFilled(
-            draw_list,
-            CImGui.ImVec2(screen_pos.x, screen_pos.y),
-            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
-            color
-        )
+        # Ensure button is initialized
+        if !ui_element.isInitialized
+            try
+                JulGame.UI.initialize(ui_element)
+            catch
+            end
+        end
         
-        # Draw border
-        border_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(0.8, 0.8, 0.8, 1.0))
-        CImGui.AddRect(
-            draw_list,
-            CImGui.ImVec2(screen_pos.x, screen_pos.y),
-            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
-            border_color,
-            0.0,
-            CImGui.ImDrawFlags_None,
-            1.0
-        )
+        # Draw button sprite if available
+        if ui_element.currentTexture != C_NULL
+            CImGui.AddImage(
+                draw_list,
+                ui_element.currentTexture,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                CImGui.ImVec2(0, 0),
+                CImGui.ImVec2(1, 1),
+                color
+            )
+        else
+            # Fallback to filled rectangle with border
+            CImGui.AddRectFilled(
+                draw_list,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                color
+            )
+            
+            # Draw border
+            border_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(0.8, 0.8, 0.8, 1.0))
+            CImGui.AddRect(
+                draw_list,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                border_color,
+                0.0,
+                CImGui.ImDrawFlags_None,
+                1.0
+            )
+        end
         
-        # Draw text if available
-        if !isempty(ui_element.text)
+        # Draw button text if available
+        if ui_element.textTexture != C_NULL
+            # Calculate text position (centered on button)
+            text_x = screen_pos.x + (screen_size.x - ui_element.textSize.x) / 2
+            text_y = screen_pos.y + (screen_size.y - ui_element.textSize.y) / 2
+            
+            CImGui.AddImage(
+                draw_list,
+                ui_element.textTexture,
+                CImGui.ImVec2(text_x, text_y),
+                CImGui.ImVec2(text_x + ui_element.textSize.x, text_y + ui_element.textSize.y),
+                CImGui.ImVec2(0, 0),
+                CImGui.ImVec2(1, 1),
+                CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(1.0, 1.0, 1.0, 1.0))
+            )
+        elseif !isempty(ui_element.text)
+            # Fallback to simple text rendering
             text_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(
                 ui_element.textColor[1]/255.0,
                 ui_element.textColor[2]/255.0,
@@ -950,7 +986,15 @@ function render_ui_element_in_world_space(ui_element, draw_list, screen_pos, scr
         end
         
     elseif isa(ui_element, JulGame.UI.TextBoxModule.TextBox)
-        # Draw text box as filled rectangle with border
+        # Ensure text texture is initialized
+        if ui_element.textTexture == C_NULL && ui_element.font != C_NULL && !isempty(ui_element.text)
+            try
+                JulGame.UI.rerender_text(ui_element)
+            catch
+            end
+        end
+        
+        # Draw background
         CImGui.AddRectFilled(
             draw_list,
             CImGui.ImVec2(screen_pos.x, screen_pos.y),
@@ -969,6 +1013,19 @@ function render_ui_element_in_world_space(ui_element, draw_list, screen_pos, scr
             CImGui.ImDrawFlags_None,
             1.0
         )
+        
+        # Draw actual text if available
+        if ui_element.textTexture != C_NULL
+            CImGui.AddImage(
+                draw_list,
+                ui_element.textTexture,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                CImGui.ImVec2(0, 0),
+                CImGui.ImVec2(1, 1),
+                CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(1.0, 1.0, 1.0, 1.0))
+            )
+        end
         
     else
         # Default rendering for other UI element types

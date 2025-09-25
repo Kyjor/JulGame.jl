@@ -241,11 +241,11 @@ module UIImageModule
         @debug("setting image property $(s) to: $(x)")
         try
             if hasfield(UI.UIElementInstance, s)
-                @info "setting UIElement property $(s) to: $(x)"
+                #@debug "setting UIElement property $(s) to: $(x)"
                 invoke(Base.setproperty!, Tuple{UI.UIElement, Symbol, Any}, this, s, x)
                 return
             else
-                @info "setting UIImage property $(s) to: $(x)"
+                #@debug "setting UIImage property $(s) to: $(x)"
             end
             if s == :path
                 @debug("setting path to: $(x)")
