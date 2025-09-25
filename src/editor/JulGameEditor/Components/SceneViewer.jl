@@ -248,11 +248,25 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     # Draw square around selected entity and manipulation arrows
     highlight_current_entity(main, draw_list, canvas_p0, canvas_p1, zoom_level, camPos)
     
+    # Draw camera debug outline
+    if main !== nothing && camera !== nothing
+        draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera)
+    end
+    
+    # Display UI elements in scene viewer if enabled
+    display_ui_elements = get(JulGame.EditorState, "display_ui_elements", false)
+    if display_ui_elements && main !== nothing && camera !== nothing
+        render_ui_elements_in_scene(main, draw_list, canvas_p0, camPos, zoom_level, camera)
+    end
+
     # Handle manipulation arrows for selected entity
     if main !== nothing && main.selectedEntities !== nothing && length(main.selectedEntities) > 0
         entity = main.selectedEntities[1]
         if !(entity isa UI.UIElement) && !(entity isa JulGame.CameraModule.Camera)
             handle_entity_manipulation_in_scene(entity, canvas_p0, camPos, zoom_level)
+        elseif entity isa UI.UIElement && display_ui_elements
+            # Handle UI element manipulation in scene viewer
+            handle_ui_element_manipulation_in_scene(entity, canvas_p0, camPos, zoom_level, camera)
         end
     end
 
@@ -272,16 +286,27 @@ function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     # println("Mouse position adjusted for zoom: $(mouse_pos_in_canvas_zoom_adjusted.x), $(mouse_pos_in_canvas_zoom_adjusted.y)")
     # println("Camera position: $(camPos.x), $(camPos.y)")
     
-    # select nearest entity
-    nearest_entity = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    # Check if UI elements display is enabled and try to select UI element first
+    display_ui_elements = get(JulGame.EditorState, "display_ui_elements", false)
+    selected_element = nothing
     
-    if nearest_entity !== nothing
-        # println("Selected entity: $(nearest_entity.name) at position ($(nearest_entity.transform.position.x), $(nearest_entity.transform.position.y))")
-    else
-        # println("No entity selected")
+    if display_ui_elements
+        # Try to select UI element first
+        selected_element = get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
     end
     
-    main.selectedEntities = [nearest_entity]
+    # If no UI element selected, try to select regular entity
+    if selected_element === nothing
+        selected_element = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    end
+    
+    if selected_element !== nothing
+        # println("Selected element: $(selected_element.name)")
+    else
+        # println("No element selected")
+    end
+    
+    main.selectedEntities = [selected_element]
 end
 
 function handle_mouse_click_duplication(main)
@@ -384,12 +409,6 @@ end
 Renders UI controls for manipulation settings in the scene viewer.
 """
 function render_manipulation_controls()
-    # Grid snap control
-    CImGui.SetNextItemWidth(100)
-    @c CImGui.DragInt("Grid Snap", &SCENE_MANIPULATION_STATE.grid_snap, 1, 0, 100, "%d")
-    
-    CImGui.SameLine()
-    
     # Manipulation mode control
     mode_names = ["Position", "Scale", "Both"]
     current_mode = Int32(SCENE_MANIPULATION_STATE.manipulation_mode)
@@ -401,11 +420,15 @@ function render_manipulation_controls()
     
     CImGui.SameLine()
     
-    # Clear selection button
-    if CImGui.SmallButton("Clear Selection")
-        # Clear selection by setting to empty array
-        if JulGame.EditorState["main"] !== nothing
-            JulGame.EditorState["main"].selectedEntities = []
+    # Display UI Elements button
+    display_ui_elements = get(JulGame.EditorState, "display_ui_elements", nothing) 
+    uiElementsTitle = display_ui_elements !== nothing && display_ui_elements ? "Hide UI Elements" : "Show UI Elements"
+    if CImGui.SmallButton(uiElementsTitle)
+            # Clear selection by setting to empty array
+        if display_ui_elements !== nothing
+            JulGame.EditorState["display_ui_elements"] = !display_ui_elements
+        else
+            JulGame.EditorState["display_ui_elements"] = true
         end
     end
 end
@@ -675,5 +698,360 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
     if zoom_reset_hovered && CImGui.IsMouseClicked(CImGui.ImGuiMouseButton_Left)
         # Reset zoom level to 1.0
         zoom_level[] = 1.0
+    end
+end
+
+"""
+    get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+
+Gets the nearest UI element to the mouse click position in the scene viewer.
+"""
+function get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    if main === nothing || main.scene === nothing
+        return nothing
+    end
+    
+    camera = main.scene.camera
+    if camera === nothing
+        return nothing
+    end
+    
+    scale_factor = 64.0
+    camera_world_pos = Math.Vector2f(camera.position.x, camera.position.y)
+    
+    nearest_ui_element = nothing
+    min_distance = Inf
+    
+    for ui_element in main.scene.uiElements
+        if !ui_element.isActive
+            continue
+        end
+        
+        # Convert UI element screen position to world position relative to camera
+        ui_world_pos = Math.Vector2f(
+            camera_world_pos.x + (ui_element.position.x / 64.0),
+            camera_world_pos.y + (ui_element.position.y / 64.0)
+        )
+        
+        # Check if mouse click is within UI element bounds
+        ui_size_world = Math.Vector2f(
+            ui_element.size.x / 64.0,
+            ui_element.size.y / 64.0
+        )
+        
+        # Convert mouse position to world coordinates (similar to entities)
+        mouse_world_x = mouse_pos_in_canvas_zoom_adjusted.x / scale_factor + camPos.x / scale_factor
+        mouse_world_y = mouse_pos_in_canvas_zoom_adjusted.y / scale_factor + camPos.y / scale_factor
+        
+        # Check if mouse is within UI element bounds
+        if mouse_world_x >= ui_world_pos.x && 
+           mouse_world_x <= ui_world_pos.x + ui_size_world.x &&
+           mouse_world_y >= ui_world_pos.y && 
+           mouse_world_y <= ui_world_pos.y + ui_size_world.y
+            
+            # Calculate distance to center of UI element
+            center_x = ui_world_pos.x + ui_size_world.x / 2
+            center_y = ui_world_pos.y + ui_size_world.y / 2
+            distance = sqrt((mouse_world_x - center_x)^2 + (mouse_world_y - center_y)^2)
+            
+            if distance < min_distance
+                min_distance = distance
+                nearest_ui_element = ui_element
+            end
+        end
+    end
+    
+    return nearest_ui_element
+end
+
+"""
+    draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera)
+
+Draws a debug outline showing the camera viewport in the scene viewer.
+"""
+function draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera)
+    scale_factor = 64.0 * zoom_level[]
+    
+    # Calculate camera viewport in world coordinates
+    camera_world_pos = Math.Vector2f(camera.position.x, camera.position.y)
+    camera_size_world = Math.Vector2f(camera.size.x / 64.0, camera.size.y / 64.0)  # Convert pixels to world units
+    
+    # Place viewport at world position relative to origin: −(camera.pos+offset) in pixels, zoomed
+    screen_pos = Math.Vector2f(
+        canvas_p0.x - ((camera.position.x + camera.offset.x) * 64.0 * zoom_level[]),
+        canvas_p0.y - ((camera.position.y + camera.offset.y) * 64.0 * zoom_level[])
+    )
+    
+    # Viewport size is camera.size (pixels) scaled by zoom
+    screen_size = Math.Vector2f(
+        camera.size.x * zoom_level[],
+        camera.size.y * zoom_level[]
+    )
+    
+    # Draw camera outline in cyan
+    camera_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(0.0, 1.0, 1.0, 0.8))
+    CImGui.AddRect(
+        draw_list,
+        CImGui.ImVec2(screen_pos.x, screen_pos.y),
+        CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+        camera_color,
+        0.0,
+        CImGui.ImDrawFlags_None,
+        2.0
+    )
+    
+    # Add label
+    CImGui.AddText(
+        draw_list,
+        CImGui.ImVec2(screen_pos.x + 5, screen_pos.y + 5),
+        camera_color,
+        "Camera Viewport"
+    )
+end
+
+"""
+    render_ui_elements_in_scene(main, draw_list, canvas_p0, camPos, zoom_level, camera)
+
+Renders UI elements in the scene viewer with camera-relative positioning.
+"""
+function render_ui_elements_in_scene(main, draw_list, canvas_p0, camPos, zoom_level, camera)
+    scale_factor = 64.0 * zoom_level[]
+    
+    # Calculate camera viewport in world coordinates
+    camera_world_pos = Math.Vector2f(camera.position.x, camera.position.y)
+    
+    for ui_element in main.scene.uiElements
+        if !ui_element.isActive
+            continue
+        end
+        
+        # UI elements are in pixels; render them like world by subtracting camera (in pixels), then zoom
+        screen_pos = Math.Vector2f(
+            canvas_p0.x + (ui_element.position.x * zoom_level[]) - ((camera.position.x + camera.offset.x) * 64.0 * zoom_level[]),
+            canvas_p0.y + (ui_element.position.y * zoom_level[]) - ((camera.position.y + camera.offset.y) * 64.0 * zoom_level[])
+        )
+        
+        # Convert UI element size to world scale
+        ui_screen_size = Math.Vector2f(
+            ui_element.size.x * zoom_level[],
+            ui_element.size.y * zoom_level[]
+        )
+        
+        # Render different UI element types
+        render_ui_element_in_world_space(ui_element, draw_list, screen_pos, ui_screen_size)
+    end
+end
+
+"""
+    render_ui_element_in_world_space(ui_element, draw_list, screen_pos, screen_size)
+
+Renders a specific UI element type in world space coordinates.
+"""
+function render_ui_element_in_world_space(ui_element, draw_list, screen_pos, screen_size)
+    # Get UI element color
+    color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(
+        ui_element.color[1]/255.0,
+        ui_element.color[2]/255.0,
+        ui_element.color[3]/255.0,
+        ui_element.color[4]/255.0
+    ))
+    
+    # Render based on UI element type
+    if isa(ui_element, JulGame.UI.ScreenButtonModule.ScreenButton)
+        # Draw button as filled rectangle with border
+        CImGui.AddRectFilled(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            color
+        )
+        
+        # Draw border
+        border_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(0.8, 0.8, 0.8, 1.0))
+        CImGui.AddRect(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            border_color,
+            0.0,
+            CImGui.ImDrawFlags_None,
+            1.0
+        )
+        
+        # Draw text if available
+        if !isempty(ui_element.text)
+            text_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(
+                ui_element.textColor[1]/255.0,
+                ui_element.textColor[2]/255.0,
+                ui_element.textColor[3]/255.0,
+                ui_element.textColor[4]/255.0
+            ))
+            CImGui.AddText(
+                draw_list,
+                CImGui.ImVec2(screen_pos.x + 5, screen_pos.y + screen_size.y/2 - 8),
+                text_color,
+                ui_element.text
+            )
+        end
+        
+    elseif isa(ui_element, JulGame.UI.RectangleModule.Rectangle)
+        if ui_element.fillMode
+            # Draw filled rectangle
+            CImGui.AddRectFilled(
+                draw_list,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                color,
+                Float32(ui_element.borderRadius)
+            )
+        else
+            # Draw outline rectangle
+            CImGui.AddRect(
+                draw_list,
+                CImGui.ImVec2(screen_pos.x, screen_pos.y),
+                CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+                color,
+                Float32(ui_element.borderRadius),
+                CImGui.ImDrawFlags_None,
+                Float32(ui_element.borderWidth)
+            )
+        end
+        
+    elseif isa(ui_element, JulGame.UI.TextBoxModule.TextBox)
+        # Draw text box as filled rectangle with border
+        CImGui.AddRectFilled(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            color
+        )
+        
+        # Draw border
+        border_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(0.6, 0.6, 0.6, 1.0))
+        CImGui.AddRect(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            border_color,
+            0.0,
+            CImGui.ImDrawFlags_None,
+            1.0
+        )
+        
+    else
+        # Default rendering for other UI element types
+        CImGui.AddRectFilled(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            color
+        )
+        
+        # Draw border to distinguish it
+        border_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(1.0, 1.0, 0.0, 0.8))
+        CImGui.AddRect(
+            draw_list,
+            CImGui.ImVec2(screen_pos.x, screen_pos.y),
+            CImGui.ImVec2(screen_pos.x + screen_size.x, screen_pos.y + screen_size.y),
+            border_color,
+            0.0,
+            CImGui.ImDrawFlags_None,
+            2.0
+        )
+    end
+    
+    # Add UI element label
+    label_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(1.0, 1.0, 1.0, 0.9))
+    CImGui.AddText(
+        draw_list,
+        CImGui.ImVec2(screen_pos.x, screen_pos.y - 15),
+        label_color,
+        "UI: $(ui_element.name)"
+    )
+end
+
+"""
+    handle_ui_element_manipulation_in_scene(ui_element, canvas_p0, camPos, zoom_level, camera)
+
+Handles manipulation arrows for a UI element in the scene viewer.
+"""
+function handle_ui_element_manipulation_in_scene(ui_element, canvas_p0, camPos, zoom_level, camera)
+    scale_factor = 64.0 * zoom_level[]
+    
+    # Calculate camera viewport in world coordinates
+    camera_world_pos = Math.Vector2f(camera.position.x, camera.position.y)
+    
+    # Same mapping as render: camera-relative pixels then zoom
+    screen_pos = Math.Vector2(
+        round(Int, canvas_p0.x + (ui_element.position.x * zoom_level[]) - ((camera.position.x + camera.offset.x) * 64.0 * zoom_level[])),
+        round(Int, canvas_p0.y + (ui_element.position.y * zoom_level[]) - ((camera.position.y + camera.offset.y) * 64.0 * zoom_level[]))
+    )
+    
+    # Convert screen position to window-relative coordinates for ImGui
+    window_pos = CImGui.GetWindowPos()
+    cursor_pos = CImGui.ImVec2(
+        screen_pos.x - window_pos.x,
+        screen_pos.y - window_pos.y
+    )
+    
+    # Set cursor position relative to window
+    CImGui.SetCursorPos(cursor_pos)
+    
+    # Create a dummy item to represent the UI element for manipulation
+    ui_screen_size = Math.Vector2(ui_element.size.x * zoom_level[], ui_element.size.y * zoom_level[])
+    CImGui.Dummy(CImGui.ImVec2(ui_screen_size.x, ui_screen_size.y))
+    
+    # Handle position manipulation
+    if SCENE_MANIPULATION_STATE.manipulation_mode == Position || SCENE_MANIPULATION_STATE.manipulation_mode == Both
+        # Use window-relative coordinates for manipulation arrows
+        screen_pos_ref = Ref(Math.Vector2f(
+            Float32(cursor_pos.x),
+            Float32(cursor_pos.y)
+        ))
+        
+        original_screen_pos = screen_pos_ref[]
+        if draw_position_arrows(screen_pos_ref, Int(SCENE_MANIPULATION_STATE.grid_snap))
+            # Calculate the screen space delta
+            screen_delta = screen_pos_ref[] - original_screen_pos
+            
+            # Convert screen delta back to UI element screen coordinates
+            ui_delta_x = screen_delta.x / zoom_level[]
+            ui_delta_y = screen_delta.y / zoom_level[]
+            
+            # Apply the delta to the UI element position
+            new_ui_pos = Math.Vector2(
+                ui_element.position.x + ui_delta_x,
+                ui_element.position.y + ui_delta_y
+            )
+            ui_element.position = new_ui_pos
+            # Mark scene as modified
+            JulGame.EditorState["scene_modified"] = true
+        end
+    end
+    
+    # Handle scale manipulation
+    if SCENE_MANIPULATION_STATE.manipulation_mode == Scale || SCENE_MANIPULATION_STATE.manipulation_mode == Both
+        # Convert UI element size to screen pixels for manipulation
+        screen_scale = Math.Vector2f(
+            ui_element.size.x * zoom_level[],
+            ui_element.size.y * zoom_level[]
+        )
+        scale_ref = Ref(screen_scale)
+        
+        # Use the same window-relative coordinates as position arrows
+        widget_pos = Math.Vector2f(cursor_pos.x, cursor_pos.y)
+        draw_resize_handles(widget_pos, scale_ref, Int(SCENE_MANIPULATION_STATE.grid_snap), Default)
+        
+        # Convert screen scale back to UI element size
+        new_ui_size = Math.Vector2(
+            scale_ref[].x / zoom_level[],
+            scale_ref[].y / zoom_level[]
+        )
+        
+        if new_ui_size != Math.Vector2(ui_element.size.x, ui_element.size.y)
+            ui_element.size = new_ui_size
+            # Mark scene as modified
+            JulGame.EditorState["scene_modified"] = true
+        end
     end
 end
