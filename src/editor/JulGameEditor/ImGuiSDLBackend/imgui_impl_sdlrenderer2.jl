@@ -109,14 +109,21 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
     # Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
     display_size_x = unsafe_load(draw_data.DisplaySize.x)
     display_size_y = unsafe_load(draw_data.DisplaySize.y)
-    fb_width = Int32(display_size_x * render_scale.x)
-    fb_height = Int32(display_size_y * render_scale.y)
+    
+    # Get the actual framebuffer size from SDL renderer (don't overwrite it!)
+    fb_width = Int32(0)
+    fb_height = Int32(0)
     @c SDL2.SDL_GetRendererOutputSize(bd.SDLRenderer, &fb_width, &fb_height)
-    fb_width = Int(display_size_x * render_scale.x) 
-    fb_height = Int(display_size_y * render_scale.y)
+    
+    # If SDL returns 0, fall back to display size calculation
+    if fb_width == 0 || fb_height == 0
+        fb_width = Int(display_size_x * render_scale.x) 
+        fb_height = Int(display_size_y * render_scale.y)
+        #println("Using calculated framebuffer size: ", fb_width, " x ", fb_height)
+    end
+    
     if fb_width == 0 || fb_height == 0
         #println("Error: Framebuffer width or height is 0 in RenderDrawData")
-        #println("  fb_width: ", fb_width, " fb_height: ", fb_height)
         return
     end
 

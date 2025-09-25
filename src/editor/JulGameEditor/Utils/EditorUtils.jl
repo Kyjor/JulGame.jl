@@ -12,12 +12,19 @@ function init_sdl_and_imgui(windowTitle::String)
 
     window = SDL2.SDL_CreateWindow(
     windowTitle, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
-    SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE
+    SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
     )
     if window == C_NULL 
         println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))
         return -1
     end
+    
+    # Explicitly show and set window size to ensure it's properly initialized on macOS
+    SDL2.SDL_ShowWindow(window)
+    SDL2.SDL_SetWindowSize(window, 1280, 720)
+    
+    # Give the window system time to process the changes
+    SDL2.SDL_PumpEvents()
 
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
     global sdlRenderer = renderer
