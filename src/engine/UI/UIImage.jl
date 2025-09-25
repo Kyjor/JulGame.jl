@@ -33,7 +33,7 @@ module UIImageModule
         )
             this = new()
 
-            this.anchor = UI.anchor_types
+            this.anchor = deepcopy(UI.anchor_types)
             this.isActive = isActive
             this.id = id
             this.persistentBetweenScenes = persistentBetweenScenes
