@@ -34,6 +34,7 @@ module JulGame
     ScriptModule = Module(:Scripts)
     LoadedScripts = Set{String}()
 
+    EditorActionHistory = []
     EditorState = Dict{String, Any}()
 
     FrameCount = 0

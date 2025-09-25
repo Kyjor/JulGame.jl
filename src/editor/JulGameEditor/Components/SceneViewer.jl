@@ -250,7 +250,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     
     # Draw camera debug outline
     if main !== nothing && camera !== nothing
-        draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera)
+        draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera, main.scene.camera)
     end
     
     # Display UI elements in scene viewer if enabled
@@ -765,28 +765,30 @@ function get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoo
 end
 
 """
-    draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera)
-
+    draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera, scene_camera)
+    
 Draws a debug outline showing the camera viewport in the scene viewer.
 """
-function draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera)
-    scale_factor = 64.0 * zoom_level[]
+function draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera, scene_camera)
+    # Use engine's pixels-per-unit for consistency
+    ppu = JulGame.SCALE_UNITS
+    scale_factor = ppu * zoom_level[]
     
-    # Calculate camera viewport in world coordinates
-    camera_world_pos = Math.Vector2f(camera.position.x, camera.position.y)
-    camera_size_world = Math.Vector2f(camera.size.x / 64.0, camera.size.y / 64.0)  # Convert pixels to world units
-    
-    # Place viewport at world position relative to origin: −(camera.pos+offset) in pixels, zoomed
+    # Draw camera viewport in world space: subtract (camera.position + camera.offset)
     screen_pos = Math.Vector2f(
-        canvas_p0.x - ((camera.position.x + camera.offset.x) * 64.0 * zoom_level[]),
-        canvas_p0.y - ((camera.position.y + camera.offset.y) * 64.0 * zoom_level[])
+        canvas_p0.x - ((camera.position.x + camera.offset.x) * scale_factor) + ((scene_camera.position.x + scene_camera.offset.x) * scale_factor),
+        canvas_p0.y - ((camera.position.y + camera.offset.y) * scale_factor) + ((scene_camera.position.y + scene_camera.offset.y) * scale_factor)
     )
     
-    # Viewport size is camera.size (pixels) scaled by zoom
+    # Viewport size: camera.size (pixels) scaled by zoom to match scene zooming
     screen_size = Math.Vector2f(
-        camera.size.x * zoom_level[],
-        camera.size.y * zoom_level[]
+        scene_camera.size.x * zoom_level[],
+        scene_camera.size.y * zoom_level[]
     )
+
+    # Debug: validate camera size and computed screen size
+    @debug "Camera viewport size (pixels): $(camera.size.x) x $(camera.size.y)"
+    @debug "Computed camera outline size (screen): $(screen_size.x) x $(screen_size.y) at zoom $(zoom_level[])"
     
     # Draw camera outline in cyan
     camera_color = CImGui.ColorConvertFloat4ToU32(CImGui.ImVec4(0.0, 1.0, 1.0, 0.8))
