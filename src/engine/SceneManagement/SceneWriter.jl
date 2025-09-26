@@ -83,6 +83,7 @@ module SceneWriterModule
                     ))
             elseif "$(typeof(uiElement))" == "JulGame.UI.UIImageModule.UIImage"
                 dict = Dict()
+                dict["type"] = "UIImage"
                 @info "extracting value for fields from UIElement $(uiElement.id) named: $(uiElement.name)"
                 for field in fields
                     if(get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, []) || field in get(FieldExclusions, "UIElement", []))
@@ -314,24 +315,27 @@ module SceneWriterModule
     end
 
     function extract_value(element, field)
-        if isstructtype(typeof(getproperty(element, field)))
+        if field == :anchor 
+            return element.anchor.current_state
+        end
+
+        fieldValue = getproperty(element, field)
+        if isstructtype(typeof(fieldValue)) && typeof(fieldValue) != String
             dict = Dict()
-            for subfield in fieldnames(typeof(getproperty(element, field)))
+            for subfield in fieldnames(typeof(fieldValue))
                 if subfield == :parent
                     continue
                 end
-                @debug "extracting value for $(subfield) from $(typeof(getproperty(element, field)))"
-                dict[string(subfield)] = extract_value(getproperty(element, field), subfield)
+                @debug "extracting value for $(subfield) from $(typeof(fieldValue))"
+                dict[string(subfield)] = extract_value(fieldValue, subfield)
             end
             return dict
         end
         
         @debug "bottom:extracting value for $(field) from $(typeof(element))"
-        if field == :anchor 
-            return element.anchor.current_state
-        end
         
-        return getproperty(element, field)
+        
+        return fieldValue
     end
 
     function set_undefined_field(script, field)

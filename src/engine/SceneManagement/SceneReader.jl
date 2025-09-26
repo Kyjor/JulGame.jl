@@ -13,6 +13,7 @@ module SceneReaderModule
     using ...SpriteModule
     using ...UI.TextBoxModule
     using ...UI.ScreenButtonModule
+    using ...UI.UIImageModule
     using ...TransformModule
     using ...JulGame
 
@@ -204,6 +205,28 @@ module SceneReaderModule
                         fontSize = Int(get(uiElement, "fontSize", 20)), # Use fontSize from JSON or default
                         maxLineWidth = Int(get(uiElement, "maxLineWidth", 0)),
                         wrapWords = get(uiElement, "wrapWords", true)
+                    )
+                elseif uiElement.type == "UIImage"
+                    color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
+                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
+                  
+                    newUIElement = UIImage(
+                        get(uiElement, "path", "Default");
+                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
+                        name=get(uiElement, "name", "Image"),
+                        anchor=Symbol(get(uiElement, "anchor", "none")),
+                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        layer=Int(get(uiElement, "layer", 0)),
+                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        isActive=get(uiElement, "isActive", true),
+                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
+                        color=color_tuple,
+                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        parent=nothing,
+                        rotation=convert(Float64, get(uiElement, "rotation", 0.0)),
+                        # clickEvents=get(uiElement, "clickEvents", Function[]),
+                        # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
+                        # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),
                     )
                 else
                     # For text offset, check if it should be centered (if not specified or all zeros)

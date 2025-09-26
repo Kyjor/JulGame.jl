@@ -14,7 +14,6 @@ module UIImageModule
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
          
         function UIImage(path::String="Default";
-            clickEvent::Union{Function, Nothing} = nothing,
             id::String=JulGame.generate_uuid(), 
             name::String="Image",
             anchor::Symbol = :none,
@@ -22,14 +21,15 @@ module UIImageModule
             crop::Union{Ptr{Nothing}, Math.Vector4} = C_NULL,
             layer::Int=0,
             position::Math.Vector2 = Math.Vector2(0,0), 
-            hoverEnterEvent::Union{Function, Nothing} = nothing,
-            hoverExitEvent::Union{Function, Nothing} = nothing,
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
             size::Math.Vector2=Math.Vector2(0,0), 
             parent::Union{UI.UIElement, Nothing}=nothing,
-            rotation::Float64=0.0
+            rotation::Float64=0.0,
+            clickEvents::Vector{Function} = Function[],
+            hoverEnterEvents::Vector{Function} = Function[],
+            hoverExitEvents::Vector{Function} = Function[],
         )
             this = new()
 
@@ -64,15 +64,9 @@ module UIImageModule
             surface = unsafe_wrap(Array, this.surface, 10; own = false)
             this.size = Math.Vector2(surface[1].w, surface[1].h)
 
-            if clickEvent !== nothing
-                push!(this.clickEvents, clickEvent)
-            end
-            if hoverEnterEvent !== nothing
-                push!(this.hoverEnterEvents, hoverEnterEvent)
-            end
-            if hoverExitEvent !== nothing
-                push!(this.hoverExitEvents, hoverExitEvent)
-            end
+            this.clickEvents = clickEvents
+            this.hoverEnterEvents = hoverEnterEvents
+            this.hoverExitEvents = hoverExitEvents
         
             return this
         end
