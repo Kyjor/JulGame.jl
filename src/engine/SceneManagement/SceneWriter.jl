@@ -83,6 +83,7 @@ module SceneWriterModule
                     ))
             elseif "$(typeof(uiElement))" == "JulGame.UI.UIImageModule.UIImage"
                 dict = Dict()
+                @info "extracting value for fields from UIElement $(uiElement.id) named: $(uiElement.name)"
                 for field in fields
                     if(get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, []) || field in get(FieldExclusions, "UIElement", []))
                         continue
@@ -319,13 +320,17 @@ module SceneWriterModule
                 if subfield == :parent
                     continue
                 end
-                @info "extracting value for $(subfield) from $(typeof(getproperty(element, field)))"
+                @debug "extracting value for $(subfield) from $(typeof(getproperty(element, field)))"
                 dict[string(subfield)] = extract_value(getproperty(element, field), subfield)
             end
             return dict
         end
         
-        @info "bottom:extracting value for $(field) from $(typeof(getproperty(element, field)))"
+        @debug "bottom:extracting value for $(field) from $(typeof(element))"
+        if field == :anchor 
+            return element.anchor.current_state
+        end
+        
         return getproperty(element, field)
     end
 

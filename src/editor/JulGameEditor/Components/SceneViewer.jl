@@ -1108,11 +1108,19 @@ function handle_ui_element_manipulation_in_scene(ui_element, canvas_p0, camPos, 
             ui_delta_y = screen_delta.y / zoom_level[]
             
             # Apply the delta to the UI element position
-            new_ui_pos = Math.Vector2(
-                ui_element.position.x + ui_delta_x,
-                ui_element.position.y + ui_delta_y
-            )
-            ui_element.position = new_ui_pos
+            if ui_element.anchor.current_state != :none
+                new_ui_pos = Math.Vector2(
+                    ui_element.anchorOffset.x + ui_delta_x,
+                    ui_element.anchorOffset.y + ui_delta_y
+                )
+                ui_element.anchorOffset = new_ui_pos
+            else
+                new_ui_pos = Math.Vector2(
+                    ui_element.position.x + ui_delta_x,
+                    ui_element.position.y + ui_delta_y
+                )
+                ui_element.position = new_ui_pos
+            end
             # Mark scene as modified
             JulGame.EditorState["scene_modified"] = true
         end
