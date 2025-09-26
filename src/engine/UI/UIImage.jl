@@ -225,8 +225,25 @@ module UIImageModule
         SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[4], 0, 255)));
     end
 
-    function UI.duplicate(this::UIImage, parent::Any)
-        newImage = UIImage(parent, this.path, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, isWorldEntity=this.isWorldEntity, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
+    function UI.duplicate(this::UIImage)
+        newImage = UIImage(
+            this.path; 
+            id=JulGame.generate_uuid(), 
+            name=this.name, 
+            anchor=this.anchor.current_state, 
+            anchorOffset=this.anchorOffset, 
+            layer=this.layer, 
+            position=this.position, 
+            isActive=this.isActive, 
+            persistentBetweenScenes=this.persistentBetweenScenes, 
+            color=this.color, size=this.size, 
+            parent=this.parent, 
+            rotation=this.rotation, 
+            clickEvents=this.clickEvents, 
+            hoverEnterEvents=this.hoverEnterEvents, 
+            hoverExitEvents=this.hoverExitEvents
+        )
+
         UI.initialize(newImage)
         return newImage
     end
