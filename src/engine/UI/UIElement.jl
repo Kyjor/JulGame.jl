@@ -50,6 +50,9 @@ function Base.getproperty(script::UIElement, property::Symbol)
 
     if hasfield(typeof(relationships[script]), property)
         #println("getproperty from parent: $(property) ")
+        if property == :isHovered && getfield(relationships[script], :isActive) == false
+            return false
+        end
         return getfield(relationships[script], property)
     end
 

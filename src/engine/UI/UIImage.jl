@@ -2,7 +2,8 @@ module UIImageModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
-
+    include(joinpath(@__DIR__, "..", "Resource", "InternalImages.jl"))
+    
     export UIImage
     mutable struct UIImage <: UI.UIElement
         path::String
@@ -95,11 +96,12 @@ module UIImageModule
         if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
             UI.set_color(this)
         end
+        srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             this.texture, 
-            C_NULL, 
+            srcRect, 
             Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
             this.rotation, 
             C_NULL, 
