@@ -10,7 +10,7 @@ function show_hierarchy(currentSceneMain::Union{MainLoop, Nothing})
         visible_index = 0
         
         for n = eachindex(filteredEntities)
-            if filteredEntities[n].parent != C_NULL
+            if filteredEntities[n].parent !== nothing
                 continue
             end
             
@@ -92,7 +92,7 @@ function hasDropConflict(filteredEntities, origin, destination)
     end
     # if it is a grandchild, great grandchild, etc, we need to move all the way up the chain to check if we can move it 
     parent = filteredEntities[destination].parent
-    while parent != C_NULL
+    while parent !== nothing
         if parent == filteredEntities[origin]
             @warn "Cannot move entity $(filteredEntities[origin].name) because it is a forefather of $(filteredEntities[destination].name)"
             return true
@@ -117,6 +117,14 @@ function display_selectable_element(element)
         end
         push!(JulGame.MAIN.selectedEntities, element)
         #unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(JulGame.MAIN.selectedEntities, entityIndex)
+    end
+
+    if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
+        element_type = split("$(typeof(element))", ".")[end]
+        id_data = Vector{UInt8}("$(element.id)::$(element_type == "Entity" ? "Entity" : "UIElement")")
+        CImGui.SetDragDropPayload("SCENE_ELEMENT", pointer(id_data), length(id_data)) # set payload to carry the index of our item (could be anything)
+        CImGui.Text("Move $(element.name)")
+        CImGui.EndDragDropSource()
     end
     
     CImGui.PopID()

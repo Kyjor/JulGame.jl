@@ -102,10 +102,14 @@ function display_fields(structure::EditableStructure)
     end
     for field in fields
         structureType = split(string(typeof(structure)), ".")[end]
-        if (get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])) || (isa(structure, UI.UIElement) && field in get(FieldExclusions, "UIElement", []))
+        if (get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])) || (isa(structure, UI.UIElement) && field in get(FieldExclusions, "UIElement", [])) && field != :parent
             continue
         end
-        show_field(structure, field, getproperty(structure, field))
+        if field == :parent
+            show_parent_field(structure, field, getproperty(structure, field))
+        else
+            show_field(structure, field, getproperty(structure, field))
+        end
     end
     CImGui.Unindent(8.0f0)
     CImGui.PopStyleVar()

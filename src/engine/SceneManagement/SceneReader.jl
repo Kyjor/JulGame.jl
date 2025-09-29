@@ -127,7 +127,7 @@ module SceneReaderModule
                     end
                 end
             end
-            uiElements = deserialize_ui_elements(json.UIElements)
+            uiElements = deserialize_ui_elements(json.UIElements, entities)
             camera = Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
             if haskey(json, "Camera")
                 camera = Camera(Vector2(json.Camera.size.x, json.Camera.size.y), Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
@@ -145,12 +145,16 @@ module SceneReaderModule
         end
     end
 
-    function deserialize_ui_elements(jsonUIElements)
+    function deserialize_ui_elements(jsonUIElements, entities)
         res = []
+        childParentDict = Dict()
         default_Vector2 = Vector2(0,0)
         for uiElement in jsonUIElements
             try
                 newUIElement = nothing
+                if haskey(uiElement, "parent") && uiElement.parent != ""
+                    childParentDict[string(uiElement.id)] = uiElement.parent
+                end
                 if uiElement.type == "Canvas"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 100)
@@ -267,6 +271,25 @@ module SceneReaderModule
             catch e 
                 @error string(e)
 				Base.show_backtrace(stdout, catch_backtrace())
+            end
+        end
+
+        for uiElement in res
+            if haskey(childParentDict, string(uiElement.id)) && childParentDict[string(uiElement.id)] != "" && childParentDict[string(uiElement.id)] !== nothing
+                parentId, parentType = split(childParentDict[string(uiElement.id)], "::")
+                if parentType == "Entity"
+                    for e in entities
+                        if string(e.id) == string(parentId)
+                            uiElement.parent = e
+                        end
+                    end
+                else
+                    for e in res
+                        if string(e.id) == string(parentId)
+                            uiElement.parent = e
+                        end
+                    end
+                end
             end
         end
 

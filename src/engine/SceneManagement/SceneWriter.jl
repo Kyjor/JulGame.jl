@@ -25,7 +25,7 @@ module SceneWriterModule
         for entity in entities
             push!(entitiesDict, Dict(
                 "id" => string(entity.id), 
-                "parent" =>  entity.parent != C_NULL ? entity.parent.id : C_NULL, 
+                "parent" =>  entity.parent !== nothing ? entity.parent.id : nothing, 
                 "isActive" => entity.isActive, 
                 "name" => entity.name, 
                 "persistentBetweenScenes" => entity.persistentBetweenScenes,
@@ -58,6 +58,7 @@ module SceneWriterModule
                     "color" => Dict("r" => uiElement.color[1], "g" => uiElement.color[2], "b" => uiElement.color[3], "a" => uiElement.color[4]),
                     "rotation" => uiElement.rotation,
                     "type" => "Canvas",
+                    "parent" => get_parent_id(uiElement.parent),
                     #"children" => serialize_canvas_children(uiElement.children)
                     ))
             elseif "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
@@ -79,6 +80,7 @@ module SceneWriterModule
                     "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
                     "text" => uiElement.text,
                     "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
+                    "parent" => get_parent_id(uiElement.parent),
                     "type" => "ScreenButton"
                     ))
             elseif "$(typeof(uiElement))" == "JulGame.UI.UIImageModule.UIImage"
@@ -110,6 +112,7 @@ module SceneWriterModule
                     "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
                     "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
                     "text" => uiElement.text,
+                    "parent" => get_parent_id(uiElement.parent),
                     "type" => "TextBox"
                     ))
             end
@@ -315,6 +318,15 @@ module SceneWriterModule
     end
 
     function extract_value(element, field)
+        if field == :parent
+            elementType = split("$(typeof(element))", ".")[end]
+            if elementType != "Entity" 
+                elementType = "UIElement"
+            end
+
+            return element.parent !== nothing ? "$(element.parent.id)::$(elementType)" : nothing
+        end
+
         if field == :anchor 
             return element.anchor.current_state
         end
@@ -323,9 +335,6 @@ module SceneWriterModule
         if isstructtype(typeof(fieldValue)) && typeof(fieldValue) != String
             dict = Dict()
             for subfield in fieldnames(typeof(fieldValue))
-                if subfield == :parent
-                    continue
-                end
                 @debug "extracting value for $(subfield) from $(typeof(fieldValue))"
                 dict[string(subfield)] = extract_value(fieldValue, subfield)
             end
@@ -349,6 +358,17 @@ module SceneWriterModule
         end
     end
 
+    function get_parent_id(parent)
+        if parent === nothing
+            return nothing
+        end
+        elementType = split("$(typeof(parent))", ".")[end]
+        if elementType != "Entity" 
+            elementType = "UIElement"
+        end
+            
+        return "$(parent.id)::$(elementType)"
+    end
     """
     serialize_canvas_children(children::Vector{UI.UIElement})
     

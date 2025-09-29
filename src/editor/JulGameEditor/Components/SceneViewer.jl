@@ -219,6 +219,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
             for entity in main.selectedEntities
                 JulGame.destroy(entity)
             end
+            main.selectedEntities = []
         end
         CImGui.EndPopup()
     end

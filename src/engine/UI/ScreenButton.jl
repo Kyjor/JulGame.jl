@@ -321,6 +321,8 @@ module ScreenButtonModule
         this.buttonUpTexture = C_NULL
         this.textTexture = C_NULL
         this.currentTexture = C_NULL
+
+        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
     end
 
     """

@@ -220,6 +220,8 @@ module UIImageModule
         SDL2.SDL_DestroyTexture(this.texture)
         this.surface = C_NULL
         this.texture = C_NULL
+
+        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
     end
 
     function UI.set_color(this::UIImage)
@@ -248,6 +250,10 @@ module UIImageModule
 
         UI.initialize(newImage)
         return newImage
+    end
+
+    function UI.add_click_event(this::UIImage, event)
+        push!(this.clickEvents, event)
     end
 
     function Base.setproperty!(this::UIImage, s::Symbol, x)

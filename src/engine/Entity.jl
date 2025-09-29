@@ -23,7 +23,7 @@ module EntityModule
         persistentBetweenScenes::Bool
         transform::Transform
         scripts::Vector{Any}
-        parent::Union{Entity, Ptr{Nothing}}
+        parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
@@ -55,7 +55,7 @@ module EntityModule
             this.sprite = C_NULL
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
-            this.parent = C_NULL
+            this.parent = nothing
 
             return this
         end

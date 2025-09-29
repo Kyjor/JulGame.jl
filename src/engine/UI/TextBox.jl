@@ -415,6 +415,8 @@ module TextBoxModule
             this.font = C_NULL
         end
         free_text_resources(this)
+        
+        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
     end
 #= 
     function Base.setproperty!(this::TextBox, s::Symbol, x)
