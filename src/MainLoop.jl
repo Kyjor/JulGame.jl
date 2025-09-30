@@ -243,9 +243,9 @@ module MainLoopModule
 
 			for entity in MAIN.scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
-				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart
+				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
+					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
 					Component.toggle_sound(entity.soundSource)
-					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start")
 				end
 			end 
 		end
@@ -296,7 +296,7 @@ function JulGame.change_scene(sceneFileName::String)
 
 	for entity in this.scene.entities
 		if entity.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
-			@debug("Persistent entity: ", entity.name, " with id: ", entity.id)
+			@info("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
 			skipcount += 1
 			continue
