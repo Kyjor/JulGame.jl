@@ -221,6 +221,13 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
             end
             main.selectedEntities = []
         end
+        if CImGui.MenuItem("Duplicate", "", false, main.selectedEntities !== nothing && length(main.selectedEntities) > 0)
+            duplicatedEntities = []
+            for entity in main.selectedEntities
+                push!(duplicatedEntities, JulGame.duplicate(entity))
+            end
+            main.selectedEntities = duplicatedEntities
+        end
         CImGui.EndPopup()
     end
 

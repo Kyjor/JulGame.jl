@@ -415,7 +415,7 @@ module TextBoxModule
             this.font = C_NULL
         end
         free_text_resources(this)
-        
+
         MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
     end
 #= 
@@ -479,5 +479,31 @@ module TextBoxModule
             # Rerender the text
             UI.rerender_text(this)
         end
+    end
+
+    function UI.duplicate(this::TextBox, id::String = JulGame.generate_uuid())
+        newTextBox = TextBox(this.text; 
+        id=id, 
+        name=this.name, 
+        anchor=this.anchor.current_state,
+        anchorOffset=this.anchorOffset, 
+        isWorldEntity=this.isWorldEntity, 
+        layer=this.layer,
+        position=this.position, 
+        clickEvents=this.clickEvents,
+        hoverEnterEvents=this.hoverEnterEvents,
+        hoverExitEvents=this.hoverExitEvents,
+        isActive=this.isActive,
+        persistentBetweenScenes=this.persistentBetweenScenes,
+        color=this.color, 
+        fontPath=this.fontPath, 
+        fontSize=this.fontSize, 
+        maxLineWidth=this.maxLineWidth, 
+        wrapWords=this.wrapWords,
+        parent=this.parent
+    )
+        UI.initialize(newTextBox)
+        push!(MAIN.scene.uiElements, newTextBox)
+        return newTextBox
     end
 end

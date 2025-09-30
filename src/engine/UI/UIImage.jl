@@ -249,6 +249,7 @@ module UIImageModule
         )
 
         UI.initialize(newImage)
+        push!(MAIN.scene.uiElements, newImage)
         return newImage
     end
 

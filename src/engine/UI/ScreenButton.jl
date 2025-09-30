@@ -276,6 +276,41 @@ module ScreenButtonModule
         end
     end
 
+    function UI.duplicate(this::ScreenButton, id::String = JulGame.generate_uuid())
+        newButton = ScreenButton(nothing; 
+        id=id, 
+        name=this.name,
+        anchor=this.anchor.current_state,
+        anchorOffset=this.anchorOffset, 
+        isWorldEntity=this.isWorldEntity, 
+        layer=this.layer,
+        position=this.position, 
+        buttonUpSpritePath=this.buttonUpSpritePath, 
+        buttonDownSpritePath=this.buttonDownSpritePath, 
+        hoverEnterEvent=nothing,
+        hoverExitEvent=nothing,
+        isActive=this.isActive,
+        persistentBetweenScenes=this.persistentBetweenScenes,
+        color=this.color, 
+        textColor=this.textColor,
+        fontPath=this.fontPath, 
+        fontSize=this.fontSize, 
+        size=this.size, 
+        text=this.text, 
+        textOffset=this.textOffset, 
+        parent=this.parent,
+        rotation=this.rotation
+    )
+
+        newButton.clickEvents = this.clickEvents
+        newButton.hoverEnterEvents = this.hoverEnterEvents
+        newButton.hoverExitEvents = this.hoverExitEvents
+        
+        UI.initialize(newButton)
+        push!(MAIN.scene.uiElements, newButton)
+        return newButton
+    end
+
     function load_image_sdl(fullPath::String, imagePath::String)
         if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
             raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
