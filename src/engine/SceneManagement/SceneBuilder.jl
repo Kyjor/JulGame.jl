@@ -312,14 +312,10 @@ module SceneBuilderModule
         end
 
         for entity in MAIN.scene.entities
-            # Skip script reloading for persistent entities
-            if entity.persistentBetweenScenes
-                continue
-            end
-            
             scriptCounter = 1
             for script in entity.scripts
                 if !isa(script, JSON3.Object)
+                    # Skip script reloading for persistent entities
                     scriptCounter += 1
                     continue
                 end
