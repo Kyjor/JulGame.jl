@@ -106,10 +106,16 @@ function display_fields(structure::EditableStructure)
             continue
         end
 
-        customField = get(CustomMappings, structureType, nothing)[field]
+        customFieldKey = get(CustomMappings, structureType, nothing)
+        customDisplay = if customFieldKey !== nothing 
+            get(customFieldKey, field, nothing) 
+        else 
+            nothing 
+        end
         if field == :parent
             show_parent_field(structure, field, getproperty(structure, field))
-        elseif get(CustomMappings, structureType, Dict{Symbol, Symbol}())[field] != nothing
+        elseif customDisplay !== nothing
+            show_custom_field_mapping(structure, field, customDisplay, getproperty(structure, field))
         else
             show_field(structure, field, getproperty(structure, field))
         end

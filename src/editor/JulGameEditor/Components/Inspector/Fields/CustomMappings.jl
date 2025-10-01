@@ -5,7 +5,9 @@ CustomMappings = Dict{String, Dict{Symbol, Symbol}}(
     "InternalRigidbody" => Dict{Symbol, Symbol}(),
     "InternalShape" => Dict{Symbol, Symbol}(),
     "InternalSoundSource" => Dict{Symbol, Symbol}(),
-    "InternalSprite" => Dict{Symbol, Symbol}(),
+    "InternalSprite" => Dict{Symbol, Symbol}(
+        :imagePath => :path,
+    ),
     "ScreenButton" => Dict{Symbol, Symbol}(),
     "TextBox" => Dict{Symbol, Symbol}(),
     "Transform" => Dict{Symbol, Symbol}(),
@@ -13,5 +15,8 @@ CustomMappings = Dict{String, Dict{Symbol, Symbol}}(
     "UIElement" => Dict{Symbol, Symbol}(),
 )
 
-function show_custom_field_mapping(structure::EditableStructure, field::Symbol, value::Any)
+function show_custom_field_mapping(structure::EditableStructure, field::Symbol, customDisplay::Symbol, value::Any)
+    if customDisplay == :path
+        CImGui.Text("Path: $(value)")
+    end
 end
