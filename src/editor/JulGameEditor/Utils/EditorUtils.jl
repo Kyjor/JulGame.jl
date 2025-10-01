@@ -133,6 +133,11 @@ Save the scene by serializing the entities and text boxes to a file.
 """
 function save_scene_event(entities, uiElements, camera, projectPath::String, sceneName::String)
     event = @event begin
+        @info "Saving scene: $(sceneName) at $(projectPath)"
+        if JulGame.IS_EDITOR_PLAY_MODE
+            @error "Cannot save scene in play mode"
+            return
+        end
         SceneWriterModule.serialize_entities(entities, uiElements, camera, projectPath, "$(sceneName)")
     end
 

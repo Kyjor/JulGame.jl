@@ -86,7 +86,7 @@ module SceneWriterModule
             elseif "$(typeof(uiElement))" == "JulGame.UI.UIImageModule.UIImage"
                 dict = Dict()
                 dict["type"] = "UIImage"
-                @info "extracting value for fields from UIElement $(uiElement.id) named: $(uiElement.name)"
+                @debug "extracting value for fields from UIElement $(uiElement.id) named: $(uiElement.name)"
                 for field in fields
                     if(get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, []) || field in get(FieldExclusions, "UIElement", []))
                         continue

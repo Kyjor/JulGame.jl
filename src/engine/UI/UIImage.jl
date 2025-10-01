@@ -26,7 +26,7 @@ module UIImageModule
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
             size::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing}=nothing,
+            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0,
             clickEvents::Vector{Function} = Function[],
             hoverEnterEvents::Vector{Function} = Function[],
@@ -63,7 +63,9 @@ module UIImageModule
                 return
             end
             surface = unsafe_wrap(Array, this.surface, 10; own = false)
-            this.size = Math.Vector2(surface[1].w, surface[1].h)
+            if this.size == Math.Vector2(0,0)
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
+            end
 
             this.clickEvents = clickEvents
             this.hoverEnterEvents = hoverEnterEvents
@@ -172,7 +174,9 @@ module UIImageModule
     
         # Get image size
         surface = unsafe_wrap(Array, this.surface, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        if this.size == Math.Vector2(0,0)
+            this.size = Math.Vector2(surface[1].w, surface[1].h)
+        end
     
         # Create texture
         this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.surface)

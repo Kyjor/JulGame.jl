@@ -34,7 +34,7 @@ module TextBoxModule
             fontSize::Int = 16, 
             maxLineWidth::Int=0, 
             wrapWords::Bool=true,
-            parent::Union{UI.UIElement, Nothing, Any}=nothing
+            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
         )
 
             this = new()

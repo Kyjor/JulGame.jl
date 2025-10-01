@@ -19,7 +19,7 @@ module SpriteModule
     end
 
     export InternalSprite
-    mutable struct InternalSprite
+    mutable struct InternalSprite <: JulGame.ISprite
         imagePath::String
         layer::Int
         offset::Math.Vector2f

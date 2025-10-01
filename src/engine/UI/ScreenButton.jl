@@ -42,7 +42,7 @@ module ScreenButtonModule
             size::Math.Vector2=Math.Vector2(0,0), 
             text::String="", 
             textOffset::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing}=nothing,
+            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0
         )
             this = new()
