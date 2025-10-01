@@ -105,8 +105,11 @@ function display_fields(structure::EditableStructure)
         if (get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, [])) || (isa(structure, UI.UIElement) && field in get(FieldExclusions, "UIElement", [])) && field != :parent
             continue
         end
+
+        customField = get(CustomMappings, structureType, nothing)[field]
         if field == :parent
             show_parent_field(structure, field, getproperty(structure, field))
+        elseif get(CustomMappings, structureType, Dict{Symbol, Symbol}())[field] != nothing
         else
             show_field(structure, field, getproperty(structure, field))
         end
