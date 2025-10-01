@@ -114,6 +114,8 @@ function display_fields(structure::EditableStructure)
         end
         if field == :parent
             show_parent_field(structure, field, getproperty(structure, field))
+        elseif field == :scripts
+            show_scripts_field(structure, field, getproperty(structure, field))
         elseif customDisplay !== nothing
             show_custom_field_mapping(structure, field, customDisplay, getproperty(structure, field))
         else
