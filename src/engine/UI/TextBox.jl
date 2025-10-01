@@ -74,7 +74,7 @@ module TextBoxModule
             end
 
             # Load the font with the true font size (scaled for current window size)
-            UI.load_font(this, joinpath(BasePath, "assets", "fonts"), fontPath)
+            UI.load_font(this, fontPath)
             this.isConstructed = true
 
             return this
@@ -139,8 +139,7 @@ module TextBoxModule
         end
     end
 
-    function UI.load_font(this::TextBox, basePath::String, fontPath::String)
-        @debug string("loading font from $(basePath)\\$(fontPath)")
+    function UI.load_font(this::TextBox, fontPath::String)
         # Calculate the true font size based on window resolution
         #trueFontSize = get_true_font_size(this.fontSize)
         trueFontSize = this.fontSize
@@ -155,7 +154,7 @@ module TextBoxModule
         free_text_resources(this)
 
         
-        this.font = load_font_sdl(basePath, fontPath, trueFontSize)
+        this.font = load_font_sdl(fontPath, trueFontSize)
         if this.font == C_NULL
             error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError())), loading default font")
             this.fontPath = DEFAULT_FONT
@@ -206,7 +205,7 @@ module TextBoxModule
         push!(this.clickEvents, event)
     end
 
-    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
+    function load_font_sdl(fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
             if fontPath == "Default" || fontPath == ""
                 raw_data = JulGame.BUILT_IN_ASSETS["Font"]
@@ -224,6 +223,7 @@ module TextBoxModule
         end
         @debug "Loading font from disk, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
         
+        basePath = joinpath(JulGame.BasePath, "assets", "fonts")
         return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), Math.TypeConversions.safe_int32_convert(fontSize))
     end
 
@@ -372,13 +372,8 @@ module TextBoxModule
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
         end
-        
-        # Load the font with the scaled size
-        if basePath == ""
-            basePath = joinpath(BasePath, "assets", "fonts")
-        end
 
-        UI.load_font(this, basePath, joinpath(this.fontPath))
+        UI.load_font(this, joinpath(this.fontPath))
     end
 
     """
@@ -473,8 +468,7 @@ module TextBoxModule
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
             # Reload the font with the new scaled size
-            basePath = joinpath(BasePath, "assets", "fonts")
-            UI.load_font(this, basePath, joinpath(this.fontPath))
+            UI.load_font(this, joinpath(this.fontPath))
             
             # Rerender the text
             UI.rerender_text(this)
