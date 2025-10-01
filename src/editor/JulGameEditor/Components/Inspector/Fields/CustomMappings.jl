@@ -16,7 +16,20 @@ CustomMappings = Dict{String, Dict{Symbol, Symbol}}(
 )
 
 function show_custom_field_mapping(structure::EditableStructure, field::Symbol, customDisplay::Symbol, value::Any)
+    structureType = typeof(structure)
     if customDisplay == :path
         CImGui.Text("Path: $(value)")
+        imageMenuValue = display_files(joinpath(JulGame.BasePath, "assets", "images"), "images")
+        if imageMenuValue != ""
+            imagePath = replace(imageMenuValue, joinpath(JulGame.BasePath, "assets", "images") => "")
+            if imagePath[1] == '/' || imagePath[1] == '\\'
+                imagePath = imagePath[2:end]
+            end
+
+            setproperty!(structure, field, imagePath)
+            if isa(structure, InternalSprite)
+                Component.load_image(structure, imagePath)
+            end
+        end
     end
 end
