@@ -27,7 +27,7 @@ function show_custom_field_mapping(structure::EditableStructure, field::Symbol, 
             end
 
             setproperty!(structure, field, imagePath)
-            if isa(structure, InternalSprite)
+            if isa(structure, JulGame.SpriteModule.InternalSprite)
                 Component.load_image(structure, imagePath)
             end
         end
