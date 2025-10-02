@@ -87,7 +87,7 @@ module ImmediateUIModule
         maxLineWidth::Int=0, 
         wrapWords::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing, Any}=nothing,
+        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
     )
         
         # Generate a composite ID that includes the component type
@@ -286,7 +286,7 @@ module ImmediateUIModule
         rotation::Float64=0.0,
         layer::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing, Any}=nothing
+        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
     )
         
         # Generate a composite ID that includes the component type
@@ -521,7 +521,7 @@ module ImmediateUIModule
         borderColor::NTuple{4, Int}=(0, 0, 0, 255),
         borderRadius::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing}=nothing,
+        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
         size::Math.Vector2 = Math.Vector2(1, 1)
     )
         
@@ -1200,7 +1200,7 @@ module ImmediateUIModule
         color::NTuple{4, Int}=(255, 255, 255, 100),
         isVisible::Bool=true,
         clipChildren::Bool=false,
-        parent::Union{UI.UIElement, Nothing, Any}=nothing,
+        parent::Union{UI.UIElement, Nothing, Any, JulGame.IEntity, JulGame.ISprite}=nothing,
         rotation::Float64=0.0,
         lifetime::Int=DEFAULT_LIFETIME
     )

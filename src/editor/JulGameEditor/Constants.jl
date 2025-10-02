@@ -1,0 +1,5 @@
+const CONFIRMATION_DIALOG = "confimation_dialog"
+const DELETE_CONFIRMATION = "delete_confirmation"
+const INSPECTOR_LEFT_CLICK_MENU = "inspector_left_click_menu"
+const ADD_ELEMENT_TO_SCENE = "add_element_to_scene"
+const ADD_ELEMENT_TO_SCENE_DIALOG = "add_element_to_scene_dialog"

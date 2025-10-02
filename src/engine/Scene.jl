@@ -85,5 +85,20 @@
     function get_ui_element_by_name(name)
         return get_ui_element_by_name(MAIN.scene, name)
     end
+
+    function get_ui_element_by_id(this::Scene, id)
+        for element in this.uiElements
+            if element.id == id
+                return element
+            end
+        end
+
+        @debug "No ui element with id $id found"
+        return nothing
+    end
+
+    function get_ui_element_by_id(id::String)
+        return get_ui_element_by_id(MAIN.scene, id)
+    end
 end
 

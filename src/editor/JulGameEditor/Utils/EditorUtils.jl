@@ -12,12 +12,19 @@ function init_sdl_and_imgui(windowTitle::String)
 
     window = SDL2.SDL_CreateWindow(
     windowTitle, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, 1280, 720,
-    SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE
+    SDL2.SDL_WINDOW_SHOWN | SDL2.SDL_WINDOW_RESIZABLE | SDL2.SDL_WINDOW_ALLOW_HIGHDPI
     )
     if window == C_NULL 
         println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))
         return -1
     end
+    
+    # Explicitly show and set window size to ensure it's properly initialized on macOS
+    SDL2.SDL_ShowWindow(window)
+    SDL2.SDL_SetWindowSize(window, 1280, 720)
+    
+    # Give the window system time to process the changes
+    SDL2.SDL_PumpEvents()
 
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
     global sdlRenderer = renderer
@@ -126,6 +133,11 @@ Save the scene by serializing the entities and text boxes to a file.
 """
 function save_scene_event(entities, uiElements, camera, projectPath::String, sceneName::String)
     event = @event begin
+        @info "Saving scene: $(sceneName) at $(projectPath)"
+        if JulGame.IS_EDITOR_PLAY_MODE
+            @error "Cannot save scene in play mode"
+            return
+        end
         SceneWriterModule.serialize_entities(entities, uiElements, camera, projectPath, "$(sceneName)")
     end
 
@@ -426,7 +438,7 @@ function format_method_error(error_msg::String)
     return error_msg  # Return original if it doesn't match
 end
 
-function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections, hasParent = false)
+function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections, hasParent = false, visible_index = 0)
     selections = []
     for index in eachindex(hierarchyEntitySelections)
         if hierarchyEntitySelections[index][2]
@@ -478,150 +490,6 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
                 move_entities(currentSceneMain.scene.entities, origin, destination)
             end
             CImGui.EndDragDropTarget()
-        end
-    end
-end
-
-function hasDropConflict(filteredEntities, origin, destination)
-    # If the entity we are dragging's target is it's own child, we can't move it
-    if filteredEntities[destination].parent == filteredEntities[origin]
-        @warn "Cannot move entity $(filteredEntities[origin].name) because it the parent of $(filteredEntities[destination].name)"
-        return true
-    end
-    # if it is a grandchild, great grandchild, etc, we need to move all the way up the chain to check if we can move it 
-    parent = filteredEntities[destination].parent
-    while parent != C_NULL
-        if parent == filteredEntities[origin]
-            @warn "Cannot move entity $(filteredEntities[origin].name) because it is a forefather of $(filteredEntities[destination].name)"
-            return true
-        end
-        parent = parent.parent
-    end
-
-    return false
-end
-
-function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, delete_confirmation_modal, filteredEntities = nothing, hasParent = false)
-    CImGui.PushID(entity.id)
-    if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][2])
-        # clear selection when CTRL is not held
-        (!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
-        hierarchyEntitySelections[entityIndex] = (hierarchyEntitySelections[entityIndex][1], true)
-        unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
-        currentSceneMain.selectedEntity = entity
-    end
-    
-    # Handle right-click context menu
-    if hierarchyEntitySelections[entityIndex][2]
-        show_entity_context_menu(currentSceneMain, hierarchyEntitySelections, delete_confirmation_modal)
-    end
-    
-    if filteredEntities !== nothing 
-        # Use the provided entityIndex directly since we now calculate it correctly
-        handle_drag_and_drop(filteredEntities, entityIndex, currentSceneMain, hierarchyEntitySelections, hasParent)
-    end 
-
-    CImGui.PopID()
-end
-
-function handle_parent_entity_selection(entity, children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal)
-    # First create the tree node
-    treeNodeOpen = CImGui.TreeNodeEx(entity.name, CImGui.ImGuiTreeNodeFlags_None)
-    
-    # Handle selection similar to childless entities
-    if CImGui.IsItemClicked() && !CImGui.IsItemToggledOpen()
-        # clear selection when CTRL is not held
-        (!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
-        hierarchyEntitySelections[n] = (hierarchyEntitySelections[n][1], true)
-        unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, n)
-        currentSceneMain.selectedEntity = entity
-    end
-    
-    # Handle right-click context menu
-    if hierarchyEntitySelections[n][2]
-        show_entity_context_menu(currentSceneMain, hierarchyEntitySelections, delete_confirmation_modal)
-    end
-    
-    # Make it a drag source
-    if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
-        @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint))
-        CImGui.Text("Move $(entity.name)")
-        CImGui.EndDragDropSource()
-    end
-    
-    # Make it a drop target
-    
-    if CImGui.BeginDragDropTarget()
-        payload = CImGui.AcceptDragDropPayload("Entity")
-        if payload != C_NULL
-            payload = unsafe_load(payload)
-            @assert payload.DataSize == sizeof(Cint)
-            
-            origin = unsafe_load(Ptr{Cint}(payload.Data))
-            if !hasDropConflict(filteredEntities, origin, n) && filteredEntities[origin].parent != entity && filteredEntities[origin] != entity
-                @debug "Moving entity $(filteredEntities[origin].name) to $(entity.name)"
-                # Set the parent of the dragged entity to this entity
-                filteredEntities[origin].parent = entity
-            end
-            CImGui.EndDragDropTarget()
-        end
-    end
-    
-    # If the tree node is open, show its children
-    if treeNodeOpen
-        for child in children
-            # Find the correct index for this child in the filteredEntities list
-            childIndex = findfirst(e -> e === child, filteredEntities)
-            if childIndex !== nothing
-                # Check if this child has its own children
-                childChildren = filter(e -> e.parent === child, filteredEntities)
-                
-                if isempty(childChildren)
-                    # Regular child with no children of its own
-                    handle_childless_entity_selection(child, hierarchyEntitySelections, childIndex, currentSceneMain, delete_confirmation_modal, filteredEntities, true)
-                else
-                    # Child has its own children - recursively handle it as a parent
-                    handle_parent_entity_selection(child, childChildren, hierarchyEntitySelections, childIndex, currentSceneMain, filteredEntities, delete_confirmation_modal, ui_delete_confirmation_modal)
-                end
-            end
-        end
-        CImGui.TreePop()
-    end
-end
-
-function deselect_all_entities(hierarchyEntitySelections)
-    for index in eachindex(hierarchyEntitySelections)
-        hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], false)
-    end
-end
-
-function select_all_elements_in_between(hierarchyEntitySelections, lastSelectedIndex)
-    start = 0
-    for i in 1:lastSelectedIndex
-        if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex
-            start = i
-            break
-        end
-    end
-    if start != 0
-        for i in start:lastSelectedIndex
-            hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
-            if i == lastSelectedIndex
-                return
-            end
-        end
-    end
-
-    for i in length(hierarchyEntitySelections):-1:lastSelectedIndex
-        if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex
-            start = i
-            break
-        end
-    end
-
-    if start != 0
-        for i in start:-1:lastSelectedIndex
-            hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
         end
     end
 end
@@ -791,32 +659,39 @@ function show_entity_context_menu(main, hierarchyEntitySelections, delete_confir
             
             if CImGui.MenuItem("Duplicate Selected ($(selected_count))")
                 for entity in selected_entities
-                    copy = duplicate_entity(entity)
-                    push!(main.scene.entities, copy)
+                    JulGame.duplicate(entity)
                 end
                 action_taken = true
             end
         else
-            entity = main.selectedEntity
-            
-            if entity !== nothing
-                if CImGui.MenuItem("Delete \"$(entity.name)\"")
-                    CImGui.OpenPopup("Delete Single Entity")
-                    action_taken = true
-                end
-                
-                if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
-                    copy = duplicate_entity(entity)
-                    push!(main.scene.entities, copy)
-                    main.selectedEntity = copy
-                    action_taken = true
-                end
-                
-                CImGui.Separator()
-                
-                if CImGui.MenuItem("Add Component")
-                    CImGui.OpenPopup("Add Component")
-                    action_taken = true
+            count = 1
+            for entity in selected_entities
+                if entity !== nothing
+                    if CImGui.MenuItem("Delete \"$(entity.name)\"")
+                        CImGui.OpenPopup("Delete Entities")
+                        action_taken = true
+                    end
+                    
+                    if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
+                        copy = JulGame.duplicate(entity)
+                        if count == 1
+                            main.selectedEntities = [copy]
+                        else
+                            if main.selectedEntities === nothing
+                                main.selectedEntities = [copy]
+                            else
+                                push!(main.selectedEntities, copy)
+                            end
+                        end
+                        action_taken = true
+                    end
+                    
+                    CImGui.Separator()
+                    
+                    if CImGui.MenuItem("Add Component")
+                        CImGui.OpenPopup("Add Component")
+                        action_taken = true
+                    end
                 end
             end
         end
@@ -825,14 +700,17 @@ function show_entity_context_menu(main, hierarchyEntitySelections, delete_confir
     end
     
     # Handle the single entity delete confirmation
-    if CImGui.BeginPopupModal("Delete Single Entity", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
-        entity = main.selectedEntity
-        if entity !== nothing
-            CImGui.Text("Are you sure you want to delete \"$(entity.name)\"?\nThis cannot be undone.\n\n")
+    if CImGui.BeginPopupModal("Delete Entities", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        if main.selectedEntities !== nothing && length(main.selectedEntities) > 0
+            CImGui.Text("Are you sure you want to delete:")
+            CImGui.Text("$(join(map(entity -> entity.name, main.selectedEntities), ", "))")
+            CImGui.Text("This cannot be undone.\n\n")
             CImGui.NewLine()
             if CImGui.Button("Delete", (120, 0))
-                JulGame.destroy_entity(main, entity)
-                main.selectedEntity = nothing
+                for entity in main.selectedEntities
+                    JulGame.destroy(entity)
+                end
+                main.selectedEntities = nothing
                 CImGui.CloseCurrentPopup()
             end
             CImGui.SetItemDefaultFocus()

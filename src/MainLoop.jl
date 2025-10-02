@@ -31,7 +31,6 @@ module MainLoopModule
 
 	export MainLoop
 	mutable struct MainLoop
-		assets::String
 		close::Bool
 		coroutine_condition::Condition
 		currentTestTime::Float64
@@ -42,8 +41,7 @@ module MainLoopModule
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
-		selectedEntity::Union{Entity, Nothing}
-		selectedUIElementIndex::Int64
+		selectedEntities#::Union{Vector{Entity}, Vector{UI.UIElement}, Nothing}
 		shouldChangeScene::Bool
 		spriteLayers::Dict
 		testLength::Float64
@@ -71,8 +69,7 @@ module MainLoopModule
 			this.close = false
 			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
 			this.optimizeSpriteRendering = false
-			this.selectedEntity = nothing
-			this.selectedUIElementIndex = -1
+			this.selectedEntities = []
 			this.shouldChangeScene = false
 			this.input.main = this
 			this.isGameModeRunningInEditor = false
@@ -201,6 +198,11 @@ module MainLoopModule
 		SceneBuilderModule.create_new_screen_button(this.level)
 	end
 
+	function create_new_image(this::MainLoop)
+		@debug "Creating new image"
+		SceneBuilderModule.create_new_image(this.level)
+	end
+
 	function create_new_canvas(this::MainLoop)
 		@debug "Creating new canvas"
 		SceneBuilderModule.create_new_canvas(this.level)
@@ -241,9 +243,9 @@ module MainLoopModule
 
 			for entity in MAIN.scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
-				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart
+				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
+					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
 					Component.toggle_sound(entity.soundSource)
-					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start")
 				end
 			end 
 		end
@@ -294,7 +296,7 @@ function JulGame.change_scene(sceneFileName::String)
 
 	for entity in this.scene.entities
 		if entity.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
-			@debug("Persistent entity: ", entity.name, " with id: ", entity.id)
+			@info("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
 			skipcount += 1
 			continue
@@ -398,10 +400,21 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 		if this.scene.entities[i] == entity
 			destroy_entity_components(this, entity)
 			deleteat!(this.scene.entities, i)
-			this.selectedEntity = nothing
+			entity_index = findfirst(x -> x == entity, this.selectedEntities)
+			if entity_index !== nothing
+				deleteat!(this.selectedEntities, entity_index)
+			end
 			break
 		end
 	end
+end
+
+function JulGame.destroy(this::MainLoop, entity::JulGame.Entity)
+	JulGame.destroy_entity(this, entity)
+end
+
+function JulGame.destroy(entity::JulGame.Entity)
+	JulGame.destroy(MAIN, entity)
 end
 
 function JulGame.destroy_entity(entity)
@@ -769,7 +782,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			skipSoftwareRenderer3d = false
 
 			# TODO: consider offset
-			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && sprite.isWorldEntity && this.optimizeSpriteRendering 
+			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && this.optimizeSpriteRendering 
 				skipSprite = true
 			end
 

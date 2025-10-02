@@ -468,5 +468,6 @@ module RectangleModule
 
     function UI.destroy(this::Rectangle)
         # Nothing needed for cleanup
+        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
     end
 end 

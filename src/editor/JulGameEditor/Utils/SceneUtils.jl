@@ -13,6 +13,8 @@ function load_scene(scenePath::String)
     try
         game = SceneLoaderModule.load_scene_from_editor(scenePath);
     catch e
+        @error "Error loading scene: $(e)"
+        Base.show_backtrace(stderr, catch_backtrace())
     end
 
     return game
@@ -105,6 +107,8 @@ function load_scene(scenePath::String, renderer)
     try
         game = SceneLoaderModule.load_scene_from_editor(scenePath, renderer);
     catch e
+        @error "Failed to load scene from $scenePath: $e"
+        rethrow(e)
     end
 
     return game

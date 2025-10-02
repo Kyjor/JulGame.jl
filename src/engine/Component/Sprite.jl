@@ -1,5 +1,6 @@
 module SpriteModule
     using ..Component.JulGame
+    using ..Component.JulGame.ResourceModule
     import ..Component
 
     export Sprite
@@ -8,7 +9,6 @@ module SpriteModule
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         imagePath::String
-        isWorldEntity::Bool
         layer::Int
         offset::Math.Vector2f
         position::Math.Vector2f
@@ -19,28 +19,27 @@ module SpriteModule
     end
 
     export InternalSprite
-    mutable struct InternalSprite
+    mutable struct InternalSprite <: JulGame.ISprite
+        imagePath::String
+        layer::Int
+        offset::Math.Vector2f
         center::Math.Vector2f
+        rotation::Float64
         color::NTuple{4, Int}
         crop::Union{Ptr{Nothing}, Math.Vector4}
         isFlipped::Bool
         isFloatPrecision::Bool
         image::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
-        imagePath::String
-        isWorldEntity::Bool
-        layer::Int
-        offset::Math.Vector2f
-        parent::Any # Entity
-        position::Math.Vector2f
+        parent::JulGame.IEntity # Entity
         lastRenderedScreenPosition::Union{Math.Vector2f, Nothing}
         lastRenderedScreenSize::Union{Math.Vector2f, Nothing}
-        rotation::Float64
         pixelsPerUnit::Int
         size::Math.Vector2
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+        position::Math.Vector2f
         anchor::Symbol
         
-        function InternalSprite(parent::Any, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, isWorldEntity::Bool=true, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0))
+        function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0))
             this = new()
 
             this.offset = offset
@@ -51,7 +50,6 @@ module SpriteModule
             this.color = color
             this.crop = crop
             this.image = C_NULL
-            this.isWorldEntity = isWorldEntity
             this.layer = layer
             this.parent = parent
             this.pixelsPerUnit = pixelsPerUnit
@@ -102,12 +100,12 @@ module SpriteModule
         end
     
         # Calculate camera difference
-        cameraDiff = this.isWorldEntity && camera !== nothing ? 
+        cameraDiff = camera !== nothing ? 
             Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
             Math.Vector2(0, 0)
     
         # Calculate position
-        position = this.isWorldEntity ? this.parent.transform.position : this.position
+        position = this.parent.transform.position
     
         # Calculate source rectangle
         srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
@@ -293,30 +291,19 @@ module SpriteModule
     end
 
     function load_image_sdl(fullPath::String, imagePath::String)
-        if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
-            raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
+        commaSeparatedPath = JulGame.get_comma_separated_path(imagePath)
+        if haskey(JulGame.IMAGE_CACHE, commaSeparatedPath)
+            raw_data = JulGame.IMAGE_CACHE[commaSeparatedPath]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
             if rw != C_NULL
                 @debug("loading image from cache")
-                @debug("comma separated path: ", get_comma_separated_path(imagePath))
+                @debug("comma separated path: ", commaSeparatedPath)
                 return SDL2.IMG_Load_RW(rw, 1)
             end
         end
         @debug "Loading image from disk $(fullPath) for sprite, there are $(length(JulGame.IMAGE_CACHE)) images in cache"
 
         return SDL2.IMG_Load(fullPath)
-    end
-
-    function get_comma_separated_path(path::String)
-        # Normalize the path to use forward slashes
-        normalized_path = replace(path, '\\' => '/')
-        
-        # Split the path into components
-        parts = split(normalized_path, '/')
-        
-        result = join(parts[1:end], ",")
-    
-        return result  
     end
 
     function Component.destroy(this::InternalSprite)
@@ -335,7 +322,7 @@ module SpriteModule
     end
 
     function Component.duplicate(this::InternalSprite, parent::Any)
-        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, isWorldEntity=this.isWorldEntity, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
+        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
         Component.initialize(newSprite)
         return newSprite
     end

@@ -296,19 +296,26 @@ function ImGui_ImplSDL2_NewFrame()
     
     window_flags = SDL2.SDL_GetWindowFlags(bd.Window)
     
-    @c SDL2.SDL_GetWindowSize(bd.Window, &w, &h)
-    
-    # On macOS, the window might not be ready yet, so we need a fallback
-    # But we should keep trying to get the real size
-    if w == 0 || h == 0
-        #println("Window size is 0, using fallback temporarily")
-        # Try to get the size from the window creation parameters or use a default
-        # This is a workaround for macOS timing issues
-        w = Int32(1280)  # Default width from window creation
-        h = Int32(720)   # Default height from window creation
-        #println("Using fallback window size: ", w, " x ", h)
+    # Try to get window size from cached value first (updated by window events)
+    global cached_window_size
+    if @isdefined(cached_window_size) && cached_window_size !== nothing
+        w, h = cached_window_size
+        #println("Using cached window size: ", w, " x ", h)
     else
-        #println("Real window size detected: ", w, " x ", h)
+        # Fall back to SDL_GetWindowSize
+        @c SDL2.SDL_GetWindowSize(bd.Window, &w, &h)
+        
+        # If SDL returns 0, use fallback and cache it
+        if w == 0 || h == 0
+            w = Int32(1280)
+            h = Int32(720)
+            cached_window_size = (w, h)
+            #println("Using fallback window size: ", w, " x ", h)
+        else
+            # Cache the valid size we got from SDL
+            cached_window_size = (w, h)
+            #println("Got window size from SDL: ", w, " x ", h)
+        end
     end
     
     if SDL2.SDL_GetWindowFlags(bd.Window) & SDL2.SDL_WINDOW_MINIMIZED != 0
@@ -511,6 +518,20 @@ function ImGui_ImplSDL2_ProcessEvent(event::SDL2.SDL_Event)::Bool
              CImGui.ImGuiIO_AddFocusEvent(io, true)
         elseif event.window.event == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
              CImGui.ImGuiIO_AddFocusEvent(io, false)
+        elseif window_event == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
+            # Window was resized - store the new size for the next NewFrame call
+            new_w = Int32(event.window.data1)
+            new_h = Int32(event.window.data2)
+            global cached_window_size = (new_w, new_h)
+            #println("Window resized to: ", new_w, " x ", new_h)
+        elseif window_event == SDL2.SDL_WINDOWEVENT_SHOWN
+            # Window was shown - try to get initial size
+            w, h = Int32(0), Int32(0)
+            @c SDL2.SDL_GetWindowSize(bd.Window, &w, &h)
+            if w > 0 && h > 0
+                global cached_window_size = (w, h)
+                #println("Window shown with size: ", w, " x ", h)
+            end
         end
         return true
     elseif event.type == SDL2.SDL_CONTROLLERDEVICEADDED || event.type == SDL2.SDL_CONTROLLERDEVICEREMOVED

@@ -16,23 +16,23 @@ module EntityModule
     import ..JulGame
 
     export Entity
-    mutable struct Entity
+    mutable struct Entity <: JulGame.IEntity
         id::String
+        name::String
+        isActive::Bool
+        persistentBetweenScenes::Bool
+        transform::Transform
+        scripts::Vector{Any}
+        parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
-        isActive::Bool
         mesh3d::Union{Mesh3D, Ptr{Nothing}}
         softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
-        name::String
-        parent::Union{Entity, Ptr{Nothing}}
-        persistentBetweenScenes::Bool
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
-        scripts::Vector{Any}
         shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
-        transform::Transform
 
         function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
             this = new()
@@ -55,7 +55,7 @@ module EntityModule
             this.sprite = C_NULL
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
-            this.parent = C_NULL
+            this.parent = nothing
 
             return this
         end
@@ -150,13 +150,13 @@ module EntityModule
         return newSoundSource
     end
 
-    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite((255, 255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center))
+    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite((255, 255, 255, 255), C_NULL, false, "", 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center))
         if this.sprite != C_NULL
             println("Sprite already exists on entity named ", this.name)
             return
         end
 
-        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset)
+        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset)
         if this.animator != C_NULL
             this.animator.sprite = this.sprite
         end

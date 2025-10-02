@@ -34,10 +34,12 @@ module JulGame
     ScriptModule = Module(:Scripts)
     LoadedScripts = Set{String}()
 
+    EditorActionHistory = []
     EditorState = Dict{String, Any}()
 
     FrameCount = 0
     UserGlobals = Dict{String, Any}()
+
 
     include("engine/Logging/Logging.jl")
     using .Logging
@@ -56,6 +58,9 @@ module JulGame
     
     include("utils/Types.jl")
     export Script
+
+    include("utils/Helpers.jl")
+    export get_comma_separated_path
 
     include("utils/Utils.jl")
     export CallSDLFunction
@@ -99,9 +104,16 @@ module JulGame
     """
     EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
 
+    include("utils/Interfaces.jl")
+    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D
+    
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule
     export PrefHandlerModule
+
+    include("engine/Resource/Resource.jl")
+    using .ResourceModule
+    export ImageModule
 
     include("engine/Window/WindowManager.jl")
     using .WindowManagerModule: WindowManager
@@ -113,7 +125,7 @@ module JulGame
 
     include("engine/UI/UI.jl")
     using .UI
-    export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule
+    export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule, UIImageModule
 
     include("engine/Component/Component.jl")
     using .Component

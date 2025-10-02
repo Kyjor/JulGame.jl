@@ -83,20 +83,20 @@ module ImageFXModule
     # Returns
     - The original sprite with an updated crop value
     """
-    function crop_left_right(sprite::SpriteModule.InternalSprite, percentage::Float64)
+    function crop_left_right(element::Union{SpriteModule.InternalSprite, JulGame.UI.UIImageModule.UIImage}, percentage::Float64)
         percentage = clamp(percentage, 0.0, 1.0)
         
         # Get original sprite dimensions
-        originalWidth = sprite.size.x
-        originalHeight = sprite.size.y
+        originalWidth = element.size.x
+        originalHeight = element.size.y
         
         # Calculate cropped width
         croppedWidth = round(Int, originalWidth * percentage)
         
         # Create crop Vector4 (x, y, width, height)
-        sprite.crop = Math.Vector4(0, 0, croppedWidth, originalHeight)
+        element.crop = Math.Vector4(0, 0, croppedWidth, originalHeight)
         
-        return sprite
+        return element
     end
     
     export crop_right_left
@@ -356,120 +356,105 @@ module ImageFXModule
     # Returns
     - The sprite with modified pixel data
     """
-    function gfx_filter_health_bar(sprite::SpriteModule.InternalSprite, percentage::Float64)
+    function gfx_filter_health_bar(sprite::SpriteModule.InternalSprite, percentage::Float64, direction::String = "TopToBottom")
+        _gfx_filter_health_bar(sprite, sprite.image, sprite.imagePath, percentage, direction)
+    end
+
+    function gfx_filter_health_bar(element::JulGame.UI.UIImageModule.UIImage, percentage::Float64, direction::String = "TopToBottom")
+        _gfx_filter_health_bar(element, element.surface, element.path, percentage, direction)
+    end
+
+    function _gfx_filter_health_bar(
+        element::Union{SpriteModule.InternalSprite, JulGame.UI.UIImageModule.UIImage},
+        surface,
+        imagePath,
+        percentage::Float64,
+        direction::String = "TopToBottom"
+    )
         percentage = clamp(percentage, 0.0, 1.0)
-        
-        if sprite.image == C_NULL
+    
+        if surface == C_NULL
             @error "Cannot apply image filter: sprite has no image"
-            return sprite
+            return element
         end
-        
-        # Create cache key from sprite's image path
-        cache_key = sprite.imagePath
-        
-        # Cache the original surface if not already cached
+    
+        cache_key = imagePath
+    
         if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
-            # Make a backup of the original surface
-            original_surface = SDL2.SDL_DuplicateSurface(sprite.image)
+            original_surface = SDL2.SDL_DuplicateSurface(surface)
             if original_surface == C_NULL
                 @error "Failed to duplicate original surface for caching"
-                return sprite
+                return element
             end
             ORIGINAL_SPRITE_CACHE[cache_key] = original_surface
-            @debug "Cached original surface for sprite: $cache_key"
         end
-        
-        # Get the original surface from cache
+    
         original_surface = ORIGINAL_SPRITE_CACHE[cache_key]
-        
-        # Access the raw pixel data from the SDL_Surface
-        surface = unsafe_wrap(Array, original_surface, 10; own = false)[1]
-        width = surface.w
-        height = surface.h
-        pitch = surface.pitch
-        format = unsafe_wrap(Array, surface.format, 10; own = false)[1]
-        bpp = format.BytesPerPixel
-        
-        # Create a new surface to work with
-        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, format.format)
-        
+    
+        width  = unsafe_load(original_surface).w
+        height = unsafe_load(original_surface).h
+        pitch  = unsafe_load(original_surface).pitch
+        format = unsafe_load(original_surface).format
+        bpp    = unsafe_load(format).BytesPerPixel
+    
+        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, unsafe_load(format).format)
         if new_surface == C_NULL
             @error "Failed to create new surface for health bar"
-            return sprite
+            return element
         end
-        
-        # Copy original surface to new surface
+    
         SDL2.SDL_BlitSurface(original_surface, C_NULL, new_surface, C_NULL)
-        
-        # Lock the surface to access the pixels
         SDL2.SDL_LockSurface(new_surface)
-        
-        # Get pixel data as bytes
-        pixels_ptr = convert(Ptr{UInt8}, unsafe_load(new_surface).pixels)
-        total_bytes = height * width * bpp  # 4      bytes per pixel in RGBA8888
-        
-        # Create buffer arrays for processing
-        src_buffer = Vector{UInt8}(undef, total_bytes)
+    
+        pixels_ptr  = convert(Ptr{UInt8}, unsafe_load(new_surface).pixels)
+        total_bytes = height * width * bpp
+    
+        src_buffer  = Vector{UInt8}(undef, total_bytes)
         dest_buffer = Vector{UInt8}(undef, total_bytes)
-        
-        # Copy pixel data to our buffer
+    
         unsafe_copyto!(pointer(src_buffer), pixels_ptr, total_bytes)
-        
-        # Calculate empty portion height
-        empty_height = round(Int, height * (1.0 - percentage))
-        empty_bytes = empty_height * width * 4
-        
-        # Copy the buffer to destination first
         dest_buffer .= src_buffer
-        
-        # Apply GFX filter to the empty portion (top of health bar)
-        if empty_bytes > 0
-            # Use the threshold filter to make the empty portion transparent
-            SDL2.SDL_imageFilterBinarizeUsingThreshold(
-                pointer(src_buffer),
-                pointer(dest_buffer),
-                Cuint(empty_bytes),
-                Cuint(1)
-            )
-            
-            # Set alpha channel to zero for the empty portion
-            for i in 1:empty_bytes
-                if (i % 4) == 0  # Alpha channel (every 4th byte in RGBA)
-                    dest_buffer[i] = 0
+    
+        if direction in ("TopToBottom", "BottomToTop")
+            empty_rows = round(Int, height * (1.0 - percentage))
+            for row in 1:empty_rows
+                target_row = direction == "TopToBottom" ? row : (height - row + 1)
+                row_start = (target_row - 1) * width * bpp + 1
+                row_end   = row_start + width*bpp - 1
+                for i in row_start:bpp:row_end
+                    dest_buffer[i+3] = 0  # Alpha channel
                 end
             end
-            
-            # For the visible portion, keep the original data
-            if empty_bytes < total_bytes
-                dest_buffer[(empty_bytes+1):end] .= src_buffer[(empty_bytes+1):end]
+        else
+            empty_cols = round(Int, width * (1.0 - percentage))
+            for col in 1:empty_cols
+                target_col = direction == "LeftToRight" ? col : (width - col + 1)
+                for row in 0:(height-1)
+                    idx = row * width * bpp + (target_col-1)*bpp + 1
+                    dest_buffer[idx+3] = 0  # Alpha channel
+                end
             end
         end
-        
-        # Copy our processed buffer back to the surface
+    
         unsafe_copyto!(pixels_ptr, pointer(dest_buffer), total_bytes)
-        
-        # Unlock the surface
         SDL2.SDL_UnlockSurface(new_surface)
-        
-        # Clean up existing texture
-        if sprite.texture != C_NULL
-            SDL2.SDL_DestroyTexture(sprite.texture)
-            sprite.texture = C_NULL
+    
+        if element.texture != C_NULL
+            SDL2.SDL_DestroyTexture(element.texture)
+            element.texture = C_NULL
         end
-        
-        # Clean up previous image
-        if sprite.image != C_NULL && sprite.image != original_surface
-            SDL2.SDL_FreeSurface(sprite.image)
+    
+        if isa(element, SpriteModule.InternalSprite)
+            element.image = new_surface
+            element.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
+        else
+            element.surface = new_surface
+            element.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
         end
-        
-        # Update sprite with new surface
-        sprite.image = new_surface
-        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-        
-        # Enable alpha blending
-        SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
-        
-        return sprite
+    
+        SDL2.SDL_SetTextureBlendMode(element.texture, SDL2.SDL_BLENDMODE_BLEND)
+    
+        return element
     end
     
     # Function to clean up the cache when needed

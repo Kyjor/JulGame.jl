@@ -42,7 +42,7 @@ module ScreenButtonModule
             size::Math.Vector2=Math.Vector2(0,0), 
             text::String="", 
             textOffset::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing}=nothing,
+            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0
         )
             this = new()
@@ -53,22 +53,7 @@ module ScreenButtonModule
             this.buttonUpSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonUpSpritePath)
             # TODO: if buttonUp/DownSpritePath is not found, use a default sprite
 
-            this.anchor = JulGame.Enum{Any}(
-                :center,
-                :top,
-                :bottom,
-                :left,
-                :right,
-                :topLeft,
-                :topRight,
-                :bottomLeft,
-                :bottomRight,
-                :centerLeft,
-                :centerRight,
-                :centerTop,
-                :centerBottom,
-                :none
-            )
+            this.anchor = deepcopy(UI.anchor_types)
             this.isInitialized = false
 
             this.anchor.current_state = anchor
@@ -124,12 +109,11 @@ module ScreenButtonModule
             UI.initialize(this)
         end
 
-        if !this.isActive
-            return
-        end
-
-        if this.currentTexture == C_NULL || 
-            this.currentTexture === nothing
+        if (
+            this.currentTexture == C_NULL || 
+            this.currentTexture === nothing || 
+            !this.isActive
+        )
             return
         end
 
@@ -292,6 +276,41 @@ module ScreenButtonModule
         end
     end
 
+    function UI.duplicate(this::ScreenButton, id::String = JulGame.generate_uuid())
+        newButton = ScreenButton(nothing; 
+        id=id, 
+        name=this.name,
+        anchor=this.anchor.current_state,
+        anchorOffset=this.anchorOffset, 
+        isWorldEntity=this.isWorldEntity, 
+        layer=this.layer,
+        position=this.position, 
+        buttonUpSpritePath=this.buttonUpSpritePath, 
+        buttonDownSpritePath=this.buttonDownSpritePath, 
+        hoverEnterEvent=nothing,
+        hoverExitEvent=nothing,
+        isActive=this.isActive,
+        persistentBetweenScenes=this.persistentBetweenScenes,
+        color=this.color, 
+        textColor=this.textColor,
+        fontPath=this.fontPath, 
+        fontSize=this.fontSize, 
+        size=this.size, 
+        text=this.text, 
+        textOffset=this.textOffset, 
+        parent=this.parent,
+        rotation=this.rotation
+    )
+
+        newButton.clickEvents = this.clickEvents
+        newButton.hoverEnterEvents = this.hoverEnterEvents
+        newButton.hoverExitEvents = this.hoverExitEvents
+        
+        UI.initialize(newButton)
+        push!(MAIN.scene.uiElements, newButton)
+        return newButton
+    end
+
     function load_image_sdl(fullPath::String, imagePath::String)
         if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
             raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
@@ -337,6 +356,8 @@ module ScreenButtonModule
         this.buttonUpTexture = C_NULL
         this.textTexture = C_NULL
         this.currentTexture = C_NULL
+
+        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
     end
 
     """

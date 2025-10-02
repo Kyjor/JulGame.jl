@@ -13,6 +13,7 @@ module SceneReaderModule
     using ...SpriteModule
     using ...UI.TextBoxModule
     using ...UI.ScreenButtonModule
+    using ...UI.UIImageModule
     using ...TransformModule
     using ...JulGame
 
@@ -126,7 +127,7 @@ module SceneReaderModule
                     end
                 end
             end
-            uiElements = deserialize_ui_elements(json.UIElements)
+            uiElements = deserialize_ui_elements(json.UIElements, entities)
             camera = Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
             if haskey(json, "Camera")
                 camera = Camera(Vector2(json.Camera.size.x, json.Camera.size.y), Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
@@ -144,12 +145,16 @@ module SceneReaderModule
         end
     end
 
-    function deserialize_ui_elements(jsonUIElements)
+    function deserialize_ui_elements(jsonUIElements, entities)
         res = []
+        childParentDict = Dict()
         default_Vector2 = Vector2(0,0)
         for uiElement in jsonUIElements
             try
                 newUIElement = nothing
+                if haskey(uiElement, "parent") && uiElement.parent != ""
+                    childParentDict[string(uiElement.id)] = uiElement.parent
+                end
                 if uiElement.type == "Canvas"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 100)
@@ -205,6 +210,28 @@ module SceneReaderModule
                         maxLineWidth = Int(get(uiElement, "maxLineWidth", 0)),
                         wrapWords = get(uiElement, "wrapWords", true)
                     )
+                elseif uiElement.type == "UIImage"
+                    color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
+                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
+                  
+                    newUIElement = UIImage(
+                        get(uiElement, "path", "Default");
+                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
+                        name=get(uiElement, "name", "Image"),
+                        anchor=Symbol(get(uiElement, "anchor", "none")),
+                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        layer=Int(get(uiElement, "layer", 0)),
+                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        isActive=get(uiElement, "isActive", true),
+                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
+                        color=color_tuple,
+                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        parent=nothing,
+                        rotation=convert(Float64, get(uiElement, "rotation", 0.0)),
+                        # clickEvents=get(uiElement, "clickEvents", Function[]),
+                        # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
+                        # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),
+                    )
                 else
                     # For text offset, check if it should be centered (if not specified or all zeros)
                     textOffset = Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
@@ -247,6 +274,25 @@ module SceneReaderModule
             end
         end
 
+        for uiElement in res
+            if haskey(childParentDict, string(uiElement.id)) && childParentDict[string(uiElement.id)] != "" && childParentDict[string(uiElement.id)] !== nothing
+                parentId, parentType = split(childParentDict[string(uiElement.id)], "::")
+                if parentType == "Entity"
+                    for e in entities
+                        if string(e.id) == string(parentId)
+                            uiElement.parent = e
+                        end
+                    end
+                else
+                    for e in res
+                        if string(e.id) == string(parentId)
+                            uiElement.parent = e
+                        end
+                    end
+                end
+            end
+        end
+
         return res
     end
 
@@ -280,7 +326,6 @@ module SceneReaderModule
             elseif component.type == "Sprite"
                 color = !haskey(component, "color") || isempty(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
-                isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
                 layer = !haskey(component, "layer") ? 0 : component.layer
                 offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
@@ -289,7 +334,7 @@ module SceneReaderModule
                 center = !haskey(component, "center") ? Vector2f(0.5,0.5) : Vector2f(component.center.x, component.center.y)
                 anchor = !haskey(component, "anchor") ? :center : Symbol(component.anchor)
                 
-                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f, anchor::Symbol)
+                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f, anchor::Symbol)
             elseif component.type == "Shape"
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 layer = !haskey(component, "layer") ? 0 : component.layer

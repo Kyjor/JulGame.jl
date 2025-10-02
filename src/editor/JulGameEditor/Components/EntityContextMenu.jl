@@ -3,12 +3,10 @@ using CImGui.CSyntax
 using CImGui.CSyntax.CStatic
 
 """
-ShowEntityContextMenu(currentEntitySelected)
+show_entity_context_menu_inspector(currentEntitySelected)
 Show menu that allows user to add new components to an entity
 """
-function ShowEntityContextMenu(currentEntitySelected)
-    CImGui.MenuItem("Add", C_NULL, false, false)
-    if CImGui.BeginMenu("New")
+function show_entity_context_menu_inspector(currentEntitySelected)
         if CImGui.MenuItem("Animator")
             JulGame.add_animator(currentEntitySelected)
         end
@@ -27,7 +25,4 @@ function ShowEntityContextMenu(currentEntitySelected)
         if CImGui.MenuItem("Sprite")
             JulGame.add_sprite(currentEntitySelected, true)
         end
-        
-        CImGui.EndMenu()
-    end
 end

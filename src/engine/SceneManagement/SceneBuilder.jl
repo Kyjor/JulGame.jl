@@ -166,7 +166,6 @@ module SceneBuilderModule
         MAIN.scene.colliders = InternalCollider[]
         add_scripts_to_entities(BasePath)
 
-        MAIN.assets = joinpath(BasePath, "assets")
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
     end
 
@@ -269,6 +268,15 @@ module SceneBuilderModule
         push!(MAIN.scene.uiElements, canvas)
     end
 
+    function create_new_image(this::Scene)
+        image = JulGame.UI.UIImageModule.UIImage(;
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(0, 0),
+            color=(255, 255, 255, 100)
+        )
+        push!(MAIN.scene.uiElements, image)
+    end
+
     function add_scripts_to_entities(path::String)
         @debug string("Adding scripts to entities")
         @debug string("Path: ", path)
@@ -304,14 +312,10 @@ module SceneBuilderModule
         end
 
         for entity in MAIN.scene.entities
-            # Skip script reloading for persistent entities
-            if entity.persistentBetweenScenes
-                continue
-            end
-            
             scriptCounter = 1
             for script in entity.scripts
                 if !isa(script, JSON3.Object)
+                    # Skip script reloading for persistent entities
                     scriptCounter += 1
                     continue
                 end

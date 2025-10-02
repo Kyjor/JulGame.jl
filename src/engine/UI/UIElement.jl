@@ -6,11 +6,11 @@ mutable struct UIElementInstance
     name::String
 
     # positioning
-    anchor::Union{JulGame.Enum, Nothing} # JulGame.EntityModule.Entity, Nothing}
+    anchor::Union{JulGame.Enum, Nothing}
     anchorOffset::Vector2
     isWorldEntity::Bool
     layer::Int
-    parent::Union{UIElement, Nothing, Any}
+    parent::Union{UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}
     position::Vector2
     rotation::Float64
     size::Vector2
@@ -33,6 +33,7 @@ mutable struct UIElementInstance
     function UIElementInstance()
         this = new()
 
+        this.clickEvents = Function[]
         this.hoverEnterEvents = Function[]
         this.hoverExitEvents = Function[]
         this.forceClickCheck = false
@@ -49,6 +50,9 @@ function Base.getproperty(script::UIElement, property::Symbol)
 
     if hasfield(typeof(relationships[script]), property)
         #println("getproperty from parent: $(property) ")
+        if property == :isHovered && getfield(relationships[script], :isActive) == false
+            return false
+        end
         return getfield(relationships[script], property)
     end
 
