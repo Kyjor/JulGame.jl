@@ -893,9 +893,27 @@ module InputModule
         return ptr_event
     end    
 
-    function simulate_mouse_click(this::Input, window::Ptr{SDL2.SDL_Window}, x::Int, y::Int)
+    function simulate_mouse_click(this::Input, window::Ptr{SDL2.SDL_Window}, x::Number, y::Number)
+        # Get current window size
+        window_width = Ref{Cint}(0)
+        window_height = Ref{Cint}(0)
+        SDL2.SDL_GetWindowSize(window, window_width, window_height)
+        
+        # Get base resolution from WindowManager
+        logical_size = JulGame.WindowManagerModule.get_logical_size()
+        
+        # Calculate scale factors (same as in poll_input)
+        scale_x = logical_size.x / window_width[]
+        scale_y = logical_size.y / window_height[]
+        
+        # Convert logical coordinates to window coordinates
+        window_x = round(Int, x / scale_x)
+        window_y = round(Int, y / scale_y)
+        x = Math.TypeConversions.safe_int32_convert(window_x)
+        y = Math.TypeConversions.safe_int32_convert(window_y)
         # Move the mouse to the specified position
-        SDL2.SDL_WarpMouseInWindow(window, Math.TypeConversions.safe_int32_convert(x), Math.TypeConversions.safe_int32_convert(y))
+        @info "Moving mouse to $(x), $(y)"
+        SDL2.SDL_WarpMouseInWindow(window, x, y)
         
         # Create a mouse button down event
         mouse_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
@@ -910,14 +928,14 @@ module InputModule
             SDL2.SDL_PRESSED,          # Button state (pressed)
             1,                         # Clicks (1 for single click)
             0,                         # Padding (unused, set to 0)
-            Math.TypeConversions.safe_int32_convert(x),                         # X position
-            Math.TypeConversions.safe_int32_convert(y)                          # Y position
+            x,                         # X position
+            y                          # Y position
         ) 
         SDL2.SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = true
     end
 
-    function simulate_mouse_click(x::Int, y::Int)
+    function simulate_mouse_click(x::Number, y::Number)
         simulate_mouse_click(MAIN.input, MAIN.windowManager.window, x, y)
     end
 
