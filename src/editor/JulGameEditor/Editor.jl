@@ -47,6 +47,72 @@ module Editor
     # Import modules we need
     using .CodeEditorModule
 
+    # Function to save the last opened scene for a project
+    function save_last_scene_for_project(project_path::String, scene_name::String)
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "last_scenes.txt")
+            
+            # Read existing entries
+            entries = Dict{String, String}()
+            if isfile(filename)
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                entries[strip(parts[1])] = strip(parts[2])
+                            end
+                        end
+                    end
+                end
+            end
+            
+            # Update or add the entry for this project
+            entries[project_path] = scene_name
+            
+            # Write all entries back to the file
+            open(filename, "w") do file
+                for (proj_path, scene) in entries
+                    println(file, "$(proj_path)|$(scene)")
+                end
+            end
+            
+            @debug "Saved last scene '$scene_name' for project '$project_path'"
+        catch e
+            @error "Error saving last scene for project" exception=e
+        end
+    end
+
+    # Function to get the last opened scene for a project
+    function get_last_scene_for_project(project_path::String)
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "last_scenes.txt")
+            
+            if isfile(filename)
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                stored_path = strip(parts[1])
+                                scene_name = strip(parts[2])
+                                if stored_path == project_path
+                                    return scene_name
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        catch e
+            @error "Error reading last scene for project" exception=e
+        end
+        
+        return ""
+    end
+
     function run(is_test_mode::Bool=false)
         isPackageCompiled = ccall(:jl_generating_output, Cint, ()) == 1
         windowTitle = "JulGame Editor v0.1.0"
@@ -163,6 +229,41 @@ module Editor
                 auto_load_notification = true
                 auto_load_notification_time = 5.0  # Show for 5 seconds
                 condition, watch_task = start_file_watcher(string(most_recent_project), filesToReload)
+                
+                # Try to auto-load the last opened scene for this project
+                last_scene_name = get_last_scene_for_project(string(most_recent_project))
+                if last_scene_name != ""
+                    # Find the scene file path
+                    scene_path = ""
+                    for scene in scenesLoadedFromFolder[]
+                        if occursin(last_scene_name, scene)
+                            scene_path = scene
+                            break
+                        end
+                    end
+                    
+                    if scene_path != "" && isfile(scene_path)
+                        @debug("Auto-loading last scene: $last_scene_name from $scene_path")
+                        try
+                            currentSceneName = last_scene_name
+                            currentScenePath = scene_path
+                            currentSceneMain = load_scene(scene_path, renderer)
+                            
+                            if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
+                                gameCamera = currentSceneMain.scene.camera
+                                @debug("Successfully auto-loaded scene: $last_scene_name")
+                            else
+                                @error "Failed to auto-load scene: $last_scene_name"
+                                currentSceneMain = nothing
+                            end
+                        catch e
+                            @error "Error auto-loading scene: $last_scene_name - $e"
+                            currentSceneMain = nothing
+                        end
+                    else
+                        @debug("Last scene '$last_scene_name' not found in project, skipping auto-load")
+                    end
+                end
             end
         end
 
@@ -316,8 +417,16 @@ module Editor
                                         currentDialog[] = "Open Scene"
                                         currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                         currentProjectConfig = load_project_config(currentSelectedProjectPath)
+                                        # Save the scene name for this project
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     else
                                         currentDialog[] = "Open Scene"
+                                        # Save the scene name for this project
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     end
                                 end
                                 
@@ -351,6 +460,10 @@ module Editor
                                 if currentSceneMain === nothing
                                     try
                                         currentSceneMain = load_scene(currentScenePath, renderer)
+                                        # Save the scene name for this project
+                                        if currentSceneMain !== nothing && currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     catch e
                                         @error "Error loading scene: $(e)"
                                         Base.show_backtrace(stderr, catch_backtrace())
@@ -358,6 +471,10 @@ module Editor
                                 else
                                     try
                                         JulGame.change_scene(String(currentSceneName))
+                                        # Save the scene name for this project
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     catch e
                                         @error "Error changing scene: $(e)"
                                         Base.show_backtrace(stderr, catch_backtrace())
@@ -394,12 +511,20 @@ module Editor
                                     
                                     if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
                                         gameCamera = currentSceneMain.scene.camera
+                                        # Save the scene name for this project
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     else 
                                         currentSceneMain = nothing
                                         @error "Main not loaded properly"
                                     end
                                 else
                                     JulGame.change_scene("$(String(currentSceneName)).json")
+                                    # Save the scene name for this project
+                                    if currentSelectedProjectPath[] != ""
+                                        save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                    end
                                 end
                                 
                                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])

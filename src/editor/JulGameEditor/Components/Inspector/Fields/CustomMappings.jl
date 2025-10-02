@@ -11,7 +11,7 @@ CustomMappings = Dict{String, Dict{Symbol, Symbol}}(
         :imagePath => :path,
     ),
     "ScreenButton" => Dict{Symbol, Symbol}(
-        :buttonDownSpritePath => :pathUp,
+        :buttonUpSpritePath => :pathUp,
         :buttonDownSpritePath => :pathDown,
     ),
     "TextBox" => Dict{Symbol, Symbol}(
@@ -41,7 +41,7 @@ function show_custom_field_mapping(structure::EditableStructure, field::Symbol, 
                 filePath = joinpath("FiraCode-Regular.ttf")
             end
         end
-        filePathMenuValue = display_files(joinpath(JulGame.BasePath, "assets", pathType), pathType)
+        filePathMenuValue = display_files(joinpath(JulGame.BasePath, "assets", pathType), pathType, menu_id = "$(field)")
         if filePathMenuValue != ""
             filePath = replace(filePathMenuValue, joinpath(JulGame.BasePath, "assets", pathType) => "")
             if filePath[1] == '/' || filePath[1] == '\\'

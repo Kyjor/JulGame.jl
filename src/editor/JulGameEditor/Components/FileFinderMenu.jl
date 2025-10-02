@@ -4,7 +4,7 @@ fontExtensions = [".ttf", ".otf", ".ttc", ".woff", ".woff2", ".eot", ".sfnt", ".
 scriptExtensions = [".jl"]
 extensionsDict = Dict("images" => imageExtensions, "sounds" => soundExtensions, "fonts" => fontExtensions, "scripts" => scriptExtensions)
 
-function display_files(base_path::String, file_type::String, title::String = "", depth::Int = 1; default::String = "")::String
+function display_files(base_path::String, file_type::String, title::String = "", depth::Int = 1; default::String = "", menu_id::String = "")::String
     extensions = extensionsDict[file_type] 
     value = ""
 
@@ -15,7 +15,7 @@ function display_files(base_path::String, file_type::String, title::String = "",
         title = pathName
     end
 
-    if CImGui.BeginMenu("$(title)") 
+    if CImGui.BeginMenu("$(title)##$(menu_id)") 
         if default != ""
             if CImGui.MenuItem("Default: $(default)")
                 value = "Default"
@@ -23,7 +23,7 @@ function display_files(base_path::String, file_type::String, title::String = "",
         end
         for file::String in readdir(joinpath(base_path))
             if isdir(joinpath(base_path, file))
-                value = display_files(joinpath(base_path, file), file_type, "", depth+1)
+                value = display_files(joinpath(base_path, file), file_type, "", depth+1, menu_id = "$(menu_id)-$(file)")
                 if value != ""
                     break
                 end
