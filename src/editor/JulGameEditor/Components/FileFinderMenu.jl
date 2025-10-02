@@ -69,9 +69,12 @@ mutable struct FileFinderState
     filtered_files::Vector{String}
     selected_index::Int
     scroll_position::Float32
+    # Field-specific tracking
+    target_field::Symbol
+    target_structure_type::String
     
     function FileFinderState()
-        new(false, "", "", "", "", C_NULL, ImVec2(0, 0), false, false, C_NULL, false, Ref(""), true, 128.0, String[], String[], 0, 0.0)
+        new(false, "", "", "", "", C_NULL, ImVec2(0, 0), false, false, C_NULL, false, Ref(""), true, 128.0, String[], String[], 0, 0.0, :none, "")
     end
 end
 
@@ -89,11 +92,11 @@ function initialize_file_finder()
 end
 
 """
-    open_file_finder_modal(base_path::String, file_type::String, title::String = "")
+    open_file_finder_modal(base_path::String, file_type::String, title::String = "", target_field::Symbol = :none, target_structure_type::String = "")
 Open the file finder modal dialog.
 """
-function open_file_finder_modal(base_path::String, file_type::String, title::String = "")
-    @debug "Opening file finder modal for path: $base_path, type: $file_type"
+function open_file_finder_modal(base_path::String, file_type::String, title::String = "", target_field::Symbol = :none, target_structure_type::String = "")
+    @debug "Opening file finder modal for path: $base_path, type: $file_type, field: $target_field, structure: $target_structure_type"
     
     # Always completely reset the state first to prevent cross-contamination
     reset_file_finder_state()
@@ -105,6 +108,8 @@ function open_file_finder_modal(base_path::String, file_type::String, title::Str
     state.current_path = base_path
     state.file_type = file_type
     state.title = title != "" ? title : "Select $(file_type) File"
+    state.target_field = target_field
+    state.target_structure_type = target_structure_type
     
     # Load file list
     refresh_file_list()
@@ -156,6 +161,8 @@ function reset_file_finder_state()
     state.is_image = false
     state.is_audio = false
     state.is_audio_playing = false
+    state.target_field = :none
+    state.target_structure_type = ""
     
     @debug "File finder state completely reset"
 end
@@ -504,6 +511,15 @@ Check if the file finder modal is currently open.
 function is_file_finder_open()::Bool
     state = JulGame.EditorState["file_finder"]
     return state.is_open
+end
+
+"""
+    get_file_finder_target() -> (Symbol, String)
+Get the target field and structure type for the current file finder session.
+"""
+function get_file_finder_target()::Tuple{Symbol, String}
+    state = JulGame.EditorState["file_finder"]
+    return (state.target_field, state.target_structure_type)
 end
 
 # Legacy function for backward compatibility
