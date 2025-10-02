@@ -41,12 +41,32 @@ function show_custom_field_mapping(structure::EditableStructure, field::Symbol, 
                 filePath = joinpath("FiraCode-Regular.ttf")
             end
         end
-        filePathMenuValue = display_files(joinpath(JulGame.BasePath, "assets", pathType), pathType, menu_id = "$(field)")
-        if filePathMenuValue != ""
-            filePath = replace(filePathMenuValue, joinpath(JulGame.BasePath, "assets", pathType) => "")
+        # Use the new file finder modal
+        if CImGui.Button("Browse...")
+            @debug "Browse button clicked for pathType: $pathType"
+            open_file_finder_modal(joinpath(JulGame.BasePath, "assets", pathType), pathType, "Select $(pathType) File")
+        end
+        
+        # Check if a file was selected from the modal (only when modal is closed)
+        if !is_file_finder_open() && get_file_finder_result() != ""
+            selected_file = get_file_finder_result()
+            @debug "File selected from modal: $selected_file for pathType: $pathType"
+            
+            # Verify the file type matches what we expect
+            state = JulGame.EditorState["file_finder"]
+            if state.file_type != pathType
+                @warn "File type mismatch: expected $pathType but got $(state.file_type), ignoring selection"
+                state.selected_file = ""
+                return
+            end
+            
+            # Extract relative path
+            filePath = replace(selected_file, joinpath(JulGame.BasePath, "assets", pathType) => "")
             if filePath[1] == '/' || filePath[1] == '\\'
                 filePath = filePath[2:end]
             end
+            
+            @debug "Setting field $field to: $filePath"
 
             setproperty!(structure, field, filePath)
             if isa(structure, JulGame.SpriteModule.InternalSprite) || isa(structure, JulGame.UI.UIImageModule.UIImage)
@@ -58,6 +78,9 @@ function show_custom_field_mapping(structure::EditableStructure, field::Symbol, 
             elseif isa(structure, JulGame.UI.TextBoxModule.TextBox)
                 UI.load_font(structure, filePath)
             end
+            
+            # Clear the result to prevent re-processing
+            state.selected_file = ""
         end
     end
 end

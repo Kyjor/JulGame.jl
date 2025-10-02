@@ -32,6 +32,9 @@ module Editor
     include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerIntegration.jl"))
     include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerUI.jl"))
     
+    # Include FileFinderMenu
+    include(joinpath(@__DIR__, "Components", "FileFinderMenu.jl"))
+    
     include(joinpath(@__DIR__, "Components", "SharedDialogs", "SharedDialogs.jl"))
     
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
@@ -140,6 +143,13 @@ module Editor
             setup_editor_integration()
         catch e
             @error "Failed to initialize file explorer system: $e"
+        end
+        
+        # Initialize the file finder system
+        try
+            initialize_file_finder()
+        catch e
+            @error "Failed to initialize file finder system: $e"
         end
         ##############################
         # Project variables
@@ -352,6 +362,9 @@ module Editor
                     # Show the file explorer window if it's open
                     # Use the new comprehensive file explorer
                     show_file_explorer_window(show_file_explorer, renderer)
+                    
+                    # Show the file finder modal if it's open
+                    show_file_finder_modal(renderer)
                     
                     # Optimize file explorer performance periodically
                     if testFrameCount % 300 == 0  # Every ~5 seconds at 60fps
