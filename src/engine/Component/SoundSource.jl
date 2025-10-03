@@ -148,7 +148,7 @@ module SoundSourceModule
         # Convert volume to Int32 for SDL
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
-
+        @info "Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)"
         this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 
@@ -166,10 +166,9 @@ module SoundSourceModule
 
     function set_master_volume(volume::Int)
         # Convert volume to Int32 and clamp between 0 and 128
-        @debug("Setting master volume to $(volume)")
+        @info("Setting master volume to $(volume)")
         volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
         SDL2.Mix_MasterVolume(volume)
-        SDL2.Mix_VolumeMusic(volume)
     end
 
     function Component.duplicate(this::InternalSoundSource, parent::Any)

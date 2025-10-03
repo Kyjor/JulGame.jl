@@ -71,10 +71,22 @@ module SceneReaderModule
             res = []
             childParentDict = Dict()
     
+            entityIdsInCurrentScene = []
+            try
+                entityIdsInCurrentScene = [e.id for e in MAIN.scene.entities]
+            catch e
+                @error string(e)
+                Base.show_backtrace(stdout, catch_backtrace())
+            end
             for entity in json.Entities
+                if entity.id in entityIdsInCurrentScene
+                    @info "Entity with id $(entity.id) already exists in current scene"
+                    continue
+                end
                 components = []
     
                 for component in entity.components
+                    @debug "Deserializing component: $(component.type)"
                     push!(components, deserialize_component(component))
                 end
                 
@@ -88,27 +100,35 @@ module SceneReaderModule
 
                 for component in components
                     if typeof(component) == Animator
+                        @debug "Adding animator to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_animator(newEntity, component::Animator)
                         continue
                     elseif typeof(component) == Collider
+                        @debug "Adding collider to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_collider(newEntity, component::Collider)
                         continue
                     elseif typeof(component) == CircleCollider
+                        @debug "Adding circle collider to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_circle_collider(newEntity, component::CircleCollider)
                         continue
                     elseif typeof(component) == Rigidbody
+                        @debug "Adding rigidbody to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_rigidbody(newEntity, component::Rigidbody)
                         continue
                     elseif typeof(component) == Shape
+                        @debug "Adding shape to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_shape(newEntity, component::Shape)
                         continue
                     elseif typeof(component) == SoundSource
+                        @debug "Adding sound source to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_sound_source(newEntity, component::SoundSource)
                         continue
                     elseif typeof(component) == Sprite
+                        @debug "Adding sprite to entity: $(newEntity.name), path: $(component.path)"
                         JulGame.add_sprite(newEntity, false, component::Sprite)
                         continue
                     elseif typeof(component) == Transform 
+                        @debug "Adding transform to entity: $(newEntity.name), path: $(component.path)"
                         newEntity.transform = component::Transform 
                         continue 
                     end

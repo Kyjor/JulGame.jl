@@ -386,6 +386,18 @@ function build_sprite_layers()
 	return layerDict
 end
 
+function JulGame.initialize(this::Any)
+	@debug "Skipping initialization of component: $(typeof(this))"
+end
+
+function JulGame.update(this::Any, deltaTime::Any)
+	#@debug "Skipping update of component: $(typeof(this))"
+end
+
+function JulGame.on_shutdown(this::Any)
+	@debug "Skipping on_shutdown of component: $(typeof(this))"
+end
+
 export destroy_entity
 """
 destroy_entity(entity)

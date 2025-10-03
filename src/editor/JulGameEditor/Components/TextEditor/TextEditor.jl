@@ -107,7 +107,7 @@ mutable struct Glyph
     mChar::Char
     mColorIndex::PaletteIndex
 
-    Glyph(char::Char, colorIndex::PaletteIndex = Default) = new(char, colorIndex)
+    Glyph(char::Char, colorIndex::PaletteIndex = Def) = new(char, colorIndex)
 end
 
 # Line type
