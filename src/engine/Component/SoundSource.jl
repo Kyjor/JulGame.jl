@@ -148,7 +148,7 @@ module SoundSourceModule
         # Convert volume to Int32 for SDL
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
-        @info "Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)"
+        @debug "Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)"
         this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 
