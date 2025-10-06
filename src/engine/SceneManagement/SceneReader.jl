@@ -101,19 +101,39 @@ module SceneReaderModule
                 for component in components
                     if typeof(component) == Animator
                         @debug "Adding animator to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_animator(newEntity, component::Animator)
+                        try
+                            JulGame.add_animator(newEntity, component::Animator)
+                        catch e
+                            @error "Failed to add animator to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue
                     elseif typeof(component) == Collider
                         @debug "Adding collider to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_collider(newEntity, component::Collider)
+                        try
+                            JulGame.add_collider(newEntity, component::Collider)
+                        catch e
+                            @error "Failed to add collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue
                     elseif typeof(component) == CircleCollider
                         @debug "Adding circle collider to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_circle_collider(newEntity, component::CircleCollider)
+                        try
+                            JulGame.add_circle_collider(newEntity, component::CircleCollider)
+                        catch e
+                            @error "Failed to add circle collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue
                     elseif typeof(component) == Rigidbody
                         @debug "Adding rigidbody to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_rigidbody(newEntity, component::Rigidbody)
+                        try
+                            JulGame.add_rigidbody(newEntity, component::Rigidbody)
+                        catch e
+                            @error "Failed to add rigidbody to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue
                     elseif typeof(component) == Shape
                         @debug "Adding shape to entity: $(newEntity.name), path: $(component.path)"
@@ -121,15 +141,30 @@ module SceneReaderModule
                         continue
                     elseif typeof(component) == SoundSource
                         @debug "Adding sound source to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_sound_source(newEntity, component::SoundSource)
+                        try
+                            JulGame.add_sound_source(newEntity, component::SoundSource)
+                        catch e
+                            @error "Failed to add sound source to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue
                     elseif typeof(component) == Sprite
                         @debug "Adding sprite to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_sprite(newEntity, false, component::Sprite)
+                        try
+                            JulGame.add_sprite(newEntity, false, component::Sprite)
+                        catch e
+                            @error "Failed to add sprite to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue
                     elseif typeof(component) == Transform 
                         @debug "Adding transform to entity: $(newEntity.name), path: $(component.path)"
-                        newEntity.transform = component::Transform 
+                        try
+                            newEntity.transform = component::Transform 
+                        catch e
+                            @error "Failed to add transform to entity: $(newEntity.name), path: $(component.path), error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                        end
                         continue 
                     end
                 end
