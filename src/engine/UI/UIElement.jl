@@ -1,4 +1,4 @@
-abstract type UIElement end
+abstract type UIElement <: JulGame.IUIElement end
 
 mutable struct UIElementInstance
     # identifiers
@@ -210,13 +210,14 @@ function UI.add_hover_exit_event(this::UIElement, event)
     push!(this.hoverExitEvents, event)
 end
 
-function UI.handle_event(this::UIElement, evt, x, y)
+function UI.handle_event(this::Union{UIElement, JulGame.IEntity}, evt, x, y)
     isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
     if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
         if isScreenButton
             this.currentTexture = this.buttonDownTexture
         end
     elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
+        @info "Mouse button up at $(x), $(y)"
         if isScreenButton
             this.currentTexture = this.buttonUpTexture
         end

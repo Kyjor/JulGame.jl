@@ -166,7 +166,7 @@ module SoundSourceModule
 
     function set_master_volume(volume::Int)
         # Convert volume to Int32 and clamp between 0 and 128
-        @info("Setting master volume to $(volume)")
+        @debug("Setting master volume to $(volume)")
         volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
         SDL2.Mix_MasterVolume(volume)
     end

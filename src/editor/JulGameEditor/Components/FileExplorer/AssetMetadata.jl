@@ -374,7 +374,7 @@ function resolve_asset_path(relative_path::String)::String
         joinpath(JulGame.BasePath, "assets", relative_path),
         joinpath(JulGame.BasePath, relative_path),
         joinpath(JulGame.BasePath, "assets", "images", relative_path),
-        joinpath(JulGame.BasePath, "assets", "audio", relative_path)
+        joinpath(JulGame.BasePath, "assets", "sounds", relative_path)
     ]
     
     for path in possible_paths

@@ -26,6 +26,8 @@ module InputModule
         scanCodeStrings::Vector{String}
         scanCodes::Vector
         quit::Bool
+
+        elementsBeingClickedDownOn
         
         #Gamepad
         jaxis
@@ -55,6 +57,7 @@ module InputModule
             this.mouseButtonsPressedDown = []
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
+            this.elementsBeingClickedDownOn = []
             this.mousePosition = Math.Vector2(0,0)
             this.mousePositionEditorGameWindowOffset = Math.Vector2(0,0)
             this.mousePositionWorld = Math.Vector2f(0,0)
@@ -263,9 +266,15 @@ module InputModule
                     # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
                     
                     uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
+                    elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
+                    # TODO: add rest of entities without sprites in default order
+                    # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, MAIN.scene.entities)
+                    # append!(elementsOrderedByLayerDescending, restOfEntities)
                     clickedAnElementAlready = false
-                    for uiElement in uiElementsOrderedByLayerDescending
-                        if !uiElement.isActive
+                    hoveredAnElementAlready = false
+                    for element in elementsOrderedByLayerDescending
+                        if !element.isActive
                             continue
                         end
 
@@ -276,10 +285,12 @@ module InputModule
                         mouseY = this.mousePosition.y
 
                         # UI Element position and size in screen space (MUST BE SCALED)
-                        screenElementX = uiElement.position.x # Use game world coordinates directly now
-                        screenElementY = uiElement.position.y
-                        screenElementWidth = uiElement.size.x
-                        screenElementHeight = uiElement.size.y
+                        elementPosition = get_element_position(element)
+                        elementSize = get_element_size(element)
+                        screenElementX = elementPosition.x 
+                        screenElementY = elementPosition.y
+                        screenElementWidth = elementSize.x
+                        screenElementHeight = elementSize.y
 
                         # Check if the mouse is inside the UI element (using game world coordinates)
                         if mouseX < screenElementX
@@ -293,21 +304,39 @@ module InputModule
                         end
 
                         if !eventWasInsideThisElement
-                            if uiElement.isHovered
-                                uiElement.isHovered = false
-                            end
+                            element.isHovered = false
                             continue
                         end
 
-                        if !clickedAnElementAlready || uiElement.forceClickCheck
-                            JulGame.UI.handle_event(uiElement, evt, this.mousePosition.x, this.mousePosition.y)
+                        canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_on_this_element(this, element)
+
+                        if !clickedAnElementAlready || element.forceClickCheck
+                            if  (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||
+                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) || 
+                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||
+                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||
+                                (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
+                    
+                                JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
+                                if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
+                                   push!(this.elementsBeingClickedDownOn, element)
+                                end
+                            end
+                            if element.isHovered
+                                hoveredAnElementAlready = true
+                            end
                         end
 
-                        if evt.type == SDL2.SDL_MOUSEBUTTONUP
+                        if evt.type == SDL2.SDL_MOUSEBUTTONDOWN 
+                            # register that we clicked down on this element
+                        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition)"
-                            @debug "clicked on $(uiElement.name), skipping rest of event loop"
+                            @debug "clicked on $(element.name), skipping rest of event loop"
                             clickedAnElementAlready = true
                         end
+                    end
+                    if evt.type == SDL2.SDL_MOUSEBUTTONUP
+                        this.elementsBeingClickedDownOn = []
                     end
                 end
 
@@ -383,6 +412,32 @@ module InputModule
         if this.isTestButtonClicked
             lift_mouse_after_simulated_click(this)
         end
+    end
+
+    function clicked_down_on_this_element(this::Input, element::Union{JulGame.IUIElement, JulGame.IEntity})
+        return element in this.elementsBeingClickedDownOn
+    end
+
+    function get_element_position(element::JulGame.IUIElement)
+        return element.position
+    end
+
+    function get_element_position(element::JulGame.IEntity)
+        if element.sprite === nothing || element.sprite === C_NULL
+            return Math.Vector2(0, 0)
+        end
+        return element.sprite.lastRenderedScreenPosition === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
+    end
+
+    function get_element_size(element::JulGame.IUIElement)
+        return element.size
+    end
+
+    function get_element_size(element::JulGame.IEntity)
+        if element.sprite === nothing || element.sprite === C_NULL
+            return Math.Vector2(0, 0)
+        end
+        return element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
     end
 
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
@@ -912,7 +967,7 @@ module InputModule
         x = Math.TypeConversions.safe_int32_convert(window_x)
         y = Math.TypeConversions.safe_int32_convert(window_y)
         # Move the mouse to the specified position
-        @info "Moving mouse to $(x), $(y)"
+        @debug "Moving mouse to $(x), $(y)"
         SDL2.SDL_WarpMouseInWindow(window, x, y)
         
         # Create a mouse button down event

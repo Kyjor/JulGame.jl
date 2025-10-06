@@ -34,6 +34,12 @@ module EntityModule
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
 
+        clickEvents::Vector{Function}
+        hoverEnterEvents::Vector{Function}
+        hoverExitEvents::Vector{Function}
+        isHovered::Bool
+        forceClickCheck::Bool
+
         function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
             this = new()
 
@@ -56,6 +62,11 @@ module EntityModule
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
             this.parent = nothing
+            this.isHovered = false
+            this.clickEvents = Function[]
+            this.hoverEnterEvents = Function[]
+            this.hoverExitEvents = Function[]
+            this.forceClickCheck = false
 
             return this
         end

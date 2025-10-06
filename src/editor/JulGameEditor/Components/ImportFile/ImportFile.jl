@@ -270,7 +270,7 @@ function setup_next_file(renderer)
     if dialog.is_image
         dialog.destination_folder = "assets/images"
     elseif dialog.is_audio
-        dialog.destination_folder = "assets/audio"
+        dialog.destination_folder = "assets/sounds"
     else
         dialog.destination_folder = "assets"
     end
@@ -295,7 +295,7 @@ end
 Get a list of common project folders for the destination dropdown.
 """
 function get_project_folders()
-    base_folders = ["assets", "assets/images", "assets/audio", "assets/sounds", "assets/fonts", "scripts", "scenes"]
+    base_folders = ["assets", "assets/images", "assets/sounds", "assets/fonts", "scripts", "scenes"]
     
     # Add existing subdirectories from assets if they exist
     assets_path = joinpath(JulGame.BasePath, "assets")

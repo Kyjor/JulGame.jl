@@ -8,9 +8,10 @@ module ImmediateUIModule
     using ..UI.CircleModule
     using ..UI.ProgressBarModule
     using ..UI.CanvasModule
+    using ..UI.UIImageModule
     import ..UI
 
-    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, immediate_canvas, manage_all_immediate_components, cleanup_all_immediate_components
+    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, immediate_canvas, immediate_image, manage_all_immediate_components, cleanup_all_immediate_components
 
     # Dictionary to store active immediate UI components by their id and type
     const IMMEDIATE_UI_CACHE = Dict{String, Any}()
@@ -812,6 +813,162 @@ module ImmediateUIModule
             push!(MAIN.scene.uiElements, line)
             
             return line
+        end
+    end
+
+    function immediate_image(id::String, path::String;
+                            name::String="Image",
+                            anchor::Symbol=:none,
+                            anchorOffset::Math.Vector2=Math.Vector2(0,0),
+                            crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL,
+                            layer::Int=0,
+                            position::Math.Vector2=Math.Vector2(0,0),
+                            isActive::Bool=true,
+                            persistentBetweenScenes::Bool=false,
+                            color::NTuple{4, Int}=(255, 255, 255, 255),
+                            size::Math.Vector2=Math.Vector2(0,0),
+                            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
+                            rotation::Float64=0.0,
+                            clickEvents::Vector{Function}=Function[],
+                            hoverEnterEvents::Vector{Function}=Function[],
+                            hoverExitEvents::Vector{Function}=Function[],
+                            lifetime::Int=DEFAULT_LIFETIME)
+        # Generate a composite ID that includes the component type
+        composite_id = "image_$(id)"
+        
+        # Update timestamp
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
+
+        if haskey(IMMEDIATE_UI_CACHE, composite_id)
+            image = IMMEDIATE_UI_CACHE[composite_id].element
+
+            needsUpdate = false
+
+            if image.name != name
+                image.name = name
+                needsUpdate = true
+            end
+
+            if image.anchor.current_state != anchor
+                image.anchor.current_state = anchor
+                needsUpdate = true
+            end
+
+            if image.anchorOffset != anchorOffset
+                image.anchorOffset = anchorOffset
+                needsUpdate = true
+            end
+
+            if image.position != position
+                image.position = position
+                needsUpdate = true
+            end
+
+            if image.size != size
+                image.size = size
+                needsUpdate = true
+            end
+
+            if image.isActive != isActive
+                image.isActive = isActive
+                needsUpdate = true
+            end
+
+            if image.persistentBetweenScenes != persistentBetweenScenes
+                image.persistentBetweenScenes = persistentBetweenScenes
+                needsUpdate = true
+            end
+
+            if image.layer != layer
+                image.layer = layer
+                needsUpdate = true
+            end
+
+            if image.parent != parent
+                image.parent = parent
+                needsUpdate = true
+            end
+
+            if image.rotation != rotation
+                image.rotation = rotation
+                needsUpdate = true
+            end
+
+            if image.crop != crop
+                image.crop = crop
+                needsUpdate = true
+            end
+
+            if image.color != color
+                image.color = color
+                JulGame.UI.set_color(image)
+                needsUpdate = true
+            end
+
+            if image.path != path && !isempty(path)
+                image.path = path
+                needsUpdate = true
+            end
+
+            if needsUpdate && image.anchor.current_state != :none
+                UI.align_to_anchor(image)
+            end
+
+            # Ensure the component is in the scene's uiElements
+            if !(image in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, image)
+            end
+
+            # Replace events if provided
+            if !isempty(clickEvents)
+                image.clickEvents = Function[]
+                for ev in clickEvents
+                    UI.add_click_event(image, ev)
+                end
+            end
+            if !isempty(hoverEnterEvents)
+                image.hoverEnterEvents = Function[]
+                append!(image.hoverEnterEvents, hoverEnterEvents)
+            end
+            if !isempty(hoverExitEvents)
+                image.hoverExitEvents = Function[]
+                append!(image.hoverExitEvents, hoverExitEvents)
+            end
+
+            return image
+        else
+            # Create new image component
+            image = UIImage(path;
+                id=id,
+                name=name,
+                anchor=anchor,
+                anchorOffset=anchorOffset,
+                crop=crop,
+                layer=layer,
+                position=position,
+                isActive=isActive,
+                persistentBetweenScenes=persistentBetweenScenes,
+                color=color,
+                size=size,
+                parent=parent,
+                rotation=rotation,
+                clickEvents=clickEvents,
+                hoverEnterEvents=hoverEnterEvents,
+                hoverExitEvents=hoverExitEvents
+            )
+
+            # Store in cache
+            IMMEDIATE_UI_CACHE[composite_id] = (element = image, lifetime = lifetime)
+
+            # Add to scene's uiElements
+            push!(MAIN.scene.uiElements, image)
+
+            if image.anchor.current_state != :none
+                UI.align_to_anchor(image)
+            end
+
+            return image
         end
     end
 

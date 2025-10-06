@@ -49,9 +49,9 @@
     include("Circle.jl")
     include("ProgressBar.jl")
     include("Canvas.jl")
+    include("UIImage.jl")
     include("ImmediateUI.jl")
     include("Factory.jl")
-    include("UIImage.jl")
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
     export ScreenButtonModule
     export TextBoxModule
