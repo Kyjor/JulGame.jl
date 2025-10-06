@@ -184,7 +184,7 @@ module SceneBuilderModule
             if !any(e.id == entity.id for e in MAIN.scene.entities)
                 push!(MAIN.scene.entities, entity)
             else
-                @warn("duplicate entity found (persistence)")
+                @debug("duplicate entity found (persistence)")
             end
         end
         
@@ -192,7 +192,7 @@ module SceneBuilderModule
             if !any(e.id == uiElement.id for e in MAIN.scene.uiElements)
                 push!(MAIN.scene.uiElements, uiElement)
             else
-                @warn("duplicate ui element found (persistence)")
+                @debug("duplicate ui element found (persistence)")
             end
         end
 

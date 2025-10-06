@@ -44,7 +44,6 @@ module UIImageModule
             this.anchorOffset = anchorOffset
             this.isFlipped = false
             @debug "attemping to load image with path: $(path)"
-            this.path = path
             this.color = color
             this.crop = crop
             this.surface = C_NULL
@@ -54,8 +53,8 @@ module UIImageModule
             this.rotation = rotation
             this.size = size
             this.texture = C_NULL
-
-            UI.load_image(this::UIImage, path::String)
+            
+            this.path = path
             if this.surface == C_NULL
                 error = unsafe_string(SDL2.SDL_GetError())
                 @error(string("Couldn't open image! path: $(fullPath) SDL Error: ", error))
@@ -81,6 +80,10 @@ module UIImageModule
             !this.isActive
         )
             return
+        end
+        if this.size == Math.Vector2(0,0)
+            surface = unsafe_wrap(Array, this.surface, 10; own = false)
+            this.size = Math.Vector2(surface[1].w, surface[1].h)
         end
         UI.align_to_anchor(this)
     

@@ -86,6 +86,7 @@ module EntityModule
 
     function JulGame.update(this::Entity, deltaTime)
         if !this.isActive 
+            this.isHovered = false
             return
         end
 

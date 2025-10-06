@@ -217,7 +217,7 @@ function UI.handle_event(this::Union{UIElement, JulGame.IEntity}, evt, x, y)
             this.currentTexture = this.buttonDownTexture
         end
     elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-        @info "Mouse button up at $(x), $(y)"
+        @debug "Mouse button up at $(x), $(y)"
         if isScreenButton
             this.currentTexture = this.buttonUpTexture
         end
