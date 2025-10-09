@@ -38,7 +38,13 @@ module SceneBuilderModule
         end    
     end
     
-    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); config=parse_config(), windowName::String="Game", isWindowResizable::Bool=false, preloadAllScenes::Bool=false)
+    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); 
+        config=parse_config(), 
+        windowName::String="Game", 
+        isWindowResizable::Bool=false, 
+        preloadAllScenes::Bool=false,
+        scalingQuality::String="linear"
+    )
         if config === nothing
             @debug("Config is nothing, parsing config")
             config = parse_config()
@@ -81,7 +87,20 @@ module SceneBuilderModule
             # Create renderer
             # todo move to window manager
             # Enable high-quality scaling
-            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, "2")
+            if scalingQuality == "nearest"
+                scalingQuality = "0"
+            elseif scalingQuality == "linear"
+                scalingQuality = "1"
+            elseif scalingQuality == "best"
+                scalingQuality = "2"
+            else
+                scalingQuality = "2"
+            end
+            # "0" or "nearest": Nearest pixel sampling
+            # "1" or "linear": Linear filtering (supported by OpenGL and Direct3D)
+            # "2" or "best": Currently this is the same as "linear"
+
+            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
@@ -107,7 +126,7 @@ module SceneBuilderModule
             end
             
             # Set default texture scaling mode to linear
-            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, "2")
+            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
             
             # Apply additional window settings from config
             @debug "Setting frame rate to $(targetFrameRate)"

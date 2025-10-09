@@ -89,11 +89,11 @@ module Mesh3DModule
             end
             
             # Set texture filtering
-            if filter == TEXTURE_FILTER_LINEAR
-                SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")
-            else
-                SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0")
-            end
+            # if filter == TEXTURE_FILTER_LINEAR
+            #     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")
+            # else
+            #     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0")
+            # end
             
             w = Ref{Int32}(0)
             h = Ref{Int32}(0)

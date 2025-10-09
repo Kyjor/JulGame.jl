@@ -85,7 +85,7 @@ module JulGame
     export @event, @argevent
 
     include("Math/Math.jl")
-    using .Math: Math
+    using .Math: Math, Vector2f, Vector3f, Vector4f, Vector2, Vector3, Vector4, Lerp, SmoothLerp, to_vector3
     export Math
 
     EditorGameWindowSize::Math.Vector2 = Math.Vector2(0, 0)
@@ -156,4 +156,6 @@ module JulGame
     include("MainLoop.jl") 
     using .MainLoopModule: MainLoop
     export MainLoop
+
+    include("utils/Exports.jl")
 end

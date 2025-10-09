@@ -221,10 +221,10 @@ module ColliderModule
             depthVertical = result[].h
             horizontalCollisionDir = None::CollisionDirection
             verticalCollisionDir = None::CollisionDirection
-            if result[].x == b.x 
+            if result[].x == b.x && !colliderB.isPlatformerCollider
                 @debug "colliding from left at depth $(depthHorizontal)"
                 horizontalCollisionDir = Left::CollisionDirection
-            elseif result[].x == a.x
+            elseif result[].x == a.x && !colliderB.isPlatformerCollider
                 @debug "colliding from right at depth $(depthHorizontal)"
                 horizontalCollisionDir = Right::CollisionDirection
             end
@@ -232,7 +232,11 @@ module ColliderModule
                 @debug "colliding from top at depth $(depthVertical)"
                 verticalCollisionDir = Bottom::CollisionDirection
             elseif result[].y == a.y
-                @debug "colliding from botrom at depth $(depthVertical)" 
+                @debug "colliding from bottom at depth $(depthVertical)" 
+                collisionDistance = colliderB.parent.transform.position.y - colliderA.parent.transform.position.y
+                if colliderB.isPlatformerCollider# && collisionDistance > 0.25 #todo: make this a variable based on collider size. It's a magic number right now.
+                    return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
+                end
                 verticalCollisionDir = Top::CollisionDirection
             end
             

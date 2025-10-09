@@ -202,7 +202,6 @@ module Editor
             Width=Ref(Math.TypeConversions.safe_int32_convert(800)), 
             Height=Ref(Math.TypeConversions.safe_int32_convert(600)), 
             FrameRate=Ref(Math.TypeConversions.safe_int32_convert(30)), 
-            IsResizable=Ref(Bool(0)), 
             Fullscreen=Ref(Bool(0))
         )
 
@@ -1108,10 +1107,6 @@ module Editor
             CImGui.SameLine()
             CImGui.InputInt("##FrameRate", currentProjectConfig.FrameRate)
             CImGui.NewLine()
-            CImGui.Text("Is Resizable")
-            CImGui.SameLine()
-            CImGui.Checkbox("##IsResizable", currentProjectConfig.IsResizable)
-            CImGui.NewLine()
             CImGui.Text("Fullscreen")
             CImGui.SameLine()
             CImGui.Checkbox("##Fullscreen", currentProjectConfig.Fullscreen)
@@ -1129,7 +1124,6 @@ module Editor
         config["Width"] = string(currentProjectConfig.Width[])
         config["Height"] = string(currentProjectConfig.Height[])
         config["Fullscreen"] = string(Int(currentProjectConfig.Fullscreen[]))
-        config["IsResizable"] = string(Int(currentProjectConfig.IsResizable[]))
         config["FrameRate"] = string(currentProjectConfig.FrameRate[])
         
         open(filename, "w") do file
@@ -1160,10 +1154,9 @@ module Editor
         Width = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["Width"])))
         Height = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["Height"])))
         FrameRate = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["FrameRate"])))
-        IsResizable = Ref(parse(Bool, config["IsResizable"]))
         Fullscreen = Ref(parse(Bool, config["Fullscreen"]))
 
-        return (Width=Width, Height=Height, FrameRate=FrameRate, IsResizable=IsResizable, Fullscreen=Fullscreen)
+        return (Width=Width, Height=Height, FrameRate=FrameRate, Fullscreen=Fullscreen)
     end
 
     # Function to read and parse the recents file with timestamps
