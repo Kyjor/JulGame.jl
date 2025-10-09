@@ -34,6 +34,8 @@ function show_custom_field_mapping(structure::EditableStructure, field::Symbol, 
             "fonts"
         elseif isa(structure, JulGame.SoundSourceModule.InternalSoundSource)
             "sounds"
+        else
+            "scripts"
         end
 
         CImGui.Text("Path: $(value)")

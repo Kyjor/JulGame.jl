@@ -17,11 +17,6 @@ module SceneReaderModule
     using ...TransformModule
     using ...JulGame
 
-
-    function scriptObj(name::String, fields::Array)
-        () -> (name; fields)
-    end
-
     export preload_scene
     """
         preload_scene(filePath::String)
