@@ -1,3 +1,6 @@
+using CImGui
+using JulGame
+
 function display_script_field_input(script, field)
     ftype = typeof(getproperty(script, field))
     if ftype == String
@@ -244,63 +247,101 @@ end
 
 function show_script_editor(entity, newScriptText)
     if CImGui.TreeNode("Scripts")
-        show_custom_field_mapping(entity, :scripts, :path, entity.scripts)
-        # text = text_input_single_line("Name", newScriptText) 
-        # CImGui.SameLine()
-        # if CImGui.Button("Create New Script")
-        #     create_new_script(text)
-        #     include(joinpath(JulGame.BasePath, "scripts", "$(text).jl"))
-        #     newScript = Base.invokelatest(eval, Symbol(text))
-        #     newScript = Base.invokelatest(newScript)
-        #     newScript.parent = entity
-        #     push!(entity.scripts, newScript)
-        # end
+        # Show current scripts count
+        CImGui.Text("Scripts: $(length(entity.scripts)) script(s)")
         
-        # script = display_files(joinpath(JulGame.BasePath, "scripts"), "scripts", "Add Script")
-        # if script != ""
-        #     @debug("Adding script: $(script) to: $(entity.name)")
-        #     Base.include(JulGame.ScriptModule, joinpath(JulGame.BasePath, "scripts", "$(script).jl"))
-        #     module_name = getfield(JulGame.ScriptModule, Symbol("$(script)Module"))
-        #     constructor = Base.invokelatest(getfield, module_name, Symbol(script)) 
-        #     newScript = Base.invokelatest(constructor)
-        #     newScript.parent = entity
-        #     # TODO: Get this working
-        #     # if JulGame.IS_EDITOR_PLAY_MODE 
-        #     #     JulGame.initialize(newScript)
-        #     # end
-        #     push!(entity.scripts, newScript)
-        # end
+        # Add Script button using the file finder modal
+        if CImGui.Button("Add Script...")
+            open_file_finder_modal(string(joinpath(JulGame.BasePath, "scripts")), "scripts", "Select Script File", :scripts, "Entity")
+        end
+        
+        # Check if a script was selected from the modal
+        if !is_file_finder_open() && get_file_finder_result() != ""
+            selected_file = get_file_finder_result()
+            target_field, target_structure_type = get_file_finder_target()
+            
+            @info "Script selection result: $selected_file"
+            @info "Target field: $target_field, Target structure: $target_structure_type"
+            
+            # Only apply the result if this is for scripts
+            if target_field == :scripts && target_structure_type == "Entity"
+                # Extract script name from file path
+                script_name = splitext(basename(selected_file))[1]
+                @info "Adding script: $script_name to entity: $(entity.name)"
+                add_script_to_entity(entity, script_name)
+                
+                # Clear the result to prevent re-processing
+                state = JulGame.EditorState["file_finder"]
+                state.selected_file = ""
+            end
+        end
+        
+        # Display existing scripts
+        for i = eachindex(entity.scripts)
+            scriptName = split("$(typeof(entity.scripts[i]))", ".")[end]
+            if CImGui.TreeNode("$(i): $(scriptName)")
+                if CImGui.Button("Open Script")
+                    path = joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl")
+                    open_file_in_editor(path)
+                end
 
-        # for i = eachindex(entity.scripts)
-        #     scriptName = split("$(typeof(entity.scripts[i]))", ".")[end]
-        #     if CImGui.TreeNode("$(i): $(scriptName)")
-        #         if CImGui.Button("Open Script")
-        #             path = joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl")
-        #             open_file_in_editor(path)
-        #         end
+                if CImGui.Button("Reload $scriptName:$(i)")
+                    reload_script(entity, i, scriptName)
+                end
+                
+                if CImGui.Button("Remove Script")
+                    deleteat!(entity.scripts, i)
+                    CImGui.TreePop()
+                    break
+                end
 
-        #         if CImGui.Button("Reload $scriptName:$(i)")
-        #             Base.include(JulGame.ScriptModule, joinpath(JulGame.BasePath, "scripts", "$(scriptName).jl"))
-        #             module_name = getfield(JulGame.ScriptModule, Symbol("$(scriptName)Module"))
-        #             constructor = Base.invokelatest(getfield, module_name, Symbol(scriptName)) 
-        #             entity.scripts[i] = Base.invokelatest(constructor)
-        #             entity.scripts[i].parent = entity
-        #         end
+                # Show script fields for editing
+                for field in fieldnames(typeof(entity.scripts[i]))
+                    if field == :parent || !(fieldtype(typeof(entity.scripts[i]), field) <: EditorExport)
+                        continue
+                    end
+                    if isdefined(entity.scripts[i], Symbol(field)) 
+                        display_script_field_input(entity.scripts[i], field)
+                    else 
+                        init_undefined_field(entity.scripts[i], field)
+                    end
+                end
 
-        #         for field in fieldnames(typeof(entity.scripts[i]))
-        #             if field == :parent || !(fieldtype(typeof(entity.scripts[i]), field) <: EditorExport)
-        #                 continue
-        #             end
-        #             if isdefined(entity.scripts[i], Symbol(field)) 
-        #                 display_script_field_input(entity.scripts[i], field)
-        #             else 
-        #                 init_undefined_field(entity.scripts[i], field)
-        #             end
-        #         end
-
-        #         CImGui.TreePop()
-        #     end
-        # end
+                CImGui.TreePop()
+            end
+        end
         CImGui.TreePop()
+    end
+end
+
+function add_script_to_entity(entity, script_name)
+    @debug("Adding script: $(script_name) to: $(entity.name)")
+    try
+        script_path = joinpath(JulGame.BasePath, "scripts", "$(script_name).jl")
+        Base.include(JulGame.ScriptModule, script_path)
+        module_name = getfield(JulGame.ScriptModule, Symbol("$(script_name)Module"))
+        constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
+        newScript = Base.invokelatest(constructor)
+        newScript.parent = entity
+        push!(entity.scripts, newScript)
+        @info "Successfully added script: $script_name to entity: $(entity.name)"
+    catch e
+        @error "Failed to add script $script_name: $e"
+        Base.show_backtrace(stderr, catch_backtrace())
+    end
+end
+
+function reload_script(entity, script_index, script_name)
+    try
+        script_path = joinpath(JulGame.BasePath, "scripts", "$(script_name).jl")
+        Base.include(JulGame.ScriptModule, script_path)
+        module_name = getfield(JulGame.ScriptModule, Symbol("$(script_name)Module"))
+        constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
+        entity.scripts[script_index] = Base.invokelatest(constructor)
+        entity.scripts[script_index].parent = entity
+        @info "Successfully reloaded script: $script_name"
+    catch e
+        @error "Failed to reload script $script_name: $e"
+        Base.show_backtrace(stderr, catch_backtrace())
     end
 end
