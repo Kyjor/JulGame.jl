@@ -16,32 +16,36 @@ function display_script_field_input(script, field)
             end
         end
         setproperty!(script, field, currentTextInTextBox)
-    elseif ftype == Float64 || ftype == Float32
-        x = ftype(getproperty(script, field))
-        x = Cfloat(x)
-        @c CImGui.InputFloat("$(field)", &x, 1)
-        setproperty!(script, field, ftype(x))
+    elseif ftype == Bool
+        x = getproperty(script, field)
+        @c CImGui.Checkbox("$(field)", &x)
+        setproperty!(script, field, x)
     elseif ftype <: Int64 || ftype <: Int32 || ftype <: Int16 || ftype <: Int8
         x = ftype(getproperty(script, field))
         x = convert(Int32, x)
         @c CImGui.InputInt("$(field)", &x, 1)
         x = convert(ftype, x)
         setproperty!(script, field, x)
-    elseif ftype == Bool
-        x = getproperty(script, field)
-        @c CImGui.Checkbox("$(field)", &x)
-        setproperty!(script, field, x)
+    elseif ftype == Float64 || ftype == Float32 || ftype <: Base.Number
+        x = ftype(getproperty(script, field))
+        x = Cfloat(x)
+        @c CImGui.InputFloat("$(field)", &x, 1)
+        setproperty!(script, field, ftype(x))
     end
 end
 
 function init_undefined_field(script, field)
-    ftype = typeof(getproperty(script, field))
-    if ftype == String
-        setproperty!(script, field, "")
-    elseif ftype <: Number
-        setproperty!(script, field, 0)
-    elseif ftype == Bool
-        setproperty!(script, field, false)
+    # Check if the field is defined first
+    if !isdefined(script, field)
+        # Get the field type from the struct definition
+        ftype = fieldtype(typeof(script), field)
+        if ftype == String
+            setproperty!(script, field, "")
+        elseif ftype == Bool
+            setproperty!(script, field, false)
+        elseif ftype <: Base.Number
+            setproperty!(script, field, 0)
+        end
     end
 end
 
@@ -297,7 +301,7 @@ function show_script_editor(entity, newScriptText)
 
                 # Show script fields for editing
                 for field in fieldnames(typeof(entity.scripts[i]))
-                    if field == :parent || !(fieldtype(typeof(entity.scripts[i]), field) <: EditorExport)
+                    if field == :parent
                         continue
                     end
                     if isdefined(entity.scripts[i], Symbol(field)) 
