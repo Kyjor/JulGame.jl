@@ -211,6 +211,13 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
                     # Update BasePath when selecting a project
                     JulGame.BasePath = dir
                     @debug("Base path updated: $(JulGame.BasePath)")
+                    
+                    # Include the project's main .jl file
+                    project_name = basename(dir)
+                    project_main_file = joinpath(dir, "src", "$(project_name).jl")
+                    if isfile(project_main_file)
+                        include(project_main_file)
+                    end
                 end
                 return dir
             end

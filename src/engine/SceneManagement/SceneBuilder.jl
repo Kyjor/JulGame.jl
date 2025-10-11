@@ -354,7 +354,9 @@ module SceneBuilderModule
                             @debug("type: $(ftype)")
                             if ftype <: EditorExport
                                 @debug "Overwriting $(key) to $(value) using scene file"
-                                Base.invokelatest(setfield!, newScript, key, EditorExport(value))
+                                # Get the wrapped type from EditorExport{T}
+                                underlying_type = ftype.parameters[1]
+                                Base.invokelatest(setfield!, newScript, key, EditorExport(convert(underlying_type, value)))
                                 continue
                             elseif value === nothing
                                 @debug "Value is nothing"

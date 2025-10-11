@@ -2,9 +2,20 @@ using CImGui
 using JulGame
 
 function display_script_field_input(script, field)
-    ftype = typeof(getproperty(script, field))
+    # Check if the field is declared as EditorExport in the struct definition
+    field_type = fieldtype(typeof(script), field)
+    
+    # Only display if the field type is EditorExport
+    if !(field_type <: EditorExport)
+        return
+    end
+    
+    # Get the value (EditorExport handles transparent access)
+    value = getproperty(script, field)
+    ftype = typeof(value)
+    
     if ftype == String
-        buf = "$(getproperty(script, field))"*"\0"^(64)
+        buf = "$(value)"*"\0"^(64)
         CImGui.InputText("$(field)", buf, length(buf))
         currentTextInTextBox = ""
         for characterIndex = eachindex(buf)
@@ -17,17 +28,17 @@ function display_script_field_input(script, field)
         end
         setproperty!(script, field, currentTextInTextBox)
     elseif ftype == Bool
-        x = getproperty(script, field)
+        x = value
         @c CImGui.Checkbox("$(field)", &x)
         setproperty!(script, field, x)
     elseif ftype <: Int64 || ftype <: Int32 || ftype <: Int16 || ftype <: Int8
-        x = ftype(getproperty(script, field))
+        x = ftype(value)
         x = convert(Int32, x)
         @c CImGui.InputInt("$(field)", &x, 1)
         x = convert(ftype, x)
         setproperty!(script, field, x)
     elseif ftype == Float64 || ftype == Float32 || ftype <: Base.Number
-        x = ftype(getproperty(script, field))
+        x = ftype(value)
         x = Cfloat(x)
         @c CImGui.InputFloat("$(field)", &x, 1)
         setproperty!(script, field, ftype(x))
@@ -39,12 +50,18 @@ function init_undefined_field(script, field)
     if !isdefined(script, field)
         # Get the field type from the struct definition
         ftype = fieldtype(typeof(script), field)
-        if ftype == String
-            setproperty!(script, field, "")
-        elseif ftype == Bool
-            setproperty!(script, field, false)
-        elseif ftype <: Base.Number
-            setproperty!(script, field, 0)
+        
+        # Only initialize EditorExport fields
+        if ftype <: EditorExport
+            # Extract the wrapped type from EditorExport{T}
+            wrapped_type = ftype.parameters[1]
+            if wrapped_type == String
+                setproperty!(script, field, "")
+            elseif wrapped_type == Bool
+                setproperty!(script, field, false)
+            elseif wrapped_type <: Base.Number
+                setproperty!(script, field, zero(wrapped_type))
+            end
         end
     end
 end

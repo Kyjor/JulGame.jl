@@ -454,6 +454,8 @@ function get_settings_path()::String
 end
 
 function save_explorer_settings()
+    @warn "Explorer settings not saved, not implemented"
+    return
     try
         explorer = JulGame.EditorState["file_explorer"]
         settings_path = get_settings_path()
@@ -484,6 +486,8 @@ favorite_paths = [$(join(["\"$p\"" for p in explorer.favorite_paths], ", "))]
 end
 
 function load_explorer_settings()
+   # @warn "Explorer settings not loaded, not implemented"
+    return
     try
         settings_path = get_settings_path()
         if !isfile(settings_path)

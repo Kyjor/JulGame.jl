@@ -5,7 +5,6 @@ module PlatformerModule
         MAIN.testMode = true
         MAIN.testLength = 30.0
         MAIN.currentTestTime = 0.0
-        JulGame.PIXELS_PER_UNIT = 16
         scene = JulGame.SceneBuilderModule.Scene("level_0.json")
         try
             SceneBuilderModule.load_and_prepare_scene(scene, JulGame.MAIN)

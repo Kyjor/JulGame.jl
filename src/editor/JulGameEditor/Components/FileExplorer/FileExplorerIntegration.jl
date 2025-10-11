@@ -40,7 +40,7 @@ function initialize_file_explorer_system()
         end
         
         # Load saved favorites and recent files
-        load_explorer_settings()
+       # load_explorer_settings()
         
         @info "File Explorer system initialized successfully"
         

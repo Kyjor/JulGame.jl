@@ -291,6 +291,10 @@ module SceneWriterModule
 
         for script in scripts
             fields = Dict{String, Any}()
+            if isa(script, JSON3.Object) || isa(script, CodeUnits)
+                @warn "Skipping script: $(script) because it is a JSON3.Object or CodeUnits, there is probably a compilation error"
+                continue
+            end
             scriptName = split("$(typeof(script))", ".")[end]
             for field in fieldnames(typeof(script))
                 if field == :parent 
@@ -311,6 +315,7 @@ module SceneWriterModule
 
             scriptType = "$(typeof(script))"
             scriptName = split(scriptType, ".")[end]
+            
             push!(scriptsDict, Dict("name" => scriptName, "fields" => fields))
         end
 
