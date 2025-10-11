@@ -113,3 +113,109 @@ function load_scene(scenePath::String, renderer)
 
     return game
 end
+
+"""
+    initialize_project(projectPath::String)
+
+Initialize a project by including its main .jl file and setting up the base path.
+
+# Arguments
+- `projectPath`: The path to the project directory.
+
+# Returns
+True if successful, false otherwise.
+"""
+function initialize_project(projectPath::String)
+    if projectPath == "" || !isdir(projectPath)
+        @error "Invalid project path: $projectPath"
+        return false
+    end
+    
+    try
+        # Set the base path
+        JulGame.BasePath = projectPath
+        @debug("Base path set to: $(JulGame.BasePath)")
+        
+        # Include the project's main .jl file
+        project_name = basename(projectPath)
+        project_main_file = joinpath(projectPath, "src", "$(project_name).jl")
+        
+        if isfile(project_main_file)
+            println("Including project file: $project_main_file")
+            include(project_main_file)
+            return true
+        else
+            @warn "Project main file not found: $project_main_file"
+            return false
+        end
+    catch e
+        @error "Error initializing project: $e"
+        Base.show_backtrace(stderr, catch_backtrace())
+        return false
+    end
+end
+
+"""
+    load_scene_with_project(scenePath::String, renderer, currentSelectedProjectPath, save_last_scene::Bool=true)
+
+Load a scene and ensure its project is initialized. This is the centralized function for loading scenes.
+
+# Arguments
+- `scenePath`: The path to the scene file.
+- `renderer`: The renderer to use for loading the scene.
+- `currentSelectedProjectPath`: Reference to the current project path.
+- `save_last_scene`: Whether to save this scene as the last opened scene for the project.
+
+# Returns
+A tuple of (currentSceneMain, gameCamera, sceneName) or (nothing, nothing, "") on error.
+"""
+function load_scene_with_project(scenePath::String, renderer, currentSelectedProjectPath, save_last_scene::Bool=true)
+    try
+        # Get project path from scene path
+        projectPath = SceneLoaderModule.get_project_path_from_full_scene_path(scenePath)
+        
+        # Initialize project if not already initialized or if project changed
+        if currentSelectedProjectPath[] != projectPath
+            currentSelectedProjectPath[] = projectPath
+            if !initialize_project(projectPath)
+                @error "Failed to initialize project: $projectPath"
+                return (nothing, nothing, "")
+            end
+        end
+        
+        # Ensure project is initialized even if it's the same path (in case it wasn't loaded yet)
+        if JulGame.BasePath == "" || JulGame.BasePath != projectPath
+            initialize_project(projectPath)
+        end
+        
+        # Set editor mode
+        JulGame.IS_EDITOR = true
+        
+        # Load the scene
+        currentSceneMain = load_scene(scenePath, renderer)
+        
+        if currentSceneMain === nothing || currentSceneMain isa Ptr
+            @error "Failed to load scene: $scenePath"
+            return (nothing, nothing, "")
+        end
+        
+        # Get the camera
+        gameCamera = currentSceneMain.scene.camera
+        
+        # Get scene name
+        sceneName = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scenePath)
+        
+        # Save last scene if requested
+        if save_last_scene && projectPath != ""
+            save_last_scene_for_project(projectPath, sceneName)
+        end
+        
+        println("✓ Successfully loaded scene: $sceneName")
+        return (currentSceneMain, gameCamera, sceneName)
+        
+    catch e
+        @error "Error in load_scene_with_project: $e"
+        Base.show_backtrace(stderr, catch_backtrace())
+        return (nothing, nothing, "")
+    end
+end

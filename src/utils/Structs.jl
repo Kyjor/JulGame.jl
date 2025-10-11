@@ -13,8 +13,8 @@ Base.convert(::Type{EditorExport{T}}, value) where T = EditorExport(convert(T, v
 
 # Overload `getproperty` to access `value` transparently
 function Base.getproperty(editor::EditorExport{T}, sym::Symbol) where T
-    if sym === :value
-        return getfield(editor, :value)
+    if sym === :object
+        return editor
     else
         return getfield(editor, :value)  # All other accesses return the wrapped value
     end
@@ -29,59 +29,59 @@ function Base.setproperty!(editor::EditorExport{T}, sym::Symbol, new_value) wher
     end
 end
 
-# Comparison operators
-Base.:(==)(a::EditorExport, b::EditorExport) = a.value == b.value
-Base.:(==)(a::EditorExport, b) = a.value == b
-Base.:(==)(a, b::EditorExport) = a == b.value
+# # Comparison operators
+# Base.:(==)(a::EditorExport, b::EditorExport) = a.value == b.value
+# Base.:(==)(a::EditorExport, b) = a.value == b
+# Base.:(==)(a, b::EditorExport) = a == b.value
 
-Base.:!=(a::EditorExport, b::EditorExport) = a.value != b.value
-Base.:!=(a::EditorExport, b) = a.value != b
-Base.:!=(a, b::EditorExport) = a != b.value
+# Base.:!=(a::EditorExport, b::EditorExport) = a.value != b.value
+# Base.:!=(a::EditorExport, b) = a.value != b
+# Base.:!=(a, b::EditorExport) = a != b.value
 
-Base.:<(a::EditorExport, b::EditorExport) = a.value < b.value
-Base.:<(a::EditorExport, b) = a.value < b
-Base.:<(a, b::EditorExport) = a < b.value
+# Base.:<(a::EditorExport, b::EditorExport) = a.value < b.value
+# Base.:<(a::EditorExport, b) = a.value < b
+# Base.:<(a, b::EditorExport) = a < b.value
 
-Base.:<=(a::EditorExport, b::EditorExport) = a.value <= b.value
-Base.:<=(a::EditorExport, b) = a.value <= b
-Base.:<=(a, b::EditorExport) = a <= b.value
+# Base.:<=(a::EditorExport, b::EditorExport) = a.value <= b.value
+# Base.:<=(a::EditorExport, b) = a.value <= b
+# Base.:<=(a, b::EditorExport) = a <= b.value
 
-Base.:>(a::EditorExport, b::EditorExport) = a.value > b.value
-Base.:>(a::EditorExport, b) = a.value > b
-Base.:>(a, b::EditorExport) = a > b.value
+# Base.:>(a::EditorExport, b::EditorExport) = a.value > b.value
+# Base.:>(a::EditorExport, b) = a.value > b
+# Base.:>(a, b::EditorExport) = a > b.value
 
-Base.:>=(a::EditorExport, b::EditorExport) = a.value >= b.value
-Base.:>=(a::EditorExport, b) = a.value >= b
-Base.:>=(a, b::EditorExport) = a >= b.value
+# Base.:>=(a::EditorExport, b::EditorExport) = a.value >= b.value
+# Base.:>=(a::EditorExport, b) = a.value >= b
+# Base.:>=(a, b::EditorExport) = a >= b.value
 
-# Arithmetic operators
-Base.:+(a::EditorExport, b::EditorExport) = a.value + b.value
-Base.:+(a::EditorExport, b) = a.value + b
-Base.:+(a, b::EditorExport) = a + b.value
+# # Arithmetic operators
+# Base.:+(a::EditorExport, b::EditorExport) = a.value + b.value
+# Base.:+(a::EditorExport, b) = a.value + b
+# Base.:+(a, b::EditorExport) = a + b.value
 
-Base.:-(a::EditorExport, b::EditorExport) = a.value - b.value
-Base.:-(a::EditorExport, b) = a.value - b
-Base.:-(a, b::EditorExport) = a - b.value
+# Base.:-(a::EditorExport, b::EditorExport) = a.value - b.value
+# Base.:-(a::EditorExport, b) = a.value - b
+# Base.:-(a, b::EditorExport) = a - b.value
 
-Base.:*(a::EditorExport, b::EditorExport) = a.value * b.value
-Base.:*(a::EditorExport, b) = a.value * b
-Base.:*(a, b::EditorExport) = a * b.value
+# Base.:*(a::EditorExport, b::EditorExport) = a.value * b.value
+# Base.:*(a::EditorExport, b) = a.value * b
+# Base.:*(a, b::EditorExport) = a * b.value
 
-Base.:/(a::EditorExport, b::EditorExport) = a.value / b.value
-Base.:/(a::EditorExport, b) = a.value / b
-Base.:/(a, b::EditorExport) = a / b.value
+# Base.:/(a::EditorExport, b::EditorExport) = a.value / b.value
+# Base.:/(a::EditorExport, b) = a.value / b
+# Base.:/(a, b::EditorExport) = a / b.value
 
-Base.:^(a::EditorExport, b::EditorExport) = a.value ^ b.value
-Base.:^(a::EditorExport, b) = a.value ^ b
-Base.:^(a, b::EditorExport) = a ^ b.value
+# Base.:^(a::EditorExport, b::EditorExport) = a.value ^ b.value
+# Base.:^(a::EditorExport, b) = a.value ^ b
+# Base.:^(a, b::EditorExport) = a ^ b.value
 
-Base.:%(a::EditorExport, b::EditorExport) = a.value % b.value
-Base.:%(a::EditorExport, b) = a.value % b
-Base.:%(a, b::EditorExport) = a % b.value
+# Base.:%(a::EditorExport, b::EditorExport) = a.value % b.value
+# Base.:%(a::EditorExport, b) = a.value % b
+# Base.:%(a, b::EditorExport) = a % b.value
 
-# Unary operators
-Base.:-(a::EditorExport) = -a.value
-Base.:+(a::EditorExport) = +a.value
+# # Unary operators
+# Base.:-(a::EditorExport) = -a.value
+# Base.:+(a::EditorExport) = +a.value
 
 # Make EditorExport work with print/show
 Base.show(io::IO, e::EditorExport) = print(io, e.value) 

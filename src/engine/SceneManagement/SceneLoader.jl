@@ -68,7 +68,7 @@ module SceneLoaderModule
 
     """
     function get_project_path_from_full_scene_path(scenePath::String)
-        return dirname(dirname(scenePath))
+        return string(dirname(dirname(scenePath)))
     end
 
     export get_scene_file_name_from_full_scene_path
@@ -87,6 +87,6 @@ module SceneLoaderModule
         sceneFileName = split(scenePath, "/")[end]
         sceneFileName = split(sceneFileName, "\\")[end]
 
-        return sceneFileName
+        return string(sceneFileName)
     end
 end

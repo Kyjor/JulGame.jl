@@ -91,29 +91,18 @@ module Editor
     function get_last_scene_for_project(project_path::String)
         try
             filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "last_scenes.txt")
-            println("  Reading last_scenes.txt from: $filename")
-            println("  File exists: $(isfile(filename))")
             
             if isfile(filename)
-                println("  Searching for project: $project_path")
-                line_count = 0
                 found_scene = ""
                 open(filename, "r") do file
                     for line in eachline(file)
-                        line_count += 1
                         line = strip(line)
-                        println("    Line $line_count: '$line'")
                         if !isempty(line)
                             parts = split(line, "|")
-                            println("    Parts count: $(length(parts))")
                             if length(parts) == 2
                                 stored_path = strip(parts[1])
                                 scene_name = strip(parts[2])
-                                println("    Stored path: '$stored_path'")
-                                println("    Scene name: '$scene_name'")
-                                println("    Match: $(stored_path == project_path)")
                                 if stored_path == project_path
-                                    println("  ✓ Found match! Setting found_scene to: '$scene_name'")
                                     found_scene = scene_name
                                     break
                                 end
@@ -121,20 +110,12 @@ module Editor
                         end
                     end
                 end
-                if found_scene != ""
-                    println("  Returning found scene: '$found_scene'")
-                    return found_scene
-                end
-                println("  No match found in $line_count lines")
-            else
-                println("  File does not exist")
+                return found_scene
             end
         catch e
-            println("  ✗ Error reading last scene file: $e")
             @error "Error reading last scene for project" exception=e
         end
         
-        println("  Returning empty string")
         return ""
     end
 
@@ -247,13 +228,7 @@ module Editor
             if most_recent_project != "" && isdir(most_recent_project)
                 currentSelectedProjectPath[] = most_recent_project
                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(most_recent_project))
-                JulGame.BasePath = most_recent_project
-                @debug("Base path: $(JulGame.BasePath)")
-                println("Base path: $(JulGame.BasePath)")
-                # Get the last part of the path
-                last_part = basename(most_recent_project)
-
-                include(joinpath(most_recent_project, "src", "$(last_part).jl"))
+                initialize_project(most_recent_project)
                 # Update window title
                 SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(most_recent_project)")
                 # Show notification
@@ -262,78 +237,31 @@ module Editor
                 condition, watch_task = start_file_watcher(string(most_recent_project), filesToReload)
                 
                 # Try to auto-load the last opened scene for this project
-                println("=" ^ 80)
-                println("AUTO-LOAD SCENE DEBUG")
-                println("=" ^ 80)
-                println("Project path: $(most_recent_project)")
-                
                 last_scene_name = get_last_scene_for_project(string(most_recent_project))
-                println("Last scene name from file: '$last_scene_name'")
-                println("Last scene name is empty: $(last_scene_name == "")")
+                @debug("Last scene name for project: '$last_scene_name'")
                 
                 if last_scene_name != ""
-                    println("\nAvailable scenes in folder:")
-                    for (idx, scene) in enumerate(scenesLoadedFromFolder[])
-                        println("  [$idx] Full path: $scene")
-                        println("       Basename: $(basename(scene))")
-                    end
-                    
-                    println("\nAttempting to match scene: '$last_scene_name'")
                     # Find the scene file path - use exact basename match for reliability
                     scene_path = ""
                     for scene in scenesLoadedFromFolder[]
                         scene_basename = basename(scene)
-                        match1 = scene_basename == last_scene_name
-                        match2 = scene_basename == last_scene_name * ".json"
-                        match3 = scene_basename * ".json" == last_scene_name
-                        
-                        println("  Checking: $scene_basename")
-                        println("    - Match exact: $match1")
-                        println("    - Match with .json added: $match2")
-                        println("    - Match with .json removed: $match3")
-                        
-                        if match1 || match2 || match3
+                        if scene_basename == last_scene_name || 
+                           scene_basename == last_scene_name * ".json" || 
+                           scene_basename * ".json" == last_scene_name
                             scene_path = scene
-                            println("  ✓ MATCH FOUND: $scene_path")
+                            @debug("Found matching scene: $scene_path")
                             break
                         end
                     end
                     
                     if scene_path != "" && isfile(scene_path)
-                        println("\n✓ Scene file exists, loading: $scene_path")
-                        try
-                            currentSceneName = last_scene_name
-                            currentScenePath = scene_path
-                            currentSceneMain = load_scene(scene_path, renderer)
-                            
-                            if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
-                                gameCamera = currentSceneMain.scene.camera
-                                println("✓ Successfully auto-loaded scene: $last_scene_name")
-                            else
-                                println("✗ Failed to auto-load scene (currentSceneMain is invalid)")
-                                @error "Failed to auto-load scene: $last_scene_name"
-                                currentSceneMain = nothing
-                            end
-                        catch e
-                            println("✗ Error during scene loading: $e")
-                            @error "Error auto-loading scene: $last_scene_name - $e"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                            currentSceneMain = nothing
-                        end
+                        println("Auto-loading last scene: $last_scene_name")
+                        currentSceneMain, gameCamera, currentSceneName = load_scene_with_project(scene_path, renderer, currentSelectedProjectPath, true)
+                        currentScenePath = scene_path
                     else
-                        if scene_path == ""
-                            println("✗ No matching scene found for: '$last_scene_name'")
-                            println("   Available scene basenames: $(basename.(scenesLoadedFromFolder[]))")
-                        else
-                            println("✗ Scene path found but file doesn't exist: $scene_path")
-                            println("   File exists check: $(isfile(scene_path))")
-                        end
+                        @debug("Last scene '$last_scene_name' not found or doesn't exist")
                     end
-                else
-                    println("✗ No last scene recorded for this project")
                 end
-                println("=" ^ 80)
-                println()
             end
         end
 
@@ -530,43 +458,22 @@ module Editor
                             #println("Opening scene: $(currentDialog[][2])")
                             if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                                 if currentSceneMain === nothing
-                                    try
-                                        # Include the project's main .jl file if not already loaded
-                                        if currentSelectedProjectPath[] != ""
-                                            project_name = basename(currentSelectedProjectPath[])
-                                            project_main_file = joinpath(currentSelectedProjectPath[], "src", "$(project_name).jl")
-                                            if isfile(project_main_file)
-                                                include(project_main_file)
-                                            end
-                                        end
-                                        
-                                        currentSceneMain = load_scene(currentScenePath, renderer)
-                                        # Save the scene name for this project
-                                        if currentSceneMain !== nothing && currentSelectedProjectPath[] != ""
-                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
-                                        end
-                                    catch e
-                                        @error "Error loading scene: $(e)"
-                                        Base.show_backtrace(stderr, catch_backtrace())
-                                    end
+                                    # First time loading a scene
+                                    currentSceneMain, gameCamera, currentSceneName = load_scene_with_project(currentScenePath, renderer, currentSelectedProjectPath, true)
                                 else
+                                    # Scene already loaded, just change to a different scene
                                     try
                                         JulGame.change_scene(String(currentSceneName))
-                                        # Save the scene name for this project
                                         if currentSelectedProjectPath[] != ""
                                             save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
+                                        if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
+                                            gameCamera = currentSceneMain.scene.camera
                                         end
                                     catch e
                                         @error "Error changing scene: $(e)"
                                         Base.show_backtrace(stderr, catch_backtrace())
                                     end
-                                end
-                                if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
-                                    gameCamera = currentSceneMain.scene.camera
-                                else 
-                                    @error "Main not loaded properly, currentSceneMain: $(currentSceneMain)"
-                                    currentSceneMain = nothing
-                                    Base.show_backtrace(stderr, catch_backtrace())
                                 end
                             end
                         elseif currentDialog[] == "New Scene"
@@ -586,32 +493,11 @@ module Editor
                                 
                                 # Check if we need to load the scene or just create it
                                 if currentSceneMain === nothing
-                                    JulGame.IS_EDITOR = true
-                                    
-                                    # Include the project's main .jl file if not already loaded
-                                    if currentSelectedProjectPath[] != ""
-                                        project_name = basename(currentSelectedProjectPath[])
-                                        project_main_file = joinpath(currentSelectedProjectPath[], "src", "$(project_name).jl")
-                                        if isfile(project_main_file)
-                                            include(project_main_file)
-                                        end
-                                    end
-                                    
-                                    currentSceneMain = load_scene(currentScenePath, renderer)
-                                    
-                                    if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
-                                        gameCamera = currentSceneMain.scene.camera
-                                        # Save the scene name for this project
-                                        if currentSelectedProjectPath[] != ""
-                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
-                                        end
-                                    else 
-                                        currentSceneMain = nothing
-                                        @error "Main not loaded properly"
-                                    end
+                                    # First time loading - use centralized loader
+                                    currentSceneMain, gameCamera, currentSceneName = load_scene_with_project(currentScenePath, renderer, currentSelectedProjectPath, true)
                                 else
+                                    # Scene already loaded, just change to the new scene
                                     JulGame.change_scene("$(String(currentSceneName)).json")
-                                    # Save the scene name for this project
                                     if currentSelectedProjectPath[] != ""
                                         save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
                                     end
@@ -638,18 +524,8 @@ module Editor
                                     currentSceneMain = nothing
                                     currentSelectedProjectPath[] = JulGame.TEMP_SELECTED_PATH
                                     scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
-                                    # Update BasePath when selecting a recent project
-                                    JulGame.BasePath = currentSelectedProjectPath[]
-                                    @debug("Base path updated: $(JulGame.BasePath)")
-                                    
-                                    # Include the project's main .jl file
-                                    if currentSelectedProjectPath[] != ""
-                                        project_name = basename(currentSelectedProjectPath[])
-                                        project_main_file = joinpath(currentSelectedProjectPath[], "src", "$(project_name).jl")
-                                        if isfile(project_main_file)
-                                            include(project_main_file)
-                                        end
-                                    end
+                                    # Initialize the project
+                                    initialize_project(currentSelectedProjectPath[])
                                 end
                                 CImGui.SetItemDefaultFocus()
                                 CImGui.SameLine()
@@ -1296,7 +1172,7 @@ module Editor
     function get_most_recent_project()
         raw_recents = get_raw_recents()
         if !isempty(raw_recents)
-            return raw_recents[1].path
+            return string(raw_recents[1].path)
         end
         return ""
     end

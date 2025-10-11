@@ -208,16 +208,7 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
             result = choose_project_filepath() |> (dir) -> begin
                 if dir != ""
                     scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir)
-                    # Update BasePath when selecting a project
-                    JulGame.BasePath = dir
-                    @debug("Base path updated: $(JulGame.BasePath)")
-                    
-                    # Include the project's main .jl file
-                    project_name = basename(dir)
-                    project_main_file = joinpath(dir, "src", "$(project_name).jl")
-                    if isfile(project_main_file)
-                        include(project_main_file)
-                    end
+                    initialize_project(dir)
                 end
                 return dir
             end
