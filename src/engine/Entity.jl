@@ -53,6 +53,7 @@ module EntityModule
             this.softwareRenderer3d = C_NULL
             this.scripts = []
             this.transform = transform
+            this.transform.parent = this
             for script in scripts
                 JulGame.add_script(this, script)
             end
@@ -215,7 +216,7 @@ module EntityModule
     end
 
     function JulGame.duplicate(this::Entity, id::String = JulGame.generate_uuid())
-        newEntity = Entity(this.name, id, deepcopy(this.transform))
+        newEntity = Entity(this.name, id, Component.duplicate(this.transform, newEntity))
         # animator::Union{InternalAnimator, Ptr{Nothing}}
         if this.animator != C_NULL && this.animator !== nothing
             newEntity.animator = Component.duplicate(this.animator, newEntity)

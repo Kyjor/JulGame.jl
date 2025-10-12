@@ -43,34 +43,84 @@ module HistoryModule
 
     function on_notify(event::Symbol, data::Any)
         if event == :updated_transform
-            @info "fh on_notify updated_transform oldValue: $(data.oldValue) newValue: $(data.newValue)"
             add_field_history(data.id, data.property, data.oldValue, data.newValue)
 
         end
     end
 
     function add_field_history(id::String, property::Symbol, oldValue::Any, newValue::Any)
+        # Ensure HistoryData is initialized
+        if !haskey(JulGame.EditorState, "HistoryData")
+            JulGame.EditorState["HistoryData"] = Dict{String, History}()
+        end
+        
         fieldHistoryEntry = FieldHistory(property, oldValue, newValue, now())
-        if haskey(JulGame.EditorState["HistoryData"], id)
-            if haskey(JulGame.EditorState["HistoryData"][id].fieldHistory, property)
-                #check if the last element is the same as the new one
-                if JulGame.EditorState["HistoryData"][id].fieldHistory[property][end].newValue == newValue
+        history_data = JulGame.EditorState["HistoryData"]
+        
+        if haskey(history_data, id)
+            if haskey(history_data[id].fieldHistory, property)
+                # Check if the last element is the same as the new one
+                last_field_history = history_data[id].fieldHistory[property][end]
+                if last_field_history.newValue == newValue
                     return
                 end
-                # check if the time difference is greater than the minTimeBetweenUpdates
-                @info "Time difference: $(fieldHistoryEntry.timestamp - JulGame.EditorState["HistoryData"][id].fieldHistory[property][end].timestamp)"
-                if fieldHistoryEntry.timestamp - JulGame.EditorState["HistoryData"][id].fieldHistory[property][end].timestamp < 1.0
+                
+                # Check if the time difference is greater than the minTimeBetweenUpdates (in milliseconds)
+                time_diff = fieldHistoryEntry.timestamp - last_field_history.timestamp
+                time_diff_ms = Dates.value(time_diff)  # Convert Millisecond to Int64
+                if time_diff_ms < 1000  # Less than 1 second (1000 milliseconds)
                     return
                 end
+                
+                @debug "Time difference: $(time_diff_ms) milliseconds"
+                @debug "fh on_notify updated_transform oldValue: $(last_field_history.newValue) newValue: $(newValue)"
+                push!(history_data[id].fieldHistory[property], fieldHistoryEntry)
+                push!(JulGame.EditorState["HistoryStack"], "$(id)_$(property)")
             else
-                JulGame.EditorState["HistoryData"][id].fieldHistory[property] = [fieldHistoryEntry]
+                history_data[id].fieldHistory[property] = [fieldHistoryEntry]
+                push!(JulGame.EditorState["HistoryStack"], "$(id)_$(property)")
             end
         else
-            JulGame.EditorState["HistoryData"][id] = History(id, fieldHistoryEntry)
+            history_data[id] = History(id, fieldHistoryEntry)
+            push!(JulGame.EditorState["HistoryStack"], "$(id)_$(property)")
         end
+        JulGame.EditorState["HistoryStackIndex"] = length(JulGame.EditorState["HistoryStack"])
     end
 
     function get_field_history(this::History, property::Symbol)
         return this.fieldHistory[property]
+    end
+
+    export undo
+    function undo()
+        # Implement undo
+        history_data = JulGame.EditorState["HistoryData"]
+        history_stack = JulGame.EditorState["HistoryStack"]
+        if length(history_stack) > 0 && JulGame.EditorState["HistoryStackIndex"] > 1
+            history_entry = history_stack[JulGame.EditorState["HistoryStackIndex"] - 1]
+            id, property = split(history_entry, "_")
+
+            undo_field_history(string(id), Symbol(property), JulGame.EditorState["HistoryStackIndex"] - 1)
+            JulGame.EditorState["HistoryStackIndex"] -= 1
+        end
+    end
+
+    function undo_field_history(id::String, property::Symbol, history_stack_index::Int)
+        history_data = JulGame.EditorState["HistoryData"]
+        oldValue = history_data[id].fieldHistory[property][history_stack_index].oldValue
+        @info "undo_field_history oldValue: $(oldValue)"
+        for entity in MAIN.scene.entities
+            if entity.id == id
+                setfield!(entity.transform, property, oldValue)
+                @info "undo_field_history set property: $(property) to: $(oldValue)"
+                break
+            end
+        end
+    end
+
+    export redo
+    function redo()
+        @info "not implemented"
+       # redo_field_history(this, property)
     end
 end

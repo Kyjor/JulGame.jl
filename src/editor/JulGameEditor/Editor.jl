@@ -803,6 +803,18 @@ module Editor
                                 @debug string("Saving scene")
                                 events["Save"]()
                             end
+                            # undo with ctrl+z
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Z")
+                                JulGame.undo()
+                            end
+                            # redo with ctrl+y
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Y")
+                                JulGame.redo()
+                            end
+                            # redo with ctrl+shift+z
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Z")
+                                JulGame.redo()
+                            end
                             # delete selected entity
                             if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
                                 if currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0

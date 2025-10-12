@@ -156,6 +156,7 @@ module SceneReaderModule
                         @debug "Adding transform to entity: $(newEntity.name), path: $(component.path)"
                         try
                             newEntity.transform = component::Transform 
+                            newEntity.transform.parent = newEntity
                         catch e
                             @error "Failed to add transform to entity: $(newEntity.name), path: $(component.path), error: $(e)"
                             Base.show_backtrace(stderr, catch_backtrace())

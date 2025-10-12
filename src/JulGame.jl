@@ -49,7 +49,7 @@ module JulGame
    
     include("engine/History/History.jl")
     using .HistoryModule
-    export HistoryModule
+    export HistoryModule, undo, redo
 
     FrameCount = 0
     UserGlobals = Dict{String, Any}()
