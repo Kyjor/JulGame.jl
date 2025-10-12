@@ -34,12 +34,25 @@ module JulGame
     ScriptModule = Module(:Scripts)
     LoadedScripts = Set{String}()
 
-    EditorActionHistory = []
-    EditorState = Dict{String, Any}()
+    include("utils/Interfaces.jl")
+    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D, IObserver, IHistory
+   
+    include("engine/Events/Events.jl")
+    using .EventsModule
+    export EventsModule, ObserverModule, add_observer, remove_observer, notify_observer
+
+    EditorState = Dict{String, Any}(
+        "HistoryData" => Dict{String, IHistory}(),
+        "HistoryStack" => Vector{String}(),
+        "HistoryStackIndex" => 0,
+    )
+   
+    include("engine/History/History.jl")
+    using .HistoryModule
+    export HistoryModule
 
     FrameCount = 0
     UserGlobals = Dict{String, Any}()
-
 
     include("engine/Logging/Logging.jl")
     using .Logging
@@ -51,6 +64,17 @@ module JulGame
 
     include("utils/Structs.jl")
     export EditorExport, Enum
+
+    const engine_states = Enum{Any}(
+        :startup, 
+        :scene_change,
+        :game_mode,
+        :editor_mode,
+        :quit
+    )
+    engine_states.current_state = :startup
+
+    export engine_states
 
     include("Coroutine/Coroutine.jl")
     using .CoroutineModule
@@ -104,9 +128,6 @@ module JulGame
     """
     EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
 
-    include("utils/Interfaces.jl")
-    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D
-    
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule
     export PrefHandlerModule

@@ -211,6 +211,7 @@ function load_scene_with_project(scenePath::String, renderer, currentSelectedPro
         end
         
         println("✓ Successfully loaded scene: $sceneName")
+        JulGame.engine_states.current_state = :game_mode
         return (currentSceneMain, gameCamera, sceneName)
         
     catch e

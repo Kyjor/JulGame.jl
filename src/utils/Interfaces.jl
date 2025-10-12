@@ -20,3 +20,7 @@ abstract type IMesh3D end
 export IMesh3D
 abstract type ISoftwareRenderer3D end
 export ISoftwareRenderer3D
+abstract type IObserver end
+export IObserver
+abstract type IHistory end
+export IHistory

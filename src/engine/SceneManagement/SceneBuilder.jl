@@ -45,6 +45,7 @@ module SceneBuilderModule
         preloadAllScenes::Bool=false,
         scalingQuality::String="linear"
     )
+        JulGame.engine_states.current_state = :scene_change
         if config === nothing
             @debug("Config is nothing, parsing config")
             config = parse_config()
@@ -185,6 +186,7 @@ module SceneBuilderModule
         MAIN.scene.colliders = InternalCollider[]
         add_scripts_to_entities(BasePath)
 
+        JulGame.engine_states.current_state = :game_mode
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
     end
 

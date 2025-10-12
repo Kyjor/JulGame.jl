@@ -9,8 +9,9 @@ module TransformModule
         rotation::Math.Vector3f
         screenPosition::Math.Vector2
         screenRotation::Math.Vector2
-            
-        function Transform(position::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), scale::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(1.0, 1.0, 1.0), rotation::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0))
+        parent
+
+        function Transform(position::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), scale::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(1.0, 1.0, 1.0), rotation::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
             this = new()
             
             this.position = position
@@ -18,7 +19,9 @@ module TransformModule
             this.rotation = rotation
             this.screenPosition = Math.Vector2(0.0, 0.0)
             this.screenRotation = Math.Vector2(0.0, 0.0)
-            
+            this.parent = parent
+            JulGame.EventsModule.ObserverModule.add_observer((event, data) -> on_notify(event, data))
+
             return this
         end   
     end     
@@ -34,5 +37,21 @@ module TransformModule
         end
         
         return false
+    end
+
+    function Base.setproperty!(this::Transform, property::Symbol, value::Any)
+        # only log if the property is already defined
+        if isdefined(this, property) && JulGame.engine_states.current_state == :game_mode
+            #@info "setting transform property $(property) to: $(value)"
+            JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (oldValue = getfield(this, property), newValue = value))
+        end
+        # Call the default setproperty! behavior
+        invoke(setproperty!, Tuple{Any, Symbol, Any}, this, property, value)
+    end
+
+    function on_notify(event::Symbol, data::Any)
+        if event == :updated_transform
+          #  @info "updated_transform oldValue: $(data.oldValue) newValue: $(data.newValue)"
+        end
     end
 end

@@ -544,6 +544,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				JulGame.InputModule.poll_input(this.input)
 
 				this.close = this.input.quit
+				if this.close
+					JulGame.engine_states.current_state = :quit
+				end
 				SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 			end
 
@@ -608,6 +611,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
                         Base.invokelatest(JulGame.update, entity, deltaTime)
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"
+							JulGame.engine_states.current_state = :quit
 							return
 						end
 					catch e
