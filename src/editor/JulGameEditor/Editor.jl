@@ -946,9 +946,7 @@ module Editor
                                             @debug("reloading script: $(script_name)")
                                             module_name = getfield(JulGame.ScriptModule, Symbol("$(classname)Module"))
                                             constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
-                                            @info "typeof constructor: $(typeof(constructor))"
                                             new_script::constructor = Base.invokelatest(constructor)
-                                            @info "typeof new_script: $(typeof(new_script))"
 
                                             # Copy all fields from old_script to the new script
                                             for fieldname in fieldnames(typeof(entity.scripts[i]))
