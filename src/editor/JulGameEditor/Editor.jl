@@ -799,16 +799,16 @@ module Editor
                             if currentSceneMain.scene.camera != gameCamera
                                 gameCamera = currentSceneMain.scene.camera
                             end
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT")
                                 @debug string("Saving scene")
                                 events["Save"]()
                             end
                             # undo with ctrl+z
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Z")
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Z") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT")
                                 JulGame.undo()
                             end
                             # redo with ctrl+y
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Y")
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Y") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT")
                                 JulGame.redo()
                             end
                             # redo with ctrl+shift+z

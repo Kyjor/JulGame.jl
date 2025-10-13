@@ -43,7 +43,7 @@ module JulGame
 
     EditorState = Dict{String, Any}(
         "HistoryData" => Dict{String, IHistory}(),
-        "HistoryStack" => Vector{String}(),
+        "HistoryStack" => [],
         "HistoryStackIndex" => 0,
     )
    
