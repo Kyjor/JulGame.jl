@@ -262,6 +262,12 @@ module MainLoopModule
 				push!(MAIN.scene.colliders, entity.collider)
 			end
 		end 
+		
+		# Batch static sprites for performance
+		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
+			@debug "Batching static sprites"
+			MAIN.scene.batchedLayers = JulGame.StaticSpriteBatcherModule.batch_static_sprites(MAIN.scene)
+		end
 	end
 
 export change_scene
@@ -344,6 +350,10 @@ function JulGame.change_scene(sceneFileName::String)
 		end
         JulGame.destroy(uiElement)
 	end
+	
+	# Clean up batched static sprite textures
+	@debug "Cleaning up batched sprite layers"
+	JulGame.StaticSpriteBatcherModule.cleanup_batched_layers(this.scene.batchedLayers)
 	
 	#load new scene 
 	camera = this.scene.camera
@@ -595,11 +605,16 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				lastPhysicsTime[] =  currentPhysicsTime
 			end
 
-			#region Rendering
-			currentRenderTime = SDL2.SDL_GetTicks()
-			if this.scene.camera !== nothing && !JulGame.IS_EDITOR && !JulGame.IS_WEB
-				JulGame.CameraModule.update(this.scene.camera)
-			end
+		#region Rendering
+		currentRenderTime = SDL2.SDL_GetTicks()
+		if this.scene.camera !== nothing && !JulGame.IS_EDITOR && !JulGame.IS_WEB
+			JulGame.CameraModule.update(this.scene.camera)
+		end
+		
+		# Check if static sprite batches need regeneration
+		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
+			JulGame.StaticSpriteBatcherModule.check_and_rebatch_if_needed(this.scene)
+		end
 
 			for entity in this.scene.entities
 				if !entity.isActive
@@ -807,9 +822,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				skipShape = true
 			end
 
-			if !skipSprite && spriteExists
+		if !skipSprite && spriteExists
+			# Skip static sprites - they're rendered via batched textures
+			if !sprite.isStatic
 				push!(renderOrder, (sprite.layer, sprite))
 			end
+		end
 			if !skipShape && shapeExists
 				push!(renderOrder, (shape.layer, shape))
 			end
@@ -825,29 +843,38 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 		end
 
-		render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
-		filter!(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
-		for render_function in render_functions_to_call
-			push!(renderOrder, (render_function.layer, render_function))
-		end
-		sort!(renderOrder, by = x -> x[1])
+	render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
+	filter!(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
+	for render_function in render_functions_to_call
+		push!(renderOrder, (render_function.layer, render_function))
+	end
+	
+	# Add batched static sprite layers to render order
+	for (layer, batched_layer) in this.scene.batchedLayers
+		push!(renderOrder, (layer, batched_layer))
+	end
+	
+	sort!(renderOrder, by = x -> x[1])
 		
 		for i = eachindex(renderOrder)
 			try
 				rendercount += 1
-				if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
-					Component.render(renderOrder[i][2], this)
-				elseif renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
-					Component.render(renderOrder[i][2], this)
-				elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
-					Component.draw(renderOrder[i][2], camera)
-				elseif renderOrder[i][2] isa NamedTuple
-					# get the params	
-					func = renderOrder[i][2].function_to_call
-					Base.invokelatest(func)
-				else
-					println("Unknown item type: ", typeof(renderOrder[i][2]))
-				end
+			if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
+				Component.render(renderOrder[i][2], this)
+			elseif renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
+				Component.render(renderOrder[i][2], this)
+			elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
+				Component.draw(renderOrder[i][2], camera)
+			elseif renderOrder[i][2] isa NamedTuple
+				# get the params	
+				func = renderOrder[i][2].function_to_call
+				Base.invokelatest(func)
+			elseif hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)
+				# Render batched static sprite layer
+				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
+			else
+				println("Unknown item type: ", typeof(renderOrder[i][2]))
+			end
 			catch e
 				if this.testMode
 					rethrow(e)

@@ -16,6 +16,7 @@ module SpriteModule
         pixelsPerUnit::Int
         center::Math.Vector2f
         anchor::Symbol
+        isStatic::Bool
     end
 
     export InternalSprite
@@ -324,7 +325,7 @@ module SpriteModule
     end
 
     function Component.duplicate(this::InternalSprite, parent::Any)
-        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
+        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset, isStatic=this.isStatic)
         Component.initialize(newSprite)
         return newSprite
     end
@@ -337,16 +338,34 @@ module SpriteModule
     function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")
         try
+            # Track if this is a static sprite property change that requires rebatching
+            needs_rebatch = false
+            
             if s == :imagePath
                 @debug("setting imagePath to: $(x)")
                 if !isdefined(this, :imagePath) || (this.imagePath != x && !isempty(x))
                     # Reload the image, cleaning up the old one first
                     setfield!(this, s, String(x))
                     Component.load_image(this, String(x))
+                    needs_rebatch = isdefined(this, :isStatic) && this.isStatic
+                end
+                if needs_rebatch && JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
+                    JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch(JulGame.MAIN.scene, this.layer)
                 end
                 return
             end
+            
+            # Check if property affects rendering and sprite is static
+            if isdefined(this, :isStatic) && this.isStatic && s in [:position, :rotation, :color, :crop, :isFlipped, :offset, :layer, :pixelsPerUnit]
+                needs_rebatch = true
+            end
+            
             setfield!(this, s, x)
+            
+            # Mark layer for rebatch if needed
+            if needs_rebatch && JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
+                JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch(JulGame.MAIN.scene, this.layer)
+            end
         catch e
             @error "Error setting sprite property $(s) to: $(x)"
             @error "Error: $e"

@@ -174,6 +174,10 @@ module JulGame
     using .Rendering
     export Rendering
 
+    include("engine/Rendering/StaticSpriteBatcher.jl")
+    using .StaticSpriteBatcherModule
+    export StaticSpriteBatcherModule
+
     include("MainLoop.jl") 
     using .MainLoopModule: MainLoop
     export MainLoop

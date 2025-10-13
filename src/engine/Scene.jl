@@ -9,6 +9,7 @@
         rigidbodies::Vector{Any}
         uiElements::Vector{Any}
         name::String
+        batchedLayers::Dict{Int, Any}  # Static sprite batching: layer => BatchedLayer
 
         function Scene()
             this = new()
@@ -18,6 +19,7 @@
             this.entities = []
             this.rigidbodies = []
             this.uiElements = []
+            this.batchedLayers = Dict{Int, Any}()
 
             return this
         end
