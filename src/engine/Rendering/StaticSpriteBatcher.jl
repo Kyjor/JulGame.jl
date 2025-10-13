@@ -16,6 +16,7 @@ mutable struct BatchedLayer
     texturesBounds::Vector{Math.Vector4}  # x, y, width, height for each chunk
     spriteHashes::Vector{UInt64}  # Track sprite state to detect changes
     needsRebatch::Bool
+    debugOffset::Math.Vector2f  # Manual offset for debugging alignment issues
     
     function BatchedLayer(layer::Int)
         this = new()
@@ -24,6 +25,7 @@ mutable struct BatchedLayer
         this.texturesBounds = Math.Vector4[]
         this.spriteHashes = UInt64[]
         this.needsRebatch = true
+        this.debugOffset = Math.Vector2f(0.0, 0.0)
         return this
     end
 end
@@ -99,13 +101,58 @@ function calculate_bounding_box(sprites::Vector)
         pos = entity.transform.position
         scale = entity.transform.scale
         
-        # Calculate sprite bounds (simplified - assumes center anchor)
-        # TODO: Consider different anchors and rotations for more accurate bounds
-        sprite_width = sprite.size.x * scale.x / 64.0
-        sprite_height = sprite.size.y * scale.y / 64.0
+        # Calculate sprite size in world units
+        cropWidth = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? sprite.size.x : sprite.crop.z
+        cropHeight = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? sprite.size.y : sprite.crop.t
         
-        x1 = pos.x + sprite.offset.x - sprite_width / 2
-        y1 = pos.y + sprite.offset.y - sprite_height / 2
+        if sprite.pixelsPerUnit == 0
+            sprite_width = cropWidth * scale.x / 64.0
+            sprite_height = cropHeight * scale.y / 64.0
+        else
+            ppu = sprite.pixelsPerUnit > 0 ? sprite.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
+            sprite_width = cropWidth * scale.x / ppu
+            sprite_height = cropHeight * scale.y / ppu
+        end
+        
+        # Calculate base position
+        base_x = pos.x + sprite.offset.x
+        base_y = pos.y + sprite.offset.y
+        
+        # Calculate sprite bounds based on anchor (matching Sprite.jl anchor logic)
+        # The anchor determines where the transform position is relative to the sprite
+        if sprite.anchor == :center
+            x1 = base_x - sprite_width / 2
+            y1 = base_y - sprite_height / 2
+        elseif sprite.anchor == :top
+            x1 = base_x - sprite_width / 2
+            y1 = base_y
+        elseif sprite.anchor == :bottom
+            x1 = base_x - sprite_width / 2
+            y1 = base_y - sprite_height
+        elseif sprite.anchor == :left
+            x1 = base_x
+            y1 = base_y - sprite_height / 2
+        elseif sprite.anchor == :right
+            x1 = base_x - sprite_width
+            y1 = base_y - sprite_height / 2
+        elseif sprite.anchor == :topleft
+            x1 = base_x
+            y1 = base_y
+        elseif sprite.anchor == :topright
+            x1 = base_x - sprite_width
+            y1 = base_y
+        elseif sprite.anchor == :bottomleft
+            x1 = base_x
+            y1 = base_y - sprite_height
+        elseif sprite.anchor == :bottomright
+            x1 = base_x - sprite_width
+            y1 = base_y - sprite_height
+        else
+            # Default to center if unknown anchor
+            x1 = base_x - sprite_width / 2
+            y1 = base_y - sprite_height / 2
+        end
+        
         x2 = x1 + sprite_width
         y2 = y1 + sprite_height
         
@@ -222,14 +269,43 @@ function render_sprite_to_texture(sprite, offset_x::Float64, offset_y::Float64, 
         scaledHeight = cropHeight * scaleFactor * scale.y
     end
     
-    # Calculate position (relative to texture origin)
+    # Match Sprite.jl's positioning logic EXACTLY
+    # Step 1: Calculate base position in pixels (relative to texture origin)
     adjustedX = (pos.x + sprite.offset.x) * scale_units - offset_x * scale_units
     adjustedY = (pos.y + sprite.offset.y) * scale_units - offset_y * scale_units
     
-    # Apply anchor positioning (simplified - center anchor for now)
-    # TODO: Support all anchor types
-    centeredX = adjustedX - (scaledWidth - scale_units * scale.x) / 2
-    centeredY = adjustedY - (scaledHeight - scale_units * scale.y) / 2
+    # Step 2: Apply anchor positioning (EXACTLY as Sprite.jl does it)
+    # The anchor offset is based on the difference between scaledWidth/Height and SCALE_UNITS * scale
+    centeredX = adjustedX
+    centeredY = adjustedY
+    
+    if sprite.anchor == :center
+        centeredX -= (scaledWidth - scale_units * scale.x) / 2
+        centeredY -= (scaledHeight - scale_units * scale.y) / 2
+    elseif sprite.anchor == :top
+        centeredX -= (scaledWidth - scale_units * scale.x) / 2
+        # No Y adjustment
+    elseif sprite.anchor == :bottom
+        centeredX -= (scaledWidth - scale_units * scale.x) / 2
+        centeredY -= (scaledHeight - scale_units * scale.y)
+    elseif sprite.anchor == :left
+        # No X adjustment
+        centeredY -= (scaledHeight - scale_units * scale.y) / 2
+    elseif sprite.anchor == :right
+        centeredX -= (scaledWidth - scale_units * scale.x)
+        centeredY -= (scaledHeight - scale_units * scale.y) / 2
+    elseif sprite.anchor == :topleft
+        # No adjustment
+    elseif sprite.anchor == :topright
+        centeredX -= (scaledWidth - scale_units * scale.x)
+        # No Y adjustment
+    elseif sprite.anchor == :bottomleft
+        # No X adjustment
+        centeredY -= (scaledHeight - scale_units * scale.y)
+    elseif sprite.anchor == :bottomright
+        centeredX -= (scaledWidth - scale_units * scale.x)
+        centeredY -= (scaledHeight - scale_units * scale.y)
+    end
     
     # Source rectangle
     srcRect = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? 
@@ -378,8 +454,8 @@ function render_batched_layer(batched_layer::BatchedLayer, camera)
         end
         
         # Convert to screen coordinates
-        screen_x = world_x * SCALE_UNITS - cameraDiff.x
-        screen_y = world_y * SCALE_UNITS - cameraDiff.y
+        screen_x = world_x * SCALE_UNITS - cameraDiff.x + batched_layer.debugOffset.x
+        screen_y = world_y * SCALE_UNITS - cameraDiff.y + batched_layer.debugOffset.y
         screen_width = world_width * SCALE_UNITS
         screen_height = world_height * SCALE_UNITS
         

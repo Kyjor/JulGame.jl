@@ -177,6 +177,9 @@ module JulGame
     include("engine/Rendering/StaticSpriteBatcher.jl")
     using .StaticSpriteBatcherModule
     export StaticSpriteBatcherModule
+    
+    include("engine/Rendering/StaticSpriteBatcherHelpers.jl")
+    export set_batched_layer_offset, get_batched_layer_offset, get_batched_layer_info, list_batched_layers
 
     include("MainLoop.jl") 
     using .MainLoopModule: MainLoop
