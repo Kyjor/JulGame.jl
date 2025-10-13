@@ -230,11 +230,18 @@ module ColliderModule
             end
             if result[].y == b.y
                 @debug "colliding from top at depth $(depthVertical)"
+                # Check if moving upward through a platformer - if so, ignore to prevent snap-to-top
+                if colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== C_NULL
+                    # If moving upward (negative velocity in SDL coords), ignore collision
+                    if colliderA.parent.rigidbody.velocity.y < 0
+                        return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
+                    end
+                end
                 verticalCollisionDir = Bottom::CollisionDirection
             elseif result[].y == a.y
                 @debug "colliding from bottom at depth $(depthVertical)" 
-                collisionDistance = colliderB.parent.transform.position.y - colliderA.parent.transform.position.y
-                if colliderB.isPlatformerCollider# && collisionDistance > 0.25 #todo: make this a variable based on collider size. It's a magic number right now.
+                # Platformer colliders allow pass-through from below
+                if colliderB.isPlatformerCollider
                     return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
                 end
                 verticalCollisionDir = Top::CollisionDirection
