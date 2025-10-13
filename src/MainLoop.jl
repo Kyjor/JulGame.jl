@@ -823,8 +823,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 		if !skipSprite && spriteExists
-			# Skip static sprites - they're rendered via batched textures
-			if !sprite.isStatic
+			# Skip static sprites in-game (they're rendered via batched textures)
+			# BUT always render them in editor scene viewer for manipulation
+			should_batch = sprite.isStatic && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
+			if !should_batch
 				push!(renderOrder, (sprite.layer, sprite))
 			end
 		end
@@ -850,8 +852,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	end
 	
 	# Add batched static sprite layers to render order
-	for (layer, batched_layer) in this.scene.batchedLayers
-		push!(renderOrder, (layer, batched_layer))
+	# Only render batched layers when NOT in editor scene viewer
+	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
+		for (layer, batched_layer) in this.scene.batchedLayers
+			push!(renderOrder, (layer, batched_layer))
+		end
 	end
 	
 	sort!(renderOrder, by = x -> x[1])

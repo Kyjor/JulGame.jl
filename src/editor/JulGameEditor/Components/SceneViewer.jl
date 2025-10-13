@@ -205,7 +205,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
         if duplicationMode
             handle_mouse_click_duplication(main)
         else
-            handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+            handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
         end
     end
     
@@ -283,7 +283,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     return canvas_sz
 end
 
-function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
     # if main is nothing, return
     if main === nothing
         return
@@ -300,12 +300,12 @@ function handle_mouse_click(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     
     if display_ui_elements
         # Try to select UI element first
-        selected_element = get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+        selected_element = get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
     end
     
     # If no UI element selected, try to select regular entity
     if selected_element === nothing
-        selected_element = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+        selected_element = get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
     end
     
     if selected_element !== nothing
@@ -328,7 +328,7 @@ function handle_mouse_click_duplication(main)
     end
 end
 
-function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
     # if main is nothing, return
     if main === nothing
         return
@@ -336,11 +336,14 @@ function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     # get all entities
     entities = main.scene.entities
     
-    # Important: camPos is already scaled by zoom_level as it's calculated with scale_unit_factor = 64.0 * zoom_level[]
-    # mouse_pos_in_canvas_zoom_adjusted is already divided by zoom_level, so it's in world coordinates
-    # Therefore we need to use the original scale (64.0) to convert mouse click to world position
+    # mouse_pos_in_canvas_zoom_adjusted is already divided by zoom_level (see line 84)
+    # camPos is camera.position * 64.0 * zoom_level
+    # To get world position: (mouse_pos_in_canvas / zoom) / 64.0 + camera.position
+    # Which simplifies to: mouse_pos_in_canvas_zoom_adjusted / 64.0 + camera.position
+    # Since camPos = camera.position * 64.0 * zoom, we get: camera.position = camPos / (64.0 * zoom)
     scale_unit_factor = 64.0
-    clicked_pos = ImVec2((mouse_pos_in_canvas_zoom_adjusted.x + camPos.x)/scale_unit_factor, (mouse_pos_in_canvas_zoom_adjusted.y + camPos.y)/scale_unit_factor)
+    clicked_pos = ImVec2(mouse_pos_in_canvas_zoom_adjusted.x / scale_unit_factor + camPos.x / (64.0 * zoom_level[]), 
+                        mouse_pos_in_canvas_zoom_adjusted.y / scale_unit_factor + camPos.y / (64.0 * zoom_level[]))
     
     for entity in entities
         size = entity.transform.scale
@@ -710,11 +713,11 @@ function draw_debug_panel(draw_list, canvas_p0, canvas_p1, mouse_pos, camera, ma
 end
 
 """
-    get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+    get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
 
 Gets the nearest UI element to the mouse click position in the scene viewer.
 """
-function get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted)
+function get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_adjusted, zoom_level)
     if main === nothing || main.scene === nothing
         return nothing
     end
@@ -724,9 +727,6 @@ function get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoo
         return nothing
     end
     
-    scale_factor = 64.0
-    camera_world_pos = Math.Vector2f(camera.position.x, camera.position.y)
-    
     nearest_ui_element = nothing
     min_distance = Inf
     
@@ -735,32 +735,22 @@ function get_nearest_ui_element(main, canvas_p0, camPos, mouse_pos_in_canvas_zoo
             continue
         end
         
-        # Convert UI element screen position to world position relative to camera
-        ui_world_pos = Math.Vector2f(
-            camera_world_pos.x + (ui_element.position.x / 64.0),
-            camera_world_pos.y + (ui_element.position.y / 64.0)
-        )
+        # UI elements are positioned in pixels, convert mouse position to UI space
+        # From rendering: screen_x = canvas_p0.x + (ui_element.position.x * zoom) - (camera.position.x * 64.0 * zoom)
+        # Reverse: mouse_in_ui_space = mouse_pos_in_canvas_zoom_adjusted + (camera.position.x * 64.0)
+        mouse_in_ui_space_x = mouse_pos_in_canvas_zoom_adjusted.x + ((camera.position.x + camera.offset.x) * 64.0)
+        mouse_in_ui_space_y = mouse_pos_in_canvas_zoom_adjusted.y + ((camera.position.y + camera.offset.y) * 64.0)
         
-        # Check if mouse click is within UI element bounds
-        ui_size_world = Math.Vector2f(
-            ui_element.size.x / 64.0,
-            ui_element.size.y / 64.0
-        )
-        
-        # Convert mouse position to world coordinates (similar to entities)
-        mouse_world_x = mouse_pos_in_canvas_zoom_adjusted.x / scale_factor + camPos.x / scale_factor
-        mouse_world_y = mouse_pos_in_canvas_zoom_adjusted.y / scale_factor + camPos.y / scale_factor
-        
-        # Check if mouse is within UI element bounds
-        if mouse_world_x >= ui_world_pos.x && 
-           mouse_world_x <= ui_world_pos.x + ui_size_world.x &&
-           mouse_world_y >= ui_world_pos.y && 
-           mouse_world_y <= ui_world_pos.y + ui_size_world.y
+        # Check if mouse is within UI element bounds (in pixel space)
+        if mouse_in_ui_space_x >= ui_element.position.x && 
+           mouse_in_ui_space_x <= ui_element.position.x + ui_element.size.x &&
+           mouse_in_ui_space_y >= ui_element.position.y && 
+           mouse_in_ui_space_y <= ui_element.position.y + ui_element.size.y
             
             # Calculate distance to center of UI element
-            center_x = ui_world_pos.x + ui_size_world.x / 2
-            center_y = ui_world_pos.y + ui_size_world.y / 2
-            distance = sqrt((mouse_world_x - center_x)^2 + (mouse_world_y - center_y)^2)
+            center_x = ui_element.position.x + ui_element.size.x / 2
+            center_y = ui_element.position.y + ui_element.size.y / 2
+            distance = sqrt((mouse_in_ui_space_x - center_x)^2 + (mouse_in_ui_space_y - center_y)^2)
             
             if distance < min_distance
                 min_distance = distance
