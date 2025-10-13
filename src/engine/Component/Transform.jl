@@ -46,7 +46,7 @@ module TransformModule
 
     function Base.setproperty!(this::Transform, property::Symbol, value::Any)
         # only log if the property is already defined
-        if isdefined(this, property) && JulGame.engine_states.current_state == :game_mode
+        if JulGame.IS_EDITOR && isdefined(this, property) && JulGame.engine_states.current_state == :game_mode
             #@info "setting transform property $(property) to: $(value)"
             JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (id = this.parent.id, property = property, oldValue = getfield(this, property), newValue = value))
         end

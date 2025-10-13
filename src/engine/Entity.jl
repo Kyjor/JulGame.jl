@@ -216,7 +216,7 @@ module EntityModule
     end
 
     function JulGame.duplicate(this::Entity, id::String = JulGame.generate_uuid())
-        newEntity = Entity(this.name, id, Component.duplicate(this.transform, newEntity))
+        newEntity = Entity(this.name, id, Component.duplicate(this.transform, nothing))
         # animator::Union{InternalAnimator, Ptr{Nothing}}
         if this.animator != C_NULL && this.animator !== nothing
             newEntity.animator = Component.duplicate(this.animator, newEntity)
