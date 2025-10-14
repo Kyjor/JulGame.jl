@@ -121,6 +121,11 @@ module MainLoopModule
 		testLength::Float64
 		testMode::Bool
 		windowManager::WindowManager
+		
+		# Pre-allocated buffers to reduce GC pressure
+		uiRenderBuffer::Vector{Tuple{Int, Any}}
+		spriteRenderBuffer::Vector{Tuple{Int, Any}}
+		coroutineRemovalBuffer::Vector{Any}
 
 		function MainLoop()
 			this::MainLoop = new()
@@ -157,6 +162,16 @@ module MainLoopModule
 			this.latencyProfiler = nothing  # Disabled by default, enable with enable_profiling()
 
 			this.windowManager = WindowManager()
+
+			# Initialize pre-allocated buffers for rendering (reduces GC pressure)
+			this.uiRenderBuffer = Vector{Tuple{Int, Any}}()
+			sizehint!(this.uiRenderBuffer, 100)  # Pre-allocate for ~100 UI elements
+			
+			this.spriteRenderBuffer = Vector{Tuple{Int, Any}}()
+			sizehint!(this.spriteRenderBuffer, 500)  # Pre-allocate for ~500 sprites
+			
+			this.coroutineRemovalBuffer = Vector{Any}()
+			sizehint!(this.coroutineRemovalBuffer, 10)  # Pre-allocate for ~10 coroutines
 
 			return this
 		end
@@ -786,43 +801,43 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :ui_rendering)
 			end
 			
-			# Sort UI elements by layer before rendering
-			uiRenderingOrder = []
+			# Sort UI elements by layer before rendering (using pre-allocated buffer)
+			empty!(this.uiRenderBuffer)  # Clear without deallocating
 			for uiElement in this.scene.uiElements
 				# TODO: Only render UI elements that are not children of a Canvas
 				# Canvas children will be rendered by their parent Canvas
 				#if uiElement.parent === nothing || !isa(uiElement.parent, UI.Canvas)
-					push!(uiRenderingOrder, (uiElement.layer, uiElement))
+					push!(this.uiRenderBuffer, (uiElement.layer, uiElement))
 				#end
 			end
 			render_functions_to_call = filter(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			filter!(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			for render_function in render_functions_to_call
-				push!(uiRenderingOrder, (render_function.layer, render_function))
+				push!(this.uiRenderBuffer, (render_function.layer, render_function))
 			end
 			immediateUIComponents = UI.ImmediateUIModule.manage_all_immediate_components()
 			for immediateUIComponent in immediateUIComponents
-				push!(uiRenderingOrder, (immediateUIComponent.layer, immediateUIComponent))
+				push!(this.uiRenderBuffer, (immediateUIComponent.layer, immediateUIComponent))
 			end
 
-			sort!(uiRenderingOrder, by = x -> x[1])
-			for i = eachindex(uiRenderingOrder)
+			sort!(this.uiRenderBuffer, by = x -> x[1], alg=QuickSort)  # In-place sort
+			for i = eachindex(this.uiRenderBuffer)
 				try
-					if uiRenderingOrder[i][2] isa NamedTuple
-						func = uiRenderingOrder[i][2].function_to_call
+					if this.uiRenderBuffer[i][2] isa NamedTuple
+						func = this.uiRenderBuffer[i][2].function_to_call
 						Base.invokelatest(func)
 					else
-						JulGame.render(uiRenderingOrder[i][2])
+						JulGame.render(this.uiRenderBuffer[i][2])
 					end
 				catch e
 					if this.testMode
 						rethrow(e)
 					else
 						parent_info = ""
-						if isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)
-							parent_info = "a queued render function ($(uiRenderingOrder[i][2].function_to_call))"
-						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
-							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
+						if isa(this.uiRenderBuffer[i][2], NamedTuple) && hasfield(typeof(this.uiRenderBuffer[i][2]), :function_to_call)
+							parent_info = "a queued render function ($(this.uiRenderBuffer[i][2].function_to_call))"
+						elseif isa(this.uiRenderBuffer[i][2], UI.UIElement) 
+							parent_info = "a ui element of type $(typeof(this.uiRenderBuffer[i][2]))"
 						end
 						println(parent_info, " has a problem with it's render function")
 						@error string(e)
@@ -923,7 +938,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 		skipcount = 0
 		rendercount = 0
-		renderOrder = []
+		empty!(this.spriteRenderBuffer)  # Clear without deallocating
 		for entity in this.scene.entities
 			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
 			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
@@ -960,17 +975,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			# BUT always render them in editor scene viewer for manipulation
 			should_batch = sprite.isStatic && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
 			if !should_batch
-				push!(renderOrder, (sprite.layer, sprite))
+				push!(this.spriteRenderBuffer, (sprite.layer, sprite))
 			end
 		end
 			if !skipShape && shapeExists
-				push!(renderOrder, (shape.layer, shape))
+				push!(this.spriteRenderBuffer, (shape.layer, shape))
 			end
 			if !skipMesh3d && mesh3dExists
-				push!(renderOrder, (mesh3d.layer, mesh3d))
+				push!(this.spriteRenderBuffer, (mesh3d.layer, mesh3d))
 			end
 			if !skipSoftwareRenderer3d && softwareRenderer3dExists
-				push!(renderOrder, (softwareRenderer3d.layer, softwareRenderer3d))
+				push!(this.spriteRenderBuffer, (softwareRenderer3d.layer, softwareRenderer3d))
 			end
 			if skipSprite && spriteExists
 				sprite.lastRenderedScreenPosition = nothing
@@ -981,49 +996,49 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 	filter!(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 	for render_function in render_functions_to_call
-		push!(renderOrder, (render_function.layer, render_function))
+		push!(this.spriteRenderBuffer, (render_function.layer, render_function))
 	end
 	
 	# Add batched static sprite layers to render order
 	# Only render batched layers when NOT in editor scene viewer
 	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 		for (layer, batched_layer) in this.scene.batchedLayers
-			push!(renderOrder, (layer, batched_layer))
+			push!(this.spriteRenderBuffer, (layer, batched_layer))
 		end
 	end
 	
-	sort!(renderOrder, by = x -> x[1])
+	sort!(this.spriteRenderBuffer, by = x -> x[1], alg=QuickSort)  # In-place sort
 		
-		for i = eachindex(renderOrder)
+		for i = eachindex(this.spriteRenderBuffer)
 			try
 				rendercount += 1
-			if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
-				Component.render(renderOrder[i][2], this)
-			elseif renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
-				Component.render(renderOrder[i][2], this)
-			elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
-				Component.draw(renderOrder[i][2], camera)
-			elseif renderOrder[i][2] isa NamedTuple
+			if this.spriteRenderBuffer[i][2] isa Component.Mesh3DModule.Mesh3D
+				Component.render(this.spriteRenderBuffer[i][2], this)
+			elseif this.spriteRenderBuffer[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
+				Component.render(this.spriteRenderBuffer[i][2], this)
+			elseif this.spriteRenderBuffer[i][2] isa Component.SpriteModule.InternalSprite || this.spriteRenderBuffer[i][2] isa Component.ShapeModule.InternalShape 
+				Component.draw(this.spriteRenderBuffer[i][2], camera)
+			elseif this.spriteRenderBuffer[i][2] isa NamedTuple
 				# get the params	
-				func = renderOrder[i][2].function_to_call
+				func = this.spriteRenderBuffer[i][2].function_to_call
 				Base.invokelatest(func)
-			elseif hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)
+			elseif hasproperty(this.spriteRenderBuffer[i][2], :textures) && hasproperty(this.spriteRenderBuffer[i][2], :layer)
 				# Render batched static sprite layer
-				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
+				JulGame.StaticSpriteBatcherModule.render_batched_layer(this.spriteRenderBuffer[i][2], camera)
 			else
-				println("Unknown item type: ", typeof(renderOrder[i][2]))
+				println("Unknown item type: ", typeof(this.spriteRenderBuffer[i][2]))
 			end
 			catch e
 				if this.testMode
 					rethrow(e)
 				else
 					parent_info = ""
-					if isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)
-						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
-					elseif hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== nothing && isa(renderOrder[i][2].parent, JulGame.EntityModule.Entity)
-						parent_info = "$(renderOrder[i][2].parent.name) with id: $(renderOrder[i][2].parent.id)"
+					if isa(this.spriteRenderBuffer[i][2], NamedTuple) && hasfield(typeof(this.spriteRenderBuffer[i][2]), :function_to_call)
+						parent_info = "a queued render function ($(this.spriteRenderBuffer[i][2].function_to_call))"
+					elseif hasproperty(this.spriteRenderBuffer[i][2], :parent) && this.spriteRenderBuffer[i][2].parent !== nothing && isa(this.spriteRenderBuffer[i][2].parent, JulGame.EntityModule.Entity)
+						parent_info = "$(this.spriteRenderBuffer[i][2].parent.name) with id: $(this.spriteRenderBuffer[i][2].parent.id)"
 					else 
-						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
+						parent_info = "a component of type $(typeof(this.spriteRenderBuffer[i][2]))"
 					end
 					println(parent_info, " has a problem with rendering")
 					@error string(e)
