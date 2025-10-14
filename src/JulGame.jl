@@ -58,6 +58,10 @@ module JulGame
     using .Logging
     export ErrorLoggerModule
 
+    include("engine/Diagnostics/Diagnostics.jl")
+    using .Diagnostics
+    export LatencyProfilerModule
+
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
     export DELTA_TIME, IS_EDITOR, SDL2, SDL2E, MAIN

@@ -29,6 +29,79 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
+	# Profiling helper functions
+	export enable_profiling, disable_profiling, print_profiling_report, export_profiling_data
+
+	"""
+		enable_profiling(;buffer_size=10000, report_interval=5.0)
+
+	Enable latency profiling for the game loop. This will track frame times,
+	section times, allocations, and GC pauses.
+
+	# Arguments
+	- `buffer_size::Int`: Number of frames to buffer (default: 10000)
+	- `report_interval::Float64`: Seconds between real-time reports (default: 5.0)
+
+	# Example
+	```julia
+	enable_profiling(buffer_size=5000, report_interval=10.0)
+	# Run your game...
+	print_profiling_report()
+	export_profiling_data("results.csv")
+	```
+	"""
+	function enable_profiling(;buffer_size::Int=10000, report_interval::Float64=5.0)
+		this::MainLoop = MAIN
+		this.latencyProfiler = JulGame.LatencyProfilerModule.LatencyProfiler(
+			enabled=true,
+			buffer_size=buffer_size,
+			report_interval=report_interval
+		)
+		println("✅ Latency profiling enabled (buffer: $buffer_size frames, reports every $(report_interval)s)")
+	end
+
+	"""
+		disable_profiling()
+
+	Disable latency profiling and print final report.
+	"""
+	function disable_profiling()
+		this::MainLoop = MAIN
+		if this.latencyProfiler !== nothing
+			JulGame.LatencyProfilerModule.print_latency_report(this.latencyProfiler)
+			this.latencyProfiler = nothing
+			println("✅ Latency profiling disabled")
+		end
+	end
+
+	"""
+		print_profiling_report()
+
+	Print a comprehensive latency profiling report.
+	"""
+	function print_profiling_report()
+		this::MainLoop = MAIN
+		if this.latencyProfiler !== nothing
+			JulGame.LatencyProfilerModule.print_latency_report(this.latencyProfiler)
+		else
+			@warn "Profiling is not enabled. Call enable_profiling() first."
+		end
+	end
+
+	"""
+		export_profiling_data(filename::String)
+
+	Export profiling data to CSV file for external analysis.
+	"""
+	function export_profiling_data(filename::String)
+		this::MainLoop = MAIN
+		if this.latencyProfiler !== nothing
+			JulGame.LatencyProfilerModule.export_profiling_data(this.latencyProfiler, filename)
+		else
+			@warn "Profiling is not enabled. Call enable_profiling() first."
+		end
+	end
+
 	export MainLoop
 	mutable struct MainLoop
 		close::Bool
@@ -38,6 +111,7 @@ module MainLoopModule
 		errorLogger::ErrorLoggingModule.ErrorLogger
 		input::Input
 		isGameModeRunningInEditor::Bool
+		latencyProfiler::Union{JulGame.LatencyProfilerModule.LatencyProfiler, Nothing}
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
@@ -80,6 +154,7 @@ module MainLoopModule
 			this.coroutine_condition = Condition()
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
 			this.spriteLayers = Dict()
+			this.latencyProfiler = nothing  # Disabled by default, enable with enable_profiling()
 
 			this.windowManager = WindowManager()
 
@@ -538,6 +613,11 @@ Parameters:
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 """
 function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+	# Start frame profiling
+	if this.latencyProfiler !== nothing
+		JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
+	end
+
 	JulGame.FrameCount += 1
 	if this.shouldChangeScene && !JulGame.IS_EDITOR
 		this.shouldChangeScene = false
@@ -551,6 +631,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			DEBUG = false
 			#region Input
 			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :input)
+				end
+				
 				JulGame.InputModule.poll_input(this.input)
 
 				this.close = this.input.quit
@@ -558,6 +642,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					JulGame.engine_states.current_state = :quit
 				end
 				SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
+				
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+				end
 			end
 
 			DEBUG = this.input.debug
@@ -580,6 +668,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 			#region Physics
 			if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :physics)
+				end
+				
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
 				JulGame.DELTA_TIME = deltaTime
@@ -603,9 +695,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					end
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
+				
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+				end
 			end
 
 		#region Rendering
+		if this.latencyProfiler !== nothing
+			JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :entity_updates)
+		end
+		
 		currentRenderTime = SDL2.SDL_GetTicks()
 		if this.scene.camera !== nothing && !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			JulGame.CameraModule.update(this.scene.camera)
@@ -661,8 +761,20 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				deleteat!(JulGame.Coroutines, findfirst(x -> x == coroutine_to_remove, JulGame.Coroutines))
 			end
 			
+			if this.latencyProfiler !== nothing
+				JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+			end
+			
 			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :sprite_rendering)
+				end
+				
 				render_scene_sprites_and_shapes(this, this.scene.camera)
+				
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+				end
 			end
 			
 			if JulGame.IS_DEBUG
@@ -670,6 +782,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 			#region UI
+			if this.latencyProfiler !== nothing
+				JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :ui_rendering)
+			end
+			
 			# Sort UI elements by layer before rendering
 			uiRenderingOrder = []
 			for uiElement in this.scene.uiElements
@@ -715,6 +831,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 			end
 			
+			if this.latencyProfiler !== nothing
+				JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+			end
+			
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
@@ -757,8 +877,16 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :present_and_delay)
+				end
+				
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
+				
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+				end
 			elseif JulGame.IS_WEB
 				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
 				entt = "["
@@ -781,6 +909,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				@error string(e)
 				Base.show_backtrace(stdout, catch_backtrace())
 			end
+		end
+		
+		# End frame profiling
+		if this.latencyProfiler !== nothing
+			JulGame.LatencyProfilerModule.end_frame(this.latencyProfiler)
 		end
     end
 

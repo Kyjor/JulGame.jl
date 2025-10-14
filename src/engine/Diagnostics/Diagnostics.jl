@@ -1,5 +1,6 @@
 module Diagnostics
     include("Logging.jl")
+    include("LatencyProfiler.jl")
     
-    export LoggingModule
+    export LoggingModule, LatencyProfilerModule
 end
