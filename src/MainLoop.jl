@@ -5,6 +5,7 @@ module MainLoopModule
     import ..JulGame: Component
     import ..JulGame.SceneManagement: SceneBuilderModule
 	import ..JulGame
+	using Statistics
 
 	include("utils/Enums.jl")
 	include("utils/Constants.jl")
@@ -77,12 +78,18 @@ module MainLoopModule
 	"""
 		print_profiling_report()
 
-	Print a comprehensive latency profiling report.
+	Print a comprehensive latency profiling report including per-script performance.
 	"""
 	function print_profiling_report()
 		this::MainLoop = MAIN
 		if this.latencyProfiler !== nothing
 			JulGame.LatencyProfilerModule.print_latency_report(this.latencyProfiler)
+			
+			# Also print script-specific profiling if data is available
+			if !isempty(this.scriptTimings)
+				println("\n")  # Spacing
+				print_script_profiling_report(this)
+			end
 		else
 			@warn "Profiling is not enabled. Call enable_profiling() first."
 		end
@@ -130,6 +137,10 @@ module MainLoopModule
 		# Cached input layer order (rebuilt only when layers change)
 		cachedInputLayerOrder::Vector{Any}
 		inputLayerOrderDirty::Bool
+		
+		# Script tracking for profiling and debugging
+		knownScriptTypes::Set{DataType}
+		scriptTimings::Dict{DataType, Vector{Float64}}  # For profiling per script type
 
 		function MainLoop()
 			this::MainLoop = new()
@@ -181,6 +192,10 @@ module MainLoopModule
 			this.cachedInputLayerOrder = Vector{Any}()
 			sizehint!(this.cachedInputLayerOrder, 100)  # Pre-allocate
 			this.inputLayerOrderDirty = true  # Build on first use
+			
+			# Initialize script tracking
+			this.knownScriptTypes = Set{DataType}()
+			this.scriptTimings = Dict{DataType, Vector{Float64}}()
 
 			return this
 		end
@@ -225,6 +240,128 @@ module MainLoopModule
 	function mark_input_layer_order_dirty!(this::MainLoop)
 		this.inputLayerOrderDirty = true
 	end
+	
+	# ============================================================================
+	# SCRIPT LIFECYCLE CALLS
+	# Wrapper functions for calling dynamically-loaded script methods.
+	# Uses Base.invokelatest to handle world age issues. Tracks first calls for profiling.
+	# ============================================================================
+	
+	"""
+		call_script_initialize(this::MainLoop, script)
+	
+	Call script initialization method. Tracks first call for profiling/debugging.
+	"""
+	@inline function call_script_initialize(this::MainLoop, script)
+		script_type = typeof(script)
+		
+		if !(script_type in this.knownScriptTypes)
+			# First time: JIT compiles the method (slow but only once)
+			@debug "First initialize call for $(script_type) - compiling..."
+			push!(this.knownScriptTypes, script_type)
+			this.scriptTimings[script_type] = Float64[]
+		end
+		
+		Base.invokelatest(JulGame.initialize, script)
+	end
+	
+	"""
+		call_script_update(this::MainLoop, script, deltaTime, profile::Bool=false)
+	
+	Call script update method with optional per-script profiling.
+	When profiling is enabled, tracks execution time per script type.
+	"""
+	@inline function call_script_update(this::MainLoop, script, deltaTime::Float64, profile::Bool=false)
+		script_type = typeof(script)
+		
+		if !(script_type in this.knownScriptTypes)
+			# First call: register type (compilation happens here)
+			@debug "First update call for $(script_type) - compiling..."
+			push!(this.knownScriptTypes, script_type)
+			this.scriptTimings[script_type] = Float64[]
+		end
+		
+		# Profile if requested
+		if profile && haskey(this.scriptTimings, script_type)
+			start_time = time_ns()
+			Base.invokelatest(JulGame.update, script, deltaTime)
+			elapsed = (time_ns() - start_time) / 1e6
+			push!(this.scriptTimings[script_type], elapsed)
+		else
+			Base.invokelatest(JulGame.update, script, deltaTime)
+		end
+	end
+	
+	"""
+		call_script_shutdown(this::MainLoop, script)
+	
+	Call script shutdown/cleanup method.
+	"""
+	@inline function call_script_shutdown(this::MainLoop, script)
+		script_type = typeof(script)
+		
+		if !(script_type in this.knownScriptTypes)
+			push!(this.knownScriptTypes, script_type)
+			@debug "First shutdown call for $(script_type) - compiling..."
+		end
+		
+		# Always use invokelatest (fast after first compilation)
+		Base.invokelatest(JulGame.on_shutdown, script)
+	end
+	
+	
+	"""
+		print_script_profiling_report(this::MainLoop)
+	
+	Print profiling statistics for each script type showing mean, P95, P99, and max execution times.
+	"""
+	function print_script_profiling_report(this::MainLoop)
+		if isempty(this.scriptTimings)
+			println("No script profiling data available")
+			return
+		end
+		
+		println("\n" * "="^80)
+		println("📊 SCRIPT PERFORMANCE REPORT")
+		println("="^80)
+		
+		# Sort by mean time (slowest first)
+		sorted_scripts = sort(collect(this.scriptTimings), by = kv -> isempty(kv[2]) ? 0.0 : Statistics.mean(kv[2]), rev=true)
+		
+		for (script_type, timings) in sorted_scripts
+			if isempty(timings)
+				continue
+			end
+			
+			mean_time = mean(timings)
+			p95 = quantile(timings, 0.95)
+			p99 = quantile(timings, 0.99)
+			max_time = maximum(timings)
+			
+			println("\n📜 $(script_type)")
+			println("  ├─ Calls: $(length(timings))")
+			println("  ├─ Mean:  $(round(mean_time, digits=3)) ms")
+			println("  ├─ P95:   $(round(p95, digits=3)) ms")
+			println("  ├─ P99:   $(round(p99, digits=3)) ms")
+			println("  └─ Max:   $(round(max_time, digits=3)) ms")
+		end
+		
+		println("\n" * "="^80)
+	end
+	
+	"""
+		clear_script_profiling_data!(this::MainLoop)
+	
+	Clear all script profiling data.
+	"""
+	function clear_script_profiling_data!(this::MainLoop)
+		for (_, timings) in this.scriptTimings
+			empty!(timings)
+		end
+	end
+	
+	export call_script_initialize, call_script_update, call_script_shutdown
+	export print_script_profiling_report, clear_script_profiling_data!
 
     function prepare_window_scripts_and_start_loop(size)
         @debug "Preparing window"
@@ -290,7 +427,7 @@ module MainLoopModule
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-                        Base.invokelatest(JulGame.on_shutdown, script)
+                        call_script_shutdown(this, script)
                     catch e
 						if this.testMode
 							rethrow(e)
@@ -368,7 +505,7 @@ module MainLoopModule
 
 			for script in scripts
 				try
-					Base.invokelatest(JulGame.initialize, script)
+					call_script_initialize(this, script)
 				catch e
 					if this.testMode
 						rethrow(e)
@@ -454,7 +591,7 @@ function JulGame.change_scene(sceneFileName::String)
 		if !JulGame.IS_EDITOR
 			for script in entity.scripts
 				try
-					Base.invokelatest(JulGame.on_shutdown, script)
+					call_script_shutdown(this, script)
 				catch e
 					if this.testMode
 						rethrow(e)
@@ -542,15 +679,15 @@ function build_sprite_layers()
 end
 
 function JulGame.initialize(this::Any)
-	@debug "Skipping initialization of component: $(typeof(this))"
+	#@warn "⚠️  FALLBACK initialize called for: $(typeof(this))"
 end
 
 function JulGame.update(this::Any, deltaTime::Any)
-	#@debug "Skipping update of component: $(typeof(this))"
+	#@warn "⚠️  FALLBACK update called for: $(typeof(this))"
 end
 
 function JulGame.on_shutdown(this::Any)
-	@debug "Skipping on_shutdown of component: $(typeof(this))"
+	#@warn "⚠️  FALLBACK on_shutdown called for: $(typeof(this))"
 end
 
 export destroy_entity
@@ -799,7 +936,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
-                        Base.invokelatest(JulGame.update, entity, deltaTime)
+						# Call scripts with optional per-script profiling
+						for script in entity.scripts
+							profile_scripts = this.latencyProfiler !== nothing
+							call_script_update(this, script, deltaTime, profile_scripts)
+						end
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"
 							JulGame.engine_states.current_state = :quit

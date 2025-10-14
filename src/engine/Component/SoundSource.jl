@@ -57,7 +57,11 @@ module SoundSourceModule
         end
     end
 
-    function Component.toggle_sound(this::InternalSoundSource, loops = 0)
+    function Component.toggle_sound(this::Union{InternalSoundSource, Nothing}, loops = 0)
+        if this === nothing
+            @warn "SoundSource is nothing"
+            return
+        end
         @debug("Toggling sound from $(this.path), isMusic: $(this.isMusic), loops: $(loops)")
         try
             if this.isMusic
