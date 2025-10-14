@@ -126,6 +126,10 @@ module MainLoopModule
 		uiRenderBuffer::Vector{Tuple{Int, Any}}
 		spriteRenderBuffer::Vector{Tuple{Int, Any}}
 		coroutineRemovalBuffer::Vector{Any}
+		
+		# Cached input layer order (rebuilt only when layers change)
+		cachedInputLayerOrder::Vector{Any}
+		inputLayerOrderDirty::Bool
 
 		function MainLoop()
 			this::MainLoop = new()
@@ -172,9 +176,54 @@ module MainLoopModule
 			
 			this.coroutineRemovalBuffer = Vector{Any}()
 			sizehint!(this.coroutineRemovalBuffer, 10)  # Pre-allocate for ~10 coroutines
+			
+			# Initialize cached input layer order
+			this.cachedInputLayerOrder = Vector{Any}()
+			sizehint!(this.cachedInputLayerOrder, 100)  # Pre-allocate
+			this.inputLayerOrderDirty = true  # Build on first use
 
 			return this
 		end
+	end
+
+	"""
+		get_input_layer_order(this::MainLoop)
+	
+	Get the cached input layer order, rebuilding if dirty.
+	This avoids sorting on every mouse event - only rebuilds when layers change.
+	"""
+	function get_input_layer_order(this::MainLoop)
+		if this.inputLayerOrderDirty
+			# Rebuild cached order
+			empty!(this.cachedInputLayerOrder)
+			
+			# Add UI elements sorted by layer (descending)
+			uiElements = sort(this.scene.uiElements, by = el -> el.layer, rev = true)
+			for el in uiElements
+				push!(this.cachedInputLayerOrder, el)
+			end
+			
+			# Add entities with sprites sorted by layer (descending)
+			entitiesWithSprites = filter(e -> e.sprite !== nothing && e.sprite !== C_NULL, this.scene.entities)
+			sort!(entitiesWithSprites, by = e -> e.sprite.layer, rev = true)
+			for e in entitiesWithSprites
+				push!(this.cachedInputLayerOrder, e)
+			end
+			
+			this.inputLayerOrderDirty = false
+		end
+		
+		return this.cachedInputLayerOrder
+	end
+	
+	"""
+		mark_input_layer_order_dirty!(this::MainLoop)
+	
+	Mark the input layer order cache as dirty, forcing a rebuild on next access.
+	Call this when adding/removing UI elements or entities, or when changing layers.
+	"""
+	function mark_input_layer_order_dirty!(this::MainLoop)
+		this.inputLayerOrderDirty = true
 	end
 
     function prepare_window_scripts_and_start_loop(size)
@@ -358,6 +407,9 @@ module MainLoopModule
 			@debug "Batching static sprites"
 			MAIN.scene.batchedLayers = JulGame.StaticSpriteBatcherModule.batch_static_sprites(MAIN.scene)
 		end
+		
+		# Mark input layer order dirty after initialization
+		mark_input_layer_order_dirty!(this)
 	end
 
 export change_scene
@@ -519,6 +571,7 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 			if entity_index !== nothing
 				deleteat!(this.selectedEntities, entity_index)
 			end
+			mark_input_layer_order_dirty!(this)  # Cache needs rebuild
 			break
 		end
 	end
@@ -541,6 +594,7 @@ function JulGame.destroy_ui_element(this::MainLoop, uiElement)
 		if this.scene.uiElements[i] == uiElement
 			deleteat!(this.scene.uiElements, i)
 			JulGame.destroy(uiElement)
+			mark_input_layer_order_dirty!(this)  # Cache needs rebuild
 			break
 		end
 	end
@@ -618,6 +672,8 @@ function JulGame.create_entity(entity)
 	if entity.collider != C_NULL
 		push!(this.scene.colliders, entity.collider)
 	end
+	
+	mark_input_layer_order_dirty!(this)  # Cache needs rebuild
 
 	return entity
 end
