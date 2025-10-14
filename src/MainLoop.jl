@@ -117,7 +117,7 @@ module MainLoopModule
 		scene::SceneModule.Scene
 		selectedEntities#::Union{Vector{Entity}, Vector{UI.UIElement}, Nothing}
 		shouldChangeScene::Bool
-		spriteLayers::Dict
+		spriteLayers::NamedTuple{(:layers, :sorted), Tuple{Dict{Int, Vector{Any}}, Vector{Int}}}
 		testLength::Float64
 		testMode::Bool
 		windowManager::WindowManager
@@ -158,7 +158,7 @@ module MainLoopModule
 			this.testLength = 0.0
 			this.coroutine_condition = Condition()
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
-			this.spriteLayers = Dict()
+			this.spriteLayers = (layers = Dict{Int, Vector{Any}}(), sorted = Int[])
 			this.latencyProfiler = nothing  # Disabled by default, enable with enable_profiling()
 
 			this.windowManager = WindowManager()
@@ -464,26 +464,29 @@ end
 build_sprite_layers()
 
 Builds the sprite layers for the main game.
+Returns a named tuple with (layers = Dict{Int, Vector}, sorted = Vector{Int})
 
 """
 function build_sprite_layers()
 	@debug "Building sprite layers"
-	layerDict = Dict{String, Array}()
-	layerDict["sort"] = []
+	layerDict = Dict{Int, Vector{Any}}()  # Int keys instead of String - no allocations!
+	sortedLayers = Int[]
+	
 	for entity in MAIN.scene.entities
 		entitySprite = entity.sprite
 		if entitySprite != C_NULL
-			if !haskey(layerDict, "$(entitySprite.layer)")
-				push!(layerDict["sort"], entitySprite.layer)
-				layerDict["$(entitySprite.layer)"] = [entitySprite]
+			layer = entitySprite.layer
+			if !haskey(layerDict, layer)  # No string interpolation!
+				push!(sortedLayers, layer)
+				layerDict[layer] = [entitySprite]
 			else
-				push!(layerDict["$(entitySprite.layer)"], entitySprite)
+				push!(layerDict[layer], entitySprite)
 			end
 		end
 	end
-	sort!(layerDict["sort"])
-
-	return layerDict
+	sort!(sortedLayers)
+	
+	return (layers = layerDict, sorted = sortedLayers)  # Return named tuple
 end
 
 function JulGame.initialize(this::Any)
@@ -546,11 +549,12 @@ end
 function destroy_entity_components(this::MainLoop, entity)
 	entitySprite = entity.sprite
 	if entitySprite != C_NULL
-		if haskey(this.spriteLayers, "$(entitySprite.layer)")	
-			for j = eachindex(this.spriteLayers["$(entitySprite.layer)"])
-				if this.spriteLayers["$(entitySprite.layer)"][j] == entitySprite
+		layer = entitySprite.layer
+		if haskey(this.spriteLayers.layers, layer)  # No string interpolation!
+			for j = eachindex(this.spriteLayers.layers[layer])
+				if this.spriteLayers.layers[layer][j] == entitySprite
 					Component.destroy(entitySprite)
-					deleteat!(this.spriteLayers["$(entitySprite.layer)"], j)
+					deleteat!(this.spriteLayers.layers[layer], j)
 					break
 				end
 			end
@@ -597,12 +601,13 @@ function JulGame.create_entity(entity)
 	this::MainLoop = MAIN
 	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
-		if !haskey(this.spriteLayers, "$(entity.sprite.layer)")
-			push!(this.spriteLayers["sort"], entity.sprite.layer)
-			this.spriteLayers["$(entity.sprite.layer)"] = [entity.sprite]
-			sort!(this.spriteLayers["sort"])
+		layer = entity.sprite.layer
+		if !haskey(this.spriteLayers.layers, layer)  # No string interpolation!
+			push!(this.spriteLayers.sorted, layer)
+			this.spriteLayers.layers[layer] = [entity.sprite]
+			sort!(this.spriteLayers.sorted)
 		else
-			push!(this.spriteLayers["$(entity.sprite.layer)"], entity.sprite)
+			push!(this.spriteLayers.layers[layer], entity.sprite)
 		end
 	end
 
