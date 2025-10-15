@@ -265,7 +265,13 @@ module InputModule
 
                     # Use cached layer order instead of sorting every mouse event
                     # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
-                    elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
+                    #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
+                                        # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
+                    
+                    uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
+                    elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
+                    
                     # TODO: add rest of entities without sprites in default order
                     # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, MAIN.scene.entities)
                     # append!(elementsOrderedByLayerDescending, restOfEntities)
