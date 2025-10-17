@@ -2,6 +2,8 @@ module TextBoxModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
+    using ..UI.TextStyleModule
+    using ..UI.TextEffectRendererModule
     export TextBox
     export DEFAULT_FONT      
     DEFAULT_FONT = "Default"
@@ -15,6 +17,8 @@ module TextBoxModule
         text::String
         textTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         wrapWords::Bool
+        textStyle::Union{TextStyleModule.TextStyle, Nothing}
+        isDynamic::Bool
 
         function TextBox(text::String; 
             id::String=JulGame.generate_uuid(), 
@@ -34,6 +38,8 @@ module TextBoxModule
             fontSize::Int = 16, 
             maxLineWidth::Int=0, 
             wrapWords::Bool=true,
+            textStyle::Union{TextStyleModule.TextStyle, Nothing}=nothing,
+            isDynamic::Bool=false,
             parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
         )
 
@@ -64,6 +70,8 @@ module TextBoxModule
             this.maxLineWidth = maxLineWidth
             this.wrapWords = wrapWords
             this.isHovered = false
+            this.textStyle = textStyle
+            this.isDynamic = isDynamic
             
             this.textTexture = C_NULL
             this.renderText = C_NULL
@@ -169,23 +177,42 @@ module TextBoxModule
             this.text = " "
         end
 
-        # Use high-quality font rendering with proper anti-aliasing
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
-        if this.renderText == C_NULL
-            error("Failed to render text for textbox $(this.name)")
-            return
+        # Use high-quality font rendering with or without effects
+        if this.textStyle === nothing || isempty((this.textStyle::Any).effects)
+            this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
+            if this.renderText == C_NULL
+                error("Failed to render text for textbox $(this.name)")
+                return
+            end
+            surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+            this.size = Math.Vector2(surface[1].w, surface[1].h)
+            this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+        else
+            # Styled path renders directly to texture using cache
+            this.textTexture = TextEffectRendererModule.render_styled_text!(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.text, this.font, this.color, this.textStyle, this.fontPath, this.fontSize)
+            if this.textTexture == C_NULL
+                @debug("Styled text rendering failed, falling back to basic rendering for $(this.name)")
+                # Fallback to basic rendering
+                this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
+                if this.renderText == C_NULL
+                    error("Failed to render text for textbox $(this.name)")
+                    return
+                end
+                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
+                this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+            else
+                w = Ref{Cint}(0); h = Ref{Cint}(0)
+                fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                SDL2.SDL_QueryTexture(this.textTexture, fmt, access, w, h)
+                this.size = Math.Vector2(w[], h[])
+            end
         end
 
-        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-        
-        # Size is always in screen pixels, regardless of isWorldEntity
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
-        
-        # Create texture with high-quality scaling
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
-        
-        # Set texture scaling quality to linear
-        SDL2.SDL_SetTextureScaleMode(this.textTexture, SDL2.SDL_ScaleModeLinear)
+        # Set texture scaling quality to linear (applies to styled path too)
+        if this.textTexture != C_NULL
+            SDL2.SDL_SetTextureScaleMode(this.textTexture, SDL2.SDL_ScaleModeLinear)
+        end
 
         if !this.isWorldEntity
             UI.align_to_anchor(this)
@@ -259,28 +286,51 @@ module TextBoxModule
             this.text = " "
         end
 
-        # Check if we need to wrap text
-        color = SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4]))
-        this.renderText = if this.maxLineWidth > 0 && this.font != C_NULL && this.text != ""
-            SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
-        elseif this.font != C_NULL && this.text != ""
-            # No wrapping needed
-            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
+        if this.textStyle === nothing || isempty((this.textStyle::Any).effects)
+            # Check if we need to wrap text
+            color = SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4]))
+            this.renderText = if this.maxLineWidth > 0 && this.font != C_NULL && this.text != ""
+                SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
+            elseif this.font != C_NULL && this.text != ""
+                this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
+            else
+                C_NULL
+            end
+            if this.renderText == C_NULL
+                @debug("Failed to render text for textbox $(this.name)")
+                return
+            end
+            surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+            this.size = Math.Vector2(surface[1].w, surface[1].h)
+            this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
         else
-            C_NULL
+            # Styled path: use single line render for now, wrapping handled upstream
+            this.textTexture = TextEffectRendererModule.render_styled_text!(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.text, this.font, this.color, this.textStyle, this.fontPath, this.fontSize)
+            if this.textTexture == C_NULL
+                @debug("Styled text rendering failed in rerender_text, falling back to basic rendering for $(this.name)")
+                # Fallback to basic rendering
+                color = SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4]))
+                this.renderText = if this.maxLineWidth > 0 && this.font != C_NULL && this.text != ""
+                    SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
+                elseif this.font != C_NULL && this.text != ""
+                    this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
+                else
+                    C_NULL
+                end
+                if this.renderText == C_NULL
+                    @debug("Failed to render text for textbox $(this.name)")
+                    return
+                end
+                surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+                this.size = Math.Vector2(surface[1].w, surface[1].h)
+                this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+            else
+                w = Ref{Cint}(0); h = Ref{Cint}(0)
+                fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                SDL2.SDL_QueryTexture(this.textTexture, fmt, access, w, h)
+                this.size = Math.Vector2(w[], h[])
+            end
         end
-
-        if this.renderText == C_NULL
-            @debug("Failed to render text for textbox $(this.name)")
-            return
-        end
-
-        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-
-        # Size is always in screen pixels, regardless of isWorldEntity
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
-        
-        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
 
         if !this.isWorldEntity
             UI.align_to_anchor(this)
@@ -292,8 +342,15 @@ module TextBoxModule
             SDL2.SDL_FreeSurface(this.renderText)
             this.renderText = C_NULL
         end
-        if this.textTexture != C_NULL
+        # Only destroy texture if it's NOT from the effect cache
+        # Effect cache manages its own texture lifecycle
+        if this.textTexture != C_NULL && (this.textStyle === nothing || isempty((this.textStyle::Any).effects))
+            @debug("Destroying non-cached texture for $(this.name)")
             SDL2.SDL_DestroyTexture(this.textTexture)
+            this.textTexture = C_NULL
+        elseif this.textTexture != C_NULL
+            # Styled texture is managed by cache, just clear our reference
+            @debug("Clearing cached texture reference for $(this.name)")
             this.textTexture = C_NULL
         end
     end
