@@ -40,17 +40,49 @@ module TextEffectRendererModule
 
         for eff in style.effects
             if eff isa TextureFillEffect
-                # TODO: load texture and modulate into glyph alpha
-                continue
+                textured = apply_texture_fill(work, eff.texturePath, eff.tile, eff.blendMode, eff.opacity)
+                if textured == C_NULL
+                    @debug("Failed to create texture fill surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return C_NULL
+                end
+                if textured != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = textured
             elseif eff isa GradientEffect
-                # TODO: generate gradient surface and modulate
-                continue
+                gradient_result = apply_gradient_effect(work, eff.gradientType, eff.stops, eff.angle)
+                if gradient_result == C_NULL
+                    @debug("Failed to create gradient surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return C_NULL
+                end
+                if gradient_result != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = gradient_result
             elseif eff isa BevelEffect
-                bevel_shade!(work, eff.angle, eff.depth)
+                beveled = apply_bevel_effect(work, eff.depth, eff.angle, eff.highlight_color, eff.shadow_color)
+                if beveled == C_NULL
+                    @debug("Failed to create bevel surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return C_NULL
+                end
+                if beveled != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = beveled
             elseif eff isa InnerGlowEffect
-                # Inner glow: similar to outer but inverted
-                # For now, skip - complex to implement properly
-                continue
+                inner_glowed = create_inner_glow_surface(work, eff.radius, eff.color)
+                if inner_glowed == C_NULL
+                    @debug("Failed to create inner glow surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return C_NULL
+                end
+                if inner_glowed != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = inner_glowed
             elseif eff isa StrokeEffect
                 stroked = stroke_expand_surface!(work, eff.width, eff.color)
                 if stroked == C_NULL

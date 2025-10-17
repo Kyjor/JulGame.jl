@@ -2,7 +2,7 @@ module TextEffectsModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
-    export TextEffect, BevelEffect, InnerGlowEffect, OuterGlowEffect, GradientEffect, StrokeEffect, DropShadowEffect, TextureFillEffect, RGBA
+    export TextEffect, BevelEffect, InnerGlowEffect, OuterGlowEffect, GradientEffect, StrokeEffect, DropShadowEffect, TextureFillEffect, RGBA, GradientStop, LinearGradient, RadialGradient, TextureBlendMode, TextureBlendMod, TextureBlendMul, TextureBlendAdd
 
     """
         RGBA
