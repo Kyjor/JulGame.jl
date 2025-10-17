@@ -2,7 +2,7 @@ module TextEffectsModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
-    export TextEffect, BevelEffect, InnerGlowEffect, OuterGlowEffect, GradientEffect, StrokeEffect, DropShadowEffect, TextureFillEffect, RGBA, GradientStop, LinearGradient, RadialGradient, TextureBlendMode, TextureBlendMod, TextureBlendMul, TextureBlendAdd
+    export TextEffect, BevelEffect, InnerGlowEffect, OuterGlowEffect, GradientEffect, StrokeEffect, DropShadowEffect, TextureFillEffect, RoughEdgeEffect, RGBA, GradientStop, LinearGradient, RadialGradient, TextureBlendMode, TextureBlendMod, TextureBlendMul, TextureBlendAdd
 
     """
         RGBA
@@ -95,6 +95,15 @@ module TextEffectsModule
         opacity::Int
         function TextureFillEffect(; texturePath::String="", tile::Bool=true, blendMode::TextureBlendMode=TextureBlendMod, opacity::Int=255)
             new(texturePath, tile, blendMode, Math.TypeConversions.safe_int32_convert(opacity))
+        end
+    end
+
+    mutable struct RoughEdgeEffect <: TextEffect
+        amount::Int
+        seed::Int
+        erosion::Bool
+        function RoughEdgeEffect(; amount::Int=3, seed::Int=12345, erosion::Bool=true)
+            new(Math.TypeConversions.safe_int32_convert(amount), Math.TypeConversions.safe_int32_convert(seed), erosion)
         end
     end
 end

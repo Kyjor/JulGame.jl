@@ -3,7 +3,7 @@ module EffectAlgorithmsModule
     using ..UI.JulGame.Math
     import ..UI
 
-    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_gradient_effect, apply_texture_fill
+    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_gradient_effect, apply_texture_fill, apply_rough_edge
 
     function offset_blit!(dst::Ptr{SDL2.SDL_Surface}, src::Ptr{SDL2.SDL_Surface}, dx::Int, dy::Int)
         rect = SDL2.SDL_Rect(dx, dy, 0, 0)
@@ -602,6 +602,154 @@ module EffectAlgorithmsModule
         SDL2.SDL_UnlockSurface(result)
         
         SDL2.SDL_FreeSurface(texture_rgba)
+        
+        return result
+    end
+
+    """
+        apply_rough_edge(base::Ptr{SDL2.SDL_Surface}, amount::Int, seed::Int, erosion::Bool)
+    
+    Creates rough, jagged edges on text by randomly eroding/expanding the alpha channel.
+    Perfect for grunge, stone, or weathered text effects.
+    """
+    function apply_rough_edge(base::Ptr{SDL2.SDL_Surface}, amount::Int, seed::Int, erosion::Bool)
+        if amount <= 0 || base == C_NULL
+            return base
+        end
+        
+        # Get base dimensions
+        base_arr = unsafe_wrap(Array, base, 10; own=false)
+        w = base_arr[1].w
+        h = base_arr[1].h
+        
+        # Create result surface
+        result = CallSDLFunction(SDL2.SDL_ConvertSurfaceFormat, base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        if result == C_NULL
+            return base
+        end
+        
+        # Lock surfaces for pixel access
+        if CallSDLFunction(SDL2.SDL_LockSurface, base) != 0 || CallSDLFunction(SDL2.SDL_LockSurface, result) != 0
+            SDL2.SDL_FreeSurface(result)
+            return base
+        end
+        
+        base_arr_locked = unsafe_wrap(Array, base, 10; own=false)
+        result_arr = unsafe_wrap(Array, result, 10; own=false)
+        
+        base_pixels = Ptr{UInt32}(base_arr_locked[1].pixels)
+        result_pixels = Ptr{UInt32}(result_arr[1].pixels)
+        pitch = result_arr[1].pitch ÷ 4
+        
+        # Simple pseudo-random number generator
+        rng_state = Ref(UInt32(seed))
+        function simple_rand()
+            rng_state[] = (rng_state[] * 1103515245 + 12345) & 0x7FFFFFFF
+            return rng_state[] % 100
+        end
+        
+        # Apply rough edges by randomly modifying alpha at edges
+        for y in 0:(h-1)
+            for x in 0:(w-1)
+                pixel_index = y * pitch + x + 1
+                base_pixel = unsafe_load(base_pixels, pixel_index)
+                base_alpha = (base_pixel >> 24) & 0xFF
+                
+                if base_alpha > 0
+                    # Check if we're at an edge
+                    is_edge = false
+                    for dy in -1:1
+                        for dx in -1:1
+                            if dx == 0 && dy == 0
+                                continue
+                            end
+                            check_x = x + dx
+                            check_y = y + dy
+                            
+                            if check_x >= 0 && check_x < w && check_y >= 0 && check_y < h
+                                check_index = check_y * pitch + check_x + 1
+                                check_pixel = unsafe_load(base_pixels, check_index)
+                                check_alpha = (check_pixel >> 24) & 0xFF
+                                
+                                if check_alpha == 0
+                                    is_edge = true
+                                    break
+                                end
+                            else
+                                is_edge = true
+                                break
+                            end
+                        end
+                        if is_edge
+                            break
+                        end
+                    end
+                    
+                    if is_edge
+                        # At edge: randomly modify based on amount
+                        rand_val = simple_rand()
+                        threshold = 40 - (amount * 5)  # More amount = more roughness
+                        
+                        if erosion && rand_val < threshold
+                            # Erode: make transparent
+                            unsafe_store!(result_pixels, 0x00000000, pixel_index)
+                        elseif !erosion && rand_val > (100 - threshold)
+                            # Expand: keep but might reduce alpha
+                            new_alpha = Math.TypeConversions.safe_int32_convert(max(0, base_alpha - (simple_rand() % 50)))
+                            result_pixel = UInt32(new_alpha) << 24 | (base_pixel & 0x00FFFFFF)
+                            unsafe_store!(result_pixels, result_pixel, pixel_index)
+                        else
+                            # Keep original
+                            unsafe_store!(result_pixels, base_pixel, pixel_index)
+                        end
+                    else
+                        # Not at edge, keep original
+                        unsafe_store!(result_pixels, base_pixel, pixel_index)
+                    end
+                else
+                    # Transparent pixel - maybe add some noise
+                    if !erosion
+                        # Check if near an edge
+                        near_edge = false
+                        for dy in -amount:amount
+                            for dx in -amount:amount
+                                check_x = x + dx
+                                check_y = y + dy
+                                
+                                if check_x >= 0 && check_x < w && check_y >= 0 && check_y < h
+                                    check_index = check_y * pitch + check_x + 1
+                                    check_pixel = unsafe_load(base_pixels, check_index)
+                                    check_alpha = (check_pixel >> 24) & 0xFF
+                                    
+                                    if check_alpha > 0
+                                        near_edge = true
+                                        break
+                                    end
+                                end
+                            end
+                            if near_edge
+                                break
+                            end
+                        end
+                        
+                        if near_edge && simple_rand() < 15
+                            # Add rough pixel
+                            nearby_pixel = unsafe_load(base_pixels, pixel_index)
+                            noise_alpha = Math.TypeConversions.safe_int32_convert(30 + simple_rand() % 60)
+                            result_pixel = UInt32(noise_alpha) << 24 | (nearby_pixel & 0x00FFFFFF)
+                            unsafe_store!(result_pixels, result_pixel, pixel_index)
+                        else
+                            unsafe_store!(result_pixels, 0x00000000, pixel_index)
+                        end
+                    else
+                        unsafe_store!(result_pixels, 0x00000000, pixel_index)
+                    end
+                end
+            end
+        end
+        
+        SDL2.SDL_UnlockSurface(base)
+        SDL2.SDL_UnlockSurface(result)
         
         return result
     end

@@ -105,6 +105,17 @@ module TextEffectRendererModule
                     SDL2.SDL_FreeSurface(work)
                 end
                 work = glowed
+            elseif eff isa RoughEdgeEffect
+                roughed = apply_rough_edge(work, eff.amount, eff.seed, eff.erosion)
+                if roughed == C_NULL
+                    @debug("Failed to create rough edge surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return C_NULL
+                end
+                if roughed != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = roughed
             elseif eff isa DropShadowEffect
                 # Shadow is composed during final pass; skip here.
                 continue
@@ -118,8 +129,9 @@ module TextEffectRendererModule
             return C_NULL
         end
         key = make_key(text, style, fontPath, fontSize)
+        @debug("render_styled_text! using style.baseColor: $(style.baseColor) for text: '$text'")
         return get_or_create_texture!(CACHE[], key, () -> begin
-            baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, text, sdl_color(color))
+            baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, text, sdl_color(style.baseColor))
             if baseSurface == C_NULL
                 @debug("Failed to render base text surface")
                 return (C_NULL, 0, 0)

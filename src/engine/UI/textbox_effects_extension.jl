@@ -29,6 +29,7 @@ module TextBoxEffectsExtension
         end
         
         if tb.color != style.baseColor
+            @debug("Changing color from $(tb.color) to $(style.baseColor) for $(tb.name)")
             tb.color = style.baseColor
             needsUpdate = true
         end
