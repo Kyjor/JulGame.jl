@@ -320,7 +320,7 @@ module UIImageModule
     
     #  effects API
     function apply_effects!(this::UIImage, effects::Vector)
-        this.effects = effects
+        this.effects = Any[effect for effect in effects]
         this.needsEffectUpdate = true
         
         return this

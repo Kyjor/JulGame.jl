@@ -5,7 +5,7 @@ module EffectAlgorithmsModule
     const Math = JulGame.Math
     using ..EffectsModule
 
-    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_gradient_effect, apply_texture_fill, apply_rough_edge
+    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect
 
     function offset_blit!(dst::Ptr{SDL2.SDL_Surface}, src::Ptr{SDL2.SDL_Surface}, dx::Int, dy::Int)
         rect = SDL2.SDL_Rect(dx, dy, 0, 0)
@@ -748,6 +748,66 @@ module EffectAlgorithmsModule
                     end
                 end
             end
+        end
+        
+        SDL2.SDL_UnlockSurface(base)
+        SDL2.SDL_UnlockSurface(result)
+        
+        return result
+    end
+    
+    """
+        apply_invert_effect(base::Ptr{SDL2.SDL_Surface}, effect::EffectsModule.InvertEffect)
+    
+    Applies color inversion effect to a surface.
+    """
+    function apply_invert_effect(base::Ptr{SDL2.SDL_Surface}, effect::EffectsModule.InvertEffect)
+        if base == C_NULL
+            return base
+        end
+        
+        # Get surface properties
+        base_arr = unsafe_wrap(Array, base, 10; own=false)
+        w = base_arr[1].w
+        h = base_arr[1].h
+        pitch = base_arr[1].pitch
+        format = base_arr[1].format
+        
+        # Create result surface
+        result = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        if result == C_NULL
+            return base
+        end
+        
+        # Lock surfaces for pixel access
+        SDL2.SDL_LockSurface(base)
+        SDL2.SDL_LockSurface(result)
+        
+        # Get pixel data
+        base_pixels = unsafe_wrap(Array, Ptr{UInt32}(base_arr[1].pixels), (pitch ÷ 4 * h,); own=false)
+        result_arr = unsafe_wrap(Array, result, 10; own=false)
+        result_pixels = unsafe_wrap(Array, Ptr{UInt32}(result_arr[1].pixels), (pitch ÷ 4 * h,); own=false)
+        
+        # Process each pixel
+        for i in 1:length(base_pixels)
+            pixel = base_pixels[i]
+            
+            # Extract RGBA components
+            r = Ref{UInt8}()
+            g = Ref{UInt8}()
+            b = Ref{UInt8}()
+            a = Ref{UInt8}()
+            SDL2.SDL_GetRGBA(pixel, format, r, g, b, a)
+            
+            # Invert components based on effect settings
+            new_r = effect.invert_red ? (255 - r[]) : r[]
+            new_g = effect.invert_green ? (255 - g[]) : g[]
+            new_b = effect.invert_blue ? (255 - b[]) : b[]
+            new_a = effect.invert_alpha ? (255 - a[]) : a[]
+            
+            # Map back to pixel format
+            inverted_pixel = SDL2.SDL_MapRGBA(format, new_r, new_g, new_b, new_a)
+            result_pixels[i] = inverted_pixel
         end
         
         SDL2.SDL_UnlockSurface(base)

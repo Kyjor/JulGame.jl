@@ -137,7 +137,16 @@ module EffectRendererModule
         elseif target isa EffectsModule.LineTarget
             return render_line_to_surface(target.line)
         elseif target isa EffectsModule.ImageTarget
-            return target.image.surface
+            # UIImage might not have a surface, so create one from texture if needed
+            if target.image.surface != C_NULL
+                return target.image.surface
+            elseif target.image.texture != C_NULL
+                # Create surface from texture for effects processing
+                return texture_to_surface(target.image.texture)
+            else
+                @error("UIImage has no surface or texture for effects processing")
+                return C_NULL
+            end
         elseif target isa EffectsModule.Mesh3DTarget
             return render_mesh3d_to_surface(target.mesh)
         else
@@ -474,6 +483,17 @@ module EffectRendererModule
                     SDL2.SDL_FreeSurface(work)
                 end
                 work = roughed
+            elseif eff isa EffectsModule.InvertEffect
+                inverted = apply_invert_effect(work, eff)
+                if inverted == C_NULL
+                    @debug("Failed to create invert surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return baseSurface
+                end
+                if inverted != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = inverted
             elseif eff isa EffectsModule.DropShadowEffect
                 # Shadow is composed during final pass; skip here.
                 continue

@@ -8,7 +8,7 @@ module EffectsModule
     export Effect, EffectTarget, EffectStyle
     export BevelEffect, DropShadowEffect, OuterGlowEffect
     export InnerGlowEffect, StrokeEffect, GradientEffect
-    export TextureFillEffect, RoughEdgeEffect
+    export TextureFillEffect, RoughEdgeEffect, InvertEffect
     export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget, Mesh3DTarget
     export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style
     export INHERIT_COLOR
@@ -159,6 +159,16 @@ module EffectsModule
         erosion::Bool
         function RoughEdgeEffect(; amount::Int=3, seed::Int=12345, erosion::Bool=true)
             new(Math.TypeConversions.safe_int32_convert(amount), Math.TypeConversions.safe_int32_convert(seed), erosion)
+        end
+    end
+    
+    mutable struct InvertEffect <: Effect
+        invert_red::Bool
+        invert_green::Bool
+        invert_blue::Bool
+        invert_alpha::Bool
+        function InvertEffect(; invert_red::Bool=true, invert_green::Bool=true, invert_blue::Bool=true, invert_alpha::Bool=false)
+            new(invert_red, invert_green, invert_blue, invert_alpha)
         end
     end
     
