@@ -240,7 +240,8 @@ module SceneReaderModule
                 elseif uiElement.type == "TextBox"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
-                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
+                    if haskey(uiElement, "color")
+                        @info "color of $(uiElement.name): $(uiElement.color)"
                          color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
                     end
 

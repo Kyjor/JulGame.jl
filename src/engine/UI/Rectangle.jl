@@ -2,6 +2,9 @@ module RectangleModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
+    using JulGame.EffectsModule
+    using JulGame.EffectRendererModule
+    using JulGame.EffectCacheModule
     
     export Rectangle
     mutable struct Rectangle <: UI.UIElement
@@ -19,6 +22,10 @@ module RectangleModule
         borderColor::NTuple{4, Int}
         isHovered::Bool
         layer::Int
+        #  effects support
+        effects::Vector{Any}  # Will hold Effect objects
+        effectTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        needsEffectUpdate::Bool
         function Rectangle(;
             id::String=JulGame.generate_uuid(), 
             name::String = "TextBox", 
@@ -81,6 +88,11 @@ module RectangleModule
             this.parent = parent
             this.isActive = isActive
             this.persistentBetweenScenes = persistentBetweenScenes
+            
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
             
             return this
         end
@@ -351,6 +363,12 @@ module RectangleModule
             return
         end
         
+        # Use effect texture if available, otherwise use direct rendering
+        if !isempty(this.effects) && this.effectTexture != C_NULL
+            render_rectangle_with_effects(this)
+            return
+        end
+        
         camera = MAIN.scene.camera
         
         # Calculate drawing coordinates based on world or screen position
@@ -467,7 +485,69 @@ module RectangleModule
     end =#
 
     function UI.destroy(this::Rectangle)
-        # Nothing needed for cleanup
+        # Clean up effect texture
+        if this.effectTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.effectTexture)
+            this.effectTexture = C_NULL
+        end
+        
         MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+    end
+    
+    #  effects API
+    function apply_effects!(this::Rectangle, effects::Vector)
+        this.effects = effects
+        this.needsEffectUpdate = true
+        update_effects(this)
+        return this
+    end
+    
+    function apply_style!(this::Rectangle, style)
+        return apply_effects!(this, style.effects)
+    end
+    
+    function update_effects(this::Rectangle)
+        if isempty(this.effects) || !this.needsEffectUpdate
+            return
+        end
+        
+        # Create target for effects
+        target = EffectsModule.RectangleTarget(this)
+        
+        # Apply effects
+        try
+            result = EffectRendererModule.apply_effects!(target, this.effects)
+            if result isa EffectsModule.RectangleTarget
+                # Effect texture should be updated by the renderer
+                this.needsEffectUpdate = false
+            end
+        catch e
+            @error("Failed to apply effects to $(this.name): $e")
+        end
+    end
+    
+    function render_rectangle_with_effects(this::Rectangle)
+        camera = MAIN.scene.camera
+        
+        # Calculate position
+        if this.isWorldEntity && camera !== nothing
+            posX = (this.position.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
+            posY = (this.position.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
+            width = this.size.x * SCALE_UNITS
+            height = this.size.y * SCALE_UNITS
+        else
+            posX = this.position.x
+            posY = this.position.y
+            width = this.size.x
+            height = this.size.y
+        end
+        
+        # Render effect texture
+        SDL2.SDL_RenderCopyF(
+            JulGame.Renderer,
+            this.effectTexture,
+            C_NULL,
+            Ref(SDL2.SDL_FRect(Float32(posX), Float32(posY), Float32(width), Float32(height)))
+        )
     end
 end 

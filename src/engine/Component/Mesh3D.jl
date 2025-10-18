@@ -5,6 +5,7 @@ module Mesh3DModule
     using ..JulGame.SDL2.LibSDL2
     using ..JulGame.Component
     using ..JulGame.InputModule
+    import ...JulGame as JG
     
 
     export vec3d
@@ -294,6 +295,10 @@ module Mesh3DModule
         matWorld::mat4x4
         vecTrianglesToRaster::Vector{triangle}
         fileFormat::String
+        #  effects support
+        effects::Vector{Any}  # Will hold Effect objects
+        effectTexture::Union{Ptr{SDL_Texture}, Ptr{Nothing}}
+        needsEffectUpdate::Bool
 
         function Mesh3D()
             this = new()
@@ -309,6 +314,10 @@ module Mesh3DModule
             this.matWorld = MatrixOps.matrix_make_identity()
             this.vecTrianglesToRaster = []
             this.fileFormat = ""
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
             return this
         end
 
@@ -333,6 +342,11 @@ module Mesh3DModule
             if !load_from_object_file(this, file_path)
                 error("Failed to load mesh from file: $file_path")
             end
+            
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
             
             return this
         end
@@ -998,5 +1012,38 @@ module Mesh3DModule
         ])
         
         return meshPlane
+    end
+    
+    #  effects API
+    function apply_effects!(this::Mesh3D, effects::Vector)
+        this.effects = effects
+        this.needsEffectUpdate = true
+        
+        return this
+    end
+    
+    function apply_style!(this::Mesh3D, style)
+        return apply_effects!(this, style.effects)
+    end
+    
+    function update_effects(this::Mesh3D)
+        if isempty(this.effects)
+            return
+        end
+        
+        # Create target for effects
+        target = JG.EffectsModule.Mesh3DTarget(this)
+        
+        # Apply effects
+        try
+            result = JG.EffectRendererModule.apply_effects!(target, this.effects)
+            if result isa JG.EffectsModule.Mesh3DTarget
+                # Effect texture should be updated by the renderer
+                this.needsEffectUpdate = false
+            end
+        catch e
+            @error "Failed to apply effects to Mesh3D" exception=(e, catch_backtrace())
+            this.needsEffectUpdate = false
+        end
     end
 end 

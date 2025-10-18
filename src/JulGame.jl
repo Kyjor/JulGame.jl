@@ -148,13 +148,17 @@ module JulGame
     using .InputModule: Input
     export Input
 
-    include("engine/UI/UI.jl")
-    using .UI
-    export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule, UIImageModule
-
     include("engine/Component/Component.jl")
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule, SoftwareRenderer3DModule
+
+    include("engine/Effects/Effects.jl")
+    using .Effects
+    export EffectsModule, EffectRendererModule, EffectCacheModule, EffectAlgorithmsModule, EffectExamplesModule
+
+    include("engine/UI/UI.jl")
+    using .UI
+    export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule, UIImageModule
 
     include("engine/FX/FX.jl")
     using .FX

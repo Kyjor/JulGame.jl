@@ -2,6 +2,9 @@ module UIImageModule
     using ..UI.JulGame
     using ..UI.JulGame.Math
     import ..UI
+    using JulGame.EffectsModule
+    using JulGame.EffectRendererModule
+    using JulGame.EffectCacheModule
     include(joinpath(@__DIR__, "..", "Resource", "InternalImages.jl"))
     
     export UIImage
@@ -13,6 +16,10 @@ module UIImageModule
         isFlipped::Bool
         surface::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+        #  effects support
+        effects::Vector{Any}  # Will hold Effect objects
+        effectTexture::Union{Ptr{SDL2.LibSDL2.SDL_Texture}, Ptr{Nothing}}
+        needsEffectUpdate::Bool
          
         function UIImage(path::String="Default";
             id::String=JulGame.generate_uuid(), 
@@ -69,6 +76,11 @@ module UIImageModule
             this.clickEvents = clickEvents
             this.hoverEnterEvents = hoverEnterEvents
             this.hoverExitEvents = hoverExitEvents
+            
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
         
             return this
         end
@@ -86,26 +98,37 @@ module UIImageModule
             this.size = Math.Vector2(surface[1].w, surface[1].h)
         end
         UI.align_to_anchor(this)
+        
+        # Update effects if needed
+        if this.needsEffectUpdate && !isempty(this.effects)
+            update_effects(this)
+        end
     
+        # Determine which texture to use
+        texture_to_render = (!isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
+        
         # Create texture if it doesn't exist
-        if this.texture == C_NULL
+        if texture_to_render == C_NULL && this.texture == C_NULL
             this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.surface)
+            texture_to_render = this.texture
             UI.set_color(this)
         end
     
-        # Check and set color if necessary
-        colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
-        alphaRef = Ref(UInt8(0))
-        SDL2.SDL_GetTextureColorMod(this.texture, colorRefs...)
-        SDL2.SDL_GetTextureAlphaMod(this.texture, alphaRef)
-        if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
-            UI.set_color(this)
+        # Check and set color if necessary (only for non-effect textures)
+        if isempty(this.effects)
+            colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+            alphaRef = Ref(UInt8(0))
+            SDL2.SDL_GetTextureColorMod(texture_to_render, colorRefs...)
+            SDL2.SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
+            if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
+                UI.set_color(this)
+            end
         end
         srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-            this.texture, 
+            texture_to_render, 
             srcRect, 
             Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
             this.rotation, 
@@ -224,6 +247,10 @@ module UIImageModule
             return
         end
 
+        if this.effectTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.effectTexture)
+            this.effectTexture = C_NULL
+        end
         SDL2.SDL_DestroyTexture(this.texture)
         this.surface = C_NULL
         this.texture = C_NULL
@@ -288,6 +315,39 @@ module UIImageModule
             @error "Error setting image property $(s) to: $(x)"
             @error "Error: $e"
             Base.show_backtrace(stderr, catch_backtrace())
+        end
+    end
+    
+    #  effects API
+    function apply_effects!(this::UIImage, effects::Vector)
+        this.effects = effects
+        this.needsEffectUpdate = true
+        
+        return this
+    end
+    
+    function apply_style!(this::UIImage, style)
+        return apply_effects!(this, style.effects)
+    end
+    
+    function update_effects(this::UIImage)
+        if isempty(this.effects) || this.texture == C_NULL
+            return
+        end
+        
+        # Create target for effects
+        target = EffectsModule.ImageTarget(this)
+        
+        # Apply effects
+        try
+            result = EffectRendererModule.apply_effects!(target, this.effects)
+            if result isa EffectsModule.ImageTarget
+                # Effect texture should be updated by the renderer
+                this.needsEffectUpdate = false
+            end
+        catch e
+            @error "Failed to apply effects to UIImage" exception=(e, catch_backtrace())
+            this.needsEffectUpdate = false
         end
     end
 end

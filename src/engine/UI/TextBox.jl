@@ -4,8 +4,14 @@ module TextBoxModule
     import ..UI
     using ..UI.TextStyleModule
     using ..UI.TextEffectRendererModule
+    using JulGame.EffectsModule
+    using JulGame.EffectRendererModule
+    using JulGame.EffectCacheModule
     export TextBox
-    export DEFAULT_FONT      
+    export DEFAULT_FONT
+    export apply_effects!
+    export apply_style!
+    export update_effects      
     DEFAULT_FONT = "Default"
     mutable struct TextBox <: UI.UIElement
         font::Union{Ptr{SDL2.TTF_Font}, Ptr{Nothing}}
@@ -19,6 +25,10 @@ module TextBoxModule
         wrapWords::Bool
         textStyle::Union{TextStyleModule.TextStyle, Nothing}
         isDynamic::Bool
+        #  effects support
+        effects::Vector{Any}  # Will hold Effect objects
+        effectTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        needsEffectUpdate::Bool
 
         function TextBox(text::String; 
             id::String=JulGame.generate_uuid(), 
@@ -76,6 +86,10 @@ module TextBoxModule
             this.textTexture = C_NULL
             this.renderText = C_NULL
             this.parent = parent
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
             if strip(fontPath) == ""
                 @debug "fontPath is empty, using default font"
                 fontPath = "Default"
@@ -90,8 +104,22 @@ module TextBoxModule
     end
 
     function UI.render(this::TextBox)
-        if this.textTexture == C_NULL || !this.isActive || JulGame.IS_CHANGING_SCENE
+        if !this.isActive || JulGame.IS_CHANGING_SCENE
             return
+        end
+        
+        # Try to apply effects if they're pending and renderer is now available
+        if !isempty(this.effects) && this.needsEffectUpdate
+            update_effects(this)
+        end
+        
+        # Use effect texture if available, otherwise use regular texture
+        texture_to_render = if !isempty(this.effects) && this.effectTexture != C_NULL
+            this.effectTexture
+        elseif this.textTexture != C_NULL
+            this.textTexture
+        else
+            return  # No texture to render
         end
         if !this.isWorldEntity
             UI.align_to_anchor(this)
@@ -122,7 +150,7 @@ module TextBoxModule
             # Render with world-space positioning only, not scaling size
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-                this.textTexture, 
+                texture_to_render, 
                 C_NULL, 
                 Ref(SDL2.SDL_FRect(
                     Float32(posX), 
@@ -135,7 +163,7 @@ module TextBoxModule
             # Render with screen-space positioning (traditional UI)
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-                this.textTexture, 
+                texture_to_render, 
                 C_NULL, 
                 Ref(SDL2.SDL_FRect(
                     Float32(this.position.x), 
@@ -335,6 +363,11 @@ module TextBoxModule
         if !this.isWorldEntity
             UI.align_to_anchor(this)
         end
+        
+        # Update effects if needed
+        if !isempty(this.effects)
+            update_effects(this)
+        end
     end
 
     function free_text_resources(this::TextBox)
@@ -467,8 +500,107 @@ module TextBoxModule
             this.font = C_NULL
         end
         free_text_resources(this)
+        
+        # Clean up effect texture
+        if this.effectTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.effectTexture)
+            this.effectTexture = C_NULL
+        end
 
         MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+    end
+    
+    #  effects API
+    function apply_effects!(this::TextBox, effects::Vector)
+        this.effects = Any[effect for effect in effects]
+        this.needsEffectUpdate = true
+        # Try to apply effects now, but don't fail if renderer isn't ready
+        update_effects(this)
+        return this
+    end
+    
+    function apply_style!(this::TextBox, style)
+        return apply_effects!(this, style.effects)
+    end
+    
+    function update_effects(this::TextBox)
+        if isempty(this.effects) || !this.needsEffectUpdate
+            return
+        end
+        
+        # Check if renderer is available
+        if JulGame.Renderer == C_NULL
+            @debug("Renderer not available yet, deferring effects for $(this.name)")
+            return
+        end
+        
+        # Check if font is available
+        if this.font == C_NULL
+            @debug("Font not available for effects on $(this.name)")
+            return
+        end
+        
+        # Create a fresh base surface for effects processing (like the old system does)
+        baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
+        if baseSurface == C_NULL
+            @debug("Failed to create base surface for effects on $(this.name)")
+            return
+        end
+        
+        # Create target for effects with original color
+        target = EffectsModule.SurfaceTarget(baseSurface, this.color)
+        
+        # Apply effects
+        try
+            result = EffectRendererModule.apply_effects!(target, this.effects)
+            if result isa EffectsModule.SurfaceTarget && result.surface != C_NULL
+                # Verify renderer is still valid before creating texture
+                if JulGame.Renderer == C_NULL
+                    @error("Renderer became null during effects processing for $(this.name)")
+                    SDL2.SDL_FreeSurface(result.surface)
+                    return
+                end
+                
+                # Convert surface to texture
+                if this.effectTexture != C_NULL
+                    SDL2.SDL_DestroyTexture(this.effectTexture)
+                end
+                
+                # Use CallSDLFunction like the old system for better error handling
+                this.effectTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, result.surface)
+                
+                if this.effectTexture != C_NULL
+                    # Update size from the effect texture
+                    w = Ref{Cint}(0); h = Ref{Cint}(0)
+                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                    this.size = Math.Vector2(w[], h[])
+                    
+                    this.needsEffectUpdate = false
+                else
+                    @error("Failed to create texture from effect surface for $(this.name)")
+                end
+                
+                # Clean up the result surface
+                if result.surface != baseSurface
+                    SDL2.SDL_FreeSurface(result.surface)
+                end
+            else
+                @error("Effects application returned invalid result for $(this.name)")
+            end
+            
+            # Clean up base surface if it wasn't consumed by effects
+            if baseSurface != C_NULL && (!isdefined(result, :surface) || result.surface != baseSurface)
+                SDL2.SDL_FreeSurface(baseSurface)
+            end
+        catch e
+            @error("Failed to apply effects to $(this.name): $e")
+            Base.show_backtrace(stderr, catch_backtrace())
+            # Clean up on error
+            if baseSurface != C_NULL
+                SDL2.SDL_FreeSurface(baseSurface)
+            end
+        end
     end
 #= 
     function Base.setproperty!(this::TextBox, s::Symbol, x)

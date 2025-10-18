@@ -2,6 +2,8 @@ module SpriteModule
     using ..Component.JulGame
     using ..Component.JulGame.ResourceModule
     import ..Component
+    # Effects imports - will be available after Effects module is loaded
+    import ..Component.JulGame as JG
 
     export Sprite
     struct Sprite
@@ -40,6 +42,10 @@ module SpriteModule
         position::Math.Vector2f
         anchor::Symbol
         isStatic::Bool
+        #  effects support
+        effects::Vector{Any}  # Will hold Effect objects
+        effectTexture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+        needsEffectUpdate::Bool
         
         function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0), isStatic::Bool = false)
             this = new()
@@ -77,6 +83,11 @@ module SpriteModule
             surface = unsafe_wrap(Array, this.image, 10; own = false)
             this.size = Math.Vector2(surface[1].w, surface[1].h)
             this.isStatic = isStatic
+            
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
         
             return this
         end
@@ -86,20 +97,33 @@ module SpriteModule
         if this.image == C_NULL || JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
             return
         end
-    
-        # Create texture if it doesn't exist
-        if this.texture == C_NULL
-            this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.image)
-            Component.set_color(this)
+        
+        # Update effects if needed
+        if !isempty(this.effects) && this.needsEffectUpdate
+            update_effects(this)
         end
     
-        # Check and set color if necessary
-        colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
-        alphaRef = Ref(UInt8(0))
-        SDL2.SDL_GetTextureColorMod(this.texture, colorRefs...)
-        SDL2.SDL_GetTextureAlphaMod(this.texture, alphaRef)
-        if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
-            Component.set_color(this)
+        # Use effect texture if available, otherwise use regular texture
+        texture_to_render = if !isempty(this.effects) && this.effectTexture != C_NULL
+            this.effectTexture
+        else
+            # Create texture if it doesn't exist
+            if this.texture == C_NULL
+                this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.image)
+                Component.set_color(this)
+            end
+            this.texture
+        end
+    
+        # Check and set color if necessary (only for regular texture, not effect texture)
+        if texture_to_render == this.texture
+            colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+            alphaRef = Ref(UInt8(0))
+            SDL2.SDL_GetTextureColorMod(this.texture, colorRefs...)
+            SDL2.SDL_GetTextureAlphaMod(this.texture, alphaRef)
+            if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
+                Component.set_color(this)
+            end
         end
     
         # Calculate camera difference
@@ -202,7 +226,7 @@ module SpriteModule
         renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if renderFn(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-            this.texture, 
+            texture_to_render, 
             srcRect, 
             dstRect,
             this.rotation, 
@@ -223,6 +247,38 @@ module SpriteModule
 
     function Component.flip(this::InternalSprite)
         this.isFlipped = !this.isFlipped
+    end
+    
+    #  effects API
+    function apply_effects!(this::InternalSprite, effects::Vector)
+        this.effects = effects
+        this.needsEffectUpdate = true
+        update_effects(this)
+        return this
+    end
+    
+    function apply_style!(this::InternalSprite, style)
+        return apply_effects!(this, style.effects)
+    end
+    
+    function update_effects(this::InternalSprite)
+        if isempty(this.effects) || !this.needsEffectUpdate
+            return
+        end
+        
+        # Create target for effects
+        target = JG.EffectsModule.SpriteTarget(this)
+        
+        # Apply effects
+        try
+            result = JG.EffectRendererModule.apply_effects!(target, this.effects)
+            if result isa JG.EffectsModule.SpriteTarget
+                # Effect texture should be updated by the renderer
+                this.needsEffectUpdate = false
+            end
+        catch e
+            @error("Failed to apply effects to sprite: $e")
+        end
     end
 
     const FALLBACK_IMAGE_BYTES = UInt8[
