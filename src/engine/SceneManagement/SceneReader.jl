@@ -241,8 +241,8 @@ module SceneReaderModule
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
                     if haskey(uiElement, "color")
-                        @info "color of $(uiElement.name): $(uiElement.color)"
-                         color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
+                        @debug "color of $(uiElement.name): $(uiElement.color)"
+                        color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
                     end
 
                     newUIElement = TextBox(

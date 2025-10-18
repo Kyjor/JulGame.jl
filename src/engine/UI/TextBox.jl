@@ -29,6 +29,7 @@ module TextBoxModule
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         needsEffectUpdate::Bool
+        effectCacheKey::String  # Content hash for caching
 
         function TextBox(text::String; 
             id::String=JulGame.generate_uuid(), 
@@ -90,6 +91,7 @@ module TextBoxModule
             this.effects = Any[]
             this.effectTexture = C_NULL
             this.needsEffectUpdate = false
+            this.effectCacheKey = ""
             if strip(fontPath) == ""
                 @debug "fontPath is empty, using default font"
                 fontPath = "Default"
@@ -108,19 +110,40 @@ module TextBoxModule
             return
         end
         
-        # Try to apply effects if they're pending and renderer is now available
+        # Only apply effects if they're pending and renderer is available
+        # This should be rare after initial setup due to caching
         if !isempty(this.effects) && this.needsEffectUpdate
             update_effects(this)
         end
         
         # Use effect texture if available, otherwise use regular texture
-        texture_to_render = if !isempty(this.effects) && this.effectTexture != C_NULL
-            this.effectTexture
+        @debug "Render select" name=this.name has_effects=!isempty(this.effects) effect_tex=this.effectTexture text_tex=this.textTexture needsUpdate=this.needsEffectUpdate
+        
+        # Force effect texture usage when effects exist
+        if !isempty(this.effects)
+            if this.effectTexture != C_NULL
+                @debug "Using effect texture" name=this.name
+                texture_to_render = this.effectTexture
+            else
+                @debug "Effects exist but no effect texture - forcing update" name=this.name
+                this.needsEffectUpdate = true
+                update_effects(this)
+                if this.effectTexture != C_NULL
+                    @debug "Using effect texture after forced update" name=this.name
+                    texture_to_render = this.effectTexture
+                else
+                    @debug "No effect texture available, using regular texture" name=this.name
+                    texture_to_render = this.textTexture
+                end
+            end
         elseif this.textTexture != C_NULL
-            this.textTexture
+            @debug "Using regular texture" name=this.name
+            texture_to_render = this.textTexture
         else
+            @debug "No texture to render" name=this.name
             return  # No texture to render
         end
+        @debug "Rendering texture" name=this.name ptr=texture_to_render size=(this.size.x,this.size.y) position=(this.position.x,this.position.y)
         if !this.isWorldEntity
             UI.align_to_anchor(this)
         end
@@ -375,8 +398,15 @@ module TextBoxModule
             SDL2.SDL_FreeSurface(this.renderText)
             this.renderText = C_NULL
         end
-        # Only destroy texture if it's NOT from the effect cache
-        # Effect cache manages its own texture lifecycle
+        
+        # DON'T destroy effect textures - they are managed by the cache
+        # Just clear the reference
+        if this.effectTexture != C_NULL
+            @debug("Clearing effect texture reference for $(this.name)")
+            this.effectTexture = C_NULL
+        end
+        
+        # Handle regular text texture
         if this.textTexture != C_NULL && (this.textStyle === nothing || isempty((this.textStyle::Any).effects))
             @debug("Destroying non-cached texture for $(this.name)")
             SDL2.SDL_DestroyTexture(this.textTexture)
@@ -446,6 +476,10 @@ module TextBoxModule
 
     function UI.set_color(this::TextBox; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
         this.color = (r%256, g%256, b%256, a%256)
+        # Invalidate effects cache when color changes
+        if !isempty(this.effects)
+            this.needsEffectUpdate = true
+        end
         UI.rerender_text(this)
     end
     
@@ -499,21 +533,66 @@ module TextBoxModule
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
         end
-        free_text_resources(this)
         
-        # Clean up effect texture
-        if this.effectTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.effectTexture)
-            this.effectTexture = C_NULL
-        end
+        free_text_resources(this)
 
         MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+    end
+    
+    # Generate a stable string for effects to use in cache keys
+    function serialize_effects(effects::Vector{Any})::String
+        if isempty(effects)
+            return "[]"
+        end
+        parts = String[]
+        for eff in effects
+            T = typeof(eff)
+            fnames = fieldnames(T)
+            vals = String[]
+            for f in fnames
+                # Avoid dumping huge pointers; just tag Ptr fields
+                v = getfield(eff, f)
+                if v isa Ptr
+                    push!(vals, string(f, "=Ptr"))
+                else
+                    push!(vals, string(f, "=", v))
+                end
+            end
+            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
+        end
+        return "[" * join(parts, ";") * "]"
+    end
+
+    # Generate cache key for effects based on content
+    function generate_effect_cache_key(this::TextBox)::String
+        # Include all factors that affect the final rendered result
+        content = string(
+            this.text, "|",
+            this.color, "|", 
+            this.fontPath, "|",
+            this.fontSize, "|",
+            serialize_effects(this.effects), "|",
+            this.size
+        )
+        return string(hash(content))
     end
     
     #  effects API
     function apply_effects!(this::TextBox, effects::Vector)
         this.effects = Any[effect for effect in effects]
-        this.needsEffectUpdate = true
+        
+        # Generate new cache key
+        newCacheKey = generate_effect_cache_key(this)
+        @debug "TextBox.apply_effects!: effects updated" name=this.name key=newCacheKey effects_count=length(this.effects)
+        
+        # Only update if cache key changed
+        if this.effectCacheKey != newCacheKey
+            this.effectCacheKey = newCacheKey
+            this.needsEffectUpdate = true
+        else
+            @debug "apply_effects!: cache key unchanged; skipping recompute" name=this.name
+        end
+        
         # Try to apply effects now, but don't fail if renderer isn't ready
         update_effects(this)
         return this
@@ -523,28 +602,76 @@ module TextBoxModule
         return apply_effects!(this, style.effects)
     end
     
+    # Global effects cache
+    const EFFECT_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
+    const MAX_CACHE_SIZE = 100
+    
+    # Cache management functions
+    function cache_effect_texture(key::String, texture::Ptr{SDL2.SDL_Texture})
+        # Simple approach: just store the texture, let GC handle cleanup
+        # Don't evict automatically to avoid destroying active textures
+        EFFECT_CACHE[key] = texture
+        @debug("Cached effect texture for key: $key")
+    end
+    
+    function clear_effects_cache()
+        for (key, texture) in EFFECT_CACHE
+            if texture != C_NULL
+                SDL2.SDL_DestroyTexture(texture)
+            end
+        end
+        empty!(EFFECT_CACHE)
+    end
+    
     function update_effects(this::TextBox)
         if isempty(this.effects) || !this.needsEffectUpdate
             return
         end
         
+        # Check if we have a cached version
+        if haskey(EFFECT_CACHE, this.effectCacheKey)
+            @debug("Using cached effect texture", name=this.name, key=this.effectCacheKey)
+            # Don't destroy the old texture, just replace the reference
+            this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
+            
+            # Update size from cached texture
+            if this.effectTexture != C_NULL
+                w = Ref{Cint}(0); h = Ref{Cint}(0)
+                fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                this.size = Math.Vector2(w[], h[])
+                @debug "Cached effect texture size updated" name=this.name w=w[] h=h[]
+            end
+            
+            this.needsEffectUpdate = false
+            return
+        end
+        
+        @debug("Computing new effect texture", name=this.name, key=this.effectCacheKey, effects=serialize_effects(this.effects))
+        
         # Check if renderer is available
         if JulGame.Renderer == C_NULL
-            @debug("Renderer not available yet, deferring effects for $(this.name)")
+            @debug("Renderer not available yet, deferring effects", name=this.name)
             return
         end
         
         # Check if font is available
         if this.font == C_NULL
-            @debug("Font not available for effects on $(this.name)")
+            @debug("Font not available for effects", name=this.name)
             return
         end
         
         # Create a fresh base surface for effects processing (like the old system does)
         baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
         if baseSurface == C_NULL
-            @debug("Failed to create base surface for effects on $(this.name)")
+            @error("Failed to create base surface for effects", name=this.name)
             return
+        end
+        try
+            arr = unsafe_wrap(Array, baseSurface, 10; own=false)
+            @debug "Base surface created" name=this.name w=arr[1].w h=arr[1].h
+        catch e
+            @debug "Failed to log base surface dims" err=e
         end
         
         # Create target for effects with original color
@@ -562,9 +689,7 @@ module TextBoxModule
                 end
                 
                 # Convert surface to texture
-                if this.effectTexture != C_NULL
-                    SDL2.SDL_DestroyTexture(this.effectTexture)
-                end
+                # Don't destroy old texture - it might be cached and used by other TextBoxes
                 
                 # Use CallSDLFunction like the old system for better error handling
                 this.effectTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, result.surface)
@@ -575,10 +700,14 @@ module TextBoxModule
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
                     this.size = Math.Vector2(w[], h[])
+                    @debug "Effect texture created" name=this.name tex_ptr=this.effectTexture w=w[] h=h[]
+                    
+                    # Cache the result
+                    cache_effect_texture(this.effectCacheKey, this.effectTexture)
                     
                     this.needsEffectUpdate = false
                 else
-                    @error("Failed to create texture from effect surface for $(this.name)")
+                    @error("Failed to create texture from effect surface", name=this.name)
                 end
                 
                 # Clean up the result surface
@@ -586,7 +715,7 @@ module TextBoxModule
                     SDL2.SDL_FreeSurface(result.surface)
                 end
             else
-                @error("Effects application returned invalid result for $(this.name)")
+                @error("Effects application returned invalid result", name=this.name)
             end
             
             # Clean up base surface if it wasn't consumed by effects
@@ -594,7 +723,7 @@ module TextBoxModule
                 SDL2.SDL_FreeSurface(baseSurface)
             end
         catch e
-            @error("Failed to apply effects to $(this.name): $e")
+            @error("Failed to apply effects", name=this.name, err=e)
             Base.show_backtrace(stderr, catch_backtrace())
             # Clean up on error
             if baseSurface != C_NULL
