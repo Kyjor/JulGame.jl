@@ -463,7 +463,7 @@ module EffectRendererModule
                 work = stroked
             elseif eff isa EffectsModule.OuterGlowEffect
                 resolved_color = resolve_color(eff.color, target)
-                glowed = create_outer_glow_surface(work, eff.radius, resolved_color)
+                glowed = create_outer_glow_surface(work, eff.radius, resolved_color, eff.force_white, eff.fade_amount, eff.fade_curve)
                 if glowed == C_NULL
                     @debug("Failed to create glow surface")
                     SDL2.SDL_FreeSurface(work)

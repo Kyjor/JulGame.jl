@@ -39,13 +39,11 @@
         :centerBottom,
         :none
     )
-    include("effect_algorithms.jl")
-    include("effect_texture_cache.jl")
 
+    #include("Draggable.jl")
     include("UIElement.jl")
     include("ScreenButton.jl")
     include("TextBox.jl")
-    #include("Draggable.jl")
     include("Rectangle.jl")
     include("Line.jl")
     include("Circle.jl")

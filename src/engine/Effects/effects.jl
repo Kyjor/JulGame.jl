@@ -113,8 +113,11 @@ module EffectsModule
         radius::Int
         color::NTuple{4, Int}
         blur::Float64
-        function OuterGlowEffect(; radius::Int=6, color::NTuple{4, Int}=(255,255,255,140), blur::Float64=0.7)
-            new(Math.TypeConversions.safe_int32_convert(radius), color, blur)
+        force_white::Bool
+        fade_amount::Float64
+        fade_curve::Float64
+        function OuterGlowEffect(; radius::Int=6, color::NTuple{4, Int}=(255,255,255,140), blur::Float64=0.7, force_white::Bool=true, fade_amount::Float64=1.0, fade_curve::Float64=1.0)
+            new(Math.TypeConversions.safe_int32_convert(radius), color, blur, force_white, fade_amount, fade_curve)
         end
     end
     

@@ -18,7 +18,7 @@ module EffectAlgorithmsModule
     Creates an outer glow effect by expanding the text silhouette and colorizing it.
     Returns a new surface with the glow applied.
     """
-    function create_outer_glow_surface(base::Ptr{SDL2.SDL_Surface}, radius::Int, color::NTuple{4, Int})
+    function create_outer_glow_surface(base::Ptr{SDL2.SDL_Surface}, radius::Int, color::NTuple{4, Int}, force_white::Bool=false, fade_amount::Float64=1.0, fade_curve::Float64=1.0)
         if radius <= 0 || base == C_NULL
             return base
         end
@@ -50,15 +50,34 @@ module EffectAlgorithmsModule
                 continue
             end
             
-            alpha = Math.TypeConversions.safe_int32_convert(glow_alpha ÷ (pass + 1))
+            base_alpha_for_pass = glow_alpha ÷ (pass + 1)
             
             # Create a colored version of base for this pass
             colored = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
             if colored != C_NULL
-                # Modulate to glow color
+                # First, make the surface entirely white while preserving alpha
+                if force_white && SDL2.SDL_LockSurface(colored) == 0
+                    colored_arr = unsafe_wrap(Array, colored, 10; own=false)
+                    pixels = Ptr{UInt32}(colored_arr[1].pixels)
+                    pitch = colored_arr[1].pitch ÷ 4
+                    
+                    for i in 1:(w * h)
+                        pixel = unsafe_load(pixels, i)
+                        pixel_alpha = (pixel >> 24) & 0xFF
+                        # Keep only alpha, set RGB to white
+                        white_pixel = UInt32(pixel_alpha) << 24 | 0x00FFFFFF
+                        unsafe_store!(pixels, white_pixel, i)
+                    end
+                    
+                    SDL2.SDL_UnlockSurface(colored)
+                end
+                
+                # Modulate to glow color; alpha set per-blit below
                 SDL2.SDL_SetSurfaceColorMod(colored, Math.TypeConversions.safe_int32_convert(color[1]), Math.TypeConversions.safe_int32_convert(color[2]), Math.TypeConversions.safe_int32_convert(color[3]))
-                SDL2.SDL_SetSurfaceAlphaMod(colored, alpha)
                 SDL2.SDL_SetSurfaceBlendMode(colored, SDL2.SDL_BLENDMODE_BLEND)
+                
+                # Set alpha for this pass
+                SDL2.SDL_SetSurfaceAlphaMod(colored, base_alpha_for_pass)
                 
                 # Blit in a circle pattern
                 angles = range(0, 2π, length=max(8, current_radius * 4))
@@ -74,6 +93,91 @@ module EffectAlgorithmsModule
         
         # Blit original text on top (centered)
         offset_blit!(glow_surface, base, radius * 2, radius * 2)
+        
+        # Apply smooth radial fade to the entire glow surface
+        if fade_amount > 0.0
+            if SDL2.SDL_LockSurface(glow_surface) == 0 && SDL2.SDL_LockSurface(base) == 0
+                glow_arr = unsafe_wrap(Array, glow_surface, 10; own=false)
+                base_arr_locked = unsafe_wrap(Array, base, 10; own=false)
+                pixels = Ptr{UInt32}(glow_arr[1].pixels)
+                base_pixels = Ptr{UInt32}(base_arr_locked[1].pixels)
+                glow_pitch = glow_arr[1].pitch ÷ 4
+                base_pitch = base_arr_locked[1].pitch ÷ 4
+                
+                offset_x = radius * 2
+                offset_y = radius * 2
+                max_fade_dist = Float64(radius * 2)
+                
+                for y in 0:(glow_h-1)
+                    for x in 0:(glow_w-1)
+                        pixel_index = y * glow_pitch + x + 1
+                        pixel = unsafe_load(pixels, pixel_index)
+                        alpha = (pixel >> 24) & 0xFF
+                        
+                        if alpha > 0
+                            # Calculate distance from nearest opaque pixel in the original image
+                            min_dist = Float64(radius * 2 + 1)
+                            
+                            # Check if this pixel overlaps with original content
+                            orig_x = x - offset_x
+                            orig_y = y - offset_y
+                            
+                            if orig_x >= 0 && orig_x < w && orig_y >= 0 && orig_y < h
+                                base_idx = orig_y * base_pitch + orig_x + 1
+                                base_alpha = (unsafe_load(base_pixels, base_idx) >> 24) & 0xFF
+                                if base_alpha > 0
+                                    # Inside original content, no fade
+                                    continue
+                                end
+                            end
+                            
+                            # Search for nearest opaque pixel in original image
+                            search_radius = min(radius * 2, max(abs(x - offset_x), abs(y - offset_y), 
+                                                                 abs(x - (offset_x + w)), abs(y - (offset_y + h))))
+                            
+                            for dy in -search_radius:search_radius
+                                for dx in -search_radius:search_radius
+                                    check_x = x - offset_x + dx
+                                    check_y = y - offset_y + dy
+                                    
+                                    if check_x >= 0 && check_x < w && check_y >= 0 && check_y < h
+                                        base_idx = check_y * base_pitch + check_x + 1
+                                        base_alpha = (unsafe_load(base_pixels, base_idx) >> 24) & 0xFF
+                                        
+                                        if base_alpha > 0
+                                            dist = sqrt(Float64(dx*dx + dy*dy))
+                                            min_dist = min(min_dist, dist)
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            # Apply fade based on distance from original content
+                            if min_dist < max_fade_dist
+                                t = clamp(min_dist / max_fade_dist, 0.0, 1.0)
+                                fade = 1.0 - (t ^ max(0.01, fade_curve))
+                                fade *= clamp(fade_amount, 0.0, 1.0)
+                                
+                                new_alpha = Math.TypeConversions.safe_int32_convert(round(alpha * fade))
+                                
+                                if new_alpha > 0
+                                    new_pixel = UInt32(new_alpha) << 24 | (pixel & 0x00FFFFFF)
+                                    unsafe_store!(pixels, new_pixel, pixel_index)
+                                else
+                                    unsafe_store!(pixels, 0x00000000, pixel_index)
+                                end
+                            else
+                                # Too far from content, make transparent
+                                unsafe_store!(pixels, 0x00000000, pixel_index)
+                            end
+                        end
+                    end
+                end
+                
+                SDL2.SDL_UnlockSurface(base)
+                SDL2.SDL_UnlockSurface(glow_surface)
+            end
+        end
         
         return glow_surface
     end
