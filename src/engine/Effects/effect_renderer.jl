@@ -376,6 +376,7 @@ module EffectRendererModule
             return baseSurface
         end
         
+        @info "Applying effects chain to surface"
         work = SDL2.SDL_ConvertSurfaceFormat(baseSurface, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
         if work == C_NULL
             @debug("Failed to convert surface format")
@@ -504,6 +505,7 @@ module EffectRendererModule
 
     # Main API function
     function apply_effects!(target::EffectsModule.EffectTarget, effects::Vector{Any})
+        @info "Applying effects to target" target=target effects=effects
         if isempty(effects)
             return target
         end
@@ -554,8 +556,14 @@ module EffectRendererModule
         result = from_surface(processed_surface, target)
 
         # Clean up
+        # Do not free base surfaces that are owned by higher-level objects (UI images, sprites)
         if target isa EffectsModule.SurfaceTarget
             # Caller owns both base_surface and processed_surface; do not free here
+        elseif target isa EffectsModule.ImageTarget || target isa EffectsModule.SpriteTarget
+            # The UI/Sprite instances manage their own base surfaces. Only free the temporary processed surface
+            if processed_surface != base_surface
+                SDL2.SDL_FreeSurface(processed_surface)
+            end
         else
             if processed_surface != base_surface
                 SDL2.SDL_FreeSurface(processed_surface)

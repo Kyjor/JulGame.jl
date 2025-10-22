@@ -41,10 +41,6 @@
     )
     include("effect_algorithms.jl")
     include("effect_texture_cache.jl")
-    include("text_effects.jl")
-    include("text_style.jl")
-    include("textbox_effects_extension.jl")
-    include("text_effect_renderer.jl")
 
     include("UIElement.jl")
     include("ScreenButton.jl")

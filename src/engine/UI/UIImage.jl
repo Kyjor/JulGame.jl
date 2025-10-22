@@ -20,6 +20,7 @@ module UIImageModule
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL2.LibSDL2.SDL_Texture}, Ptr{Nothing}}
         needsEffectUpdate::Bool
+        effectCacheKey::String
          
         function UIImage(path::String="Default";
             id::String=JulGame.generate_uuid(), 
@@ -81,6 +82,7 @@ module UIImageModule
             this.effects = Any[]
             this.effectTexture = C_NULL
             this.needsEffectUpdate = false
+            this.effectCacheKey = ""
         
             return this
         end
@@ -101,14 +103,15 @@ module UIImageModule
         
         # Update effects if needed
         if this.needsEffectUpdate && !isempty(this.effects)
+            @debug "Updating effects for image: $(this.name)"
             update_effects(this)
         end
     
         # Determine which texture to use
         texture_to_render = (!isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
-        
         # Create texture if it doesn't exist
         if texture_to_render == C_NULL && this.texture == C_NULL
+            @debug "Creating texture from surface because it doesn't exist for image: $(this.name)"
             this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.surface)
             texture_to_render = this.texture
             UI.set_color(this)
@@ -247,8 +250,8 @@ module UIImageModule
             return
         end
 
+        # Effect textures may be cached and reused elsewhere. Just clear the reference.
         if this.effectTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.effectTexture)
             this.effectTexture = C_NULL
         end
         SDL2.SDL_DestroyTexture(this.texture)
@@ -318,11 +321,69 @@ module UIImageModule
         end
     end
     
+    # Helpers to serialize effects and generate cache keys (mirrors TextBox)
+    function serialize_effects(effects::Vector{Any})::String
+        if isempty(effects)
+            return "[]"
+        end
+        parts = String[]
+        for eff in effects
+            T = typeof(eff)
+            fnames = fieldnames(T)
+            vals = String[]
+            for f in fnames
+                v = getfield(eff, f)
+                if v isa Ptr
+                    push!(vals, string(f, "=Ptr"))
+                else
+                    push!(vals, string(f, "=", v))
+                end
+            end
+            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
+        end
+        return "[" * join(parts, ";") * "]"
+    end
+
+    function generate_effect_cache_key(this::UIImage)::String
+        # Cache key excludes position/rotation (and other transform-only changes)
+        # Effects depend on source image, color, and effect params
+        content = string(
+            this.path, "|",
+            this.color, "|",
+            serialize_effects(this.effects)
+        )
+        return string(hash(content))
+    end
+
+    # Local effects cache for UIImage
+    const EFFECT_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
+    const MAX_CACHE_SIZE = 100
+
+    function cache_effect_texture(key::String, texture::Ptr{SDL2.SDL_Texture})
+        EFFECT_CACHE[key] = texture
+        @debug("Cached UIImage effect texture for key: $key")
+    end
+
+    function clear_effects_cache()
+        for (key, texture) in EFFECT_CACHE
+            if texture != C_NULL
+                SDL2.SDL_DestroyTexture(texture)
+            end
+        end
+        empty!(EFFECT_CACHE)
+    end
+
     #  effects API
     function apply_effects!(this::UIImage, effects::Vector)
         this.effects = Any[effect for effect in effects]
-        this.needsEffectUpdate = true
-        
+        # compute cache key and flag update only when changed
+        newKey = generate_effect_cache_key(this)
+        if this.effectCacheKey != newKey
+            this.effectCacheKey = newKey
+            this.needsEffectUpdate = true
+        else
+            @debug "UIImage.apply_effects!: cache key unchanged; skipping recompute" name=this.name
+        end
         return this
     end
     
@@ -331,18 +392,41 @@ module UIImageModule
     end
     
     function update_effects(this::UIImage)
-        if isempty(this.effects) || this.texture == C_NULL
+        if isempty(this.effects)
             return
         end
-        
-        # Create target for effects
+        # Use cached texture if available
+        if haskey(EFFECT_CACHE, this.effectCacheKey)
+            @debug("UIImage using cached effect texture", name=this.name, key=this.effectCacheKey)
+            this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
+            if this.effectTexture != C_NULL
+                w = Ref{Cint}(0); h = Ref{Cint}(0)
+                fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                this.size = Math.Vector2(w[], h[])
+            end
+            this.needsEffectUpdate = false
+            return
+        end
+
+        if this.texture == C_NULL || JulGame.Renderer == C_NULL
+            return
+        end
+        # Create target for effects and apply
         target = EffectsModule.ImageTarget(this)
-        
-        # Apply effects
         try
             result = EffectRendererModule.apply_effects!(target, this.effects)
             if result isa EffectsModule.ImageTarget
-                # Effect texture should be updated by the renderer
+                # effectTexture should be set by renderer
+                if this.effectTexture != C_NULL
+                    # Update size from effect texture
+                    w = Ref{Cint}(0); h = Ref{Cint}(0)
+                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                    this.size = Math.Vector2(w[], h[])
+                    # Cache it
+                    cache_effect_texture(this.effectCacheKey, this.effectTexture)
+                end
                 this.needsEffectUpdate = false
             end
         catch e
