@@ -94,89 +94,85 @@ module EffectAlgorithmsModule
         # Blit original text on top (centered)
         offset_blit!(glow_surface, base, radius * 2, radius * 2)
         
-        # Apply smooth radial fade to the entire glow surface
-        if fade_amount > 0.0
-            if SDL2.SDL_LockSurface(glow_surface) == 0 && SDL2.SDL_LockSurface(base) == 0
-                glow_arr = unsafe_wrap(Array, glow_surface, 10; own=false)
-                base_arr_locked = unsafe_wrap(Array, base, 10; own=false)
-                pixels = Ptr{UInt32}(glow_arr[1].pixels)
-                base_pixels = Ptr{UInt32}(base_arr_locked[1].pixels)
-                glow_pitch = glow_arr[1].pitch ÷ 4
-                base_pitch = base_arr_locked[1].pitch ÷ 4
-                
-                offset_x = radius * 2
-                offset_y = radius * 2
-                max_fade_dist = Float64(radius * 2)
-                
-                for y in 0:(glow_h-1)
-                    for x in 0:(glow_w-1)
-                        pixel_index = y * glow_pitch + x + 1
-                        pixel = unsafe_load(pixels, pixel_index)
-                        alpha = (pixel >> 24) & 0xFF
+        # Apply smooth fade to the glow surface based on distance from edges
+        if fade_amount > 0.0 && SDL2.SDL_LockSurface(glow_surface) == 0
+            glow_arr = unsafe_wrap(Array, glow_surface, 10; own=false)
+            pixels = Ptr{UInt32}(glow_arr[1].pixels)
+            glow_pitch = glow_arr[1].pitch ÷ 4
+            
+            # The original content is centered at (radius*2, radius*2) with size (w, h)
+            # The glow extends radius*2 pixels in all directions
+            content_left = radius * 2
+            content_top = radius * 2
+            content_right = content_left + w
+            content_bottom = content_top + h
+            max_glow_dist = Float64(radius * 2)
+            
+            for y in 0:(glow_h-1)
+                for x in 0:(glow_w-1)
+                    pixel_index = y * glow_pitch + x + 1
+                    pixel = unsafe_load(pixels, pixel_index)
+                    alpha = (pixel >> 24) & 0xFF
+                    
+                    if alpha > 0
+                        # Check if inside content bounds
+                        if x >= content_left && x < content_right && y >= content_top && y < content_bottom
+                            # Inside original content area, keep as-is
+                            continue
+                        end
                         
-                        if alpha > 0
-                            # Calculate distance from nearest opaque pixel in the original image
-                            min_dist = Float64(radius * 2 + 1)
-                            
-                            # Check if this pixel overlaps with original content
-                            orig_x = x - offset_x
-                            orig_y = y - offset_y
-                            
-                            if orig_x >= 0 && orig_x < w && orig_y >= 0 && orig_y < h
-                                base_idx = orig_y * base_pitch + orig_x + 1
-                                base_alpha = (unsafe_load(base_pixels, base_idx) >> 24) & 0xFF
-                                if base_alpha > 0
-                                    # Inside original content, no fade
-                                    continue
-                                end
-                            end
-                            
-                            # Search for nearest opaque pixel in original image
-                            search_radius = min(radius * 2, max(abs(x - offset_x), abs(y - offset_y), 
-                                                                 abs(x - (offset_x + w)), abs(y - (offset_y + h))))
-                            
-                            for dy in -search_radius:search_radius
-                                for dx in -search_radius:search_radius
-                                    check_x = x - offset_x + dx
-                                    check_y = y - offset_y + dy
-                                    
-                                    if check_x >= 0 && check_x < w && check_y >= 0 && check_y < h
-                                        base_idx = check_y * base_pitch + check_x + 1
-                                        base_alpha = (unsafe_load(base_pixels, base_idx) >> 24) & 0xFF
-                                        
-                                        if base_alpha > 0
-                                            dist = sqrt(Float64(dx*dx + dy*dy))
-                                            min_dist = min(min_dist, dist)
-                                        end
-                                    end
-                                end
-                            end
-                            
-                            # Apply fade based on distance from original content
-                            if min_dist < max_fade_dist
-                                t = clamp(min_dist / max_fade_dist, 0.0, 1.0)
-                                fade = 1.0 - (t ^ max(0.01, fade_curve))
-                                fade *= clamp(fade_amount, 0.0, 1.0)
-                                
-                                new_alpha = Math.TypeConversions.safe_int32_convert(round(alpha * fade))
-                                
-                                if new_alpha > 0
-                                    new_pixel = UInt32(new_alpha) << 24 | (pixel & 0x00FFFFFF)
-                                    unsafe_store!(pixels, new_pixel, pixel_index)
-                                else
-                                    unsafe_store!(pixels, 0x00000000, pixel_index)
-                                end
-                            else
-                                # Too far from content, make transparent
-                                unsafe_store!(pixels, 0x00000000, pixel_index)
-                            end
+                        # Calculate distance from content rectangle edges
+                        # Find closest edge distance
+                        dist_to_left = Float64(content_left - x)
+                        dist_to_right = Float64(x - content_right + 1)
+                        dist_to_top = Float64(content_top - y)
+                        dist_to_bottom = Float64(y - content_bottom + 1)
+                        
+                        # Distance from nearest edge
+                        dist = if x < content_left && y < content_top
+                            # Top-left corner
+                            sqrt(dist_to_left * dist_to_left + dist_to_top * dist_to_top)
+                        elseif x >= content_right && y < content_top
+                            # Top-right corner
+                            sqrt(dist_to_right * dist_to_right + dist_to_top * dist_to_top)
+                        elseif x < content_left && y >= content_bottom
+                            # Bottom-left corner
+                            sqrt(dist_to_left * dist_to_left + dist_to_bottom * dist_to_bottom)
+                        elseif x >= content_right && y >= content_bottom
+                            # Bottom-right corner
+                            sqrt(dist_to_right * dist_to_right + dist_to_bottom * dist_to_bottom)
+                        elseif x < content_left
+                            # Left side
+                            dist_to_left
+                        elseif x >= content_right
+                            # Right side
+                            dist_to_right
+                        elseif y < content_top
+                            # Top side
+                            dist_to_top
+                        else
+                            # Bottom side
+                            dist_to_bottom
+                        end
+                        
+                        # Normalize and apply fade
+                        t = clamp(dist / max_glow_dist, 0.0, 1.0)
+                        fade = 1.0 - (t ^ max(0.1, fade_curve))
+                        fade *= clamp(fade_amount, 0.0, 1.0)
+                        
+                        new_alpha = Math.TypeConversions.safe_int32_convert(round(alpha * fade))
+                        
+                        if new_alpha > 0
+                            new_pixel = UInt32(new_alpha) << 24 | (pixel & 0x00FFFFFF)
+                            unsafe_store!(pixels, new_pixel, pixel_index)
+                        else
+                            unsafe_store!(pixels, 0x00000000, pixel_index)
                         end
                     end
                 end
-                
-                SDL2.SDL_UnlockSurface(base)
-                SDL2.SDL_UnlockSurface(glow_surface)
             end
+            
+            SDL2.SDL_UnlockSurface(glow_surface)
         end
         
         return glow_surface
