@@ -287,6 +287,8 @@ module SceneReaderModule
                 elseif uiElement.type == "Rectangle"
                     color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
                     color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
+                    borderColor = get(uiElement, "borderColor", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
+                    borderColor_tuple = (get(borderColor, "1", 255), get(borderColor, "2", 255), get(borderColor, "3", 255), get(borderColor, "4", 255))
                     newUIElement = JulGame.UI.RectangleModule.Rectangle(;
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
                         name=get(uiElement, "name", "Rectangle"),
@@ -301,7 +303,7 @@ module SceneReaderModule
                         fillMode=get(uiElement, "fillMode", true),
                         borderRadius=Int(get(uiElement, "borderRadius", 0)),
                         borderWidth=Int(get(uiElement, "borderWidth", 0)),
-                        borderColor=color_tuple,
+                        borderColor=borderColor_tuple,
                         size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
                         parent=nothing,
                         # clickEvents=get(uiElement, "clickEvents", Function[]),
