@@ -517,7 +517,7 @@ module TextBoxModule
     end
     
     #  effects API
-    function apply_effects!(this::TextBox, effects::Vector)
+    function UI.apply_effects!(this::TextBox, effects::Vector)
         this.effects = Any[effect for effect in effects]
         
         # Generate new cache key

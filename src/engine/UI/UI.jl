@@ -6,6 +6,7 @@
         add_click_event,
         add_hover_enter_event,
         add_hover_exit_event,
+        apply_effects!,
         align_to_anchor,
         destroy,
         duplicate,

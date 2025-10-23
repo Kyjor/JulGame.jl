@@ -500,7 +500,7 @@ module RectangleModule
     end
     
     #  effects API
-    function apply_effects!(this::Rectangle, effects::Vector)
+    function UI.apply_effects!(this::Rectangle, effects::Vector)
         this.effects = Any[effect for effect in effects]
         # compute cache key and flag update only when changed
         newKey = generate_effect_cache_key(this)

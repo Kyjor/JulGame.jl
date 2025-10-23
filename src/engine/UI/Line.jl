@@ -145,7 +145,7 @@ module LineModule
     end
     
     #  effects API
-    function apply_effects!(this::Line, effects::Vector)
+    function UI.apply_effects!(this::Line, effects::Vector)
         this.effects = effects
         this.needsEffectUpdate = true
         update_effects(this)

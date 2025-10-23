@@ -252,7 +252,7 @@ module SpriteModule
     end
     
     #  effects API
-    function apply_effects!(this::InternalSprite, effects::Vector)
+    function Component.apply_effects!(this::InternalSprite, effects::Vector)
         this.effects = effects
         this.needsEffectUpdate = true
         update_effects(this)
