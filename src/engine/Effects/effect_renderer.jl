@@ -361,8 +361,8 @@ module EffectRendererModule
             @debug("Read pixels OK", pixels_ptr = s.pixels, pitch = s.pitch, w = w, h = h)
     
             # Save to BMP for verification
-            filename = joinpath(pwd(), "rectangle_debug.bmp")
-            save_surface_debug(surface, filename)
+            # filename = joinpath(pwd(), "rectangle_debug.bmp")
+            # save_surface_debug(surface, filename)
         end
     
         # Restore renderer state
