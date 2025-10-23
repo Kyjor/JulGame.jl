@@ -517,10 +517,10 @@ module ImmediateUIModule
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255),
-        borderWidth::Int=0, 
-        fillMode::Bool=true,
         borderColor::NTuple{4, Int}=(0, 0, 0, 255),
         borderRadius::Int=0, 
+        borderWidth::Int=0, 
+        fillMode::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
         size::Math.Vector2 = Math.Vector2(1, 1)

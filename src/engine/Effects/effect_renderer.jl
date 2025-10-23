@@ -173,10 +173,20 @@ module EffectRendererModule
             return target
         elseif target isa EffectsModule.RectangleTarget
             # Update rectangle's effect texture
+            @info("from_surface: Creating effect texture for rectangle")
             if target.rectangle.effectTexture != C_NULL
+                @info("from_surface: Destroying old effect texture")
                 SDL2.SDL_DestroyTexture(target.rectangle.effectTexture)
             end
             target.rectangle.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            if target.rectangle.effectTexture == C_NULL
+                @error("from_surface: Failed to create texture from surface: $(unsafe_string(SDL2.SDL_GetError()))")
+            else
+                SDL2.SDL_SetTextureBlendMode(target.rectangle.effectTexture, SDL2.SDL_BLENDMODE_BLEND)
+                w = Ref{Cint}(0); h = Ref{Cint}(0)
+                SDL2.SDL_QueryTexture(target.rectangle.effectTexture, C_NULL, C_NULL, w, h)
+                @info("from_surface: Created effect texture $(w[])x$(h[]) for rectangle")
+            end
             return target
         elseif target isa EffectsModule.LineTarget
             # Update line's effect texture
@@ -215,71 +225,140 @@ module EffectRendererModule
         w = Ref{Cint}(0); h = Ref{Cint}(0)
         SDL2.SDL_QueryTexture(texture, C_NULL, C_NULL, w, h)
         
-        # Create surface with same dimensions
-        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w[], h[], 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if surface == C_NULL
+        # Get the renderer
+        renderer = JulGame.Renderer
+        if renderer == C_NULL
+            @error("No renderer available for texture to surface conversion")
             return C_NULL
         end
         
-        # Set as render target and copy texture to surface
-        old_target = SDL2.SDL_GetRenderTarget(C_NULL)
-        SDL2.SDL_SetRenderTarget(C_NULL, surface) # TODO: Need to get renderer reference
+        # Create a target texture and render the source texture into it
+        target_tex = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_RGBA32, SDL2.SDL_TEXTUREACCESS_TARGET, w[], h[])
+        if target_tex == C_NULL
+            @error("Failed to create target texture for texture_to_surface")
+            return C_NULL
+        end
+        old_target = SDL2.SDL_GetRenderTarget(renderer)
+        SDL2.SDL_SetRenderTarget(renderer, target_tex)
+        SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_BLEND)
+        SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
+        SDL2.SDL_RenderClear(renderer)
+        SDL2.SDL_RenderCopy(renderer, texture, C_NULL, C_NULL)
         
-        # Clear surface
-        SDL2.SDL_SetRenderDrawColor(C_NULL, 0, 0, 0, 0) # TODO: Need to get renderer reference
-        SDL2.SDL_RenderClear(C_NULL) # TODO: Need to get renderer reference
+        # Read pixels back into a new surface
+        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w[], h[], 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+        if surface != C_NULL
+            arr = unsafe_wrap(Array, surface, 10; own=false)
+            SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32, arr[1].pixels, arr[1].pitch)
+        end
         
-        # Copy texture to surface
-        SDL2.SDL_RenderCopy(C_NULL, texture, C_NULL, C_NULL) # TODO: Need to get renderer reference
-        
-        # Restore render target
-        SDL2.SDL_SetRenderTarget(C_NULL, old_target) # TODO: Need to get renderer reference
+        # Restore and cleanup
+        SDL2.SDL_SetRenderTarget(renderer, old_target)
+        SDL2.SDL_DestroyTexture(target_tex)
         
         return surface
     end
 
-    # Render rectangle to surface
     function render_rectangle_to_surface(rect::Any)::Ptr{SDL2.SDL_Surface}
-        if rect == nothing
+        if rect === nothing
+            @error("render_rectangle_to_surface: rect is nothing")
             return C_NULL
         end
-        
-        # Create surface with rectangle dimensions
-        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, Int32(rect.size.x), Int32(rect.size.y), 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if surface == C_NULL
+    
+        w = Int32(rect.size.x)
+        h = Int32(rect.size.y)
+        renderer = JulGame.Renderer
+        if renderer == C_NULL
+            @error("No renderer available for rectangle effects")
             return C_NULL
         end
-        
-        # Set as render target
-        old_target = SDL2.SDL_GetRenderTarget(C_NULL)
-        SDL2.SDL_SetRenderTarget(C_NULL, surface) # TODO: Need to get renderer reference
-        
-        # Clear with transparent background
-        SDL2.SDL_SetRenderDrawColor(C_NULL, 0, 0, 0, 0) # TODO: Need to get renderer reference
-        SDL2.SDL_RenderClear(C_NULL) # TODO: Need to get renderer reference
-        
-        # Draw rectangle to surface
-        rect_rect = SDL2.SDL_FRect(0, 0, rect.size.x, rect.size.y)
-        
-        if rect.borderRadius > 0
-            # Use existing rounded rectangle drawing
-            RectangleModule.draw_rounded_rectangle(C_NULL) # TODO: Need to get renderer reference
-            SDL2.SDL_CreateTextureFromSurface(C_NULL, rect_rect, rect.borderRadius, rect.color, rect.fillMode)
+    
+        # Create target texture
+        target_tex = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_RGBA32,
+                                            SDL2.SDL_TEXTUREACCESS_TARGET, w, h)
+        if target_tex == C_NULL
+            @error("Failed to create target texture: $(unsafe_string(SDL2.SDL_GetError()))")
+            return C_NULL
+        end
+    
+        # Save state
+        old_target = SDL2.SDL_GetRenderTarget(renderer)
+        # Set render target and ensure we start clean
+        SDL2.SDL_SetRenderTarget(renderer, target_tex)
+
+        # Disable blending so we write *exact* color values (including alpha)
+        SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_NONE)
+
+        # Clear to transparent background (if you want transparency around the rect)
+        SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
+        SDL2.SDL_RenderClear(renderer)
+
+        # Draw the rectangle with its exact RGBA color
+        SDL2.SDL_SetRenderDrawColor(renderer, rect.color[1], rect.color[2], rect.color[3], rect.color[4])
+
+        if rect.fillMode
+            SDL2.SDL_RenderFillRectF(renderer, Ref(SDL2.SDL_FRect(0, 0, rect.size.x, rect.size.y)))
         else
-            # Regular rectangle
-            SDL2.SDL_SetRenderDrawColor(C_NULL, rect.color...) # TODO: Need to get renderer reference
-            if rect.fillMode
-                SDL2.SDL_RenderFillRectF(C_NULL, Ref(rect_rect)) # TODO: Need to get renderer reference
-            else
-                SDL2.SDL_RenderDrawRectF(C_NULL, Ref(rect_rect)) # TODO: Need to get renderer reference
-            end
+            SDL2.SDL_RenderDrawRectF(renderer, Ref(SDL2.SDL_FRect(0, 0, rect.size.x, rect.size.y)))
         end
-        
-        # Restore render target
-        SDL2.SDL_SetRenderTarget(C_NULL, old_target) # TODO: Need to get renderer reference
-        
+    
+        # Create surface to read pixels into
+        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+        #surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, SDL2.SDL_PIXELFORMAT_RGB24)
+        if surface == C_NULL
+            @error("Failed to create RGB surface")
+            SDL2.SDL_SetRenderTarget(renderer, old_target)
+            SDL2.SDL_DestroyTexture(target_tex)
+            return C_NULL
+        end
+    
+        # Read pixels
+        s = unsafe_load(Ptr{SDL2.SDL_Surface}(surface))
+        SDL2.SDL_RenderFlush(renderer)
+        rr = SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32,
+                                       s.pixels, s.pitch)
+        if rr != 0
+            @error("SDL_RenderReadPixels failed: $(unsafe_string(SDL2.SDL_GetError()))")
+        else
+            # Log pixel info
+            @info("Read pixels OK", pixels_ptr = s.pixels, pitch = s.pitch, w = w, h = h)
+    
+            # Save to BMP for verification
+            filename = joinpath(pwd(), "rectangle_debug.bmp")
+            save_surface_debug(surface, filename)
+        end
+    
+        # Restore renderer state
+        SDL2.SDL_SetRenderTarget(renderer, old_target)
+        SDL2.SDL_DestroyTexture(target_tex)
+    
         return surface
     end
+    
+    function save_surface_debug(surface::Ptr{SDL2.SDL_Surface}, path::String)
+        if surface == C_NULL
+            println("⚠️ Tried to save a null surface.")
+            return
+        end
+    
+        # Create an RWops stream for writing the BMP
+        rw = SDL2.SDL_RWFromFile(path, "wb")
+        if rw == C_NULL
+            println("❌ SDL_RWFromFile failed: ", unsafe_string(SDL2.SDL_GetError()))
+            return
+        end
+    
+        # Save the surface
+        result = SDL2.SDL_SaveBMP_RW(surface, rw, 1)  # 1 means "close stream after write"
+    
+        if result != 0
+            println("❌ SDL_SaveBMP_RW failed: ", unsafe_string(SDL2.SDL_GetError()))
+        else
+            println("✅ Saved surface as BMP to: $path")
+        end
+    end
+    
+    
 
     # Render line to surface
     function render_line_to_surface(line::Any)::Ptr{SDL2.SDL_Surface}
@@ -296,46 +375,54 @@ module EffectRendererModule
         width = Int(ceil(max_x - min_x)) + line.thickness * 2
         height = Int(ceil(max_y - min_y)) + line.thickness * 2
         
-        # Create surface
-        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if surface == C_NULL
+        # Get the renderer
+        renderer = JulGame.Renderer
+        if renderer == C_NULL
+            @error("No renderer available for line effects")
             return C_NULL
         end
         
-        # Set as render target
-        old_target = SDL2.SDL_GetRenderTarget(C_NULL)
-        SDL2.SDL_SetRenderTarget(C_NULL, surface) # TODO: Need to get renderer reference
-        
-        # Clear with transparent background
-        SDL2.SDL_SetRenderDrawColor(C_NULL, 0, 0, 0, 0) # TODO: Need to get renderer reference
-        SDL2.SDL_RenderClear(C_NULL) # TODO: Need to get renderer reference
+        # Create a target texture and draw the line into it
+        target_tex = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_RGBA32, SDL2.SDL_TEXTUREACCESS_TARGET, width, height)
+        if target_tex == C_NULL
+            @error("render_line_to_surface: Failed to create target texture")
+            return C_NULL
+        end
+        old_target = SDL2.SDL_GetRenderTarget(renderer)
+        SDL2.SDL_SetRenderTarget(renderer, target_tex)
+        SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_BLEND)
+        SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
+        SDL2.SDL_RenderClear(renderer)
         
         # Draw line
-        SDL2.SDL_SetRenderDrawColor(C_NULL, line.color...) # TODO: Need to get renderer reference
-        SDL2.SDL_SetRenderDrawBlendMode(C_NULL, SDL2.SDL_BLENDMODE_BLEND) # TODO: Need to get renderer reference
-        
-        # Adjust coordinates to surface origin
+        SDL2.SDL_SetRenderDrawColor(renderer, line.color...)
         start_x = line.startPoint.x - min_x + line.thickness
         start_y = line.startPoint.y - min_y + line.thickness
         end_x = line.endPoint.x - min_x + line.thickness
         end_y = line.endPoint.y - min_y + line.thickness
-        
         if line.thickness == 1
-            SDL2.SDL_RenderDrawLineF(C_NULL, Float32(start_x), Float32(start_y), Float32(end_x), Float32(end_y)) # TODO: Need to get renderer reference
+            SDL2.SDL_RenderDrawLineF(renderer, Float32(start_x), Float32(start_y), Float32(end_x), Float32(end_y))
         else
-            # Draw thick line by drawing multiple lines
             for i in 0:(line.thickness-1)
                 offset_x = cos(atan2(end_y - start_y, end_x - start_x) + π/2) * i
                 offset_y = sin(atan2(end_y - start_y, end_x - start_x) + π/2) * i
-                SDL2.SDL_RenderDrawLineF(C_NULL, 
+                SDL2.SDL_RenderDrawLineF(renderer, 
                     Float32(start_x + offset_x), Float32(start_y + offset_y), 
-                    Float32(end_x + offset_x), Float32(end_y + offset_y)) # TODO: Need to get renderer reference
+                    Float32(end_x + offset_x), Float32(end_y + offset_y))
             end
         end
         
-        # Restore render target
-        SDL2.SDL_SetRenderTarget(C_NULL, old_target) # TODO: Need to get renderer reference
+        # Read pixels back into a surface
+        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+        if surface != C_NULL
+            arr = unsafe_wrap(Array, surface, 10; own=false)
+            SDL2.SDL_RenderFlush(renderer)
+            SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32, arr[1].pixels, arr[1].pitch)
+        end
         
+        # Restore and cleanup
+        SDL2.SDL_SetRenderTarget(renderer, old_target)
+        SDL2.SDL_DestroyTexture(target_tex)
         return surface
     end
 
@@ -345,28 +432,40 @@ module EffectRendererModule
             return C_NULL
         end
         
-        # For now, create a simple colored surface
-        # In a full implementation, this would render the 3D mesh to a 2D surface
-        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, 100, 100, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if surface == C_NULL
+        # Get the renderer
+        renderer = JulGame.Renderer
+        if renderer == C_NULL
+            @error("No renderer available for mesh3d effects")
             return C_NULL
         end
         
-        # Set as render target
-        old_target = SDL2.SDL_GetRenderTarget(C_NULL)
-        SDL2.SDL_SetRenderTarget(C_NULL, surface) # TODO: Need to get renderer reference
-        
-        # Clear with transparent background
-        SDL2.SDL_SetRenderDrawColor(C_NULL, 0, 0, 0, 0) # TODO: Need to get renderer reference
-        SDL2.SDL_RenderClear(C_NULL) # TODO: Need to get renderer reference
+        local width = 100
+        local height = 100
+        target_tex = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_RGBA32, SDL2.SDL_TEXTUREACCESS_TARGET, width, height)
+        if target_tex == C_NULL
+            @error("render_mesh3d_to_surface: Failed to create target texture")
+            return C_NULL
+        end
+        old_target = SDL2.SDL_GetRenderTarget(renderer)
+        SDL2.SDL_SetRenderTarget(renderer, target_tex)
+        SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_BLEND)
+        SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
+        SDL2.SDL_RenderClear(renderer)
         
         # Draw a simple placeholder (in real implementation, render the 3D mesh)
-        SDL2.SDL_SetRenderDrawColor(C_NULL, 255, 255, 255, 255) # TODO: Need to get renderer reference
-        SDL2.SDL_RenderFillRectF(C_NULL, Ref(SDL2.SDL_FRect(10, 10, 80, 80))) # TODO: Need to get renderer reference
+        SDL2.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
+        SDL2.SDL_RenderFillRectF(renderer, Ref(SDL2.SDL_FRect(10, 10, 80, 80)))
         
-        # Restore render target
-        SDL2.SDL_SetRenderTarget(C_NULL, old_target) # TODO: Need to get renderer reference
+        # Read pixels back into a surface
+        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+        if surface != C_NULL
+            arr = unsafe_wrap(Array, surface, 10; own=false)
+            SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32, arr[1].pixels, arr[1].pitch)
+        end
         
+        # Restore and cleanup
+        SDL2.SDL_SetRenderTarget(renderer, old_target)
+        SDL2.SDL_DestroyTexture(target_tex)
         return surface
     end
 

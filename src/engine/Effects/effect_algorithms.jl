@@ -5,7 +5,7 @@ module EffectAlgorithmsModule
     const Math = JulGame.Math
     using ..EffectsModule
 
-    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect
+    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect, apply_gaussian_blur
 
     function offset_blit!(dst::Ptr{SDL2.SDL_Surface}, src::Ptr{SDL2.SDL_Surface}, dx::Int, dy::Int)
         rect = SDL2.SDL_Rect(dx, dy, 0, 0)
@@ -40,138 +40,151 @@ module EffectAlgorithmsModule
         SDL2.SDL_FillRect(glow_surface, C_NULL, 0x00000000)
         SDL2.SDL_SetSurfaceBlendMode(glow_surface, SDL2.SDL_BLENDMODE_BLEND)
         
-        # Create glow by blitting the base multiple times in a circle pattern
-        glow_alpha = Math.TypeConversions.safe_int32_convert(min(color[4], 180))
+        # Create glow using distance transform for smooth, contour-hugging effect
+        glow_alpha = Math.TypeConversions.safe_int32_convert(min(color[4], 200))
         
-        # Multiple passes for softer glow
-        for pass in 1:3
-            current_radius = radius - pass + 1
-            if current_radius <= 0
-                continue
-            end
-            
-            base_alpha_for_pass = glow_alpha ÷ (pass + 1)
-            
-            # Create a colored version of base for this pass
-            colored = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
-            if colored != C_NULL
-                # First, make the surface entirely white while preserving alpha
-                if force_white && SDL2.SDL_LockSurface(colored) == 0
-                    colored_arr = unsafe_wrap(Array, colored, 10; own=false)
-                    pixels = Ptr{UInt32}(colored_arr[1].pixels)
-                    pitch = colored_arr[1].pitch ÷ 4
-                    
-                    for i in 1:(w * h)
-                        pixel = unsafe_load(pixels, i)
-                        pixel_alpha = (pixel >> 24) & 0xFF
-                        # Keep only alpha, set RGB to white
-                        white_pixel = UInt32(pixel_alpha) << 24 | 0x00FFFFFF
-                        unsafe_store!(pixels, white_pixel, i)
-                    end
-                    
-                    SDL2.SDL_UnlockSurface(colored)
+        # Create a colored version of base for glow
+        colored = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        if colored != C_NULL
+            # First, make the surface entirely white while preserving alpha
+            if force_white && SDL2.SDL_LockSurface(colored) == 0
+                colored_arr = unsafe_wrap(Array, colored, 10; own=false)
+                pixels = Ptr{UInt32}(colored_arr[1].pixels)
+                pitch = colored_arr[1].pitch ÷ 4
+                
+                for i in 1:(w * h)
+                    pixel = unsafe_load(pixels, i)
+                    pixel_alpha = (pixel >> 24) & 0xFF
+                    # Keep only alpha, set RGB to white
+                    white_pixel = UInt32(pixel_alpha) << 24 | 0x00FFFFFF
+                    unsafe_store!(pixels, white_pixel, i)
                 end
                 
-                # Modulate to glow color; alpha set per-blit below
-                SDL2.SDL_SetSurfaceColorMod(colored, Math.TypeConversions.safe_int32_convert(color[1]), Math.TypeConversions.safe_int32_convert(color[2]), Math.TypeConversions.safe_int32_convert(color[3]))
-                SDL2.SDL_SetSurfaceBlendMode(colored, SDL2.SDL_BLENDMODE_BLEND)
+                SDL2.SDL_UnlockSurface(colored)
+            end
+            
+            # Modulate to glow color
+            SDL2.SDL_SetSurfaceColorMod(colored, Math.TypeConversions.safe_int32_convert(color[1]), Math.TypeConversions.safe_int32_convert(color[2]), Math.TypeConversions.safe_int32_convert(color[3]))
+            SDL2.SDL_SetSurfaceBlendMode(colored, SDL2.SDL_BLENDMODE_BLEND)
+            
+            # Create distance-based glow using multiple passes
+            # This creates a smooth, contour-hugging glow
+            for pass in 1:max(3, radius ÷ 2)
+                current_radius = pass
+                if current_radius > radius
+                    continue
+                end
                 
-                # Set alpha for this pass
-                SDL2.SDL_SetSurfaceAlphaMod(colored, base_alpha_for_pass)
+                # Calculate alpha for this pass (exponential decay)
+                pass_alpha = Math.TypeConversions.safe_int32_convert(round(glow_alpha * exp(-current_radius / radius * 2.0)))
+                SDL2.SDL_SetSurfaceAlphaMod(colored, pass_alpha)
                 
-                # Blit in a circle pattern
-                angles = range(0, 2π, length=max(8, current_radius * 4))
-                for angle in angles
-                    dx = round(Int, cos(angle) * current_radius) + radius * 2
-                    dy = round(Int, sin(angle) * current_radius) + radius * 2
+                # Create a dense pattern that follows contours
+                num_points = max(20, current_radius * 12)
+                for i in 1:num_points
+                    # Use more natural distribution
+                    angle = (i - 1) * 2π / num_points
+                    # Add slight variation for smoother coverage
+                    radius_offset = current_radius * (0.9 + 0.2 * sin(i * 0.3))
+                    
+                    dx = round(Int, cos(angle) * radius_offset) + radius * 2
+                    dy = round(Int, sin(angle) * radius_offset) + radius * 2
                     offset_blit!(glow_surface, colored, dx, dy)
                 end
-                
-                SDL2.SDL_FreeSurface(colored)
             end
+            
+            SDL2.SDL_FreeSurface(colored)
         end
         
         # Blit original text on top (centered)
         offset_blit!(glow_surface, base, radius * 2, radius * 2)
         
-        # Apply smooth fade to the glow surface based on distance from edges
-        if fade_amount > 0.0 && SDL2.SDL_LockSurface(glow_surface) == 0
+        # Apply distance transform-based fade for smooth, contour-hugging glow
+        # This calculates distance from ACTUAL shape pixels, not bounding box
+        if fade_amount > 0.0 && SDL2.SDL_LockSurface(glow_surface) == 0 && SDL2.SDL_LockSurface(base) == 0
             glow_arr = unsafe_wrap(Array, glow_surface, 10; own=false)
-            pixels = Ptr{UInt32}(glow_arr[1].pixels)
+            base_arr_locked = unsafe_wrap(Array, base, 10; own=false)
+            
+            glow_pixels = Ptr{UInt32}(glow_arr[1].pixels)
+            base_pixels = Ptr{UInt32}(base_arr_locked[1].pixels)
             glow_pitch = glow_arr[1].pitch ÷ 4
+            base_pitch = base_arr_locked[1].pitch ÷ 4
             
             # The original content is centered at (radius*2, radius*2) with size (w, h)
-            # The glow extends radius*2 pixels in all directions
             content_left = radius * 2
             content_top = radius * 2
-            content_right = content_left + w
-            content_bottom = content_top + h
-            max_glow_dist = Float64(radius * 2)
             
-            for y in 0:(glow_h-1)
-                for x in 0:(glow_w-1)
-                    pixel_index = y * glow_pitch + x + 1
-                    pixel = unsafe_load(pixels, pixel_index)
-                    alpha = (pixel >> 24) & 0xFF
+            # For each pixel in glow surface, calculate distance to nearest opaque pixel in base
+            for gy in 0:(glow_h-1)
+                for gx in 0:(glow_w-1)
+                    glow_index = gy * glow_pitch + gx + 1
+                    glow_pixel = unsafe_load(glow_pixels, glow_index)
+                    glow_alpha = (glow_pixel >> 24) & 0xFF
                     
-                    if alpha > 0
-                        # Check if inside content bounds
-                        if x >= content_left && x < content_right && y >= content_top && y < content_bottom
-                            # Inside original content area, keep as-is
-                            continue
+                    if glow_alpha > 0
+                        # Calculate this pixel's position relative to the base image
+                        base_x = gx - content_left
+                        base_y = gy - content_top
+                        
+                        # If this pixel is within the original shape, keep it unchanged
+                        if base_x >= 0 && base_x < w && base_y >= 0 && base_y < h
+                            base_index = base_y * base_pitch + base_x + 1
+                            base_pixel = unsafe_load(base_pixels, base_index)
+                            base_alpha = (base_pixel >> 24) & 0xFF
+                            
+                            if base_alpha > 128  # Inside the shape
+                                continue
+                            end
                         end
                         
-                        # Calculate distance from content rectangle edges
-                        # Find closest edge distance
-                        dist_to_left = Float64(content_left - x)
-                        dist_to_right = Float64(x - content_right + 1)
-                        dist_to_top = Float64(content_top - y)
-                        dist_to_bottom = Float64(y - content_bottom + 1)
+                        # Calculate minimum distance to any opaque pixel in the base image
+                        min_dist = Float64(radius * 2 + 1)
+                        search_radius = min(radius * 2, 30)  # Limit search for performance
                         
-                        # Distance from nearest edge
-                        dist = if x < content_left && y < content_top
-                            # Top-left corner
-                            sqrt(dist_to_left * dist_to_left + dist_to_top * dist_to_top)
-                        elseif x >= content_right && y < content_top
-                            # Top-right corner
-                            sqrt(dist_to_right * dist_to_right + dist_to_top * dist_to_top)
-                        elseif x < content_left && y >= content_bottom
-                            # Bottom-left corner
-                            sqrt(dist_to_left * dist_to_left + dist_to_bottom * dist_to_bottom)
-                        elseif x >= content_right && y >= content_bottom
-                            # Bottom-right corner
-                            sqrt(dist_to_right * dist_to_right + dist_to_bottom * dist_to_bottom)
-                        elseif x < content_left
-                            # Left side
-                            dist_to_left
-                        elseif x >= content_right
-                            # Right side
-                            dist_to_right
-                        elseif y < content_top
-                            # Top side
-                            dist_to_top
-                        else
-                            # Bottom side
-                            dist_to_bottom
+                        for by in max(0, base_y - search_radius):min(h - 1, base_y + search_radius)
+                            for bx in max(0, base_x - search_radius):min(w - 1, base_x + search_radius)
+                                base_index = by * base_pitch + bx + 1
+                                base_pixel = unsafe_load(base_pixels, base_index)
+                                base_alpha = (base_pixel >> 24) & 0xFF
+                                
+                                if base_alpha > 128  # Found an opaque pixel
+                                    dx = Float64(gx - (bx + content_left))
+                                    dy = Float64(gy - (by + content_top))
+                                    dist = sqrt(dx * dx + dy * dy)
+                                    
+                                    if dist < min_dist
+                                        min_dist = dist
+                                    end
+                                end
+                            end
                         end
                         
-                        # Normalize and apply fade
-                        t = clamp(dist / max_glow_dist, 0.0, 1.0)
-                        fade = 1.0 - (t ^ max(0.1, fade_curve))
-                        fade *= clamp(fade_amount, 0.0, 1.0)
-                        
-                        new_alpha = Math.TypeConversions.safe_int32_convert(round(alpha * fade))
-                        
-                        if new_alpha > 0
-                            new_pixel = UInt32(new_alpha) << 24 | (pixel & 0x00FFFFFF)
-                            unsafe_store!(pixels, new_pixel, pixel_index)
+                        # Apply fade based on distance from actual shape
+                        if min_dist < Float64(radius * 2 + 1)
+                            max_dist = Float64(radius * 2)
+                            t = clamp(min_dist / max_dist, 0.0, 1.0)
+                            
+                            # Apply exponential decay for smooth fade
+                            fade = exp(-t * (2.5 + fade_curve * 0.5))
+                            fade *= clamp(fade_amount, 0.0, 1.0)
+                            
+                            new_alpha = Math.TypeConversions.safe_int32_convert(round(glow_alpha * fade))
+                            
+                            if new_alpha > 0
+                                new_pixel = UInt32(new_alpha) << 24 | (glow_pixel & 0x00FFFFFF)
+                                unsafe_store!(glow_pixels, new_pixel, glow_index)
+                            else
+                                unsafe_store!(glow_pixels, 0x00000000, glow_index)
+                            end
                         else
-                            unsafe_store!(pixels, 0x00000000, pixel_index)
+                            # Too far from shape, make transparent
+                            unsafe_store!(glow_pixels, 0x00000000, glow_index)
                         end
                     end
                 end
             end
             
+            SDL2.SDL_UnlockSurface(base)
             SDL2.SDL_UnlockSurface(glow_surface)
         end
         
@@ -911,6 +924,95 @@ module EffectAlgorithmsModule
         end
         
         SDL2.SDL_UnlockSurface(base)
+        SDL2.SDL_UnlockSurface(result)
+        
+        return result
+    end
+    
+    """
+        apply_gaussian_blur(surface::Ptr{SDL2.SDL_Surface}, blur_radius::Int)
+    
+    Applies a simple Gaussian blur to smooth out the glow effect.
+    """
+    function apply_gaussian_blur(surface::Ptr{SDL2.SDL_Surface}, blur_radius::Int)
+        if blur_radius <= 0 || surface == C_NULL
+            return surface
+        end
+        
+        # Get surface properties
+        surface_arr = unsafe_wrap(Array, surface, 10; own=false)
+        w = surface_arr[1].w
+        h = surface_arr[1].h
+        
+        # Create result surface
+        result = SDL2.SDL_ConvertSurfaceFormat(surface, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        if result == C_NULL
+            return surface
+        end
+        
+        # Lock surfaces
+        if SDL2.SDL_LockSurface(surface) != 0 || SDL2.SDL_LockSurface(result) != 0
+            SDL2.SDL_FreeSurface(result)
+            return surface
+        end
+        
+        surface_arr_locked = unsafe_wrap(Array, surface, 10; own=false)
+        result_arr = unsafe_wrap(Array, result, 10; own=false)
+        
+        surface_pixels = Ptr{UInt32}(surface_arr_locked[1].pixels)
+        result_pixels = Ptr{UInt32}(result_arr[1].pixels)
+        pitch = result_arr[1].pitch ÷ 4
+        
+        # Simple box blur (approximation of Gaussian)
+        for y in 0:(h-1)
+            for x in 0:(w-1)
+                pixel_index = y * pitch + x + 1
+                
+                # Calculate blur for this pixel
+                total_r = 0
+                total_g = 0
+                total_b = 0
+                total_a = 0
+                count = 0
+                
+                for dy in -blur_radius:blur_radius
+                    for dx in -blur_radius:blur_radius
+                        check_x = x + dx
+                        check_y = y + dy
+                        
+                        if check_x >= 0 && check_x < w && check_y >= 0 && check_y < h
+                            check_index = check_y * pitch + check_x + 1
+                            pixel = unsafe_load(surface_pixels, check_index)
+                            
+                            r = pixel & 0xFF
+                            g = (pixel >> 8) & 0xFF
+                            b = (pixel >> 16) & 0xFF
+                            a = (pixel >> 24) & 0xFF
+                            
+                            total_r += r
+                            total_g += g
+                            total_b += b
+                            total_a += a
+                            count += 1
+                        end
+                    end
+                end
+                
+                if count > 0
+                    avg_r = total_r ÷ count
+                    avg_g = total_g ÷ count
+                    avg_b = total_b ÷ count
+                    avg_a = total_a ÷ count
+                    
+                    blurred_pixel = UInt32(avg_a) << 24 | UInt32(avg_b) << 16 | UInt32(avg_g) << 8 | UInt32(avg_r)
+                    unsafe_store!(result_pixels, blurred_pixel, pixel_index)
+                else
+                    unsafe_store!(result_pixels, 0x00000000, pixel_index)
+                end
+            end
+        end
+        
+        SDL2.SDL_UnlockSurface(surface)
         SDL2.SDL_UnlockSurface(result)
         
         return result
