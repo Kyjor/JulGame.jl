@@ -479,6 +479,11 @@ module MainLoopModule
 		SceneBuilderModule.create_new_image(this.level)
 	end
 
+	function create_new_rectangle(this::MainLoop)
+		@debug "Creating new rectangle"
+		SceneBuilderModule.create_new_rectangle(this.level)
+	end
+
 	function create_new_canvas(this::MainLoop)
 		@debug "Creating new canvas"
 		SceneBuilderModule.create_new_canvas(this.level)

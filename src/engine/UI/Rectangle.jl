@@ -8,20 +8,13 @@ module RectangleModule
     
     export Rectangle
     mutable struct Rectangle <: UI.UIElement
-        color::NTuple{4, Int}
         fillMode::Bool
-        id::String
         isActive::Bool
         isWorldEntity::Bool
-        name::String
         persistentBetweenScenes::Bool
-        position::Math.Vector2
-        size::Math.Vector2
         borderRadius::Int
         borderWidth::Int
         borderColor::NTuple{4, Int}
-        isHovered::Bool
-        layer::Int
         #  effects support
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
@@ -47,7 +40,7 @@ module RectangleModule
             borderRadius::Int=0, 
             borderWidth::Int=0, 
             borderColor::NTuple{4, Int}=(0, 0, 0, 255), 
-            size::Math.Vector2 = Math.Vector2(0, 0)
+            size::Math.Vector2 = Math.Vector2(100, 100)
         )                  
             this = new()
             

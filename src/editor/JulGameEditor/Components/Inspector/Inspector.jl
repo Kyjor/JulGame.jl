@@ -84,7 +84,7 @@ function handle_column_click(column_name, structure)
     elseif column_name == "Duplicate"
         JulGame.duplicate(structure)
     elseif column_name == "Delete"
-        JulGame.EditorState[DELETE_CONFIRMATION] = () -> JulGame.destroy_entity(structure)
+        JulGame.EditorState[DELETE_CONFIRMATION] = () -> begin JulGame.destroy(structure); MAIN.selectedEntities = [];  end
         return 2
     end
 
@@ -116,6 +116,8 @@ function display_fields(structure::EditableStructure)
             show_parent_field(structure, field, getproperty(structure, field))
         elseif field == :scripts
             show_script_editor(structure, "")
+        elseif field == :color || field == :borderColor
+            show_color_field(structure, field, getproperty(structure, field))
         elseif customDisplay !== nothing
             show_custom_field_mapping(structure, field, customDisplay, getproperty(structure, field))
         else
@@ -140,6 +142,12 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{Tr
     if CImGui.CollapsingHeader(replace(typeName, "Internal" => ""))
         display_fields(value)
     end
+end
+
+function show_color_field(structure::EditableStructure, field::Symbol, value::NTuple{4, Int})
+    show_field_label(field)
+    color = edit_color("$(field)", value)
+    setproperty!(structure, field, color)
 end
 
 # Removable fields

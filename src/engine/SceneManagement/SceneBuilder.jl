@@ -298,6 +298,15 @@ module SceneBuilderModule
         push!(MAIN.scene.uiElements, image)
     end
 
+    function create_new_rectangle(this::Scene)
+        rectangle = JulGame.UI.RectangleModule.Rectangle(;
+            name="New Rectangle",
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(0, 0),
+        )
+        push!(MAIN.scene.uiElements, rectangle)
+    end
+
     function add_scripts_to_entities(path::String)
         @debug string("Adding scripts to entities")
         @debug string("Path: ", path)

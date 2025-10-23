@@ -69,10 +69,18 @@ module SpriteModule
             this.lastRenderedScreenSize = nothing
             this.anchor = anchor
 
+            this.isStatic = isStatic
+            
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
+
+            # Early returns
             if isCreatedInEditor
                 return this
             end
-        
+
             Component.load_image(this::InternalSprite, imagePath::String)
             if this.image == C_NULL
                 error = unsafe_string(SDL2.SDL_GetError())
@@ -82,12 +90,6 @@ module SpriteModule
             end
             surface = unsafe_wrap(Array, this.image, 10; own = false)
             this.size = Math.Vector2(surface[1].w, surface[1].h)
-            this.isStatic = isStatic
-            
-            # Initialize effects
-            this.effects = Any[]
-            this.effectTexture = C_NULL
-            this.needsEffectUpdate = false
         
             return this
         end
