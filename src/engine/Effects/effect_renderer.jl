@@ -173,9 +173,9 @@ module EffectRendererModule
             return target
         elseif target isa EffectsModule.RectangleTarget
             # Update rectangle's effect texture
-            @info("from_surface: Creating effect texture for rectangle")
+            @debug("from_surface: Creating effect texture for rectangle")
             if target.rectangle.effectTexture != C_NULL
-                @info("from_surface: Destroying old effect texture")
+                @debug("from_surface: Destroying old effect texture")
                 SDL2.SDL_DestroyTexture(target.rectangle.effectTexture)
             end
             target.rectangle.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
@@ -185,7 +185,7 @@ module EffectRendererModule
                 SDL2.SDL_SetTextureBlendMode(target.rectangle.effectTexture, SDL2.SDL_BLENDMODE_BLEND)
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 SDL2.SDL_QueryTexture(target.rectangle.effectTexture, C_NULL, C_NULL, w, h)
-                @info("from_surface: Created effect texture $(w[])x$(h[]) for rectangle")
+                @debug("from_surface: Created effect texture $(w[])x$(h[]) for rectangle")
             end
             return target
         elseif target isa EffectsModule.LineTarget
@@ -265,8 +265,11 @@ module EffectRendererModule
             return C_NULL
         end
     
-        w = Int32(rect.size.x)
-        h = Int32(rect.size.y)
+        # Calculate surface dimensions including border
+        border_padding = rect.borderWidth > 0 ? rect.borderWidth : 0
+        w = Int32(rect.size.x + border_padding * 2)
+        h = Int32(rect.size.y + border_padding * 2)
+        
         renderer = JulGame.Renderer
         if renderer == C_NULL
             @error("No renderer available for rectangle effects")
@@ -289,22 +292,56 @@ module EffectRendererModule
         # Disable blending so we write *exact* color values (including alpha)
         SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_NONE)
 
-        # Clear to transparent background (if you want transparency around the rect)
+        # Clear to transparent background
         SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
         SDL2.SDL_RenderClear(renderer)
 
-        # Draw the rectangle with its exact RGBA color
-        SDL2.SDL_SetRenderDrawColor(renderer, rect.color[1], rect.color[2], rect.color[3], rect.color[4])
+        # Calculate rectangle position with border padding
+        rect_x = Float32(border_padding)
+        rect_y = Float32(border_padding)
+        rect_w = Float32(rect.size.x)
+        rect_h = Float32(rect.size.y)
+        
+        # Draw border first (if present)
+        if rect.borderWidth > 0
+            SDL2.SDL_SetRenderDrawColor(renderer, rect.borderColor[1], rect.borderColor[2], rect.borderColor[3], rect.borderColor[4])
+            
+            if rect.borderRadius > 0
+                # Draw rounded border
+                draw_rounded_border_to_surface(renderer, rect_x, rect_y, rect_w, rect_h, rect.borderRadius, rect.borderWidth, rect.borderColor)
+            else
+                # Draw regular border
+                for i in 0:rect.borderWidth-1
+                    border_rect = SDL2.SDL_FRect(
+                        rect_x - Float32(i),
+                        rect_y - Float32(i),
+                        rect_w + Float32(i * 2),
+                        rect_h + Float32(i * 2)
+                    )
+                    SDL2.SDL_RenderDrawRectF(renderer, Ref(border_rect))
+                end
+            end
+        end
 
-        if rect.fillMode
-            SDL2.SDL_RenderFillRectF(renderer, Ref(SDL2.SDL_FRect(0, 0, rect.size.x, rect.size.y)))
+        # Draw the main rectangle
+        SDL2.SDL_SetRenderDrawColor(renderer, rect.color[1], rect.color[2], rect.color[3], rect.color[4])
+        
+        main_rect = SDL2.SDL_FRect(rect_x, rect_y, rect_w, rect_h)
+        
+        if rect.borderRadius > 0
+            # Draw rounded rectangle
+            draw_rounded_rectangle_to_surface(renderer, main_rect, rect.borderRadius, rect.color, rect.fillMode)
         else
-            SDL2.SDL_RenderDrawRectF(renderer, Ref(SDL2.SDL_FRect(0, 0, rect.size.x, rect.size.y)))
+            # Draw regular rectangle
+            if rect.fillMode
+                SDL2.SDL_RenderFillRectF(renderer, Ref(main_rect))
+            else
+                SDL2.SDL_RenderDrawRectF(renderer, Ref(main_rect))
+            end
         end
     
         # Create surface to read pixels into
         surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        #surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, SDL2.SDL_PIXELFORMAT_RGB24)
         if surface == C_NULL
             @error("Failed to create RGB surface")
             SDL2.SDL_SetRenderTarget(renderer, old_target)
@@ -321,7 +358,7 @@ module EffectRendererModule
             @error("SDL_RenderReadPixels failed: $(unsafe_string(SDL2.SDL_GetError()))")
         else
             # Log pixel info
-            @info("Read pixels OK", pixels_ptr = s.pixels, pitch = s.pitch, w = w, h = h)
+            @debug("Read pixels OK", pixels_ptr = s.pixels, pitch = s.pitch, w = w, h = h)
     
             # Save to BMP for verification
             filename = joinpath(pwd(), "rectangle_debug.bmp")
@@ -333,6 +370,259 @@ module EffectRendererModule
         SDL2.SDL_DestroyTexture(target_tex)
     
         return surface
+    end
+    
+    # Helper function to draw filled arc for rounded rectangles
+    function draw_filled_arc_to_surface(renderer, x, y, radius, start_angle, end_angle, color)
+        # Save the current renderer color
+        r = Ref(UInt8(0))
+        g = Ref(UInt8(0))
+        b = Ref(UInt8(0))
+        a = Ref(UInt8(0))
+        SDL2.SDL_GetRenderDrawColor(renderer, r, g, b, a)
+        
+        # Set the color for the arc
+        SDL2.SDL_SetRenderDrawColor(
+            renderer, 
+            UInt8(color[1]), 
+            UInt8(color[2]), 
+            UInt8(color[3]), 
+            UInt8(color[4])
+        )
+        
+        # Draw the filled arc by drawing lines from the center to points on the arc
+        steps = max(10, radius ÷ 2)
+        angle_step = (end_angle - start_angle) / steps
+        
+        for i in 0:steps
+            angle = start_angle + i * angle_step
+            end_x = x + radius * cos(angle)
+            end_y = y + radius * sin(angle)
+            
+            SDL2.SDL_RenderDrawLineF(
+                renderer,
+                Float32(x),
+                Float32(y),
+                Float32(end_x),
+                Float32(end_y)
+            )
+        end
+        
+        # Restore the original renderer color
+        SDL2.SDL_SetRenderDrawColor(renderer, r[], g[], b[], a[])
+    end
+    
+    # Helper function to draw rounded rectangle to surface
+    function draw_rounded_rectangle_to_surface(renderer, rect, radius, color, fill_mode)
+        # Ensure the radius isn't too large for the rectangle
+        radius = min(radius, min(rect.w, rect.h) ÷ 2)
+        
+        if radius <= 0
+            # If radius is 0 or negative, draw a regular rectangle
+            SDL2.SDL_SetRenderDrawColor(
+                renderer,
+                UInt8(color[1]),
+                UInt8(color[2]),
+                UInt8(color[3]),
+                UInt8(color[4])
+            )
+            
+            if fill_mode
+                SDL2.SDL_RenderFillRectF(renderer, Ref(rect))
+            else
+                SDL2.SDL_RenderDrawRectF(renderer, Ref(rect))
+            end
+            return
+        end
+        
+        # Center points for the corner arcs
+        top_left_center_x = rect.x + radius
+        top_left_center_y = rect.y + radius
+        
+        top_right_center_x = rect.x + rect.w - radius
+        top_right_center_y = rect.y + radius
+        
+        bottom_left_center_x = rect.x + radius
+        bottom_left_center_y = rect.y + rect.h - radius
+        
+        bottom_right_center_x = rect.x + rect.w - radius
+        bottom_right_center_y = rect.y + rect.h - radius
+        
+        if fill_mode
+            # Draw the main rectangle (excluding corners)
+            main_rect = SDL2.SDL_FRect(
+                rect.x,
+                rect.y + radius,
+                rect.w,
+                rect.h - 2 * radius
+            )
+            
+            SDL2.SDL_SetRenderDrawColor(
+                renderer,
+                UInt8(color[1]),
+                UInt8(color[2]),
+                UInt8(color[3]),
+                UInt8(color[4])
+            )
+            
+            SDL2.SDL_RenderFillRectF(renderer, Ref(main_rect))
+            
+            # Draw the top and bottom rectangles (excluding corners)
+            top_rect = SDL2.SDL_FRect(
+                rect.x + radius,
+                rect.y,
+                rect.w - 2 * radius,
+                radius
+            )
+            
+            bottom_rect = SDL2.SDL_FRect(
+                rect.x + radius,
+                rect.y + rect.h - radius,
+                rect.w - 2 * radius,
+                radius
+            )
+            
+            SDL2.SDL_RenderFillRectF(renderer, Ref(top_rect))
+            SDL2.SDL_RenderFillRectF(renderer, Ref(bottom_rect))
+            
+            # Draw the four corner arcs
+            # Top-left corner (π to 3π/2)
+            draw_filled_arc_to_surface(renderer, top_left_center_x, top_left_center_y, 
+                            radius, π, 3π/2, color)
+            
+            # Top-right corner (3π/2 to 2π)
+            draw_filled_arc_to_surface(renderer, top_right_center_x, top_right_center_y, 
+                            radius, 3π/2, 2π, color)
+            
+            # Bottom-left corner (π/2 to π)
+            draw_filled_arc_to_surface(renderer, bottom_left_center_x, bottom_left_center_y, 
+                            radius, π/2, π, color)
+            
+            # Bottom-right corner (0 to π/2)
+            draw_filled_arc_to_surface(renderer, bottom_right_center_x, bottom_right_center_y, 
+                            radius, 0, π/2, color)
+        else
+            # Draw the outline of a rounded rectangle
+            SDL2.SDL_SetRenderDrawColor(
+                renderer,
+                UInt8(color[1]),
+                UInt8(color[2]),
+                UInt8(color[3]),
+                UInt8(color[4])
+            )
+            
+            # Draw the top line
+            SDL2.SDL_RenderDrawLineF(
+                renderer,
+                Float32(rect.x + radius),
+                Float32(rect.y),
+                Float32(rect.x + rect.w - radius),
+                Float32(rect.y)
+            )
+            
+            # Draw the bottom line
+            SDL2.SDL_RenderDrawLineF(
+                renderer,
+                Float32(rect.x + radius),
+                Float32(rect.y + rect.h),
+                Float32(rect.x + rect.w - radius),
+                Float32(rect.y + rect.h)
+            )
+            
+            # Draw the left line
+            SDL2.SDL_RenderDrawLineF(
+                renderer,
+                Float32(rect.x),
+                Float32(rect.y + radius),
+                Float32(rect.x),
+                Float32(rect.y + rect.h - radius)
+            )
+            
+            # Draw the right line
+            SDL2.SDL_RenderDrawLineF(
+                renderer,
+                Float32(rect.x + rect.w),
+                Float32(rect.y + radius),
+                Float32(rect.x + rect.w),
+                Float32(rect.y + rect.h - radius)
+            )
+            
+            # Draw corner arcs using line segments
+            steps = max(10, radius ÷ 2)
+            
+            # Top-left corner
+            for i in 0:steps
+                angle1 = π + i * (π/2) / steps
+                angle2 = π + (i + 1) * (π/2) / steps
+                
+                x1 = top_left_center_x + radius * cos(angle1)
+                y1 = top_left_center_y + radius * sin(angle1)
+                x2 = top_left_center_x + radius * cos(angle2)
+                y2 = top_left_center_y + radius * sin(angle2)
+                
+                SDL2.SDL_RenderDrawLineF(renderer, Float32(x1), Float32(y1), Float32(x2), Float32(y2))
+            end
+            
+            # Top-right corner
+            for i in 0:steps
+                angle1 = 3π/2 + i * (π/2) / steps
+                angle2 = 3π/2 + (i + 1) * (π/2) / steps
+                
+                x1 = top_right_center_x + radius * cos(angle1)
+                y1 = top_right_center_y + radius * sin(angle1)
+                x2 = top_right_center_x + radius * cos(angle2)
+                y2 = top_right_center_y + radius * sin(angle2)
+                
+                SDL2.SDL_RenderDrawLineF(renderer, Float32(x1), Float32(y1), Float32(x2), Float32(y2))
+            end
+            
+            # Bottom-left corner
+            for i in 0:steps
+                angle1 = π/2 + i * (π/2) / steps
+                angle2 = π/2 + (i + 1) * (π/2) / steps
+                
+                x1 = bottom_left_center_x + radius * cos(angle1)
+                y1 = bottom_left_center_y + radius * sin(angle1)
+                x2 = bottom_left_center_x + radius * cos(angle2)
+                y2 = bottom_left_center_y + radius * sin(angle2)
+                
+                SDL2.SDL_RenderDrawLineF(renderer, Float32(x1), Float32(y1), Float32(x2), Float32(y2))
+            end
+            
+            # Bottom-right corner
+            for i in 0:steps
+                angle1 = 0 + i * (π/2) / steps
+                angle2 = 0 + (i + 1) * (π/2) / steps
+                
+                x1 = bottom_right_center_x + radius * cos(angle1)
+                y1 = bottom_right_center_y + radius * sin(angle1)
+                x2 = bottom_right_center_x + radius * cos(angle2)
+                y2 = bottom_right_center_y + radius * sin(angle2)
+                
+                SDL2.SDL_RenderDrawLineF(renderer, Float32(x1), Float32(y1), Float32(x2), Float32(y2))
+            end
+        end
+    end
+    
+    # Helper function to draw rounded border to surface
+    function draw_rounded_border_to_surface(renderer, x, y, w, h, radius, border_width, color)
+        # Draw multiple concentric borders
+        for i in 0:border_width-1
+            border_rect = SDL2.SDL_FRect(
+                x - Float32(i),
+                y - Float32(i),
+                w + Float32(i * 2),
+                h + Float32(i * 2)
+            )
+            
+            draw_rounded_rectangle_to_surface(
+                renderer, 
+                border_rect, 
+                radius + i, 
+                color, 
+                false
+            )
+        end
     end
     
     function save_surface_debug(surface::Ptr{SDL2.SDL_Surface}, path::String)
@@ -475,7 +765,7 @@ module EffectRendererModule
             return baseSurface
         end
         
-        @info "Applying effects chain to surface"
+        @debug "Applying effects chain to surface"
         work = SDL2.SDL_ConvertSurfaceFormat(baseSurface, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
         if work == C_NULL
             @debug("Failed to convert surface format")
@@ -604,7 +894,7 @@ module EffectRendererModule
 
     # Main API function
     function apply_effects!(target::EffectsModule.EffectTarget, effects::Vector{Any})
-        @info "Applying effects to target" target=target effects=effects
+        @debug "Applying effects to target" target=target effects=effects
         if isempty(effects)
             return target
         end
