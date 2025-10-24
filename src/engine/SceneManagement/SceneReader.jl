@@ -306,6 +306,7 @@ module SceneReaderModule
                         borderColor=borderColor_tuple,
                         size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
                         parent=nothing,
+                        forceClickCheck=get(uiElement, "forceClickCheck", false),
                         # clickEvents=get(uiElement, "clickEvents", Function[]),
                         # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
                         # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),

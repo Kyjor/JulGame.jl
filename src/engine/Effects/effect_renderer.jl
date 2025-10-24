@@ -826,6 +826,17 @@ module EffectRendererModule
                     SDL2.SDL_FreeSurface(work)
                 end
                 work = beveled
+            elseif eff isa EffectsModule.BevelEffect1
+                beveled = apply_bevel_effect_1(work, eff)
+                if beveled == C_NULL
+                    @debug("Failed to create bevel1 surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return baseSurface
+                end
+                if beveled != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = beveled
             elseif eff isa EffectsModule.InnerGlowEffect
                 resolved_color = resolve_color(eff.color, target)
                 inner_glowed = create_inner_glow_surface(work, eff.radius, resolved_color)

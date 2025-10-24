@@ -40,7 +40,8 @@ module RectangleModule
             borderRadius::Int=0, 
             borderWidth::Int=0, 
             borderColor::NTuple{4, Int}=(0, 0, 0, 255), 
-            size::Math.Vector2 = Math.Vector2(100, 100)
+            size::Math.Vector2 = Math.Vector2(100, 100),
+            forceClickCheck::Bool=false
         )                  
             this = new()
             
@@ -59,7 +60,7 @@ module RectangleModule
             this.borderColor = borderColor
             this.isHovered = false
             this.layer = layer
-            
+            this.forceClickCheck = forceClickCheck
             # Initialize effects
             this.effects = Any[]
             this.effectTexture = C_NULL

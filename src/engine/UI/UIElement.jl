@@ -242,6 +242,7 @@ function UI.handle_hover_event(this::UIElement, isEntering::Bool)
             Base.invokelatest(event)
         catch e
             @error "Error calling hover event: $(e)"
+            Base.show_backtrace(stdout, catch_backtrace())
         end
     end
 end
