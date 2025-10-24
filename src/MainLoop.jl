@@ -420,6 +420,7 @@ module MainLoopModule
                     end
                 end
                 if this.testMode && this.currentTestTime >= this.testLength
+					@info "Test mode complete"
                     break
                 end
             end
@@ -893,7 +894,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
 				JulGame.DELTA_TIME = deltaTime
-				this.currentTestTime += deltaTime
+				if this.testMode
+					this.currentTestTime += deltaTime
+				end
 				if deltaTime > .25
 					lastPhysicsTime[] =  SDL2.SDL_GetTicks()
 					# TODO: pause simulation
