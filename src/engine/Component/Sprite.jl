@@ -345,6 +345,7 @@ module SpriteModule
     
         if this.texture == C_NULL
             @error("Failed to create texture from image.")
+            Base.show_backtrace(stdout, catch_backtrace())
             return
         end
     
