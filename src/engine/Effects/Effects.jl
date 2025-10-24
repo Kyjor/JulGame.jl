@@ -1,5 +1,5 @@
 module Effects
-    include("effects.jl")
+    include("effects_module.jl")
     using .EffectsModule
     export EffectsModule
 
