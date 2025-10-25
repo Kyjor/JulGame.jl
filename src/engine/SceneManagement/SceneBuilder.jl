@@ -64,7 +64,7 @@ module SceneBuilderModule
 
         JulGame.MAIN = main
         MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
-        MAIN.testLength = 20.0
+        MAIN.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
         MAIN.currentTestTime = 0.0
         MAIN.level = this
         MAIN.scene.name = split(this.scene, ".")[1]
