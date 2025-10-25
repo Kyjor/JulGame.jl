@@ -12,6 +12,7 @@ function add_shape end
 function add_software_renderer3d end
 function add_sound_source end
 function add_sprite end
+function apply_effects! end
 function append_array end
 function apply_forces end
 function align_to_anchor end

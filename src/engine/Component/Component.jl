@@ -12,7 +12,7 @@ module Component
     include("SoundSource.jl")
     include("Mesh3D.jl")
     include("SoftwareRenderer3D.jl")
-    
+
     export AnimationModule
     export AnimatorModule
     export ColliderModule

@@ -6,6 +6,7 @@
         add_click_event,
         add_hover_enter_event,
         add_hover_exit_event,
+        apply_effects!,
         align_to_anchor,
         destroy,
         duplicate,
@@ -39,17 +40,11 @@
         :centerBottom,
         :none
     )
-    include("effect_algorithms.jl")
-    include("effect_texture_cache.jl")
-    include("text_effects.jl")
-    include("text_style.jl")
-    include("textbox_effects_extension.jl")
-    include("text_effect_renderer.jl")
 
+    #include("Draggable.jl")
     include("UIElement.jl")
     include("ScreenButton.jl")
     include("TextBox.jl")
-    #include("Draggable.jl")
     include("Rectangle.jl")
     include("Line.jl")
     include("Circle.jl")

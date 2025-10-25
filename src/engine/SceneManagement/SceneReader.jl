@@ -284,6 +284,33 @@ module SceneReaderModule
                         # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
                         # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),
                     )
+                elseif uiElement.type == "Rectangle"
+                    color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
+                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
+                    borderColor = get(uiElement, "borderColor", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
+                    borderColor_tuple = (get(borderColor, "1", 255), get(borderColor, "2", 255), get(borderColor, "3", 255), get(borderColor, "4", 255))
+                    newUIElement = JulGame.UI.RectangleModule.Rectangle(;
+                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
+                        name=get(uiElement, "name", "Rectangle"),
+                        anchor=Symbol(get(uiElement, "anchor", "none")),
+                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        isWorldEntity=get(uiElement, "isWorldEntity", false),
+                        layer=Int(get(uiElement, "layer", 0)),
+                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        isActive=get(uiElement, "isActive", true),
+                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
+                        color=color_tuple,
+                        fillMode=get(uiElement, "fillMode", true),
+                        borderRadius=Int(get(uiElement, "borderRadius", 0)),
+                        borderWidth=Int(get(uiElement, "borderWidth", 0)),
+                        borderColor=borderColor_tuple,
+                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        parent=nothing,
+                        forceClickCheck=get(uiElement, "forceClickCheck", false),
+                        # clickEvents=get(uiElement, "clickEvents", Function[]),
+                        # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
+                        # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),
+                    )
                 else
                     # For text offset, check if it should be centered (if not specified or all zeros)
                     textOffset = Vector2(uiElement.textOffset.x, uiElement.textOffset.y)

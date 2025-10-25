@@ -8,24 +8,19 @@ module RectangleModule
     
     export Rectangle
     mutable struct Rectangle <: UI.UIElement
-        color::NTuple{4, Int}
         fillMode::Bool
-        id::String
         isActive::Bool
         isWorldEntity::Bool
-        name::String
         persistentBetweenScenes::Bool
-        position::Math.Vector2
-        size::Math.Vector2
         borderRadius::Int
         borderWidth::Int
         borderColor::NTuple{4, Int}
-        isHovered::Bool
-        layer::Int
         #  effects support
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         needsEffectUpdate::Bool
+        effectCacheKey::String
+        
         function Rectangle(;
             id::String=JulGame.generate_uuid(), 
             name::String = "TextBox", 
@@ -45,12 +40,35 @@ module RectangleModule
             borderRadius::Int=0, 
             borderWidth::Int=0, 
             borderColor::NTuple{4, Int}=(0, 0, 0, 255), 
-            size::Math.Vector2 = Math.Vector2(0, 0)
+            size::Math.Vector2 = Math.Vector2(100, 100),
+            forceClickCheck::Bool=false
         )                  
             this = new()
             
+            # Set fields that are part of the Rectangle struct
+            this.color = color
+            this.fillMode = fillMode
             this.id = id
+            this.isActive = isActive
+            this.isWorldEntity = isWorldEntity
             this.name = name
+            this.persistentBetweenScenes = persistentBetweenScenes
+            this.position = position
+            this.size = size
+            this.borderRadius = borderRadius
+            this.borderWidth = borderWidth
+            this.borderColor = borderColor
+            this.isHovered = false
+            this.layer = layer
+            this.forceClickCheck = forceClickCheck
+            # Initialize effects
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.needsEffectUpdate = false
+            this.effectCacheKey = ""
+            
+            # Now set fields that are part of UIElementInstance through the relationship system
+            # These need to be set after the Rectangle is constructed
             this.anchor = JulGame.Enum{Any}(
                 :center,
                 :top,
@@ -69,30 +87,10 @@ module RectangleModule
             )
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
-            
-            this.color = color
-            this.fillMode = fillMode
-            this.isActive = true
-            this.isWorldEntity = isWorldEntity
-            this.persistentBetweenScenes = false
-            this.position = position
-            this.size = size
-            this.borderRadius = borderRadius
-            this.borderWidth = borderWidth
-            this.borderColor = borderColor
-            this.isHovered = false
             this.clickEvents = clickEvents
             this.hoverEnterEvents = hoverEnterEvents
             this.hoverExitEvents = hoverExitEvents
-            this.layer = layer
             this.parent = parent
-            this.isActive = isActive
-            this.persistentBetweenScenes = persistentBetweenScenes
-            
-            # Initialize effects
-            this.effects = Any[]
-            this.effectTexture = C_NULL
-            this.needsEffectUpdate = false
             
             return this
         end
@@ -363,6 +361,15 @@ module RectangleModule
             return
         end
         
+        # Apply anchor positioning
+        UI.align_to_anchor(this)
+        
+        # Update effects if needed
+        if this.needsEffectUpdate && !isempty(this.effects)
+            @debug "Updating effects for rectangle: $(this.name)"
+            update_effects(this)
+        end
+        
         # Use effect texture if available, otherwise use direct rendering
         if !isempty(this.effects) && this.effectTexture != C_NULL
             render_rectangle_with_effects(this)
@@ -485,9 +492,8 @@ module RectangleModule
     end =#
 
     function UI.destroy(this::Rectangle)
-        # Clean up effect texture
+        # Effect textures may be cached and reused elsewhere. Just clear the reference.
         if this.effectTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.effectTexture)
             this.effectTexture = C_NULL
         end
         
@@ -495,10 +501,16 @@ module RectangleModule
     end
     
     #  effects API
-    function apply_effects!(this::Rectangle, effects::Vector)
-        this.effects = effects
-        this.needsEffectUpdate = true
-        update_effects(this)
+    function UI.apply_effects!(this::Rectangle, effects::Vector)
+        this.effects = Any[effect for effect in effects]
+        # compute cache key and flag update only when changed
+        newKey = generate_effect_cache_key(this)
+        if this.effectCacheKey != newKey
+            this.effectCacheKey = newKey
+            this.needsEffectUpdate = true
+        else
+            @debug "Rectangle.apply_effects!: cache key unchanged; skipping recompute" name=this.name
+        end
         return this
     end
     
@@ -507,26 +519,55 @@ module RectangleModule
     end
     
     function update_effects(this::Rectangle)
-        if isempty(this.effects) || !this.needsEffectUpdate
+        @info("update_effects: Starting for rectangle $(this.name)")
+        @info("update_effects: Rectangle state - size=$(this.size), position=$(this.position), color=$(this.color)")
+        
+        if isempty(this.effects)
+            @info("update_effects: No effects to apply")
             return
         end
-        
-        # Create target for effects
+        # Use cached texture if available
+        if haskey(EFFECT_CACHE, this.effectCacheKey)
+            @info("Rectangle using cached effect texture", name=this.name, key=this.effectCacheKey)
+            this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
+            this.needsEffectUpdate = false
+            return
+        end
+
+        if JulGame.Renderer == C_NULL
+            @error("update_effects: Renderer is NULL")
+            return
+        end
+        @info("update_effects: Creating RectangleTarget")
+        # Create target for effects and apply
         target = EffectsModule.RectangleTarget(this)
-        
-        # Apply effects
         try
+            @info("update_effects: Applying effects")
             result = EffectRendererModule.apply_effects!(target, this.effects)
             if result isa EffectsModule.RectangleTarget
-                # Effect texture should be updated by the renderer
+                # effectTexture should be set by renderer
+                @info("update_effects: Effect application succeeded, effectTexture=$(this.effectTexture)")
+                if this.effectTexture != C_NULL
+                    # Cache it
+                    @info("update_effects: Caching effect texture")
+                    cache_effect_texture(this.effectCacheKey, this.effectTexture)
+                else
+                    @error("update_effects: effectTexture is NULL after applying effects")
+                end
                 this.needsEffectUpdate = false
+            else
+                @error("update_effects: Result is not a RectangleTarget")
             end
         catch e
-            @error("Failed to apply effects to $(this.name): $e")
+            @error "Failed to apply effects to Rectangle" exception=(e, catch_backtrace())
+            this.needsEffectUpdate = false
         end
     end
     
     function render_rectangle_with_effects(this::Rectangle)
+        # @info("render_rectangle_with_effects: Starting for rectangle $(this.name)")
+        # @info("render_rectangle_with_effects: effectTexture=$(this.effectTexture)")
+        
         camera = MAIN.scene.camera
         
         # Calculate position
@@ -542,12 +583,76 @@ module RectangleModule
             height = this.size.y
         end
         
+     #   @info("render_rectangle_with_effects: Rendering at ($posX, $posY) with size $(width)x$(height)")
+        
         # Render effect texture
-        SDL2.SDL_RenderCopyF(
+        result = SDL2.SDL_RenderCopyF(
             JulGame.Renderer,
             this.effectTexture,
             C_NULL,
             Ref(SDL2.SDL_FRect(Float32(posX), Float32(posY), Float32(width), Float32(height)))
         )
+        
+        if result != 0
+            @error("render_rectangle_with_effects: SDL_RenderCopyF failed: $(unsafe_string(SDL2.SDL_GetError()))")
+        else
+         #   @info("render_rectangle_with_effects: Successfully rendered effect texture")
+        end
+    end
+
+    # Helpers to serialize effects and generate cache keys (mirrors UIImage)
+    function serialize_effects(effects::Vector{Any})::String
+        if isempty(effects)
+            return "[]"
+        end
+        parts = String[]
+        for eff in effects
+            T = typeof(eff)
+            fnames = fieldnames(T)
+            vals = String[]
+            for f in fnames
+                v = getfield(eff, f)
+                if v isa Ptr
+                    push!(vals, string(f, "=Ptr"))
+                else
+                    push!(vals, string(f, "=", v))
+                end
+            end
+            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
+        end
+        return "[" * join(parts, ";") * "]"
+    end
+
+    function generate_effect_cache_key(this::Rectangle)::String
+        # Cache key excludes position/rotation (and other transform-only changes)
+        # Effects depend on size, color, border properties, and effect params
+        content = string(
+            this.size, "|",
+            this.color, "|",
+            this.borderRadius, "|",
+            this.borderWidth, "|",
+            this.borderColor, "|",
+            this.fillMode, "|",
+            serialize_effects(this.effects)
+        )
+        return string(hash(content))
+    end
+
+    # Local effects cache for Rectangle
+    const EFFECT_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
+    const MAX_CACHE_SIZE = 100
+
+    function cache_effect_texture(key::String, texture::Ptr{SDL2.SDL_Texture})
+        EFFECT_CACHE[key] = texture
+        @debug("Cached Rectangle effect texture for key: $key")
+    end
+
+    function clear_effects_cache()
+        for (key, texture) in EFFECT_CACHE
+            if texture != C_NULL
+                SDL2.SDL_DestroyTexture(texture)
+            end
+        end
+        empty!(EFFECT_CACHE)
     end
 end 

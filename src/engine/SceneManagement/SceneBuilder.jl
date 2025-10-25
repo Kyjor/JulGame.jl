@@ -64,7 +64,7 @@ module SceneBuilderModule
 
         JulGame.MAIN = main
         MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
-        MAIN.testLength = 20.0
+        MAIN.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
         MAIN.currentTestTime = 0.0
         MAIN.level = this
         MAIN.scene.name = split(this.scene, ".")[1]
@@ -296,6 +296,15 @@ module SceneBuilderModule
             color=(255, 255, 255, 100)
         )
         push!(MAIN.scene.uiElements, image)
+    end
+
+    function create_new_rectangle(this::Scene)
+        rectangle = JulGame.UI.RectangleModule.Rectangle(;
+            name="New Rectangle",
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(0, 0),
+        )
+        push!(MAIN.scene.uiElements, rectangle)
     end
 
     function add_scripts_to_entities(path::String)

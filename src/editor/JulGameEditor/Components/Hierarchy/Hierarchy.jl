@@ -60,6 +60,10 @@ function show_hierarchy(currentSceneMain::Union{MainLoop, Nothing})
                 JulGame.MainLoopModule.create_new_screen_button(currentSceneMain)
                 @debug "Adding button"
             end
+            if CImGui.MenuItem("Add Rectangle")
+                JulGame.MainLoopModule.create_new_rectangle(currentSceneMain)
+                @debug "Adding rectangle"
+            end
             CImGui.EndPopup()
         end
     end

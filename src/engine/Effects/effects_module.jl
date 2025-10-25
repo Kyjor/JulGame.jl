@@ -6,15 +6,28 @@ module EffectsModule
     const Component = JulGame.Component
     
     export Effect, EffectTarget, EffectStyle
-    export BevelEffect, DropShadowEffect, OuterGlowEffect
+    export BevelEffect, BevelEffect1, DropShadowEffect, OuterGlowEffect
     export InnerGlowEffect, StrokeEffect, GradientEffect
     export TextureFillEffect, RoughEdgeEffect, InvertEffect
     export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget, Mesh3DTarget
     export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style
-    export INHERIT_COLOR
+    export INHERIT_COLOR, BevelType, GradientStop, BeveledText
     
     # Special color value to inherit from original
     const INHERIT_COLOR = (-1, -1, -1, -1)
+    
+    # BevelType enum for selecting bevel rendering modes
+    @enum BevelType begin
+        INNER_BEVEL = 1    # Creates inset/carved appearance
+        OUTER_BEVEL = 2   # Creates raised/embossed appearance  
+        COMBINED_BEVEL = 3 # Both inner and outer bevels
+    end
+    
+    # GradientStop struct for multi-stop gradient definitions
+    struct GradientStop
+        position::Float32  # Position along gradient (0.0 to 1.0)
+        color::NTuple{4, UInt8}  # RGBA color
+    end
     
     # Abstract types
     abstract type Effect end
@@ -98,6 +111,38 @@ module EffectsModule
         end
     end
     
+    # New comprehensive bevel effect with advanced features
+    mutable struct BevelEffect1 <: Effect
+        bevel_type::BevelType
+        bevel_depth::Float32      # Depth in pixels (2-5 for subtle effects)
+        bevel_width::Float32      # Width of bevel effect region
+        light_position::Math.Vector2  # Light position (X, Y coordinates)
+        blur_radius::Float32      # Blur radius in pixels (1-3 for soft edges)
+        intensity::Float32        # Overall effect strength (0.0-1.0)
+        
+        # Gradient definitions
+        inner_gradient::Vector{GradientStop}  # Inner bevel gradient
+        outer_gradient::Vector{GradientStop}  # Outer bevel gradient  
+        shadow_gradient::Vector{GradientStop} # Shadow gradient
+        
+        function BevelEffect1(;
+            bevel_type::BevelType = OUTER_BEVEL,
+            bevel_depth::Float32 = 3.0f0,
+            bevel_width::Float32 = 2.0f0,
+            light_position::Math.Vector2 = Math.Vector2(1.0, -1.0),
+            blur_radius::Float32 = 2.0f0,
+            intensity::Float32 = 0.8f0,
+            inner_gradient::Vector{GradientStop} = [GradientStop(0.0f0, (255, 255, 255, 255)), GradientStop(1.0f0, (200, 200, 200, 255))],
+            outer_gradient::Vector{GradientStop} = [GradientStop(0.0f0, (255, 255, 255, 255)), GradientStop(1.0f0, (180, 180, 180, 255))],
+            shadow_gradient::Vector{GradientStop} = [GradientStop(0.0f0, (100, 100, 100, 255)), GradientStop(1.0f0, (50, 50, 50, 255))]
+        )
+            new(
+                bevel_type, bevel_depth, bevel_width, light_position, blur_radius, intensity,
+                inner_gradient, outer_gradient, shadow_gradient
+            )
+        end
+    end
+    
     mutable struct DropShadowEffect <: Effect
         distance::Float64
         angle::Float64
@@ -113,8 +158,11 @@ module EffectsModule
         radius::Int
         color::NTuple{4, Int}
         blur::Float64
-        function OuterGlowEffect(; radius::Int=6, color::NTuple{4, Int}=(255,255,255,140), blur::Float64=0.7)
-            new(Math.TypeConversions.safe_int32_convert(radius), color, blur)
+        force_white::Bool
+        fade_amount::Float64
+        fade_curve::Float64
+        function OuterGlowEffect(; radius::Int=6, color::NTuple{4, Int}=(255,255,255,140), blur::Float64=0.7, force_white::Bool=true, fade_amount::Float64=1.0, fade_curve::Float64=1.0)
+            new(Math.TypeConversions.safe_int32_convert(radius), color, blur, force_white, fade_amount, fade_curve)
         end
     end
     
