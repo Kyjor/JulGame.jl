@@ -523,7 +523,8 @@ module ImmediateUIModule
         fillMode::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
-        size::Math.Vector2 = Math.Vector2(1, 1)
+        size::Math.Vector2 = Math.Vector2(1, 1),
+        forceClickCheck::Bool=false
     )
         
         # Convert colors to Int32 tuples
@@ -568,6 +569,11 @@ module ImmediateUIModule
             if rect.color != color
                 rect.color = color
                 JulGame.UI.set_color(rect; r=color[1], g=color[2], b=color[3], a=color[4])
+                needsUpdate = true
+            end
+            
+            if rect.forceClickCheck != forceClickCheck
+                rect.forceClickCheck = forceClickCheck
                 needsUpdate = true
             end
             
@@ -682,7 +688,8 @@ module ImmediateUIModule
                 hoverEnterEvents=hoverEnterEvent !== nothing ? Function[hoverEnterEvent] : Function[],
                 hoverExitEvents=hoverExitEvent !== nothing ? Function[hoverExitEvent] : Function[],
                 parent=parent,
-                size=size
+                size=size,
+                forceClickCheck=forceClickCheck
             )
             
             rect.isActive = isActive
