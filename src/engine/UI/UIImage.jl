@@ -19,6 +19,7 @@ module UIImageModule
         #  effects support
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL2.LibSDL2.SDL_Texture}, Ptr{Nothing}}
+        useEffectTexture::Bool  
         needsEffectUpdate::Bool
         effectCacheKey::String
          
@@ -39,6 +40,7 @@ module UIImageModule
             clickEvents::Vector{Function} = Function[],
             hoverEnterEvents::Vector{Function} = Function[],
             hoverExitEvents::Vector{Function} = Function[],
+            useEffectTexture::Bool = true,
         )
             this = new()
 
@@ -60,6 +62,7 @@ module UIImageModule
             this.position = position
             this.rotation = rotation
             this.size = size
+            this.useEffectTexture = useEffectTexture
             this.texture = C_NULL
             
             this.path = path
@@ -108,7 +111,7 @@ module UIImageModule
         end
     
         # Determine which texture to use
-        texture_to_render = (!isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
+        texture_to_render = (this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
         # Create texture if it doesn't exist
         if texture_to_render == C_NULL && this.texture == C_NULL
             @debug "Creating texture from surface because it doesn't exist for image: $(this.name)"
@@ -400,10 +403,13 @@ module UIImageModule
             @debug("UIImage using cached effect texture", name=this.name, key=this.effectCacheKey)
             this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
             if this.effectTexture != C_NULL
-                w = Ref{Cint}(0); h = Ref{Cint}(0)
-                fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
-                SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                this.size = Math.Vector2(w[], h[])
+                # Preserve explicitly set size; only set if unset
+                if this.size == Math.Vector2(0,0)
+                    w = Ref{Cint}(0); h = Ref{Cint}(0)
+                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                    this.size = Math.Vector2(w[], h[])
+                end
             end
             this.needsEffectUpdate = false
             return
@@ -419,11 +425,13 @@ module UIImageModule
             if result isa EffectsModule.ImageTarget
                 # effectTexture should be set by renderer
                 if this.effectTexture != C_NULL
-                    # Update size from effect texture
-                    w = Ref{Cint}(0); h = Ref{Cint}(0)
-                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
-                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.size = Math.Vector2(w[], h[])
+                    # Preserve explicitly set size; only set if unset
+                    if this.size == Math.Vector2(0,0)
+                        w = Ref{Cint}(0); h = Ref{Cint}(0)
+                        fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                        SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                        this.size = Math.Vector2(w[], h[])
+                    end
                     # Cache it
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
                 end

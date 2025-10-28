@@ -57,7 +57,13 @@ function Base.getproperty(script::UIElement, property::Symbol)
     end
 
     #println("getproperty from child: $(property) ")
-    return getfield(script, property)
+    try
+        return getfield(script, property)
+    catch e
+        @warn "Error getting property $(property) for $(script): $(e)"
+        Base.show_backtrace(stderr, catch_backtrace())
+        return nothing
+    end
 end
 
 function Base.setproperty!(script::UIElement, property::Symbol, value)
