@@ -563,16 +563,6 @@ module RectangleModule
             this.needsEffectUpdate = false
         end
     end
-
-    # Ensure rectangle effects respond to color changes
-    function UI.set_color(this::Rectangle; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
-        this.color = (r%256, g%256, b%256, a%256)
-        if !isempty(this.effects)
-            # Recompute cache key so color becomes part of the key and triggers refresh
-            this.effectCacheKey = generate_effect_cache_key(this)
-            this.needsEffectUpdate = true
-        end
-    end
     
     function render_rectangle_with_effects(this::Rectangle)
         # @info("render_rectangle_with_effects: Starting for rectangle $(this.name)")

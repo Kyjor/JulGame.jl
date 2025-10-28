@@ -417,8 +417,6 @@ module TextBoxModule
         this.color = (r%256, g%256, b%256, a%256)
         # Invalidate effects cache when color changes
         if !isempty(this.effects)
-            # Update cache key to reflect new color and trigger refresh
-            this.effectCacheKey = generate_effect_cache_key(this)
             this.needsEffectUpdate = true
         end
         UI.rerender_text(this)
