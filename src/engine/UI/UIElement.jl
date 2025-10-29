@@ -14,6 +14,7 @@ mutable struct UIElementInstance
     position::Vector2
     rotation::Float64
     size::Vector2
+    originalSize::Vector2
 
     # events
     clickEvents::Vector{Function}
@@ -138,28 +139,28 @@ function UI.align_to_anchor(this::UIElement)
 
     if this.anchor.current_state == :center
         this.position = Math.Vector2(
-            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
-            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
+            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
         )  
     elseif this.anchor.current_state == :top
         this.position = Math.Vector2(
-            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
             parent_pos.y + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :bottom
         this.position = Math.Vector2(
-            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
             parent_pos.y + size.y - this.size.y + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :left
         this.position = Math.Vector2(
             parent_pos.x + this.anchorOffset.x, 
-            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :right
         this.position = Math.Vector2(
             parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
-            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :topLeft
         this.position = Math.Vector2(
@@ -184,21 +185,21 @@ function UI.align_to_anchor(this::UIElement)
     elseif this.anchor.current_state == :centerLeft
         this.position = Math.Vector2(
             parent_pos.x + this.anchorOffset.x, 
-            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :centerRight
         this.position = Math.Vector2(
             parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
-            parent_pos.y + max(size.y/2 - this.size.y/2, 0) + this.anchorOffset.y
+            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :centerTop
         this.position = Math.Vector2(
-            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
             parent_pos.y + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :centerBottom
         this.position = Math.Vector2(
-            parent_pos.x + max(size.x/2 - this.size.x/2, 0) + this.anchorOffset.x, 
+            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
             parent_pos.y + size.y - this.size.y + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :none

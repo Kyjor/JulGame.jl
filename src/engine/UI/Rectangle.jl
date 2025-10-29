@@ -519,16 +519,16 @@ module RectangleModule
     end
     
     function update_effects(this::Rectangle)
-        @info("update_effects: Starting for rectangle $(this.name)")
-        @info("update_effects: Rectangle state - size=$(this.size), position=$(this.position), color=$(this.color)")
+        @debug("update_effects: Starting for rectangle $(this.name)")
+        @debug("update_effects: Rectangle state - size=$(this.size), position=$(this.position), color=$(this.color)")
         
         if isempty(this.effects)
-            @info("update_effects: No effects to apply")
+            @debug("update_effects: No effects to apply")
             return
         end
         # Use cached texture if available
         if haskey(EFFECT_CACHE, this.effectCacheKey)
-            @info("Rectangle using cached effect texture", name=this.name, key=this.effectCacheKey)
+            @debug("Rectangle using cached effect texture", name=this.name, key=this.effectCacheKey)
             this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
             this.needsEffectUpdate = false
             return
@@ -538,18 +538,18 @@ module RectangleModule
             @error("update_effects: Renderer is NULL")
             return
         end
-        @info("update_effects: Creating RectangleTarget")
+        @debug("update_effects: Creating RectangleTarget")
         # Create target for effects and apply
         target = EffectsModule.RectangleTarget(this)
         try
-            @info("update_effects: Applying effects")
+            @debug("update_effects: Applying effects")
             result = EffectRendererModule.apply_effects!(target, this.effects)
             if result isa EffectsModule.RectangleTarget
                 # effectTexture should be set by renderer
-                @info("update_effects: Effect application succeeded, effectTexture=$(this.effectTexture)")
+                @debug("update_effects: Effect application succeeded, effectTexture=$(this.effectTexture)")
                 if this.effectTexture != C_NULL
                     # Cache it
-                    @info("update_effects: Caching effect texture")
+                    @debug("update_effects: Caching effect texture")
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
                 else
                     @error("update_effects: effectTexture is NULL after applying effects")
@@ -565,8 +565,8 @@ module RectangleModule
     end
     
     function render_rectangle_with_effects(this::Rectangle)
-        # @info("render_rectangle_with_effects: Starting for rectangle $(this.name)")
-        # @info("render_rectangle_with_effects: effectTexture=$(this.effectTexture)")
+        # @debug("render_rectangle_with_effects: Starting for rectangle $(this.name)")
+        # @debug("render_rectangle_with_effects: effectTexture=$(this.effectTexture)")
         
         camera = MAIN.scene.camera
         
@@ -583,7 +583,7 @@ module RectangleModule
             height = this.size.y
         end
         
-     #   @info("render_rectangle_with_effects: Rendering at ($posX, $posY) with size $(width)x$(height)")
+     #   @debug("render_rectangle_with_effects: Rendering at ($posX, $posY) with size $(width)x$(height)")
         
         # Render effect texture
         result = SDL2.SDL_RenderCopyF(
@@ -596,7 +596,7 @@ module RectangleModule
         if result != 0
             @error("render_rectangle_with_effects: SDL_RenderCopyF failed: $(unsafe_string(SDL2.SDL_GetError()))")
         else
-         #   @info("render_rectangle_with_effects: Successfully rendered effect texture")
+         #   @debug("render_rectangle_with_effects: Successfully rendered effect texture")
         end
     end
 
