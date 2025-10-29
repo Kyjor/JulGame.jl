@@ -168,7 +168,7 @@ module UIImageModule
             srcRect, 
             Ref(SDL2.SDL_FRect(adjusted_position.x, adjusted_position.y, render_size.x,render_size.y)), 
             this.rotation, 
-            Ref(SDL2.SDL_FPoint(0.5, 0.5)), 
+            C_NULL, 
             SDL2.SDL_FLIP_NONE
         ) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
     end
