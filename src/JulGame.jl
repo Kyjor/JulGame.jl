@@ -8,7 +8,8 @@ module JulGame
     IS_DEBUG::Bool = false
     IS_PACKAGE_COMPILED::Bool = false
     IS_CHANGING_SCENE::Bool = false
-    
+    SCALE_QUALITY::String = "2"
+
     # Temporary variable for recent project path selection
     TEMP_SELECTED_PATH::String = ""
     

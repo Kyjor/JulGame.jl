@@ -97,6 +97,7 @@ module SceneBuilderModule
             else
                 scalingQuality = "2"
             end
+            JulGame.SCALE_QUALITY = scalingQuality
             # "0" or "nearest": Nearest pixel sampling
             # "1" or "linear": Linear filtering (supported by OpenGL and Direct3D)
             # "2" or "best": Currently this is the same as "linear"
@@ -105,7 +106,7 @@ module SceneBuilderModule
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
-                return
+            return
             end
 
             # Preload all scenes if requested
