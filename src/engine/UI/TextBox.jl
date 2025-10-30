@@ -179,13 +179,21 @@ module TextBoxModule
             ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
         else
             # Render with screen-space positioning (traditional UI)
+            adjusted_position = Math.Vector2(0, 0)
+            if this.originalSize != this.size && this.anchor.current_state == :none
+                adjusted_position = Math.Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
+                # @info "difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)"
+                # @info "adjusted position: $(adjusted_position.x), $(adjusted_position.y)"
+            else
+                adjusted_position = this.position
+            end
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
                 texture_to_render, 
                 C_NULL, 
                 Ref(SDL2.SDL_FRect(
-                    Float32(this.position.x), 
-                    Float32(this.position.y), 
+                    Float32(adjusted_position.x), 
+                    Float32(adjusted_position.y), 
                     Float32(this.size.x), 
                     Float32(this.size.y)
                 ))
@@ -231,6 +239,7 @@ module TextBoxModule
         end
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
         this.size = Math.Vector2(surface[1].w, surface[1].h)
+        this.originalSize = this.size
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
        
 
@@ -326,6 +335,7 @@ module TextBoxModule
         end
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
         this.size = Math.Vector2(surface[1].w, surface[1].h)
+        this.originalSize = Math.Vector2(this.size.x, this.size.y)
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
 
         if !this.isWorldEntity

@@ -872,7 +872,7 @@ module ImmediateUIModule
                 needsUpdate = true
             end
 
-            if image.size != size
+            if image.size != size && image.originalSize != size
                 image.size = size
                 needsUpdate = true
             end

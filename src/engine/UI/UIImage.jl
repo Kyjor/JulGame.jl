@@ -19,6 +19,8 @@ module UIImageModule
         #  effects support
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL2.LibSDL2.SDL_Texture}, Ptr{Nothing}}
+        effectSize::Math.Vector2  # Size of the effect texture (tracks glow padding separately)
+        useEffectTexture::Bool  
         needsEffectUpdate::Bool
         effectCacheKey::String
          
@@ -39,6 +41,7 @@ module UIImageModule
             clickEvents::Vector{Function} = Function[],
             hoverEnterEvents::Vector{Function} = Function[],
             hoverExitEvents::Vector{Function} = Function[],
+            useEffectTexture::Bool = true,
         )
             this = new()
 
@@ -60,6 +63,7 @@ module UIImageModule
             this.position = position
             this.rotation = rotation
             this.size = size
+            this.useEffectTexture = useEffectTexture
             this.texture = C_NULL
             
             this.path = path
@@ -73,6 +77,7 @@ module UIImageModule
             if this.size == Math.Vector2(0,0)
                 this.size = Math.Vector2(surface[1].w, surface[1].h)
             end
+            this.originalSize = Math.Vector2(this.size.x, this.size.y)
 
             this.clickEvents = clickEvents
             this.hoverEnterEvents = hoverEnterEvents
@@ -81,6 +86,7 @@ module UIImageModule
             # Initialize effects
             this.effects = Any[]
             this.effectTexture = C_NULL
+            this.effectSize = Math.Vector2(0,0) # Initialize effectSize
             this.needsEffectUpdate = false
             this.effectCacheKey = ""
         
@@ -98,8 +104,10 @@ module UIImageModule
         if this.size == Math.Vector2(0,0)
             surface = unsafe_wrap(Array, this.surface, 10; own = false)
             this.size = Math.Vector2(surface[1].w, surface[1].h)
+            this.originalSize = Math.Vector2(this.size.x, this.size.y)
         end
         UI.align_to_anchor(this)
+
         
         # Update effects if needed
         if this.needsEffectUpdate && !isempty(this.effects)
@@ -108,7 +116,7 @@ module UIImageModule
         end
     
         # Determine which texture to use
-        texture_to_render = (!isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
+        texture_to_render = (this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
         # Create texture if it doesn't exist
         if texture_to_render == C_NULL && this.texture == C_NULL
             @debug "Creating texture from surface because it doesn't exist for image: $(this.name)"
@@ -129,11 +137,36 @@ module UIImageModule
         end
         srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
+        # Determine render size and position based on whether effects are being used
+        adjusted_position = this.position
+        render_size = this.originalSize
+        
+        if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
+            # When using effect texture, use the cached effectSize
+            if this.effectSize != Math.Vector2(0, 0) && this.effectSize != this.originalSize
+                size_diff_x = (this.effectSize.x - this.originalSize.x) / 2
+                size_diff_y = (this.effectSize.y - this.originalSize.y) / 2
+                adjusted_position = Math.Vector2(this.position.x - size_diff_x, this.position.y - size_diff_y)
+                render_size = this.effectSize
+            end
+        end
+        if JulGame.IS_DEBUG
+            rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
+            SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
+            SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 255, 255, 0, 255);
+            SDL2.SDL_RenderDrawLines(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, [
+                SDL2.SDL_Point(adjusted_position.x, adjusted_position.y), 
+                SDL2.SDL_Point(adjusted_position.x + render_size.x, adjusted_position.y),
+                SDL2.SDL_Point(adjusted_position.x + render_size.x, adjusted_position.y + render_size.y), 
+                SDL2.SDL_Point(adjusted_position.x, adjusted_position.y + render_size.y), 
+                SDL2.SDL_Point(adjusted_position.x, adjusted_position.y)], 5)
+            SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
+        end
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             texture_to_render, 
             srcRect, 
-            Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
+            Ref(SDL2.SDL_FRect(adjusted_position.x, adjusted_position.y, render_size.x,render_size.y)), 
             this.rotation, 
             C_NULL, 
             SDL2.SDL_FLIP_NONE
@@ -206,7 +239,7 @@ module UIImageModule
         if this.size == Math.Vector2(0,0)
             this.size = Math.Vector2(surface[1].w, surface[1].h)
         end
-    
+        this.originalSize = Math.Vector2(this.size.x, this.size.y)
         # Create texture
         this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.surface)
     
@@ -403,7 +436,7 @@ module UIImageModule
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                 SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                this.size = Math.Vector2(w[], h[])
+                this.effectSize = Math.Vector2(w[], h[])
             end
             this.needsEffectUpdate = false
             return
@@ -412,6 +445,26 @@ module UIImageModule
         if this.texture == C_NULL || JulGame.Renderer == C_NULL
             return
         end
+        
+        # Scale surface to match desired size before applying effects
+        if this.surface != C_NULL && this.size != Math.Vector2(0, 0)
+            surf_arr = unsafe_wrap(Array, this.surface, 10; own=false)
+            current_w = Int(surf_arr[1].w)
+            current_h = Int(surf_arr[1].h)
+            desired_w = Int(this.size.x)
+            desired_h = Int(this.size.y)
+            
+            if current_w != desired_w || current_h != desired_h
+                @debug("Scaling surface from $(current_w)x$(current_h) to $(desired_w)x$(desired_h)")
+                scaled = SDL2.SDL_CreateRGBSurfaceWithFormat(0, desired_w, desired_h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+                if scaled != C_NULL
+                    SDL2.SDL_BlitScaled(this.surface, C_NULL, scaled, C_NULL)
+                    SDL2.SDL_FreeSurface(this.surface)
+                    this.surface = scaled
+                end
+            end
+        end
+        
         # Create target for effects and apply
         target = EffectsModule.ImageTarget(this)
         try
@@ -419,11 +472,10 @@ module UIImageModule
             if result isa EffectsModule.ImageTarget
                 # effectTexture should be set by renderer
                 if this.effectTexture != C_NULL
-                    # Update size from effect texture
                     w = Ref{Cint}(0); h = Ref{Cint}(0)
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.size = Math.Vector2(w[], h[])
+                    this.effectSize = Math.Vector2(w[], h[])
                     # Cache it
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
                 end
