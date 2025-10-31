@@ -10,7 +10,7 @@ mutable struct UIElementInstance
     anchorOffset::Vector2
     isWorldEntity::Bool
     layer::Int
-    parent::Union{UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}
+    parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}
     position::Vector2
     rotation::Float64
     size::Vector2
@@ -43,9 +43,9 @@ mutable struct UIElementInstance
     end
 end
 
-relationships = Dict{UIElement, UIElementInstance}()
+relationships = Dict{JulGame.IUIElement, UIElementInstance}()
 
-function Base.getproperty(script::UIElement, property::Symbol)
+function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
     # Check if the relationship exists
     add_relationship_if_not_exists(script)
 
@@ -67,7 +67,7 @@ function Base.getproperty(script::UIElement, property::Symbol)
     end
 end
 
-function Base.setproperty!(script::UIElement, property::Symbol, value)
+function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
     add_relationship_if_not_exists(script)
 
     if hasfield(typeof(relationships[script]), property) # this is the child type TextBox, Rectangle, etc
@@ -96,7 +96,7 @@ function Base.setproperty!(script::UIElement, property::Symbol, value)
     end
 end
 
-function add_relationship_if_not_exists(script::UIElement)
+function add_relationship_if_not_exists(script::JulGame.IUIElement)
     if !haskey(relationships, script)
         #println("Adding relationship for $(script)")
         relationships[script] = UIElementInstance()
@@ -105,17 +105,17 @@ function add_relationship_if_not_exists(script::UIElement)
     #println("Relationship already exists for $(script)")
 end
 
-function delete_relationship(script::UIElement)
+function delete_relationship(script::JulGame.IUIElement)
     if haskey(relationships, script)
         delete!(relationships, script)
     end
 end
 
-function UI.set_color(this::UIElement; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
+function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
     this.color = (r%256, g%256, b%256, a%256)
 end
 
-function UI.align_to_anchor(this::UIElement)
+function UI.align_to_anchor(this::JulGame.IUIElement)
     if MAIN.scene.camera === nothing
         @debug "No camera found in scene"
         return
@@ -124,7 +124,7 @@ function UI.align_to_anchor(this::UIElement)
     size = MAIN.scene.camera.size
     parent_pos = Math.Vector2(0, 0)
     if this.parent !== nothing 
-        if typeof(this.parent) <: UIElement
+        if isa(this.parent, JulGame.IUIElement)
             size = this.parent.size
             parent_pos = this.parent.position
         else 
@@ -209,15 +209,15 @@ function UI.align_to_anchor(this::UIElement)
     end
 end
 
-function UI.add_hover_enter_event(this::UIElement, event)
+function UI.add_hover_enter_event(this::JulGame.IUIElement, event)
     push!(this.hoverEnterEvents, event)
 end
 
-function UI.add_hover_exit_event(this::UIElement, event)
+function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
     push!(this.hoverExitEvents, event)
 end
 
-function UI.handle_event(this::Union{UIElement, JulGame.IEntity}, evt, x, y)
+function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, x, y)
     isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
     if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
         if isScreenButton
@@ -242,7 +242,7 @@ function UI.handle_event(this::Union{UIElement, JulGame.IEntity}, evt, x, y)
     end 
 end
 
-function UI.handle_hover_event(this::UIElement, isEntering::Bool)
+function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     events = isEntering ? this.hoverEnterEvents : this.hoverExitEvents
     for event in events
         try

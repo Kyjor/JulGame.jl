@@ -253,12 +253,14 @@ module SceneBuilderModule
     """
     function create_new_entity(this::Scene)
         push!(MAIN.scene.entities, Entity("New entity"))
+        return entity
     end
 
     function create_new_text_box(this::Scene)
         textBox = TextBox("TextBox")
         JulGame.UI.initialize(textBox)
         push!(MAIN.scene.uiElements, textBox)
+        return textBox
     end
     
     function create_new_screen_button(this::Scene)
@@ -278,6 +280,7 @@ module SceneBuilderModule
             JulGame.initialize(screenButton)
         end
         push!(MAIN.scene.uiElements, screenButton)
+        return screenButton
     end
 
     function create_new_canvas(this::Scene)
@@ -288,6 +291,7 @@ module SceneBuilderModule
             color=(255, 255, 255, 100)  # Semi-transparent white
         )
         push!(MAIN.scene.uiElements, canvas)
+        return canvas
     end
 
     function create_new_image(this::Scene)
@@ -297,6 +301,7 @@ module SceneBuilderModule
             color=(255, 255, 255, 100)
         )
         push!(MAIN.scene.uiElements, image)
+        return image
     end
 
     function create_new_rectangle(this::Scene)
@@ -306,6 +311,7 @@ module SceneBuilderModule
             position=Math.Vector2(0, 0),
         )
         push!(MAIN.scene.uiElements, rectangle)
+        return rectangle
     end
 
     function add_scripts_to_entities(path::String)

@@ -24,3 +24,5 @@ abstract type IObserver end
 export IObserver
 abstract type IHistory end
 export IHistory
+abstract type ICanvas <: IUIElement end
+export ICanvas

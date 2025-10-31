@@ -248,20 +248,7 @@ module InputModule
                         continue
                     end
 
-                    # allUIElements = UI.UIElement[]
-                    # for uiElement in MAIN.scene.uiElements
-                    #     if isa(uiElement, UI.Canvas)
-                    #         # Add the canvas itself
-                    #         push!(allUIElements, uiElement)
-                    #         # Add all its children recursively
-                    #         collect_canvas_children(uiElement, allUIElements)
-                    #     else
-                    #         # Only add non-Canvas children (Canvas children are handled by their parent)
-                    #         if uiElement.parent === nothing || !isa(uiElement.parent, UI.Canvas)
-                    #             push!(allUIElements, uiElement)
-                    #         end
-                    #     end
-                    # end
+                    canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
 
                     # Use cached layer order instead of sorting every mouse event
                     # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
@@ -278,7 +265,14 @@ module InputModule
                     clickedAnElementAlready = false
                     hoveredAnElementAlready = false
                     for element in elementsOrderedByLayerDescending
-                        if !element.isActive
+                        skipElement = false
+                        for canvas in canvases
+                            if element in canvas.children && !canvas.isActive
+                                skipElement = true
+                                break
+                            end
+                        end
+                        if !element.isActive || skipElement
                             continue
                         end
 

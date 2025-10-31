@@ -36,7 +36,7 @@ module JulGame
     LoadedScripts = Set{String}()
 
     include("utils/Interfaces.jl")
-    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D, IObserver, IHistory
+    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D, IObserver, IHistory, ICanvas
    
     include("engine/Events/Events.jl")
     using .EventsModule
