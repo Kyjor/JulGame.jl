@@ -252,7 +252,8 @@ module SceneBuilderModule
 
     """
     function create_new_entity(this::Scene)
-        push!(MAIN.scene.entities, Entity("New entity"))
+        entity = Entity("New entity")
+        push!(MAIN.scene.entities, entity)
         return entity
     end
 
