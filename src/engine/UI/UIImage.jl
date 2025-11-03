@@ -42,6 +42,7 @@ module UIImageModule
             hoverEnterEvents::Vector{Function} = Function[],
             hoverExitEvents::Vector{Function} = Function[],
             useEffectTexture::Bool = true,
+            forceClickCheck::Bool = false,
         )
             this = new()
 
@@ -65,6 +66,7 @@ module UIImageModule
             this.size = size
             this.useEffectTexture = useEffectTexture
             this.texture = C_NULL
+            this.forceClickCheck = forceClickCheck
             
             this.path = path
             if this.surface == C_NULL
@@ -295,8 +297,34 @@ module UIImageModule
     end
 
     function UI.set_color(this::UIImage)
-        SDL2.SDL_SetTextureColorMod(this.texture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
-        SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[4], 0, 255)));
+        if is_texture_valid(this.texture)
+            SDL2.SDL_SetTextureColorMod(this.texture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)))
+            SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[4], 0, 255)))
+        else
+            this.texture = C_NULL
+        end
+        if is_texture_valid(this.effectTexture)
+            SDL2.SDL_SetTextureColorMod(this.effectTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)))
+            SDL2.SDL_SetTextureAlphaMod(this.effectTexture, UInt8(clamp(this.color[4], 0, 255)))
+        else
+            this.effectTexture = C_NULL
+        end
+    end
+
+    function is_texture_valid(texture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}})
+        if texture == C_NULL || texture isa Ptr{Nothing}
+            return false
+        end
+
+        #@info "Texture: $(texture)"
+        w = Ref{Cint}(0); h = Ref{Cint}(0)
+        fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+        result = SDL2.SDL_QueryTexture(texture, fmt, access, w, h)
+        if result != 0
+            @debug "Texture is invalid: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
+
+        return result == 0  # SDL_SUCCESS
     end
 
     function UI.duplicate(this::UIImage)

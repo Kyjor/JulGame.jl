@@ -487,7 +487,13 @@ module MainLoopModule
 
 	function create_new_canvas(this::MainLoop)
 		@debug "Creating new canvas"
-		SceneBuilderModule.create_new_canvas(this.level)
+		canvas = SceneBuilderModule.create_new_canvas(this.level)
+		return canvas
+	end
+
+	function create_new_canvas()
+		canvas = create_new_canvas(MAIN)
+		return canvas
 	end
 
 	function initialize_scripts_and_components()
@@ -1013,6 +1019,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 			# Sort UI elements by layer before rendering
 			uiRenderingOrder = []
+			canvases = filter(x -> isa(x, JulGame.ICanvas), this.scene.uiElements)
 			for uiElement in this.scene.uiElements
 				# TODO: Only render UI elements that are not children of a Canvas
 				# Canvas children will be rendered by their parent Canvas
@@ -1033,6 +1040,16 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			sort!(uiRenderingOrder, by = x -> x[1])
 			for i = eachindex(uiRenderingOrder)
 				try
+					skipCanvasChild = false
+					for canvas in canvases
+						if uiRenderingOrder[i][2] in canvas.children && !canvas.isActive
+							skipCanvasChild = true
+							break
+						end
+					end
+					if skipCanvasChild
+						continue
+					end
 					if uiRenderingOrder[i][2] isa NamedTuple
 						func = uiRenderingOrder[i][2].function_to_call
 						Base.invokelatest(func)

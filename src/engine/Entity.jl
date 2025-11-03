@@ -78,7 +78,7 @@ module EntityModule
         push!(this.scripts, script)
         script.parent = this
         try
-            script.initialize()
+            JulGame.initialize(script)
         catch e
             @error string(e)
             Base.show_backtrace(stdout, catch_backtrace())
@@ -246,9 +246,9 @@ module EntityModule
             newEntity.rigidbody = Component.duplicate(this.rigidbody, newEntity)
         end
         # scripts::Vector{Any}
-        for script in this.scripts
-            JulGame.add_script(newEntity, script)
-        end
+        # for script in this.scripts
+        #     JulGame.add_script(newEntity, script)
+        # end
         # shape::Union{InternalShape, Ptr{Nothing}}
         if this.shape != C_NULL && this.shape !== nothing
             newEntity.shape = Component.duplicate(this.shape, newEntity)

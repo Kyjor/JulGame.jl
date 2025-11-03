@@ -47,7 +47,22 @@ module SpriteModule
         effectTexture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         needsEffectUpdate::Bool
         
-        function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0), isStatic::Bool = false)
+        function InternalSprite(
+            parent::JulGame.IEntity, 
+            imagePath::String, 
+            crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, 
+            isFlipped::Bool=false, 
+            color::NTuple{4, Int} = (255,255,255,255), 
+            isCreatedInEditor::Bool=false; 
+            pixelsPerUnit::Int=0, 
+            position::Math.Vector2f = Math.Vector2f(0,0), 
+            rotation::Float64 = 0.0, 
+            layer::Int = 0, 
+            center::Math.Vector2f = Math.Vector2f(0.5,0.5), 
+            anchor::Symbol = :center, 
+            offset::Math.Vector2f = Math.Vector2f(0,0), 
+            isStatic::Bool = false
+        )
             this = new()
 
             this.offset = offset
@@ -321,7 +336,12 @@ module SpriteModule
         error = unsafe_string(SDL2.SDL_GetError())
     
         if !isempty(error) || this.image == C_NULL
-            @error("Couldn't open image '$imagePath'! SDL Error: ", error)
+            try
+                throw(error)
+            catch e
+                @error("Error loading image '$imagePath'! SDL Error: ", e)
+                Base.show_backtrace(stdout, catch_backtrace()) # Backtrace won't be shown if we don't throw the error
+            end
             SDL2.SDL_ClearError()
     
             # Load from byte array

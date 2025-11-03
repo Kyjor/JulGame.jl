@@ -97,6 +97,7 @@ module SceneBuilderModule
             else
                 scalingQuality = "2"
             end
+            JulGame.SCALE_QUALITY = scalingQuality
             # "0" or "nearest": Nearest pixel sampling
             # "1" or "linear": Linear filtering (supported by OpenGL and Direct3D)
             # "2" or "best": Currently this is the same as "linear"
@@ -105,7 +106,7 @@ module SceneBuilderModule
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
-                return
+            return
             end
 
             # Preload all scenes if requested
@@ -251,13 +252,16 @@ module SceneBuilderModule
 
     """
     function create_new_entity(this::Scene)
-        push!(MAIN.scene.entities, Entity("New entity"))
+        entity = Entity("New entity")
+        push!(MAIN.scene.entities, entity)
+        return entity
     end
 
     function create_new_text_box(this::Scene)
         textBox = TextBox("TextBox")
         JulGame.UI.initialize(textBox)
         push!(MAIN.scene.uiElements, textBox)
+        return textBox
     end
     
     function create_new_screen_button(this::Scene)
@@ -277,6 +281,7 @@ module SceneBuilderModule
             JulGame.initialize(screenButton)
         end
         push!(MAIN.scene.uiElements, screenButton)
+        return screenButton
     end
 
     function create_new_canvas(this::Scene)
@@ -287,6 +292,7 @@ module SceneBuilderModule
             color=(255, 255, 255, 100)  # Semi-transparent white
         )
         push!(MAIN.scene.uiElements, canvas)
+        return canvas
     end
 
     function create_new_image(this::Scene)
@@ -296,6 +302,7 @@ module SceneBuilderModule
             color=(255, 255, 255, 100)
         )
         push!(MAIN.scene.uiElements, image)
+        return image
     end
 
     function create_new_rectangle(this::Scene)
@@ -305,6 +312,7 @@ module SceneBuilderModule
             position=Math.Vector2(0, 0),
         )
         push!(MAIN.scene.uiElements, rectangle)
+        return rectangle
     end
 
     function add_scripts_to_entities(path::String)

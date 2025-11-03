@@ -839,7 +839,8 @@ module ImmediateUIModule
                             clickEvents::Vector{Function}=Function[],
                             hoverEnterEvents::Vector{Function}=Function[],
                             hoverExitEvents::Vector{Function}=Function[],
-                            lifetime::Int=DEFAULT_LIFETIME)
+                            lifetime::Int=DEFAULT_LIFETIME,
+                            forceClickCheck::Bool=false)
         # Generate a composite ID that includes the component type
         composite_id = "image_$(id)"
         
@@ -864,6 +865,11 @@ module ImmediateUIModule
 
             if image.anchorOffset != anchorOffset
                 image.anchorOffset = anchorOffset
+                needsUpdate = true
+            end
+
+            if image.forceClickCheck != forceClickCheck
+                image.forceClickCheck = forceClickCheck
                 needsUpdate = true
             end
 
@@ -960,6 +966,7 @@ module ImmediateUIModule
                 size=size,
                 parent=parent,
                 rotation=rotation,
+                forceClickCheck=forceClickCheck,
                 clickEvents=clickEvents,
                 hoverEnterEvents=hoverEnterEvents,
                 hoverExitEvents=hoverExitEvents

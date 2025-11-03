@@ -11,6 +11,29 @@ module TextBoxModule
     export apply_effects!
     export update_effects      
     DEFAULT_FONT = "Default"
+    
+    # Helper to map JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
+    function get_scale_mode_from_quality()
+        return SDL2.SDL_ScaleModeBest
+        # TODO: Add text scaling option?
+        q = try
+            string(JulGame.SCALE_QUALITY)
+        catch
+            "2"
+        end
+        val = try
+            parse(Int, q)
+        catch
+            2
+        end
+        if val == 0
+            return SDL2.SDL_ScaleModeNearest
+        elseif val == 2
+            return SDL2.SDL_ScaleModeBest
+        else
+            return SDL2.SDL_ScaleModeLinear
+        end
+    end
     mutable struct TextBox <: UI.UIElement
         font::Union{Ptr{SDL2.TTF_Font}, Ptr{Nothing}}
         fontPath::String
@@ -158,6 +181,7 @@ module TextBoxModule
 
         camera = MAIN.scene.camera
         
+        SDL2.SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         # Handle world coordinates for world entities, similar to Sprite component
         if this.isWorldEntity && camera !== nothing
             # Calculate position in screen space
@@ -241,12 +265,6 @@ module TextBoxModule
         this.size = Math.Vector2(surface[1].w, surface[1].h)
         this.originalSize = this.size
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
-       
-
-        # Set texture scaling quality to linear (applies to styled path too)
-        if this.textTexture != C_NULL
-            SDL2.SDL_SetTextureScaleMode(this.textTexture, SDL2.SDL_ScaleModeLinear)
-        end
 
         if !this.isWorldEntity
             UI.align_to_anchor(this)
@@ -650,6 +668,8 @@ module TextBoxModule
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
                     this.size = Math.Vector2(w[], h[])
                     @debug "Effect texture created" name=this.name tex_ptr=this.effectTexture w=w[] h=h[]
+                    # Set scaling mode according to JulGame.SCALE_QUALITY
+                    SDL2.SDL_SetTextureScaleMode(this.effectTexture, get_scale_mode_from_quality())
                     
                     # Cache the result
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
