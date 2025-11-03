@@ -22,7 +22,7 @@ SimpleDirectMediaLayer = {url = "https://github.com/Kyjor/SimpleDirectMediaLayer
 Base64 = "^1"
 JSON3 = "^1"
 SimpleDirectMediaLayer = "^0.5"
-Statistics = "1.11.1"
+Statistics = "^1"
 julia = "^1.9"
 
 [extras]
