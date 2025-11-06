@@ -4,7 +4,7 @@ module InputModule
     using ..JulGame.Math
     using Dates
     using Base64
-    
+
     export Input
     mutable struct Input
         buttonsPressedDown::Vector{String}
@@ -28,7 +28,7 @@ module InputModule
         quit::Bool
 
         elementsBeingClickedDownOn
-        
+
         #Gamepad
         jaxis
         xDir
@@ -38,7 +38,7 @@ module InputModule
         numHats
         button
 
-        # Cursor bank 
+        # Cursor bank
         cursorBank::Dict{String, Ptr{SDL2.SDL_SystemCursor}} # Key is the name of the cursor, value is the SDL2 cursor
 
         # Testing
@@ -72,7 +72,7 @@ module InputModule
                 end
                 push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
             end
-            
+
             SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
             if SDL2.SDL_NumJoysticks() < 1
                 @debug("Warning: No joysticks connected!")
@@ -89,22 +89,22 @@ module InputModule
                 this.numAxes = SDL2.SDL_JoystickNumAxes(this.joystick)
                 this.numButtons = SDL2.SDL_JoystickNumButtons(this.joystick)
                 this.numHats = SDL2.SDL_JoystickNumHats(this.joystick)
-                
+
                 @debug("Now reading from joystick '$(unsafe_string(name))' with:")
                 @debug("$(this.numAxes) axes")
                 @debug("$(this.numButtons) buttons")
                 @debug("$(this.numHats) hats")
-                
+
             end
             this.jaxis = C_NULL
             this.xDir = 0
             this.yDir = 0
             this.button = 0
-            
-            this.cursorBank = Dict{String, SDL2.SDL_SystemCursor}() 
+
+            this.cursorBank = Dict{String, SDL2.SDL_SystemCursor}()
             create_cursor_bank(this)
             this.defaultCursor = this.cursorBank["arrow"]
-            
+
             this.isTestButtonClicked = false
 
             return this
@@ -118,7 +118,7 @@ module InputModule
         this.didMouseEventOccur = false
         this.didMouseMotionOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
-       
+
 
         while Bool(SDL2.SDL_PollEvent(event_ref))
             evt = event_ref[]
@@ -135,19 +135,19 @@ module InputModule
                 window_width = Ref{Cint}(0)
                 window_height = Ref{Cint}(0)
                 SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
-                
+
                 # Get current render output size
                 render_width = Ref{Cint}(0)
                 render_height = Ref{Cint}(0)
                 SDL2.SDL_GetRendererOutputSize(JulGame.Renderer, render_width, render_height)
-                
+
                 # Get base resolution from WindowManager
                 logical_size = JulGame.WindowManagerModule.get_logical_size()
-                
+
                 # Calculate scale factors between window and render sizes
                 scale_x = logical_size.x / window_width[]
                 scale_y = logical_size.y / window_height[]
-                
+
                 @debug("scale_x: $scale_x, scale_y: $scale_y")
                 @debug("window_width: $window_width[], window_height: $window_height[]")
                 @debug("render_width: $render_width[], render_height: $render_height[]")
@@ -188,7 +188,7 @@ module InputModule
                     this.mousePosition = Math.Vector2(0, 0)
                 end
             end
-            
+
             if this.editorCallback !== nothing
                 this.editorCallback(evt)
             end
@@ -223,7 +223,7 @@ module InputModule
             elseif evt.type == SDL2.SDL_CLIPBOARDUPDATE
                 @debug "Clipboard update"
             end
-            
+
             # Handle Ctrl+V for clipboard paste in editor
             if JulGame.IS_EDITOR && evt.type == SDL2.SDL_KEYDOWN
                 if evt.key.keysym.sym == SDL2.LibSDL2.SDLK_v && (evt.key.keysym.mod & SDL2.LibSDL2.KMOD_CTRL) != 0
@@ -231,7 +231,7 @@ module InputModule
                     handle_clipboard_paste()
                 end
             end
-            
+
 
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                 this.didMouseEventOccur = true
@@ -254,25 +254,29 @@ module InputModule
                     # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
                     #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
                                         # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
-                    
+
                     uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
                     entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
                     elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
-                    
+
                     # TODO: add rest of entities without sprites in default order
                     # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, MAIN.scene.entities)
                     # append!(elementsOrderedByLayerDescending, restOfEntities)
                     clickedAnElementAlready = false
                     hoveredAnElementAlready = false
                     for element in elementsOrderedByLayerDescending
-                        skipElement = false
+                        skipElement = !element.isActive
                         for canvas in canvases
                             if element in canvas.children && !canvas.isActive
                                 skipElement = true
                                 break
                             end
                         end
-                        if !element.isActive || skipElement
+                        if isa(element, JulGame.IEntity) && element.ignoreInputEvents
+                            skipElement = true
+                        end
+
+                        if skipElement
                             continue
                         end
 
@@ -285,7 +289,7 @@ module InputModule
                         # UI Element position and size in screen space (MUST BE SCALED)
                         elementPosition = get_element_position(element)
                         elementSize = get_element_size(element)
-                        screenElementX = elementPosition.x 
+                        screenElementX = elementPosition.x
                         screenElementY = elementPosition.y
                         screenElementWidth = elementSize.x
                         screenElementHeight = elementSize.y
@@ -310,11 +314,11 @@ module InputModule
 
                         if !clickedAnElementAlready || element.forceClickCheck
                             if  (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||
-                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) || 
+                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) ||
                                 (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||
                                 (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||
                                 (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
-                    
+
                                 JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
                                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                                    push!(this.elementsBeingClickedDownOn, element)
@@ -325,7 +329,7 @@ module InputModule
                             end
                         end
 
-                        if evt.type == SDL2.SDL_MOUSEBUTTONDOWN 
+                        if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                             # register that we clicked down on this element
                         elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition)"
@@ -339,7 +343,7 @@ module InputModule
                 end
 
                 handle_mouse_event(this, evt)
-            end 
+            end
 
             #if evt.type == SDL2.SDL_JOYAXISMOTION
                 if evt.jaxis.which == 0
@@ -386,7 +390,7 @@ module InputModule
                         this.button = 0
                     end
                 end
-                
+
                 for i in 0:this.numHats-1
 
                     hat = SDL2.SDL_JoystickGetHat(this.joystick, i)
@@ -406,7 +410,7 @@ module InputModule
             keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
             handle_key_event(this, keyboardState)
         end
-        
+
         if this.isTestButtonClicked
             lift_mouse_after_simulated_click(this)
         end
@@ -449,13 +453,13 @@ module InputModule
             end
         end
         return false
-    end    
+    end
 
     function handle_window_events(this::Input, event::SDL2.SDL_Event)
         if event.type != SDL2.SDL_WINDOWEVENT
             return
         end
-        
+
         # If we have access to the WindowManager through MAIN, delegate window events to it
         if JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing
             JulGame.WindowManagerModule.handle_window_event(event.window)
@@ -489,13 +493,13 @@ module InputModule
             elseif event.type == SDL2.SDL_MOUSEBUTTONUP && (button in this.mouseButtonsHeldDown)
                 push!(this.mouseButtonsReleased, button)
                 deleteat!(this.mouseButtonsHeldDown, findfirst(x -> x == button, this.mouseButtonsHeldDown))
-            end            
+            end
         end
     end
 
     """
         handle_clipboard_paste()
-    
+
     Handle Ctrl+V clipboard paste for images in the editor.
     Checks if clipboard contains image data and creates a temporary file for import.
     """
@@ -512,28 +516,28 @@ module InputModule
                 @debug "Windows detected, attempting to get image from clipboard"
                 handle_windows_clipboard_image()
             end
-            
+
             # Only check text clipboard if SDL reports it has text data
             # and avoid errors when clipboard contains binary data
             try
                 if SDL2.SDL_HasClipboardText() == SDL2.SDL_TRUE
                     clipboard_text = unsafe_string(SDL2.SDL_GetClipboardText())
-                    
+
                     # Skip if the text looks like an error message from xclip
                     if occursin("xclip: Error:", clipboard_text) || occursin("ProcessFailedException", clipboard_text)
                         @debug "Skipping clipboard text that appears to be an error message"
                         return
                     end
-                    
+
                     @debug "Clipboard text: $(clipboard_text[1:min(100, length(clipboard_text))])"
-                    
+
                     # Check if it's a file path to an image
                     if isfile(clipboard_text) && is_image_file_by_extension(clipboard_text)
                         @debug "Clipboard contains image file path: $(clipboard_text)"
                         add_clipboard_file_to_import_queue(clipboard_text)
                         return
                     end
-                    
+
                     # Check if it's base64 image data (common format: data:image/png;base64,...)
                     if startswith(clipboard_text, "data:image/")
                         @debug "Clipboard contains base64 image data"
@@ -544,17 +548,17 @@ module InputModule
             catch e
                 @debug "Error reading text clipboard (likely contains binary data): $(e)"
             end
-            
+
             # No additional fallback needed - platform-specific functions handle their own cases
-            
+
         catch e
             @error "Error handling clipboard paste: $(e)"
         end
     end
-    
+
     """
         handle_x11_clipboard_image()
-    
+
     Try to get image data from X11 clipboard using xclip command.
     """
     function handle_x11_clipboard_image()
@@ -562,7 +566,7 @@ module InputModule
             # Check if xclip is available
             if success(`which xclip`)
                 @debug "xclip found, attempting to get image from clipboard"
-                
+
                 # Try to get PNG data from clipboard
                 try
                     png_data = read(`xclip -selection clipboard -t image/png -o`)
@@ -579,7 +583,7 @@ module InputModule
                 catch e
                     @debug "No PNG data in clipboard: $(e)"
                 end
-                
+
                 # Try to get JPEG data from clipboard
                 try
                     jpeg_data = read(`xclip -selection clipboard -t image/jpeg -o`)
@@ -596,7 +600,7 @@ module InputModule
                 catch e
                     @debug "No JPEG data in clipboard: $(e)"
                 end
-                
+
                 @debug "No image data found in X11 clipboard"
             else
                 @debug "xclip not available, cannot access X11 clipboard"
@@ -608,7 +612,7 @@ module InputModule
 
     """
         handle_macos_clipboard_image()
-    
+
     Try to get image data from macOS clipboard using pbpaste command.
     """
     function handle_macos_clipboard_image()
@@ -616,7 +620,7 @@ module InputModule
             # Check if pbpaste is available (should be on all macOS systems)
             if success(`which pbpaste`)
                 @debug "pbpaste found, attempting to get image from clipboard"
-                
+
                 # Try to get PNG data from clipboard
                 try
                     png_data = read(`pbpaste -pboard general -Prefer png`)
@@ -633,7 +637,7 @@ module InputModule
                 catch e
                     @debug "No PNG data in clipboard: $(e)"
                 end
-                
+
                 # Try to get TIFF data from clipboard (common on macOS)
                 try
                     tiff_data = read(`pbpaste -pboard general -Prefer tiff`)
@@ -650,7 +654,7 @@ module InputModule
                 catch e
                     @debug "No TIFF data in clipboard: $(e)"
                 end
-                
+
                 # Try to get JPEG data from clipboard
                 try
                     jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
@@ -667,7 +671,7 @@ module InputModule
                 catch e
                     @debug "No JPEG data in clipboard: $(e)"
                 end
-                
+
                 @debug "No image data found in macOS clipboard"
             else
                 @debug "pbpaste not available, cannot access macOS clipboard"
@@ -679,13 +683,13 @@ module InputModule
 
     """
         handle_windows_clipboard_image()
-    
+
     Try to get image data from Windows clipboard using PowerShell.
     """
     function handle_windows_clipboard_image()
         try
             @debug "Attempting to get image from Windows clipboard using PowerShell"
-            
+
             # PowerShell script to get image from clipboard and save as PNG
             powershell_script = """
             Add-Type -AssemblyName System.Windows.Forms
@@ -697,7 +701,7 @@ module InputModule
                 Write-Output \$temp_file
             }
             """
-            
+
             try
                 # Run PowerShell script
                 result = readchomp(`powershell -Command "$powershell_script"`)
@@ -709,7 +713,7 @@ module InputModule
             catch e
                 @debug "No image data in Windows clipboard: $(e)"
             end
-            
+
             @debug "No image data found in Windows clipboard"
         catch e
             @warn "Error accessing Windows clipboard: $(e)"
@@ -718,17 +722,17 @@ module InputModule
 
     """
         is_image_file_by_extension(filepath::String) -> Bool
-    
+
     Check if file has an image extension.
     """
     function is_image_file_by_extension(filepath::String)
         ext = lowercase(splitext(filepath)[2])
         return ext in [".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".webp"]
     end
-    
+
     """
         add_clipboard_file_to_import_queue(filepath::String)
-    
+
     Add a clipboard file path to the import queue.
     """
     function add_clipboard_file_to_import_queue(filepath::String)
@@ -740,10 +744,10 @@ module InputModule
         end
         @debug "Added clipboard file to import queue: $(basename(filepath))"
     end
-    
+
     """
         handle_base64_image_data(data::String)
-    
+
     Handle base64 encoded image data from clipboard.
     Creates a temporary file and adds it to the import queue.
     """
@@ -754,17 +758,17 @@ module InputModule
                 @warn "Invalid base64 image data format"
                 return
             end
-            
+
             # Extract MIME type and base64 data
             parts = split(data, ";base64,")
             if length(parts) != 2
                 @warn "Invalid base64 image data format"
                 return
             end
-            
+
             mime_part = parts[1]
             base64_data = parts[2]
-            
+
             # Determine file extension from MIME type
             extension = ".png"  # default
             if occursin("image/jpeg", mime_part) || occursin("image/jpg", mime_part)
@@ -778,29 +782,29 @@ module InputModule
             elseif occursin("image/webp", mime_part)
                 extension = ".webp"
             end
-            
+
             # Create temporary file
             temp_dir = mktempdir()
             timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
             temp_filename = "clipboard_image_$(timestamp)$(extension)"
             temp_filepath = joinpath(temp_dir, temp_filename)
-            
+
             # Decode base64 and write to file
             image_data = Base64.base64decode(base64_data)
             write(temp_filepath, image_data)
-            
+
             @debug "Created temporary image file from clipboard: $(temp_filepath)"
-            
+
             # Add to import queue
             add_clipboard_file_to_import_queue(temp_filepath)
-            
+
         catch e
             @error "Error processing base64 image data: $(e)"
         end
     end
 
     function update_input_state(this::Input, data::Dict{String, Any})
-        this.buttonsHeldDown = [key for (key, value) in data if value]        
+        this.buttonsHeldDown = [key for (key, value) in data if value]
     end
 
     function get_button_held_down(this::Input, button::String)
@@ -903,14 +907,14 @@ module InputModule
     # Initialize an SDL_Event instance
     function init_sdl_event()::Ptr{SDL2.SDL_Event}
         # Create a vector of UInt8
-        data = UInt8[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] 
-        
+        data = UInt8[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
          # Convert the vector to a tuple of size 56
         ntuple_data = Tuple(data)
 
@@ -927,7 +931,7 @@ module InputModule
     function init_mouse_button_event()::Ptr{SDL2.SDL_MouseButtonEvent}
         # Allocate memory for SDL_MouseButtonEvent struct
         ptr_event = Ptr{SDL2.SDL_MouseButtonEvent}(Libc.malloc(sizeof(SDL2.SDL_MouseButtonEvent)))
-    
+
         # Initialize the fields directly
         unsafe_store!(ptr_event, SDL2.SDL_MouseButtonEvent(
             0x0,             # type (just an example, you'll set this later)
@@ -941,24 +945,24 @@ module InputModule
             0x0,             # x (position)
             0x0              # y (position)
         ))
-    
+
         # Return the pointer to the struct
         return ptr_event
-    end    
+    end
 
     function simulate_mouse_click(this::Input, window::Ptr{SDL2.SDL_Window}, x::Number, y::Number)
         # Get current window size
         window_width = Ref{Cint}(0)
         window_height = Ref{Cint}(0)
         SDL2.SDL_GetWindowSize(window, window_width, window_height)
-        
+
         # Get base resolution from WindowManager
         logical_size = JulGame.WindowManagerModule.get_logical_size()
-        
+
         # Calculate scale factors (same as in poll_input)
         scale_x = logical_size.x / window_width[]
         scale_y = logical_size.y / window_height[]
-        
+
         # Convert logical coordinates to window coordinates
         window_x = round(Int, x / scale_x)
         window_y = round(Int, y / scale_y)
@@ -967,7 +971,7 @@ module InputModule
         # Move the mouse to the specified position
         @debug "Moving mouse to $(x), $(y)"
         SDL2.SDL_WarpMouseInWindow(window, x, y)
-        
+
         # Create a mouse button down event
         mouse_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
         mouse_event.type = SDL2.SDL_MOUSEBUTTONDOWN
@@ -983,7 +987,7 @@ module InputModule
             0,                         # Padding (unused, set to 0)
             x,                         # X position
             y                          # Y position
-        ) 
+        )
         SDL2.SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = true
     end
@@ -1006,7 +1010,7 @@ module InputModule
             0,                         # Padding (unused, set to 0)
             0,                         # X position # todo: get actual mouse position
             0                          # Y position # todo: get actual mouse position
-        ) 
+        )
         SDL2.SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = false
     end
@@ -1050,13 +1054,13 @@ module InputModule
     function get_comma_separated_path(path::String)
         # Normalize the path to use forward slashes
         normalized_path = replace(path, '\\' => '/')
-        
+
         # Split the path into components
         parts = split(normalized_path, '/')
-        
+
         result = join(parts[1:end], ",")
-    
-        return result  
+
+        return result
     end
 
     """
@@ -1072,7 +1076,7 @@ module InputModule
 
         # Example
         set_cursor_with_image(this, "cursor.png", 10, 10, 2.0)  # Scales up by 2x
-    """ 
+    """
     function set_cursor_with_image(this::Input, imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)
         surface = nothing
         if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
@@ -1083,44 +1087,44 @@ module InputModule
                 @debug("comma separated path: ", get_comma_separated_path(imagePath))
                 surface = SDL2.IMG_Load_RW(rw, 1)
             end
-        else 
+        else
             @debug("loading cursor from disk")
             surface = SDL2.IMG_Load(pointer(joinpath(JulGame.BasePath, "assets", "images", imagePath)))
         end
         @debug "Loading image from disk $(fullPath) for sprite, there are $(length(JulGame.IMAGE_CACHE)) images in cache"
-        
+
         if surface == C_NULL
             @error "Failed to load cursor image: $(unsafe_string(SDL2.SDL_GetError()))"
             return
         end
-    
+
         # Get original width and height
         original_width = unsafe_load(surface).w
         original_height = unsafe_load(surface).h
-    
+
         # Calculate new dimensions
         new_width = Int(round(original_width * scale_factor))
         new_height = Int(round(original_height * scale_factor))
-    
+
         # Scale the hotspot position
         new_x = Int(round(x * scale_factor))
         new_y = Int(round(y * scale_factor))
-    
+
         # Create a new surface for the scaled image
         scaled_surface = SDL2.SDL_CreateRGBSurface(0, new_width, new_height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
-        
+
         if scaled_surface == C_NULL
             @error "Failed to create scaled surface: $(unsafe_string(SDL2.SDL_GetError()))"
             SDL2.SDL_FreeSurface(surface)
             return
         end
-    
+
         # Scale the image onto the new surface
         SDL2.SDL_BlitScaled(surface, C_NULL, scaled_surface, C_NULL)
-    
+
         # Create cursor from the scaled surface with adjusted hotspot
         cursor = SDL2.SDL_CreateColorCursor(scaled_surface, new_x, new_y)
-    
+
         if cursor != C_NULL
             set_cursor(cursor)
             this.defaultCursor = cursor
@@ -1128,7 +1132,7 @@ module InputModule
         else
             @error "Issue loading cursor: $(unsafe_string(SDL2.SDL_GetError()))"
         end
-    
+
         # Free surfaces to avoid memory leaks
         SDL2.SDL_FreeSurface(surface)
         SDL2.SDL_FreeSurface(scaled_surface)
@@ -1146,7 +1150,7 @@ module InputModule
 
     """
     collect_canvas_children(canvas::UI.Canvas, allElements::Vector{UI.UIElement})
-    
+
     Recursively collects all children of a canvas and its sub-canvases.
     """
     # function collect_canvas_children(canvas::UI.Canvas, allElements::Vector{UI.UIElement})

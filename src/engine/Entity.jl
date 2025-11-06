@@ -39,8 +39,9 @@ module EntityModule
         hoverExitEvents::Vector{Function}
         isHovered::Bool
         forceClickCheck::Bool
+        ignoreInputEvents::Bool
 
-        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
+        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
             this = new()
 
             this.id = id
@@ -64,10 +65,11 @@ module EntityModule
             this.rigidbody = C_NULL
             this.parent = nothing
             this.isHovered = false
-            this.clickEvents = Function[]
+            this.clickEvents = clickEvents
             this.hoverEnterEvents = Function[]
             this.hoverExitEvents = Function[]
-            this.forceClickCheck = false
+            this.forceClickCheck = forceClickCheck
+            this.ignoreInputEvents = ignoreInputEvents
 
             return this
         end
