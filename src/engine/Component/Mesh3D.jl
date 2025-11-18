@@ -180,7 +180,7 @@ module Mesh3DModule
                          filter::Int = TEXTURE_FILTER_LINEAR,
                          type::Int = TEXTURE_TYPE_DIFFUSE,
                          compression::Int = TEXTURE_COMPRESSION_NONE)::Texture
-        println("Loading texture from: $file_path")
+        @debug("Loading texture from: $file_path")
         # Get file extension
         ext = lowercase(splitext(file_path)[2])
         
@@ -201,7 +201,7 @@ module Mesh3DModule
             error("Failed to load texture: $file_path")
         end
 
-        println("Surface loaded successfully")
+        @debug("Surface loaded successfully")
         texture = Texture(surface, mode, filter, type, compression)
         
         # Apply compression if requested
@@ -299,6 +299,11 @@ module Mesh3DModule
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{SDL_Texture}, Ptr{Nothing}}
         needsEffectUpdate::Bool
+        # Hierarchical z-buffer for depth testing (tile-based for performance)
+        zBuffer::Matrix{Float64}
+        zBufferWidth::Int
+        zBufferHeight::Int
+        tileSize::Int  # Size of each tile (e.g., 16x16 pixels per tile)
 
         function Mesh3D()
             this = new()
@@ -318,6 +323,11 @@ module Mesh3DModule
             this.effects = Any[]
             this.effectTexture = C_NULL
             this.needsEffectUpdate = false
+            # Initialize z-buffer (will be properly sized in initialize)
+            this.zBuffer = Matrix{Float64}(undef, 0, 0)
+            this.zBufferWidth = 0
+            this.zBufferHeight = 0
+            this.tileSize = 16
             return this
         end
 
@@ -348,6 +358,12 @@ module Mesh3DModule
             this.effectTexture = C_NULL
             this.needsEffectUpdate = false
             
+            # Initialize z-buffer (will be properly sized in initialize)
+            this.zBuffer = Matrix{Float64}(undef, 0, 0)
+            this.zBufferWidth = 0
+            this.zBufferHeight = 0
+            this.tileSize = 16
+            
             return this
         end
     end
@@ -364,11 +380,11 @@ module Mesh3DModule
         try
             # Use the FastObj parser to load the mesh data
             vertices, normals, texcoords, faces, face_texcoords, face_normals, materials = FastObj.parse_obj_file(file_path)
-            println("Parsed OBJ file successfully")
-            println("Vertices: $(length(vertices))")
-            println("Normals: $(length(normals))")
-            println("Texcoords: $(length(texcoords))")
-            println("Faces: $(length(faces))")
+            @debug("Parsed OBJ file successfully")
+            @debug("Vertices: $(length(vertices))")
+            @debug("Normals: $(length(normals))")
+            @debug("Texcoords: $(length(texcoords))")
+            @debug("Faces: $(length(faces))")
             
             # Clear existing data
             empty!(this.mesh.tris)
@@ -376,13 +392,13 @@ module Mesh3DModule
             
             # Create triangles from the parsed data
             for (i, face) in enumerate(faces)
-                println("Processing face $i with $(length(face)) vertices")
-                println("Face vertices: $face")
+                @debug("Processing face $i with $(length(face)) vertices")
+                @debug("Face vertices: $face")
                 
                 if length(face) >= 3
                     # For quads, create two triangles
                     if length(face) == 4
-                        println("Creating two triangles from quad face")
+                        @debug("Creating two triangles from quad face")
                         # First triangle
                         tri1 = triangle([
                             vertices[face[1]],
@@ -392,7 +408,7 @@ module Mesh3DModule
                         
                         # Add texture coordinates if available
                         if i <= length(face_texcoords) && !isempty(face_texcoords[i])
-                            println("Adding texture coordinates to first triangle")
+                            @debug("Adding texture coordinates to first triangle")
                             tri1.texCoords = [
                                 texcoords[face_texcoords[i][1]],
                                 texcoords[face_texcoords[i][2]],
@@ -403,7 +419,7 @@ module Mesh3DModule
                         # Set the material for this triangle
                         tri1.material = this.mesh.currentMaterial
                         push!(this.mesh.tris, tri1)
-                        println("Added first triangle to mesh")
+                        @debug("Added first triangle to mesh")
                         
                         # Second triangle
                         tri2 = triangle([
@@ -414,7 +430,7 @@ module Mesh3DModule
                         
                         # Add texture coordinates if available
                         if i <= length(face_texcoords) && !isempty(face_texcoords[i])
-                            println("Adding texture coordinates to second triangle")
+                            @debug("Adding texture coordinates to second triangle")
                             tri2.texCoords = [
                                 texcoords[face_texcoords[i][1]],
                                 texcoords[face_texcoords[i][3]],
@@ -425,9 +441,9 @@ module Mesh3DModule
                         # Set the material for this triangle
                         tri2.material = this.mesh.currentMaterial
                         push!(this.mesh.tris, tri2)
-                        println("Added second triangle to mesh")
+                        @debug("Added second triangle to mesh")
                     else
-                        println("Creating single triangle from face")
+                        @debug("Creating single triangle from face")
                         # For triangles, create a single triangle
                         tri = triangle([
                             vertices[face[1]],
@@ -437,7 +453,7 @@ module Mesh3DModule
                         
                         # Add texture coordinates if available
                         if i <= length(face_texcoords) && !isempty(face_texcoords[i])
-                            println("Adding texture coordinates to triangle")
+                            @debug("Adding texture coordinates to triangle")
                             tri.texCoords = [
                                 texcoords[face_texcoords[i][1]],
                                 texcoords[face_texcoords[i][2]],
@@ -448,15 +464,15 @@ module Mesh3DModule
                         # Set the material for this triangle
                         tri.material = this.mesh.currentMaterial
                         push!(this.mesh.tris, tri)
-                        println("Added triangle to mesh")
+                        @debug("Added triangle to mesh")
                     end
                 else
-                    println("Skipping face with less than 3 vertices")
+                    @debug("Skipping face with less than 3 vertices")
                 end
             end
             
-            println("Created $(length(this.mesh.tris)) triangles")
-            println("Current material: $(this.mesh.currentMaterial)")
+            @debug("Created $(length(this.mesh.tris)) triangles")
+            @debug("Current material: $(this.mesh.currentMaterial)")
             return true
         catch e
             @error "Failed to load OBJ file: $file_path" exception=(e, catch_backtrace())
@@ -482,7 +498,7 @@ module Mesh3DModule
             end
 
             if s[1] == "newmtl"
-                println("newmtl: ", s[2])
+                @debug("newmtl: ", s[2])
                 current_material = Material(string(s[2]))
                 this.mesh.materials[s[2]] = current_material
             elseif s[1] == "map_Kd" && current_material !== nothing
@@ -537,8 +553,14 @@ module Mesh3DModule
         this.fAspectRatio = windowSize.y / windowSize.x
         this.matProj = MatrixOps.matrix_make_projection(this.fFov, this.fAspectRatio, this.fNear, this.fFar)
         
+        # Initialize hierarchical z-buffer with tile-based dimensions
+        # Instead of per-pixel (e.g., 1920x1080), use tiles (e.g., 120x68 tiles at 16x16 each)
+        this.zBufferWidth = Int(ceil(windowSize.x / this.tileSize))
+        this.zBufferHeight = Int(ceil(windowSize.y / this.tileSize))
+        this.zBuffer = fill(Inf, this.zBufferHeight, this.zBufferWidth)
+        
         if length(this.mesh.tris) == 0
-            println("creating cube")
+            @debug("creating cube")
             this.mesh = create_cube()
         end
 
@@ -588,9 +610,9 @@ module Mesh3DModule
             if JulGame.InputModule.get_button_pressed("2")
 
                 camera = JulGame.MAIN.scene.camera
-                println("trying to point at")
+                @debug("trying to point at")
                 if camera !== nothing
-                    println("point at")
+                    @debug("point at")
                     # Calculate direction to cube
                     cubePos = this.parent.transform.position
                     cameraPos = vec3d(camera.position.x, camera.position.y, camera.position.z)
@@ -607,6 +629,74 @@ module Mesh3DModule
                 end
             end
         end
+    end
+
+    # Z-buffer helper functions
+    function clear_zbuffer!(this::Mesh3D)
+        fill!(this.zBuffer, Inf)
+    end
+
+    function get_triangle_min_z(tri::triangle)::Float64
+        return min(tri.p[1].z, tri.p[2].z, tri.p[3].z)
+    end
+
+    function update_zbuffer!(this::Mesh3D, tri::triangle)
+        # Get triangle bounding box in screen space (pixels)
+        min_px = floor(Int, min(tri.p[1].x, tri.p[2].x, tri.p[3].x))
+        max_px = ceil(Int, max(tri.p[1].x, tri.p[2].x, tri.p[3].x))
+        min_py = floor(Int, min(tri.p[1].y, tri.p[2].y, tri.p[3].y))
+        max_py = ceil(Int, max(tri.p[1].y, tri.p[2].y, tri.p[3].y))
+        
+        # Convert to tile coordinates
+        min_tile_x = max(1, div(min_px, this.tileSize) + 1)
+        max_tile_x = min(this.zBufferWidth, div(max_px, this.tileSize) + 1)
+        min_tile_y = max(1, div(min_py, this.tileSize) + 1)
+        max_tile_y = min(this.zBufferHeight, div(max_py, this.tileSize) + 1)
+        
+        # Get minimum z value for this triangle
+        min_z = get_triangle_min_z(tri)
+        
+        # Update z-buffer tiles
+        for tile_y in min_tile_y:max_tile_y
+            for tile_x in min_tile_x:max_tile_x
+                if this.zBuffer[tile_y, tile_x] > min_z
+                    this.zBuffer[tile_y, tile_x] = min_z
+                end
+            end
+        end
+    end
+
+    function test_zbuffer(this::Mesh3D, tri::triangle)::Bool
+        # Get triangle bounding box in screen space (pixels)
+        min_px = floor(Int, min(tri.p[1].x, tri.p[2].x, tri.p[3].x))
+        max_px = ceil(Int, max(tri.p[1].x, tri.p[2].x, tri.p[3].x))
+        min_py = floor(Int, min(tri.p[1].y, tri.p[2].y, tri.p[3].y))
+        max_py = ceil(Int, max(tri.p[1].y, tri.p[2].y, tri.p[3].y))
+        
+        # Convert to tile coordinates
+        min_tile_x = max(1, div(min_px, this.tileSize) + 1)
+        max_tile_x = min(this.zBufferWidth, div(max_px, this.tileSize) + 1)
+        min_tile_y = max(1, div(min_py, this.tileSize) + 1)
+        max_tile_y = min(this.zBufferHeight, div(max_py, this.tileSize) + 1)
+        
+        # Check if bounding box is valid
+        if min_tile_x > max_tile_x || min_tile_y > max_tile_y
+            return false
+        end
+        
+        # Get minimum z value for this triangle
+        min_z = get_triangle_min_z(tri)
+        
+        # Test if any tile in the bounding box would pass depth test
+        for tile_y in min_tile_y:max_tile_y
+            for tile_x in min_tile_x:max_tile_x
+                if min_z < this.zBuffer[tile_y, tile_x]
+                    return true  # At least some part might be visible
+                end
+            end
+        end
+        
+        return false  # Completely occluded
     end
 
     function Component.render(this::Mesh3D, main)
@@ -757,10 +847,13 @@ module Mesh3DModule
             end
         end
 
-        # Sort triangles by average z depth (back to front)
-        sort!(this.vecTrianglesToRaster, by = avg_z, rev = true)
+        # Clear z-buffer for this frame
+        clear_zbuffer!(this)
 
-        # Render triangles
+        # Group triangles by material for batch rendering
+        materialBatches = Dict{String, Vector{triangle}}()
+
+        # Clip and group triangles by material
         for triToRaster in this.vecTrianglesToRaster
             if isnan(triToRaster.p[1].x) || isnan(triToRaster.p[1].y) ||
                isnan(triToRaster.p[2].x) || isnan(triToRaster.p[2].y) ||
@@ -799,27 +892,44 @@ module Mesh3DModule
                 nNewTriangles = length(listTriangles)
             end
 
-            # Draw triangles
+            # Group clipped triangles by material
             for tri in listTriangles
-                # Get material for the triangle
-                material = get(this.mesh.materials, this.mesh.currentMaterial, Material())
-                
-                # Apply texture coordinates based on texture mode if texture exists
-                tex_coords = copy(tri.texCoords)
-                
-                # Get the diffuse texture (or any available texture) for rendering
-                texture = nothing
-                if haskey(material.textures, TEXTURE_TYPE_DIFFUSE)
-                    texture = material.textures[TEXTURE_TYPE_DIFFUSE]
-                    println("Using diffuse texture")
-                elseif !isempty(material.textures)
-                    texture = first(material.textures)[2]
-                    println("Using fallback texture")
+                # Test z-buffer to skip occluded triangles
+                if !test_zbuffer(this, tri)
+                    continue
                 end
+                
+                # Get material name from triangle
+                matName = triToRaster.material
+                if !haskey(materialBatches, matName)
+                    materialBatches[matName] = triangle[]
+                end
+                push!(materialBatches[matName], tri)
+            end
+        end
 
+        # Render triangles batched by material
+        for (matName, triangles) in materialBatches
+            # Lookup material once per batch
+            material = get(this.mesh.materials, matName, Material())
+            
+            # Get the diffuse texture (or any available texture) for rendering
+            texture = nothing
+            if haskey(material.textures, TEXTURE_TYPE_DIFFUSE)
+                texture = material.textures[TEXTURE_TYPE_DIFFUSE]
+            elseif !isempty(material.textures)
+                texture = first(material.textures)[2]
+            end
+            
+            texture_ptr = texture !== nothing ? texture.texture : C_NULL
+            
+            # Render all triangles with this material
+            for tri in triangles
+                # Apply texture coordinates based on texture mode if texture exists
+                tex_coords = tri.texCoords
+                
                 if texture !== nothing
                     tex_coords = [apply_texture_mode(coord, texture) for coord in tex_coords]
-                    #println("Texture coordinates applied: ", tex_coords)
                 end
 
                 sdl_verts = [
@@ -828,22 +938,17 @@ module Mesh3DModule
                     SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(tex_coords[3].x, tex_coords[3].y))
                 ]
 
-                # Use material texture if available, otherwise use color
-                texture_ptr = texture !== nothing ? texture.texture : C_NULL
-                if texture_ptr != C_NULL
-                    #println("Rendering with texture")
-                else
-                    #println("Rendering without texture")
-                end
-
                 # Set the blend mode for proper texture rendering
                 SDL_SetRenderDrawBlendMode(JulGame.Renderer, SDL_BLENDMODE_BLEND)
                 
                 # Render the geometry
                 result = SDL_RenderGeometry(JulGame.Renderer, texture_ptr, sdl_verts, length(sdl_verts), C_NULL, 0)
                 if result < 0
-                    println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
+                    @debug("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
                 end
+                
+                # Update z-buffer with this triangle's depth
+                update_zbuffer!(this, tri)
                 
                 if JulGame.IS_DEBUG
                     SDL_RenderDrawLine(
@@ -871,11 +976,6 @@ module Mesh3DModule
     function Component.destroy(this::Mesh3D)
         empty!(this.mesh.tris)
         empty!(this.vecTrianglesToRaster)
-    end
-
-    function avg_z(t::triangle)
-        z_vals = [p.z for p in t.p]
-        return sum(z_vals) / length(z_vals)
     end
 
     function triangle_clip_against_plane(plane_p::vec3d, plane_n::vec3d, in_tri::Ref{triangle}, out_tris::Ref{Vector{triangle}})::Int
@@ -932,6 +1032,8 @@ module Mesh3DModule
         if nInsidePointCount == 1 && nOutsidePointCount == 2
             out_tris[][1].color = in_tri[].color
             out_tris[][1].sym = in_tri[].sym
+            out_tris[][1].material = in_tri[].material
+            out_tris[][1].texCoords = in_tri[].texCoords
             
             out_tris[][1].p[1] = inside_points[1]
             out_tris[][1].p[2] = MatrixOps.vector_intersect_plane(plane_p, plane_n, inside_points[1], outside_points[1])
@@ -943,9 +1045,13 @@ module Mesh3DModule
         if nInsidePointCount == 2 && nOutsidePointCount == 1
             out_tris[][1].color = in_tri[].color
             out_tris[][1].sym = in_tri[].sym
+            out_tris[][1].material = in_tri[].material
+            out_tris[][1].texCoords = in_tri[].texCoords
             
             out_tris[][2].color = in_tri[].color
             out_tris[][2].sym = in_tri[].sym
+            out_tris[][2].material = in_tri[].material
+            out_tris[][2].texCoords = in_tri[].texCoords
 
             out_tris[][1].p[1] = inside_points[1]
             out_tris[][1].p[2] = inside_points[2]

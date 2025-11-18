@@ -11,7 +11,7 @@ module MeshLoaderIntegrationModule
     # Import the types we need
     using ..Math3DModule: Vec3D
     using ..Geometry3DModule: UV
-    using ..Materials3DModule: RenderMaterial, MaterialFace, RenderMesh
+    using ..Materials3DModule: RenderMaterial, MaterialFace, RenderMesh, compute_mesh_bounds!
     using ..MeshLoader3DModule: parse_mtl_file
     
     export load_mesh_from_file!
@@ -75,6 +75,9 @@ module MeshLoaderIntegrationModule
                 end
                 
                 @info "Custom OBJ parser loaded $(length(render_mesh.vertices)) vertices, $(length(render_mesh.uv_coordinates)) UVs, $(length(render_mesh.faces)) faces"
+                
+                # Compute and cache bounding box for shadow calculations (performance optimization)
+                compute_mesh_bounds!(render_mesh)
                 
                 # Add to renderer and return early
                 push!(renderer.meshes, render_mesh)
@@ -236,6 +239,9 @@ module MeshLoaderIntegrationModule
                 @error "Unsupported mesh format for file: $file_path. Type: $(typeof(mesh_data))"
                 return nothing
             end
+            
+            # Compute and cache bounding box for shadow calculations (performance optimization)
+            compute_mesh_bounds!(render_mesh)
             
             # Add to renderer
             push!(renderer.meshes, render_mesh)

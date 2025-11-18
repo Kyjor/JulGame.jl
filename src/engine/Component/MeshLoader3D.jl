@@ -67,7 +67,7 @@ module MeshLoader3DModule
                     
                     SDL_FreeSurface(surface)
                     
-                    @info "Extracted average color from texture '$texture_path' ($(sample_count) samples): RGB($avg_r, $avg_g, $avg_b)"
+                    @debug "Extracted average color from texture '$texture_path' ($(sample_count) samples): RGB($avg_r, $avg_g, $avg_b)"
                     return Vec3D(avg_r, avg_g, avg_b)
                 else
                     SDL_FreeSurface(surface)
@@ -124,7 +124,7 @@ module MeshLoader3DModule
                 
             elseif tokens[1] == "usemtl" && length(tokens) >= 2
                 current_material = tokens[2]
-                @info "OBJ: Switching to material '$current_material'"
+                @debug "OBJ: Switching to material '$current_material'"
                 
             elseif tokens[1] == "f" && length(tokens) >= 4
                 # Face definition: f v1/vt1/vn1 v2/vt2/vn2 v3/vt3/vn3 [v4/vt4/vn4]
@@ -148,12 +148,12 @@ module MeshLoader3DModule
                         uv_idx = parse(Int, parts[2])
                         push!(uv_indices, uv_idx)
                         if length(uv_indices) <= 3  # Debug first few
-                            @info "OBJ: Face vertex $(length(vertex_indices)) has UV index: $uv_idx (from parts[2]='$(parts[2])')"
+                            @debug "OBJ: Face vertex $(length(vertex_indices)) has UV index: $uv_idx (from parts[2]='$(parts[2])')"
                         end
                     else
                         push!(uv_indices, 0)  # No UV coordinate
                         if length(uv_indices) <= 3  # Debug first few
-                            @info "OBJ: Face vertex $(length(vertex_indices)) has NO UV index, defaulting to 0"
+                            @debug "OBJ: Face vertex $(length(vertex_indices)) has NO UV index, defaulting to 0"
                         end
                     end
                 end
@@ -181,22 +181,22 @@ module MeshLoader3DModule
             end
         end
         
-        @info "OBJ: Parsed $(length(vertices)) vertices, $(length(uv_coords)) UV coordinates, $(length(faces_with_materials)) faces"
+        @debug "OBJ: Parsed $(length(vertices)) vertices, $(length(uv_coords)) UV coordinates, $(length(faces_with_materials)) faces"
         
         # Debug: Print some UV coordinates
         if !isempty(uv_coords)
-            @info "First few UV coordinates:"
+            @debug "First few UV coordinates:"
             for i in 1:min(5, length(uv_coords))
-                @info "  UV $i: ($(uv_coords[i].u), $(uv_coords[i].v))"
+                @debug "  UV $i: ($(uv_coords[i].u), $(uv_coords[i].v))"
             end
         end
         
         # Debug: Print some face UV indices
         if !isempty(faces_with_materials)
-            @info "First few face UV indices:"
+            @debug "First few face UV indices:"
             for i in 1:min(3, length(faces_with_materials))
                 vertex_indices, uv_indices, material = faces_with_materials[i]
-                @info "  Face $i: UV indices = $uv_indices, Material = '$material'"
+                @debug "  Face $i: UV indices = $uv_indices, Material = '$material'"
             end
         end
         
@@ -317,9 +317,9 @@ module MeshLoader3DModule
                     if current_material.diffuse_color == Vec3D(0.8, 0.8, 0.8)  # Default color
                         texture_color = load_texture_average_color(texture_path)
                         current_material.diffuse_color = texture_color
-                        @info "Material '$current_name' no Kd specified, using texture color: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
+                        @debug "Material '$current_name' no Kd specified, using texture color: RGB($(texture_color.x), $(texture_color.y), $(texture_color.z))"
                     else
-                        @info "Material '$current_name' using specified Kd color: RGB($(current_material.diffuse_color.x), $(current_material.diffuse_color.y), $(current_material.diffuse_color.z)) with texture: $texture_path"
+                        @debug "Material '$current_name' using specified Kd color: RGB($(current_material.diffuse_color.x), $(current_material.diffuse_color.y), $(current_material.diffuse_color.z)) with texture: $texture_path"
                     end
                 else
                     @warn "Texture file not found: $texture_path"

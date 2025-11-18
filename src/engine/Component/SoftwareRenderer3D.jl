@@ -27,6 +27,7 @@ module SoftwareRenderer3DModule
     export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox, RenderMesh, load_mesh_from_file!
     export LightType, Light3D, add_light!, remove_light!, clear_lights!, set_ambient_light!
     export enable_lighting!, disable_lighting!, enable_shadows!, disable_shadows!
+    export enable_profiling!, disable_profiling!, print_profiling_stats!, get_profiling_stats, enable_fast_sort!, enable_cached_sort!
 
     # Lighting system enums and structures
     @enum LightType begin
@@ -80,6 +81,151 @@ module SoftwareRenderer3DModule
                         perspective_divide!
     using .MeshLoader3DModule: parse_obj_file, parse_mtl_file, parse_obj_materials, load_texture_average_color
 
+    # Performance profiling structure
+    mutable struct RenderProfiler
+        # Flush/render pipeline
+        sorting_time::Float64
+        grouping_time::Float64
+        vertex_conversion_time::Float64
+        rendering_time::Float64
+        
+        # Triangle processing
+        triangle_processing_time::Float64  # Time in add_triangle, add_mesh, etc
+        transform_time::Float64  # Matrix transformations
+        culling_time::Float64  # Backface/frustum culling
+        subdivision_time::Float64  # Perspective subdivision
+        
+        # Scene setup
+        camera_setup_time::Float64  # Camera matrix calculations
+        mesh_rendering_time::Float64  # Time in add_mesh!
+        box_rendering_time::Float64  # Time in add_box!
+        
+        # Detailed mesh rendering breakdown
+        mesh_vertex_access_time::Float64  # Getting vertices from mesh
+        mesh_normal_calc_time::Float64  # Normal calculations
+        mesh_material_lookup_time::Float64  # Material dictionary lookups
+        mesh_texture_check_time::Float64  # Texture file checks
+        mesh_lighting_time::Float64  # Lighting calculations
+        mesh_uv_processing_time::Float64  # UV coordinate processing
+        mesh_triangle_add_time::Float64  # Time in add_triangle! calls
+        
+        # Detailed triangle add breakdown
+        triangle_create_time::Float64  # Triangle3D struct creation
+        triangle_depth_bias_time::Float64  # Depth bias calculation
+        triangle_push_time::Float64  # push! to triangles array
+        triangle_aabb_time::Float64  # AABB calculation
+        
+        # Detailed lighting breakdown
+        lighting_light_contrib_time::Float64  # calculate_light_contribution
+        lighting_shadow_time::Float64  # calculate_shadow_factor
+        lighting_ambient_time::Float64  # Ambient light calculations
+        
+        # Detailed material lookup breakdown
+        material_dict_lookup_time::Float64  # Dictionary haskey/get
+        material_color_conv_time::Float64  # Color conversions
+        
+        # Overall
+        total_time::Float64
+        frame_count::Int
+        skipped_sorts::Int  # Count frames where sort was skipped due to caching
+        
+        function RenderProfiler()
+            new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0)
+        end
+    end
+    
+    # Print profiling results
+    function print_profile(profiler::RenderProfiler)
+        if profiler.frame_count == 0
+            return
+        end
+        
+        # Calculate averages
+        avg_sort = profiler.sorting_time / profiler.frame_count * 1000
+        avg_group = profiler.grouping_time / profiler.frame_count * 1000
+        avg_convert = profiler.vertex_conversion_time / profiler.frame_count * 1000
+        avg_render = profiler.rendering_time / profiler.frame_count * 1000
+        avg_tri_process = profiler.triangle_processing_time / profiler.frame_count * 1000
+        avg_transform = profiler.transform_time / profiler.frame_count * 1000
+        avg_culling = profiler.culling_time / profiler.frame_count * 1000
+        avg_subdiv = profiler.subdivision_time / profiler.frame_count * 1000
+        avg_camera = profiler.camera_setup_time / profiler.frame_count * 1000
+        avg_mesh = profiler.mesh_rendering_time / profiler.frame_count * 1000
+        avg_box = profiler.box_rendering_time / profiler.frame_count * 1000
+        avg_total = profiler.total_time / profiler.frame_count * 1000
+        
+        skip_percent = profiler.skipped_sorts / profiler.frame_count * 100
+        
+        println("\n=== COMPREHENSIVE RENDER PROFILING (avg over $(profiler.frame_count) frames) ===")
+        avg_mesh_vertex = profiler.mesh_vertex_access_time / profiler.frame_count * 1000
+        avg_mesh_normal = profiler.mesh_normal_calc_time / profiler.frame_count * 1000
+        avg_mesh_material = profiler.mesh_material_lookup_time / profiler.frame_count * 1000
+        avg_mesh_texture = profiler.mesh_texture_check_time / profiler.frame_count * 1000
+        avg_mesh_lighting = profiler.mesh_lighting_time / profiler.frame_count * 1000
+        avg_mesh_uv = profiler.mesh_uv_processing_time / profiler.frame_count * 1000
+        avg_mesh_tri_add = profiler.mesh_triangle_add_time / profiler.frame_count * 1000
+        
+        println("=== SCENE SETUP ===")
+        println("Camera Setup:      $(round(avg_camera, digits=3)) ms ($(round(profiler.camera_setup_time/profiler.total_time*100, digits=1))%)")
+        println("Mesh Rendering:    $(round(avg_mesh, digits=3)) ms ($(round(profiler.mesh_rendering_time/profiler.total_time*100, digits=1))%)")
+        if profiler.mesh_rendering_time > 0
+            println("  - Vertex Access: $(round(avg_mesh_vertex, digits=3)) ms ($(round(profiler.mesh_vertex_access_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            println("  - Normal Calc:   $(round(avg_mesh_normal, digits=3)) ms ($(round(profiler.mesh_normal_calc_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            println("  - Material Lookup: $(round(avg_mesh_material, digits=3)) ms ($(round(profiler.mesh_material_lookup_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            println("  - Texture Check: $(round(avg_mesh_texture, digits=3)) ms ($(round(profiler.mesh_texture_check_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            println("  - Lighting:      $(round(avg_mesh_lighting, digits=3)) ms ($(round(profiler.mesh_lighting_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            println("  - UV Processing: $(round(avg_mesh_uv, digits=3)) ms ($(round(profiler.mesh_uv_processing_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            println("  - Triangle Add:  $(round(avg_mesh_tri_add, digits=3)) ms ($(round(profiler.mesh_triangle_add_time/profiler.mesh_rendering_time*100, digits=1))%)")
+            
+            # Detailed triangle add breakdown
+            if profiler.mesh_triangle_add_time > 0
+                avg_tri_create = profiler.triangle_create_time / profiler.frame_count * 1000
+                avg_tri_bias = profiler.triangle_depth_bias_time / profiler.frame_count * 1000
+                avg_tri_push = profiler.triangle_push_time / profiler.frame_count * 1000
+                avg_tri_aabb = profiler.triangle_aabb_time / profiler.frame_count * 1000
+                println("    Triangle Add Breakdown:")
+                println("      - Create:    $(round(avg_tri_create, digits=3)) ms ($(round(profiler.triangle_create_time/profiler.mesh_triangle_add_time*100, digits=1))%)")
+                println("      - Depth Bias: $(round(avg_tri_bias, digits=3)) ms ($(round(profiler.triangle_depth_bias_time/profiler.mesh_triangle_add_time*100, digits=1))%)")
+                println("      - Push:      $(round(avg_tri_push, digits=3)) ms ($(round(profiler.triangle_push_time/profiler.mesh_triangle_add_time*100, digits=1))%)")
+                println("      - AABB:      $(round(avg_tri_aabb, digits=3)) ms ($(round(profiler.triangle_aabb_time/profiler.mesh_triangle_add_time*100, digits=1))%)")
+            end
+            
+            # Detailed lighting breakdown
+            if profiler.mesh_lighting_time > 0
+                avg_light_contrib = profiler.lighting_light_contrib_time / profiler.frame_count * 1000
+                avg_light_shadow = profiler.lighting_shadow_time / profiler.frame_count * 1000
+                avg_light_ambient = profiler.lighting_ambient_time / profiler.frame_count * 1000
+                println("    Lighting Breakdown:")
+                println("      - Ambient:   $(round(avg_light_ambient, digits=3)) ms ($(round(profiler.lighting_ambient_time/profiler.mesh_lighting_time*100, digits=1))%)")
+                println("      - Light Contrib: $(round(avg_light_contrib, digits=3)) ms ($(round(profiler.lighting_light_contrib_time/profiler.mesh_lighting_time*100, digits=1))%)")
+                println("      - Shadows:   $(round(avg_light_shadow, digits=3)) ms ($(round(profiler.lighting_shadow_time/profiler.mesh_lighting_time*100, digits=1))%)")
+            end
+            
+            # Detailed material lookup breakdown
+            if profiler.mesh_material_lookup_time > 0
+                avg_mat_dict = profiler.material_dict_lookup_time / profiler.frame_count * 1000
+                avg_mat_conv = profiler.material_color_conv_time / profiler.frame_count * 1000
+                println("    Material Lookup Breakdown:")
+                println("      - Dict Lookup: $(round(avg_mat_dict, digits=3)) ms ($(round(profiler.material_dict_lookup_time/profiler.mesh_material_lookup_time*100, digits=1))%)")
+                println("      - Color Conv:  $(round(avg_mat_conv, digits=3)) ms ($(round(profiler.material_color_conv_time/profiler.mesh_material_lookup_time*100, digits=1))%)")
+            end
+        end
+        println("Box Rendering:     $(round(avg_box, digits=3)) ms ($(round(profiler.box_rendering_time/profiler.total_time*100, digits=1))%)")
+        println("=== TRIANGLE PROCESSING ===")
+        println("Triangle Process:  $(round(avg_tri_process, digits=3)) ms ($(round(profiler.triangle_processing_time/profiler.total_time*100, digits=1))%)")
+        println("  - Transforms:    $(round(avg_transform, digits=3)) ms ($(round(profiler.transform_time/profiler.total_time*100, digits=1))%)")
+        println("  - Culling:       $(round(avg_culling, digits=3)) ms ($(round(profiler.culling_time/profiler.total_time*100, digits=1))%)")
+        println("  - Subdivision:   $(round(avg_subdiv, digits=3)) ms ($(round(profiler.subdivision_time/profiler.total_time*100, digits=1))%)")
+        println("=== RENDER PIPELINE ===")
+        println("Sorting:           $(round(avg_sort, digits=3)) ms ($(round(profiler.sorting_time/profiler.total_time*100, digits=1))%) [Skipped: $(round(skip_percent, digits=1))%]")
+        println("Grouping:          $(round(avg_group, digits=3)) ms ($(round(profiler.grouping_time/profiler.total_time*100, digits=1))%)")
+        println("Vertex Conversion: $(round(avg_convert, digits=3)) ms ($(round(profiler.vertex_conversion_time/profiler.total_time*100, digits=1))%)")
+        println("SDL Rendering:     $(round(avg_render, digits=3)) ms ($(round(profiler.rendering_time/profiler.total_time*100, digits=1))%)")
+        println("=== SUMMARY ===")
+        println("Total Frame:       $(round(avg_total, digits=3)) ms")
+        println("===================================================\n")
+    end
+
     # Main Software Renderer component
     mutable struct SoftwareRenderer3D
         parent
@@ -95,6 +241,20 @@ module SoftwareRenderer3DModule
         
         # Texture cache
         texture_cache::Dict{String, Ptr{SDL_Texture}}
+        
+        # Performance profiling
+        profiler::RenderProfiler
+        enable_profiling::Bool
+        profile_print_interval::Int  # Print stats every N frames
+        
+        # Sorting optimization
+        use_fast_sort::Bool  # Use QuickSort instead of MergeSort (faster but less stable)
+        use_cached_sort::Bool  # Skip sorting if camera hasn't moved much
+        last_camera_position::Union{Nothing, Vector3f}
+        last_camera_yaw::Float64
+        last_camera_pitch::Float64
+        camera_move_threshold::Float64  # Don't resort if camera moved less than this
+        camera_rotate_threshold::Float64  # Don't resort if camera rotated less than this
         
         # Perspective correction settings
         enable_perspective_subdivision::Bool
@@ -143,11 +303,27 @@ module SoftwareRenderer3DModule
             this.meshes = RenderMesh[]
             this.texture_cache = Dict{String, Ptr{SDL_Texture}}()
             
+            # Initialize profiler
+            this.profiler = RenderProfiler()
+            this.enable_profiling = false  # Toggle with 'M' key in debug mode
+            this.profile_print_interval = 60  # Print every 60 frames
+            
+            # Initialize sort optimization
+            this.use_fast_sort = false  # Use stable MergeSort by default
+            this.use_cached_sort = true  # Enable frame coherency by default (huge speedup!)
+            this.last_camera_position = nothing
+            this.last_camera_yaw = 0.0
+            this.last_camera_pitch = 0.0
+            this.camera_move_threshold = 0.5  # Skip resort if camera moved < 0.5 units (more lenient)
+            this.camera_rotate_threshold = 2.0  # Skip resort if camera rotated < 2 degrees (more lenient)
+            
             # Initialize perspective correction settings
+            # Optimized: Higher thresholds = less subdivision = better performance
+            # Aggressively reduce subdivision - it's taking 51% of triangle processing time
             this.enable_perspective_subdivision = true
-            this.subdivision_threshold_area = 10000.0  # Pixels
-            this.subdivision_threshold_z_ratio = 1.5   # Z depth variation ratio
-            this.max_subdivision_depth = 3            # Maximum recursion depth
+            this.subdivision_threshold_area = 50000.0  # Pixels (increased 5x - very large triangles only)
+            this.subdivision_threshold_z_ratio = 3.0   # Z depth variation ratio (very high - avoid subdivision)
+            this.max_subdivision_depth = 1            # Maximum recursion depth (reduced to 1 - single split max)
             
             this.camera_position = Vec3D(0, 0, 0)
             this.camera_rotation = Vec3D(0, 0, 0)
@@ -251,9 +427,9 @@ module SoftwareRenderer3DModule
 
     # Improved triangle sorting with proper depth handling
     function sort_triangles_by_depth!(renderer::SoftwareRenderer3D)
-        # Sort by average Z (centroid) for better ordering of coplanar triangles
-        # This works better for objects sitting on flat surfaces like grass planes
-        sort!(renderer.triangles, by = tri -> (tri.vertices[1].z + tri.vertices[2].z + tri.vertices[3].z) / 3.0)
+        # OPTIMIZED: Use closest vertex Z instead of average (faster, no division)
+        # For back-to-front sorting, we want furthest triangles first
+        sort!(renderer.triangles, by = tri -> max(tri.vertices[1].z, tri.vertices[2].z, tri.vertices[3].z), rev=true)
         
         if renderer.reverse_sort_triangles
             reverse!(renderer.triangles)
@@ -262,13 +438,21 @@ module SoftwareRenderer3DModule
     
     # Enhanced triangle sorting with stability for coplanar triangles
     function sort_triangles_by_depth_stable!(renderer::SoftwareRenderer3D)
-        # Stable sort that preserves order for triangles at same depth
-        # This helps maintain correct rendering order for objects on flat surfaces
-        sort!(renderer.triangles, by = tri -> begin
-            avg_z = (tri.vertices[1].z + tri.vertices[2].z + tri.vertices[3].z) / 3.0
-            # Add a tiny offset based on triangle's original position to maintain stability
-            return avg_z
-        end, alg=MergeSort)  # MergeSort is stable
+        # OPTIMIZED: Use max Z directly instead of average (no division, faster)
+        # Choice of algorithm based on use_fast_sort flag
+        if renderer.use_fast_sort
+            # QuickSort: Faster but less stable (may cause minor z-fighting)
+            sort!(renderer.triangles, 
+                  by = tri -> max(tri.vertices[1].z, tri.vertices[2].z, tri.vertices[3].z), 
+                  alg=QuickSort,
+                  rev=true)
+        else
+            # MergeSort: Slower but stable (better for coplanar triangles)
+            sort!(renderer.triangles, 
+                  by = tri -> max(tri.vertices[1].z, tri.vertices[2].z, tri.vertices[3].z), 
+                  alg=MergeSort,
+                  rev=true)
+        end
         
         if renderer.reverse_sort_triangles
             reverse!(renderer.triangles)
@@ -312,25 +496,41 @@ module SoftwareRenderer3DModule
             return add_triangle_direct!(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture)
         end
         
-        # Calculate triangle size in screen space to determine if subdivision is needed
-        screen_area = abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y))
+        # Profile subdivision (only at top level to avoid double counting)
+        subdiv_start = (renderer.enable_profiling && depth == 0) ? time() : 0.0
         
-        # Calculate depth variation to determine if perspective correction is needed
-        z_min = min(a.z, b.z, c.z)
-        z_max = max(a.z, b.z, c.z)
-        z_ratio = z_max / max(z_min, 0.001)  # Avoid division by zero
-        
-        # Subdivide if:
-        # 1. Triangle is large in screen space (configurable threshold)
-        # 2. There's significant depth variation (configurable ratio)
-        # 3. We haven't reached maximum subdivision depth (configurable)
-        should_subdivide = (screen_area > renderer.subdivision_threshold_area || 
-                           z_ratio > renderer.subdivision_threshold_z_ratio) && 
-                          depth < renderer.max_subdivision_depth
+        # Early exit: if depth is max, never subdivide
+        if depth >= renderer.max_subdivision_depth
+            should_subdivide = false
+        else
+            # Calculate triangle size in screen space to determine if subdivision is needed
+            # Optimized: Use squared area check to avoid sqrt, compare against squared threshold
+            dx1 = b.x - a.x
+            dy1 = c.y - a.y
+            dx2 = c.x - a.x
+            dy2 = b.y - a.y
+            screen_area = abs(dx1 * dy1 - dx2 * dy2)
+            
+            # Early exit if area is too small (most common case)
+            if screen_area <= renderer.subdivision_threshold_area
+                # Check depth variation only if area threshold not met
+                z_min = min(a.z, b.z, c.z)
+                z_max = max(a.z, b.z, c.z)
+                z_ratio = z_max / max(z_min, 0.001)  # Avoid division by zero
+                should_subdivide = z_ratio > renderer.subdivision_threshold_z_ratio
+            else
+                # Area threshold met - subdivide
+                should_subdivide = true
+            end
+        end
         
         if !should_subdivide
             # Base case: add the triangle without further subdivision
-            return add_triangle_direct!(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture)
+            result = add_triangle_direct!(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture)
+            if renderer.enable_profiling && depth == 0
+                renderer.profiler.subdivision_time += time() - subdiv_start
+            end
+            return result
         end
         
         # Subdivide triangle into 4 smaller triangles
@@ -354,6 +554,10 @@ module SoftwareRenderer3DModule
         combined_min = min_pairwise(min_pairwise(aabb1.min, aabb2.min), min_pairwise(aabb3.min, aabb4.min))
         combined_max = max_pairwise(max_pairwise(aabb1.max, aabb2.max), max_pairwise(aabb3.max, aabb4.max))
         
+        if renderer.enable_profiling && depth == 0
+            renderer.profiler.subdivision_time += time() - subdiv_start
+        end
+        
         return AABB(combined_min, combined_max)
     end
 
@@ -369,6 +573,9 @@ module SoftwareRenderer3DModule
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         end
         
+        # Profile transforms
+        transform_start = renderer.enable_profiling ? time() : 0.0
+        
         # Transform vertices
         ta = renderer.state.transform * a
         tb = renderer.state.transform * b
@@ -376,6 +583,9 @@ module SoftwareRenderer3DModule
         
         # Check if behind camera
         if ta.w <= 0 || tb.w <= 0 || tc.w <= 0
+            if renderer.enable_profiling
+                renderer.profiler.transform_time += time() - transform_start
+            end
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         end
         
@@ -387,8 +597,18 @@ module SoftwareRenderer3DModule
         perspective_divide!(tb)
         perspective_divide!(tc)
         
+        if renderer.enable_profiling
+            renderer.profiler.transform_time += time() - transform_start
+        end
+        
+        # Profile culling
+        cull_start = renderer.enable_profiling ? time() : 0.0
+        
         # Perform backface culling in screen space (after perspective divide)
         if should_cull_triangle_screen_space(renderer, ta, tb, tc)
+            if renderer.enable_profiling
+                renderer.profiler.culling_time += time() - cull_start
+            end
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         end
         
@@ -401,30 +621,63 @@ module SoftwareRenderer3DModule
            (ta.x > width && tb.x > width && tc.x > width) ||
            (ta.y < 0 && tb.y < 0 && tc.y < 0) ||
            (ta.y > height && tb.y > height && tc.y > height)
+            if renderer.enable_profiling
+                renderer.profiler.culling_time += time() - cull_start
+            end
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         end
         
-        # Create triangle
+        if renderer.enable_profiling
+            renderer.profiler.culling_time += time() - cull_start
+        end
+        
+        # Profile: Triangle creation
+        tri_create_start = renderer.enable_profiling ? time() : 0.0
         triangle = Triangle3D(
             Vertex3D(ta.x, ta.y, z1, color, u1, v1),
             Vertex3D(tb.x, tb.y, z2, color, u2, v2),
             Vertex3D(tc.x, tc.y, z3, color, u3, v3),
             texture
         )
+        if renderer.enable_profiling
+            renderer.profiler.triangle_create_time += time() - tri_create_start
+        end
         
-        # Apply improved depth bias system to prevent z-fighting
+        # Profile: Depth bias
+        bias_start = renderer.enable_profiling ? time() : 0.0
         if renderer.enable_depth_bias
             # Use a small bias that moves triangles slightly closer to the camera (negative Z)
             # This ensures objects added later (like items on grass) appear on top
-            depth_bias = -length(renderer.triangles) * renderer.depth_bias_factor
-            for vertex in triangle.vertices
-                vertex.z += depth_bias
-            end
+            # Optimized: cache triangle count before push (avoids extra length() call after push)
+            triangle_count = length(renderer.triangles)
+            depth_bias = -triangle_count * renderer.depth_bias_factor
+            # Optimized: direct array access instead of loop iterator
+            triangle.vertices[1].z += depth_bias
+            triangle.vertices[2].z += depth_bias
+            triangle.vertices[3].z += depth_bias
+        end
+        if renderer.enable_profiling
+            renderer.profiler.triangle_depth_bias_time += time() - bias_start
         end
         
+        # Profile: Push to array
+        push_start = renderer.enable_profiling ? time() : 0.0
         push!(renderer.triangles, triangle)
+        if renderer.enable_profiling
+            renderer.profiler.triangle_push_time += time() - push_start
+        end
         
-        return AABB(min_pairwise(ta, min_pairwise(tb, tc)), max_pairwise(ta, max_pairwise(tb, tc)))
+        # Profile: AABB calculation
+        # Optimized: Direct min/max instead of nested min_pairwise calls
+        aabb_start = renderer.enable_profiling ? time() : 0.0
+        min_pt = Vec3D(min(ta.x, tb.x, tc.x), min(ta.y, tb.y, tc.y), min(ta.z, tb.z, tc.z))
+        max_pt = Vec3D(max(ta.x, tb.x, tc.x), max(ta.y, tb.y, tc.y), max(ta.z, tb.z, tc.z))
+        result_aabb = AABB(min_pt, max_pt)
+        if renderer.enable_profiling
+            renderer.profiler.triangle_aabb_time += time() - aabb_start
+        end
+        
+        return result_aabb
     end
 
     # Add triangle to render queue with perspective-correct texture coordinates
@@ -439,9 +692,18 @@ module SoftwareRenderer3DModule
             return AABB(Vec3D(Inf, Inf, Inf), Vec3D(-Inf, -Inf, -Inf))
         end
         
+        # Profile overall triangle processing
+        tri_start = renderer.enable_profiling ? time() : 0.0
+        
         # Use subdivision for better perspective-correct texture mapping
         # This approximates perspective correction by subdividing large or depth-varying triangles
-        return subdivide_triangle_for_perspective(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture, 0)
+        result = subdivide_triangle_for_perspective(renderer, color, a, b, c, u1, v1, u2, v2, u3, v3, texture, 0)
+        
+        if renderer.enable_profiling
+            renderer.profiler.triangle_processing_time += time() - tri_start
+        end
+        
+        return result
     end
 
     # Add rectangle
@@ -617,172 +879,177 @@ module SoftwareRenderer3DModule
         
         for (face_idx, face) in enumerate(mesh.faces)
             if length(face.vertex_indices) >= 3
-                # Get vertices for this face
+                # Profile: Vertex access
+                vertex_start = renderer.enable_profiling ? time() : 0.0
                 v1 = mesh.vertices[face.vertex_indices[1]]
                 v2 = mesh.vertices[face.vertex_indices[2]]
                 v3 = mesh.vertices[face.vertex_indices[3]]
+                if renderer.enable_profiling
+                    renderer.profiler.mesh_vertex_access_time += time() - vertex_start
+                end
                 
-                # Calculate face normal for lighting
+                # Profile: Normal calculation
+                normal_start = renderer.enable_profiling ? time() : 0.0
                 edge1 = v2 - v1
                 edge2 = v3 - v1
                 normal = normalize(cross(edge1, edge2))
+                if renderer.enable_profiling
+                    renderer.profiler.mesh_normal_calc_time += time() - normal_start
+                end
 
-                # Determine color and texture to use
+                # Profile: Material lookup
+                material_start = renderer.enable_profiling ? time() : 0.0
                 face_color_vec = Vec3D(1,1,1) # Default to white
                 face_texture = Ptr{SDL_Texture}(C_NULL)
                 alpha = 1.0
 
-                if mesh.use_materials && haskey(mesh.materials, face.material_name)
-                    material = mesh.materials[face.material_name]
-                    alpha = material.alpha
+                # Profile: Dictionary lookup
+                # Optimized: Use get() instead of haskey() + index (single dictionary lookup instead of two)
+                dict_start = renderer.enable_profiling ? time() : 0.0
+                material = nothing
+                if mesh.use_materials
+                    # get() with default is faster than haskey() + indexing (single lookup)
+                    material = get(mesh.materials, face.material_name, nothing)
+                    if material !== nothing
+                        alpha = material.alpha
+                    end
+                end
+                if renderer.enable_profiling
+                    renderer.profiler.material_dict_lookup_time += time() - dict_start
+                end
+                
+                if material !== nothing
                     
-                    # Load SDL texture if available
-                    if material.has_texture && isfile(material.texture_path)
+                    # Profile: Texture check (uses cached texture_file_exists)
+                    texture_start = renderer.enable_profiling ? time() : 0.0
+                    if material.has_texture && material.texture_file_exists
                         face_texture = load_sdl_texture(renderer, material.texture_path)
                         if face_texture != Ptr{SDL_Texture}(C_NULL)
-                            # Use texture with Kd color as tint/modulation
-                            # For white Kd (1,1,1): texture shows at full intensity
-                            # For colored Kd: texture gets tinted by that color
                             face_color_vec = material.diffuse_color
-                            # Debug: only print for first few faces to avoid spam
-                            if face_idx <= 3
-                                # @info "Face $face_idx: Using texture '$(material.texture_path)' tinted with Kd $(material.diffuse_color) for material '$(face.material_name)'"
-                            end
                         else
-                            # Fallback to diffuse color if SDL texture loading failed
                             face_color_vec = material.diffuse_color
-                            if face_idx <= 3
-                                # @info "Face $face_idx: Texture '$(material.texture_path)' failed to load, using Kd color $(material.diffuse_color) for '$(face.material_name)'"
-                            end
                         end
                     else
-                        # Use solid diffuse color
                         face_color_vec = material.diffuse_color
-                        # Debug: only print for first few faces to avoid spam
-                        if face_idx <= 3
-                            # @info "Face $face_idx: Using material '$(face.material_name)' with diffuse color $(material.diffuse_color)"
-                        end
+                    end
+                    if renderer.enable_profiling
+                        renderer.profiler.mesh_texture_check_time += time() - texture_start
                     end
                 else
-                    # Fallback to default mesh color if no material is found
+                    # Profile: Color conversion (default material)
+                    conv_start = renderer.enable_profiling ? time() : 0.0
                     face_color_vec = Vec3D(mesh.default_fill_color.r/255.0, mesh.default_fill_color.g/255.0, mesh.default_fill_color.b/255.0)
                     alpha = mesh.default_fill_color.a/255.0
-                    # Debug: only print for first few faces to avoid spam
-                    if face_idx <= 3
-                        # @info "Face $face_idx: No material found for face material '$(face.material_name)', using default color $(face_color_vec)"
+                    if renderer.enable_profiling
+                        renderer.profiler.material_color_conv_time += time() - conv_start
                     end
                 end
                 
-                # Apply enhanced lighting system
+                # Profile: Color conversion (material diffuse color)
+                if material !== nothing
+                    conv_start = renderer.enable_profiling ? time() : 0.0
+                    # face_color_vec already set from material above
+                    if renderer.enable_profiling
+                        renderer.profiler.material_color_conv_time += time() - conv_start
+                    end
+                end
+                
+                if renderer.enable_profiling
+                    renderer.profiler.mesh_material_lookup_time += time() - material_start
+                end
+                
+                # Profile: Lighting calculation
+                lighting_start = renderer.enable_profiling ? time() : 0.0
                 if renderer.lighting_enabled
-                    # Calculate lighting factor (0.0 to 1.0) instead of modifying color directly
                     lighting_factor = calculate_lighting_factor(renderer, normal, v1, v2, v3)
                     
-                    # For textured surfaces, we'll apply lighting in the vertex colors
                     if face_texture != Ptr{SDL_Texture}(C_NULL)
-                        # Keep original color for textured surfaces, lighting will be applied via vertex colors
                         light_adjusted_color = face_color_vec
                     else
-                        # For non-textured surfaces, apply lighting to the material color
                         light_adjusted_color = Vec3D(face_color_vec.x * lighting_factor,
                                                    face_color_vec.y * lighting_factor,
                                                    face_color_vec.z * lighting_factor,
                                                    face_color_vec.w)
                     end
                 else
-                    light_adjusted_color = face_color_vec  # Use raw color without lighting
+                    light_adjusted_color = face_color_vec
                     lighting_factor = 1.0
                 end
                 final_color = vec3d_to_sdl_color(light_adjusted_color, alpha)
-                
-                if face_idx <= 3 # Log the final color for the first 3 faces of each mesh
-                    # @info "Face $face_idx: Final color after lighting: RGBA($(final_color.r), $(final_color.g), $(final_color.b), $(final_color.a))"
+                if renderer.enable_profiling
+                    renderer.profiler.mesh_lighting_time += time() - lighting_start
                 end
 
-                # Get UV coordinates for this face
+                # Profile: UV processing
+                uv_start = renderer.enable_profiling ? time() : 0.0
                 u1, v1_uv, u2, v2_uv, u3, v3_uv = 0.0, 0.0, 1.0, 0.0, 1.0, 1.0  # Default UV coordinates
                 
-                # Use actual UV coordinates if available
                 if !isempty(mesh.uv_coordinates) && length(face.uv_indices) >= 3
                     try
-                        # Get UV coordinates from the mesh (handle 0-based indices from OBJ)
                         uv1_idx = face.uv_indices[1]
                         uv2_idx = face.uv_indices[2]  
                         uv3_idx = face.uv_indices[3]
                         
                         if uv1_idx > 0 && uv1_idx <= length(mesh.uv_coordinates)
                             uv1 = mesh.uv_coordinates[uv1_idx]
-                            # Flip V coordinate and optionally normalize UV coordinates to [0,1] range
                             if mesh.normalize_uv_coordinates
                                 u1 = normalize_uv_coordinate(uv1.u)
                                 v1_uv = normalize_uv_coordinate(1.0 - uv1.v)
                             else
-                                # Original behavior: use UV coordinates as-is (just flip V)
                                 u1, v1_uv = uv1.u, 1.0 - uv1.v
-                            end
-                        else
-                            if face_idx <= 3
-                                @warn "Face $face_idx: UV1 index $uv1_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
                             end
                         end
                         
                         if uv2_idx > 0 && uv2_idx <= length(mesh.uv_coordinates)
                             uv2 = mesh.uv_coordinates[uv2_idx]
-                            # Flip V coordinate and optionally normalize UV coordinates to [0,1] range
                             if mesh.normalize_uv_coordinates
                                 u2 = normalize_uv_coordinate(uv2.u)
                                 v2_uv = normalize_uv_coordinate(1.0 - uv2.v)
                             else
-                                # Original behavior: use UV coordinates as-is (just flip V)
                                 u2, v2_uv = uv2.u, 1.0 - uv2.v
-                            end
-                        else
-                            if face_idx <= 3
-                                @warn "Face $face_idx: UV2 index $uv2_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
                             end
                         end
                         
                         if uv3_idx > 0 && uv3_idx <= length(mesh.uv_coordinates)
                             uv3 = mesh.uv_coordinates[uv3_idx]
-                            # Flip V coordinate and optionally normalize UV coordinates to [0,1] range
                             if mesh.normalize_uv_coordinates
                                 u3 = normalize_uv_coordinate(uv3.u)
                                 v3_uv = normalize_uv_coordinate(1.0 - uv3.v)
                             else
-                                # Original behavior: use UV coordinates as-is (just flip V)
                                 u3, v3_uv = uv3.u, 1.0 - uv3.v
                             end
-                        else
-                            if face_idx <= 3
-                                @warn "Face $face_idx: UV3 index $uv3_idx is out of range (total UVs: $(length(mesh.uv_coordinates)))"
-                            end
-                        end
-                        
-                        # Debug UV coordinates for first few faces
-                        if face_idx <= 3
-                            # @info "Face $face_idx UV coordinates: ($(u1), $(v1_uv)), ($(u2), $(v2_uv)), ($(u3), $(v3_uv))"
                         end
                     catch e
                         @warn "Error getting UV coordinates for face $face_idx: $e, using defaults"
                     end
                 end
+                if renderer.enable_profiling
+                    renderer.profiler.mesh_uv_processing_time += time() - uv_start
+                end
 
-                # Add triangle with material color and texture
-                # Check for invalid values before calling add_triangle!
+                # Profile: Triangle addition
+                tri_add_start = renderer.enable_profiling ? time() : 0.0
+                
+                # Check for invalid values
                 if any(isnan, [v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z]) || 
                    any(isinf, [v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z])
-                    @warn "Skipping triangle with invalid vertex coordinates: v1=$v1, v2=$v2, v3=$v3"
+                    if renderer.enable_profiling
+                        renderer.profiler.mesh_triangle_add_time += time() - tri_add_start
+                    end
                     continue
                 end
                 
-                # For textured surfaces, pass the lighting factor to be applied to vertex colors
                 if face_texture != Ptr{SDL_Texture}(C_NULL) && renderer.lighting_enabled
-                    # Create vertex colors with lighting applied
                     lit_color = vec3d_to_sdl_color(Vec3D(lighting_factor, lighting_factor, lighting_factor), alpha)
                     face_aabb = add_triangle!(renderer, lit_color, v1, v2, v3, u1, v1_uv, u2, v2_uv, u3, v3_uv, face_texture)
                 else
                     face_aabb = add_triangle!(renderer, final_color, v1, v2, v3, u1, v1_uv, u2, v2_uv, u3, v3_uv, face_texture)
                 end
+                
+                if renderer.enable_profiling
+                    renderer.profiler.mesh_triangle_add_time += time() - tri_add_start
+                end
+                
                 aabb = AABB(min_pairwise(aabb.min, face_aabb.min), max_pairwise(aabb.max, face_aabb.max))
             end
         end
@@ -838,18 +1105,65 @@ module SoftwareRenderer3DModule
             return 0
         end
         
+        # Start total timing
+        frame_start = renderer.enable_profiling ? time() : 0.0
+        
         # Count initial triangles (only in debug mode)
         initial_count = JulGame.IS_DEBUG ? length(renderer.triangles) : 0
         
-        # Sort vertices in each triangle by z (removed - not needed for SDL rendering)
-        # for triangle in renderer.triangles
-        #     sort!(triangle.vertices, by = v -> v.z)
-        # end
+        # Timing: Sorting (with frame coherency optimization)
+        sort_start = renderer.enable_profiling ? time() : 0.0
         
-        # Use improved stable depth sorting for better handling of coplanar triangles
-        sort_triangles_by_depth_stable!(renderer)
+        # Check if we need to resort based on camera movement
+        needs_resort = true
+        if renderer.use_cached_sort && renderer.last_camera_position !== nothing
+            # Get current camera state (with safety check)
+            camera = JulGame.MAIN.scene.camera
+            if camera !== nothing
+                # Calculate position delta (Manhattan distance for speed)
+                pos_delta = abs(camera.position.x - renderer.last_camera_position.x) +
+                           abs(camera.position.y - renderer.last_camera_position.y) +
+                           abs(camera.position.z - renderer.last_camera_position.z)
+                position_changed = pos_delta > renderer.camera_move_threshold
+                
+                # Calculate rotation delta (handle wraparound)
+                yaw_delta = abs(camera.yaw - renderer.last_camera_yaw)
+                if yaw_delta > 180.0
+                    yaw_delta = 360.0 - yaw_delta  # Handle 360° wraparound
+                end
+                pitch_delta = abs(camera.pitch - renderer.last_camera_pitch)
+                
+                rotation_changed = (yaw_delta > renderer.camera_rotate_threshold) || 
+                                  (pitch_delta > renderer.camera_rotate_threshold)
+                
+                # Only resort if camera moved significantly
+                needs_resort = position_changed || rotation_changed
+            end
+        end
         
-        # Group triangles by texture
+        if needs_resort
+            sort_triangles_by_depth_stable!(renderer)
+            
+            # Update cached camera state
+            if renderer.use_cached_sort
+                camera = JulGame.MAIN.scene.camera
+                renderer.last_camera_position = Math.Vector3f(camera.position.x, camera.position.y, camera.position.z)
+                renderer.last_camera_yaw = camera.yaw
+                renderer.last_camera_pitch = camera.pitch
+            end
+        else
+            # Track skipped sorts for profiling
+            if renderer.enable_profiling
+                renderer.profiler.skipped_sorts += 1
+            end
+        end
+        
+        if renderer.enable_profiling
+            renderer.profiler.sorting_time += time() - sort_start
+        end
+        
+        # Timing: Grouping by texture
+        group_start = renderer.enable_profiling ? time() : 0.0
         texture_groups = Dict{Ptr{SDL_Texture}, Vector{Triangle3D}}()
         for triangle in renderer.triangles
             texture = triangle.texture
@@ -858,27 +1172,83 @@ module SoftwareRenderer3DModule
             end
             push!(texture_groups[texture], triangle)
         end
+        if renderer.enable_profiling
+            renderer.profiler.grouping_time += time() - group_start
+        end
         
-        # Render triangles grouped by texture
+        # Timing: Vertex conversion and rendering
         triangle_count = 0
         for (texture, triangles) in texture_groups
-            # Convert all triangles for this texture to SDL vertices
-            sdl_vertices = SDL_Vertex[]
+            # Timing: Vertex conversion
+            convert_start = renderer.enable_profiling ? time() : 0.0
+            
+            # Pre-allocate SDL vertices array (3 vertices per triangle)
+            num_vertices = length(triangles) * 3
+            sdl_vertices = Vector{SDL_Vertex}(undef, num_vertices)
+            
+            # Fill vertices array
+            idx = 1
             for triangle in triangles
                 vertices = triangle.vertices
-                append!(sdl_vertices, [
-                    SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(clamp(vertices[1].u, 0.0, 1.0), clamp(vertices[1].v, 0.0, 1.0))),
-                    SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(clamp(vertices[2].u, 0.0, 1.0), clamp(vertices[2].v, 0.0, 1.0))),
-                    SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(clamp(vertices[3].u, 0.0, 1.0), clamp(vertices[3].v, 0.0, 1.0)))
-                ])
+                sdl_vertices[idx] = SDL_Vertex(SDL_FPoint(vertices[1].x, vertices[1].y), vertices[1].color, SDL_FPoint(clamp(vertices[1].u, 0.0, 1.0), clamp(vertices[1].v, 0.0, 1.0)))
+                sdl_vertices[idx+1] = SDL_Vertex(SDL_FPoint(vertices[2].x, vertices[2].y), vertices[2].color, SDL_FPoint(clamp(vertices[2].u, 0.0, 1.0), clamp(vertices[2].v, 0.0, 1.0)))
+                sdl_vertices[idx+2] = SDL_Vertex(SDL_FPoint(vertices[3].x, vertices[3].y), vertices[3].color, SDL_FPoint(clamp(vertices[3].u, 0.0, 1.0), clamp(vertices[3].v, 0.0, 1.0)))
+                idx += 3
             end
             
-            # Render all triangles with this texture in one call
+            if renderer.enable_profiling
+                renderer.profiler.vertex_conversion_time += time() - convert_start
+            end
+            
+            # Timing: SDL rendering
+            render_start = renderer.enable_profiling ? time() : 0.0
             result = SDL_RenderGeometry(JulGame.Renderer, texture, sdl_vertices, length(sdl_vertices), C_NULL, 0)
+            if renderer.enable_profiling
+                renderer.profiler.rendering_time += time() - render_start
+            end
+            
             if result < 0
                 println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
             else
                 triangle_count += length(triangles)
+            end
+        end
+        
+        # Print profiling results at interval (frame_count is tracked in Component.render)
+        if renderer.enable_profiling
+            if renderer.profiler.frame_count % renderer.profile_print_interval == 0
+                print_profile(renderer.profiler)
+                # Reset all counters
+                renderer.profiler.sorting_time = 0.0
+                renderer.profiler.grouping_time = 0.0
+                renderer.profiler.vertex_conversion_time = 0.0
+                renderer.profiler.rendering_time = 0.0
+                renderer.profiler.triangle_processing_time = 0.0
+                renderer.profiler.transform_time = 0.0
+                renderer.profiler.culling_time = 0.0
+                renderer.profiler.subdivision_time = 0.0
+                renderer.profiler.camera_setup_time = 0.0
+                renderer.profiler.mesh_rendering_time = 0.0
+                renderer.profiler.box_rendering_time = 0.0
+                renderer.profiler.mesh_vertex_access_time = 0.0
+                renderer.profiler.mesh_normal_calc_time = 0.0
+                renderer.profiler.mesh_material_lookup_time = 0.0
+                renderer.profiler.mesh_texture_check_time = 0.0
+                renderer.profiler.mesh_lighting_time = 0.0
+                renderer.profiler.mesh_uv_processing_time = 0.0
+                renderer.profiler.mesh_triangle_add_time = 0.0
+                renderer.profiler.triangle_create_time = 0.0
+                renderer.profiler.triangle_depth_bias_time = 0.0
+                renderer.profiler.triangle_push_time = 0.0
+                renderer.profiler.triangle_aabb_time = 0.0
+                renderer.profiler.lighting_light_contrib_time = 0.0
+                renderer.profiler.lighting_shadow_time = 0.0
+                renderer.profiler.lighting_ambient_time = 0.0
+                renderer.profiler.material_dict_lookup_time = 0.0
+                renderer.profiler.material_color_conv_time = 0.0
+                renderer.profiler.total_time = 0.0
+                renderer.profiler.frame_count = 0
+                renderer.profiler.skipped_sorts = 0
             end
         end
         
@@ -911,6 +1281,14 @@ module SoftwareRenderer3DModule
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("G")
             this.clockwise_front_faces = !this.clockwise_front_faces
             println("Front face winding: ", this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")
+        end
+        
+        # Profiling toggle removed - handled by Manager.jl to avoid double-toggle
+        
+        # Handle fast sort toggle
+        if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("N")
+            this.use_fast_sort = !this.use_fast_sort
+            println("Fast Sort (QuickSort): ", this.use_fast_sort ? "ON (faster, may have minor z-fighting)" : "OFF (stable MergeSort)")
         end
         
         # Handle lighting toggle
@@ -959,6 +1337,8 @@ module SoftwareRenderer3DModule
     end
 
     function Component.render(this::SoftwareRenderer3D, main)
+        frame_start = this.enable_profiling ? time() : 0.0
+        
         update(this, 0.0)
         windowSize = main.windowManager.windowSize
         width = Float64(windowSize.x)
@@ -988,6 +1368,9 @@ module SoftwareRenderer3DModule
             apply_transform!(this, scaling_matrix(Float64(scale), Float64(scale), Float64(scale)))
         end
         
+        # Profile camera setup
+        camera_start = this.enable_profiling ? time() : 0.0
+        
         # Use engine's camera if available, otherwise fall back to internal camera
         if main.scene.camera !== nothing
             # Use the engine's camera system (controlled by Manager.jl)
@@ -1013,20 +1396,38 @@ module SoftwareRenderer3DModule
             apply_transform!(this, translation_matrix(Float64(-this.camera_position.x), Float64(-this.camera_position.y), Float64(-this.camera_position.z)))
         end
         
-        # Render all boxes
+        if this.enable_profiling
+            this.profiler.camera_setup_time += time() - camera_start
+        end
+        
+        # Profile box rendering
+        box_start = this.enable_profiling ? time() : 0.0
         for box in this.boxes
             add_box!(this, box)
         end
+        if this.enable_profiling
+            this.profiler.box_rendering_time += time() - box_start
+        end
         
-        # Render all meshes
+        # Profile mesh rendering
+        mesh_start = this.enable_profiling ? time() : 0.0
         for mesh in this.meshes
             add_mesh!(this, mesh)
+        end
+        if this.enable_profiling
+            this.profiler.mesh_rendering_time += time() - mesh_start
         end
         
         pop_state!(this)
         
-        # Flush all triangles
+        # Flush all triangles (already has internal profiling)
         triangle_count = flush_triangles!(this)
+        
+        # Update total frame time and frame count
+        if this.enable_profiling
+            this.profiler.total_time += time() - frame_start
+            this.profiler.frame_count += 1
+        end
         
         if JulGame.IS_DEBUG
             # println("Rendered $triangle_count triangles")
@@ -1286,26 +1687,47 @@ module SoftwareRenderer3DModule
     end
     
     # Check if a point is within mesh bounds (very basic bounds check)
+    # Uses cached bounding box for performance
+    # NOTE: point is in world space, bounds are in model space - we need to transform
     function is_point_in_mesh_bounds(point::Vec3D, mesh::RenderMesh)::Bool
         if isempty(mesh.vertices)
             return false
         end
         
-        # Calculate simple bounding box
-        min_bounds = mesh.vertices[1]
-        max_bounds = mesh.vertices[1]
-        
-        for vertex in mesh.vertices
-            min_bounds = Vec3D(min(min_bounds.x, vertex.x), min(min_bounds.y, vertex.y), min(min_bounds.z, vertex.z))
-            max_bounds = Vec3D(max(max_bounds.x, vertex.x), max(max_bounds.y, vertex.y), max(max_bounds.z, vertex.z))
+        # Use cached bounds if available, otherwise compute and cache them
+        if mesh.cached_bounds_min === nothing || mesh.cached_bounds_max === nothing
+            compute_mesh_bounds!(mesh)
         end
         
-        # Apply mesh transformation
-        transformed_point = point  # Simplified - would need inverse transform in real implementation
+        # If still nothing after computation, mesh is invalid
+        if mesh.cached_bounds_min === nothing || mesh.cached_bounds_max === nothing
+            return false
+        end
         
-        return (transformed_point.x >= min_bounds.x && transformed_point.x <= max_bounds.x &&
-                transformed_point.y >= min_bounds.y && transformed_point.y <= max_bounds.y &&
-                transformed_point.z >= min_bounds.z && transformed_point.z <= max_bounds.z)
+        # Transform point from world space to model space
+        # The mesh transform is: T * R * S (translation * rotation * scale)
+        # Inverse transform is: S^-1 * R^-1 * T^-1
+        
+        # 1. T^-1: Subtract mesh position (undo translation)
+        local_point = Vec3D(point.x - mesh.position.x, 
+                           point.y - mesh.position.y, 
+                           point.z - mesh.position.z)
+        
+        # 2. R^-1: TODO - Apply inverse rotation (complex, skipped for now)
+        # This may cause false positives/negatives for rotated meshes
+        # For now, this works if meshes aren't rotated
+        
+        # 3. S^-1: Apply inverse scale (undo scale)
+        if mesh.scale.x != 0.0 && mesh.scale.y != 0.0 && mesh.scale.z != 0.0
+            local_point = Vec3D(local_point.x / mesh.scale.x,
+                               local_point.y / mesh.scale.y,
+                               local_point.z / mesh.scale.z)
+        end
+        
+        # Check if transformed point is within cached bounds (model space)
+        return (local_point.x >= mesh.cached_bounds_min.x && local_point.x <= mesh.cached_bounds_max.x &&
+                local_point.y >= mesh.cached_bounds_min.y && local_point.y <= mesh.cached_bounds_max.y &&
+                local_point.z >= mesh.cached_bounds_min.z && local_point.z <= mesh.cached_bounds_max.z)
     end
     
     # Calculate lighting factor for a surface (returns 0.0 to 1.0)
@@ -1313,17 +1735,29 @@ module SoftwareRenderer3DModule
         # Calculate surface center position for lighting calculations
         surface_pos = Vec3D((v1.x + v2.x + v3.x) / 3.0, (v1.y + v2.y + v3.y) / 3.0, (v1.z + v2.z + v3.z) / 3.0)
         
-        # Start with ambient light intensity
+        # Profile: Ambient light
+        ambient_start = renderer.enable_profiling ? time() : 0.0
         total_intensity = (renderer.ambient_light.x + renderer.ambient_light.y + renderer.ambient_light.z) / 3.0
+        if renderer.enable_profiling
+            renderer.profiler.lighting_ambient_time += time() - ambient_start
+        end
         
         # Add contribution from each light
         for light in renderer.lights
             if light.enabled
-                # Calculate light contribution
+                # Profile: Light contribution
+                contrib_start = renderer.enable_profiling ? time() : 0.0
                 light_contrib = calculate_light_contribution(light, surface_pos, normal)
+                if renderer.enable_profiling
+                    renderer.profiler.lighting_light_contrib_time += time() - contrib_start
+                end
                 
-                # Apply shadows if enabled
+                # Profile: Shadow factor
+                shadow_start = renderer.enable_profiling ? time() : 0.0
                 shadow_factor = calculate_shadow_factor(renderer, light, surface_pos)
+                if renderer.enable_profiling
+                    renderer.profiler.lighting_shadow_time += time() - shadow_start
+                end
                 
                 # Add light intensity (average RGB as overall intensity)
                 light_intensity = (light_contrib.x + light_contrib.y + light_contrib.z) / 3.0 * shadow_factor
@@ -1451,6 +1885,113 @@ module SoftwareRenderer3DModule
         
         # Apply intensity to the color
         return Vec3D(color.x * intensity, color.y * intensity, color.z * intensity, color.w)
+    end
+
+    # Profiling control functions
+    function enable_profiling!(renderer::SoftwareRenderer3D, print_interval::Int = 60)
+        renderer.enable_profiling = true
+        renderer.profile_print_interval = print_interval
+        # Reset all profiler fields
+        renderer.profiler.sorting_time = 0.0
+        renderer.profiler.grouping_time = 0.0
+        renderer.profiler.vertex_conversion_time = 0.0
+        renderer.profiler.rendering_time = 0.0
+        renderer.profiler.triangle_processing_time = 0.0
+        renderer.profiler.transform_time = 0.0
+        renderer.profiler.culling_time = 0.0
+        renderer.profiler.subdivision_time = 0.0
+        renderer.profiler.camera_setup_time = 0.0
+        renderer.profiler.mesh_rendering_time = 0.0
+        renderer.profiler.box_rendering_time = 0.0
+        renderer.profiler.mesh_vertex_access_time = 0.0
+        renderer.profiler.mesh_normal_calc_time = 0.0
+        renderer.profiler.mesh_material_lookup_time = 0.0
+        renderer.profiler.mesh_texture_check_time = 0.0
+        renderer.profiler.mesh_lighting_time = 0.0
+        renderer.profiler.mesh_uv_processing_time = 0.0
+        renderer.profiler.mesh_triangle_add_time = 0.0
+        renderer.profiler.triangle_create_time = 0.0
+        renderer.profiler.triangle_depth_bias_time = 0.0
+        renderer.profiler.triangle_push_time = 0.0
+        renderer.profiler.triangle_aabb_time = 0.0
+        renderer.profiler.lighting_light_contrib_time = 0.0
+        renderer.profiler.lighting_shadow_time = 0.0
+        renderer.profiler.lighting_ambient_time = 0.0
+        renderer.profiler.material_dict_lookup_time = 0.0
+        renderer.profiler.material_color_conv_time = 0.0
+        renderer.profiler.total_time = 0.0
+        renderer.profiler.frame_count = 0
+        renderer.profiler.skipped_sorts = 0
+        println("Profiling enabled: stats will print every $print_interval frames")
+    end
+    
+    function disable_profiling!(renderer::SoftwareRenderer3D)
+        renderer.enable_profiling = false
+        println("Profiling disabled")
+    end
+    
+    function print_profiling_stats(renderer::SoftwareRenderer3D)
+        print_profile(renderer.profiler)
+    end
+    
+    # Get current profiling stats for on-screen display
+    function get_profiling_stats(renderer::SoftwareRenderer3D)::Union{Nothing, NamedTuple}
+        if !renderer.enable_profiling || renderer.profiler.frame_count == 0
+            return nothing
+        end
+        
+        avg_sort = renderer.profiler.sorting_time / renderer.profiler.frame_count * 1000
+        avg_group = renderer.profiler.grouping_time / renderer.profiler.frame_count * 1000
+        avg_convert = renderer.profiler.vertex_conversion_time / renderer.profiler.frame_count * 1000
+        avg_render = renderer.profiler.rendering_time / renderer.profiler.frame_count * 1000
+        avg_tri_process = renderer.profiler.triangle_processing_time / renderer.profiler.frame_count * 1000
+        avg_transform = renderer.profiler.transform_time / renderer.profiler.frame_count * 1000
+        avg_culling = renderer.profiler.culling_time / renderer.profiler.frame_count * 1000
+        avg_subdiv = renderer.profiler.subdivision_time / renderer.profiler.frame_count * 1000
+        avg_camera = renderer.profiler.camera_setup_time / renderer.profiler.frame_count * 1000
+        avg_mesh = renderer.profiler.mesh_rendering_time / renderer.profiler.frame_count * 1000
+        avg_box = renderer.profiler.box_rendering_time / renderer.profiler.frame_count * 1000
+        avg_total = renderer.profiler.total_time / renderer.profiler.frame_count * 1000
+        skip_percent = renderer.profiler.skipped_sorts / renderer.profiler.frame_count * 100
+        
+        return (
+            sorting_ms = avg_sort,
+            grouping_ms = avg_group,
+            conversion_ms = avg_convert,
+            rendering_ms = avg_render,
+            triangle_processing_ms = avg_tri_process,
+            transform_ms = avg_transform,
+            culling_ms = avg_culling,
+            subdivision_ms = avg_subdiv,
+            camera_setup_ms = avg_camera,
+            mesh_rendering_ms = avg_mesh,
+            box_rendering_ms = avg_box,
+            total_ms = avg_total,
+            skipped_sorts_percent = skip_percent,
+            frame_count = renderer.profiler.frame_count
+        )
+    end
+    
+    # Fast sort control
+    function enable_fast_sort!(renderer::SoftwareRenderer3D, enable::Bool = true)
+        renderer.use_fast_sort = enable
+        sort_type = enable ? "QuickSort (faster, less stable)" : "MergeSort (stable, slower)"
+        println("Sort algorithm: $sort_type")
+    end
+    
+    # Cached sort control (frame coherency)
+    function enable_cached_sort!(renderer::SoftwareRenderer3D, enable::Bool = true, 
+                                 move_threshold::Float64 = 0.5, rotate_threshold::Float64 = 2.0)
+        renderer.use_cached_sort = enable
+        renderer.camera_move_threshold = move_threshold
+        renderer.camera_rotate_threshold = rotate_threshold
+        
+        if enable
+            println("Sort caching: ENABLED (move threshold: $move_threshold, rotate threshold: $rotate_threshold°)")
+            println("  → Sort will be skipped if camera moves < threshold (HUGE speedup!)")
+        else
+            println("Sort caching: DISABLED (will sort every frame)")
+        end
     end
 
 end 
