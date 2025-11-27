@@ -197,9 +197,8 @@ module EffectRendererModule
             return target
         elseif target isa EffectsModule.ImageTarget
             # Update image's effect texture
-            if target.image.effectTexture != C_NULL
-                SDL2.SDL_DestroyTexture(target.image.effectTexture)
-            end
+            # Note: UIImage now manages its own texture lifecycle, so we don't destroy here
+            # The old texture cleanup is handled in UIImage.update_effects()
             target.image.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         elseif target isa EffectsModule.Mesh3DTarget

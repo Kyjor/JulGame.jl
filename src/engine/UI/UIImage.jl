@@ -119,6 +119,21 @@ module UIImageModule
     
         # Determine which texture to use
         texture_to_render = (this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL) ? this.effectTexture : this.texture
+        
+        # Validate texture if we're using effect texture
+        if texture_to_render == this.effectTexture && texture_to_render != C_NULL
+            # Query texture to check if it's still valid
+            w = Ref{Cint}(0); h = Ref{Cint}(0)
+            fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+            if SDL2.SDL_QueryTexture(texture_to_render, fmt, access, w, h) != 0
+                # Texture is invalid, fall back to base texture and clear effect texture
+                @debug "Effect texture is invalid for $(this.name), falling back to base texture"
+                this.effectTexture = C_NULL
+                texture_to_render = this.texture
+                this.needsEffectUpdate = true
+            end
+        end
+        
         # Create texture if it doesn't exist
         if texture_to_render == C_NULL && this.texture == C_NULL
             @debug "Creating texture from surface because it doesn't exist for image: $(this.name)"
@@ -406,10 +421,14 @@ module UIImageModule
     end
 
     function generate_effect_cache_key(this::UIImage)::String
-        # Cache key excludes position/rotation (and other transform-only changes)
-        # Effects depend on source image, color, and effect params
+        # Cache key must be unique per instance to prevent texture sharing issues
+        # When textures are shared and one instance destroys it, other instances
+        # end up with invalid texture pointers
+        # Include instance ID to ensure each sprite has its own effect texture
         content = string(
+            this.id, "|",  # Instance ID - prevents sharing across different sprites
             this.path, "|",
+            this.size.x, "x", this.size.y, "|",
             this.color, "|",
             serialize_effects(this.effects)
         )
@@ -459,7 +478,11 @@ module UIImageModule
         # Use cached texture if available
         if haskey(EFFECT_CACHE, this.effectCacheKey)
             @debug("UIImage using cached effect texture", name=this.name, key=this.effectCacheKey)
-            this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
+            cached_texture = EFFECT_CACHE[this.effectCacheKey]
+            
+            # Since cache keys include instance ID, cached texture is ours
+            # Just use it directly (it's already assigned to this instance)
+            this.effectTexture = cached_texture
             if this.effectTexture != C_NULL
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
@@ -493,6 +516,13 @@ module UIImageModule
             end
         end
         
+        # Destroy old effect texture before creating new one
+        # (cache keys include instance ID, so this texture is exclusively ours)
+        if this.effectTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.effectTexture)
+            this.effectTexture = C_NULL
+        end
+        
         # Create target for effects and apply
         target = EffectsModule.ImageTarget(this)
         try
@@ -504,7 +534,8 @@ module UIImageModule
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
                     this.effectSize = Math.Vector2(w[], h[])
-                    # Cache it
+                    
+                    # Cache it (cache key includes instance ID, so no sharing issues)
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
                 end
                 this.needsEffectUpdate = false
