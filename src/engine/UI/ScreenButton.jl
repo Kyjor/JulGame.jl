@@ -20,6 +20,7 @@ module ScreenButtonModule
         textSize::Math.Vector2
         textTexture
         textColor::NTuple{4, Int}
+        crop
 
         function ScreenButton(clickEvent::Union{Function, Nothing} = nothing; 
             id::String=JulGame.generate_uuid(), 
@@ -43,7 +44,8 @@ module ScreenButtonModule
             text::String="", 
             textOffset::Math.Vector2=Math.Vector2(0,0), 
             parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
-            rotation::Float64=0.0
+            rotation::Float64=0.0,
+            crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL
         )
             this = new()
             
@@ -82,6 +84,7 @@ module ScreenButtonModule
             this.isWorldEntity = isWorldEntity
             this.parent = parent
             this.rotation = rotation
+            this.crop = crop
             if clickEvent !== nothing
                 push!(this.clickEvents, clickEvent)
             end
