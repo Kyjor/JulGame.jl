@@ -164,12 +164,11 @@ module EffectRendererModule
             texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return EffectsModule.TextureTarget(texture)
         elseif target isa EffectsModule.SpriteTarget
-            # Update sprite's surface and regenerate texture
-            target.sprite.image = surface
-            if target.sprite.texture != C_NULL
-                SDL2.SDL_DestroyTexture(target.sprite.texture)
+            # Update sprite's effect texture (not base texture)
+            if target.sprite.effectTexture != C_NULL
+                SDL2.SDL_DestroyTexture(target.sprite.effectTexture)
             end
-            target.sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            target.sprite.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         elseif target isa EffectsModule.RectangleTarget
             # Update rectangle's effect texture

@@ -45,7 +45,10 @@ module SpriteModule
         #  effects support
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+        effectSize::Math.Vector2  # Size of effect texture (may be larger due to glow padding)
         needsEffectUpdate::Bool
+        useEffectTexture::Bool  # Toggle to enable/disable effect texture rendering
+        interactionScale::Float64  # Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
         
         function InternalSprite(
             parent::JulGame.IEntity, 
@@ -89,7 +92,10 @@ module SpriteModule
             # Initialize effects
             this.effects = Any[]
             this.effectTexture = C_NULL
+            this.effectSize = Math.Vector2(0, 0)
             this.needsEffectUpdate = false
+            this.useEffectTexture = true  # Default to showing effects when applied
+            this.interactionScale = 1.0  # Default to full-size hitbox
 
             # Early returns
             if isCreatedInEditor
@@ -120,8 +126,8 @@ module SpriteModule
             update_effects(this)
         end
     
-        # Use effect texture if available, otherwise use regular texture
-        texture_to_render = if !isempty(this.effects) && this.effectTexture != C_NULL
+        # Use effect texture if available and enabled, otherwise use regular texture
+        texture_to_render = if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
             this.effectTexture
         else
             # Create texture if it doesn't exist
@@ -132,15 +138,14 @@ module SpriteModule
             this.texture
         end
     
-        # Check and set color if necessary (only for regular texture, not effect texture)
-        if texture_to_render == this.texture
-            colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
-            alphaRef = Ref(UInt8(0))
-            SDL2.SDL_GetTextureColorMod(this.texture, colorRefs...)
-            SDL2.SDL_GetTextureAlphaMod(this.texture, alphaRef)
-            if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
-                Component.set_color(this)
-            end
+        # Check and set color if necessary (for both regular and effect textures)
+        colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+        alphaRef = Ref(UInt8(0))
+        SDL2.SDL_GetTextureColorMod(texture_to_render, colorRefs...)
+        SDL2.SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
+        if colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || colorRefs[3][] != this.color[3] || this.color[4] != alphaRef[]
+            SDL2.SDL_SetTextureColorMod(texture_to_render, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)))
+            SDL2.SDL_SetTextureAlphaMod(texture_to_render, UInt8(clamp(this.color[4], 0, 255)))
         end
     
         # Calculate camera difference
@@ -157,7 +162,10 @@ module SpriteModule
         # Calculate pixels per unit
         ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
     
-        # Precompute values to avoid redundant calculations
+        # Check if using effect texture
+        usingEffectTex = texture_to_render == this.effectTexture && this.effectSize != Math.Vector2(0, 0)
+        
+        # Always use original sprite size for positioning calculations
         cropWidth = srcRect == C_NULL ? this.size.x : this.crop.z
         cropHeight = srcRect == C_NULL ? this.size.y : this.crop.t
         scaleX = this.parent.transform.scale.x
@@ -179,7 +187,7 @@ module SpriteModule
             scaledHeight = cropHeight * scaleFactor * scaleY
         end
     
-        # Compute position based on anchor
+        # Compute position based on anchor (using original sprite dimensions)
         centeredX = adjustedX
         centeredY = adjustedY
         
@@ -217,6 +225,19 @@ module SpriteModule
             # Bottom-right anchor
             centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
             centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+        end
+        
+        # AFTER anchor positioning: expand render size for effect texture and offset to center it
+        if usingEffectTex
+            scaleFactor = this.pixelsPerUnit == 0 ? (SCALE_UNITS/64.0) : (SCALE_UNITS / ppu)
+            effectScaledWidth = this.effectSize.x * scaleFactor * scaleX
+            effectScaledHeight = this.effectSize.y * scaleFactor * scaleY
+            # Offset to center the larger effect texture over the original sprite position
+            centeredX -= (effectScaledWidth - scaledWidth) / 2
+            centeredY -= (effectScaledHeight - scaledHeight) / 2
+            # Use effect dimensions for rendering
+            scaledWidth = effectScaledWidth
+            scaledHeight = effectScaledHeight
         end
     
         # Select float or integer precision
@@ -268,7 +289,7 @@ module SpriteModule
     
     #  effects API
     function Component.apply_effects!(this::InternalSprite, effects::Vector)
-        this.effects = effects
+        this.effects = Any[effect for effect in effects]  # Convert to Vector{Any}
         this.needsEffectUpdate = true
         update_effects(this)
         return this
@@ -291,6 +312,13 @@ module SpriteModule
             result = JG.EffectRendererModule.apply_effects!(target, this.effects)
             if result isa JG.EffectsModule.SpriteTarget
                 # Effect texture should be updated by the renderer
+                # Query the effect texture size and store it
+                if this.effectTexture != C_NULL
+                    w = Ref{Cint}(0); h = Ref{Cint}(0)
+                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                    this.effectSize = Math.Vector2(w[], h[])
+                end
                 this.needsEffectUpdate = false
             end
         catch e
@@ -405,6 +433,7 @@ module SpriteModule
 
     function Component.duplicate(this::InternalSprite, parent::Any)
         newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset, isStatic=this.isStatic)
+        newSprite.interactionScale = this.interactionScale
         Component.initialize(newSprite)
         return newSprite
     end
