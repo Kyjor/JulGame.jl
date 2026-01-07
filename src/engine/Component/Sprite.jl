@@ -46,6 +46,7 @@ module SpriteModule
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         effectSize::Math.Vector2  # Size of effect texture (may be larger due to glow padding)
+        effectCacheKey::String  # Cache key for sharing effect textures
         needsEffectUpdate::Bool
         useEffectTexture::Bool  # Toggle to enable/disable effect texture rendering
         interactionScale::Float64  # Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
@@ -93,6 +94,7 @@ module SpriteModule
             this.effects = Any[]
             this.effectTexture = C_NULL
             this.effectSize = Math.Vector2(0, 0)
+            this.effectCacheKey = ""
             this.needsEffectUpdate = false
             this.useEffectTexture = true  # Default to showing effects when applied
             this.interactionScale = 1.0  # Default to full-size hitbox
@@ -287,9 +289,55 @@ module SpriteModule
         this.isFlipped = !this.isFlipped
     end
     
+    # Shared effect texture cache for sprites (keyed by image+size+effects, not instance)
+    const SPRITE_EFFECT_CACHE = Dict{String, Tuple{Ptr{SDL2.SDL_Texture}, Math.Vector2}}()
+    
+    function serialize_effects(effects::Vector{Any})::String
+        if isempty(effects)
+            return "[]"
+        end
+        parts = String[]
+        for eff in effects
+            T = typeof(eff)
+            fnames = fieldnames(T)
+            vals = String[]
+            for f in fnames
+                v = getfield(eff, f)
+                if v isa Ptr
+                    push!(vals, string(f, "=Ptr"))
+                else
+                    push!(vals, string(f, "=", v))
+                end
+            end
+            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
+        end
+        return "[" * join(parts, ";") * "]"
+    end
+    
+    function generate_effect_cache_key(this::InternalSprite)::String
+        # Cache key based on image path, size, and effects - NOT instance ID
+        # This allows sharing effect textures across sprites with same visuals
+        content = string(
+            this.imagePath, "|",
+            this.size.x, "x", this.size.y, "|",
+            serialize_effects(this.effects)
+        )
+        return string(hash(content))
+    end
+    
     #  effects API
     function Component.apply_effects!(this::InternalSprite, effects::Vector)
         this.effects = Any[effect for effect in effects]  # Convert to Vector{Any}
+        
+        # Generate cache key and check if we need to recompute
+        newKey = generate_effect_cache_key(this)
+        if this.effectCacheKey == newKey && this.effectTexture != C_NULL
+            # Already have this effect cached on this sprite
+            @debug "Sprite.apply_effects!: cache key unchanged; skipping recompute" path=this.imagePath
+            return this
+        end
+        
+        this.effectCacheKey = newKey
         this.needsEffectUpdate = true
         update_effects(this)
         return this
@@ -301,6 +349,16 @@ module SpriteModule
     
     function update_effects(this::InternalSprite)
         if isempty(this.effects) || !this.needsEffectUpdate
+            return
+        end
+        
+        # Check shared cache first
+        if haskey(SPRITE_EFFECT_CACHE, this.effectCacheKey)
+            cached = SPRITE_EFFECT_CACHE[this.effectCacheKey]
+            this.effectTexture = cached[1]
+            this.effectSize = cached[2]
+            this.needsEffectUpdate = false
+            @debug "Sprite using cached effect texture" path=this.imagePath key=this.effectCacheKey
             return
         end
         
@@ -318,12 +376,25 @@ module SpriteModule
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
                     this.effectSize = Math.Vector2(w[], h[])
+                    
+                    # Cache the result for other sprites with same visuals
+                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = (this.effectTexture, this.effectSize)
+                    @debug "Cached sprite effect texture" path=this.imagePath key=this.effectCacheKey
                 end
                 this.needsEffectUpdate = false
             end
         catch e
             @error("Failed to apply effects to sprite: $e")
         end
+    end
+    
+    function clear_sprite_effects_cache()
+        for (key, cached) in SPRITE_EFFECT_CACHE
+            if cached[1] != C_NULL
+                SDL2.SDL_DestroyTexture(cached[1])
+            end
+        end
+        empty!(SPRITE_EFFECT_CACHE)
     end
 
     const FALLBACK_IMAGE_BYTES = UInt8[
