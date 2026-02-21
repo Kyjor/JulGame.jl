@@ -1592,6 +1592,8 @@ module ImmediateUIModule
             
             # Clean up component resources using appropriate destroy method
             if component isa TextBox || component isa ScreenButton || component isa Canvas || component isa UIImage
+                component.isActive = false
+                component.isHovered = false
                 UI.destroy(component)
             end
             
