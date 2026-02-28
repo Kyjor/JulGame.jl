@@ -59,10 +59,10 @@ module SoundSourceModule
 
     function Component.toggle_sound(this::Union{InternalSoundSource, Nothing}, loops = 0)
         if this === nothing
-            @warn "SoundSource is nothing"
+            @warn "toggle_sound: SoundSource is nothing"
             return
         end
-        @debug("Toggling sound from $(this.path), isMusic: $(this.isMusic), loops: $(loops)")
+        @debug("toggle_sound: Toggling sound from $(this.path), isMusic: $(this.isMusic), loops: $(loops)")
         try
             if this.isMusic
                 if SDL2.Mix_PlayingMusic() == 0
@@ -79,22 +79,22 @@ module SoundSourceModule
                 end
             else
                 if SDL2.Mix_PlayChannel(Math.TypeConversions.safe_int32_convert(this.channel), this.sound, Math.TypeConversions.safe_int32_convert(loops)) == -1
-                    @error "Error playing channel $(unsafe_string(SDL2.SDL_GetError()))"
+                    @error "toggle_sound: Error playing channel $(unsafe_string(SDL2.SDL_GetError()))"
                     throw(e)
                 end
             end
         catch e
-            @error "Error in toggle_sound" exception=(e, catch_backtrace())
+            @error "toggle_sound: Error in toggle_sound" exception=(e, catch_backtrace())
         end
     end
     
     function Component.stop_music(this::InternalSoundSource)
-        @debug("Stopping music from $(this.path)")
+        @debug("stop_music: Stopping music from $(this.path)")
         SDL2.Mix_HaltMusic()
     end
 
     function Component.load_sound(this::InternalSoundSource, soundPath::String, isMusic::Bool)
-        @debug("Loading sound from $(soundPath), isMusic: $(isMusic)")
+        @debug("load_sound: Loading sound from $(soundPath), isMusic: $(isMusic)")
         this.isMusic = isMusic
         SDL2.SDL_ClearError()
         this.sound = load_sound_sdl(soundPath, isMusic)
@@ -109,7 +109,7 @@ module SoundSourceModule
     end
 
     function load_sound_sdl(soundPath::String, isMusic::Bool)
-        @debug("Loading sound from $(soundPath), isMusic: $(isMusic)")
+        @debug("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
         if haskey(JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))
             raw_data = JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
@@ -119,7 +119,7 @@ module SoundSourceModule
                 return isMusic ? SDL2.Mix_LoadMUS_RW(rw, 1) : SDL2.Mix_LoadWAV_RW(rw, 1)
             end
         end
-        @debug "Loading sound from disk, there are $(length(JulGame.AUDIO_CACHE)) sounds in cache"
+        @debug "load_sound_sdl: Loading sound from disk, there are $(length(JulGame.AUDIO_CACHE)) sounds in cache"
 
         fullPath = joinpath(BasePath, "assets", "sounds", soundPath)
         return isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
@@ -138,7 +138,7 @@ module SoundSourceModule
     end
 
     function Component.unload_sound(this::InternalSoundSource)
-        @debug("Unloading sound from $(this.path), isMusic: $(this.isMusic)")
+        @debug("unload_sound: Unloading sound from $(this.path), isMusic: $(this.isMusic)")
         if this.isMusic
             SDL2.Mix_FreeMusic(this.sound)
         else
@@ -148,11 +148,11 @@ module SoundSourceModule
     end
 
     function Component.set_volume(this::InternalSoundSource, volume::Int = 128, channel::Int = -1)
-        @debug("Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(volume), channel: $(channel)")
+        @debug("set_volume: Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(volume), channel: $(channel)")
         # Convert volume to Int32 for SDL
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
-        @debug "Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)"
+        @debug "set_volume: Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)"
         this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 
@@ -160,7 +160,7 @@ module SoundSourceModule
         # Convert loops to Int32
         loops = Math.TypeConversions.safe_int32_convert(loops)
         
-        @debug("Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
+        @debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
         if this.isMusic
             SDL2.Mix_PlayMusic(this.sound, -1)
         else
@@ -170,13 +170,13 @@ module SoundSourceModule
 
     function set_master_volume(volume::Int)
         # Convert volume to Int32 and clamp between 0 and 128
-        @debug("Setting master volume to $(volume)")
+        @debug("set_master_volume: Setting master volume to $(volume)")
         volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
         SDL2.Mix_MasterVolume(volume)
     end
 
     function Component.duplicate(this::InternalSoundSource, parent::Any)
-        @debug("Duplicating sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), volume: $(this.volume), playOnStart: $(this.playOnStart)")
+        @debug("duplicate: Duplicating sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), volume: $(this.volume), playOnStart: $(this.playOnStart)")
         newSoundSource = InternalSoundSource(parent, this.path, this.channel, this.volume, this.isMusic, this.playOnStart)
         newSoundSource.isPlaying = this.isPlaying
         return newSoundSource

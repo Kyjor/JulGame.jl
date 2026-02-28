@@ -93,6 +93,7 @@ module SceneWriterModule
                     end
                     dict[string(field)] = extract_value(uiElement, field)
                 end
+                dict["parent"] = get_parent_id(uiElement.parent)
                 push!(uiElementsDict, dict)
             elseif "$(typeof(uiElement))" == "JulGame.UI.RectangleModule.Rectangle"
                 dict = Dict()
@@ -104,6 +105,7 @@ module SceneWriterModule
                     end
                     dict[string(field)] = extract_value(uiElement, field)
                 end
+                dict["parent"] = get_parent_id(uiElement.parent)
                 push!(uiElementsDict, dict)
             else
                 push!(uiElementsDict, Dict(
