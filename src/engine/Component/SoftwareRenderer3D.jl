@@ -7,9 +7,9 @@ module SoftwareRenderer3DModule
     using ..JulGame.InputModule
     
     # Import MeshIO and FileIO for 3D file loading
-    using FileIO, MeshIO
+    using FileIO #, MeshIO
     using GeometryBasics
-    global MESHIO_AVAILABLE = true
+    global MESHIO_AVAILABLE = false #true
     
     # Import our 3D modules
     include("Math3D.jl")
