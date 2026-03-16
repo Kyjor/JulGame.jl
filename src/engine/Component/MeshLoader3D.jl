@@ -1,7 +1,7 @@
 module MeshLoader3DModule
     using ..JulGame.SDL2
     using ..JulGame.SDL2.LibSDL2
-    using FileIO, MeshIO
+    using FileIO #, MeshIO
     using GeometryBasics
     using ..Math3DModule
     using ..Geometry3DModule
