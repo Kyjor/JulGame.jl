@@ -11,7 +11,7 @@ module ImmediateUIModule
     using ..UI.UIImageModule
     import ..UI
 
-    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, immediate_canvas, immediate_image, manage_all_immediate_components, cleanup_all_immediate_components
+    export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, immediate_canvas, immediate_image, manage_all_immediate_components, cleanup_all_immediate_components, remove_immediate_component, set_immediate_component_lifetime
 
     # Dictionary to store active immediate UI components by their id and type
     const IMMEDIATE_UI_CACHE = Dict{String, Any}()
@@ -20,8 +20,12 @@ module ImmediateUIModule
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
     const IMMEDIATE_UI_FRAME_COUNT = Dict{String, Int}()
     
-    # Lifetime in milliseconds before an unused immediate component is removed (default: -1 means remove the component the first time it is not used)
+    # Lifetime constants:
+    # -1: Remove the component the first time it is not used (default, short-lived)
+    # -2: Never expire (indefinite lifetime)
+    # >= 0: Lifetime in milliseconds before an unused immediate component is removed
     const DEFAULT_LIFETIME = -1
+    const INFINITE_LIFETIME = -2
     last_timestamp = 0
 
     """
@@ -1537,6 +1541,12 @@ module ImmediateUIModule
         
         # First pass: collect layers for each component and check expiration
         for (composite_id, component) in IMMEDIATE_UI_CACHE     
+            # Skip infinite lifetime components
+            if component.lifetime == INFINITE_LIFETIME
+                component_layers[composite_id] = component.element.layer
+                continue
+            end
+            
             # Check if this component hasn't been used for a while
             if component.lifetime == -1
                 if !haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) || abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount) > 2
@@ -1546,7 +1556,7 @@ module ImmediateUIModule
                 else 
                     @debug "component $(composite_id) is still active"
                 end
-            elseif !haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime
+            elseif component.lifetime >= 0 && (!haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime)
                 @debug "component $(composite_id) expired from lifetime $(component.lifetime)"
                 push!(expired_ids, composite_id)
                 continue
@@ -1620,6 +1630,72 @@ module ImmediateUIModule
         # Clear the dictionaries
         empty!(IMMEDIATE_UI_CACHE)
         empty!(IMMEDIATE_UI_TIMESTAMPS)
+    end
+
+    """
+    remove_immediate_component(id::String, component_type::String="")
+    
+    Manually removes a specific immediate UI component by its ID.
+    
+    # Arguments
+    - `id::String`: The ID of the component to remove
+    - `component_type::String`: Optional component type prefix (e.g., "text", "button", "rect"). 
+                                If not provided, will try common prefixes.
+    
+    # Returns
+    `true` if the component was found and removed, `false` otherwise
+    """
+    function remove_immediate_component(id::String, component_type::String="")
+        # Try with provided type, or try common types
+        types_to_try = isempty(component_type) ? ["text", "button", "rect", "line", "circle", "progress_bar", "canvas", "image"] : [component_type]
+        
+        for type_prefix in types_to_try
+            composite_id = "$(type_prefix)_$(id)"
+            if haskey(IMMEDIATE_UI_CACHE, composite_id)
+                cleanup_immediate_component(composite_id)
+                return true
+            end
+        end
+        
+        return false
+    end
+
+    """
+    set_immediate_component_lifetime(id::String, lifetime::Int, component_type::String="")
+    
+    Sets or updates the lifetime of an existing immediate UI component.
+    The lifetime countdown starts from when this function is called.
+    
+    # Arguments
+    - `id::String`: The ID of the component
+    - `lifetime::Int`: New lifetime in milliseconds. Use `INFINITE_LIFETIME` (-2) for indefinite, 
+                      `-1` for "remove when not updated for 2 frames", or `>= 0` for milliseconds.
+    - `component_type::String`: Optional component type prefix (e.g., "text", "button", "rect"). 
+                                If not provided, will try common prefixes.
+    
+    # Returns
+    `true` if the component was found and lifetime was updated, `false` otherwise
+    """
+    function set_immediate_component_lifetime(id::String, lifetime::Int, component_type::String="")
+        # Try with provided type, or try common types
+        types_to_try = isempty(component_type) ? ["text", "button", "rect", "line", "circle", "progress_bar", "canvas", "image"] : [component_type]
+        
+        for type_prefix in types_to_try
+            composite_id = "$(type_prefix)_$(id)"
+            if haskey(IMMEDIATE_UI_CACHE, composite_id)
+                component = IMMEDIATE_UI_CACHE[composite_id]
+                component.lifetime = lifetime
+                
+                # Update timestamp to start the countdown from now
+                if lifetime >= 0
+                    IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+                end
+                
+                return true
+            end
+        end
+        
+        return false
     end
 
     """
