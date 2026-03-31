@@ -161,34 +161,38 @@ module InputModule
                     window_height = Ref{Cint}(0)
                     SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
 
-                    # Get current render output size
-                    render_width = Ref{Cint}(0)
-                    render_height = Ref{Cint}(0)
-                    SDL2.SDL_GetRendererOutputSize(JulGame.Renderer, render_width, render_height)
-
                     # Get base resolution from WindowManager
                     logical_size = JulGame.WindowManagerModule.get_logical_size()
 
-                    # Calculate scale factors between window and render sizes
-                    scale_x = logical_size.x / window_width[]
-                    scale_y = logical_size.y / window_height[]
+                    safe_window_width = max(window_width[], 1)
+                    safe_window_height = max(window_height[], 1)
+                    safe_logical_width = max(logical_size.x, 1)
+                    safe_logical_height = max(logical_size.y, 1)
+                    scale_x = safe_window_width / safe_logical_width
+                    scale_y = safe_window_height / safe_logical_height
+                    scale = min(scale_x, scale_y)
+                    content_width = safe_logical_width * scale
+                    content_height = safe_logical_height * scale
+                    bar_x = (safe_window_width - content_width) / 2
+                    bar_y = (safe_window_height - content_height) / 2
 
-                    @debug("scale_x: $scale_x, scale_y: $scale_y")
+                    @debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
                     @debug("window_width: $window_width[], window_height: $window_height[]")
-                    @debug("render_width: $render_width[], render_height: $render_height[]")
-                    # Scale mouse coordinates to match our logical resolution
-                    scaled_x = x[1] * scale_x
-                    scaled_y = y[1] * scale_y
+                    @debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
+
+                    # Remove black-bar offsets, then map into logical coordinates.
+                    scaled_x = (x[1] - bar_x) / scale
+                    scaled_y = (y[1] - bar_y) / scale
                     if scaled_x == Inf || scaled_y == Inf
                         Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
                         scaled_x = 0
                         scaled_y = 0
                     end
-                    #@debug "scaled_x: $scaled_x, scaled_y: $scaled_y"
-                    # Always apply scaling to convert window coordinates to logical coordinates
-                    # This is needed for both real clicks and simulated clicks
                     window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
-                    this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+                    this.mousePosition = Math.Vector2(
+                        clamp(floor(Int, scaled_x), 0, logical_size.x),
+                        clamp(floor(Int, scaled_y), 0, logical_size.y)
+                    )
                     @debug "Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused"
                 else
                     # Calculate mouse position relative to the game view window
@@ -1021,13 +1025,21 @@ module InputModule
         # Get base resolution from WindowManager
         logical_size = JulGame.WindowManagerModule.get_logical_size()
 
-        # Calculate scale factors (same as in poll_input)
-        scale_x = logical_size.x / window_width[]
-        scale_y = logical_size.y / window_height[]
+        safe_window_width = max(window_width[], 1)
+        safe_window_height = max(window_height[], 1)
+        safe_logical_width = max(logical_size.x, 1)
+        safe_logical_height = max(logical_size.y, 1)
+        scale_x = safe_window_width / safe_logical_width
+        scale_y = safe_window_height / safe_logical_height
+        scale = min(scale_x, scale_y)
+        content_width = safe_logical_width * scale
+        content_height = safe_logical_height * scale
+        bar_x = (safe_window_width - content_width) / 2
+        bar_y = (safe_window_height - content_height) / 2
 
-        # Convert logical coordinates to window coordinates
-        window_x = round(Int, x / scale_x)
-        window_y = round(Int, y / scale_y)
+        # Convert logical coordinates to window coordinates (inverse of poll_input mapping)
+        window_x = round(Int, (x * scale) + bar_x)
+        window_y = round(Int, (y * scale) + bar_y)
         x = Math.TypeConversions.safe_int32_convert(window_x)
         y = Math.TypeConversions.safe_int32_convert(window_y)
         # Move the mouse to the specified position

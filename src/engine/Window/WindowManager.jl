@@ -588,6 +588,66 @@ module WindowManagerModule
     end
 
     """
+        get_display_name(display_index::Int)::String
+
+    Returns the human-readable display name for the given display index.
+    """
+    function get_display_name(display_index::Int)::String
+        name_ptr = SDL2.SDL_GetDisplayName(display_index)
+        return name_ptr == C_NULL ? "" : unsafe_string(name_ptr)
+    end
+
+    """
+        get_available_displays()::Vector{Tuple{Int, String, SDL2.SDL_DisplayMode}}
+
+    Returns a list of available displays with their indices, names, and current display modes.
+    """
+    function get_available_displays()::Vector{Tuple{Int, String, SDL2.SDL_DisplayMode}}
+        nd = SDL2.SDL_GetNumVideoDisplays()
+        if nd < 1
+            @warn "No video displays reported: $(unsafe_string(SDL2.SDL_GetError()))"
+            return Tuple{Int, String, SDL2.SDL_DisplayMode}[]
+        end
+
+        displays = Tuple{Int, String, SDL2.SDL_DisplayMode}[]
+        for display_index in 0:(nd - 1)
+            mode = Ref{SDL2.SDL_DisplayMode}()
+            if SDL2.SDL_GetCurrentDisplayMode(display_index, mode) == 0
+                push!(displays, (display_index, get_display_name(display_index), mode[]))
+            else
+                @warn "Failed to get current display mode for display $display_index: $(unsafe_string(SDL2.SDL_GetError()))"
+            end
+        end
+
+        return displays
+    end
+
+    """
+        get_display_modes(display_index::Int)::Vector{SDL2.SDL_DisplayMode}
+
+    Returns all available display modes for the given display index.
+    """
+    function get_display_modes(display_index::Int)::Vector{SDL2.SDL_DisplayMode}
+        ndm = SDL2.SDL_GetNumDisplayModes(display_index)
+        if ndm < 1
+            @warn "No display modes reported for display $display_index: $(unsafe_string(SDL2.SDL_GetError()))"
+            return SDL2.SDL_DisplayMode[]
+        end
+
+        modes = SDL2.SDL_DisplayMode[]
+        for i in 0:(ndm - 1)
+            mode = Ref{SDL2.SDL_DisplayMode}()
+            if SDL2.SDL_GetDisplayMode(display_index, i, mode) == 0
+                push!(modes, mode[])
+            else
+                @warn "Failed to get display mode $i for display $display_index: $(unsafe_string(SDL2.SDL_GetError()))"
+            end
+        end
+
+        return modes
+    end
+
+    """
         get_display_refresh_rate(this::WindowManager)::Int32
 
     Gets the refresh rate of the display the window is on.
