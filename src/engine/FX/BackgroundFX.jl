@@ -474,9 +474,9 @@ module BackgroundFXModule
     function render_circle(circle::CircleData, effect::MovingCirclesEffect, camera)
         # Calculate screen coordinates
         screen_x, screen_y = if effect.is_world_entity && camera !== nothing
-            # Convert world coordinates to screen coordinates
-            world_x = circle.x - (camera.position.x + camera.offset.x) * SCALE_UNITS
-            world_y = circle.y - (camera.position.y + camera.offset.y) * SCALE_UNITS
+            S = JulGame.pixels_per_world_unit(camera)
+            world_x = circle.x - (camera.position.x + camera.offset.x) * S
+            world_y = circle.y - (camera.position.y + camera.offset.y) * S
             (Float32(world_x), Float32(world_y))
         else
             (Float32(circle.x), Float32(circle.y))

@@ -1078,7 +1078,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 			
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
-			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * SCALE_UNITS)) / SCALE_UNITS, (this.input.mousePosition.y + (cameraPosition.y * SCALE_UNITS)) / SCALE_UNITS)
+			S_mouse = JulGame.pixels_per_world_unit(this.scene.camera)
+			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse)
 			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
 			#region Debug
 			if JulGame.IS_DEBUG
@@ -1162,6 +1163,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	function render_scene_sprites_and_shapes(this::MainLoop, camera::Camera)
 		cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0,0)
 		cameraSize = camera !== nothing ? camera.size : Math.Vector2(0,0)
+		S = JulGame.pixels_per_world_unit(camera)
 			
 		skipcount = 0
 		rendercount = 0
@@ -1188,12 +1190,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			skipSoftwareRenderer3d = false
 
 			# TODO: consider offset
-			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && this.optimizeSpriteRendering 
+			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && this.optimizeSpriteRendering 
 				skipSprite = true
 			end
 
 			# TODO: consider offset
-			if shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (position.y - size.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS) && shape.isWorldEntity && this.optimizeSpriteRendering 
+			if shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && shape.isWorldEntity && this.optimizeSpriteRendering 
 				skipShape = true
 			end
 
@@ -1298,6 +1300,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	end
 
 	function render_scene_debug(this::MainLoop, cameraPosition, cameraSize)
+		S = JulGame.pixels_per_world_unit(this.scene.camera)
 		colliderSkipCount = 0
 		colliderRenderCount = 0
 		for entity in this.scene.entities
@@ -1312,7 +1315,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				pos = entity.transform.position
 				scale = entity.transform.scale
 	
-				if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/SCALE_UNITS || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/SCALE_UNITS)  && this.optimizeSpriteRendering 
+				if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/S || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/S)  && this.optimizeSpriteRendering 
 					colliderSkipCount += 1
 					continue
 				end
@@ -1326,10 +1329,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				colOffset = Math.Vector2f(colOffset.x, colOffset.y)
 						
 				SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-				Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * SCALE_UNITS, 
-				(pos.y + colOffset.y - cameraPosition.y) * SCALE_UNITS, 
-				entity.transform.scale.x * colSize.x * SCALE_UNITS, 
-				entity.transform.scale.y * colSize.y * SCALE_UNITS)))
+				Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
+				(pos.y + colOffset.y - cameraPosition.y) * S, 
+				entity.transform.scale.x * colSize.x * S, 
+				entity.transform.scale.y * colSize.y * S)))
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 			end
 		end

@@ -57,18 +57,19 @@ module ShapeModule
 
         parentTransform = this.parent.transform
 
+        S = (this.isWorldEntity && camera !== nothing) ? JulGame.pixels_per_world_unit(camera) : JulGame.SCALE_UNITS
         cameraDiff = this.isWorldEntity && camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
+        Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
         Math.Vector2(0,0)
         position = this.isWorldEntity ?
         parentTransform.position :
         this.position
 
         # Convert coordinates to Int32 for SDL
-        x = Math.TypeConversions.safe_int32_convert(round((position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x - (parentTransform.scale.x * SCALE_UNITS - SCALE_UNITS) / 2))
-        y = Math.TypeConversions.safe_int32_convert(round((position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y - (parentTransform.scale.y * SCALE_UNITS - SCALE_UNITS) / 2))
-        w = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.x * SCALE_UNITS))
-        h = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.y * SCALE_UNITS))
+        x = Math.TypeConversions.safe_int32_convert(round((position.x + this.offset.x) * S - cameraDiff.x - (parentTransform.scale.x * S - S) / 2))
+        y = Math.TypeConversions.safe_int32_convert(round((position.y + this.offset.y) * S - cameraDiff.y - (parentTransform.scale.y * S - S) / 2))
+        w = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.x * S))
+        h = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.y * S))
         
         outlineRect = Ref(SDL2.SDL_FRect(x, y, w, h))
 

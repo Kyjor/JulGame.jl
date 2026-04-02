@@ -62,13 +62,11 @@ module ProgressBarModule
         
         # Calculate drawing coordinates based on world or screen position
         if this.isWorldEntity && camera !== nothing
-            # Calculate position in screen space
-            posX = (this.position.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            posY = (this.position.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
-            
-            # For world entities, size needs to be scaled by SCALE_UNITS
-            width = this.size.x * SCALE_UNITS
-            height = this.size.y * SCALE_UNITS
+            S = JulGame.pixels_per_world_unit(camera)
+            posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
+            posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
+            width = this.size.x * S
+            height = this.size.y * S
         else
             posX = this.position.x
             posY = this.position.y

@@ -2,7 +2,8 @@ module CameraModule
     using ..JulGame
     using .Math
 
-    export Camera
+    export Camera, pixels_per_world_unit, apply_zoom_to_center!
+
     mutable struct Camera
         id::String
         name::String
@@ -10,6 +11,7 @@ module CameraModule
         offset::Vector2f
         position::Vector3f
         size::Vector2
+        zoom::Float64
         yaw::Float64
         pitch::Float64
         target::Union{
@@ -29,11 +31,41 @@ module CameraModule
             this.offset = Vector2f(offset.x, offset.y)
             this.target = target
             this.windowPos = Vector2(0,0)
+            this.zoom = 1.0
             this.yaw = 0.0
             this.pitch = 0.0
 
             return this
         end
+    end
+
+    """Pixels per world unit for 2D rendering (SCALE_UNITS × camera zoom)."""
+    @inline function pixels_per_world_unit(camera::Union{Nothing, Camera})
+        camera === nothing && return JulGame.SCALE_UNITS
+        return JulGame.SCALE_UNITS * camera.zoom
+    end
+
+    """
+        apply_zoom_to_center!(camera::Camera, new_zoom::Float64)
+
+    Set `camera.zoom` to `new_zoom` and shift `camera.position` (x, y) so the world point
+    that was at the viewport center stays there. `camera.offset` is not modified.
+    """
+    function apply_zoom_to_center!(camera::Camera, new_zoom::Float64)
+        S_old = pixels_per_world_unit(camera)
+        S_new = JulGame.SCALE_UNITS * new_zoom
+        half_w = Float64(camera.size.x) / 2
+        half_h = Float64(camera.size.y) / 2
+        inv_delta = inv(S_old) - inv(S_new)
+        dx = half_w * inv_delta
+        dy = half_h * inv_delta
+        camera.position = Vector3f(
+            camera.position.x + dx,
+            camera.position.y + dy,
+            camera.position.z,
+        )
+        camera.zoom = new_zoom
+        return camera
     end
 
     function update(this::Camera, newPosition::Union{Nothing, Vector3f} = nothing)
@@ -50,7 +82,7 @@ module CameraModule
         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         
         center_pixels = Vector2f(this.size.x / 2, this.size.y / 2)
-        center_world = center_pixels / SCALE_UNITS
+        center_world = center_pixels / pixels_per_world_unit(this)
 
         if this.target !== nothing && this.target !== C_NULL && newPosition === nothing
             targetPos::Vector3f = this.target.position

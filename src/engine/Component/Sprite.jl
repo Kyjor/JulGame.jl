@@ -150,9 +150,10 @@ module SpriteModule
             SDL2.SDL_SetTextureAlphaMod(texture_to_render, UInt8(clamp(this.color[4], 0, 255)))
         end
     
+        S = JulGame.pixels_per_world_unit(camera)
         # Calculate camera difference
         cameraDiff = camera !== nothing ? 
-            Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
+            Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
             Math.Vector2(0, 0)
     
         # Calculate position
@@ -174,17 +175,17 @@ module SpriteModule
         scaleY = this.parent.transform.scale.y
     
         # Compute position adjustment
-        adjustedX = (position.x + this.offset.x) * SCALE_UNITS - cameraDiff.x
-        adjustedY = (position.y + this.offset.y) * SCALE_UNITS - cameraDiff.y
+        adjustedX = (position.x + this.offset.x) * S - cameraDiff.x
+        adjustedY = (position.y + this.offset.y) * S - cameraDiff.y
     
         # Handle pixelsPerUnit == 0 (use true size without scaling)
         if this.pixelsPerUnit == 0
-            scaledWidth = cropWidth * scaleX * SCALE_UNITS/64.0
-            scaledHeight = cropHeight * scaleY * SCALE_UNITS/64.0
+            scaledWidth = cropWidth * scaleX * S / 64.0
+            scaledHeight = cropHeight * scaleY * S / 64.0
         else
             # Use pixelsPerUnit or default PIXELS_PER_UNIT for scaling
             ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
-            scaleFactor = SCALE_UNITS / ppu
+            scaleFactor = S / ppu
             scaledWidth = cropWidth * scaleFactor * scaleX
             scaledHeight = cropHeight * scaleFactor * scaleY
         end
@@ -196,42 +197,42 @@ module SpriteModule
         # Apply anchor positioning
         if this.anchor == :center
             # Center anchor (default behavior)
-            centeredX -= (scaledWidth - SCALE_UNITS * scaleX) / 2
-            centeredY -= (scaledHeight - SCALE_UNITS * scaleY) / 2
+            centeredX -= (scaledWidth - S * scaleX) / 2
+            centeredY -= (scaledHeight - S * scaleY) / 2
         elseif this.anchor == :top
             # Top anchor
-            centeredX -= (scaledWidth - SCALE_UNITS * scaleX) / 2
+            centeredX -= (scaledWidth - S * scaleX) / 2
             # No adjustment for Y
         elseif this.anchor == :bottom
             # Bottom anchor
-            centeredX -= (scaledWidth - SCALE_UNITS * scaleX) / 2
-            centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+            centeredX -= (scaledWidth - S * scaleX) / 2
+            centeredY -= (scaledHeight - S * scaleY)
         elseif this.anchor == :left
             # Left anchor
-            centeredY -= (scaledHeight - SCALE_UNITS * scaleY) / 2
+            centeredY -= (scaledHeight - S * scaleY) / 2
             # No adjustment for X
         elseif this.anchor == :right
             # Right anchor
-            centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
-            centeredY -= (scaledHeight - SCALE_UNITS * scaleY) / 2
+            centeredX -= (scaledWidth - S * scaleX)
+            centeredY -= (scaledHeight - S * scaleY) / 2
         elseif this.anchor == :topleft
             # Top-left anchor
             # No adjustment needed
         elseif this.anchor == :topright
             # Top-right anchor
-            centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
+            centeredX -= (scaledWidth - S * scaleX)
         elseif this.anchor == :bottomleft
             # Bottom-left anchor
-            centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+            centeredY -= (scaledHeight - S * scaleY)
         elseif this.anchor == :bottomright
             # Bottom-right anchor
-            centeredX -= (scaledWidth - SCALE_UNITS * scaleX)
-            centeredY -= (scaledHeight - SCALE_UNITS * scaleY)
+            centeredX -= (scaledWidth - S * scaleX)
+            centeredY -= (scaledHeight - S * scaleY)
         end
         
         # AFTER anchor positioning: expand render size for effect texture and offset to center it
         if usingEffectTex
-            scaleFactor = this.pixelsPerUnit == 0 ? (SCALE_UNITS/64.0) : (SCALE_UNITS / ppu)
+            scaleFactor = this.pixelsPerUnit == 0 ? (S / 64.0) : (S / ppu)
             effectScaledWidth = this.effectSize.x * scaleFactor * scaleX
             effectScaledHeight = this.effectSize.y * scaleFactor * scaleY
             # Offset to center the larger effect texture over the original sprite position

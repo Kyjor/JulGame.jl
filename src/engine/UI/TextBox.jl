@@ -184,12 +184,9 @@ module TextBoxModule
         SDL2.SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         # Handle world coordinates for world entities, similar to Sprite component
         if this.isWorldEntity && camera !== nothing
-            # Calculate position in screen space
-            posX = (this.position.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            posY = (this.position.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
-            
-            # Don't scale the size, keep it the same as screen space
-            # Render with world-space positioning only, not scaling size
+            S = JulGame.pixels_per_world_unit(camera)
+            posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
+            posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
                 texture_to_render, 
@@ -197,8 +194,8 @@ module TextBoxModule
                 Ref(SDL2.SDL_FRect(
                     Float32(posX), 
                     Float32(posY), 
-                    Float32(this.size.x), 
-                    Float32(this.size.y)
+                    Float32(this.size.x * camera.zoom), 
+                    Float32(this.size.y * camera.zoom)
                 ))
             ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
         else

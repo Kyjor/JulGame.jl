@@ -51,12 +51,10 @@ module CircleModule
         
         # Calculate drawing coordinates based on world or screen position
         if this.isWorldEntity && camera !== nothing
-            # Calculate position in screen space
-            centerX = (this.center.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            centerY = (this.center.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
-            
-            # For world entities, radius needs to be scaled by SCALE_UNITS
-            scaledRadius = this.radius * SCALE_UNITS
+            S = JulGame.pixels_per_world_unit(camera)
+            centerX = (this.center.x - (camera.position.x + camera.offset.x)) * S
+            centerY = (this.center.y - (camera.position.y + camera.offset.y)) * S
+            scaledRadius = this.radius * S
         else
             centerX = this.center.x
             centerY = this.center.y

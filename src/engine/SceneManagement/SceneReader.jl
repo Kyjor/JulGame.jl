@@ -183,6 +183,10 @@ module SceneReaderModule
             if haskey(json, "Camera")
                 camera = Camera(Vector2(json.Camera.size.x, json.Camera.size.y), Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
                 camera.backgroundColor = (json.Camera.backgroundColor.r, json.Camera.backgroundColor.g, json.Camera.backgroundColor.b, json.Camera.backgroundColor.a)
+                zraw = get(json.Camera, "zoom", nothing)
+                if zraw !== nothing
+                    camera.zoom = Float64(zraw)
+                end
             end
              
             push!(res, entities)

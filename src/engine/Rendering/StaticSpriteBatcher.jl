@@ -422,11 +422,11 @@ function render_batched_layer(batched_layer::BatchedLayer, camera)
         return
     end
     
-    SCALE_UNITS = JulGame.SCALE_UNITS
+    S = JulGame.pixels_per_world_unit(camera)
     
     # Calculate camera offset
     cameraDiff = camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
+        Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
         Math.Vector2(0, 0)
     
     cameraSize = camera !== nothing ? camera.size : Math.Vector2(0, 0)
@@ -446,18 +446,18 @@ function render_batched_layer(batched_layer::BatchedLayer, camera)
         if camera !== nothing && cameraSize.x > 0 && cameraSize.y > 0
             if world_x + world_width < cameraPosition.x || 
                world_y + world_height < cameraPosition.y ||
-               world_x > cameraPosition.x + cameraSize.x / SCALE_UNITS ||
-               world_y > cameraPosition.y + cameraSize.y / SCALE_UNITS
+               world_x > cameraPosition.x + cameraSize.x / S ||
+               world_y > cameraPosition.y + cameraSize.y / S
                 @debug "Culling batched layer $(batched_layer.layer) chunk $(i) - off screen"
                 continue
             end
         end
         
         # Convert to screen coordinates
-        screen_x = world_x * SCALE_UNITS - cameraDiff.x + batched_layer.debugOffset.x
-        screen_y = world_y * SCALE_UNITS - cameraDiff.y + batched_layer.debugOffset.y
-        screen_width = world_width * SCALE_UNITS
-        screen_height = world_height * SCALE_UNITS
+        screen_x = world_x * S - cameraDiff.x + batched_layer.debugOffset.x
+        screen_y = world_y * S - cameraDiff.y + batched_layer.debugOffset.y
+        screen_width = world_width * S
+        screen_height = world_height * S
         
         # Source rect (entire texture)
         src_rect = Ref(SDL2.SDL_Rect(

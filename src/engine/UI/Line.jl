@@ -62,11 +62,11 @@ module LineModule
         
         # Calculate drawing coordinates based on world or screen position
         if this.isWorldEntity && camera !== nothing
-            # Calculate position in screen space
-            startX = (this.startPoint.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            startY = (this.startPoint.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
-            endX = (this.endPoint.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            endY = (this.endPoint.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
+            S = JulGame.pixels_per_world_unit(camera)
+            startX = (this.startPoint.x - (camera.position.x + camera.offset.x)) * S
+            startY = (this.startPoint.y - (camera.position.y + camera.offset.y)) * S
+            endX = (this.endPoint.x - (camera.position.x + camera.offset.x)) * S
+            endY = (this.endPoint.y - (camera.position.y + camera.offset.y)) * S
         else
             startX = this.startPoint.x
             startY = this.startPoint.y
@@ -181,10 +181,11 @@ module LineModule
         
         # Calculate position
         if this.isWorldEntity && camera !== nothing
-            startX = (this.startPoint.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            startY = (this.startPoint.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
-            endX = (this.endPoint.x - (camera.position.x + camera.offset.x)) * SCALE_UNITS
-            endY = (this.endPoint.y - (camera.position.y + camera.offset.y)) * SCALE_UNITS
+            S = JulGame.pixels_per_world_unit(camera)
+            startX = (this.startPoint.x - (camera.position.x + camera.offset.x)) * S
+            startY = (this.startPoint.y - (camera.position.y + camera.offset.y)) * S
+            endX = (this.endPoint.x - (camera.position.x + camera.offset.x)) * S
+            endY = (this.endPoint.y - (camera.position.y + camera.offset.y)) * S
         else
             startX = this.startPoint.x
             startY = this.startPoint.y

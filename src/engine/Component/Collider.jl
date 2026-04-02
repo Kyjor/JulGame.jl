@@ -185,8 +185,9 @@ module ColliderModule
         isIntersection = SDL2.SDL_IntersectRect(Ref(a), Ref(b), result)
 
         camera = MAIN.scene.camera
+        camS = JulGame.pixels_per_world_unit(camera)
         cameraDiff = camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
+        Math.Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 
         Math.Vector2(0,0)
         isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x), round(posA.y + 80 - cameraDiff.y))
