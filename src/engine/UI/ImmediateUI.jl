@@ -857,6 +857,11 @@ module ImmediateUIModule
 
             needsUpdate = false
 
+            if image.id != id
+                image.id = id
+                needsUpdate = true
+            end
+
             if image.name != name
                 image.name = name
                 needsUpdate = true
