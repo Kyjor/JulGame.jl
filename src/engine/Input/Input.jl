@@ -45,6 +45,9 @@ module InputModule
         isTestButtonClicked::Bool
         simulatedClickPosition::Union{Math.Vector2, Nothing}
 
+        # SDL events pulled while coalescing SDL_MOUSEMOTION (processed on following poll_input iterations)
+        pending_sdl_events::Vector{SDL2.SDL_Event}
+
         function Input()
             this = new()
 
@@ -108,12 +111,151 @@ module InputModule
 
             this.isTestButtonClicked = false
             this.simulatedClickPosition = nothing
+            this.pending_sdl_events = SDL2.SDL_Event[]
 
             return this
         end
     end
 
+    function _refresh_logical_mouse!(this::Input, evt::SDL2.SDL_Event)
+        x = Int32[1]
+        y = Int32[1]
+        SDL2.SDL_GetMouseState(pointer(x), pointer(y))
+
+        if evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
+            @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
+            @debug "mouse state: $(x[1]), $(y[1])"
+            window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
+            @debug "window focused: $window_focused"
+            if !window_focused
+                @debug "using event coordinates"
+                x[1] = Int32(evt.button.x)
+                y[1] = Int32(evt.button.y)
+                @debug "event coordinates: $(x[1]), $(y[1])"
+            end
+        end
+
+        this.mousePosition = Math.Vector2(x[1], y[1])
+        @debug "new mouse pos: $(this.mousePosition)"
+
+        if !JulGame.IS_EDITOR
+            window_width = Ref{Cint}(0)
+            window_height = Ref{Cint}(0)
+            SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
+            logical_size = JulGame.WindowManagerModule.get_logical_size()
+            safe_window_width = max(window_width[], 1)
+            safe_window_height = max(window_height[], 1)
+            safe_logical_width = max(logical_size.x, 1)
+            safe_logical_height = max(logical_size.y, 1)
+            scale_x = safe_window_width / safe_logical_width
+            scale_y = safe_window_height / safe_logical_height
+            scale = min(scale_x, scale_y)
+            content_width = safe_logical_width * scale
+            content_height = safe_logical_height * scale
+            bar_x = (safe_window_width - content_width) / 2
+            bar_y = (safe_window_height - content_height) / 2
+            @debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
+            @debug("window_width: $window_width[], window_height: $window_height[]")
+            @debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
+            scaled_x = (x[1] - bar_x) / scale
+            scaled_y = (y[1] - bar_y) / scale
+            if scaled_x == Inf || scaled_y == Inf
+                Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
+                scaled_x = 0
+                scaled_y = 0
+            end
+            window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
+            this.mousePosition = Math.Vector2(
+                clamp(floor(Int, scaled_x), 0, logical_size.x),
+                clamp(floor(Int, scaled_y), 0, logical_size.y)
+            )
+            @debug "Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused"
+        else
+            raw_mouse_x = x[1] - JulGame.EditorGameViewPosition.x
+            raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
+            clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
+            clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
+            camera_size = MAIN.scene.camera.size
+            if JulGame.EditorGameViewSize.x > 0 && JulGame.EditorGameViewSize.y > 0
+                scale_x = camera_size.x / JulGame.EditorGameViewSize.x
+                scale_y = camera_size.y / JulGame.EditorGameViewSize.y
+                scaled_x = clamped_mouse_x * scale_x
+                scaled_y = clamped_mouse_y * scale_y
+                this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+            else
+                this.mousePosition = Math.Vector2(0, 0)
+            end
+        end
+        return
+    end
+
+    @inline function _input_latency_profiler()
+        m = JulGame.MAIN
+        (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
+        return m.latencyProfiler
+    end
+
+    @inline function _input_poll_accumulate!(prof, t0::Ref{UInt64}, key::Symbol)
+        prof === nothing && return
+        dt = (time_ns() - t0[]) / 1e6
+        JulGame.LatencyProfilerModule.accumulate_input_poll_ms!(prof, key, dt)
+        t0[] = time_ns()
+        return
+    end
+
+    # UI hit-test: timings go to LatencyProfiler (summed per frame, printed only on slow-frame CRITICAL/WARNING reports).
+    # Optional live spam: JULGAME_TRACE_INPUT_UI_HIT=1 (every SDL mouse event). Per-element: JULGAME_TRACE_INPUT_UI_HIT_ITER=1.
+    function _input_ui_hit_stream_logs()
+        e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
+        return e in ("1", "true", "yes", "on")
+    end
+
+    const _trace_input_ui_hit_iter_ref = Ref{Union{Nothing, Bool}}(nothing)
+    function _input_ui_hit_iter_stream_logs()
+        v = _trace_input_ui_hit_iter_ref[]
+        if v === nothing
+            s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_ITER", "0")))
+            _trace_input_ui_hit_iter_ref[] = s == "1" || s in ("true", "yes", "on")
+        end
+        return _trace_input_ui_hit_iter_ref[]::Bool
+    end
+
+    function _input_ui_hit_step!(prof, t_blk::Ref{UInt64}, key::Symbol; kvs...)
+        t1 = time_ns()
+        dt = (t1 - t_blk[]) / 1e6
+        t_blk[] = t1
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
+        end
+        if _input_ui_hit_stream_logs()
+            if isempty(kvs)
+                @info "[JulGame input/ui hit-test · stream]" key ms = round(dt, digits = 3)
+            else
+                @info "[JulGame input/ui hit-test · stream]" key ms = round(dt, digits = 3) (; kvs...)
+            end
+        end
+        return
+    end
+
+    function _input_ui_hit_span!(prof, t0::UInt64, key::Symbol; kvs...)
+        dt = (time_ns() - t0) / 1e6
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
+        end
+        if _input_ui_hit_stream_logs() && _input_ui_hit_iter_stream_logs()
+            if isempty(kvs)
+                @info "[JulGame input/ui hit-test · stream · iter]" key dur_ms = round(dt, digits = 3)
+            else
+                @info "[JulGame input/ui hit-test · stream · iter]" key dur_ms = round(dt, digits = 3) (; kvs...)
+            end
+        end
+        return
+    end
+
     function poll_input(this::Input)
+        prof = _input_latency_profiler()
+        t0 = Ref(time_ns())
+
         this.buttonsPressedDown = []
         this.mouseButtonsPressedDown = []
         this.mouseButtonsReleased = []  # Clear the released buttons each frame
@@ -121,104 +263,31 @@ module InputModule
         this.didMouseMotionOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
 
+        while true
+            if !isempty(this.pending_sdl_events)
+                event_ref[] = popfirst!(this.pending_sdl_events)
+            elseif !Bool(SDL2.SDL_PollEvent(event_ref))
+                break
+            end
+            _input_poll_accumulate!(prof, t0, :sdl_PollEvent)
 
-        while Bool(SDL2.SDL_PollEvent(event_ref))
             evt = event_ref[]
             handle_window_events(this, evt)
 
             # @debug "polling input"
             # Only update mouse position for mouse-related events
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
-                # Always get mouse state first (for real clicks)
-                x,y = Int32[1], Int32[1]
-                SDL2.SDL_GetMouseState(pointer(x), pointer(y))
-              
-                # For mouse button events, only use event coordinates if window isn't focused
-                # This allows simulated clicks to work when window isn't active, while preserving
-                # normal click behavior when window is focused
-                if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP)
-                      @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
-                    @debug "mouse state: $(x[1]), $(y[1])"
-                    # Check if window is focused
-                    window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
-                    @debug "window focused: $window_focused"
-                    # Only use event coordinates when window isn't focused (for simulated clicks)
-                    if !window_focused
-                        @debug "using event coordinates"
-                        x[1] = Int32(evt.button.x)
-                        y[1] = Int32(evt.button.y)
-                        @debug "event coordinates: $(x[1]), $(y[1])"
-                    end
-                end
-                
-                this.mousePosition = Math.Vector2(x[1], y[1])
-                @debug "new mouse pos: $(this.mousePosition)"
-                #@debug "new mouse pos: $(this.mousePosition)"
-
-                if !JulGame.IS_EDITOR
-                    # Get current window size
-                    window_width = Ref{Cint}(0)
-                    window_height = Ref{Cint}(0)
-                    SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
-
-                    # Get base resolution from WindowManager
-                    logical_size = JulGame.WindowManagerModule.get_logical_size()
-
-                    safe_window_width = max(window_width[], 1)
-                    safe_window_height = max(window_height[], 1)
-                    safe_logical_width = max(logical_size.x, 1)
-                    safe_logical_height = max(logical_size.y, 1)
-                    scale_x = safe_window_width / safe_logical_width
-                    scale_y = safe_window_height / safe_logical_height
-                    scale = min(scale_x, scale_y)
-                    content_width = safe_logical_width * scale
-                    content_height = safe_logical_height * scale
-                    bar_x = (safe_window_width - content_width) / 2
-                    bar_y = (safe_window_height - content_height) / 2
-
-                    @debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
-                    @debug("window_width: $window_width[], window_height: $window_height[]")
-                    @debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
-
-                    # Remove black-bar offsets, then map into logical coordinates.
-                    scaled_x = (x[1] - bar_x) / scale
-                    scaled_y = (y[1] - bar_y) / scale
-                    if scaled_x == Inf || scaled_y == Inf
-                        Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
-                        scaled_x = 0
-                        scaled_y = 0
-                    end
-                    window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
-                    this.mousePosition = Math.Vector2(
-                        clamp(floor(Int, scaled_x), 0, logical_size.x),
-                        clamp(floor(Int, scaled_y), 0, logical_size.y)
-                    )
-                    @debug "Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused"
-                else
-                    # Calculate mouse position relative to the game view window
-                    raw_mouse_x = x[1] - JulGame.EditorGameViewPosition.x
-                    raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
-
-                    # Clamp relative position to the bounds of the game view
-                    clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
-                    clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
-
-                    # Get camera size
-                    camera_size = MAIN.scene.camera.size
-
-                    # Scale the clamped mouse position from the game view size to the camera size
-                    if JulGame.EditorGameViewSize.x > 0 && JulGame.EditorGameViewSize.y > 0 # Avoid division by zero
-                        scale_x = camera_size.x / JulGame.EditorGameViewSize.x
-                        scale_y = camera_size.y / JulGame.EditorGameViewSize.y
-
-                        scaled_x = clamped_mouse_x * scale_x
-                        scaled_y = clamped_mouse_y * scale_y
-
-                        # Update the mouse position
-                        this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
-                    else
-                        # If game view size is zero, set mouse position to 0,0 or handle as error
-                        this.mousePosition = Math.Vector2(0, 0)
+                _refresh_logical_mouse!(this, evt)
+                if evt.type == SDL2.SDL_MOUSEMOTION
+                    coalesce_ref = Ref{SDL2.SDL_Event}()
+                    while Bool(SDL2.SDL_PollEvent(coalesce_ref))
+                        e2 = coalesce_ref[]
+                        if e2.type == SDL2.SDL_MOUSEMOTION
+                            _refresh_logical_mouse!(this, e2)
+                            this.didMouseMotionOccur = true
+                        else
+                            push!(this.pending_sdl_events, e2)
+                        end
                     end
                 end
             end
@@ -266,8 +335,10 @@ module InputModule
                 end
             end
 
+            _input_poll_accumulate!(prof, t0, :window_routing)
 
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
+                t_ms_blk = time_ns()
                 this.didMouseEventOccur = true
                 if evt.type == SDL2.SDL_MOUSEMOTION
                     this.didMouseMotionOccur = true
@@ -276,13 +347,22 @@ module InputModule
                     @debug("Mouse button down at $(this.mousePosition)")
                 end
 
-                if MAIN.scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
+                ui_hit_active = MAIN.scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
+                if ui_hit_active
+                    _input_ui_hit_span!(prof, t_ms_blk, :hit_mouse_evt_preamble)
+                    t_ui_wall = time_ns()
+                    t_hit = Ref(time_ns())
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = length(MAIN.scene.uiElements))
                     if MAIN.scene.camera === nothing
+                        _input_ui_hit_step!(prof, t_hit, :hit_ui_abort_camera)
                         @warn ("Camera is not set in the main scene.")
+                        _input_poll_accumulate!(prof, t0, :mouse_ui_aborted_no_camera)
                         continue
                     end
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_camera_ok)
 
                     canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_canvases = length(canvases))
 
                     # Use cached layer order instead of sorting every mouse event
                     # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
@@ -290,8 +370,13 @@ module InputModule
                                         # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
 
                     uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
+
                     entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(entitiesWithSpritesOrderedByLayerDescending), n_entities = length(MAIN.scene.entities))
+
                     elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
 
                     # TODO: add rest of entities without sprites in default order
                     # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, MAIN.scene.entities)
@@ -299,22 +384,44 @@ module InputModule
                     clickedAnElementAlready = false
                     hoveredAnElementAlready = false
                     @debug "Checking $(length(elementsOrderedByLayerDescending)) elements for mouse event at $(this.mousePosition)"
+                    n_iter = 0
+                    n_skipped_inactive = 0
+                    n_skipped_canvas = 0
+                    n_skipped_ignore = 0
+                    n_miss_bounds = 0
+                    n_hit_inside = 0
                     for element in elementsOrderedByLayerDescending
+                        n_iter += 1
+                        t_iter = time_ns()
+
                         skipElement = !element.isActive
-                        for canvas in canvases
-                            if element in canvas.children && !canvas.isActive
-                                skipElement = true
-                                break
+                        if skipElement
+                            n_skipped_inactive += 1
+                        end
+                        if !skipElement
+                            for canvas in canvases
+                                if element in canvas.children && !canvas.isActive
+                                    skipElement = true
+                                    n_skipped_canvas += 1
+                                    break
+                                end
                             end
                         end
                         if isa(element, JulGame.IEntity) && element.ignoreInputEvents
                             skipElement = true
+                            if element.isActive
+                                n_skipped_ignore += 1
+                            end
                         end
 
                         if skipElement
                             @debug "Skipping element $(element.name) - isActive: $(element.isActive), ignoreInputEvents: $(isa(element, JulGame.IEntity) ? element.ignoreInputEvents : "N/A")"
+                            _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_skip_early)
                             continue
                         end
+
+                        _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_probe_active_filter)
+                        t_prep0 = time_ns()
 
                         # Check position of button to see which we are interacting with
                         eventWasInsideThisElement = true
@@ -322,9 +429,18 @@ module InputModule
                         mouseX = this.mousePosition.x
                         mouseY = this.mousePosition.y
 
+                        _input_ui_hit_span!(prof, t_prep0, :hit_ui_iter_probe_prep_hitbox)
+                        t_geom0 = time_ns()
+
                         # UI Element position and size in screen space (MUST BE SCALED)
                         elementPosition = get_element_position(element)
+                        _input_ui_hit_span!(prof, t_geom0, :hit_ui_iter_probe_get_position)
+                        t_sz0 = time_ns()
+
                         elementSize = get_element_size(element)
+                        _input_ui_hit_span!(prof, t_sz0, :hit_ui_iter_probe_get_size)
+                        t_unpk0 = time_ns()
+
                         screenElementX = elementPosition.x
                         screenElementY = elementPosition.y
                         screenElementWidth = elementSize.x
@@ -333,6 +449,8 @@ module InputModule
                         @debug "Checking element '$(element.name)': mouse($mouseX, $mouseY) vs element($screenElementX, $screenElementY, $screenElementWidth, $screenElementHeight)"
 
                         # Check if the mouse is inside the UI element (using game world coordinates)
+                        _input_ui_hit_span!(prof, t_unpk0, :hit_ui_iter_probe_unpack_layout)
+                        t_aabb = time_ns()
                         if mouseX < screenElementX
                             eventWasInsideThisElement = false
                             @debug "  -> Mouse X ($mouseX) < element X ($screenElementX)"
@@ -346,16 +464,28 @@ module InputModule
                             eventWasInsideThisElement = false
                             @debug "  -> Mouse Y ($mouseY) > element bottom ($(screenElementY + screenElementHeight))"
                         end
+                        _input_ui_hit_span!(prof, t_aabb, :hit_ui_iter_probe_aabb)
 
                         if !eventWasInsideThisElement
                             element.isHovered = false
+                            t_ctr = time_ns()
+                            n_miss_bounds += 1
+                            _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
                             continue
                         end
 
+                        n_hit_inside += 1
+                        t_hi = time_ns()
                         @debug "  -> Mouse is INSIDE element '$(element.name)'"
 
-                        canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_on_this_element(this, element)
-                        @debug "  -> canClickOnThisElement: $canClickOnThisElement, clickedAnElementAlready: $clickedAnElementAlready, forceClickCheck: $(element.forceClickCheck), clicked_down_on_this_element: $(clicked_down_on_this_element(this, element))"
+                        clicked_down_here = clicked_down_on_this_element(this, element)
+                        _input_ui_hit_span!(prof, t_hi, :hit_inside_1_clicked_down_query)
+                        t_hi = time_ns()
+
+                        canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_here
+                        @debug "  -> canClickOnThisElement: $canClickOnThisElement, clickedAnElementAlready: $clickedAnElementAlready, forceClickCheck: $(element.forceClickCheck), clicked_down_on_this_element: $clicked_down_here"
+                        _input_ui_hit_span!(prof, t_hi, :hit_inside_2_can_click_bools)
+                        t_hi = time_ns()
 
                         if !clickedAnElementAlready || element.forceClickCheck
                             shouldHandleEvent = (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||
@@ -363,25 +493,37 @@ module InputModule
                                 (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||
                                 (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||
                                 (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
-                            
+
                             @debug "  -> shouldHandleEvent: $shouldHandleEvent (event type: $(evt.type), hoveredAnElementAlready: $hoveredAnElementAlready)"
-                            
+                            _input_ui_hit_span!(prof, t_hi, :hit_inside_3a_should_handle_expr)
+                            t_hi = time_ns()
+
                             if shouldHandleEvent
                                 @debug "  -> Handling event for element '$(element.name)'"
                                 JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
+                                t_hi = time_ns()
                                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                                    push!(this.elementsBeingClickedDownOn, element)
                                    @debug "  -> Added '$(element.name)' to elementsBeingClickedDownOn"
                                 end
+                                _input_ui_hit_span!(prof, t_hi, :hit_inside_5_push_clicked_down_optional)
+                                t_hi = time_ns()
+                            else
+                                _input_ui_hit_span!(prof, t_hi, :hit_inside_4_skip_should_handle_false)
+                                t_hi = time_ns()
                             end
                             if element.isHovered
                                 hoveredAnElementAlready = true
                             end
+                            _input_ui_hit_span!(prof, t_hi, :hit_inside_6_hover_an_element_already)
+                            t_hi = time_ns()
+                        else
+                            _input_ui_hit_span!(prof, t_hi, :hit_inside_3b_skip_clicked_guard)
+                            t_hi = time_ns()
                         end
 
                         if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                             @debug "Mouse button down at $(this.mousePosition) on element '$(element.name)'"
-                            # register that we clicked down on this element
                         elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
                             @debug "Mouse button up at $(this.mousePosition) on element '$(element.name)'"
                             if canClickOnThisElement
@@ -391,14 +533,25 @@ module InputModule
                             end
                             clickedAnElementAlready = true
                         end
+                        _input_ui_hit_span!(prof, t_hi, :hit_inside_7_mouse_btn_tail)
                     end
+                    t_tail = Ref(time_ns())
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP
                         this.elementsBeingClickedDownOn = []
+                        _input_ui_hit_step!(prof, t_tail, :hit_ui_clear_click_state)
                     end
+                    _input_ui_hit_step!(prof, t_tail, :hit_ui_block_end)
+                    _input_ui_hit_span!(prof, t_ui_wall, :hit_ui_block_wall_clock)
+                else
+                    _input_ui_hit_span!(prof, t_ms_blk, :hit_mouse_evt_skip_ui_hit_path)
                 end
 
+                t_hm = time_ns()
                 handle_mouse_event(this, evt)
+                _input_ui_hit_span!(prof, t_hm, :hit_mouse_evt_handle_mouse_event)
             end
+
+            _input_poll_accumulate!(prof, t0, :mouse_ui_hit_test_dispatch)
 
             #if evt.type == SDL2.SDL_JOYAXISMOTION
                 if evt.jaxis.which == 0
@@ -455,6 +608,7 @@ module InputModule
                 end
             if evt.type == SDL2.SDL_QUIT
                 this.quit = true
+                _input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
                 return -1
             end
             if evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3
@@ -464,6 +618,8 @@ module InputModule
 
             keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
             handle_key_event(this, keyboardState)
+
+            _input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
         end
 
         if this.isTestButtonClicked

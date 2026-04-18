@@ -1,5 +1,22 @@
 abstract type UIElement <: JulGame.IUIElement end
 
+@inline function _latency_profiler_active()
+    m = JulGame.MAIN
+    (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
+    return m.latencyProfiler
+end
+
+@inline function _latency_ui_hit_ms!(prof, t0::UInt64, key::Symbol)
+    prof === nothing && return
+    dt = (time_ns() - t0) / 1e6
+    JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
+end
+
+@inline function _latency_ui_hit_count!(prof, key::Symbol, n::Int = 1)
+    prof === nothing && return
+    JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_count!(prof, key, n)
+end
+
 mutable struct UIElementInstance
     # identifiers
     id::String
@@ -72,9 +89,21 @@ function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
 
     if hasfield(typeof(relationships[script]), property) # this is the child type TextBox, Rectangle, etc
         #println("setproperty! from parent: $(property) ")
-        setfield!(relationships[script], property, value)
         if property == :isHovered
-            UI.handle_hover_event(script, value)
+            inst = relationships[script]
+            prof = _latency_profiler_active()
+            t_rw = time_ns()
+            prev = getfield(inst, :isHovered)
+            setfield!(inst, property, value)
+            _latency_ui_hit_ms!(prof, t_rw, :hover_set_isHovered_field_rw)
+            if prev != value
+                UI.handle_hover_event(script, value)
+                _latency_ui_hit_count!(prof, :hover_set_isHovered_dispatch_calls, 1)
+            else
+                _latency_ui_hit_count!(prof, :hover_set_isHovered_skip_dispatch_same_value, 1)
+            end
+        else
+            setfield!(relationships[script], property, value)
         end
     else # this is the parent type UIElement
         #println("setproperty! from child: $(property) ")
@@ -218,16 +247,23 @@ function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
 end
 
 function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, x, y)
+    prof = _latency_profiler_active()
+    t = time_ns()
     isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
+    _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
+    t = time_ns()
     if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
         if isScreenButton
             this.currentTexture = this.buttonDownTexture
         end
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_down)
     elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
         @debug "Mouse button up at $(x), $(y)"
         if isScreenButton
             this.currentTexture = this.buttonUpTexture
         end
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_up_setup)
+        t_cb = time_ns()
         for eventToCall in this.clickEvents
             try
                 Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
@@ -235,15 +271,19 @@ function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, 
                 Base.invokelatest(eventToCall)
             end
         end
+        _latency_ui_hit_ms!(prof, t_cb, :ui_handle_evt_mouse_button_up_click_callbacks)
     elseif evt.type == SDL2.SDL_MOUSEMOTION
         if this.isHovered == false
             this.isHovered = true
         end
-    end 
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
+    end
 end
 
 function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
+    prof = _latency_profiler_active()
     events = isEntering ? this.hoverEnterEvents : this.hoverExitEvents
+    t0 = time_ns()
     for event in events
         try
             Base.invokelatest(event)
@@ -252,4 +292,6 @@ function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
             Base.show_backtrace(stdout, catch_backtrace())
         end
     end
+    key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations
+    _latency_ui_hit_ms!(prof, t0, key)
 end

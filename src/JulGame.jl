@@ -192,8 +192,8 @@ module JulGame
     export set_batched_layer_offset, get_batched_layer_offset, get_batched_layer_info, list_batched_layers
 
     include("MainLoop.jl") 
-    using .MainLoopModule: MainLoop
-    export MainLoop
+    using .MainLoopModule: MainLoop, enable_profiling, disable_profiling, print_profiling_report, export_profiling_data, maybe_enable_latency_profiling_from_env!, mark_input_layer_order_dirty!
+    export MainLoop, enable_profiling, disable_profiling, print_profiling_report, export_profiling_data, maybe_enable_latency_profiling_from_env!, mark_input_layer_order_dirty!
 
     include("utils/Exports.jl")
 end

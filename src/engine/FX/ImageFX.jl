@@ -343,6 +343,8 @@ module ImageFXModule
     
     # Global cache to store original textures for sprites
     const ORIGINAL_SPRITE_CACHE = Dict{String, Ptr{SDL2.LibSDL2.SDL_Surface}}()
+    # Skip redundant full-surface work when call sites pass the same percentage every frame.
+    const _CLOCK_SWEEP_LAST_PERCENT = Dict{Tuple{UInt, String}, Float64}()
     
     export gfx_filter_health_bar
     """
@@ -464,6 +466,7 @@ module ImageFXModule
             SDL2.SDL_FreeSurface(surface)
         end
         empty!(ORIGINAL_SPRITE_CACHE)
+        empty!(_CLOCK_SWEEP_LAST_PERCENT)
         @debug "Cleared sprite cache"
     end
     
@@ -491,6 +494,10 @@ module ImageFXModule
         
         # Create cache key from sprite's image path
         cache_key = sprite.imagePath
+        sweep_ck = (objectid(sprite), cache_key)
+        if haskey(_CLOCK_SWEEP_LAST_PERCENT, sweep_ck) && _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] === percentage
+            return sprite
+        end
         
         # Cache the original surface if not already cached
         if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
@@ -582,6 +589,7 @@ module ImageFXModule
             # Enable alpha blending
             SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
             
+            _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = percentage
             return sprite
         end
         
@@ -659,6 +667,7 @@ module ImageFXModule
         # Enable alpha blending
         SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
         
+        _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = percentage
         return sprite
     end
 

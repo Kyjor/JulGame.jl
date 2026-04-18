@@ -32,6 +32,10 @@ module MainLoopModule
 
 	# Profiling helper functions
 	export enable_profiling, disable_profiling, print_profiling_report, export_profiling_data
+	export maybe_enable_latency_profiling_from_env!
+
+	const _latency_env_session_started = Ref(false)
+	const _latency_env_atexit_registered = Ref(false)
 
 	"""
 		enable_profiling(;buffer_size=10000, report_interval=5.0)
@@ -109,7 +113,46 @@ module MainLoopModule
 		end
 	end
 
-	export MainLoop
+	"""
+		maybe_enable_latency_profiling_from_env!()
+
+	Start latency profiling once per process when `JULGAME_LATENCY_PROFILE` is set (`1`/`true`/`yes`/`on`).
+	Optional `JULGAME_LATENCY_REPORT_SEC` sets the periodic report interval in seconds.
+
+	Safe from any script module (e.g. title screen) whether loaded via the game package or editor
+	`include` into `JulGame.ScriptModule`, where sibling Battler-only modules may not exist.
+	"""
+	function maybe_enable_latency_profiling_from_env!()
+		v = strip(get(ENV, "JULGAME_LATENCY_PROFILE", ""))
+		isempty(v) && return
+		lowercase(v) in ("1", "true", "yes", "on") || return
+		_latency_env_session_started[] && return
+		interval = 5.0
+		try
+			vs = strip(get(ENV, "JULGAME_LATENCY_REPORT_SEC", ""))
+			if !isempty(vs)
+				interval = parse(Float64, vs)
+			end
+		catch
+		end
+		enable_profiling(; buffer_size=10_000, report_interval=max(0.5, interval))
+		_latency_env_session_started[] = true
+		@info "JulGame latency profiling (session): reports every $(max(0.5, interval))s; JulGame.print_profiling_report(); JulGame.export_profiling_data(\"latency.csv\")."
+		if !_latency_env_atexit_registered[]
+			atexit() do
+				try
+					if JulGame.MAIN !== nothing && JulGame.MAIN.latencyProfiler !== nothing
+						disable_profiling()
+					end
+				catch
+				end
+			end
+			_latency_env_atexit_registered[] = true
+		end
+		return
+	end
+
+	export MainLoop, mark_input_layer_order_dirty!
 	mutable struct MainLoop
 		close::Bool
 		coroutine_condition::Condition
@@ -141,6 +184,9 @@ module MainLoopModule
 		cachedInputLayerOrder::Vector{Any}
 		# Cached input layer order (rebuilt only when layers change)
 		inputLayerOrderDirty::Bool
+		# Scratch buffers for input hit-testing (avoid per-event allocations)
+		scratchInputCanvases::Vector{Any}
+		scratchInputHiddenCanvasChildIds::Set{UInt}
 
 		function MainLoop()
 			this::MainLoop = new()
@@ -192,6 +238,9 @@ module MainLoopModule
 			this.cachedInputLayerOrder = Vector{Any}()
 			sizehint!(this.cachedInputLayerOrder, 100)  # Pre-allocate
 			this.inputLayerOrderDirty = true  # Build on first use
+			this.scratchInputCanvases = Vector{Any}()
+			sizehint!(this.scratchInputCanvases, 16)
+			this.scratchInputHiddenCanvasChildIds = Set{UInt}()
 			
 			# Initialize script tracking
 			this.knownScriptTypes = Set{DataType}()
@@ -208,26 +257,26 @@ module MainLoopModule
 	This avoids sorting on every mouse event - only rebuilds when layers change.
 	"""
 	function get_input_layer_order(this::MainLoop)
-		if this.inputLayerOrderDirty
-			# Rebuild cached order
+		n_ent_with_sprite = 0
+		for e in this.scene.entities
+			if e.sprite !== nothing && e.sprite !== C_NULL
+				n_ent_with_sprite += 1
+			end
+		end
+		expected_len = length(this.scene.uiElements) + n_ent_with_sprite
+		if this.inputLayerOrderDirty || length(this.cachedInputLayerOrder) != expected_len
 			empty!(this.cachedInputLayerOrder)
-			
-			# Add UI elements sorted by layer (descending)
-			uiElements = sort(this.scene.uiElements, by = el -> el.layer, rev = true)
-			for el in uiElements
+			ui_sorted = sort(this.scene.uiElements, by = el -> el.layer, rev = true)
+			for el in ui_sorted
 				push!(this.cachedInputLayerOrder, el)
 			end
-			
-			# Add entities with sprites sorted by layer (descending)
 			entitiesWithSprites = filter(e -> e.sprite !== nothing && e.sprite !== C_NULL, this.scene.entities)
 			sort!(entitiesWithSprites, by = e -> e.sprite.layer, rev = true)
 			for e in entitiesWithSprites
 				push!(this.cachedInputLayerOrder, e)
 			end
-			
 			this.inputLayerOrderDirty = false
 		end
-		
 		return this.cachedInputLayerOrder
 	end
 	
@@ -286,7 +335,15 @@ module MainLoopModule
 			start_time = time_ns()
 			Base.invokelatest(JulGame.update, script, deltaTime)
 			elapsed = (time_ns() - start_time) / 1e6
-			push!(this.scriptTimings[script_type], elapsed)
+			if this.latencyProfiler !== nothing
+				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
+			end
+			v = this.scriptTimings[script_type]
+			push!(v, elapsed)
+			# Cap growth when profiling stays on for long sessions (avoids unbounded vectors / GC pressure).
+			if length(v) > 25_000
+				deleteat!(v, 1:10_000)
+			end
 		else
 			Base.invokelatest(JulGame.update, script, deltaTime)
 		end
@@ -857,17 +914,24 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			#region Input
 			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :input)
+					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :input_poll)
 				end
-				
+
 				JulGame.InputModule.poll_input(this.input)
+
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
+				end
 
 				this.close = this.input.quit
 				if this.close
 					JulGame.engine_states.current_state = :quit
 				end
+
+				if this.latencyProfiler !== nothing
+					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :render_clear)
+				end
 				SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
-				
 				if this.latencyProfiler !== nothing
 					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
 				end

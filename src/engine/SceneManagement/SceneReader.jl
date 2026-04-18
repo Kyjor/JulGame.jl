@@ -14,6 +14,7 @@ module SceneReaderModule
     using ...UI.TextBoxModule
     using ...UI.ScreenButtonModule
     using ...UI.UIImageModule
+    using ...UI.CanvasModule
     using ...TransformModule
     using ...JulGame
 
@@ -238,7 +239,7 @@ module SceneReaderModule
                     if haskey(uiElement, "children") && length(uiElement.children) > 0
                         children = deserialize_canvas_children(uiElement.children, newUIElement)
                         for child in children
-                            CanvasModule.add_child(newUIElement, child)
+                            add_child(newUIElement, child)
                         end
                     end
                 elseif uiElement.type == "TextBox"
@@ -490,7 +491,7 @@ module SceneReaderModule
                     if haskey(child, "children") && length(child.children) > 0
                         grandChildren = deserialize_canvas_children(child.children, newChild)
                         for grandChild in grandChildren
-                            CanvasModule.add_child(newChild, grandChild)
+                            add_child(newChild, grandChild)
                         end
                     end
                 elseif child.type == "ScreenButton"

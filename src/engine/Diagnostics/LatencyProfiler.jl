@@ -30,6 +30,7 @@ using Statistics
 using Dates
 
 export LatencyProfiler, ProfileSection, start_frame, end_frame, start_section, end_section
+export accumulate_script_update_ms!, accumulate_input_poll_ms!, accumulate_input_ui_hit_detail_ms!, accumulate_input_ui_hit_detail_count!
 export print_latency_report, print_realtime_stats, export_profiling_data, clear_profiling_data
 export get_worst_frames, @profile_section
 
@@ -93,6 +94,16 @@ mutable struct LatencyProfiler
     # Performance thresholds (in milliseconds)
     warning_frame_time::Float64  # Warn if frame exceeds this
     critical_frame_time::Float64  # Critical if frame exceeds this
+
+    # Sum of `update` times per concrete script type within the current frame (all instances).
+    current_frame_script_ms::Dict{DataType, Float64}
+
+    # Finer breakdown inside `InputModule.poll_input` (only when profiling).
+    input_poll_breakdown_ms::Dict{Symbol, Float64}
+    # UI hit-test substeps (summed over all mouse SDL events in the frame); shown on slow-frame reports only.
+    input_ui_hit_detail_ms::Dict{Symbol, Float64}
+    # Same reporting channel, integer counts (e.g. redundant hover writes); shown next to ms breakdown.
+    input_ui_hit_detail_counts::Dict{Symbol, Int}
     
     function LatencyProfiler(;
         enabled::Bool=true,
@@ -123,7 +134,12 @@ mutable struct LatencyProfiler
         this.section_start_time = 0
         this.section_start_gc_time = 0.0
         this.section_start_allocs = 0
-        
+
+        this.current_frame_script_ms = Dict{DataType, Float64}()
+        this.input_poll_breakdown_ms = Dict{Symbol, Float64}()
+        this.input_ui_hit_detail_ms = Dict{Symbol, Float64}()
+        this.input_ui_hit_detail_counts = Dict{Symbol, Int}()
+
         return this
     end
 end
@@ -140,6 +156,172 @@ function get_allocation_count()
 end
 
 """
+Collect (section, ms) for one frame using the last sample of each section whose `frame_indices` matches `frame_idx`.
+"""
+function section_samples_for_frame(profiler::LatencyProfiler, frame_idx::Int)::Vector{Tuple{Symbol, Float64}}
+    out = Tuple{Symbol, Float64}[]
+    for (name, sec) in profiler.sections
+        if !isempty(sec.frame_indices) && sec.frame_indices[end] == frame_idx
+            push!(out, (name, sec.times[end]))
+        end
+    end
+    return out
+end
+
+"""Short script label for terminal columns (type name only; avoids `Main....Module` truncation)."""
+function _short_type_label(@nospecialize(T::Type))::String
+    string(nameof(T))
+end
+
+function _fmt_pct(pct::Float64)::String
+    !isfinite(pct) && return "?%"
+    if pct > 0 && pct < 0.05
+        return "<0.1%"
+    end
+    return string(round(pct, digits=1)) * "%"
+end
+
+function _fmt_row_rank_ms_pct(i::Int, label::String, ms::Float64, pct::Float64, label_w::Int)::String
+    lab = rpad(first(label, label_w), label_w)
+    ms_part = lpad(string(round(ms, digits=2)), 9) * " ms"
+    pct_part = lpad(_fmt_pct(pct), 8)
+    return string("  │ ", lpad(string(i), 2), "  ", lab, " ", ms_part, "   ", pct_part)
+end
+
+function _fmt2(x::Float64)::String
+    string(round(x, digits=2))
+end
+
+"""
+Multi-line, column-aligned breakdown for terminal logging (slow-frame warnings).
+"""
+function slow_frame_terminal_detail(
+    profiler::LatencyProfiler,
+    frame_idx::Int,
+    frame_time_ms::Float64;
+    section_top::Int = 6,
+    script_top::Int = 8,
+)::String
+    io = IOBuffer()
+    println(io)
+    println(io, "  ┌─ engine sections ─────────────────────────────────────────")
+    sec_pairs = section_samples_for_frame(profiler, frame_idx)
+    if isempty(sec_pairs)
+        println(io, "  │ (no section samples this frame)")
+    else
+        sort!(sec_pairs, by = x -> x[2], rev = true)
+        accounted = sum(x[2] for x in sec_pairs)
+        nshow = min(section_top, length(sec_pairs))
+        for i in 1:nshow
+            nm, ms = sec_pairs[i]
+            pct = frame_time_ms > 0 ? 100 * ms / frame_time_ms : 0.0
+            println(io, _fmt_row_rank_ms_pct(i, string(nm), ms, pct, 24))
+        end
+        println(io, "  │     — sum (all sections): ", _fmt2(accounted), " ms")
+        gap = frame_time_ms - accounted
+        if gap > max(1.0, 0.05 * frame_time_ms)
+            println(io, "  │     — gap vs frame time:  ", _fmt2(gap), " ms (outside sections / timing overlap)")
+        end
+    end
+    if !isempty(profiler.input_poll_breakdown_ms)
+        println(io, "  │")
+        println(io, "  │   input_poll breakdown (inside :input_poll):")
+        subs = sort(collect(profiler.input_poll_breakdown_ms), by = x -> x[2], rev = true)
+        for (k, ms) in subs
+            println(io, "  │      • ", string(k), "  ", _fmt2(ms), " ms")
+        end
+    end
+    if !isempty(profiler.input_ui_hit_detail_ms)
+        println(io, "  │")
+        println(io, "  │   ui hit-test detail (summed this frame, all mouse events):")
+        println(io, "  │   (rows below sum with overlap; use fence line to match input_poll.)")
+        subs = sort(collect(profiler.input_ui_hit_detail_ms), by = x -> x[2], rev = true)
+        d = profiler.input_ui_hit_detail_ms
+        for (k, ms) in subs
+            println(io, "  │      • ", string(k), "  ", _fmt2(ms), " ms")
+        end
+        ui_ms_sum = sum(values(profiler.input_ui_hit_detail_ms))
+        mouse_disp = get(profiler.input_poll_breakdown_ms, :mouse_ui_hit_test_dispatch, 0.0)
+        fence = get(d, :hit_mouse_evt_preamble, 0.0) +
+            get(d, :hit_ui_block_wall_clock, 0.0) +
+            get(d, :hit_mouse_evt_handle_mouse_event, 0.0) +
+            get(d, :hit_mouse_evt_skip_ui_hit_path, 0.0)
+        println(io, "  │   — sum(all rows, includes nested overlap): ", _fmt2(ui_ms_sum), " ms")
+        println(io, "  │   — fence (preamble + ui wall + handle_mouse + skip_ui): ", _fmt2(fence), " ms")
+        println(io, "  │   — input_poll :mouse_ui_hit_test_dispatch: ", _fmt2(mouse_disp), " ms (Δ vs fence: ", _fmt2(mouse_disp - fence), ")")
+        if !isempty(profiler.input_ui_hit_detail_counts)
+            cnts = sort(collect(profiler.input_ui_hit_detail_counts), by = x -> x[2], rev = true)
+            println(io, "  │   ui hit-test counts (this frame):")
+            for (k, n) in cnts
+                println(io, "  │      • ", string(k), "  ", n)
+            end
+        end
+    end
+    println(io, "  ├─ script types (all instances summed per type) ──────────")
+    d = profiler.current_frame_script_ms
+    if isempty(d)
+        println(io, "  │ (no script samples this frame)")
+    else
+        pairs = sort(collect(d), by = x -> x[2], rev = true)
+        script_sum = sum(x[2] for x in pairs)
+        nshow = min(script_top, length(pairs))
+        for i in 1:nshow
+            T, ms = pairs[i]
+            pct = frame_time_ms > 0 ? 100 * ms / frame_time_ms : 0.0
+            println(io, _fmt_row_rank_ms_pct(i, _short_type_label(T), ms, pct, 28))
+        end
+        if length(pairs) > nshow
+            println(io, "  │     … +", length(pairs) - nshow, " more type(s)")
+        end
+        println(io, "  │     — sum (all script updates): ", _fmt2(script_sum), " ms")
+    end
+    println(io, "  └──────────────────────────────────────────────────────────")
+    return String(take!(io))
+end
+
+"""
+    accumulate_script_update_ms!(profiler, script_type::DataType, elapsed_ms::Float64)
+
+Add one script's `update` duration to the current frame's per-type totals (multiple entities of the same type sum together).
+Called from `MainLoop.call_script_update` when latency profiling is enabled.
+"""
+function accumulate_script_update_ms!(profiler::LatencyProfiler, script_type::DataType, elapsed_ms::Float64)
+    if !profiler.enabled
+        return
+    end
+    d = profiler.current_frame_script_ms
+    d[script_type] = get(d, script_type, 0.0) + elapsed_ms
+    return
+end
+
+function accumulate_input_poll_ms!(profiler::LatencyProfiler, key::Symbol, elapsed_ms::Float64)
+    if !profiler.enabled
+        return
+    end
+    d = profiler.input_poll_breakdown_ms
+    d[key] = get(d, key, 0.0) + elapsed_ms
+    return
+end
+
+function accumulate_input_ui_hit_detail_ms!(profiler::LatencyProfiler, key::Symbol, elapsed_ms::Float64)
+    if !profiler.enabled
+        return
+    end
+    d = profiler.input_ui_hit_detail_ms
+    d[key] = get(d, key, 0.0) + elapsed_ms
+    return
+end
+
+function accumulate_input_ui_hit_detail_count!(profiler::LatencyProfiler, key::Symbol, n::Int = 1)
+    if !profiler.enabled || n == 0
+        return
+    end
+    d = profiler.input_ui_hit_detail_counts
+    d[key] = get(d, key, 0) + n
+    return
+end
+
+"""
     start_frame(profiler::LatencyProfiler)
 
 Mark the beginning of a frame. Call this at the start of your game loop.
@@ -150,6 +332,10 @@ function start_frame(profiler::LatencyProfiler)
     end
     
     profiler.frame_count += 1
+    empty!(profiler.current_frame_script_ms)
+    empty!(profiler.input_poll_breakdown_ms)
+    empty!(profiler.input_ui_hit_detail_ms)
+    empty!(profiler.input_ui_hit_detail_counts)
     profiler.frame_start_time = time_ns()
 end
 
@@ -173,11 +359,13 @@ function end_frame(profiler::LatencyProfiler)
     push!(profiler.frame_gc_times, get_gc_time_ms())
     push!(profiler.frame_allocations, get_allocation_count())
     
-    # Check for problematic frames
+    # Check for problematic frames (sections + per-script-type totals for this frame)
     if frame_time_ms > profiler.critical_frame_time
-        @warn "CRITICAL: Frame $(profiler.frame_count) took $(round(frame_time_ms, digits=2))ms (>$(profiler.critical_frame_time)ms threshold)"
+        detail = slow_frame_terminal_detail(profiler, profiler.frame_count, frame_time_ms)
+        @warn "CRITICAL: Frame $(profiler.frame_count) took $(round(frame_time_ms, digits=2)) ms (threshold $(profiler.critical_frame_time) ms)$(detail)"
     elseif frame_time_ms > profiler.warning_frame_time
-        @debug "WARNING: Frame $(profiler.frame_count) took $(round(frame_time_ms, digits=2))ms (>$(profiler.warning_frame_time)ms threshold)"
+        detail = slow_frame_terminal_detail(profiler, profiler.frame_count, frame_time_ms)
+        @debug "WARNING: Frame $(profiler.frame_count) took $(round(frame_time_ms, digits=2)) ms (threshold $(profiler.warning_frame_time) ms)$(detail)"
     end
     
     # Real-time reporting
@@ -191,7 +379,7 @@ end
 """
     start_section(profiler::LatencyProfiler, section_name::Symbol)
 
-Mark the beginning of a profiled section (e.g., :input, :physics, :render).
+Mark the beginning of a profiled section (e.g., :input_poll, :physics, :entity_updates).
 """
 function start_section(profiler::LatencyProfiler, section_name::Symbol)
     if !profiler.enabled

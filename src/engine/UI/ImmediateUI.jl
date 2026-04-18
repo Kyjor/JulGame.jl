@@ -1615,6 +1615,7 @@ module ImmediateUIModule
             # Remove from cache
             delete!(IMMEDIATE_UI_CACHE, id)
             delete!(IMMEDIATE_UI_TIMESTAMPS, id)
+            delete!(IMMEDIATE_UI_FRAME_COUNT, id)
         end
     end
 
@@ -1635,6 +1636,7 @@ module ImmediateUIModule
         # Clear the dictionaries
         empty!(IMMEDIATE_UI_CACHE)
         empty!(IMMEDIATE_UI_TIMESTAMPS)
+        empty!(IMMEDIATE_UI_FRAME_COUNT)
     end
 
     """

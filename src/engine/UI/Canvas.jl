@@ -11,11 +11,28 @@ module CanvasModule
     Provides hierarchical organization, anchoring, and collective activation/deactivation.
     """
     mutable struct Canvas <: JulGame.ICanvas
-        # Canvas-specific properties
         children::Vector{JulGame.IUIElement}
-        clipChildren::Bool  # Whether to clip children to canvas bounds
-        
-        # Canvas constructor
+        clipChildren::Bool
+        anchor::JulGame.Enum{Any}
+        anchorOffset::Math.Vector2
+        id::String
+        isActive::Bool
+        isHovered::Bool
+        layer::Int
+        name::String
+        position::Math.Vector2
+        size::Math.Vector2
+        color::NTuple{4, Int}
+        persistentBetweenScenes::Bool
+        parent::Union{JulGame.IUIElement, Nothing, Any}
+        rotation::Float64
+        forceClickCheck::Bool
+        clickEvents::Vector{Function}
+        hoverEnterEvents::Vector{Function}
+        hoverExitEvents::Vector{Function}
+        isWorldEntity::Bool
+        isVisible::Bool
+
         function Canvas(;
             id::String=JulGame.generate_uuid(),
             name::String="Canvas",
@@ -27,26 +44,23 @@ module CanvasModule
             clickEvents::Vector{Function}=Function[],
             hoverEnterEvents::Vector{Function}=Function[],
             hoverExitEvents::Vector{Function}=Function[],
+            clickEvent::Union{Function, Nothing}=nothing,
+            hoverEnterEvent::Union{Function, Nothing}=nothing,
+            hoverExitEvent::Union{Function, Nothing}=nothing,
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(0, 0, 0, 0),
             clipChildren::Bool=false,
             parent::Union{JulGame.IUIElement, Nothing, Any}=nothing,
             rotation::Float64=0.0,
-            forceClickCheck::Bool=false
+            forceClickCheck::Bool=false,
+            isWorldEntity::Bool=false,
+            isVisible::Bool=true,
         )
             this = new()
-            
-            # Initialize children collection
             this.children = JulGame.IUIElement[]
-            
-            # Canvas-specific properties
             this.clipChildren = clipChildren
-            
-            # Set up anchor enum
             this.anchor = deepcopy(UI.anchor_types)
-            
-            # Initialize common UI element properties
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
             this.id = id
@@ -61,17 +75,47 @@ module CanvasModule
             this.parent = parent
             this.rotation = rotation
             this.forceClickCheck = forceClickCheck
-            this.clickEvents = clickEvents
-            this.hoverEnterEvents = hoverEnterEvents
-            this.hoverExitEvents = hoverExitEvents
-            
+            this.clickEvents = copy(clickEvents)
+            this.hoverEnterEvents = copy(hoverEnterEvents)
+            this.hoverExitEvents = copy(hoverExitEvents)
+            if clickEvent !== nothing
+                push!(this.clickEvents, clickEvent)
+            end
+            if hoverEnterEvent !== nothing
+                push!(this.hoverEnterEvents, hoverEnterEvent)
+            end
+            if hoverExitEvent !== nothing
+                push!(this.hoverExitEvents, hoverExitEvent)
+            end
+            this.isWorldEntity = isWorldEntity
+            this.isVisible = isVisible
             return this
         end
     end
 
+    function add_child(canvas::Canvas, child::JulGame.IUIElement)
+        push!(canvas.children, child)
+        child.parent = canvas
+        nothing
+    end
+
+    function get_children(canvas::Canvas)
+        return canvas.children
+    end
+
+    function set_active(canvas::Canvas, active::Bool)
+        canvas.isActive = active
+        nothing
+    end
+
+    function is_child_active(canvas::Canvas, child::JulGame.IUIElement)
+        i = findfirst(x -> x === child, canvas.children)
+        return i !== nothing && child.isActive
+    end
+
     """
-    remove_child(canvas::Canvas, child::UI.UIElement)
-    
+    remove_child(canvas::Canvas, child::JulGame.IUIElement)
+
     Removes a UI element from the canvas's children.
     """
     function remove_child(canvas::Canvas, child::JulGame.IUIElement)
@@ -87,13 +131,13 @@ module CanvasModule
 
     """
     get_all_descendants(canvas::Canvas) -> Vector{UI.UIElement}
-    
+
     Recursively gets all descendants of the canvas (children, grandchildren, etc.).
     """
     function get_all_descendants(canvas::Canvas)
-        descendants = UI.UIElement[]
-        
-        function collect_descendants(element::UI.UIElement)
+        descendants = JulGame.IUIElement[]
+
+        function collect_descendants(element::JulGame.IUIElement)
             if isa(element, Canvas)
                 for child in element.children
                     push!(descendants, child)
@@ -101,57 +145,17 @@ module CanvasModule
                 end
             end
         end
-        
+
         collect_descendants(canvas)
         return descendants
     end
 
-    """
-    UI.render(canvas::Canvas)
-    
-    Renders the canvas and all its children in proper layer order.
-    """
     function UI.render(canvas::Canvas)
     end
-        # function UI.render(canvas::Canvas)
-    #     if !canvas.isActive
-    #         return
-    #     end
-        
-    #     # Render the canvas background if it has a visible color
-    #     if canvas.color[4] > 0  # Alpha > 0
-    #         rect = SDL2.SDL_FRect(
-    #             Float32(canvas.position.x),
-    #             Float32(canvas.position.y),
-    #             Float32(canvas.size.x),
-    #             Float32(canvas.size.y)
-    #         )
-            
-    #         # Save current render draw color
-    #         r = Ref(UInt8(0))
-    #         g = Ref(UInt8(0))
-    #         b = Ref(UInt8(0))
-    #         a = Ref(UInt8(0))
-    #         SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, r, g, b, a)
-            
-    #         # Set canvas color
-    #         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-    #             UInt8(canvas.color[1]), UInt8(canvas.color[2]), 
-    #             UInt8(canvas.color[3]), UInt8(canvas.color[4]))
-            
-    #         SDL2.SDL_SetRenderDrawBlendMode(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, SDL2.SDL_BLENDMODE_BLEND)
-            
-    #         # Draw the canvas background
-    #         SDL2.SDL_RenderFillRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rect)
-            
-    #         # Restore original color
-    #         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, r[], g[], b[], a[])
-    #     end
-    # end
 
     """
     UI.destroy(canvas::Canvas)
-    
+
     Destroys the canvas and all its children.
     """
     function UI.destroy(canvas::Canvas)
