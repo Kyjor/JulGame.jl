@@ -894,6 +894,14 @@ Parameters:
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 """
+@inline function _accum_ui_render_breakdown_ms!(prof, t0::Ref{UInt64}, key::Symbol)
+	prof === nothing && return
+	t1 = time_ns()
+	JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, key, (t1 - t0[]) / 1e6)
+	t0[] = t1
+	return
+end
+
 function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
 	# Start frame profiling
 	if this.latencyProfiler !== nothing
@@ -1083,25 +1091,38 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 			# Sort UI elements by layer before rendering
 			uiRenderingOrder = []
+			prof_ui = this.latencyProfiler
+			t_ui = Ref(time_ns())
 			canvases = filter(x -> isa(x, JulGame.ICanvas), this.scene.uiElements)
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_filter_canvases)
+			immediate_scene_skip = UI.ImmediateUIModule.immediate_ui_managed_scene_skip_ids()
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_skip_ids_build)
 			for uiElement in this.scene.uiElements
+				if Base.objectid(uiElement) in immediate_scene_skip
+					continue
+				end
 				# TODO: Only render UI elements that are not children of a Canvas
 				# Canvas children will be rendered by their parent Canvas
 				#if uiElement.parent === nothing || !isa(uiElement.parent, UI.Canvas)
 					push!(uiRenderingOrder, (uiElement.layer, uiElement))
 				#end
 			end
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_scene_elements_scan)
 			render_functions_to_call = filter(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			filter!(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			for render_function in render_functions_to_call
 				push!(uiRenderingOrder, (render_function.layer, render_function))
 			end
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_render_functions_push)
 			immediateUIComponents = UI.ImmediateUIModule.manage_all_immediate_components()
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_manage_all)
 			for immediateUIComponent in immediateUIComponents
 				push!(uiRenderingOrder, (immediateUIComponent.layer, immediateUIComponent))
 			end
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_append_order)
 
 			sort!(uiRenderingOrder, by = x -> x[1])
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_sort_render_order)
 			for i = eachindex(uiRenderingOrder)
 				try
 					skipCanvasChild = false
@@ -1114,11 +1135,16 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					if skipCanvasChild
 						continue
 					end
-					if uiRenderingOrder[i][2] isa NamedTuple
-						func = uiRenderingOrder[i][2].function_to_call
+					tgt = uiRenderingOrder[i][2]
+					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
+					if tgt isa NamedTuple
+						func = tgt.function_to_call
 						Base.invokelatest(func)
 					else
-						JulGame.render(uiRenderingOrder[i][2])
+						JulGame.render(tgt)
+					end
+					if prof_ui !== nothing
+						JulGame.LatencyProfilerModule.accumulate_ui_render_invoke_ms!(prof_ui, tgt, (time_ns() - t_r) / 1e6)
 					end
 				catch e
 					if this.testMode
@@ -1136,6 +1162,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					end
 				end
 			end
+			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_invoke_render_loop)
 			
 			if this.latencyProfiler !== nothing
 				JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)

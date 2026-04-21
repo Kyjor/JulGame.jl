@@ -22,7 +22,7 @@ module SpriteModule
     end
 
     export InternalSprite
-    mutable struct InternalSprite <: JulGame.ISprite
+    mutable struct InternalSprite <: JulGame.ISprite 
         imagePath::String
         layer::Int
         offset::Math.Vector2f
@@ -132,9 +132,9 @@ module SpriteModule
         texture_to_render = if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
             this.effectTexture
         else
-            # Create texture if it doesn't exist
-            if this.texture == C_NULL
-                this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.image)
+            # Create or get cached texture if it doesn't exist
+            if this.texture == C_NULL && this.image != C_NULL
+                this.texture = get_or_create_texture(this.imagePath, this.image)
                 Component.set_color(this)
             end
             this.texture
@@ -283,7 +283,7 @@ module SpriteModule
             return
         end
 
-        this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.image)
+        this.texture = get_or_create_texture(this.imagePath, this.image)
     end
 
     function Component.flip(this::InternalSprite)
@@ -292,6 +292,24 @@ module SpriteModule
     
     # Shared effect texture cache for sprites (keyed by image+size+effects, not instance)
     const SPRITE_EFFECT_CACHE = Dict{String, Tuple{Ptr{SDL2.SDL_Texture}, Math.Vector2}}()
+
+    # Shared texture cache for base images (keyed by image path)
+    const TEXTURE_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
+
+    function get_or_create_texture(imagePath::String, surface::Ptr{SDL2.LibSDL2.SDL_Surface})
+        if haskey(TEXTURE_CACHE, imagePath)
+            @debug("Using cached texture for: $(imagePath)")
+            return TEXTURE_CACHE[imagePath]
+        end
+        tex = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, surface)
+        if tex != C_NULL
+            TEXTURE_CACHE[imagePath] = tex
+            @debug("Created and cached texture for: $(imagePath)")
+        else
+            @error("Failed to create texture for: $(imagePath)")
+        end
+        return tex
+    end
     
     function serialize_effects(effects::Vector{Any})::String
         if isempty(effects)
@@ -398,6 +416,15 @@ module SpriteModule
         empty!(SPRITE_EFFECT_CACHE)
     end
 
+    function clear_texture_cache()
+        for (key, tex) in TEXTURE_CACHE
+            if tex != C_NULL
+                SDL2.SDL_DestroyTexture(tex)
+            end
+        end
+        empty!(TEXTURE_CACHE)
+    end
+
     const FALLBACK_IMAGE_BYTES = UInt8[
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x20, 
         0x00, 0x00, 0x00, 0x20, 0x08, 0x06, 0x00, 0x00, 0x00, 0x73, 0x7a, 0x7a, 0xf4, 0x00, 0x00, 0x00, 0x01, 0x73, 0x52, 0x47, 
@@ -459,16 +486,16 @@ module SpriteModule
         # Get image size
         surface = unsafe_wrap(Array, this.image, 10; own = false)
         this.size = Math.Vector2(surface[1].w, surface[1].h)
-    
-        # Create texture
-        this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.image)
-    
+
+        # Create or get cached texture
+        this.texture = get_or_create_texture(this.imagePath, this.image)
+
         if this.texture == C_NULL
             @error("Failed to create texture from image.")
             Base.show_backtrace(stdout, catch_backtrace())
             return
         end
-    
+
         Component.set_color(this)
     end
 
@@ -493,7 +520,10 @@ module SpriteModule
             return
         end
 
-        SDL2.SDL_DestroyTexture(this.texture)
+        # Only destroy texture if it's not in the shared cache
+        if this.texture != C_NULL && !haskey(TEXTURE_CACHE, this.imagePath)
+            SDL2.SDL_DestroyTexture(this.texture)
+        end
         this.image = C_NULL
         this.texture = C_NULL
     end

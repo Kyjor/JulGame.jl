@@ -30,7 +30,7 @@ using Statistics
 using Dates
 
 export LatencyProfiler, ProfileSection, start_frame, end_frame, start_section, end_section
-export accumulate_script_update_ms!, accumulate_input_poll_ms!, accumulate_input_ui_hit_detail_ms!, accumulate_input_ui_hit_detail_count!
+export accumulate_script_update_ms!, accumulate_input_poll_ms!, accumulate_input_ui_hit_detail_ms!, accumulate_input_ui_hit_detail_count!, accumulate_ui_render_breakdown_ms!
 export print_latency_report, print_realtime_stats, export_profiling_data, clear_profiling_data
 export get_worst_frames, @profile_section
 
@@ -104,6 +104,12 @@ mutable struct LatencyProfiler
     input_ui_hit_detail_ms::Dict{Symbol, Float64}
     # Same reporting channel, integer counts (e.g. redundant hover writes); shown next to ms breakdown.
     input_ui_hit_detail_counts::Dict{Symbol, Int}
+    # Sub-steps inside `:ui_rendering` (MainLoop + ImmediateUI); shown on slow-frame reports.
+    ui_render_breakdown_ms::Dict{Symbol, Float64}
+    # Time inside `render` / queued render fn per concrete type (or :ui_queued_render_fn); slow-frame only.
+    ui_render_invoke_ms::Dict{Any, Float64}
+    ui_render_invoke_peak_ms::Float64
+    ui_render_invoke_peak_desc::String
     
     function LatencyProfiler(;
         enabled::Bool=true,
@@ -139,6 +145,10 @@ mutable struct LatencyProfiler
         this.input_poll_breakdown_ms = Dict{Symbol, Float64}()
         this.input_ui_hit_detail_ms = Dict{Symbol, Float64}()
         this.input_ui_hit_detail_counts = Dict{Symbol, Int}()
+        this.ui_render_breakdown_ms = Dict{Symbol, Float64}()
+        this.ui_render_invoke_ms = Dict{Any, Float64}()
+        this.ui_render_invoke_peak_ms = 0.0
+        this.ui_render_invoke_peak_desc = ""
 
         return this
     end
@@ -221,6 +231,29 @@ function slow_frame_terminal_detail(
         gap = frame_time_ms - accounted
         if gap > max(1.0, 0.05 * frame_time_ms)
             println(io, "  │     — gap vs frame time:  ", _fmt2(gap), " ms (outside sections / timing overlap)")
+        end
+    end
+    if !isempty(profiler.ui_render_breakdown_ms)
+        println(io, "  │")
+        println(io, "  │   ui_render breakdown (sequential substeps; immediate_manage_* are nested in ui_immediate_manage_all):")
+        subs = sort(collect(profiler.ui_render_breakdown_ms), by = x -> x[2], rev = true)
+        for (k, ms) in subs
+            println(io, "  │      • ", string(k), "  ", _fmt2(ms), " ms")
+        end
+        println(io, "  │     — sum (all rows, overlapping): ", _fmt2(sum(values(profiler.ui_render_breakdown_ms))), " ms")
+    end
+    if !isempty(profiler.ui_render_invoke_ms)
+        println(io, "  │")
+        println(io, "  │   ui invoke (sum of JulGame.render / queued fn per type, this frame):")
+        subs = sort(collect(profiler.ui_render_invoke_ms), by = x -> x[2], rev = true)
+        nshow = min(10, length(subs))
+        for i in 1:nshow
+            k, ms = subs[i]
+            pct = frame_time_ms > 0 ? 100 * ms / frame_time_ms : 0.0
+            println(io, _fmt_row_rank_ms_pct(i, string(k), ms, pct, 36))
+        end
+        if profiler.ui_render_invoke_peak_ms >= 0.5
+            println(io, "  │     — slowest single invoke: ", _fmt2(profiler.ui_render_invoke_peak_ms), " ms  (", profiler.ui_render_invoke_peak_desc, ")")
         end
     end
     if !isempty(profiler.input_poll_breakdown_ms)
@@ -321,6 +354,33 @@ function accumulate_input_ui_hit_detail_count!(profiler::LatencyProfiler, key::S
     return
 end
 
+function accumulate_ui_render_breakdown_ms!(profiler::LatencyProfiler, key::Symbol, elapsed_ms::Float64)
+    if !profiler.enabled
+        return
+    end
+    d = profiler.ui_render_breakdown_ms
+    d[key] = get(d, key, 0.0) + elapsed_ms
+    return
+end
+
+function accumulate_ui_render_invoke_ms!(profiler::LatencyProfiler, target, elapsed_ms::Float64)
+    if !profiler.enabled || elapsed_ms <= 0
+        return
+    end
+    key = target isa NamedTuple ? :ui_queued_render_fn : typeof(target)
+    d = profiler.ui_render_invoke_ms
+    d[key] = get(d, key, 0.0) + elapsed_ms
+    if elapsed_ms > profiler.ui_render_invoke_peak_ms
+        profiler.ui_render_invoke_peak_ms = elapsed_ms
+        if target isa NamedTuple
+            profiler.ui_render_invoke_peak_desc = "ui_queued_render_fn"
+        else
+            profiler.ui_render_invoke_peak_desc = string(typeof(target))
+        end
+    end
+    return
+end
+
 """
     start_frame(profiler::LatencyProfiler)
 
@@ -336,6 +396,10 @@ function start_frame(profiler::LatencyProfiler)
     empty!(profiler.input_poll_breakdown_ms)
     empty!(profiler.input_ui_hit_detail_ms)
     empty!(profiler.input_ui_hit_detail_counts)
+    empty!(profiler.ui_render_breakdown_ms)
+    empty!(profiler.ui_render_invoke_ms)
+    profiler.ui_render_invoke_peak_ms = 0.0
+    profiler.ui_render_invoke_peak_desc = ""
     profiler.frame_start_time = time_ns()
 end
 

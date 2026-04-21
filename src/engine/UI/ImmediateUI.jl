@@ -1527,6 +1527,28 @@ module ImmediateUIModule
         end
     end
 
+    @inline function _immediate_wants_render(el)::Bool
+        !hasproperty(el, :isActive) || getproperty(el, :isActive)
+    end
+
+    """
+        immediate_ui_managed_scene_skip_ids()
+
+    `objectid` set for every element stored in the immediate UI cache. Cached widgets are
+    also pushed into `scene.uiElements`; the main loop must skip those when building the
+    UI render list so each element is drawn only once. Pooling with `INFINITE_LIFETIME` and
+    `isActive = false` then avoids both allocation and per-frame sort/render work for hidden UI.
+    """
+    function immediate_ui_managed_scene_skip_ids()::Set{UInt}
+        s = Set{UInt}()
+        n = length(IMMEDIATE_UI_CACHE)
+        n > 0 && sizehint!(s, n)
+        for packed in values(IMMEDIATE_UI_CACHE)
+            push!(s, Base.objectid(packed.element))
+        end
+        return s
+    end
+
     """
     manage_all_immediate_components(debug::Bool=false)
     
@@ -1537,21 +1559,33 @@ module ImmediateUIModule
     # Arguments
     - `debug::Bool`: Whether to draw debug visualizations
     """
+    @inline function _immediate_latency_profiler()
+        m = JulGame.MAIN
+        (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
+        return m.latencyProfiler
+    end
+
     function manage_all_immediate_components()
+        prof = _immediate_latency_profiler()
         current_time = SDL2.SDL_GetTicks()
         expired_ids = String[]
-        
+
         # Sort component IDs by layer before rendering
         component_layers = Dict{String, Int}()
-        
+
+        t_scan = time_ns()
         # First pass: collect layers for each component and check expiration
-        for (composite_id, component) in IMMEDIATE_UI_CACHE     
-            # Skip infinite lifetime components
+        for (composite_id, component) in IMMEDIATE_UI_CACHE
+            el = component.element
+
+            # Infinite lifetime: never expire; omit hidden pooled widgets from sort/render
             if component.lifetime == INFINITE_LIFETIME
-                component_layers[composite_id] = component.element.layer
+                if _immediate_wants_render(el)
+                    component_layers[composite_id] = el.layer
+                end
                 continue
             end
-            
+
             # Check if this component hasn't been used for a while
             if component.lifetime == -1
                 if !haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) || abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount) > 2
@@ -1566,24 +1600,40 @@ module ImmediateUIModule
                 push!(expired_ids, composite_id)
                 continue
             end
-            
-            # Store the layer for sorting
-            component_layers[composite_id] = component.element.layer
+
+            if _immediate_wants_render(el)
+                component_layers[composite_id] = el.layer
+            end
         end
-        
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, :immediate_manage_scan_expire_layer, (time_ns() - t_scan) / 1e6)
+        end
+
+        t_sort = time_ns()
         # Sort component IDs by layer
         sorted_ids = sort(collect(keys(component_layers)), by = id -> component_layers[id])
-        
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, :immediate_manage_sort_layer_ids, (time_ns() - t_sort) / 1e6)
+        end
+
+        t_list = time_ns()
         # Second pass: render components in layer order
         itemsToRender = []
         for id in sorted_ids
             component = IMMEDIATE_UI_CACHE[id].element
             push!(itemsToRender, component)
         end
-        
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, :immediate_manage_build_render_list, (time_ns() - t_list) / 1e6)
+        end
+
+        t_clean = time_ns()
         # Clean up expired components
         for id in expired_ids
             cleanup_immediate_component(id)
+        end
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, :immediate_manage_cleanup_expired, (time_ns() - t_clean) / 1e6)
         end
 
         last_timestamp = current_time

@@ -67,31 +67,20 @@ module UIImageModule
             this.useEffectTexture = useEffectTexture
             this.texture = C_NULL
             this.forceClickCheck = forceClickCheck
-            
+
+            # Before `this.path = …`: setproperty!(:path) touches effects / effectCacheKey / effectTexture.
+            this.effects = Any[]
+            this.effectTexture = C_NULL
+            this.effectSize = Math.Vector2(0, 0)
+            this.needsEffectUpdate = false
+            this.effectCacheKey = ""
+
             this.path = path
-            if this.surface == C_NULL
-                error = unsafe_string(SDL2.SDL_GetError())
-                @error(string("Couldn't open image! path: $(fullPath) SDL Error: ", error))
-                Base.show_backtrace(stdout, catch_backtrace())
-                return
-            end
-            surface = unsafe_wrap(Array, this.surface, 10; own = false)
-            if this.size == Math.Vector2(0,0)
-                this.size = Math.Vector2(surface[1].w, surface[1].h)
-            end
-            this.originalSize = Math.Vector2(this.size.x, this.size.y)
 
             this.clickEvents = clickEvents
             this.hoverEnterEvents = hoverEnterEvents
             this.hoverExitEvents = hoverExitEvents
-            
-            # Initialize effects
-            this.effects = Any[]
-            this.effectTexture = C_NULL
-            this.effectSize = Math.Vector2(0,0) # Initialize effectSize
-            this.needsEffectUpdate = false
-            this.effectCacheKey = ""
-        
+
             return this
         end
     end
@@ -142,15 +131,13 @@ module UIImageModule
             UI.set_color(this)
         end
     
-        # Check and set color if necessary (only for non-effect textures)
-        if isempty(this.effects)
-            colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
-            alphaRef = Ref(UInt8(0))
-            SDL2.SDL_GetTextureColorMod(texture_to_render, colorRefs...)
-            SDL2.SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
-            if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
-                UI.set_color(this)
-            end
+        # Keep SDL color modulation in sync with element.color (including when using effect textures).
+        colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+        alphaRef = Ref(UInt8(0))
+        SDL2.SDL_GetTextureColorMod(texture_to_render, colorRefs...)
+        SDL2.SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
+        if colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || colorRefs[3][] != this.color[3] || this.color[4] != alphaRef[]
+            UI.set_color(this)
         end
         srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
@@ -232,23 +219,34 @@ module UIImageModule
     function UI.load_image(this::UIImage, path::String)
         SDL2.SDL_ClearError()
 
-        fullPath = joinpath(BasePath, "assets", "images", path)
-        this.surface = load_image_sdl(fullPath, path)
-        error = unsafe_string(SDL2.SDL_GetError())
-    
-        if !isempty(error) || this.surface == C_NULL
-            @error("Couldn't open image '$path'! SDL Error: ", error)
-            SDL2.SDL_ClearError()
-    
-            # Load from byte array
+        if isempty(strip(path))
+            # Placeholder / deferred art: same as load failure — in-memory 1×1 PNG, no disk path spam.
             this.surface = load_fallback_image()
             setfield!(this, :path, "fallback.png")
             if this.surface == C_NULL
-                @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")
+                @error("Fallback image failed for empty path $(unsafe_string(SDL2.SDL_GetError()))")
                 return
             end
-        elseif this.path != path
-            this.path = path
+        else
+            fullPath = joinpath(BasePath, "assets", "images", path)
+            this.surface = load_image_sdl(fullPath, path)
+            error = unsafe_string(SDL2.SDL_GetError())
+
+            if !isempty(error) || this.surface == C_NULL
+                @error("Couldn't open image '$path'! SDL Error: ", error)
+                SDL2.SDL_ClearError()
+
+                this.surface = load_fallback_image()
+                setfield!(this, :path, "fallback.png")
+                if this.surface == C_NULL
+                    @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")
+                    return
+                end
+            else
+                if getfield(this, :path) != path
+                    setfield!(this, :path, path)
+                end
+            end
         end
     
         # Get image size
@@ -382,10 +380,32 @@ module UIImageModule
             end
             if s == :path
                 @debug("setting path to: $(x)")
-                if !isdefined(this, :path) || (this.path != x && !isempty(x))
-                    # Reload the image, cleaning up the old one first
-                    setfield!(this, s, String(x))
-                    UI.load_image(this, String(x))
+                xstr = String(x)
+                eff_nonempty = isdefined(this, :effects) && !isempty(getfield(this, :effects))
+                if !isdefined(this, :path) || (getfield(this, :path) != xstr && !isempty(strip(xstr)))
+                    if eff_nonempty && isdefined(this, :effectTexture) && getfield(this, :effectTexture) != C_NULL
+                        k = isdefined(this, :effectCacheKey) ? getfield(this, :effectCacheKey) : ""
+                        et = getfield(this, :effectTexture)
+                        if !isempty(k) && haskey(EFFECT_CACHE, k) && EFFECT_CACHE[k] == et
+                            delete!(EFFECT_CACHE, k)
+                        end
+                        SDL2.SDL_DestroyTexture(et)
+                        this.effectTexture = C_NULL
+                    end
+                    setfield!(this, s, xstr)
+                    UI.load_image(this, xstr)
+                    # Never leave effectCacheKey as "" — update_effects would cache under "" and reuse the wrong texture on the next path change.
+                    if eff_nonempty
+                        this.effectCacheKey = generate_effect_cache_key(this)
+                        this.needsEffectUpdate = true
+                    end
+                elseif isdefined(this, :path) && getfield(this, :path) != xstr && isempty(strip(xstr))
+                    setfield!(this, s, xstr)
+                    UI.load_image(this, xstr)
+                    if eff_nonempty
+                        this.effectCacheKey = generate_effect_cache_key(this)
+                        this.needsEffectUpdate = true
+                    end
                 end
                 return
             end
@@ -425,11 +445,11 @@ module UIImageModule
         # When textures are shared and one instance destroys it, other instances
         # end up with invalid texture pointers
         # Include instance ID to ensure each sprite has its own effect texture
+        # Omit color: tint via SDL_SetTextureColorMod in render (re-baking on every alpha fade was very expensive).
         content = string(
             this.id, "|",  # Instance ID - prevents sharing across different sprites
             this.path, "|",
             this.size.x, "x", this.size.y, "|",
-            this.color, "|",
             serialize_effects(this.effects)
         )
         return string(hash(content))
@@ -440,6 +460,7 @@ module UIImageModule
     const MAX_CACHE_SIZE = 100
 
     function cache_effect_texture(key::String, texture::Ptr{SDL2.SDL_Texture})
+        isempty(key) && return
         EFFECT_CACHE[key] = texture
         @debug("Cached UIImage effect texture for key: $key")
     end
@@ -475,8 +496,8 @@ module UIImageModule
         if isempty(this.effects)
             return
         end
-        # Use cached texture if available
-        if haskey(EFFECT_CACHE, this.effectCacheKey)
+        # Use cached texture if available (never use "" — that collides across path changes)
+        if !isempty(this.effectCacheKey) && haskey(EFFECT_CACHE, this.effectCacheKey)
             @debug("UIImage using cached effect texture", name=this.name, key=this.effectCacheKey)
             cached_texture = EFFECT_CACHE[this.effectCacheKey]
             
