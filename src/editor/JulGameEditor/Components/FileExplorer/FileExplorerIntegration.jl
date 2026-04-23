@@ -42,7 +42,7 @@ function initialize_file_explorer_system()
         # Load saved favorites and recent files
        # load_explorer_settings()
         
-        @info "File Explorer system initialized successfully"
+        @debug "File Explorer system initialized successfully"
         
     catch e
         @error "Failed to initialize File Explorer system: $e"
@@ -62,7 +62,7 @@ function cleanup_file_explorer_system()
         # Save current state
         save_explorer_settings()
         
-        @info "File Explorer system cleaned up successfully"
+        @debug "File Explorer system cleaned up successfully"
         
     catch e
         @error "Error during File Explorer cleanup: $e"
@@ -86,7 +86,7 @@ function handle_project_change(new_project_path::String)
             # Add to recent projects
             add_to_recent_files(new_project_path)
             
-            @info "File Explorer updated for new project: $new_project_path"
+            @debug "File Explorer updated for new project: $new_project_path"
         end
     catch e
         @error "Error handling project change: $e"
@@ -122,31 +122,31 @@ Set up integration points with the existing editor components.
 This creates the necessary connections between file explorer and other systems.
 """
 function setup_editor_integration()
-    @info "Setting up file explorer editor integration..."
+    @debug "Setting up file explorer editor integration..."
     
     # Make drag-drop functions available globally for SceneViewer integration
     if !haskey(JulGame.EditorState, "handle_scene_viewer_drop_target")
         JulGame.EditorState["handle_scene_viewer_drop_target"] = handle_scene_viewer_drop_target
-        @info "Registered handle_scene_viewer_drop_target"
+        @debug "Registered handle_scene_viewer_drop_target"
     end
     
     if !haskey(JulGame.EditorState, "handle_hierarchy_drop_target")
         JulGame.EditorState["handle_hierarchy_drop_target"] = handle_hierarchy_drop_target
-        @info "Registered handle_hierarchy_drop_target"
+        @debug "Registered handle_hierarchy_drop_target"
     end
     
     if !haskey(JulGame.EditorState, "handle_inspector_drop_target")
         JulGame.EditorState["handle_inspector_drop_target"] = handle_inspector_drop_target
-        @info "Registered handle_inspector_drop_target"
+        @debug "Registered handle_inspector_drop_target"
     end
     
     # Make file explorer functions available for menu integration
     if !haskey(JulGame.EditorState, "show_file_explorer_window")
         JulGame.EditorState["show_file_explorer_window"] = show_file_explorer_window
-        @info "Registered show_file_explorer_window"
+        @debug "Registered show_file_explorer_window"
     end
     
-    @info "File explorer editor integration setup complete"
+    @debug "File explorer editor integration setup complete"
 end
 
 """
@@ -169,7 +169,7 @@ function enhanced_file_import(filepaths::Vector{String}, destination::String="")
         JulGame.EditorState["dropped_files"] = supported_files
         JulGame.EditorState["import_queue_index"] = 1
         
-        @info "Enhanced import: $(length(supported_files)) files queued for import"
+        @debug "Enhanced import: $(length(supported_files)) files queued for import"
         return true
     end
     
@@ -296,7 +296,7 @@ function add_file_explorer_context_menu_items(filepath::String)
     # Metadata
     if CImGui.MenuItem("Edit Metadata")
         # TODO: Open metadata editor popup
-        @info "Would open metadata editor for: $filepath"
+        @debug "Would open metadata editor for: $filepath"
     end
     
     # Show in file explorer

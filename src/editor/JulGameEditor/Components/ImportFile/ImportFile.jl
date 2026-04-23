@@ -395,7 +395,7 @@ function import_current_file()
     dest_file = joinpath(dest_dir, dialog.new_filename[])
     try
         cp(dialog.current_file, dest_file)
-        @info "File imported successfully: $(basename(dest_file)) to $(dialog.destination_folder)"
+        @debug "File imported successfully: $(basename(dest_file)) to $(dialog.destination_folder)"
         
         # Add to scene if requested
         if dialog.add_to_scene
@@ -450,19 +450,19 @@ function add_imported_file_to_scene(file_path::String, current_scene_main, posit
                 screen_button = create_ui_screenbutton(relative_path, entity_name)
                 screen_button.position = Math.Vector2(round(Int, position.x), round(Int, position.y))
                 push!(current_scene_main.scene.uiElements, screen_button)
-                @info "Added ScreenButton UI element: $(entity_name)"
+                @debug "Added ScreenButton UI element: $(entity_name)"
             elseif dialog.create_as_ui_image
                 # Create UIImage UI element
                 image = create_ui_image(relative_path, entity_name)
                 image.position = Math.Vector2(round(Int, position.x), round(Int, position.y))
                 push!(current_scene_main.scene.uiElements, image)
-                @info "Added UIImage UI element: $(entity_name)"
+                @debug "Added UIImage UI element: $(entity_name)"
             else
                 # Create entity with sprite
                 entity = create_entity_with_sprite(relative_path, entity_name)
                 push!(current_scene_main.scene.entities, entity)
                 entity.transform.position = Math.Vector3f(position.x, position.y, 0.0)
-                @info "Added entity with sprite: $(entity_name)"
+                @debug "Added entity with sprite: $(entity_name)"
             end
         elseif dialog.is_audio
             # Create entity with sound source
@@ -481,7 +481,7 @@ function add_imported_file_to_scene(file_path::String, current_scene_main, posit
             entity = create_entity_with_sound(relative_path, entity_name)
             push!(current_scene_main.scene.entities, entity)
             entity.transform.position = Math.Vector3f(position.x, position.y, 0.0)
-            @info "Added entity with sound source: $(entity_name)"
+            @debug "Added entity with sound source: $(entity_name)"
         end
     catch e
         @error "Failed to add file to scene: $(e)"
@@ -576,7 +576,7 @@ Create a new UIImage UI element using the imported image.
 function create_ui_image(image_path::String, image_name::String)
     # Create UIImage with the imported image
     image = JulGame.UI.UIImageModule.UIImage(image_path)
-    @info "Added UIImage UI element: $(image_name)"
+    @debug "Added UIImage UI element: $(image_name)"
     return image
 end
 
@@ -664,7 +664,7 @@ function show_file_import_dialog(renderer, current_scene_main=nothing, is_from_s
     initialize_import_dialog()
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
     if dropped_files === nothing || isempty(dropped_files)
-        @info "No dropped files found, returning false"
+        @debug "No dropped files found, returning false"
         return false
     end
     dialog = JulGame.EditorState["file_import_dialog"]

@@ -113,7 +113,7 @@ function execute_batch_copy(source_paths::Vector{String}, destination::String)
                 else
                     cp(source_path, dest_path; force=false)  # Directory copy
                 end
-                @info "Copied: $(basename(source_path)) to $(destination)"
+                @debug "Copied: $(basename(source_path)) to $(destination)"
             catch e
                 @error "Failed to copy $(source_path): $e"
             end
@@ -133,7 +133,7 @@ function execute_batch_move(source_paths::Vector{String}, destination::String)
             
             try
                 mv(source_path, dest_path)
-                @info "Moved: $(basename(source_path)) to $(destination)"
+                @debug "Moved: $(basename(source_path)) to $(destination)"
             catch e
                 @error "Failed to move $(source_path): $e"
             end
@@ -146,7 +146,7 @@ function execute_batch_delete(source_paths::Vector{String})
         if isfile(source_path) || isdir(source_path)
             try
                 rm(source_path; recursive=true, force=true)
-                @info "Deleted: $(basename(source_path))"
+                @debug "Deleted: $(basename(source_path))"
             catch e
                 @error "Failed to delete $(source_path): $e"
             end
@@ -161,7 +161,7 @@ function execute_batch_import(source_paths::Vector{String}, destination::String)
     if !isempty(supported_files)
         JulGame.EditorState["dropped_files"] = supported_files
         JulGame.EditorState["import_queue_index"] = 1
-        @info "Queued $(length(supported_files)) files for import"
+        @debug "Queued $(length(supported_files)) files for import"
     end
 end
 

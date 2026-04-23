@@ -24,7 +24,7 @@ function add_to_favorites(path::String)
     if path ∉ explorer.favorite_paths
         push!(explorer.favorite_paths, path)
         save_explorer_settings()
-        @info "Added to favorites: $(basename(path))"
+        @debug "Added to favorites: $(basename(path))"
     end
 end
 
@@ -33,7 +33,7 @@ function remove_from_favorites(path::String)
     
     filter!(p -> p != path, explorer.favorite_paths)
     save_explorer_settings()
-    @info "Removed from favorites: $(basename(path))"
+    @debug "Removed from favorites: $(basename(path))"
 end
 
 function is_favorite(path::String)::Bool
@@ -475,7 +475,7 @@ recent = [$(join(["\"$p\"" for p in workspace.recent_paths], ", "))]
 """
         
         write(workspace_path, workspace_data)
-        @info "Saved workspace: $name"
+        @debug "Saved workspace: $name"
         
     catch e
         @error "Failed to save workspace $name: $e"
@@ -505,7 +505,7 @@ function load_workspace(name::String)::Bool
             end
         end
         
-        @info "Loaded workspace: $name"
+        @debug "Loaded workspace: $name"
         return true
         
     catch e

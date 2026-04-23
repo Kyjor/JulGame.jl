@@ -76,7 +76,7 @@ module SceneReaderModule
             end
             for entity in json.Entities
                 if entity.id in entityIdsInCurrentScene
-                    @info "Entity with id $(entity.id) already exists in current scene"
+                    @debug "Entity with id $(entity.id) already exists in current scene"
                     continue
                 end
                 components = []

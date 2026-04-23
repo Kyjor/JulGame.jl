@@ -40,7 +40,7 @@ module SceneLoaderModule
     function load_scene_from_editor(scenePath::String, renderer = nothing) 
         projectPath = get_project_path_from_full_scene_path(scenePath)
         sceneFileName = get_scene_file_name_from_full_scene_path(scenePath)
-        @info "loading scene from editor. projectPath: $(projectPath) sceneFileName: $(sceneFileName)"
+        @debug "loading scene from editor. projectPath: $(projectPath) sceneFileName: $(sceneFileName)"
 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
         if renderer !== nothing

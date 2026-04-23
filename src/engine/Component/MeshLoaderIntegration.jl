@@ -41,15 +41,15 @@ module MeshLoaderIntegrationModule
             # Check for MTL file and parse it
             mtl_path = splitext(file_path)[1] * ".mtl"
             if isfile(mtl_path)
-                @info "Loading materials from $mtl_path"
+                @debug "Loading materials from $mtl_path"
                 render_mesh.materials = parse_mtl_file(mtl_path)
                 render_mesh.use_materials = !isempty(render_mesh.materials)
-                @info "Parsed $(length(render_mesh.materials)) materials"
+                @debug "Parsed $(length(render_mesh.materials)) materials"
             end
             
             # For OBJ files, use custom parser that preserves material assignments
             if lowercase(splitext(file_path)[2]) == ".obj"
-                @info "🔧 USING CUSTOM OBJ PARSER for material preservation - file: $file_path"
+                @debug "🔧 USING CUSTOM OBJ PARSER for material preservation - file: $file_path"
                 vertices, uv_coords, faces_with_materials = parse_obj_file(file_path)
                 
                 # Convert vertices to our format
@@ -65,16 +65,16 @@ module MeshLoaderIntegrationModule
                 # Convert faces with proper material assignments
                 for (face_idx, (vertex_indices, uv_indices, material_name)) in enumerate(faces_with_materials)
                     if face_idx <= 3  # Debug first few faces
-                        @info "MeshLoader: Converting face $face_idx: vertex_indices=$vertex_indices, uv_indices=$uv_indices, material='$material_name'"
+                        @debug "MeshLoader: Converting face $face_idx: vertex_indices=$vertex_indices, uv_indices=$uv_indices, material='$material_name'"
                     end
                     face = MaterialFace(vertex_indices, uv_indices, material_name)
                     if face_idx <= 3  # Debug first few faces  
-                        @info "MeshLoader: Created MaterialFace $face_idx: vertex_indices=$(face.vertex_indices), uv_indices=$(face.uv_indices), material='$(face.material_name)'"
+                        @debug "MeshLoader: Created MaterialFace $face_idx: vertex_indices=$(face.vertex_indices), uv_indices=$(face.uv_indices), material='$(face.material_name)'"
                     end
                     push!(render_mesh.faces, face)
                 end
                 
-                @info "Custom OBJ parser loaded $(length(render_mesh.vertices)) vertices, $(length(render_mesh.uv_coordinates)) UVs, $(length(render_mesh.faces)) faces"
+                @debug "Custom OBJ parser loaded $(length(render_mesh.vertices)) vertices, $(length(render_mesh.uv_coordinates)) UVs, $(length(render_mesh.faces)) faces"
                 
                 # Compute and cache bounding box for shadow calculations (performance optimization)
                 compute_mesh_bounds!(render_mesh)
@@ -130,7 +130,7 @@ module MeshLoaderIntegrationModule
                 
             elseif isa(mesh_data, GeometryBasics.MetaMesh)
                 # Handle MetaMesh format (common for OBJ files with materials/groups)
-                @info "Loading MetaMesh format"
+                @debug "Loading MetaMesh format"
                 
                 # Try to extract the mesh using GeometryBasics.expand_faceviews
                 try
@@ -246,7 +246,7 @@ module MeshLoaderIntegrationModule
             # Add to renderer
             push!(renderer.meshes, render_mesh)
             
-            @info "Successfully loaded mesh from $file_path: $(length(render_mesh.vertices)) vertices, $(length(render_mesh.faces)) faces"
+            @debug "Successfully loaded mesh from $file_path: $(length(render_mesh.vertices)) vertices, $(length(render_mesh.faces)) faces"
             return render_mesh
             
         catch e

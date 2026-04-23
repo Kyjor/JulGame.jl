@@ -608,7 +608,7 @@ function refresh_all_metadata_in_directory(directory_path::String)
                 end
             end
         end
-        @info "Refreshed metadata for directory: $directory_path"
+        @debug "Refreshed metadata for directory: $directory_path"
     catch e
         @error "Error refreshing metadata for directory $directory_path: $e"
     end

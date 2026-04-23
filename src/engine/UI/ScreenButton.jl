@@ -265,15 +265,15 @@ module ScreenButtonModule
     end
 
     function UI.set_color(this::ScreenButton; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
-        #@info "setting color to $(r), $(g), $(b), $(a)"
+        #@debug "setting color to $(r), $(g), $(b), $(a)"
         this.color = (r%256, g%256, b%256, a%256)
         if this.buttonDownTexture != C_NULL
-            #@info "setting color of button down texture to $(r), $(g), $(b), $(a)"
+            #@debug "setting color of button down texture to $(r), $(g), $(b), $(a)"
             SDL2.SDL_SetTextureColorMod(this.buttonDownTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
             SDL2.SDL_SetTextureAlphaMod(this.buttonDownTexture, UInt8(clamp(this.color[4], 0, 255)));
         end
         if this.buttonUpTexture != C_NULL
-            #@info "setting color of button up texture to $(r), $(g), $(b), $(a)"
+            #@debug "setting color of button up texture to $(r), $(g), $(b), $(a)"
             SDL2.SDL_SetTextureColorMod(this.buttonUpTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
             SDL2.SDL_SetTextureAlphaMod(this.buttonUpTexture, UInt8(clamp(this.color[4], 0, 255)));
         end

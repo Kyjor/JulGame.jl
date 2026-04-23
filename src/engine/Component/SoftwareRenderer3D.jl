@@ -813,7 +813,7 @@ module SoftwareRenderer3DModule
         
         # Cache the texture
         renderer.texture_cache[texture_path] = texture
-        @info "Loaded SDL texture: $texture_path"
+        @debug "Loaded SDL texture: $texture_path"
         
         return texture
     end
@@ -868,11 +868,11 @@ module SoftwareRenderer3DModule
         
         # Debug: Print mesh information
         if length(renderer.triangles) == 0  # Only print once per frame
-            # @info "Rendering mesh: use_materials=$(mesh.use_materials), materials=$(length(mesh.materials)), faces=$(length(mesh.faces))"
-            # @info "Default fill color: $(mesh.default_fill_color)"
+            # @debug "Rendering mesh: use_materials=$(mesh.use_materials), materials=$(length(mesh.materials)), faces=$(length(mesh.faces))"
+            # @debug "Default fill color: $(mesh.default_fill_color)"
             if !isempty(mesh.materials)
                 for (name, material) in mesh.materials
-                   # @info "Material '$name': has_texture=$(material.has_texture), texture_path='$(material.texture_path)', diffuse=$(material.diffuse_color)"
+                   # @debug "Material '$name': has_texture=$(material.has_texture), texture_path='$(material.texture_path)', diffuse=$(material.diffuse_color)"
                 end
             end
         end

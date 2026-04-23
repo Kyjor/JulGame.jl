@@ -203,8 +203,8 @@ module TextBoxModule
             adjusted_position = Math.Vector2(0, 0)
             if this.originalSize != this.size && this.anchor.current_state == :none
                 adjusted_position = Math.Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
-                # @info "difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)"
-                # @info "adjusted position: $(adjusted_position.x), $(adjusted_position.y)"
+                # @debug "difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)"
+                # @debug "adjusted position: $(adjusted_position.x), $(adjusted_position.y)"
             else
                 adjusted_position = this.position
             end

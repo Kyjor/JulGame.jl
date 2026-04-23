@@ -30,7 +30,7 @@ function set_batched_layer_offset(layer::Int, x::Float64, y::Float64)
     
     batched_layer = JulGame.MAIN.scene.batchedLayers[layer]
     batched_layer.debugOffset = JulGame.Math.Vector2f(x, y)
-    @info "Set batched layer $(layer) offset to ($(x), $(y)) pixels"
+    @debug "Set batched layer $(layer) offset to ($(x), $(y)) pixels"
 end
 
 """

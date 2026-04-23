@@ -18,7 +18,7 @@ function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
         # Left-click context menu for adding components
         # Check if left mouse button is clicked in the Inspector window
         if display_context_menu == 1
-            @info "Opening entity context menu"
+            @debug "Opening entity context menu"
             CImGui.OpenPopup(INSPECTOR_LEFT_CLICK_MENU)
         end
         

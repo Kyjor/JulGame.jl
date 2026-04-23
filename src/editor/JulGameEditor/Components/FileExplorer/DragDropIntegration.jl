@@ -188,11 +188,11 @@ function create_scene_entity_from_file(filepath::String, current_scene_main, pos
     file_type = get_file_type(filepath)
     relative_path = get_asset_relative_path(filepath)
     entity_name = generate_entity_name_from_file(filepath)
-    @info "Creating scene entity from file: $filepath"
-    @info "file_type: $file_type"
-    @info "relative_path: $relative_path"
-    @info "entity_name: $entity_name"
-    @info "position: $position"
+    @debug "Creating scene entity from file: $filepath"
+    @debug "file_type: $file_type"
+    @debug "relative_path: $relative_path"
+    @debug "entity_name: $entity_name"
+    @debug "position: $position"
     try
         entity = nothing
         

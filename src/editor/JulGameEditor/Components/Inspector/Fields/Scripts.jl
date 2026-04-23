@@ -107,7 +107,7 @@ function open_file_in_editor(file_path::String)
         end
     catch e
         @warn "Failed to open file with preferred editor ($editor_preference): $e"
-        @info "Falling back to system default"
+        @debug "Falling back to system default"
         try
             open_with_system_default(file_path)
         catch fallback_error
@@ -281,14 +281,14 @@ function show_script_editor(entity, newScriptText)
             selected_file = get_file_finder_result()
             target_field, target_structure_type = get_file_finder_target()
             
-            @info "Script selection result: $selected_file"
-            @info "Target field: $target_field, Target structure: $target_structure_type"
+            @debug "Script selection result: $selected_file"
+            @debug "Target field: $target_field, Target structure: $target_structure_type"
             
             # Only apply the result if this is for scripts
             if target_field == :scripts && target_structure_type == "Entity"
                 # Extract script name from file path
                 script_name = splitext(basename(selected_file))[1]
-                @info "Adding script: $script_name to entity: $(entity.name)"
+                @debug "Adding script: $script_name to entity: $(entity.name)"
                 add_script_to_entity(entity, script_name)
                 
                 # Clear the result to prevent re-processing
@@ -345,7 +345,7 @@ function add_script_to_entity(entity, script_name)
         newScript = Base.invokelatest(constructor)
         newScript.parent = entity
         push!(entity.scripts, newScript)
-        @info "Successfully added script: $script_name to entity: $(entity.name)"
+        @debug "Successfully added script: $script_name to entity: $(entity.name)"
     catch e
         @error "Failed to add script $script_name: $e"
         Base.show_backtrace(stderr, catch_backtrace())
@@ -360,7 +360,7 @@ function reload_script(entity, script_index, script_name)
         constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
         entity.scripts[script_index] = Base.invokelatest(constructor)
         entity.scripts[script_index].parent = entity
-        @info "Successfully reloaded script: $script_name"
+        @debug "Successfully reloaded script: $script_name"
     catch e
         @error "Failed to reload script $script_name: $e"
         Base.show_backtrace(stderr, catch_backtrace())

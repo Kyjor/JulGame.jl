@@ -650,7 +650,7 @@ function JulGame.change_scene(sceneFileName::String)
 
 	for entity in this.scene.entities
 		if entity.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
-			@info("Persistent entity: ", entity.name, " with id: ", entity.id)
+			@debug("Persistent entity: ", entity.name, " with id: ", entity.id)
 			push!(persistentEntities, entity)
 			skipcount += 1
 			continue

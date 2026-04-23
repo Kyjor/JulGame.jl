@@ -50,7 +50,7 @@ function show_hierarchy(currentSceneMain::Union{MainLoop, Nothing})
             end
             if CImGui.MenuItem("Add TextBox")
                 JulGame.MainLoopModule.create_new_text_box(currentSceneMain)
-                @info "Adding textbox"
+                @debug "Adding textbox"
             end
             if CImGui.MenuItem("Add Image")
                 JulGame.MainLoopModule.create_new_image(currentSceneMain)

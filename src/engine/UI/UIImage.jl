@@ -329,7 +329,7 @@ module UIImageModule
             return false
         end
 
-        #@info "Texture: $(texture)"
+        #@debug "Texture: $(texture)"
         w = Ref{Cint}(0); h = Ref{Cint}(0)
         fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
         result = SDL2.SDL_QueryTexture(texture, fmt, access, w, h)

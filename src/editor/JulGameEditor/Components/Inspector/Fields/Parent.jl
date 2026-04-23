@@ -15,7 +15,7 @@ function show_parent_field(structure::EditableStructure, field::Symbol, value::U
         # Handle single file drops
         single_element_payload = CImGui.AcceptDragDropPayload("SCENE_ELEMENT")
         if single_element_payload != C_NULL
-            @info "Received drag-drop payload for single element"
+            @debug "Received drag-drop payload for single element"
             payload = unsafe_load(single_element_payload)
             string_data = String(unsafe_wrap(Array{UInt8}, convert(Ptr{UInt8}, payload.Data), payload.DataSize))
             element_id = strip(split(string_data, "::")[1])
@@ -28,8 +28,8 @@ function show_parent_field(structure::EditableStructure, field::Symbol, value::U
             else
                 nothing
             end
-            @info "Element ID: $element_id"
-            @info "Element: $element"
+            @debug "Element ID: $element_id"
+            @debug "Element: $element"
             if element !== nothing
                 structure.parent = element
                 changed = true

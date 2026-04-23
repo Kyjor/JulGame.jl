@@ -632,7 +632,7 @@ function handle_item_double_click(filepath::String)
         # TODO: Implement file opening based on type
         # For now, just select the item
         file_type = get_file_type(filepath)
-        @info "Double-clicked $file_type file: $filepath"
+        @debug "Double-clicked $file_type file: $filepath"
     end
 end
 
@@ -669,12 +669,12 @@ function show_file_context_menu(filepath::String)
     end
     
     if CImGui.MenuItem("Delete")
-        @info "Deleting file: $filepath"
+        @debug "Deleting file: $filepath"
         JulGame.EditorState[DELETE_CONFIRMATION] = () -> rm(filepath; force=true)
     end
     
     if CImGui.MenuItem("Copy Path")
-        @info "Copying path: $filepath"
+        @debug "Copying path: $filepath"
         CImGui.SetClipboardText(filepath)
     end
     
@@ -706,7 +706,7 @@ function handle_file_list_drag_drop()
             # Perform the move operation
             try
                 dest_path = joinpath(target_folder_path, basename(source_path))
-                @info "Moving '$source_path' to '$dest_path'"
+                @debug "Moving '$source_path' to '$dest_path'"
                 mv(source_path, dest_path; force=false)  # Don't force overwrite
                 
                 # Update selection
