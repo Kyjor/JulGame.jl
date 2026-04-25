@@ -43,13 +43,13 @@ function _fx_effect_code(eff)::String
     return "# Unsupported effect: $(nameof(typeof(eff)))"
 end
 
-function _fx_effects_stack_code(tb::JulGame.UI.TextBoxModule.TextBox)::String
-    items = [_fx_effect_code(eff) for eff in tb.effects]
+function _fx_effects_stack_code(target)::String
+    items = [_fx_effect_code(eff) for eff in target.effects]
     body = join(["    " * i for i in items], ",\n")
-    return "JulGame.apply_effects!(tb, Any[\n" * body * "\n])"
+    return "JulGame.apply_effects!(target, Any[\n" * body * "\n])"
 end
 
-function _text_fx_push_new!(tb::JulGame.UI.TextBoxModule.TextBox, ix0::Int)
+function _text_fx_push_new!(target, ix0::Int)
     EM = JulGame.EffectsModule
     e = if ix0 == 0
         EM.BevelEmbossEffect()
@@ -76,11 +76,11 @@ function _text_fx_push_new!(tb::JulGame.UI.TextBoxModule.TextBox, ix0::Int)
     else
         return
     end
-    push!(tb.effects, e)
-    JulGame.UI.request_effects_refresh!(tb)
+    push!(target.effects, e)
+    JulGame.apply_effects!(target, target.effects)
 end
 
-function show_text_effects_inspector(tb::JulGame.UI.TextBoxModule.TextBox)
+function show_text_effects_inspector(target)
     if CImGui.CollapsingHeader("Text effects##text_fx_header", CImGui.ImGuiTreeNodeFlags_DefaultOpen)
         CImGui.Indent(4.0f0)
         CImGui.PushStyleVar(CImGui.ImGuiStyleVar_ItemSpacing, CImGui.ImVec2(6, 6))
@@ -102,39 +102,39 @@ function show_text_effects_inspector(tb::JulGame.UI.TextBoxModule.TextBox)
         @c CImGui.Combo("Add effect##fx_add_combo", _TEXT_FX_ADD_IX, ADD_LABELS, length(ADD_LABELS))
         CImGui.SameLine()
         if CImGui.Button("Add##fx_add_btn")
-            _text_fx_push_new!(tb, Int(_TEXT_FX_ADD_IX[]))
+            _text_fx_push_new!(target, Int(_TEXT_FX_ADD_IX[]))
         end
         CImGui.SameLine()
         if CImGui.Button("Copy as Julia##fx_copy_code")
-            CImGui.SetClipboardText(_fx_effects_stack_code(tb))
+            CImGui.SetClipboardText(_fx_effects_stack_code(target))
         end
 
-        if isempty(tb.effects)
+        if isempty(target.effects)
             CImGui.TextWrapped("Stack is empty. Pick an effect above and click Add.")
         end
 
-        for (i, eff) in enumerate(tb.effects)
+        for (i, eff) in enumerate(target.effects)
             if CImGui.CollapsingHeader("$(i). $(nameof(typeof(eff)))##fx_row_$i")
-                show_effect_panel_for(eff, tb)
+                show_effect_panel_for(eff, target)
                 if i > 1
                     if CImGui.Button("Move up##fx_up_$i")
-                        tb.effects[i - 1], tb.effects[i] = tb.effects[i], tb.effects[i - 1]
-                        JulGame.UI.request_effects_refresh!(tb)
+                        target.effects[i - 1], target.effects[i] = target.effects[i], target.effects[i - 1]
+                        JulGame.apply_effects!(target, target.effects)
                         break
                     end
                     CImGui.SameLine()
                 end
-                if i < length(tb.effects)
+                if i < length(target.effects)
                     if CImGui.Button("Move down##fx_down_$i")
-                        tb.effects[i + 1], tb.effects[i] = tb.effects[i], tb.effects[i + 1]
-                        JulGame.UI.request_effects_refresh!(tb)
+                        target.effects[i + 1], target.effects[i] = target.effects[i], target.effects[i + 1]
+                        JulGame.apply_effects!(target, target.effects)
                         break
                     end
                     CImGui.SameLine()
                 end
                 if CImGui.Button("Remove##fx_rm_$i")
-                    deleteat!(tb.effects, i)
-                    JulGame.UI.request_effects_refresh!(tb)
+                    deleteat!(target.effects, i)
+                    JulGame.apply_effects!(target, target.effects)
                     break
                 end
             end

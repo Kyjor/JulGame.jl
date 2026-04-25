@@ -129,7 +129,7 @@ function display_fields(structure::EditableStructure)
             show_field(structure, field, getproperty(structure, field))
         end
     end
-    if structure isa JulGame.UI.TextBoxModule.TextBox
+    if hasproperty(structure, :effects)
         show_text_effects_inspector(structure)
     end
     CImGui.Unindent(8.0f0)
