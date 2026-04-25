@@ -273,9 +273,12 @@ function bumpmap_linear!(dest::Matrix{UInt8}, height::Matrix{UInt8}, azimuth::Fl
                 end
             end
             if comp > 1e-6
-                shade = round(Int, min(255, shade / comp))
+                shade = min(255.0, Float64(shade) / comp)
             end
-            dest[y, x] = UInt8(clamp(shade, 0, 255))
+            # Keep conversion explicit: round -> clamp -> UInt8.
+            # Direct Float64 -> UInt8 throws InexactError for non-integer shades.
+            shade_i = clamp(round(Int, Float64(shade)), 0, 255)
+            dest[y, x] = UInt8(shade_i)
         end
     end
 end

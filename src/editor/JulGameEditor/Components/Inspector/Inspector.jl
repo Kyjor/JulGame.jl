@@ -2,7 +2,9 @@ EditableComponent = Union{AnimatorModule.InternalAnimator, ColliderModule.Intern
 EditableStructure = Union{JulGame.CameraModule.Camera, Entity, UI.UIElement, EditableComponent}
 include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Fields"); join=true)))
 include(joinpath(@__DIR__, "TextEffects", "TextEffectsDebounce.jl"))
+include(joinpath(@__DIR__, "TextEffects", "TextEffectsHelpers.jl"))
 include(joinpath(@__DIR__, "TextEffects", "BevelEmbossEffectPanel.jl"))
+include(joinpath(@__DIR__, "TextEffects", "EffectPanels.jl"))
 include(joinpath(@__DIR__, "TextEffects", "TextEffectsInspector.jl"))
 include(joinpath(@__DIR__, "..", "EntityContextMenu.jl"))
 

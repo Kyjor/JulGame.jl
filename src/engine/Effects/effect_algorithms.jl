@@ -1197,8 +1197,8 @@ module EffectAlgorithmsModule
         # Find surrounding stops
         for i in 1:(length(stops)-1)
             if t <= stops[i+1][1]  # stops[i+1][1] is position
-                t1 = stops[i][1]    # stops[i][1] is position
-                t2 = stops[i+1][1]  # stops[i+1][1] is position
+                t1 = clamp(stops[i][1], 0.0, 1.0)    # stops[i][1] is position
+                t2 = clamp(stops[i+1][1], 0.0, 1.0)  # stops[i+1][1] is position
                 c1 = stops[i][2]    # stops[i][2] is color
                 c2 = stops[i+1][2]  # stops[i+1][2] is color
                 
@@ -1208,11 +1208,12 @@ module EffectAlgorithmsModule
                 else
                     ratio = 0.0
                 end
+                ratio = clamp(ratio, 0.0, 1.0)
                 
-                r = round(UInt8, c1[1] * (1 - ratio) + c2[1] * ratio)
-                g = round(UInt8, c1[2] * (1 - ratio) + c2[2] * ratio)
-                b = round(UInt8, c1[3] * (1 - ratio) + c2[3] * ratio)
-                a = round(UInt8, c1[4] * (1 - ratio) + c2[4] * ratio)
+                r = UInt8(clamp(round(Int, c1[1] * (1 - ratio) + c2[1] * ratio), 0, 255))
+                g = UInt8(clamp(round(Int, c1[2] * (1 - ratio) + c2[2] * ratio), 0, 255))
+                b = UInt8(clamp(round(Int, c1[3] * (1 - ratio) + c2[3] * ratio), 0, 255))
+                a = UInt8(clamp(round(Int, c1[4] * (1 - ratio) + c2[4] * ratio), 0, 255))
                 
                 return UInt32(a) << 24 | UInt32(b) << 16 | UInt32(g) << 8 | UInt32(r)
             end

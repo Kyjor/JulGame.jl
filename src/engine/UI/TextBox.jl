@@ -449,20 +449,22 @@ module TextBoxModule
     end
     
     function UI.update_font_size(this::TextBox, newSize::Int; basePath::String = "")
-        # Store the base font size (the size specified by the user)
-        this.fontSize = newSize
-        
-        # Calculate the true font size based on window resolution
-        trueFontSize = get_true_font_size(this.fontSize)
-        
-        # Close the current font
+        applied_size = max(1, newSize)
+        if this.fontSize == applied_size && this.font != C_NULL
+            return
+        end
+        # Store the user-facing base size and force a fresh font/surface rebuild.
+        this.fontSize = applied_size
+
         if this.font != C_NULL
-            #println("closing font from update_font_size")
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
         end
-
-        UI.load_font(this, joinpath(this.fontPath))
+        UI.load_font(this, this.fontPath)
+        UI.rerender_text(this)
+        if !isempty(this.effects)
+            UI.request_effects_refresh!(this)
+        end
     end
 
     """
