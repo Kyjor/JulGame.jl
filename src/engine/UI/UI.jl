@@ -7,6 +7,7 @@
         add_hover_enter_event,
         add_hover_exit_event,
         apply_effects!,
+        request_effects_refresh!,
         align_to_anchor,
         destroy,
         duplicate,

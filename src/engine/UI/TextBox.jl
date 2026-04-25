@@ -9,7 +9,8 @@ module TextBoxModule
     export TextBox
     export DEFAULT_FONT
     export apply_effects!
-    export update_effects      
+    export update_effects
+    export request_effects_refresh!
     DEFAULT_FONT = "Default"
     
     # Helper to map JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
@@ -558,6 +559,21 @@ module TextBoxModule
         end
         
         # Try to apply effects now, but don't fail if renderer isn't ready
+        update_effects(this)
+        return this
+    end
+
+    """
+        request_effects_refresh!(this::TextBox)
+
+    Recompute the effect texture after **in-place** edits to effect objects (e.g. inspector sliders).
+    `apply_effects!` already bumps the cache key when the `effects` vector is replaced; mutating fields
+    inside a `BevelEmbossEffect` does not, so callers that edit effects directly must call this.
+    """
+    function UI.request_effects_refresh!(this::TextBox)
+        isempty(this.effects) && return this
+        this.effectCacheKey = generate_effect_cache_key(this)
+        this.needsEffectUpdate = true
         update_effects(this)
         return this
     end

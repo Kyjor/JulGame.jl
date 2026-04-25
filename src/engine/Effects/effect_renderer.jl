@@ -824,6 +824,49 @@ module EffectRendererModule
                     SDL2.SDL_FreeSurface(work)
                 end
                 work = beveled
+            elseif eff isa EffectsModule.BevelEmbossEffect
+                emb = EffectsModule.BevelEmbossEffect(;
+                    style = eff.style,
+                    size_px = eff.size_px,
+                    soften = eff.soften,
+                    depth = eff.depth,
+                    angle = eff.angle,
+                    altitude = eff.altitude,
+                    direction_up = eff.direction_up,
+                    contour_enabled = eff.contour_enabled,
+                    range_pct = eff.range_pct,
+                    contour_lut = eff.contour_lut,
+                    contour_antialiased = eff.contour_antialiased,
+                    gloss_enabled = eff.gloss_enabled,
+                    gloss_lut = eff.gloss_lut,
+                    gloss_antialiased = eff.gloss_antialiased,
+                    texture_enabled = eff.texture_enabled,
+                    texture_path = eff.texture_path,
+                    texture_tile = eff.texture_tile,
+                    texture_scale = eff.texture_scale,
+                    texture_phase_h_pct = eff.texture_phase_h_pct,
+                    texture_phase_v_pct = eff.texture_phase_v_pct,
+                    texture_align_with_layer = eff.texture_align_with_layer,
+                    texture_depth = eff.texture_depth,
+                    texture_invert = eff.texture_invert,
+                    highlight_color = resolve_color(eff.highlight_color, target),
+                    shadow_color = resolve_color(eff.shadow_color, target),
+                    highlight_opacity = eff.highlight_opacity,
+                    shadow_opacity = eff.shadow_opacity,
+                    highlight_blend = eff.highlight_blend,
+                    shadow_blend = eff.shadow_blend,
+                    intensity = eff.intensity,
+                )
+                beveled = apply_bevel_emboss_psd(work, emb)
+                if beveled == C_NULL
+                    @debug("Failed to create bevel emboss surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return baseSurface
+                end
+                if beveled != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = beveled
             elseif eff isa EffectsModule.BevelEffect1
                 beveled = apply_bevel_effect_1(work, eff)
                 if beveled == C_NULL

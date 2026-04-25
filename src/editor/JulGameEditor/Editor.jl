@@ -628,6 +628,7 @@ module Editor
                     catch e
                         handle_editor_exceptions("Inspector window:", latest_exceptions, e, is_test_mode)
                     end
+                    tick_text_effect_preview_debounce!(currentSceneMain)
 
                     #region Config Window
                     try 
