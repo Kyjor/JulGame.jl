@@ -9,7 +9,8 @@ module TextBoxModule
     export TextBox
     export DEFAULT_FONT
     export apply_effects!
-    export update_effects      
+    export update_effects
+    export request_effects_refresh!
     DEFAULT_FONT = "Default"
     
     # Helper to map JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
@@ -448,20 +449,22 @@ module TextBoxModule
     end
     
     function UI.update_font_size(this::TextBox, newSize::Int; basePath::String = "")
-        # Store the base font size (the size specified by the user)
-        this.fontSize = newSize
-        
-        # Calculate the true font size based on window resolution
-        trueFontSize = get_true_font_size(this.fontSize)
-        
-        # Close the current font
+        applied_size = max(1, newSize)
+        if this.fontSize == applied_size && this.font != C_NULL
+            return
+        end
+        # Store the user-facing base size and force a fresh font/surface rebuild.
+        this.fontSize = applied_size
+
         if this.font != C_NULL
-            #println("closing font from update_font_size")
             SDL2.TTF_CloseFont(this.font)
             this.font = C_NULL
         end
-
-        UI.load_font(this, joinpath(this.fontPath))
+        UI.load_font(this, this.fontPath)
+        UI.rerender_text(this)
+        if !isempty(this.effects)
+            UI.request_effects_refresh!(this)
+        end
     end
 
     """
@@ -558,6 +561,21 @@ module TextBoxModule
         end
         
         # Try to apply effects now, but don't fail if renderer isn't ready
+        update_effects(this)
+        return this
+    end
+
+    """
+        request_effects_refresh!(this::TextBox)
+
+    Recompute the effect texture after **in-place** edits to effect objects (e.g. inspector sliders).
+    `apply_effects!` already bumps the cache key when the `effects` vector is replaced; mutating fields
+    inside a `BevelEmbossEffect` does not, so callers that edit effects directly must call this.
+    """
+    function UI.request_effects_refresh!(this::TextBox)
+        isempty(this.effects) && return this
+        this.effectCacheKey = generate_effect_cache_key(this)
+        this.needsEffectUpdate = true
         update_effects(this)
         return this
     end

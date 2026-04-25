@@ -6,7 +6,13 @@ function show_field(structure::EditableStructure, field::Symbol, value::Union{In
 
     if val != convert(Int32, value)
         finalValue = convert(ftype, val)
-        setproperty!(structure, field, finalValue)
+        if structure isa JulGame.UI.TextBoxModule.TextBox && field == :fontSize
+            # TextBox size changes must reload the font + rerender text.
+            clamped = max(1, Int(finalValue))
+            JulGame.UI.update_font_size(structure, clamped)
+        else
+            setproperty!(structure, field, finalValue)
+        end
     end
     
     return val != convert(Int32, value)

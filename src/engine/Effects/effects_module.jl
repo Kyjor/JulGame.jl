@@ -6,21 +6,45 @@ module EffectsModule
     const Component = JulGame.Component
     
     export Effect, EffectTarget, EffectStyle
-    export BevelEffect, BevelEffect1, DropShadowEffect, OuterGlowEffect
+    export BevelEffect, BevelEffect1, BevelEmbossEffect, DropShadowEffect, OuterGlowEffect
     export InnerGlowEffect, StrokeEffect, GradientEffect
     export TextureFillEffect, RoughEdgeEffect, InvertEffect
     export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget, Mesh3DTarget
     export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style
-    export INHERIT_COLOR, BevelType, GradientStop, BeveledText
+    export INHERIT_COLOR, BevelType, GradientStop
+    export EmbossLayerStyle, BevelEmbossBlendMode, identity_emboss_lut
+    export LAYER_OUTER_BEVEL, LAYER_INNER_BEVEL, LAYER_EMBOSS, LAYER_PILLOW
+    export BB_NORMAL, BB_MULTIPLY, BB_SCREEN, BB_OVERLAY
     
     # Special color value to inherit from original
     const INHERIT_COLOR = (-1, -1, -1, -1)
+    
+    # PSD / Krita layer-style geometry (outer / inner / emboss / pillow)
+    @enum EmbossLayerStyle begin
+        LAYER_OUTER_BEVEL = 1
+        LAYER_INNER_BEVEL = 2
+        LAYER_EMBOSS = 3
+        LAYER_PILLOW = 4
+    end
+    
+    @enum BevelEmbossBlendMode begin
+        BB_NORMAL = 0
+        BB_MULTIPLY = 1
+        BB_SCREEN = 2
+        BB_OVERLAY = 3
+    end
+    
+    function identity_emboss_lut()::Vector{UInt8}
+        return UInt8[i for i in 0:255]
+    end
     
     # BevelType enum for selecting bevel rendering modes
     @enum BevelType begin
         INNER_BEVEL = 1    # Creates inset/carved appearance
         OUTER_BEVEL = 2   # Creates raised/embossed appearance  
         COMBINED_BEVEL = 3 # Both inner and outer bevels
+        EMBOSS_BEVEL = 4   # Krita-style full emboss (maps to LAYER_EMBOSS)
+        PILLOW_EMBOSS = 5  # Pillow emboss (maps to LAYER_PILLOW)
     end
     
     # GradientStop struct for multi-stop gradient definitions
@@ -139,6 +163,108 @@ module EffectsModule
             new(
                 bevel_type, bevel_depth, bevel_width, light_position, blur_radius, intensity,
                 inner_gradient, outer_gradient, shadow_gradient
+            )
+        end
+    end
+    
+    """
+    Krita/PSD-style bevel and emboss (height ramp + GIMP bumpmap + optional contour/gloss/texture).
+    """
+    mutable struct BevelEmbossEffect <: Effect
+        style::EmbossLayerStyle
+        size_px::Int
+        soften::Float32
+        depth::Int
+        angle::Float64
+        altitude::Float64
+        direction_up::Bool
+        contour_enabled::Bool
+        range_pct::Int
+        contour_lut::Vector{UInt8}
+        contour_antialiased::Bool
+        gloss_enabled::Bool
+        gloss_lut::Vector{UInt8}
+        gloss_antialiased::Bool
+        texture_enabled::Bool
+        texture_path::String
+        texture_tile::Bool
+        texture_scale::Int
+        texture_phase_h_pct::Int
+        texture_phase_v_pct::Int
+        texture_align_with_layer::Bool
+        texture_depth::Float64
+        texture_invert::Bool
+        highlight_color::NTuple{4, Int}
+        shadow_color::NTuple{4, Int}
+        highlight_opacity::Int
+        shadow_opacity::Int
+        highlight_blend::BevelEmbossBlendMode
+        shadow_blend::BevelEmbossBlendMode
+        intensity::Float64
+        function BevelEmbossEffect(;
+            style::EmbossLayerStyle = LAYER_OUTER_BEVEL,
+            size_px::Int = 4,
+            soften::Float32 = 0.0f0,
+            depth::Int = 4,
+            angle::Float64 = 135.0,
+            altitude::Float64 = 30.0,
+            direction_up::Bool = true,
+            contour_enabled::Bool = false,
+            range_pct::Int = 100,
+            contour_lut::Vector{UInt8} = identity_emboss_lut(),
+            contour_antialiased::Bool = true,
+            gloss_enabled::Bool = false,
+            gloss_lut::Vector{UInt8} = identity_emboss_lut(),
+            gloss_antialiased::Bool = true,
+            texture_enabled::Bool = false,
+            texture_path::String = "",
+            texture_tile::Bool = true,
+            texture_scale::Int = 100,
+            texture_phase_h_pct::Int = 0,
+            texture_phase_v_pct::Int = 0,
+            texture_align_with_layer::Bool = true,
+            texture_depth::Float64 = 50.0,
+            texture_invert::Bool = false,
+            highlight_color::NTuple{4, Int} = (255, 255, 255, 200),
+            shadow_color::NTuple{4, Int} = (0, 0, 0, 180),
+            highlight_opacity::Int = 255,
+            shadow_opacity::Int = 255,
+            highlight_blend::BevelEmbossBlendMode = BB_NORMAL,
+            shadow_blend::BevelEmbossBlendMode = BB_MULTIPLY,
+            intensity::Float64 = 1.0,
+        )
+            rc = clamp(range_pct, 1, 100)
+            new(
+                style,
+                max(1, Math.TypeConversions.safe_int32_convert(size_px)),
+                soften,
+                max(1, Math.TypeConversions.safe_int32_convert(depth)),
+                angle,
+                clamp(altitude, 0.0, 90.0),
+                direction_up,
+                contour_enabled,
+                rc,
+                length(contour_lut) == 256 ? contour_lut : identity_emboss_lut(),
+                contour_antialiased,
+                gloss_enabled,
+                length(gloss_lut) == 256 ? gloss_lut : identity_emboss_lut(),
+                gloss_antialiased,
+                texture_enabled,
+                texture_path,
+                texture_tile,
+                clamp(Math.TypeConversions.safe_int32_convert(texture_scale), 1, 500),
+                clamp(Math.TypeConversions.safe_int32_convert(texture_phase_h_pct), 0, 100),
+                clamp(Math.TypeConversions.safe_int32_convert(texture_phase_v_pct), 0, 100),
+                texture_align_with_layer,
+                texture_depth,
+                texture_invert,
+                highlight_color,
+                shadow_color,
+                clamp(Math.TypeConversions.safe_int32_convert(highlight_opacity), 0, 255),
+                clamp(Math.TypeConversions.safe_int32_convert(shadow_opacity), 0, 255),
+                highlight_blend,
+                shadow_blend,
+                clamp(intensity, 0.0, 1.0),
             )
         end
     end

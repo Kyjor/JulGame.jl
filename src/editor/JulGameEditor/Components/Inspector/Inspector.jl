@@ -1,6 +1,11 @@
 EditableComponent = Union{AnimatorModule.InternalAnimator, ColliderModule.InternalCollider, ShapeModule.InternalShape, RigidbodyModule.InternalRigidbody, SoundSourceModule.InternalSoundSource, SpriteModule.InternalSprite, TransformModule.Transform}
 EditableStructure = Union{JulGame.CameraModule.Camera, Entity, UI.UIElement, EditableComponent}
 include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Fields"); join=true)))
+include(joinpath(@__DIR__, "TextEffects", "TextEffectsDebounce.jl"))
+include(joinpath(@__DIR__, "TextEffects", "TextEffectsHelpers.jl"))
+include(joinpath(@__DIR__, "TextEffects", "BevelEmbossEffectPanel.jl"))
+include(joinpath(@__DIR__, "TextEffects", "EffectPanels.jl"))
+include(joinpath(@__DIR__, "TextEffects", "TextEffectsInspector.jl"))
 include(joinpath(@__DIR__, "..", "EntityContextMenu.jl"))
 
 function show_inspector(currentSceneMain::Union{MainLoop, Nothing})
@@ -123,6 +128,9 @@ function display_fields(structure::EditableStructure)
         else
             show_field(structure, field, getproperty(structure, field))
         end
+    end
+    if hasproperty(structure, :effects)
+        show_text_effects_inspector(structure)
     end
     CImGui.Unindent(8.0f0)
     CImGui.PopStyleVar()

@@ -276,27 +276,18 @@ module EffectExamplesModule
         # Create base text element
         text_element = UI.create_textbox(text, position=position, color=color)
         
-        # Configure subtle bevel parameters using the new BevelEffect1
-        bevel_effect = BevelEffect1(
-            bevel_type=OUTER_BEVEL,
-            bevel_depth=2.5f0,           # Subtle depth (2-5 pixels recommended)
-            bevel_width=1.5f0,           # Narrow bevel width for subtlety
-            light_position=Math.Vector2(1.0, -1.0),  # Top-left lighting
-            blur_radius=1.5f0,           # Soft edges (1-3 pixels recommended)
-            intensity=0.6f0,              # Moderate intensity for subtlety
-            
-            # Subtle gradient for professional appearance
-            outer_gradient=[
-                GradientStop(0.0f0, (255, 255, 255, 200)),  # Bright highlight
-                GradientStop(0.5f0, (220, 220, 220, 180)),  # Mid-tone
-                GradientStop(1.0f0, (180, 180, 180, 160))   # Soft shadow
-            ],
-            
-            # Minimal shadow for depth
-            shadow_gradient=[
-                GradientStop(0.0f0, (120, 120, 120, 100)),
-                GradientStop(1.0f0, (80, 80, 80, 80))
-            ]
+        bevel_effect = BevelEmbossEffect(
+            style=LAYER_OUTER_BEVEL,
+            size_px=2,
+            soften=1.5f0,
+            depth=4,
+            angle=135.0,
+            altitude=30.0,
+            highlight_color=(255, 255, 255, 180),
+            shadow_color=(80, 80, 80, 100),
+            highlight_blend=BB_SCREEN,
+            shadow_blend=BB_MULTIPLY,
+            intensity=0.6,
         )
         
         # Apply the beveled text effect using the standard effects system
@@ -313,34 +304,20 @@ module EffectExamplesModule
         # Create base text element
         text_element = UI.create_textbox(text, position=position, color=base_color)
         
-        # Configure metallic bevel parameters using BevelEffect1
-        bevel_effect = BevelEffect1(
-            bevel_type=COMBINED_BEVEL,    # Both inner and outer for metallic look
-            bevel_depth=4.0f0,           # More pronounced for metallic effect
-            bevel_width=2.5f0,            # Wider bevel for metallic appearance
-            light_position=Math.Vector2(0.7, -0.7),  # Angled lighting
-            blur_radius=2.0f0,            # Moderate blur for smooth gradients
-            intensity=0.9f0,               # High intensity for metallic shine
-            
-            # Metallic gold gradient
-            outer_gradient=[
-                GradientStop(0.0f0, (255, 255, 200, 255)),  # Bright gold highlight
-                GradientStop(0.3f0, (255, 215, 0, 240)),     # Pure gold
-                GradientStop(0.7f0, (218, 165, 32, 220)),    # Darker gold
-                GradientStop(1.0f0, (184, 134, 11, 200))     # Deep gold shadow
-            ],
-            
-            # Inner bevel for metallic depth
-            inner_gradient=[
-                GradientStop(0.0f0, (255, 255, 150, 180)),
-                GradientStop(1.0f0, (139, 119, 19, 160))
-            ],
-            
-            # Rich shadow for metallic depth
-            shadow_gradient=[
-                GradientStop(0.0f0, (139, 119, 19, 120)),
-                GradientStop(1.0f0, (101, 67, 33, 100))
-            ]
+        bevel_effect = BevelEmbossEffect(
+            style=LAYER_EMBOSS,
+            size_px=4,
+            soften=2.0f0,
+            depth=6,
+            angle=120.0,
+            altitude=35.0,
+            highlight_color=(255, 255, 200, 240),
+            shadow_color=(101, 67, 33, 200),
+            highlight_blend=BB_SCREEN,
+            shadow_blend=BB_MULTIPLY,
+            highlight_opacity=255,
+            shadow_opacity=230,
+            intensity=0.9,
         )
         
         # Apply the metallic beveled text effect using standard effects system
@@ -357,32 +334,20 @@ module EffectExamplesModule
         # Create base text element
         text_element = UI.create_textbox(text, position=position, color=color)
         
-        # Configure soft bevel parameters
-        beveled_text = BeveledText(
-            bevel_type=OUTER_BEVEL,
-            bevel_depth=3.0f0,            # Moderate depth
-            bevel_width=2.0f0,            # Medium width for soft appearance
-            light_position=Math.Vector2(0.8, -0.6),  # Gentle lighting angle
-            blur_radius=3.0f0,            # Higher blur for soft edges
-            intensity=0.7f0,               # Moderate intensity for elegance
-            
-            # Soft gradient with gentle transitions
-            outer_gradient=[
-                GradientStop(0.0f0, (255, 255, 255, 180)),  # Soft white highlight
-                GradientStop(0.4f0, (240, 240, 250, 160)),  # Light lavender
-                GradientStop(0.8f0, (200, 200, 220, 140)),   # Base color
-                GradientStop(1.0f0, (160, 160, 180, 120))    # Soft shadow
-            ],
-            
-            # Gentle shadow gradient
-            shadow_gradient=[
-                GradientStop(0.0f0, (140, 140, 160, 80)),
-                GradientStop(1.0f0, (100, 100, 120, 60))
-            ]
+        bevel_effect = BevelEmbossEffect(
+            style=LAYER_OUTER_BEVEL,
+            size_px=3,
+            soften=3.0f0,
+            depth=5,
+            angle=145.0,
+            altitude=28.0,
+            highlight_color=(255, 255, 255, 160),
+            shadow_color=(100, 100, 120, 90),
+            highlight_blend=BB_NORMAL,
+            shadow_blend=BB_MULTIPLY,
+            intensity=0.7,
         )
-        
-        # Apply the soft beveled text effect
-        apply_beveled_text_effect!(text_element, beveled_text)
+        apply_effects!(text_element, [bevel_effect])
         
         return text_element
     end
@@ -395,31 +360,20 @@ module EffectExamplesModule
         # Create base text element
         text_element = UI.create_textbox(text, position=position, color=color)
         
-        # Configure sharp emboss parameters
-        beveled_text = BeveledText(
-            bevel_type=INNER_BEVEL,       # Inner bevel for embossed look
-            bevel_depth=2.0f0,            # Shallow depth for sharp edges
-            bevel_width=1.0f0,            # Narrow width for crisp appearance
-            light_position=Math.Vector2(1.0, -1.0),  # Direct lighting
-            blur_radius=0.5f0,             # Minimal blur for sharp edges
-            intensity=0.8f0,               # High intensity for crisp effect
-            
-            # Sharp gradient with high contrast
-            inner_gradient=[
-                GradientStop(0.0f0, (255, 255, 255, 220)),  # Bright highlight
-                GradientStop(0.5f0, (200, 200, 200, 180)),   # Mid-tone
-                GradientStop(1.0f0, (100, 100, 100, 140))   # Dark shadow
-            ],
-            
-            # Strong shadow for embossed effect
-            shadow_gradient=[
-                GradientStop(0.0f0, (80, 80, 80, 120)),
-                GradientStop(1.0f0, (40, 40, 40, 100))
-            ]
+        bevel_effect = BevelEmbossEffect(
+            style=LAYER_INNER_BEVEL,
+            size_px=2,
+            soften=0.5f0,
+            depth=5,
+            angle=135.0,
+            altitude=40.0,
+            highlight_color=(255, 255, 255, 220),
+            shadow_color=(40, 40, 40, 140),
+            highlight_blend=BB_SCREEN,
+            shadow_blend=BB_MULTIPLY,
+            intensity=0.85,
         )
-        
-        # Apply the sharp embossed text effect
-        apply_beveled_text_effect!(text_element, beveled_text)
+        apply_effects!(text_element, [bevel_effect])
         
         return text_element
     end
@@ -496,20 +450,21 @@ module EffectExamplesModule
     # end
     
     """
-    Create a simple beveled text that works exactly like the existing effects
-    This is the easiest way to use the new BevelEffect1 system
+    Create a simple beveled text using the PSD-style emboss pipeline.
     """
     function create_simple_beveled_text(position::Math.Vector2, text::String, color::NTuple{4, Int}=(255, 255, 255, 255))
         # Create base text element
         text_element = UI.create_textbox(text, position=position, color=color)
         
-        # Create a simple bevel effect - works just like other effects!
-        bevel_effect = BevelEffect1(
-            bevel_type=OUTER_BEVEL,
-            bevel_depth=3.0f0,
-            light_position=Math.Vector2(1.0, -1.0),
-            blur_radius=2.0f0,
-            intensity=0.8f0
+        bevel_effect = BevelEmbossEffect(
+            style=LAYER_OUTER_BEVEL,
+            size_px=3,
+            soften=2.0f0,
+            depth=5,
+            angle=135.0,
+            highlight_blend=BB_SCREEN,
+            shadow_blend=BB_MULTIPLY,
+            intensity=0.8,
         )
         
         # Apply it just like any other effect
@@ -532,18 +487,19 @@ module EffectExamplesModule
     
     # Apply new bevel effect just like other effects
     JulGame.apply_effects!(tb_title, [
-        BevelEffect1(
-            bevel_type=OUTER_BEVEL,
-            bevel_depth=3.0f0,
-            light_position=Math.Vector2(1.0, -1.0),
-            blur_radius=2.0f0,
-            intensity=0.8f0
+        BevelEmbossEffect(
+            style=LAYER_OUTER_BEVEL,
+            size_px=3,
+            soften=2.0f0,
+            depth=5,
+            angle=135.0,
+            intensity=0.8,
         )
     ])
     
     # Or combine with other effects
     JulGame.apply_effects!(tb_title, [
-        BevelEffect1(bevel_type=OUTER_BEVEL, bevel_depth=3.0f0),
+        BevelEmbossEffect(style=LAYER_OUTER_BEVEL, size_px=3, depth=5),
         StrokeEffect(width=2, color=(0,0,0,255)),
         OuterGlowEffect(radius=4, color=(100,100,120,100))
     ])

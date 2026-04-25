@@ -5,7 +5,9 @@ module EffectAlgorithmsModule
     const Math = JulGame.Math
     using ..EffectsModule
 
-    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_bevel_effect_1, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect, apply_gaussian_blur
+    include("effect_bevel_emboss.jl")
+
+    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_bevel_effect_1, apply_bevel_emboss_psd, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect, apply_gaussian_blur
 
     function offset_blit!(dst::Ptr{SDL2.SDL_Surface}, src::Ptr{SDL2.SDL_Surface}, dx::Int, dy::Int)
         rect = SDL2.SDL_Rect(dx, dy, 0, 0)
@@ -353,56 +355,14 @@ module EffectAlgorithmsModule
     """
         apply_bevel_effect(base::Ptr{SDL2.SDL_Surface}, depth::Int, angle::Float64, highlight_color::NTuple{4,Int}, shadow_color::NTuple{4,Int})
     
-    Applies a bevel/emboss effect by rendering offset highlights and shadows.
+    Krita-style outer bevel (height map + bump lighting). Uses `BevelEffect`-compatible parameters.
     """
     function apply_bevel_effect(base::Ptr{SDL2.SDL_Surface}, depth::Int, angle::Float64, highlight_color::NTuple{4,Int}, shadow_color::NTuple{4,Int})
         if depth <= 0 || base == C_NULL
             return base
         end
-        
-        # Get base dimensions
-        base_arr = unsafe_wrap(Array, base, 10; own=false)
-        w = base_arr[1].w
-        h = base_arr[1].h
-        
-        # Create surface for bevel
-        bevel_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if bevel_surface == C_NULL
-            return base
-        end
-        
-        SDL2.SDL_FillRect(bevel_surface, C_NULL, 0x00000000)
-        SDL2.SDL_SetSurfaceBlendMode(bevel_surface, SDL2.SDL_BLENDMODE_BLEND)
-        
-        # Calculate light direction
-        angle_rad = angle * π / 180.0
-        light_x = round(Int, cos(angle_rad) * depth)
-        light_y = round(Int, sin(angle_rad) * depth)
-        
-        # Create highlight (lighter side)
-        highlight = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
-        if highlight != C_NULL
-            SDL2.SDL_SetSurfaceColorMod(highlight, Math.TypeConversions.safe_int32_convert(highlight_color[1]), Math.TypeConversions.safe_int32_convert(highlight_color[2]), Math.TypeConversions.safe_int32_convert(highlight_color[3]))
-            SDL2.SDL_SetSurfaceAlphaMod(highlight, Math.TypeConversions.safe_int32_convert(highlight_color[4]))
-            SDL2.SDL_SetSurfaceBlendMode(highlight, SDL2.SDL_BLENDMODE_BLEND)
-            offset_blit!(bevel_surface, highlight, -light_x, -light_y)
-            SDL2.SDL_FreeSurface(highlight)
-        end
-        
-        # Create shadow (darker side)
-        shadow = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
-        if shadow != C_NULL
-            SDL2.SDL_SetSurfaceColorMod(shadow, Math.TypeConversions.safe_int32_convert(shadow_color[1]), Math.TypeConversions.safe_int32_convert(shadow_color[2]), Math.TypeConversions.safe_int32_convert(shadow_color[3]))
-            SDL2.SDL_SetSurfaceAlphaMod(shadow, Math.TypeConversions.safe_int32_convert(shadow_color[4]))
-            SDL2.SDL_SetSurfaceBlendMode(shadow, SDL2.SDL_BLENDMODE_BLEND)
-            offset_blit!(bevel_surface, shadow, light_x, light_y)
-            SDL2.SDL_FreeSurface(shadow)
-        end
-        
-        # Blit original on top
-        offset_blit!(bevel_surface, base, 0, 0)
-        
-        return bevel_surface
+        legacy = EffectsModule.BevelEffect(; depth=depth, angle=angle, highlight_color=highlight_color, shadow_color=shadow_color)
+        return apply_bevel_emboss_psd(base, bevel_emboss_from_legacy(legacy))
     end
 
     # ============================================================================
@@ -728,91 +688,16 @@ module EffectAlgorithmsModule
     end
     
     """
-    Main beveled text rendering function with comprehensive customization
+    Maps `BevelEffect1` into the Krita-style PSD pipeline (approximate colors from gradients).
     """
     function apply_bevel_effect_1(
-        base::Ptr{SDL2.SDL_Surface}, 
-        bevel_effect::EffectsModule.BevelEffect1
+        base::Ptr{SDL2.SDL_Surface},
+        bevel_effect::EffectsModule.BevelEffect1,
     )::Ptr{SDL2.SDL_Surface}
-        
         if base == C_NULL
             return C_NULL
         end
-        
-        # Get base dimensions
-        base_arr = unsafe_wrap(Array, base, 10; own=false)
-        w = base_arr[1].w
-        h = base_arr[1].h
-        
-        # Create result surface
-        result_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if result_surface == C_NULL
-            return base
-        end
-        
-        SDL2.SDL_FillRect(result_surface, C_NULL, 0x00000000)
-        SDL2.SDL_SetSurfaceBlendMode(result_surface, SDL2.SDL_BLENDMODE_BLEND)
-        
-        # Composite original text FIRST (as base)
-        offset_blit!(result_surface, base, 0, 0)
-        
-        # Generate normal map from base surface
-        normal_map = generate_normal_map_from_surface(base, convert(Int, w), convert(Int, h))
-        if normal_map == C_NULL
-            SDL2.SDL_FreeSurface(result_surface)
-            return base
-        end
-        
-        # Calculate lighting
-        lighting_surface = calculate_lighting(normal_map, bevel_effect.light_position, convert(Int, w), convert(Int, h))
-        if lighting_surface == C_NULL
-            SDL2.SDL_FreeSurface(result_surface)
-            SDL2.SDL_FreeSurface(normal_map)
-            return base
-        end
-        
-        # Apply blur to lighting for smooth gradients
-        if bevel_effect.blur_radius > 0
-            blurred_lighting = apply_gaussian_blur_optimized(lighting_surface, bevel_effect.blur_radius)
-            if blurred_lighting != lighting_surface
-                SDL2.SDL_FreeSurface(lighting_surface)
-                lighting_surface = blurred_lighting
-            end
-        end
-        
-        # Apply bevel effects based on type
-        if bevel_effect.bevel_type == EffectsModule.INNER_BEVEL || bevel_effect.bevel_type == EffectsModule.COMBINED_BEVEL
-            # Inner bevel effect - use SDF-based approach for proper medial axis detection
-            inner_bevel = apply_inner_bevel_effect(base,lighting_surface, bevel_effect)
-            if inner_bevel != C_NULL
-                offset_blit!(result_surface, inner_bevel, 0, 0)
-                if inner_bevel != base
-                    SDL2.SDL_FreeSurface(inner_bevel)
-                end
-            end
-        end
-        
-        if bevel_effect.bevel_type == EffectsModule.OUTER_BEVEL || bevel_effect.bevel_type == EffectsModule.COMBINED_BEVEL
-            # Outer bevel effect
-            outer_bevel = apply_outer_bevel_effect(base, lighting_surface, bevel_effect)
-            if outer_bevel != C_NULL
-                offset_blit!(result_surface, outer_bevel, 0, 0)
-                SDL2.SDL_FreeSurface(outer_bevel)
-            end
-        end
-        
-        # Apply shadow gradient
-        shadow_effect = apply_shadow_effect(base, lighting_surface, bevel_effect)
-        if shadow_effect != C_NULL
-            offset_blit!(result_surface, shadow_effect, 0, 0)
-            SDL2.SDL_FreeSurface(shadow_effect)
-        end
-        
-        # Cleanup
-        SDL2.SDL_FreeSurface(lighting_surface)
-        SDL2.SDL_FreeSurface(normal_map)
-        
-        return result_surface
+        return apply_bevel_emboss_psd(base, bevel_emboss_from_bevel1(bevel_effect))
     end
     
     """
@@ -1312,8 +1197,8 @@ module EffectAlgorithmsModule
         # Find surrounding stops
         for i in 1:(length(stops)-1)
             if t <= stops[i+1][1]  # stops[i+1][1] is position
-                t1 = stops[i][1]    # stops[i][1] is position
-                t2 = stops[i+1][1]  # stops[i+1][1] is position
+                t1 = clamp(stops[i][1], 0.0, 1.0)    # stops[i][1] is position
+                t2 = clamp(stops[i+1][1], 0.0, 1.0)  # stops[i+1][1] is position
                 c1 = stops[i][2]    # stops[i][2] is color
                 c2 = stops[i+1][2]  # stops[i+1][2] is color
                 
@@ -1323,11 +1208,12 @@ module EffectAlgorithmsModule
                 else
                     ratio = 0.0
                 end
+                ratio = clamp(ratio, 0.0, 1.0)
                 
-                r = round(UInt8, c1[1] * (1 - ratio) + c2[1] * ratio)
-                g = round(UInt8, c1[2] * (1 - ratio) + c2[2] * ratio)
-                b = round(UInt8, c1[3] * (1 - ratio) + c2[3] * ratio)
-                a = round(UInt8, c1[4] * (1 - ratio) + c2[4] * ratio)
+                r = UInt8(clamp(round(Int, c1[1] * (1 - ratio) + c2[1] * ratio), 0, 255))
+                g = UInt8(clamp(round(Int, c1[2] * (1 - ratio) + c2[2] * ratio), 0, 255))
+                b = UInt8(clamp(round(Int, c1[3] * (1 - ratio) + c2[3] * ratio), 0, 255))
+                a = UInt8(clamp(round(Int, c1[4] * (1 - ratio) + c2[4] * ratio), 0, 255))
                 
                 return UInt32(a) << 24 | UInt32(b) << 16 | UInt32(g) << 8 | UInt32(r)
             end

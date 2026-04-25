@@ -44,7 +44,7 @@ function show_scene_window(main, scene_tex_id, scrolling, zoom_level, duplicatio
     CImGui.AddRectFilled(draw_list, canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255))
     try
         # Set tint color based on play mode
-        tint_color = JulGame.IS_EDITOR_PLAY_MODE ? IM_COL32(255, 200, 200, 255) : IM_COL32(255, 255, 255, 255)
+        tint_color = JulGame.IS_EDITOR_PLAY_MODE ? IM_COL32(255, 255, 255, 255) : IM_COL32(255, 255, 255, 255)
         CImGui.AddImage(draw_list, scene_tex_id, canvas_p0, canvas_p1, ImVec2(0,0), ImVec2(1,1), tint_color)
     catch
     end
