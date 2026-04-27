@@ -621,6 +621,12 @@ module Editor
                 catch e
                     @error "Debug window error"
                 end
+
+                try
+                    show_engine_internals_window()
+                catch e
+                    @error "Engine internals window error" exception=e
+                end
                     
                     try
                         #region Entity Inspector

@@ -474,6 +474,32 @@ module UIImageModule
         empty!(EFFECT_CACHE)
     end
 
+    function get_effect_cache_snapshot()
+        snapshot = NamedTuple[]
+        for (key, texture) in EFFECT_CACHE
+            width = 0
+            height = 0
+            if texture != C_NULL
+                w = Ref{Cint}(0)
+                h = Ref{Cint}(0)
+                fmt = Ref{UInt32}(0)
+                access = Ref{Cint}(0)
+                if SDL2.SDL_QueryTexture(texture, fmt, access, w, h) == 0
+                    width = Int(w[])
+                    height = Int(h[])
+                end
+            end
+            push!(snapshot, (
+                key = key,
+                texture = texture,
+                width = width,
+                height = height,
+                approxBytes = width * height * 4,
+            ))
+        end
+        return snapshot
+    end
+
     #  effects API
     function UI.apply_effects!(this::UIImage, effects::Vector)
         this.effects = Any[effect for effect in effects]

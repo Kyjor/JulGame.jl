@@ -8,6 +8,7 @@ const EDITOR_SCALE = Ref(1.0f0)
 const EDITOR_SCALE_MIN = 0.5f0
 const EDITOR_SCALE_MAX = 2.5f0
 const EDITOR_SCALE_STEP = 0.1f0
+const SHOW_ENGINE_INTERNALS_WINDOW = Ref(false)
 
 # Keep a copy of the base style so scaling is stable (non-cumulative).
 const _BASE_STYLE_SET = Ref(false)
@@ -232,6 +233,11 @@ function show_view_menu()
             CImGui.StyleColorsClassic()
         end
         CImGui.EndMenu()
+    end
+
+    CImGui.Separator()
+    if CImGui.MenuItem("Engine Internals", "", SHOW_ENGINE_INTERNALS_WINDOW[])
+        SHOW_ENGINE_INTERNALS_WINDOW[] = !SHOW_ENGINE_INTERNALS_WINDOW[]
     end
 end
 

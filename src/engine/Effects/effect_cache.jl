@@ -6,6 +6,7 @@ module EffectCacheModule
     using ..EffectsModule
 
     export EffectCache, get_or_create_texture!, evict_if_needed!, estimate_bytes, compute_key
+    export get_cache_stats, get_cache_entries_snapshot, get_global_cache_snapshot
 
     mutable struct CacheEntry
         key::UInt64
@@ -150,6 +151,33 @@ module EffectCacheModule
             usedBytes = cache.usedBytes,
             maxBytes = cache.maxBytes,
             usagePercent = (cache.usedBytes / cache.maxBytes) * 100
+        )
+    end
+
+    function get_cache_entries_snapshot(cache::EffectCache)
+        snapshot = NamedTuple[]
+        for (key, entry) in cache.entries
+            push!(
+                snapshot,
+                (
+                    key = key,
+                    texture = entry.texture,
+                    width = entry.width,
+                    height = entry.height,
+                    bytes = entry.bytes,
+                    isDynamic = entry.isDynamic,
+                    lastUsed = entry.lastUsed,
+                ),
+            )
+        end
+        return snapshot
+    end
+
+    function get_global_cache_snapshot()
+        cache = CACHE[]
+        return (
+            stats = get_cache_stats(cache),
+            entries = get_cache_entries_snapshot(cache),
         )
     end
 end

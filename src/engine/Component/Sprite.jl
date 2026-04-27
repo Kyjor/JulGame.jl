@@ -416,6 +416,34 @@ module SpriteModule
         empty!(SPRITE_EFFECT_CACHE)
     end
 
+    function get_effect_cache_snapshot()
+        snapshot = NamedTuple[]
+        for (key, cached) in SPRITE_EFFECT_CACHE
+            texture = cached[1]
+            size = cached[2]
+            width = Int(round(size.x))
+            height = Int(round(size.y))
+            if (width <= 0 || height <= 0) && texture != C_NULL
+                w = Ref{Cint}(0)
+                h = Ref{Cint}(0)
+                fmt = Ref{UInt32}(0)
+                access = Ref{Cint}(0)
+                if SDL2.SDL_QueryTexture(texture, fmt, access, w, h) == 0
+                    width = Int(w[])
+                    height = Int(h[])
+                end
+            end
+            push!(snapshot, (
+                key = key,
+                texture = texture,
+                width = width,
+                height = height,
+                approxBytes = width * height * 4,
+            ))
+        end
+        return snapshot
+    end
+
     function clear_texture_cache()
         for (key, tex) in TEXTURE_CACHE
             if tex != C_NULL
