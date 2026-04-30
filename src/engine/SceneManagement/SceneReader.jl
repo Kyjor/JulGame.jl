@@ -232,7 +232,7 @@ module SceneReaderModule
                         color = color_tuple,
                         isVisible = get(uiElement, "isVisible", true),
                         clipChildren = get(uiElement, "clipChildren", false),
-                        rotation = get(uiElement, "rotation", 0.0)
+                        rotation = convert(Float64, get(uiElement, "rotation", 0.0))
                     )
                     
                     # Deserialize children if they exist
@@ -483,7 +483,7 @@ module SceneReaderModule
                         color = color_tuple,
                         isVisible = get(child, "isVisible", true),
                         clipChildren = get(child, "clipChildren", false),
-                        rotation = get(child, "rotation", 0.0),
+                        rotation = convert(Float64, get(child, "rotation", 0.0)),
                         parent = parentCanvas
                     )
                     
