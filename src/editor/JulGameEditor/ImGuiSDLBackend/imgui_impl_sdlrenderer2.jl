@@ -1,16 +1,11 @@
 # https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_sdlrenderer2.cpp
 # SDL2.SDL_Renderer data
-Base.@kwdef mutable struct ImGui_ImplSDLRenderer2_Data
-    SDLRenderer::Ptr{SDL2.SDL_Renderer}
-    FontTexture::Ptr{SDL2.SDL_Texture}
-end
 
 # Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts
 # It is STRONGLY preferred that you use docking branch with multi-viewports (== single Dear ImGui context + multiple windows) instead of multiple Dear ImGui contexts.
-function ImGui_ImplSDLRenderer2_GetBackendData()
+function ImGui_ImplSDLRenderer2_GetBackendData()::Ptr{ImGui_ImplSDLRenderer2_Data}
     io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
-    ber = unsafe_load(io.BackendRendererUserData)
-    return CImGui.GetCurrentContext() != C_NULL ? ber : C_NULL
+    return CImGui.GetCurrentContext() != C_NULL ? unsafe_load(io.BackendRendererUserData) : Ptr{ImGui_ImplSDLRenderer2_Data}(C_NULL)
 end
 
 # Functions
@@ -21,31 +16,51 @@ function ImGui_ImplSDLRenderer2_Init(renderer::Ptr{SDL2.SDL_Renderer})
 
     # Setup backend capabilities flags
     bd = ImGui_ImplSDLRenderer2_Data(renderer, C_NULL)
-    io.BackendRendererUserData = pointer_from_objref(bd)
+    bd_ptr = Ptr{ImGui_ImplSDLRenderer2_Data}(Libc.malloc(sizeof(ImGui_ImplSDLRenderer2_Data)))
+    #println("Backend data pointer: ", bd_ptr)
+    unsafe_store!(bd_ptr, bd)
+
+    io.BackendRendererUserData = bd_ptr
+    #println("Backend data stored: ", io.BackendRendererUserData)
+    #println("Renderer pointer: ", renderer)
     io.BackendRendererName = pointer("imgui_impl_sdlrenderer2")
     io.BackendFlags = unsafe_load(io.BackendFlags) | CImGui.ImGuiBackendFlags_RendererHasVtxOffset # We can honor the  CImGui.ImDrawCmd::VtxOffset field, allowing for large meshes.
-    ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
+    ImGui_ImplSDLRenderer2_CreateFontsTexture(bd_ptr)
     return true
 end
 
 function ImGui_ImplSDLRenderer2_Shutdown()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
-#    @assert bd != C_NULL # "No renderer backend to shutdown, or already shutdown?"
+    @assert bd != Ptr{ImGui_ImplSDLRenderer2_Data}(C_NULL) "No renderer backend to shutdown, or already shutdown?"
     io = CImGui.GetIO()
 
-    ImGui_ImplSDLRenderer2_DestroyDeviceObjects()
+    if bd.ClipboardTextData != Ptr{Cchar}(C_NULL)
+        SDL2.SDL_free(bd.ClipboardTextData)
+        bd.ClipboardTextData = Ptr{Cchar}(C_NULL)
+    end
+    for i = 0:CImGui.ImGuiMouseCursor_COUNT-1
+        if bd.MouseCursors[i] != Ptr{SDL2.SDL_Cursor}(C_NULL)
+            SDL2.SDL_FreeCursor(bd.MouseCursors[i])
+            bd.MouseCursors[i] = Ptr{SDL2.SDL_Cursor}(C_NULL)
+        end
+    end
 
     io.BackendRendererName = C_NULL
     io.BackendRendererUserData = C_NULL
-    io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset
+    #io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset
+
+    io.BackendFlags &= ~CImGui.ImGuiBackendFlags_HasMouseCursors
+    io.BackendFlags &= ~CImGui.ImGuiBackendFlags_HasSetMousePos
+    io.BackendFlags &= ~CImGui.ImGuiBackendFlags_HasGamepad
+    CImGui.IM_DELETE(bd)
 end
 
 function ImGui_ImplSDLRenderer2_SetupRenderState()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
     # Clear out any viewports and cliprect set by the user
     # FIXME: Technically speaking there are lots of other things we could backup/setup/restore during our render process.
-    SDL2.SDL_RenderSetViewport(sdlRenderer, C_NULL)
-    SDL2.SDL_RenderSetClipRect(sdlRenderer, C_NULL)
+    SDL2.SDL_RenderSetViewport(bd.SDLRenderer, C_NULL)
+    SDL2.SDL_RenderSetClipRect(bd.SDLRenderer, C_NULL)
 end
 
 function ImGui_ImplSDLRenderer2_NewFrame()
@@ -70,26 +85,52 @@ end
 
 function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
+    if bd == Ptr{SDL2.SDL_Renderer}(C_NULL)
+        println("Error: Backend data is C_NULL in RenderDrawData")
+        return
+    end
+    # println("Backend data retrieved: ", bd)
+    # println("Renderer from backend: ", bd.SDLRenderer)
 
     # If there's a scale factor set by the user, use that instead
     # If the user has specified a scale factor to SDL2.SDL_Renderer already via SDL2.SDL_RenderSetScale(), SDL will scale whatever we pass
     # to SDL2.SDL_RenderGeometryRaw() by that scale factor. In that case we don't want to be also scaling it ourselves here.
     rsx = Cfloat(1.0)
     rsy = Cfloat(1.0)
-    @c SDL2.SDL_RenderGetScale(sdlRenderer, &rsx, &rsy)
-    render_scale = ImVec2((rsx == 1.0) ? unsafe_load(draw_data.FramebufferScale.x) : 1.0,(rsy == 1.0) ? unsafe_load(draw_data.FramebufferScale.y) : 1.0)
+    @c SDL2.SDL_RenderGetScale(bd.SDLRenderer, &rsx, &rsy)
+    #println("SDL render scale: rsx=", rsx, " rsy=", rsy)
+    
+    framebuffer_scale_x = unsafe_load(draw_data.FramebufferScale.x)
+    framebuffer_scale_y = unsafe_load(draw_data.FramebufferScale.y)
+    #println("Framebuffer scale: ", framebuffer_scale_x, " x ", framebuffer_scale_y)
+    
+    render_scale = ImVec2((rsx == 1.0) ? framebuffer_scale_x : 1.0,(rsy == 1.0) ? framebuffer_scale_y : 1.0)
 
     # Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-    fb_width = Int(unsafe_load(draw_data.DisplaySize.x) * render_scale.x)
-    fb_height = Int(unsafe_load(draw_data.DisplaySize.y) * render_scale.y)
+    display_size_x = unsafe_load(draw_data.DisplaySize.x)
+    display_size_y = unsafe_load(draw_data.DisplaySize.y)
+    
+    # Get the actual framebuffer size from SDL renderer (don't overwrite it!)
+    fb_width = Int32(0)
+    fb_height = Int32(0)
+    @c SDL2.SDL_GetRendererOutputSize(bd.SDLRenderer, &fb_width, &fb_height)
+    
+    # If SDL returns 0, fall back to display size calculation
     if fb_width == 0 || fb_height == 0
+        fb_width = Int(display_size_x * render_scale.x) 
+        fb_height = Int(display_size_y * render_scale.y)
+        #println("Using calculated framebuffer size: ", fb_width, " x ", fb_height)
+    end
+    
+    if fb_width == 0 || fb_height == 0
+        #println("Error: Framebuffer width or height is 0 in RenderDrawData")
         return
     end
 
     old = BackupSDLRendererState()
-    old.ClipEnabled = SDL2.SDL_RenderIsClipEnabled(sdlRenderer) == SDL2.SDL_TRUE
-    @c SDL2.SDL_RenderGetViewport(sdlRenderer, &old.Viewport)
-    @c SDL2.SDL_RenderGetClipRect(sdlRenderer, &old.ClipRect)
+    old.ClipEnabled = SDL2.SDL_RenderIsClipEnabled(bd.SDLRenderer) == SDL2.SDL_TRUE
+    @c SDL2.SDL_RenderGetViewport(bd.SDLRenderer, &old.Viewport)
+    @c SDL2.SDL_RenderGetClipRect(bd.SDLRenderer, &old.ClipRect)
 
     # will project scissor/clipping rectangles into framebuffer space
     clip_off = unsafe_load(draw_data.DisplayPos)         # (0,0) unless using multi-viewports
@@ -138,17 +179,17 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 end
                 r = SDL2.SDL_Rect((Int)(round(clip_min.x)), (Int)(round(clip_min.y)), (Int)(round(clip_max.x - clip_min.x)), (Int)(round(clip_max.y - clip_min.y)))
 
-                @c SDL2.SDL_RenderSetClipRect(sdlRenderer, &r) # This prevents rendering to outside of the current window. For example, if you have a window that is 800x600 and you try to render a 1000x1000 image, it will only render the part that is inside the window.
+                @c SDL2.SDL_RenderSetClipRect(bd.SDLRenderer, &r) # This prevents rendering to outside of the current window. For example, if you have a window that is 800x600 and you try to render a 1000x1000 image, it will only render the part that is inside the window.
                 
                 pos_offset = offsetof(CImGui.ImDrawVert, Val(:pos))
                 uv_offset = offsetof(CImGui.ImDrawVert, Val(:uv))
                 col_offset = offsetof(CImGui.ImDrawVert, Val(:col))
                 xy = Ptr{Cfloat}(Ptr{Cvoid}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + pos_offset))
                 uv = Ptr{Cfloat}(Ptr{Cvoid}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + uv_offset))
-                color = Ptr{Int}(Ptr{Cvoid}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + col_offset))
+                color = Ptr{UInt32}(Ptr{Cvoid}(Ptr{Cchar}(vtx_buffer.Data + unsafe_load(pcmd.VtxOffset)) + col_offset))
                     
                 tex = Ptr{SDL2.SDL_Texture}(CImGui.ImDrawCmd_GetTexID(pcmd))
-                offset = unsafe_load(pcmd.IdxOffset)*2
+                offset = unsafe_load(pcmd.IdxOffset)*2 # TODO: understand why this is necessary to multiply by 2
                
                 elem_count = Int(unsafe_load(pcmd.ElemCount))
                 indices = Ptr{CImGui.ImDrawIdx}(idx_buffer.Data + (offset)) 
@@ -156,32 +197,36 @@ function ImGui_ImplSDLRenderer2_RenderDrawData(draw_data)
                 num_vertices = vtx_buffer.Size-unsafe_load(pcmd.VtxOffset)
                 owner_name = cmd_list._OwnerName |> unsafe_load |> unsafe_string # use for debugging
 
-                res = SDL2.SDL_RenderGeometryRaw(sdlRenderer,
+                res = SDL2.SDL_RenderGeometryRaw(bd.SDLRenderer,
                 tex,
-                xy, Cint(sizeof(CImGui.ImDrawVert)),
-                color, Cint(sizeof(CImGui.ImDrawVert)),
-                uv, Cint(sizeof(CImGui.ImDrawVert)),
+                xy, Int32(sizeof(CImGui.ImDrawVert)),
+                color, Int32(sizeof(CImGui.ImDrawVert)),
+                uv, Int32(sizeof(CImGui.ImDrawVert)),
                 num_vertices,
                 indices, elem_count, sizeof(CImGui.ImDrawIdx))
 
                 if res != 0
-                    @error "Error rendering imgui:" exception=unsafe_string(SDL2.SDL_GetError())
-                    Base.show_backtrace(stderr, catch_backtrace())
+                    error_msg = unsafe_string(SDL2.SDL_GetError())
+                    println("SDL_RenderGeometryRaw error: ", error_msg)
+                    println("  tex: ", tex)
+                    println("  num_vertices: ", num_vertices)
+                    println("  elem_count: ", elem_count)
+                    println("  owner_name: ", owner_name)
                 end
             end
         end
     end
 
     # Restore modified SDL2.SDL_Renderer state
-    @c SDL2.SDL_RenderSetViewport(sdlRenderer, &old.Viewport)
+    @c SDL2.SDL_RenderSetViewport(bd.SDLRenderer, &old.Viewport)
     if old.ClipEnabled == SDL2.SDL_TRUE
-        @c SDL2.SDL_RenderSetClipRect(sdlRenderer, &old.ClipRect)
+        @c SDL2.SDL_RenderSetClipRect(bd.SDLRenderer, &old.ClipRect)
     else
-        @c SDL2.SDL_RenderSetClipRect(sdlRenderer, C_NULL)
+        @c SDL2.SDL_RenderSetClipRect(bd.SDLRenderer, C_NULL)
     end
 end
 
-function ImGui_ImplSDLRenderer2_CreateFontsTexture()
+function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd::Ptr{ImGui_ImplSDLRenderer2_Data})::Bool
     io = CImGui.GetIO()
     bd = ImGui_ImplSDLRenderer2_GetBackendData()
 
@@ -190,10 +235,12 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture()
 
     # Upload texture to graphics system
     # (Bilinear sampling is required by default. Set 'io.Fonts.Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
-    bd.FontTexture = SDL2.SDL_CreateTexture(sdlRenderer, SDL2.SDL_PIXELFORMAT_ABGR8888, SDL2.SDL_TEXTUREACCESS_STATIC, width, height)
+    bd.FontTexture = SDL2.SDL_CreateTexture(bd.SDLRenderer, SDL2.SDL_PIXELFORMAT_ABGR8888, SDL2.SDL_TEXTUREACCESS_STATIC, width, height)
     if bd.FontTexture == C_NULL
-        SDL2.SDL_Log("error creating texture")
-        println("error creating texture")
+        error_msg = unsafe_string(SDL2.SDL_GetError())
+        println("error creating font texture: ", error_msg)
+        println("  renderer: ", bd.SDLRenderer)
+        println("  width: ", width, " height: ", height)
         return false
     end
     SDL2.SDL_UpdateTexture(bd.FontTexture, C_NULL, pixels, 4 * width)
@@ -206,12 +253,12 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture()
     return true
 end
 
-function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
+function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd::Ptr{ImGui_ImplSDLRenderer2_Data})
     io = CImGui.GetIO()
     # Build texture atlas
     fonts = unsafe_load(io.Fonts)
     pixels = Ptr{Cuchar}(C_NULL)
-    width, height = Cint(0), Cint(0)
+    width, height = Int32(0), Int32(0)
     @c CImGui.ImFontAtlas_GetTexDataAsRGBA32(fonts, &pixels, &width, &height, C_NULL)
 
     # Upload texture to graphics system
@@ -222,7 +269,7 @@ function ImGui_ImplSDLRenderer2_CreateFontsTexture(bd)
         println("error creating texture")
         return false
     end
-    
+    println("font texture: ", bd.FontTexture)
     SDL2.SDL_UpdateTexture(bd.FontTexture, C_NULL, pixels, 4 * width)
     SDL2.SDL_SetTextureBlendMode(bd.FontTexture, SDL2.SDL_BLENDMODE_BLEND)
     SDL2.SDL_SetTextureScaleMode(bd.FontTexture, SDL2.SDL_ScaleModeLinear)
@@ -249,9 +296,4 @@ end
 
 function ImGui_ImplSDLRenderer2_DestroyDeviceObjects()
     ImGui_ImplSDLRenderer2_DestroyFontsTexture()
-end
-
-@generated function offsetof(::Type{X}, ::Val{field}) where {X,field}
-    idx = findfirst(f->f==field, fieldnames(X))
-    return fieldoffset(X, idx)
 end

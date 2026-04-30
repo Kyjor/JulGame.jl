@@ -1,5 +1,7 @@
 module SceneWriterModule
+    using ...JulGame
     using JSON3
+    include("../../editor/JulGameEditor/Components/Inspector/Fields/Exclusions.jl")
     
     export serialize_entities
     """
@@ -15,49 +17,115 @@ module SceneWriterModule
 
     """
     function serialize_entities(entities::Array, uiElements::Array, camera, projectPath, sceneName)
-        @info String("Serializing entities")
+        @debug String("Serializing entities")
         entitiesDict = []
         uiElementsDict = []
         
         count = 1
         for entity in entities
-            push!(entitiesDict, Dict("id" => string(entity.id), "parent" =>  entity.parent != C_NULL ? entity.parent.id : C_NULL, "isActive" => entity.isActive, "name" => entity.name, "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), "scripts" => serialize_entity_scripts(entity.scripts)))
+            push!(entitiesDict, Dict(
+                "id" => string(entity.id), 
+                "parent" =>  entity.parent !== nothing ? entity.parent.id : nothing, 
+                "isActive" => entity.isActive, 
+                "name" => entity.name, 
+                "persistentBetweenScenes" => entity.persistentBetweenScenes,
+                "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), 
+                "scripts" => serialize_entity_scripts(entity.scripts)))
             count += 1
         end
 
         count = 1
         for uiElement in uiElements
-            if "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+            structureType = split(string(typeof(uiElement)), ".")[end]
+            fields = [fieldnames(typeof(uiElement))...]
+            uiFields = [fieldnames(JulGame.UI.UIElementInstance)...]
+            prepend!(fields, uiFields)
+            
+            if "$(typeof(uiElement))" == "JulGame.UI.CanvasModule.Canvas"
                 push!(uiElementsDict, Dict(
-                    "id" => count, 
+                    "id" => string(uiElement.id), 
+                    "anchor" => uiElement.anchor.current_state,
+                    "anchorOffset" => Dict("x" => uiElement.anchorOffset.x, "y" => uiElement.anchorOffset.y),
+                    "isActive" => uiElement.isActive,
+                    "isVisible" => uiElement.isVisible,
+                    "clipChildren" => uiElement.clipChildren,
+                    "isWorldEntity" => uiElement.isWorldEntity,
+                    "layer" => uiElement.layer,
+                    "name" => uiElement.name,
+                    "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
+                    "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
+                    "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
+                    "color" => Dict("r" => uiElement.color[1], "g" => uiElement.color[2], "b" => uiElement.color[3], "a" => uiElement.color[4]),
+                    "rotation" => uiElement.rotation,
+                    "type" => "Canvas",
+                    "parent" => get_parent_id(uiElement.parent),
+                    #"children" => serialize_canvas_children(uiElement.children)
+                    ))
+            elseif "$(typeof(uiElement))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+                push!(uiElementsDict, Dict(
+                    "id" => string(uiElement.id), 
                     # TODO: "alpha" => uiElement.alpha, 
+                    "anchor" => uiElement.anchor.current_state,
+                    "anchorOffset" => Dict("x" => uiElement.anchorOffset.x, "y" => uiElement.anchorOffset.y),
                     "buttonDownSpritePath" => normalize_path(uiElement.buttonDownSpritePath), 
                     "buttonUpSpritePath" => normalize_path(uiElement.buttonUpSpritePath), 
                     "fontPath" => normalize_path(uiElement.fontPath), 
                     # TODO: "fontSize" => uiElement.fontSize, 
+                    "isActive" => uiElement.isActive,
+                    "isWorldEntity" => uiElement.isWorldEntity,
+                    "layer" => uiElement.layer,
                     "name" => uiElement.name,
                     "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
                     "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
                     "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
                     "text" => uiElement.text,
                     "textOffset" => Dict("x" => uiElement.textOffset.x, "y" => uiElement.textOffset.y),
+                    "parent" => get_parent_id(uiElement.parent),
                     "type" => "ScreenButton"
                     ))
+            elseif "$(typeof(uiElement))" == "JulGame.UI.UIImageModule.UIImage"
+                dict = Dict()
+                dict["type"] = "UIImage"
+                @debug "extracting value for fields from UIElement $(uiElement.id) named: $(uiElement.name)"
+                for field in fields
+                    if(get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, []) || field in get(FieldExclusions, "UIElement", []))
+                        continue
+                    end
+                    dict[string(field)] = extract_value(uiElement, field)
+                end
+                dict["parent"] = get_parent_id(uiElement.parent)
+                push!(uiElementsDict, dict)
+            elseif "$(typeof(uiElement))" == "JulGame.UI.RectangleModule.Rectangle"
+                dict = Dict()
+                dict["type"] = "Rectangle"
+                @debug "extracting value for fields from UIElement $(uiElement.id) named: $(uiElement.name)"
+                for field in fields
+                    if(get(FieldExclusions, structureType, []) != [] && field in get(FieldExclusions, structureType, []) || field in get(FieldExclusions, "UIElement", []))
+                        continue
+                    end
+                    dict[string(field)] = extract_value(uiElement, field)
+                end
+                dict["parent"] = get_parent_id(uiElement.parent)
+                push!(uiElementsDict, dict)
             else
                 push!(uiElementsDict, Dict(
-                    "id" => count, 
-                    "alpha" => uiElement.alpha, 
+                    "id" => string(uiElement.id), 
+                    "layer" => uiElement.layer,
+                    "anchor" => uiElement.anchor.current_state,
+                    "anchorOffset" => Dict("x" => uiElement.anchorOffset.x, "y" => uiElement.anchorOffset.y),
+                    "maxLineWidth" => uiElement.maxLineWidth,
+                    "wrapWords" => uiElement.wrapWords,
+                    "color" => Dict("r" => uiElement.color[1], "g" => uiElement.color[2], "b" => uiElement.color[3], "a" => uiElement.color[4]),
                     "fontPath" => normalize_path(uiElement.fontPath), 
                     "fontSize" => uiElement.fontSize, 
                     "isActive" => uiElement.isActive,
-                    "isCenteredX" => uiElement.isCenteredX,
-                    "isCenteredY" => uiElement.isCenteredY,
                     "isWorldEntity" => uiElement.isWorldEntity,
                     "name" => uiElement.name,
                     "persistentBetweenScenes" => uiElement.persistentBetweenScenes,
                     "position" => Dict("x" => uiElement.position.x, "y" => uiElement.position.y),
                     "size" => Dict("x" => uiElement.size.x, "y" => uiElement.size.y),
                     "text" => uiElement.text,
+                    "parent" => get_parent_id(uiElement.parent),
                     "type" => "TextBox"
                     ))
             end
@@ -66,11 +134,11 @@ module SceneWriterModule
         entitiesJson = Dict( 
             "Entities" => entitiesDict,
             "UIElements" => uiElementsDict,
-            "Camera" => Dict("position" => Dict("x" => camera.position.x, "y" => camera.position.y), "backgroundColor" => Dict("r" => camera.backgroundColor[1], "g" => camera.backgroundColor[2], "b" => camera.backgroundColor[3], "a" => camera.backgroundColor[4]), "size" => Dict("x" => camera.size.x, "y" => camera.size.y), "offset" => Dict("x" => camera.offset.x, "y" => camera.offset.y), "startingCoordinates" => Dict("x" => camera.startingCoordinates.x, "y" => camera.startingCoordinates.y))
+            "Camera" => Dict("position" => Dict("x" => camera.position.x, "y" => camera.position.y), "backgroundColor" => Dict("r" => camera.backgroundColor[1], "g" => camera.backgroundColor[2], "b" => camera.backgroundColor[3], "a" => camera.backgroundColor[4]), "size" => Dict("x" => camera.size.x, "y" => camera.size.y), "offset" => Dict("x" => camera.offset.x, "y" => camera.offset.y), "zoom" => camera.zoom)
             )
         try
             name = split(sceneName,".")[1]
-            @info "writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))"
+            @debug "writing to $(joinpath(projectPath, "scenes", "$(sceneName)"))"
 
             open(joinpath(projectPath, "scenes", "$(name)-saving"), "w") do io
                 JSON3.pretty(io, entitiesJson)
@@ -82,7 +150,6 @@ module SceneWriterModule
         catch e
             @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
-            rethrow(e)
         end
     end
 
@@ -155,6 +222,7 @@ module SceneWriterModule
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
                     "position" => Dict("x" => component.position.x, "y" => component.position.y),
                     "size" => Dict("x" => component.size.x, "y" => component.size.y),
+                    "alpha" => component.alpha,
                     )
                 push!(componentsDict, serializedComponent)
             elseif componentType == "SoundSource"
@@ -175,16 +243,27 @@ module SceneWriterModule
                     "isFlipped" => component.isFlipped, 
                     "imagePath" => normalize_path(component.imagePath),
                     "layer" => component.layer,
-                    "isWorldEntity" => component.isWorldEntity,
                     "pixelsPerUnit" => component.pixelsPerUnit,
                     "offset" => Dict("x" => component.offset.x, "y" => component.offset.y),
                     "position" => Dict("x" => component.position.x, "y" => component.position.y),
                     "rotation" => component.rotation,
                     "center" => Dict("x" => component.center.x, "y" => component.center.y),
-                    "color" => Dict("x" => component.color.x, "y" => component.color.y, "z" => component.color.z),
+                    "color" => Dict("x" => component.color[1], "y" => component.color[2], "z" => component.color[3], "t" => component.color[4]),
                     "size" => Dict("x" => component.size.x, "y" => component.size.y),
-                    )
+                    "isStatic" => component.isStatic,
+                )
                 push!(componentsDict, serializedComponent)
+            elseif componentType == "Mesh3D"
+                push!(componentsDict, Dict(
+                    "type" => "Mesh3D",
+                    "fNear" => component.fNear,
+                    "fFar" => component.fFar,
+                    "fFov" => component.fFov,
+                    "fYaw" => component.fYaw,
+                    "fTheta" => component.fTheta,
+                    "fAspectRatio" => component.fAspectRatio,
+                    "vCamera" => Dict("x" => component.vCamera.x, "y" => component.vCamera.y, "z" => component.vCamera.z, "w" => component.vCamera.w),
+                    "vLookDir" => Dict("x" => component.vLookDir.x, "y" => component.vLookDir.y, "z" => component.vLookDir.z, "w" => component.vLookDir.w)))
             elseif "$componentType" != "Ptr"
                 println("Component type $(componentType) not supported")
             end
@@ -226,26 +305,65 @@ module SceneWriterModule
 
         for script in scripts
             fields = Dict{String, Any}()
+            if isa(script, JSON3.Object) || isa(script, Base.CodeUnits)
+                @warn "Skipping script: $(script) because it is a JSON3.Object or CodeUnits, there is probably a compilation error"
+                continue
+            end
             scriptName = split("$(typeof(script))", ".")[end]
             for field in fieldnames(typeof(script))
                 if field == :parent 
                     continue
                 end
                 val = nothing
-                if isdefined(script, Symbol(field)) 
+                if isdefined(script, Symbol(field))
                     val = getfield(script, field)
+                    if !isa(val, EditorExport)
+                        continue
+                    end
+                    val = val.value
                 else 
-                    val = set_undefined_field(script, field)
+                    continue
                 end
                 fields["$(field)"] = val
             end
 
             scriptType = "$(typeof(script))"
             scriptName = split(scriptType, ".")[end]
+            
             push!(scriptsDict, Dict("name" => scriptName, "fields" => fields))
         end
 
         return scriptsDict
+    end
+
+    function extract_value(element, field)
+        if field == :parent
+            elementType = split("$(typeof(element))", ".")[end]
+            if elementType != "Entity" 
+                elementType = "UIElement"
+            end
+
+            return element.parent !== nothing ? "$(element.parent.id)::$(elementType)" : nothing
+        end
+
+        if field == :anchor 
+            return element.anchor.current_state
+        end
+
+        fieldValue = getproperty(element, field)
+        if isstructtype(typeof(fieldValue)) && typeof(fieldValue) != String
+            dict = Dict()
+            for subfield in fieldnames(typeof(fieldValue))
+                @debug "extracting value for $(subfield) from $(typeof(fieldValue))"
+                dict[string(subfield)] = extract_value(fieldValue, subfield)
+            end
+            return dict
+        end
+        
+        @debug "bottom:extracting value for $(field) from $(typeof(element))"
+        
+        
+        return fieldValue
     end
 
     function set_undefined_field(script, field)
@@ -258,4 +376,87 @@ module SceneWriterModule
             return false
         end
     end
+
+    function get_parent_id(parent)
+        if parent === nothing
+            return nothing
+        end
+        elementType = split("$(typeof(parent))", ".")[end]
+        if elementType != "Entity" 
+            elementType = "UIElement"
+        end
+            
+        return "$(parent.id)::$(elementType)"
+    end
+    """
+    serialize_canvas_children(children::Vector{UI.UIElement})
+    
+    Recursively serializes Canvas children.
+    """
+    # function serialize_canvas_children(children::Vector{UI.UIElement})
+    #     childrenDict = []
+    #     for child in children
+    #         if "$(typeof(child))" == "JulGame.UI.CanvasModule.Canvas"
+    #             push!(childrenDict, Dict(
+    #                 "id" => string(child.id), 
+    #                 "anchor" => child.anchor.current_state,
+    #                 "anchorOffset" => Dict("x" => child.anchorOffset.x, "y" => child.anchorOffset.y),
+    #                 "isActive" => child.isActive,
+    #                 "isVisible" => child.isVisible,
+    #                 "clipChildren" => child.clipChildren,
+    #                 "isWorldEntity" => child.isWorldEntity,
+    #                 "layer" => child.layer,
+    #                 "name" => child.name,
+    #                 "persistentBetweenScenes" => child.persistentBetweenScenes,
+    #                 "position" => Dict("x" => child.position.x, "y" => child.position.y),
+    #                 "size" => Dict("x" => child.size.x, "y" => child.size.y),
+    #                 "color" => Dict("r" => child.color[1], "g" => child.color[2], "b" => child.color[3], "a" => child.color[4]),
+    #                 "rotation" => child.rotation,
+    #                 "type" => "Canvas",
+    #                 #"children" => serialize_canvas_children(child.children)
+    #                 ))
+    #         elseif "$(typeof(child))" == "JulGame.UI.ScreenButtonModule.ScreenButton"
+    #             push!(childrenDict, Dict(
+    #                 "id" => string(child.id), 
+    #                 "anchor" => child.anchor.current_state,
+    #                 "anchorOffset" => Dict("x" => child.anchorOffset.x, "y" => child.anchorOffset.y),
+    #                 "buttonDownSpritePath" => normalize_path(child.buttonDownSpritePath), 
+    #                 "buttonUpSpritePath" => normalize_path(child.buttonUpSpritePath), 
+    #                 "fontPath" => normalize_path(child.fontPath), 
+    #                 "isActive" => child.isActive,
+    #                 "isWorldEntity" => child.isWorldEntity,
+    #                 "layer" => child.layer,
+    #                 "name" => child.name,
+    #                 "persistentBetweenScenes" => child.persistentBetweenScenes,
+    #                 "position" => Dict("x" => child.position.x, "y" => child.position.y),
+    #                 "size" => Dict("x" => child.size.x, "y" => child.size.y),
+    #                 "text" => child.text,
+    #                 "textOffset" => Dict("x" => child.textOffset.x, "y" => child.textOffset.y),
+    #                 "type" => "ScreenButton"
+    #                 ))
+    #         else
+    #             # TextBox or other UI elements
+    #             push!(childrenDict, Dict(
+    #                 "id" => string(child.id), 
+    #                 "layer" => child.layer,
+    #                 "anchor" => child.anchor.current_state,
+    #                 "anchorOffset" => Dict("x" => child.anchorOffset.x, "y" => child.anchorOffset.y),
+    #                 "maxLineWidth" => child.maxLineWidth,
+    #                 "wrapWords" => child.wrapWords,
+    #                 "color" => Dict("r" => child.color[1], "g" => child.color[2], "b" => child.color[3], "a" => child.color[4]),
+    #                 "fontPath" => normalize_path(child.fontPath), 
+    #                 "fontSize" => child.fontSize, 
+    #                 "isActive" => child.isActive,
+    #                 "isWorldEntity" => child.isWorldEntity,
+    #                 "name" => child.name,
+    #                 "persistentBetweenScenes" => child.persistentBetweenScenes,
+    #                 "position" => Dict("x" => child.position.x, "y" => child.position.y),
+    #                 "size" => Dict("x" => child.size.x, "y" => child.size.y),
+    #                 "text" => child.text,
+    #                 "type" => "TextBox"
+    #                 ))
+    #         end
+    #     end
+    #     return childrenDict
+    # end
 end # module

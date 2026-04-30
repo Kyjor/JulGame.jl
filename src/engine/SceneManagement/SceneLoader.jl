@@ -20,7 +20,7 @@ module SceneLoaderModule
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
         #println("Loading scene $sceneFileName from $projectPath")
         scene = Scene(sceneFileName, projectPath)
-        return SceneBuilderModule.load_and_prepare_scene(scene, "Editor")
+        return SceneBuilderModule.load_and_prepare_scene(this=scene, nothing)
     end
     
     export load_scene_from_editor
@@ -38,21 +38,20 @@ module SceneLoaderModule
 
     """
     function load_scene_from_editor(scenePath::String, renderer = nothing) 
-
         projectPath = get_project_path_from_full_scene_path(scenePath)
         sceneFileName = get_scene_file_name_from_full_scene_path(scenePath)
+        @debug "loading scene from editor. projectPath: $(projectPath) sceneFileName: $(sceneFileName)"
 
         JulGame.BasePath = JulGame.BasePath == "" ? projectPath : JulGame.BasePath
         if renderer !== nothing
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = renderer
         end
-        JulGame.MAIN = JulGame.Main(Float64(1.0))
-        #println("Loading scene $sceneFileName from $projectPath")
+        @debug ("Loading scene $sceneFileName from $projectPath")
         scene = Scene("$sceneFileName", "$projectPath")
         
-        SceneBuilderModule.load_and_prepare_scene(;this=scene)
+        SceneBuilderModule.load_and_prepare_scene(scene, JulGame.MainLoop())
 
-        return MAIN
+        return JulGame.MAIN
     end
 
     export get_project_path_from_full_scene_path
@@ -69,7 +68,7 @@ module SceneLoaderModule
 
     """
     function get_project_path_from_full_scene_path(scenePath::String)
-        return dirname(dirname(scenePath))
+        return string(dirname(dirname(scenePath)))
     end
 
     export get_scene_file_name_from_full_scene_path
@@ -88,6 +87,6 @@ module SceneLoaderModule
         sceneFileName = split(scenePath, "/")[end]
         sceneFileName = split(sceneFileName, "\\")[end]
 
-        return sceneFileName
+        return string(sceneFileName)
     end
 end

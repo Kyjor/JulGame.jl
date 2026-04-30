@@ -1,0 +1,15 @@
+FieldExclusions = Dict{String, Vector{Symbol}}(
+    "InternalAnimator" => [:lastFrame, :lastUpdate, :sprite, :parent],
+    "InternalCollider" => [:currentCollisions, :currentRests, :parent],
+    "InternalShape" => [:parent],
+    "InternalRigidbody" => [:acceleration, :grounded, :offset, :parent, :velocity],
+    "InternalShape" => [:parent],
+    "InternalSoundSource" => [:isPlaying, :sound, :parent],
+    "InternalSprite" => [:parent, :lastRenderedScreenPosition, :lastRenderedScreenSize, :size, :texture],
+    "Rectangle" => [:effectTexture, :needsEffectUpdate, :effects, :isHovered],
+    "ScreenButton" => [:isInitialized],
+    "TextBox" => [:font, :isConstructed, :renderText, :textTexture, :effects],
+    "Transform" => [:screenPosition, :screenRotation, :screenSize, :parent],
+    "UIImage" => [:surface, :needsEffectUpdate, :effectTexture, :texture, :effects, :surface, :isHovered],
+    "UIElement" => [:isHovered, :parent, :clickEvents, :hoverEnterEvents, :hoverExitEvents],
+)

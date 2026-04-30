@@ -1,33 +1,54 @@
 ---
-title: JulGame Docs
-description: Get started learing about how to use it.
+title: JulGame Documentation
+description: A comprehensive guide to the JulGame game engine
 template: splash
 hero:
-  tagline: Thanks reading the docs first! ;)
+  tagline: Create games in Julia with this powerful 2D game engine
   image:
     file: ../../assets/houston.webp
   actions:
-    - text: What is JulGame?
+    - text: Get Started
       link: /JulGame.jl/general/what-is-julgame/
       icon: right-arrow
       variant: primary
+    - text: View Examples
+      link: /JulGame.jl/guides/examples/
+      icon: external
+      variant: secondary
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-{/* ## Next steps
- TODO: LINK SOCIALS AND VIDEOS
+## Key Features
+
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
-</CardGrid> */}
+  <Card title="Entity-Component System" icon="puzzle">
+    Create game objects with reusable components for behaviors like physics, rendering, and audio.
+  </Card>
+  <Card title="Scene Management" icon="document">
+    Organize your game with multiple scenes, with support for loading, saving, and transitioning.
+  </Card>
+  <Card title="Built-in Editor" icon="pencil">
+    Design levels and manage game assets with the integrated visual editor.
+  </Card>
+  <Card title="Physics & Input" icon="seti:julia">
+    Utilize collision detection, rigidbody physics, and multi-platform input handling.
+  </Card>
+</CardGrid>
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Installation" icon="laptop">
+    [Install and set up](/JulGame.jl/guides/getting-started/) JulGame on your system.
+  </Card>
+  <Card title="Tutorials" icon="open-book">
+    Follow our [step-by-step guides](/JulGame.jl/guides/tutorials/) to create your first game.
+  </Card>
+  <Card title="Components" icon="setting">
+    Learn about the [core components](/JulGame.jl/reference/) that make up a JulGame project.
+  </Card>
+  <Card title="Join the Community" icon="discord">
+    Get help and share your projects on our [Discord server](https://discord.gg/RGMkdzW).
+  </Card>
+</CardGrid>

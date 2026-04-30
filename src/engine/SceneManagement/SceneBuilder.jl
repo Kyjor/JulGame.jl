@@ -7,122 +7,179 @@ module SceneBuilderModule
     using ...RigidbodyModule
     using ...TextBoxModule
     using ...ScreenButtonModule
+    using ...CanvasModule
     using ..SceneReaderModule
     using JSON3
 
-    function init()
-        # if end of path is "test", then we are running tests
-        if endswith(pwd(), "test")
-            println("Loading scripts in test folder...")
-            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "ProfilingTest", "Platformer", "scripts"); join=true)))
-            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "projects", "SmokeTest", "scripts"); join=true)))
-            @info "Loaded test scripts"
-        end
-
-        if isdir(joinpath(pwd(), "..", "scripts")) #dev builds
-            # println("Loading scripts...")
-            include.(filter(contains(r".jl$"), readdir(joinpath(pwd(), "..", "scripts"); join=true)))
-            @info "Loaded scripts"
-        else
-            script_folder_name = "scripts"
-            current_dir = pwd()
-            
-            # Find all folders in the current directory
-            folders = filter(isdir, readdir(current_dir))
-            
-            # Check each folder for the "scripts" subfolder
-            for folder in folders
-                scripts_path = joinpath(current_dir, folder, script_folder_name)
-                if isdir(scripts_path)
-                    println("Loading scripts in $scripts_path...")
-                    include.(filter(contains(r".jl$"), readdir(scripts_path; join=true)))
-                    break  # Exit loop if "scripts" folder is found in any parent folder
-                end
-            end
-            @info "Loaded scripts"
-        end
-    end
-
-   function __init__()
-    # if not using PackageCompiler, then we need to call init() here
-        if ccall(:jl_generating_output, Cint, ()) != 1
-            init()
-        end
-    end
-
-    # if using PackageCompiler, then we need to call init here
-    if ccall(:jl_generating_output, Cint, ()) == 1
-        init()
-    end
-        
     export Scene
     mutable struct Scene
         scene
         srcPath::String
-        function Scene(sceneFileName::String, srcPath::String = joinpath(pwd(), ".."))
+        type::String
+
+        function Scene(sceneFileName::String, srcPath::String = joinpath(pwd(), ".."), type::String="SDLRenderer")
             this = new()  
 
             this.scene = sceneFileName
-            this.srcPath = srcPath
+            this.srcPath = srcPath 
+            this.type = type
+            path = Base.load_path()[1]
+            JulGame.IS_PACKAGE_COMPILED = occursin("share", path) && occursin("Project.toml", path)
+            if Sys.isapple() && JulGame.IS_PACKAGE_COMPILED
+                srcPath = joinpath(join(split(path, "/")[1:findfirst(x -> x == "Build", split(path, "/"))], "/"))
+            end
+
             JulGame.BasePath = srcPath
+            if type == "Web"
+                JulGame.IS_WEB = true
+            end
 
             return this
         end    
     end
     
-    function load_and_prepare_scene(;this::Scene, config=parse_config(), globals = [])
-        config = fill_in_config(config)
-
-        windowName::String = get(config, "WindowName", DEFAULT_CONFIG["WindowName"])
-        size::Vector2 = Vector2(parse(Int32, get(config, "Width", DEFAULT_CONFIG["Width"])), parse(Int32, get(config, "Height", DEFAULT_CONFIG["Height"])))
-        isResizable::Bool = parse(Bool, get(config, "IsResizable", DEFAULT_CONFIG["IsResizable"]))
-        zoom::Float64 = parse(Float64, get(config, "Zoom", DEFAULT_CONFIG["Zoom"]))
-        autoScaleZoom::Bool = parse(Bool, get(config, "AutoScaleZoom", DEFAULT_CONFIG["AutoScaleZoom"]))
-        targetFrameRate::Int32 = parse(Int32, get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"]))
-
-        if autoScaleZoom 
-             zoom = 1.0
+    function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); 
+        config=parse_config(), 
+        windowName::String="Game", 
+        isWindowResizable::Bool=false, 
+        preloadAllScenes::Bool=false,
+        scalingQuality::String="linear"
+    )
+        JulGame.engine_states.current_state = :scene_change
+        if config === nothing
+            @debug("Config is nothing, parsing config")
+            config = parse_config()
+        else
+            @debug("Config is not nothing, using provided config")
         end
 
-        MAIN.windowName = windowName
-        MAIN.zoom = zoom
-        MAIN.globals = globals
+        config = fill_in_config(config)
+
+        windowName::String = windowName
+        size::Vector2 = Vector2(parse(Int, string(get(config, "Width", DEFAULT_CONFIG["Width"]))), parse(Int, string(get(config, "Height", DEFAULT_CONFIG["Height"]))))
+        isResizable::Bool = isWindowResizable
+        targetFrameRate::Int = parse(Int, string(get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
+        isFullscreen::Bool = get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1"
+        isVsyncEnabled::Bool = get(config, "Vsync", DEFAULT_CONFIG["Vsync"]) == "1"
+
+        JulGame.MAIN = main
+        MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
+        MAIN.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
+        MAIN.currentTestTime = 0.0
         MAIN.level = this
-        MAIN.targetFrameRate = targetFrameRate
+        MAIN.scene.name = split(this.scene, ".")[1]
 
         if size == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
 			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
 		end
+        
+        
+        scene = nothing
+        if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+            # Initialize window manager
+            windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
+            if !windowCreated
+                @error "Failed to create window"
+                return
+            end
+            
+            # Create renderer
+            # todo move to window manager
+            # Enable high-quality scaling
+            if scalingQuality == "nearest"
+                scalingQuality = "0"
+            elseif scalingQuality == "linear"
+                scalingQuality = "1"
+            elseif scalingQuality == "best"
+                scalingQuality = "2"
+            else
+                scalingQuality = "2"
+            end
+            JulGame.SCALE_QUALITY = scalingQuality
+            # "0" or "nearest": Nearest pixel sampling
+            # "1" or "linear": Linear filtering (supported by OpenGL and Direct3D)
+            # "2" or "best": Currently this is the same as "linear"
 
-        flags = SDL2.SDL_RENDERER_ACCELERATED |
-		(JulGame.IS_EDITOR ? (SDL2.SDL_WINDOW_POPUP_MENU | SDL2.SDL_WINDOW_ALWAYS_ON_TOP | SDL2.SDL_WINDOW_BORDERLESS) : 0) |
-		(isResizable || JulGame.IS_EDITOR ? SDL2.SDL_WINDOW_RESIZABLE : 0) |
-		(size == Math.Vector2() ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)  |
-        (get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1" ? SDL2.SDL_WINDOW_FULLSCREEN_DESKTOP : 0)
+            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            if JulGame.Renderer == C_NULL
+                @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
+            return
+            end
 
-        MAIN.screenSize = size
-        if !JulGame.IS_EDITOR
-            MAIN.window = SDL2.SDL_CreateWindow(MAIN.windowName, SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED, MAIN.screenSize.x, MAIN.screenSize.y, flags)
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            # Preload all scenes if requested
+            if preloadAllScenes
+                @debug "Preloading all scenes..."
+                scenesDir = joinpath(BasePath, "scenes")
+                if isdir(scenesDir)
+                    for file in readdir(scenesDir)
+                        if endswith(file, ".json")
+                            scenePath = joinpath(scenesDir, file)
+                            @debug "Preloading scene: $file"
+                            SceneReaderModule.preload_scene(scenePath)
+                        end
+                    end
+                    @debug "Finished preloading scenes"
+                else
+                    @warn "Scenes directory not found: $scenesDir"
+                end
+            end
+            
+            # Set default texture scaling mode to linear
+            SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
+            
+            # Apply additional window settings from config
+            @debug "Setting frame rate to $(targetFrameRate)"
+            JulGame.WindowManagerModule.set_frame_rate(targetFrameRate)
+            @debug "Setting vsync to $(isVsyncEnabled)"
+            JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
+            
+            @debug "Deserializing scene"
+            # Use preloaded scene if available
+            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
+                @debug "Using preloaded scene: $(this.scene)"
+                scene = JulGame.PRELOADED_SCENES[this.scene]
+            else
+                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            end
+            camera = scene[3]
+            # Set logical rendering size based on camera
+            @debug "Setting logical size to $(size.x)x$(size.y)"
+            if camera !== nothing && camera.size.x > 0 && camera.size.y > 0
+                JulGame.WindowManagerModule.set_logical_size(camera.size.x, camera.size.y)
+            end
+            
+            # Set window icon if available
+            iconPath = get(config, "Icon", "")
+            if iconPath != ""
+                JulGame.WindowManagerModule.set_window_icon(iconPath)
+            end
         end
 
-        scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+        if scene === nothing
+            # Use preloaded scene if available
+            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
+                @debug "Using preloaded scene: $(this.scene)"
+                scene = JulGame.PRELOADED_SCENES[this.scene]
+            else
+                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            end
+        end
+        
         MAIN.scene.entities = scene[1]
         MAIN.scene.uiElements = scene[2]
         MAIN.scene.camera = scene[3]
         
-        if size.x < MAIN.scene.camera.size.x && size.x > 0
-            MAIN.scene.camera.size = Vector2(size.x, MAIN.scene.camera.size.y)
-        end
-        if size.y < MAIN.scene.camera.size.y && size.y > 0
-            MAIN.scene.camera.size = Vector2(MAIN.scene.camera.size.x, size.y)
+        if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+            @debug "Setting logical size to $(MAIN.scene.camera.size.x)x$(MAIN.scene.camera.size.y)"
+            SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, MAIN.scene.camera.size.x, MAIN.scene.camera.size.y)
         end
         
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
-                UI.center_text(uiElement)
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -130,25 +187,40 @@ module SceneBuilderModule
         MAIN.scene.colliders = InternalCollider[]
         add_scripts_to_entities(BasePath)
 
-        MAIN.assets = joinpath(BasePath, "assets")
-        JulGame.MainLoop.prepare_window_scripts_and_start_loop(size, isResizable, autoScaleZoom)
+        JulGame.engine_states.current_state = :game_mode
+        JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
     end
 
     function deserialize_and_build_scene(this::Scene)
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         
-        @info String("Changing scene to $this.scene")
-        @info String("Entities in main scene: $(length(MAIN.scene.entities))")
+        @debug String("Changing scene to $(this.scene)")
+        @debug String("Entities in main scene: $(length(MAIN.scene.entities))")
 
-        for entity in scene[1]
-            push!(MAIN.scene.entities, entity)
+        if scene === nothing
+            @error "Error deserialize_and_build_scene"
+            return
         end
 
-        MAIN.scene.uiElements = scene[2]
+        for entity in scene[1]
+            if !any(e.id == entity.id for e in MAIN.scene.entities)
+                push!(MAIN.scene.entities, entity)
+            else
+                @debug("duplicate entity found (persistence)")
+            end
+        end
+        
+        for uiElement in scene[2]
+            if !any(e.id == uiElement.id for e in MAIN.scene.uiElements)
+                push!(MAIN.scene.uiElements, uiElement)
+            else
+                @debug("duplicate ui element found (persistence)")
+            end
+        end
 
         for uiElement in MAIN.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
-                UI.center_text(uiElement)
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -180,63 +252,142 @@ module SceneBuilderModule
 
     """
     function create_new_entity(this::Scene)
-        push!(MAIN.scene.entities, Entity("New entity"))
+        entity = Entity("New entity")
+        push!(MAIN.scene.entities, entity)
+        return entity
     end
 
     function create_new_text_box(this::Scene)
-        textBox = TextBox("TextBox", "", 40, Vector2(0, 200), "TextBox", true, true)
-        JulGame.initialize(textBox)
+        textBox = TextBox("TextBox")
+        JulGame.UI.initialize(textBox)
         push!(MAIN.scene.uiElements, textBox)
+        return textBox
     end
     
     function create_new_screen_button(this::Scene)
-        screenButton = ScreenButton("name", "ButtonUp.png", "ButtonDown.png", Vector2(256, 64), Vector2(0, 0), joinpath("FiraCode-Regular.ttf"), "test")
-        JulGame.initialize(screenButton)
+        screenButton = ScreenButton(
+            nothing; # No click event defined here by default
+            name="New Button", 
+            buttonUpSpritePath="ButtonUp.png", 
+            buttonDownSpritePath="ButtonDown.png", 
+            size=Math.Vector2(256, 64), 
+            position=Math.Vector2(0, 0), 
+            fontPath=joinpath("FiraCode-Regular.ttf"),
+            # text="", # Default
+            # textOffset=Math.Vector2(0,0), # Default
+            # Other parameters use defaults (anchor, layer, color, fontSize, etc.)
+        )
+        if !screenButton.isInitialized
+            JulGame.initialize(screenButton)
+        end
         push!(MAIN.scene.uiElements, screenButton)
+        return screenButton
+    end
+
+    function create_new_canvas(this::Scene)
+        canvas = Canvas(
+            name="New Canvas",
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(100, 100),
+            color=(255, 255, 255, 100)  # Semi-transparent white
+        )
+        push!(MAIN.scene.uiElements, canvas)
+        return canvas
+    end
+
+    function create_new_image(this::Scene)
+        image = JulGame.UI.UIImageModule.UIImage(;
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(0, 0),
+            color=(255, 255, 255, 100)
+        )
+        push!(MAIN.scene.uiElements, image)
+        return image
+    end
+
+    function create_new_rectangle(this::Scene)
+        rectangle = JulGame.UI.RectangleModule.Rectangle(;
+            name="New Rectangle",
+            size=Math.Vector2(400, 300),
+            position=Math.Vector2(0, 0),
+        )
+        push!(MAIN.scene.uiElements, rectangle)
+        return rectangle
     end
 
     function add_scripts_to_entities(path::String)
-        @info string("Adding scripts to entities")
-        @info string("Path: ", path)
-        @info string("Entities: ", length(MAIN.scene.entities))
-        include.(filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+        @debug string("Adding scripts to entities")
+        @debug string("Path: ", path)
+        @debug string("Entities: ", length(MAIN.scene.entities))
+        
+        # Track which scripts we've already loaded
+        
+        # Only load scripts for non-persistent entities or if package is not compiled
+        if !JulGame.IS_PACKAGE_COMPILED
+            @debug "Package not compiled, loading scripts"
+            @time begin
+                count = 0
+            foreach(file -> try
+                if !(file in JulGame.LoadedScripts)
+                    @debug("Loading $file")
+                    @time Base.include(JulGame.ScriptModule, file)
+                    @debug("Finished loading $file")
+                    push!(JulGame.LoadedScripts, file)
+                end
+            catch e
+                @error("Error including $file: ", e)
+                end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
+            end
+            @debug "Finished loading scripts"
+        end
+
+        if JulGame.ProjectModule != ""
+            @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
+            scripts_mod = filter(x -> occursin(r"\.Scripts$", string(x)), ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)"))))
+            if scripts_mod !== nothing && length(scripts_mod) > 0
+                JulGame.ScriptModule = scripts_mod[1]
+            end
+        end
 
         for entity in MAIN.scene.entities
             scriptCounter = 1
             for script in entity.scripts
                 if !isa(script, JSON3.Object)
+                    # Skip script reloading for persistent entities
                     scriptCounter += 1
                     continue
                 end
-                @info String("Adding script: $(script.name) to entity: $(entity.name)")
+                @debug String("Adding script: $(script.name) to entity: $(entity.name)")
 
                 newScript = nothing
                 try
-                    module_name = Base.invokelatest(eval, Symbol("$(script.name)Module"))
+                    module_name = getfield(JulGame.ScriptModule, Symbol("$(script.name)Module"))
                     constructor = Base.invokelatest(getfield, module_name, Symbol(script.name)) 
                     newScript = Base.invokelatest(constructor)
                     scriptFields = get(script, "fields", Dict())
-
+                    @debug("getting fields for: $(script)")
                     for (key, value) in scriptFields
                         ftype = nothing
                         try
                             ftype = fieldtype(typeof(newScript), Symbol(key))
-                            if ftype == Float64
-                                value = Float64(value)
-                            elseif ftype == Int32
-                                value = Int32(value)
+                            @debug("type: $(ftype)")
+                            if ftype <: EditorExport
+                                @debug "Overwriting $(key) to $(value) using scene file"
+                                # Get the wrapped type from EditorExport{T}
+                                underlying_type = ftype.parameters[1]
+                                Base.invokelatest(setfield!, newScript, key, EditorExport(convert(underlying_type, value)))
+                                continue
+                            elseif value === nothing
+                                @debug "Value is nothing"
+                                continue
                             end
-    
-                            Base.invokelatest(setfield!, newScript, key, value)
                         catch e
                             @warn string(e)
                         end
-                        #setfield!(newScript, key, value)
                     end
                 catch e
                     @error string(e)
                     Base.show_backtrace(stdout, catch_backtrace())
-                    rethrow(e)
                 end
                 if newScript != C_NULL && newScript !== nothing
                     entity.scripts[scriptCounter] = newScript
@@ -249,19 +400,16 @@ module SceneBuilderModule
 
     # Define default configuration values
     const DEFAULT_CONFIG = Dict(
-        "WindowName" => "Default Game",
         "Width" => "800",
         "Height" => "600",
-        "PixelsPerUnit" => "16",
-        "IsResizable" => "0",
-        "Zoom" => "1.0",
-        "AutoScaleZoom" => "0",
         "FrameRate" => "60",
-        "Fullscreen" => "0"
+        "Fullscreen" => "0",
+        "Vsync" => "0"
     )
 
     # Function to read and parse the config file
     function parse_config()
+        @debug "Parsing config at $(JulGame.BasePath)"
         filename = joinpath(JulGame.BasePath, "config.julgame")
         config = copy(DEFAULT_CONFIG)
         
@@ -286,6 +434,7 @@ module SceneBuilderModule
     end
 
     function fill_in_config(config)
+        @debug "Filling in config"
         for (key, value) in DEFAULT_CONFIG
             if !haskey(config, key)
                 config[key] = value
@@ -297,6 +446,7 @@ module SceneBuilderModule
 
     # Function to write values to the config file
     function write_config(filename::String, config::Dict{String, String})
+        @debug "Writing config to $(filename)"
         # Open the file for writing
         open(filename, "w") do file
             for (key, value) in config
@@ -304,12 +454,6 @@ module SceneBuilderModule
                 println(file, "$key=$value")
             end
         end
-    end
-
-    function instantiate_script(script_name::String)
-        # Instantiate the struct from the module
-        new_script = eval(Symbol("$(script_name)module.$script_name"))()
-        return new_script
     end
 end # module
 

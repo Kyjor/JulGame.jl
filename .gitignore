@@ -44,3 +44,7 @@ playground.jl
 src/editor/Build/
 
 *.swp
+
+*.log
+
+*.so

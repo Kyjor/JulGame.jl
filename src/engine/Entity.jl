@@ -10,27 +10,38 @@ module EntityModule
     using ..JulGame.SoundSourceModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
+    using ..JulGame.Mesh3DModule
+    using ..JulGame.SoftwareRenderer3DModule
     import ..JulGame: Component
     import ..JulGame
 
     export Entity
-    mutable struct Entity
+    mutable struct Entity <: JulGame.IEntity
         id::String
+        name::String
+        isActive::Bool
+        persistentBetweenScenes::Bool
+        transform::Transform
+        scripts::Vector{Any}
+        parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
         circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
-        isActive::Bool
-        name::String
-        parent::Union{Entity, Ptr{Nothing}}
-        persistentBetweenScenes::Bool
+        mesh3d::Union{Mesh3D, Ptr{Nothing}}
+        softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
-        scripts::Vector{Any}
         shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
-        transform::Transform
 
-        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = [])
+        clickEvents::Vector{Function}
+        hoverEnterEvents::Vector{Function}
+        hoverExitEvents::Vector{Function}
+        isHovered::Bool
+        forceClickCheck::Bool
+        ignoreInputEvents::Bool
+
+        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
             this = new()
 
             this.id = id
@@ -39,37 +50,46 @@ module EntityModule
             this.circleCollider = C_NULL
             this.collider = C_NULL
             this.isActive = true
+            this.mesh3d = C_NULL
+            this.softwareRenderer3d = C_NULL
             this.scripts = []
             this.transform = transform
+            this.transform.parent = this
             for script in scripts
-                add_script(this, script)
+                JulGame.add_script(this, script)
             end
             this.shape = C_NULL
             this.soundSource = C_NULL
             this.sprite = C_NULL
             this.persistentBetweenScenes = false
             this.rigidbody = C_NULL
-            this.parent = C_NULL
+            this.parent = nothing
+            this.isHovered = false
+            this.clickEvents = clickEvents
+            this.hoverEnterEvents = Function[]
+            this.hoverExitEvents = Function[]
+            this.forceClickCheck = forceClickCheck
+            this.ignoreInputEvents = ignoreInputEvents
 
             return this
         end
     end
 
     function JulGame.add_script(this::Entity, script)
-        #println(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
+        @debug(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
         push!(this.scripts, script)
         script.parent = this
         try
-            script.initialize()
+            JulGame.initialize(script)
         catch e
             @error string(e)
             Base.show_backtrace(stdout, catch_backtrace())
-            rethrow(e)
         end
     end
 
     function JulGame.update(this::Entity, deltaTime)
         if !this.isActive 
+            this.isHovered = false
             return
         end
 
@@ -77,14 +97,12 @@ module EntityModule
             try
                 Base.invokelatest(JulGame.update, script, deltaTime) 
             catch e
-                @error string(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-                rethrow(e)
+                JulGame.ErrorLoggingModule.log_error(JulGame.MAIN.errorLogger, string(e), current_exceptions())
             end
         end
     end
 
-    function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], Int32(60))]))
+    function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
         if this.animator != C_NULL
             println("Animator already exists on entity named ", this.name)
             return
@@ -131,7 +149,7 @@ module EntityModule
         return this.rigidbody
     end
 
-    function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", false, Int32(50)))
+    function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
         if this.soundSource != C_NULL
             println("SoundSource already exists on entity named ", this.name)
             return
@@ -142,18 +160,18 @@ module EntityModule
         return this.soundSource
     end
 
-    function JulGame.create_sound_source(this::Entity, soundSource::SoundSource = SoundSource(Int32(-1), false, "", false, Int32(50)))
+    function JulGame.create_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
         newSoundSource::InternalSoundSource = InternalSoundSource(this::Entity, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
         return newSoundSource
     end
 
-    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite(Math.Vector3(255, 255, 255), C_NULL, false, "", true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5)))
+    function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite((255, 255, 255, 255), C_NULL, false, "", 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center, false))
         if this.sprite != C_NULL
             println("Sprite already exists on entity named ", this.name)
             return
         end
 
-        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, isWorldEntity=sprite.isWorldEntity, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center)
+        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
         if this.animator != C_NULL
             this.animator.sprite = this.sprite
         end
@@ -162,15 +180,92 @@ module EntityModule
         return this.sprite
     end
 
-    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1)))
+    function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255))
         if this.shape != C_NULL
             println("Shape already exists on entity named ", this.name)
             return
         end
 
-        this.shape = InternalShape(this::Entity, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer)
+        this.shape = InternalShape(this::Entity, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
         
         return this.shape
+    end
+
+    function JulGame.add_mesh3d(this::Entity, mesh3d::Mesh3D = Mesh3D())
+        if this.mesh3d != C_NULL
+            println("Mesh3D already exists on entity named ", this.name)
+            return
+        end
+
+        this.mesh3d = mesh3d
+        mesh3d.parent = this
+        Component.initialize(mesh3d, JulGame.MAIN)
+
+        return this.mesh3d
+    end
+
+    function JulGame.add_software_renderer3d(this::Entity, softwareRenderer3d::SoftwareRenderer3D = SoftwareRenderer3D())
+        if this.softwareRenderer3d != C_NULL
+            println("SoftwareRenderer3D already exists on entity named ", this.name)
+            return
+        end
+
+        this.softwareRenderer3d = softwareRenderer3d
+        softwareRenderer3d.parent = this
+        Component.initialize(softwareRenderer3d, JulGame.MAIN)
+
+        return this.softwareRenderer3d
+    end
+
+    function JulGame.duplicate(this::Entity, id::String = JulGame.generate_uuid())
+        newEntity = Entity(this.name, id, Component.duplicate(this.transform, nothing))
+        # animator::Union{InternalAnimator, Ptr{Nothing}}
+        if this.animator != C_NULL && this.animator !== nothing
+            newEntity.animator = Component.duplicate(this.animator, newEntity)
+        end
+        # collider::Union{InternalCollider, Ptr{Nothing}}
+        if this.collider != C_NULL && this.collider !== nothing
+            newEntity.collider = Component.duplicate(this.collider, newEntity)
+        end
+        # circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
+        # if this.circleCollider != C_NULL && this.circleCollider !== nothing
+        #     newEntity.circleCollider = Component.duplicate(this.circleCollider, newEntity)
+        # end
+        # isActive::Bool
+        newEntity.isActive = this.isActive
+        # mesh3d::Union{Mesh3D, Ptr{Nothing}}
+        if this.mesh3d != C_NULL && this.mesh3d !== nothing
+            #newEntity.mesh3d = Component.duplicate(this.mesh3d, newEntity)
+        end
+        # softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
+        if this.softwareRenderer3d != C_NULL && this.softwareRenderer3d !== nothing
+            newEntity.softwareRenderer3d = this.softwareRenderer3d
+        end
+        # persistentBetweenScenes::Bool
+        newEntity.persistentBetweenScenes = this.persistentBetweenScenes
+        # rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
+        if this.rigidbody != C_NULL && this.rigidbody !== nothing
+            newEntity.rigidbody = Component.duplicate(this.rigidbody, newEntity)
+        end
+        # scripts::Vector{Any}
+        # for script in this.scripts
+        #     JulGame.add_script(newEntity, script)
+        # end
+        # shape::Union{InternalShape, Ptr{Nothing}}
+        if this.shape != C_NULL && this.shape !== nothing
+            newEntity.shape = Component.duplicate(this.shape, newEntity)
+        end
+        # soundSource::Union{InternalSoundSource, Ptr{Nothing}}
+        if this.soundSource != C_NULL && this.soundSource !== nothing
+            newEntity.soundSource = Component.duplicate(this.soundSource, newEntity)
+        end
+        # sprite::Union{InternalSprite, Ptr{Nothing}}
+        if this.sprite != C_NULL && this.sprite !== nothing
+            newEntity.sprite = Component.duplicate(this.sprite, newEntity)
+        end
+        
+        push!(JulGame.MAIN.scene.entities, newEntity)
+        return newEntity
     end
 
     function JulGame.generate_uuid()

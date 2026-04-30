@@ -1,3 +1,9 @@
+using CImGui
+using CImGui.CSyntax
+using CImGui.CSyntax.CStatic
+using JulGame
+
+
 function init_sdl_and_imgui(windowTitle::String)
     if SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_TIMER | SDL2.SDL_INIT_GAMECONTROLLER) < 0
         println("failed to init: ", unsafe_string(SDL2.SDL_GetError()));
@@ -12,6 +18,13 @@ function init_sdl_and_imgui(windowTitle::String)
         println("Failed to create window: ", unsafe_string(SDL2.SDL_GetError()))
         return -1
     end
+    
+    # Explicitly show and set window size to ensure it's properly initialized on macOS
+    SDL2.SDL_ShowWindow(window)
+    SDL2.SDL_SetWindowSize(window, 1280, 720)
+    
+    # Give the window system time to process the changes
+    SDL2.SDL_PumpEvents()
 
     renderer = SDL2.SDL_CreateRenderer(window, -1, SDL2.SDL_RENDERER_ACCELERATED)
     global sdlRenderer = renderer
@@ -22,7 +35,7 @@ function init_sdl_and_imgui(windowTitle::String)
     ver = pointer(SDL2.SDL_version[SDL2.SDL_version(0,0,0)])
     SDL2.SDL_GetVersion(ver)
     global sdlVersion = string(unsafe_load(ver).major, ".", unsafe_load(ver).minor, ".", unsafe_load(ver).patch)
-    @info "SDL version: $(sdlVersion)"
+    @debug "SDL version: $(sdlVersion)"
     sdlVersion = parse(Int32, replace(sdlVersion, "." => ""))
 
     ctx = CImGui.CreateContext()
@@ -120,6 +133,11 @@ Save the scene by serializing the entities and text boxes to a file.
 """
 function save_scene_event(entities, uiElements, camera, projectPath::String, sceneName::String)
     event = @event begin
+        @debug "Saving scene: $(sceneName) at $(projectPath)"
+        if JulGame.IS_EDITOR_PLAY_MODE
+            @error "Cannot save scene in play mode"
+            return
+        end
         SceneWriterModule.serialize_entities(entities, uiElements, camera, projectPath, "$(sceneName)")
     end
 
@@ -151,8 +169,34 @@ function select_project_event(currentSceneMain, scenesLoadedFromFolder, dialog)
     return event
 end
 
+function select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, dialog, currentSelectedProjectPath)
+    event = @argevent (dir) begin
+        if dir == "" 
+            return 
+        end 
+        
+        # Store the path in a global variable or somewhere it can be accessed in the dialog handler
+        JulGame.TEMP_SELECTED_PATH = string(dir)
+        
+        # Use the dialog approach instead of trying to modify currentSceneMain directly
+        if currentSceneMain !== nothing
+            dialog[] = "Select Recent Project"
+        else
+            # If no scene is loaded, we can directly set the path and load scenes
+            currentSelectedProjectPath[] = string(dir)
+            scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(dir))
+            # Update BasePath when directly loading a project
+            JulGame.BasePath = string(dir)
+            @debug("Base path updated: $(JulGame.BasePath)")
+        end
+    end
+
+    return event
+end
+
 function select_project_dialog(dialog, scenesLoadedFromFolder)
     CImGui.OpenPopup(dialog[])
+    result = ""
 
     if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
         CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
@@ -161,7 +205,13 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
             CImGui.CloseCurrentPopup()
             dialog[] = ""
 
-            return choose_project_filepath() |> (dir) -> (scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir))
+            result = choose_project_filepath() |> (dir) -> begin
+                if dir != ""
+                    scenesLoadedFromFolder[] = get_all_scenes_from_folder(dir)
+                    initialize_project(dir)
+                end
+                return dir
+            end
         end
         CImGui.SetItemDefaultFocus()
         CImGui.SameLine()
@@ -171,7 +221,7 @@ function select_project_dialog(dialog, scenesLoadedFromFolder)
         end
         CImGui.EndPopup()
     end
-    return ""
+    return result
 end
 
 function create_project_event(dialog)
@@ -212,6 +262,9 @@ function create_project_dialog(dialog, scenesLoadedFromFolder, selectedProjectPa
 
             create_new_project(newProjectPath, newProjectText[])
             scenesLoadedFromFolder[] = get_all_scenes_from_base_folder(joinpath(newProjectPath, newProjectText[]))
+            # Update BasePath when creating a new project
+            JulGame.BasePath = newProjectPath
+            @debug("Base path updated: $(JulGame.BasePath)")
         end
 
         if pathAlreadyExists
@@ -349,18 +402,41 @@ function move_entities(entities, origin, destination)
 end
 
 function log_exceptions(error_type, latest_exceptions, e, top_backtrace, is_test_mode)
-    @error string(e)
-    Base.show_backtrace(stderr, catch_backtrace())
-    push!(latest_exceptions[], [e, String("$(Dates.now())"), top_backtrace])
-    if length(latest_exceptions[]) > 10
-        deleteat!(latest_exceptions[], 1)
-    end
-    if is_test_mode
-        @warn "Error in renderloop!" exception=e
-    end
+    #Threads.@spawn begin
+        err_str = string(e)
+        formatted_err = format_method_error(err_str)  # Format MethodError
+        truncated_err = length(formatted_err) > 1500 ? formatted_err[1:1500] * "..." : formatted_err
+        
+        @error "Error occurred" exception=truncated_err
+        Base.show_backtrace(stderr, catch_backtrace())
+
+        push!(latest_exceptions[], [e, String("$(Dates.now())"), top_backtrace])
+        if length(latest_exceptions[]) > 20
+            deleteat!(latest_exceptions[], 1)
+        end
+        if is_test_mode
+            @warn "Error in renderloop!" exception=formatted_err
+        end
+   # end
 end
 
-function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
+function format_method_error(error_msg::String)
+    # Match "MethodError(FUNCTION_NAME, (ARGUMENTS))"
+    if occursin(r"MethodError\((.+?), \((.+)\)\)", error_msg)
+        m = match(r"MethodError\((.+?), \((.+)\)\)", error_msg)
+        func_name = m[1]
+        args = m[2]
+
+        # Replace long argument details with "..."
+        args = replace(args, r"\(.+?\)" => "(...)")
+        args = replace(args, r"\[.+?\]" => "[...]")
+
+        return "MethodError($func_name, ($args))"
+    end
+    return error_msg  # Return original if it doesn't match
+end
+
+function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections, hasParent = false, visible_index = 0)
     selections = []
     for index in eachindex(hierarchyEntitySelections)
         if hierarchyEntitySelections[index][2]
@@ -387,7 +463,10 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
             destination = n
 
             for origin in origin
-                filteredEntities[origin].parent = filteredEntities[destination]
+                if !hasDropConflict(filteredEntities, origin, destination) && filteredEntities[origin].parent != filteredEntities[destination] && filteredEntities[origin] != filteredEntities[destination]
+                    @debug "Moving entity $(filteredEntities[origin].name) to $(filteredEntities[destination].name)"
+                    filteredEntities[origin].parent = filteredEntities[destination]
+                end
             end
             @assert payload.DataSize == sizeof(Cint)
         end
@@ -395,7 +474,7 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
     end
 
     # Reorder entities: We can only reorder entities if the entities are not being filtered
-    if length(filteredEntities) == length(currentSceneMain.scene.entities)
+    if length(filteredEntities) == length(currentSceneMain.scene.entities) && !hasParent
         CImGui.InvisibleButton("str_id: $(n)", ImVec2(500,3)) #Todo: Make this dynamic based on window size
         if CImGui.BeginDragDropTarget()
             payload = CImGui.AcceptDragDropPayload("Entity") 
@@ -413,92 +492,43 @@ function handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEn
     end
 end
 
-function handle_childless_entity_selection(entity, hierarchyEntitySelections, entityIndex, currentSceneMain, filteredEntities = nothing)
-    CImGui.PushID(entity.id)
-    if CImGui.Selectable(entity.name, hierarchyEntitySelections[entityIndex][2])
-        # clear selection when CTRL is not held
-        (!unsafe_load(CImGui.GetIO().KeyCtrl) && !unsafe_load(CImGui.GetIO().KeyShift)) && deselect_all_entities(hierarchyEntitySelections)
-        hierarchyEntitySelections[entityIndex] = (hierarchyEntitySelections[entityIndex][1], true)
-        unsafe_load(CImGui.GetIO().KeyShift) && select_all_elements_in_between(hierarchyEntitySelections, entityIndex)
-        currentSceneMain.selectedEntity = entity
-    end
-    if filteredEntities !== nothing
-        # get the index of the selected entity in the filtered entities list
-        itemSelected = indexin([entity], filteredEntities)[1]
-        handle_drag_and_drop(filteredEntities, itemSelected, currentSceneMain, hierarchyEntitySelections)
-    end 
-
-    CImGui.PopID()
-end
-
-function handle_parent_entity_selection(entity, children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
-    if CImGui.TreeNodeEx(entity.name, CImGui.ImGuiTreeNodeFlags_None)
-        for child in children
-            handle_childless_entity_selection(child, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
-        end
-            if CImGui.BeginDragDropSource(CImGui.ImGuiDragDropFlags_None)
-                @c CImGui.SetDragDropPayload("Entity", &n, sizeof(Cint)) # set payload to carry the index of our item (could be anything)
-                CImGui.Text("Move $(entity.name)")
-                CImGui.EndDragDropSource()
-            end
-        CImGui.TreePop()
-    end
-end
-
-function deselect_all_entities(hierarchyEntitySelections)
-    for index in eachindex(hierarchyEntitySelections)
-        hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], false)
-    end
-end
-
-function select_all_elements_in_between(hierarchyEntitySelections, lastSelectedIndex)
-    start = 0
-    for i in 1:lastSelectedIndex
-        if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex
-            start = i
-            break
-        end
-    end
-    if start != 0
-        for i in start:lastSelectedIndex
-            hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
-            if i == lastSelectedIndex
-                return
-            end
-        end
-    end
-
-    for i in length(hierarchyEntitySelections):-1:lastSelectedIndex
-        if hierarchyEntitySelections[i][2] == true && i != lastSelectedIndex
-            start = i
-            break
-        end
-    end
-
-    if start != 0
-        for i in start:-1:lastSelectedIndex
-            hierarchyEntitySelections[i] = (hierarchyEntitySelections[i][1], true)
-        end
-    end
-end
-
 function regenerate_ids_event(main)
     event = @event begin
         for index in eachindex(main.scene.entities)
             main.scene.entities[index].id = JulGame.generate_uuid()
+        end
+        for index in eachindex(main.scene.uiElements)
+            main.scene.uiElements[index].id = JulGame.generate_uuid()
         end
     end
 
     return event
 end
 
+"""
+    duplicate_entity(entity)
+
+Creates a duplicate of an entity with a new UUID.
+
+# Arguments
+- `entity`: The entity to duplicate
+
+# Returns
+- The duplicate entity with a new UUID
+"""
+function duplicate_entity(entity)
+    copy = deepcopy(entity)
+    copy.id = JulGame.generate_uuid()
+    return copy
+end
+
 function reset_camera_event(main)
     event = @event begin
         if main.scene.camera === nothing
-            @warn "No camera found in scene when resetting camera"
+            @debug "No camera found in scene when resetting camera"
             return
         end
-        main.scene.camera.position = JulGame.Math.Vector2f(0, 0)
+        main.scene.camera.position = JulGame.Math.Vector3f(0.0, 0.0, 0.0)
     end
 
     return event
@@ -507,6 +537,7 @@ end
 function confirmation_dialog(dialog)
     CImGui.OpenPopup(dialog[])
 
+    result = "continue"  # Default return value
     if CImGui.BeginPopupModal(dialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
         CImGui.Text("Are you sure you would like to open this scene?\nIf you currently have a scene open, any unsaved changes will be lost.\n\n")
         #CImGui.Separator()
@@ -522,7 +553,7 @@ function confirmation_dialog(dialog)
             CImGui.CloseCurrentPopup()
             dialog[] = ""
 
-            return "ok"
+            result = "ok"
         end
         CImGui.SetItemDefaultFocus()
         CImGui.SameLine()
@@ -530,10 +561,283 @@ function confirmation_dialog(dialog)
             CImGui.CloseCurrentPopup()
             dialog[] = ""
 
-            return "cancel"
+            result = "cancel"
         end
         CImGui.EndPopup()
 
-        return "continue"
+        return result    
     end
+end
+
+"""
+    show_window_with_error_handling(window_name, content_function, latest_exceptions, is_test_mode)
+
+Shows a window with error handling.
+
+# Arguments
+- `window_name`: The name of the window
+- `content_function`: The function to call to display the content of the window
+- `latest_exceptions`: A reference to a list of latest exceptions
+- `is_test_mode`: Whether the function is being called in test mode
+
+# Returns
+- `Bool`: Whether the window should be shown again
+"""
+function show_window_with_error_handling(window_name, content_function, latest_exceptions, is_test_mode)
+    # Implementation of the function
+    # This is a placeholder and should be replaced with the actual implementation
+    return true  # Placeholder return, actual implementation needed
+end
+
+"""
+    bulk_delete_entities(main, entities_to_delete)
+
+Helper function to safely delete multiple entities at once.
+
+# Arguments
+- `main`: The main scene object
+- `entities_to_delete`: Array of entities to delete
+
+# Returns
+- nothing
+"""
+function bulk_delete_entities(main, entities_to_delete)
+    # Delete entities in reverse order to avoid index issues
+    for entity in reverse(entities_to_delete)
+        JulGame.destroy_entity(main, entity)
+    end
+end
+
+"""
+    bulk_delete_ui_elements(main, ui_indices_to_delete)
+
+Helper function to safely delete multiple UI elements at once.
+
+# Arguments
+- `main`: The main scene object
+- `ui_indices_to_delete`: Array of indices of UI elements to delete
+
+# Returns
+- nothing
+"""
+function bulk_delete_ui_elements(main, ui_indices_to_delete)
+    # Delete UI elements in reverse order to avoid index issues
+    for idx in reverse(ui_indices_to_delete)
+        JulGame.destroy_ui_element(main, main.scene.uiElements[idx])
+    end
+end
+
+"""
+    show_entity_context_menu(main, hierarchyEntitySelections, delete_confirmation_modal)
+
+Shows a context menu for one or more selected entities when right-clicked.
+
+# Arguments
+- `main`: The main scene object
+- `hierarchyEntitySelections`: Array of entity selection tuples (entity, isSelected)
+- `delete_confirmation_modal`: Confirmation modal for delete operations
+
+# Returns
+- `Bool`: Whether any action was triggered
+"""
+function show_entity_context_menu(main, hierarchyEntitySelections, delete_confirmation_modal)
+    action_taken = false
+    
+    if CImGui.BeginPopupContextItem("entity_context_menu")
+        selected_count = count(es -> es[2], hierarchyEntitySelections)
+        
+        # Get selected entities
+        selected_entities = [entity[1] for entity in hierarchyEntitySelections if entity[2]]
+        
+        if selected_count > 1
+            if CImGui.MenuItem("Delete Selected ($(selected_count))")
+                delete_confirmation_modal.open = true
+                action_taken = true
+            end
+            
+            if CImGui.MenuItem("Duplicate Selected ($(selected_count))")
+                for entity in selected_entities
+                    JulGame.duplicate(entity)
+                end
+                action_taken = true
+            end
+        else
+            count = 1
+            for entity in selected_entities
+                if entity !== nothing
+                    if CImGui.MenuItem("Delete \"$(entity.name)\"")
+                        CImGui.OpenPopup("Delete Entities")
+                        action_taken = true
+                    end
+                    
+                    if CImGui.MenuItem("Duplicate \"$(entity.name)\"")
+                        copy = JulGame.duplicate(entity)
+                        if count == 1
+                            main.selectedEntities = [copy]
+                        else
+                            if main.selectedEntities === nothing
+                                main.selectedEntities = [copy]
+                            else
+                                push!(main.selectedEntities, copy)
+                            end
+                        end
+                        action_taken = true
+                    end
+                    
+                    CImGui.Separator()
+                    
+                    if CImGui.MenuItem("Add Component")
+                        CImGui.OpenPopup("Add Component")
+                        action_taken = true
+                    end
+                end
+            end
+        end
+        
+        CImGui.EndPopup()
+    end
+    
+    # Handle the single entity delete confirmation
+    if CImGui.BeginPopupModal("Delete Entities", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        if main.selectedEntities !== nothing && length(main.selectedEntities) > 0
+            CImGui.Text("Are you sure you want to delete:")
+            CImGui.Text("$(join(map(entity -> entity.name, main.selectedEntities), ", "))")
+            CImGui.Text("This cannot be undone.\n\n")
+            CImGui.NewLine()
+            if CImGui.Button("Delete", (120, 0))
+                for entity in main.selectedEntities
+                    JulGame.destroy(entity)
+                end
+                main.selectedEntities = nothing
+                CImGui.CloseCurrentPopup()
+            end
+            CImGui.SetItemDefaultFocus()
+            CImGui.SameLine()
+            if CImGui.Button("Cancel",(120, 0))
+                CImGui.CloseCurrentPopup()
+            end
+        end
+        CImGui.EndPopup()
+    end
+    
+    return action_taken
+end
+
+"""
+    show_ui_element_context_menu(main, ui_element_index, ui_delete_confirmation_modal, hierarchyUISelections)
+
+Shows a context menu for one or more selected UI elements when right-clicked.
+
+# Arguments
+- `main`: The main scene object
+- `ui_element_index`: Index of the current UI element
+- `ui_delete_confirmation_modal`: Confirmation modal for delete operations
+- `hierarchyUISelections`: Array of booleans for UI element selection status
+
+# Returns
+- `Bool`: Whether any action was triggered
+"""
+function show_ui_element_context_menu(main, ui_element_index, ui_delete_confirmation_modal, hierarchyUISelections)
+    action_taken = false
+    
+    if CImGui.BeginPopupContextItem("ui_element_context_menu")
+        selected_count = count(hierarchyUISelections)
+        
+        if selected_count > 1
+            if CImGui.MenuItem("Delete Selected ($(selected_count))")
+                ui_delete_confirmation_modal.open = true
+                action_taken = true
+            end
+        else
+            # Single UI element selected
+            ui_element = main.scene.uiElements[ui_element_index]
+            
+            if CImGui.MenuItem("Delete \"$(ui_element.name)\"")
+                CImGui.OpenPopup("Delete Single UI Element")
+                action_taken = true
+            end
+            
+            # Add more UI element-specific actions here
+            if contains("$(typeof(ui_element))", "TextBox")
+                CImGui.Separator()
+                if CImGui.MenuItem("Edit Text")
+                    # Add text editing functionality here if needed
+                    action_taken = true
+                end
+            elseif contains("$(typeof(ui_element))", "ScreenButton")
+                CImGui.Separator()
+                if CImGui.MenuItem("Edit Button Properties")
+                    # Add button property editing here if needed
+                    action_taken = true
+                end
+            elseif contains("$(typeof(ui_element))", "Canvas")
+                CImGui.Separator()
+                if CImGui.MenuItem("Add Child Element")
+                    # Add child element functionality here if needed
+                    action_taken = true
+                end
+                if CImGui.MenuItem("Toggle Visibility")
+                    ui_element.isVisible = !ui_element.isVisible
+                    action_taken = true
+                end
+            end
+        end
+        
+        CImGui.EndPopup()
+    end
+    
+    # Handle the single UI element delete confirmation
+    if CImGui.BeginPopupModal("Delete Single UI Element", C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+        ui_element = main.scene.uiElements[ui_element_index]
+        CImGui.Text("Are you sure you want to delete \"$(ui_element.name)\"?\nThis cannot be undone.\n\n")
+        CImGui.NewLine()
+        if CImGui.Button("Delete", (120, 0))
+            JulGame.destroy_ui_element(main, ui_element)
+            hierarchyUISelections[ui_element_index] = false
+            CImGui.CloseCurrentPopup()
+        end
+        CImGui.SetItemDefaultFocus()
+        CImGui.SameLine()
+        if CImGui.Button("Cancel",(120, 0))
+            CImGui.CloseCurrentPopup()
+        end
+        CImGui.EndPopup()
+    end
+    
+    return action_taken
+end
+
+"""
+    show_component_context_menu(entity, component_name)
+
+Shows a context menu for a component when right-clicked.
+
+# Arguments
+- `entity`: The entity that owns the component
+- `component_name`: The name of the component
+
+# Returns
+- `Bool`: Whether any action was triggered
+"""
+function show_component_context_menu(entity, component_name)
+    action_taken = false
+    
+    if CImGui.BeginPopupContextItem("component_context_menu_$(component_name)")
+        if component_name != "Transform" # Transform is required and can't be removed
+            if CImGui.MenuItem("Remove Component")
+                setfield!(entity, Symbol(lowercase(component_name)), C_NULL)
+                action_taken = true
+            end
+        end
+        
+        if CImGui.MenuItem("Reset Component")
+            # This would reset the component to default values
+            # Implementation depends on component type
+            action_taken = true
+        end
+        
+        CImGui.EndPopup()
+    end
+    
+    return action_taken
 end

@@ -1,14 +1,13 @@
 module PlatformerModule
     using JulGame
     function run_platformer()
-        JulGame.MAIN = JulGame.Main(Float64(1.0))
+        JulGame.MAIN = JulGame.MainLoop()
         MAIN.testMode = true
         MAIN.testLength = 30.0
         MAIN.currentTestTime = 0.0
-        JulGame.PIXELS_PER_UNIT = 16
         scene = JulGame.SceneBuilderModule.Scene("level_0.json")
         try
-            SceneBuilderModule.load_and_prepare_scene(;this=scene)
+            SceneBuilderModule.load_and_prepare_scene(scene, JulGame.MAIN)
         catch e
             @error e
             Base.show_backtrace(stderr, catch_backtrace())

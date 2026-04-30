@@ -4,78 +4,170 @@ module ScreenButtonModule
     import ..UI
 
     export ScreenButton
-    mutable struct ScreenButton
-        alpha
-        clickEvents::Vector{Function}
+    mutable struct ScreenButton <: UI.UIElement
         currentTexture
         buttonDownSprite
         buttonDownSpritePath::String
         buttonDownTexture
-        #TODO: add buttonHoverSprite/Color Mod 
         buttonUpSprite
         buttonUpSpritePath::String
         buttonUpTexture
         fontPath::Union{String, Ptr{Nothing}}
+        fontSize::Int
         isInitialized::Bool
-        mouseOverSprite
-        name::String
-        persistentBetweenScenes::Bool
-        position::Math.Vector2
-        size::Math.Vector2
         text::String
         textOffset::Math.Vector2
         textSize::Math.Vector2
         textTexture
+        textColor::NTuple{4, Int}
+        crop
 
-        function ScreenButton(name::String, buttonUpSpritePath::String, buttonDownSpritePath::String, size::Math.Vector2, position::Math.Vector2, fontPath::Union{String, Ptr{Nothing}} = C_NULL, text::String="", textOffset::Math.Vector2=Math.Vector2(0,0))
+        function ScreenButton(clickEvent::Union{Function, Nothing} = nothing; 
+            id::String=JulGame.generate_uuid(), 
+            name::String="Button",
+            anchor::Symbol = :none,
+            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            isWorldEntity::Bool=false, 
+            layer::Int=0,
+            position::Math.Vector2 = Math.Vector2(0,0), 
+            buttonUpSpritePath::String="Default", 
+            buttonDownSpritePath::String="Default", 
+            hoverEnterEvent::Union{Function, Nothing} = nothing,
+            hoverExitEvent::Union{Function, Nothing} = nothing,
+            isActive::Bool=true,
+            persistentBetweenScenes::Bool=false,
+            color::NTuple{4, Int}=(255, 255, 255, 255), 
+            textColor::NTuple{4, Int}=(255, 255, 255, 255),
+            fontPath::Union{String, Ptr{Nothing}} = C_NULL, 
+            fontSize::Int=24, 
+            size::Math.Vector2=Math.Vector2(0,0), 
+            text::String="", 
+            textOffset::Math.Vector2=Math.Vector2(0,0), 
+            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
+            rotation::Float64=0.0,
+            crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL
+        )
             this = new()
             
             this.buttonDownSpritePath = buttonDownSpritePath
             this.buttonUpSpritePath = buttonUpSpritePath
-            this.buttonDownSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonDownSpritePath))
-            this.buttonUpSprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", buttonUpSpritePath))
-            this.clickEvents = []
+            this.buttonDownSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonDownSpritePath)
+            this.buttonUpSprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), buttonUpSpritePath)
+            # TODO: if buttonUp/DownSpritePath is not found, use a default sprite
+
+            this.anchor = deepcopy(UI.anchor_types)
+            this.isInitialized = false
+
+            this.anchor.current_state = anchor
+            this.anchorOffset = anchorOffset
+
+            this.clickEvents = Function[]
+            this.hoverEnterEvents = Function[]
+            this.hoverExitEvents = Function[]
             this.currentTexture = C_NULL
+            this.fontSize = fontSize
+            this.id = id
             this.size = size
             this.fontPath = fontPath
-            this.mouseOverSprite = false
             this.name = name
             this.position = position
             this.text = text
             this.textOffset = textOffset
             this.textTexture = C_NULL
-            this.isInitialized = false
-            this.persistentBetweenScenes = false
+            this.textSize = Math.Vector2(0, 0)
+            this.persistentBetweenScenes = persistentBetweenScenes
+            this.isHovered = false
+            this.isActive = isActive
+            this.layer = layer
+            this.color = color
+            this.textColor = textColor
+            this.isWorldEntity = isWorldEntity
+            this.parent = parent
+            this.rotation = rotation
+            this.crop = crop
+            if clickEvent !== nothing
+                push!(this.clickEvents, clickEvent)
+            end
+            if hoverEnterEvent !== nothing
+                push!(this.hoverEnterEvents, hoverEnterEvent)
+            end
+            if hoverExitEvent !== nothing
+                push!(this.hoverExitEvents, hoverExitEvent)
+            end
+
+            # If the textOffset is at (0,0), we'll consider it as "should center text"
+            # This ensures text is centered by default if no explicit offset is provided
+            if this.textOffset == Math.Vector2(0, 0) && this.text != ""
+                # Even though we don't have the text size yet, we'll mark it for centering
+                # The actual centering will happen in UI.initialize
+                this.textOffset = Math.Vector2(-1, -1)  # Special value to indicate centering is needed
+            end
 
             return this
         end
     end
 
-    function UI.render(this::ScreenButton, debug)
+    function UI.render(this::ScreenButton)
         if !this.isInitialized
             UI.initialize(this)
         end
 
-        if this.currentTexture == C_NULL || this.textTexture == C_NULL
+        if (
+            this.currentTexture == C_NULL || 
+            this.currentTexture === nothing || 
+            !this.isActive
+        )
             return
         end
 
-        if !this.mouseOverSprite && this.currentTexture == this.buttonDownTexture
-            #TODO: this.currentTexture = this.buttonUpTexture
-        end    
-        if this.currentTexture == C_NULL || this.textTexture == C_NULL || this.currentTexture === nothing || this.textTexture === nothing
-            return
+        if this.currentTexture == this.buttonDownTexture && !this.isHovered
+            this.currentTexture = this.buttonUpTexture
         end
+
+        if !this.isWorldEntity
+            UI.align_to_anchor(this)
+        end
+
+         # Check and set color if necessary
+         colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
+         alphaRef = Ref(UInt8(0))
+         SDL2.SDL_GetTextureColorMod(this.currentTexture, colorRefs...)
+         SDL2.SDL_GetTextureAlphaMod(this.currentTexture, alphaRef)
+         if colorRefs[1] != this.color[1] || colorRefs[2] != this.color[2] || colorRefs[3] != this.color[3] || this.color[4] != alphaRef
+             UI.set_color(this, r=this.color[1], g=this.color[2], b=this.color[3], a=this.color[4])
+         end
+
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             this.currentTexture, 
             C_NULL, 
             Ref(SDL2.SDL_FRect(this.position.x, this.position.y, this.size.x,this.size.y)), 
-            0.0, 
+            this.rotation, 
             C_NULL, 
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
-        # @assert SDL2.SDL_RenderCopyF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.textTexture, C_NULL, Ref(SDL2.SDL_FRect(this.position.x + this.textOffset.x, this.position.y + this.textOffset.y,this.textSize.x,this.textSize.y))) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+        # Render the text if it exists
+        if this.textTexture != C_NULL && this.text != ""
+            center_text_on_button(this)
+            # Position the text exactly in the center of the button
+            text_x = this.position.x + this.textOffset.x
+            text_y = this.position.y + this.textOffset.y
+            
+            # Ensure sizes and positions are precise
+            rect = SDL2.SDL_FRect(
+                Float32(text_x),
+                Float32(text_y),
+                Float32(this.textSize.x),
+                Float32(this.textSize.y)
+            )
+            
+            @assert SDL2.SDL_RenderCopyF(
+                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+                this.textTexture, 
+                C_NULL, 
+                Ref(rect)
+            ) == 0 "error rendering button text: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
     end
 
     function UI.initialize(this::ScreenButton)
@@ -83,21 +175,81 @@ module ScreenButtonModule
         this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonUpSprite)
         this.currentTexture = this.buttonUpTexture
 
-        if this.fontPath == C_NULL
-            this.isInitialized = true
-            return
+        if !this.isWorldEntity
+            UI.align_to_anchor(this)
         end
 
-        font = CallSDLFunction(SDL2.TTF_OpenFont, joinpath(JulGame.BasePath, "assets", "fonts", this.fontPath), 64)
-        text = font != C_NULL ? CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255,255,255,255)) : C_NULL
-        surface = unsafe_wrap(Array, text, 10; own = false)
-        this.textSize = Math.Vector2(surface[1].w, surface[1].h)
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, text)
+        # Initialize text if a font path is provided and text is not empty
+        if this.fontPath != C_NULL && this.text != ""
+            # Load the font using the cache
+            font = load_font_sdl(joinpath(JulGame.BasePath, "assets", "fonts"), this.fontPath, this.fontSize)
+            
+            if font != C_NULL
+                # Render the text
+                textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(this.textColor[1], this.textColor[2], this.textColor[3], this.textColor[4]))
+                
+                if textSurface != C_NULL
+                    # Get the size of the rendered text
+                    surface = unsafe_wrap(Array, textSurface, 10; own = false)
+                    width = Float32(surface[1].w)
+                    height = Float32(surface[1].h)
+                    this.textSize = Math.Vector2(width, height)
+                    
+                    # Debug the exact text dimensions
+                    #println("Text dimensions for '$(this.text)': $(width)x$(height)")
+                    
+                    # Create texture from surface
+                    this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
+                    
+                    # Always center the text by default
+                    center_text_on_button(this)
+                    
+                    # Free the surface
+                    SDL2.SDL_FreeSurface(textSurface)
+                end
+                
+                # Close the font
+                SDL2.TTF_CloseFont(font)
+            end
+        end
+
         this.isInitialized = true
     end
 
+    """
+    center_text_on_button(button::ScreenButton)
+    
+    Centers the text within the button.
+    """
+    function center_text_on_button(button::ScreenButton)
+        # Reset any previous offset settings
+        if button.textSize.x == 0 || button.textSize.y == 0
+            # If text size isn't set yet, just use 0,0 offset
+            button.textOffset = Math.Vector2(0, 0)
+            return
+        end
+        
+        # Calculate the position to center the text
+        # Make sure we're using exact calculations with floats
+        button_width = Float32(button.size.x)
+        button_height = Float32(button.size.y)
+        text_width = Float32(button.textSize.x)
+        text_height = Float32(button.textSize.y)
+        
+        # Calculate center position with floating-point precision
+        textX = (button_width - text_width) / 2
+        textY = (button_height - text_height) / 2
+        
+        # Debug information
+        #println("Button: $(button.name), Size: $(button_width)x$(button_height), TextSize: $(text_width)x$(text_height)")
+        #println("Calculated offsets - X: $textX, Y: $textY")
+        
+        # Update the text offset with precise floating-point coordinates
+        button.textOffset = Math.Vector2(textX, textY)
+    end
+
     function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
-        sprite = CallSDLFunction(SDL2.IMG_Load, joinpath(JulGame.BasePath, "assets", "images", path))
+        sprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), path)
         texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, sprite)
         if up
             this.buttonUpSpritePath = path
@@ -112,23 +264,87 @@ module ScreenButtonModule
         this.currentTexture = texture
     end
 
+    function UI.set_color(this::ScreenButton; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
+        #@debug "setting color to $(r), $(g), $(b), $(a)"
+        this.color = (r%256, g%256, b%256, a%256)
+        if this.buttonDownTexture != C_NULL
+            #@debug "setting color of button down texture to $(r), $(g), $(b), $(a)"
+            SDL2.SDL_SetTextureColorMod(this.buttonDownTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
+            SDL2.SDL_SetTextureAlphaMod(this.buttonDownTexture, UInt8(clamp(this.color[4], 0, 255)));
+        end
+        if this.buttonUpTexture != C_NULL
+            #@debug "setting color of button up texture to $(r), $(g), $(b), $(a)"
+            SDL2.SDL_SetTextureColorMod(this.buttonUpTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
+            SDL2.SDL_SetTextureAlphaMod(this.buttonUpTexture, UInt8(clamp(this.color[4], 0, 255)));
+        end
+    end
+
+    function UI.duplicate(this::ScreenButton, id::String = JulGame.generate_uuid())
+        newButton = ScreenButton(nothing; 
+        id=id, 
+        name=this.name,
+        anchor=this.anchor.current_state,
+        anchorOffset=this.anchorOffset, 
+        isWorldEntity=this.isWorldEntity, 
+        layer=this.layer,
+        position=this.position, 
+        buttonUpSpritePath=this.buttonUpSpritePath, 
+        buttonDownSpritePath=this.buttonDownSpritePath, 
+        hoverEnterEvent=nothing,
+        hoverExitEvent=nothing,
+        isActive=this.isActive,
+        persistentBetweenScenes=this.persistentBetweenScenes,
+        color=this.color, 
+        textColor=this.textColor,
+        fontPath=this.fontPath, 
+        fontSize=this.fontSize, 
+        size=this.size, 
+        text=this.text, 
+        textOffset=this.textOffset, 
+        parent=this.parent,
+        rotation=this.rotation
+    )
+
+        newButton.clickEvents = this.clickEvents
+        newButton.hoverEnterEvents = this.hoverEnterEvents
+        newButton.hoverExitEvents = this.hoverExitEvents
+        
+        UI.initialize(newButton)
+        push!(MAIN.scene.uiElements, newButton)
+        return newButton
+    end
+
+    function load_image_sdl(fullPath::String, imagePath::String)
+        if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
+            raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
+            rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            if rw != C_NULL
+                @debug("loading image at $(imagePath) from cache")
+                @debug("comma separated path: ", get_comma_separated_path(imagePath))
+                return SDL2.IMG_Load_RW(rw, 1)
+            end
+        end
+        @debug "Loading image from disk, there are $(length(JulGame.IMAGE_CACHE)) images in cache"
+
+        return CallSDLFunction(SDL2.IMG_Load, joinpath(fullPath, imagePath))
+    end
+
+    function get_comma_separated_path(path::String)
+        # Normalize the path to use forward slashes
+        normalized_path = replace(path, '\\' => '/')
+        
+        # Split the path into components
+        parts = split(normalized_path, '/')
+        
+        result = join(parts[1:end], ",")
+    
+        return result  
+    end
+
     function UI.add_click_event(this::ScreenButton, event)
         push!(this.clickEvents, event)
     end
 
-    function UI.handle_event(this::ScreenButton, evt, x, y)
-        if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-            this.currentTexture = this.buttonDownTexture
-        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-            this.currentTexture = this.buttonUpTexture
-            for eventToCall in this.clickEvents
-                eventToCall()
-            end
-        elseif evt.type == SDL2.SDL_MOUSEMOTION
-            #println("mouse move")
-        end 
-    end
-    
     function UI.destroy(this::ScreenButton)
         if this.buttonDownTexture != C_NULL
             SDL2.SDL_DestroyTexture(this.buttonDownTexture)
@@ -136,8 +352,111 @@ module ScreenButtonModule
         if this.buttonUpTexture != C_NULL
             SDL2.SDL_DestroyTexture(this.buttonUpTexture)
         end
+        if this.textTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.textTexture)
+        end
         this.buttonDownTexture = C_NULL
         this.buttonUpTexture = C_NULL
+        this.textTexture = C_NULL
         this.currentTexture = C_NULL
+
+        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+    end
+
+    """
+    UI.update_button_text(button::ScreenButton, new_text::String)
+    
+    Updates the button's text and rerenders it.
+    
+    # Arguments
+    - `button::ScreenButton`: The button to update
+    - `new_text::String`: The new text to display on the button
+    
+    # Examples
+    ```julia
+    UI.update_button_text(my_button, "New Text")
+    ```
+    """
+    function UI.update_button_text(this::ScreenButton, new_text::String)
+        if this.text == new_text
+            return # No change needed
+        end
+        
+        this.text = new_text
+        
+        # Clean up previous texture if it exists
+        if this.textTexture != C_NULL
+            SDL2.SDL_DestroyTexture(this.textTexture)
+            this.textTexture = C_NULL
+        end
+        
+        # Skip rendering if text is empty or no font
+        if this.text == "" || this.fontPath == C_NULL
+            return
+        end
+        
+        # Load the font using the cache
+        font = load_font_sdl(joinpath(JulGame.BasePath, "assets", "fonts"), this.fontPath, this.fontSize)
+        
+        if font != C_NULL
+            # Render the text
+            textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255, 255, 255, 255))
+            
+            if textSurface != C_NULL
+                # Get the size of the rendered text
+                surface = unsafe_wrap(Array, textSurface, 10; own = false)
+                width = Float32(surface[1].w)
+                height = Float32(surface[1].h)
+                this.textSize = Math.Vector2(width, height)
+                
+                # Debug the exact text dimensions
+                #println("Text dimensions for '$(this.text)': $(width)x$(height)")
+                
+                # Create texture from surface
+                this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
+                
+                # Always center the text on the button
+                center_text_on_button(this)
+                
+                # Free the surface
+                SDL2.SDL_FreeSurface(textSurface)
+            end
+            
+            # Close the font
+            SDL2.TTF_CloseFont(font)
+        end
+    end
+
+    """
+    load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
+    
+    Loads a font from the specified path, using the font cache if available.
+    
+    # Arguments
+    - `basePath::String`: The base path to load the font from
+    - `fontPath::String`: The path to the font file
+    - `fontSize::Int`: The size of the font
+    
+    # Returns
+    A pointer to the loaded font
+    """
+    function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
+        if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
+            if fontPath == "Default" || fontPath == ""
+                raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+                @debug "loading default font"
+            else
+                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+                @debug "loading font from cache"
+            end
+            rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            if rw != C_NULL
+                @debug("loading font from cache for button")
+                @debug("comma separated path: ", get_comma_separated_path(fontPath))
+                return SDL2.TTF_OpenFontRW(rw, 1, Math.TypeConversions.safe_int32_convert(fontSize))
+            end
+        end
+        @debug "Loading font from disk for button, there are $(length(JulGame.FONT_CACHE)) fonts in cache"
+        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), Math.TypeConversions.safe_int32_convert(fontSize))
     end
 end

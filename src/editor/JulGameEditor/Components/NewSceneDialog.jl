@@ -7,11 +7,6 @@ function new_scene_dialog(dialog, newSceneText)
         CImGui.NewLine()
         # show text input for scene name
         text = text_input_single_line("Scene Name", newSceneText) 
-        # @cstatic dont_ask_me_next_time=false begin
-        #     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_FramePadding, (0, 0))
-        #     @c CImGui.Checkbox("Don't ask me next time", &dont_ask_me_next_time)
-        #     CImGui.PopStyleVar()
-        # end
 
         if CImGui.Button("OK", (120, 0))
             CImGui.CloseCurrentPopup()

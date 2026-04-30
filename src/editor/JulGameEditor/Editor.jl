@@ -7,23 +7,122 @@ module Editor
     using CImGui: ImVec2, ImVec4, IM_COL32, ImS32, ImU32, ImS64, ImU64
     using CImGui.CImGui
     using Dates
-    using JulGame: Component, MainLoop, Math, SceneLoaderModule, SDL2, UI
+    using JulGame: Component, MainLoopModule, Math, SceneLoaderModule, SDL2, UI
     using NativeFileDialog
+    
+    # Editor configuration
+    const AUTO_LOAD_LAST_PROJECT = true  # Set to false to disable auto-loading the last project
     
     global sdlVersion = "2.0.0"
     global sdlRenderer = C_NULL
     global const BackendPlatformUserData = Ref{Any}(C_NULL)
 
+    include(joinpath(@__DIR__, "Constants.jl"))
     include(joinpath("..","..","utils","Macros.jl"))
 
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "ImGuiSDLBackend"); join=true)))
+    
+    # Components includes (contains the ConfirmationModal used for all confirmation dialogs)
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Components"); join=true)))
+    include(joinpath(@__DIR__, "Components", "Inspector", "Inspector.jl"))
+    include(joinpath(@__DIR__, "Components", "Hierarchy", "Hierarchy.jl"))
+    include(joinpath(@__DIR__, "Components", "ImportFile", "ImportFile.jl"))
+    
+    # Include FileExplorer components
+    include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerIntegration.jl"))
+    include(joinpath(@__DIR__, "Components", "FileExplorer", "FileExplorerUI.jl"))
+    
+    # Include FileFinderMenu
+    include(joinpath(@__DIR__, "Components", "FileFinderMenu.jl"))
+    
+    include(joinpath(@__DIR__, "Components", "SharedDialogs", "SharedDialogs.jl"))
+    
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Utils"); join=true)))
     include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "Windows"); join=true)))
+    
+    # Include editor scripts
+    include.(filter(contains(r".jl$"), readdir(joinpath(@__DIR__, "EditorScripts"); join=true)))
+    
+    if get(ENV, "PRECOMPILE", "false") == "true"
+        include("src/additional_precompile.jl")
+    end
+    
+    # Import modules we need
+    using .CodeEditorModule
+
+    # Function to save the last opened scene for a project
+    function save_last_scene_for_project(project_path::String, scene_name::String)
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "last_scenes.txt")
+            
+            # Read existing entries
+            entries = Dict{String, String}()
+            if isfile(filename)
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                entries[strip(parts[1])] = strip(parts[2])
+                            end
+                        end
+                    end
+                end
+            end
+            
+            # Update or add the entry for this project
+            entries[project_path] = scene_name
+            
+            # Write all entries back to the file
+            open(filename, "w") do file
+                for (proj_path, scene) in entries
+                    println(file, "$(proj_path)|$(scene)")
+                end
+            end
+            
+            @debug "Saved last scene '$scene_name' for project '$project_path'"
+        catch e
+            @error "Error saving last scene for project" exception=e
+        end
+    end
+
+    # Function to get the last opened scene for a project
+    function get_last_scene_for_project(project_path::String)
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "last_scenes.txt")
+            
+            if isfile(filename)
+                found_scene = ""
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                stored_path = strip(parts[1])
+                                scene_name = strip(parts[2])
+                                if stored_path == project_path
+                                    found_scene = scene_name
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+                return found_scene
+            end
+        catch e
+            @error "Error reading last scene for project" exception=e
+        end
+        
+        return ""
+    end
 
     function run(is_test_mode::Bool=false)
         isPackageCompiled = ccall(:jl_generating_output, Cint, ()) == 1
         windowTitle = "JulGame Editor v0.1.0"
+        JulGame.IS_EDITOR = true
 
         info = init_sdl_and_imgui(windowTitle)
         window, renderer, ctx, io, clear_color = info[1], info[2], info[3], info[4], info[5]
@@ -33,8 +132,28 @@ module Editor
         sceneTextureSize = ImVec2(startingSize.x, startingSize.y)
         gameTextureSize = ImVec2(200, 200)
 
+        ##coroutine
+        watch_task = nothing
+        condition = nothing 
+        filesToReload = Ref([])
+        
         style_imGui()
         showDemoWindow = false
+        
+        # Initialize the comprehensive file explorer system
+        try
+            initialize_file_explorer_system()
+            setup_editor_integration()
+        catch e
+            @error "Failed to initialize file explorer system: $e"
+        end
+        
+        # Initialize the file finder system
+        try
+            initialize_file_finder()
+        catch e
+            @error "Failed to initialize file finder system: $e"
+        end
         ##############################
         # Project variables
         currentSceneMain = nothing
@@ -44,10 +163,7 @@ module Editor
         gameInfo = []
         ##############################
         # Hierarchy variables
-        filteredEntities = Entity[]
         hierarchyFilterText = Ref("")
-        hierarchyEntitySelections = []
-        hierarchyUISelections = Bool[]
         ##############################
         scenesLoadedFromFolder = Ref(String[])
         latest_exceptions = Ref([])
@@ -61,7 +177,6 @@ module Editor
 
         scrolling = Ref(ImVec2(0.0, 0.0))
         zoom_level = Ref(1.0)
-        playMode = false
 
         animation_window_dict = Ref(Dict())
         animator_preview_dict = Ref(Dict())
@@ -81,14 +196,78 @@ module Editor
         newScriptText = Ref("")
 
         panOffset = Math.Vector2(0, 0)
-        camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
-        gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector2f(),Vector2f(), C_NULL)
+        camera = JulGame.CameraModule.Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
+        gameCamera = JulGame.CameraModule.Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
         confirmation_modal = ConfirmationModal("Start/Stop Game"; message="Are you sure you want to start/stop the game? Any unsaved progress will be lost.", confirmText="Yes", cancelText="No", open=false, type="Warning")
-        cameraWindow = CameraWindow(true, gameCamera)
-        currentProjectConfig = (Width=Ref(Int32(800)), Height=Ref(Int32(600)), FrameRate=Ref(Int32(30)), WindowName=Ref("Game"), PixelsPerUnit=Ref(Int32(16)), AutoScaleZoom=Ref(Bool(0)), IsResizable=Ref(Bool(0)), Fullscreen=Ref(Bool(0)))
+        delete_confirmation_modal = ConfirmationModal("Delete Entities"; message="Are you sure you want to delete the selected entities? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
+        ui_delete_confirmation_modal = ConfirmationModal("Delete UI Elements"; message="Are you sure you want to delete the selected UI elements? This cannot be undone.", confirmText="Delete", cancelText="Cancel", open=false, type="Warning")
+        currentProjectConfig = (
+            Width=Ref(Math.TypeConversions.safe_int32_convert(800)), 
+            Height=Ref(Math.TypeConversions.safe_int32_convert(600)), 
+            FrameRate=Ref(Math.TypeConversions.safe_int32_convert(30)), 
+            Fullscreen=Ref(Bool(0))
+        )
+
+        recent_projects = parse_recents()
+        
+        auto_load_notification = false
+        auto_load_notification_time = 0.0
+        
+        # Variable to track if we want to show backup scenes
+        show_backup_scenes = Ref(false)
+        
+        # Variable to track if file explorer window is open
+        show_file_explorer = Ref(true)
+        
+        # Variable to track if hot reload is enabled
+        hot_reload_enabled = Ref(true)
+        
+        # Auto-load the most recent project if there is one
+        if !is_test_mode && AUTO_LOAD_LAST_PROJECT
+            most_recent_project = get_most_recent_project()
+            if most_recent_project != "" && isdir(most_recent_project)
+                currentSelectedProjectPath[] = most_recent_project
+                scenesLoadedFromFolder[] = get_all_scenes_from_folder(string(most_recent_project))
+                initialize_project(most_recent_project)
+                # Update window title
+                SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(most_recent_project)")
+                # Show notification
+                auto_load_notification = true
+                auto_load_notification_time = 5.0  # Show for 5 seconds
+                condition, watch_task = start_file_watcher(string(most_recent_project), filesToReload)
+                
+                # Try to auto-load the last opened scene for this project
+                last_scene_name = get_last_scene_for_project(string(most_recent_project))
+                @debug("Last scene name for project: '$last_scene_name'")
+                
+                if last_scene_name != ""
+                    # Find the scene file path - use exact basename match for reliability
+                    scene_path = ""
+                    for scene in scenesLoadedFromFolder[]
+                        scene_basename = basename(scene)
+                        if scene_basename == last_scene_name || 
+                           scene_basename == last_scene_name * ".json" || 
+                           scene_basename * ".json" == last_scene_name
+                            scene_path = scene
+                            @debug("Found matching scene: $scene_path")
+                            break
+                        end
+                    end
+                    
+                    if scene_path != "" && isfile(scene_path)
+                        println("Auto-loading last scene: $last_scene_name")
+                        currentSceneMain, gameCamera, currentSceneName = load_scene_with_project(scene_path, renderer, currentSelectedProjectPath, true)
+                        currentScenePath = scene_path
+                    else
+                        @debug("Last scene '$last_scene_name' not found or doesn't exist")
+                    end
+                end
+            end
+        end
 
         try
-            while !quit                    
+            while !quit                   
+                current_path = currentSelectedProjectPath[] 
                 try
                     if currentSceneMain === nothing
                         quit = poll_events()
@@ -104,6 +283,12 @@ module Editor
                         end
                     end   
                     start_frame()
+                    
+                    # When in play mode, apply a slight reddish tint to the menu bar
+                    if JulGame.IS_EDITOR_PLAY_MODE
+                        CImGui.PushStyleColor(CImGui.ImGuiCol_MenuBarBg, (0.5, 0.1, 0.1, 1.0))
+                    end
+                    
                     CImGui.igDockSpaceOverViewport(C_NULL, C_NULL, CImGui.ImGuiDockNodeFlags_PassthruCentralNode, C_NULL) # Creating the "dockspace" that covers the whole window. This allows the child windows to automatically resize.
                     
                     ################################## RENDER HERE
@@ -115,6 +300,7 @@ module Editor
                     end
                     events["New-project"] = create_project_event(currentDialog)
                     events["Select-project"] = select_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog)
+                    events["Select-recent-project"] = select_recent_project_event(currentSceneMain, scenesLoadedFromFolder, currentDialog, currentSelectedProjectPath)
                     events["Reset-camera"] = reset_camera_event(currentSceneMain)
                     events["Regenerate-ids"] = regenerate_ids_event(currentSceneMain)
                     events["New-Scene"] = @event begin
@@ -122,10 +308,59 @@ module Editor
                     end
                     events["Play-Mode"] = @event begin confirmation_modal.open = true; end
                     
-                    show_main_menu_bar(events, currentSceneMain)
+                    # Code editor events
+                    events["Open-code-editor"] = @event begin
+                        CodeEditorModule.open_file_dialog()
+                    end
+                    
+                    events["Open-script"] = @event begin
+                        CodeEditorModule.open_file_dialog()
+                    end
+                    
+                    events["Toggle-File-Explorer"] = @event begin
+                        show_file_explorer[] = !show_file_explorer[]
+                    end
+                    
+                    show_main_menu_bar(events, currentSceneMain, recent_projects)
+                    
+                    # Hot reload toggle in top right corner
+                    CImGui.SetNextWindowPos(ImVec2(unsafe_load(CImGui.GetIO().DisplaySize).x - 200, 25), CImGui.ImGuiCond_Always, ImVec2(1.0, 0.0))
+                    CImGui.SetNextWindowBgAlpha(0.7)
+                    hot_reload_window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                             CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                             CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                             CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                             CImGui.ImGuiWindowFlags_NoNav
+                    
+                    CImGui.Begin("HotReloadToggle", C_NULL, hot_reload_window_flags)
+                    CImGui.Checkbox("Hot Reload", hot_reload_enabled)
+                    if CImGui.IsItemHovered()
+                        CImGui.SetTooltip("Toggle automatic script reloading when files change")
+                    end
+                    CImGui.End()
+                    
                     ################################# END MAIN MENU BAR
                     if !isPackageCompiled
                         #@c CImGui.ShowDemoWindow(Ref{Bool}(showDemoWindow)) # Uncomment this line to show the demo window and see available widgets
+                    end
+
+                    # Show the code editor window if it's open
+                    CodeEditorModule.show_code_editor()
+
+                    # Show the file explorer window if it's open
+                    # Use the new comprehensive file explorer
+                    show_file_explorer_window(show_file_explorer, renderer)
+                    
+                    # Show the file finder modal if it's open
+                    show_file_finder_modal(renderer)
+                    
+                    # Optimize file explorer performance periodically
+                    if testFrameCount % 300 == 0  # Every ~5 seconds at 60fps
+                        try
+                            optimize_file_explorer_performance()
+                        catch e
+                            @debug "Error during performance optimization: $e"
+                        end
                     end
 
                     try 
@@ -133,28 +368,73 @@ module Editor
                             #region Scene List
                             CImGui.Begin("Scene List") 
                             show_help_marker("This is where we will display our scenes. Scenes are where the gameplay happens.")
-                            # txt = currentSceneMain === nothing ? "Load Scene" : "Change Scene"
-                            # CImGui.Text(txt)
 
-                            # Usage:
-                            
-                            
+                            # Add a "New Scene" button at the top of the Scene List
+                            if currentSelectedProjectPath[] != ""
+                                CImGui.PushStyleColor(CImGui.ImGuiCol_Button, (0.2, 0.6, 0.2, 1.0))
+                                CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.3, 0.7, 0.3, 1.0))
+                                CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.4, 0.8, 0.4, 1.0))
+                                
+                                if CImGui.Button("+ Create New Scene")
+                                    currentDialog[] = "New Scene"
+                                end
+                                
+                                CImGui.PopStyleColor(3)
+                                CImGui.Separator()
+                                
+                                # Add checkbox to toggle showing backup scenes
+                                CImGui.Checkbox("Show Backups", show_backup_scenes)
+                                if CImGui.IsItemHovered()
+                                    CImGui.SetTooltip("Toggle to show/hide scenes with '-backup' in the name")
+                                end
+                                CImGui.Separator()
+                            end
+
                             for scene in scenesLoadedFromFolder[]
                                 name = SceneLoaderModule.get_scene_file_name_from_full_scene_path(scene)
                                 
-                                if CImGui.Button("$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))")
+                                # Skip backup scenes unless show_backup_scenes is true
+                                if !show_backup_scenes[] && occursin("-backup", name)
+                                    continue
+                                end
+                                
+                                # Add visual indicator for backup scenes
+                                if occursin("-backup", name)
+                                    CImGui.PushStyleColor(CImGui.ImGuiCol_Button, (0.6, 0.4, 0.1, 1.0))  # Amber color for backups
+                                    CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonHovered, (0.7, 0.5, 0.2, 1.0))
+                                    CImGui.PushStyleColor(CImGui.ImGuiCol_ButtonActive, (0.8, 0.6, 0.3, 1.0))
+                                end
+                                
+                                # Prepare button text with optional backup indicator
+                                buttonText = occursin("-backup", name) ? 
+                                    "[BACKUP] $(SubString(split(split(scene, "scenes")[2], ".")[1], 2))" : 
+                                    "$(SubString(split(split(scene, "scenes")[2], ".")[1], 2))"
+                                
+                                if CImGui.Button(buttonText)
                                     currentSceneName = name
                                     currentScenePath = scene
                                     if currentSceneMain === nothing
-                                        JulGame.IS_EDITOR = true
-                                        JulGame.PIXELS_PER_UNIT = 16
                                         currentDialog[] = "Open Scene"
                                         currentSelectedProjectPath[] = SceneLoaderModule.get_project_path_from_full_scene_path(scene) 
                                         currentProjectConfig = load_project_config(currentSelectedProjectPath)
+                                        # Save the scene name for this project
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     else
                                         currentDialog[] = "Open Scene"
+                                        # Save the scene name for this project
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
                                     end
                                 end
+                                
+                                # Pop colors if this was a backup scene
+                                if occursin("-backup", name)
+                                    CImGui.PopStyleColor(3)
+                                end
+                                
                                 CImGui.NewLine()
                             end
 
@@ -165,7 +445,7 @@ module Editor
                     end
                     
                     try 
-                        if !playMode && currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
+                        if !JulGame.IS_EDITOR_PLAY_MODE && currentSelectedProjectPath[] != "" && unsafe_string(SDL2.SDL_GetWindowTitle(window)) != "$(windowTitle) - $(currentSelectedProjectPath[])"
                             newWindowTitle = "$(windowTitle) - $(currentSelectedProjectPath[])"
                             SDL2.SDL_SetWindowTitle(window, newWindowTitle)
                         end
@@ -178,31 +458,82 @@ module Editor
                             #println("Opening scene: $(currentDialog[][2])")
                             if confirmation_dialog(currentDialog) == "ok" && currentSceneName != ""
                                 if currentSceneMain === nothing
-                                    currentSceneMain = load_scene(currentScenePath, renderer)
-                                    gameCamera = currentSceneMain.scene.camera
-                                    cameraWindow.camera = gameCamera
+                                    # First time loading a scene
+                                    currentSceneMain, gameCamera, currentSceneName = load_scene_with_project(currentScenePath, renderer, currentSelectedProjectPath, true)
                                 else
-                                    JulGame.change_scene(String(currentSceneName))
-                                    gameCamera = currentSceneMain.scene.camera
-                                    cameraWindow.camera = gameCamera
+                                    # Scene already loaded, just change to a different scene
+                                    try
+                                        JulGame.change_scene(String(currentSceneName))
+                                        if currentSelectedProjectPath[] != ""
+                                            save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                        end
+                                        if currentSceneMain !== nothing && !(currentSceneMain isa Ptr)
+                                            gameCamera = currentSceneMain.scene.camera
+                                        end
+                                    catch e
+                                        @error "Error changing scene: $(e)"
+                                        Base.show_backtrace(stderr, catch_backtrace())
+                                    end
                                 end
                             end
                         elseif currentDialog[] == "New Scene"
                             newSceneName = new_scene_dialog(currentDialog, newSceneText)
                             if newSceneName != ""
                                 currentSceneName = newSceneName
-                                currentScenePath = joinpath(currentSelectedProjectPath[], "scenes", "$(newSceneName).json")
+                                
+                                # Ensure scenes folder exists
+                                scenesDir = joinpath(currentSelectedProjectPath[], "scenes")
+                                isdir(scenesDir) || mkdir(scenesDir)
+                                
+                                currentScenePath = joinpath(scenesDir, "$(newSceneName).json")
                                 touch(currentScenePath)
                                 file = open(currentScenePath, "w")
                                     println(file, sceneJsonContents)
                                 close(file)
-                                JulGame.change_scene("$(String(currentSceneName)).json")
+                                
+                                # Check if we need to load the scene or just create it
+                                if currentSceneMain === nothing
+                                    # First time loading - use centralized loader
+                                    currentSceneMain, gameCamera, currentSceneName = load_scene_with_project(currentScenePath, renderer, currentSelectedProjectPath, true)
+                                else
+                                    # Scene already loaded, just change to the new scene
+                                    JulGame.change_scene("$(String(currentSceneName)).json")
+                                    if currentSelectedProjectPath[] != ""
+                                        save_last_scene_for_project(string(currentSelectedProjectPath[]), string(currentSceneName))
+                                    end
+                                end
+                                
                                 scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
                             end
                         elseif currentDialog[] == "Select Project"
                             selectedProjectPath = select_project_dialog(currentDialog, scenesLoadedFromFolder)
                             if selectedProjectPath != ""
                                 currentSceneMain = nothing
+                            end
+                        elseif currentDialog[] == "Select Recent Project"
+                            # Dialog for handling recent project selection when a scene is already loaded
+                            CImGui.OpenPopup(currentDialog[])
+                            if CImGui.BeginPopupModal(currentDialog[], C_NULL, CImGui.ImGuiWindowFlags_AlwaysAutoResize)
+                                CImGui.Text("Are you sure you would like to open another project?\nIf you currently have a project open, any unsaved changes will be lost.\n\n")
+                                CImGui.NewLine()
+                                if CImGui.Button("OK", (120, 0))
+                                    CImGui.CloseCurrentPopup()
+                                    currentDialog[] = ""
+                                    
+                                    # Reset the current scene before loading the new project
+                                    currentSceneMain = nothing
+                                    currentSelectedProjectPath[] = JulGame.TEMP_SELECTED_PATH
+                                    scenesLoadedFromFolder[] = get_all_scenes_from_folder(currentSelectedProjectPath[])
+                                    # Initialize the project
+                                    initialize_project(currentSelectedProjectPath[])
+                                end
+                                CImGui.SetItemDefaultFocus()
+                                CImGui.SameLine()
+                                if CImGui.Button("Cancel",(120, 0))
+                                    CImGui.CloseCurrentPopup()
+                                    currentDialog[] = ""
+                                end
+                                CImGui.EndPopup()
                             end
                         elseif currentDialog[] == "New Project"
                             selectedProjectPath = create_project_dialog(currentDialog, scenesLoadedFromFolder, currentSelectedProjectPath, newProjectText)
@@ -238,30 +569,33 @@ module Editor
                     try
                         prevSceneWindowSize = sceneWindowSize
                         
-                        wasPlaying = playMode
+                        wasPlaying = JulGame.IS_EDITOR_PLAY_MODE
                         if show_modal(confirmation_modal)
-                            playMode = !playMode
-                            if playMode
+                            JulGame.IS_EDITOR_PLAY_MODE = !JulGame.IS_EDITOR_PLAY_MODE
+                            if JulGame.IS_EDITOR_PLAY_MODE
                                 startTime[] = SDL2.SDL_GetTicks()
                                  
                                 # Animate the text in the window title
                                 SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
+                            else
+                                # Reset the window title when exiting play mode
+                                SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(currentSelectedProjectPath[])")
                             end
                         end
                         
                         sceneWindowSize = show_scene_window(currentSceneMain, sceneTexture, scrolling, zoom_level, duplicationMode, camera)
-                        if playMode != wasPlaying && currentSceneMain !== nothing
-                            if playMode
-                                JulGame.MainLoop.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
+                        if JulGame.IS_EDITOR_PLAY_MODE != wasPlaying && currentSceneMain !== nothing
+                            if JulGame.IS_EDITOR_PLAY_MODE
+                                JulGame.MainLoopModule.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
                                 currentSceneMain.scene.camera = gameCamera 
-                            elseif !playMode
-                                JulGame.MainLoop.stop_game_in_editor(currentSceneMain)
+                            elseif !JulGame.IS_EDITOR_PLAY_MODE
+                                JulGame.MainLoopModule.stop_game_in_editor(currentSceneMain)
                                 JulGame.change_scene(String(currentSceneName))
                             end
                         end
                         
                         prevGameWindowSize = gameWindowSize
-                        gameWindowSize = show_game_window(gameTexture)
+                        gameWindowSize, gameWindowTopLeftCornerPosition = show_game_window(gameTexture)
 
                         if gameWindowSize === nothing
                             gameWindowSize = prevGameWindowSize
@@ -269,115 +603,15 @@ module Editor
                         if sceneWindowSize === nothing
                             sceneWindowSize = prevSceneWindowSize
                         end
+                        if gameWindowTopLeftCornerPosition !== nothing && currentSceneMain !== nothing
+                            currentSceneMain.input.mousePositionEditorGameWindowOffset = Math.Vector2(gameWindowTopLeftCornerPosition.x, gameWindowTopLeftCornerPosition.y)
+                        end
                     catch e
                         handle_editor_exceptions("Show modal/scene window:", latest_exceptions, e, is_test_mode)
                     end
                     
-                    try
-                        #region Hierarchy
-                        CImGui.Begin("Hierarchy") 
-                        
-                        show_help_marker("This is where we will display a list of entities and textboxes for the scene")
-                        currentSceneMain === nothing && CImGui.Text("No scene loaded.")
-                        if currentSceneMain !== nothing && CImGui.TreeNode("Entities")
-                            # remove other entities from hierarchyEntitySelections if currentSceneMain.selectedEntity is not in hierarchyEntitySelections
-                            # this happens if we select an entity in the scene view
-                            if currentSceneMain.selectedEntity !== nothing && any(entity -> (entity[1] == currentSceneMain.selectedEntity && entity[2] == false), hierarchyEntitySelections)
-                                for index in eachindex(hierarchyEntitySelections)
-                                    hierarchyEntitySelections[index] = (hierarchyEntitySelections[index][1], currentSceneMain.selectedEntity == hierarchyEntitySelections[index][1])
-                                end
-                            end 
-                             
-                            CImGui.SameLine()
-                            show_help_marker("This is a list of all entities in the scene. Click on an entity to select it.")
-                            CImGui.SameLine()
-                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
-                                CImGui.MenuItem("Add", C_NULL, false, false)
-                                if CImGui.BeginMenu("New")
-                                    if CImGui.MenuItem("Entity")
-                                        JulGame.MainLoop.create_new_entity(currentSceneMain)
-                                    end
-                                    
-                                    CImGui.EndMenu()
-                                end
-                                CImGui.EndMenu()
-                            end
-                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-
-                            currentHierarchyFilterText = hierarchyFilterText[]
-                            text_input_single_line("get_scene_file_name_from_full_scene_path", hierarchyFilterText) 
-                            updateSelectionsBasedOnFilter = hierarchyFilterText[] != currentHierarchyFilterText
-                            filteredEntities = filter(entity -> (isempty(hierarchyFilterText[]) || contains(lowercase(entity.name), lowercase(hierarchyFilterText[]))), currentSceneMain.scene.entities)
-                            entitiesWithParents = filter(entity -> entity.parent != C_NULL, currentSceneMain.scene.entities)
-
-                            show_help_marker("Hold CTRL and click to select multiple items.")
-                            if length(hierarchyEntitySelections) == 0 || length(hierarchyEntitySelections) != length(filteredEntities) || updateSelectionsBasedOnFilter
-                                hierarchyEntitySelections= []
-                                for entity in filteredEntities
-                                    push!(hierarchyEntitySelections, (entity, false))
-                                end
-                            end
-
-                            for n = eachindex(filteredEntities)
-                                if filteredEntities[n].parent != C_NULL
-                                    continue
-                                end
-
-                                children = filter(entity -> entity.parent == filteredEntities[n], entitiesWithParents)
-                                if length(children) == 0
-                                    handle_childless_entity_selection(filteredEntities[n], hierarchyEntitySelections, n, currentSceneMain)
-                                else
-                                    handle_parent_entity_selection(filteredEntities[n], children, hierarchyEntitySelections, n, currentSceneMain, filteredEntities)
-                                end
-                                handle_drag_and_drop(filteredEntities, n, currentSceneMain, hierarchyEntitySelections)
-                            end
-
-                            CImGui.PopStyleVar()
-                            CImGui.Indent(CImGui.GetTreeNodeToLabelSpacing())
-                            CImGui.TreePop()
-                        end
-
-                        CImGui.NewLine()
-                        #region UI Elements
-                        if currentSceneMain !== nothing && CImGui.TreeNode("UI Elements")
-                            CImGui.SameLine()
-                            if CImGui.BeginMenu("Add") # TODO: Move to own file as a function
-                                CImGui.MenuItem("Add", C_NULL, false, false)
-                                if CImGui.BeginMenu("New")
-                                    if CImGui.MenuItem("TextBox")
-                                        JulGame.MainLoop.create_new_text_box(currentSceneMain) 
-                                    end
-                                    if CImGui.MenuItem("Screen Button")
-                                        JulGame.MainLoop.create_new_screen_button(currentSceneMain)
-                                    end
-                                    
-                                    CImGui.EndMenu()
-                                end
-                                CImGui.EndMenu()
-                            end
-                            CImGui.Unindent(CImGui.GetTreeNodeToLabelSpacing())
-
-                            if length(hierarchyUISelections) == 0 || length(hierarchyUISelections) != length(currentSceneMain.scene.uiElements) # || updateUISelectionsBasedOnFilter
-                                hierarchyUISelections=fill(false, length(currentSceneMain.scene.uiElements))
-                            end
-
-                            for n = eachindex(currentSceneMain.scene.uiElements)
-                                CImGui.PushID(n)
-                                buf = "$(n): $(currentSceneMain.scene.uiElements[n].name)"
-                                if CImGui.Selectable(buf, hierarchyUISelections[n])
-                                    # clear selection when CTRL is not held
-                                    !unsafe_load(CImGui.GetIO().KeyCtrl) && fill!(hierarchyUISelections, false)
-                                    hierarchyUISelections[n] ⊻= 1
-                                    uiSelected = true
-                                    # currentSceneMain.selectedEntity = currentSceneMain.scene.uiElements[n]
-                                end
-                                CImGui.PopID()
-
-                            end
-
-                            CImGui.TreePop()
-                        end
-                    CImGui.End()
+                try
+                    show_hierarchy(currentSceneMain)        
                 catch e
                     handle_editor_exceptions("Hierarchy window:", latest_exceptions, e, is_test_mode)
                 end
@@ -387,81 +621,20 @@ module Editor
                 catch e
                     @error "Debug window error"
                 end
+
+                try
+                    show_engine_internals_window()
+                catch e
+                    @error "Engine internals window error" exception=e
+                end
                     
                     try
                         #region Entity Inspector
-                        CImGui.Begin("Entity Inspector") 
-                        
-                        show_help_marker("This is where we will display editable properties of entities")
-                        if currentSceneMain !== nothing && currentSceneMain.selectedEntity !== nothing 
-                            CImGui.PushID("AddMenu")
-                            if CImGui.BeginMenu("Add")
-                                ShowEntityContextMenu(currentSceneMain.selectedEntity)
-                                CImGui.EndMenu()
-                            end
-                            CImGui.PopID()
-                            CImGui.Separator()
-                            for entityField in fieldnames(Entity)
-                                show_field_editor(currentSceneMain.selectedEntity, entityField, animation_window_dict, animator_preview_dict, newScriptText)
-                            end
-        
-                            CImGui.Separator()
-                            if CImGui.Button("Duplicate") 
-                                copy = deepcopy(currentSceneMain.selectedEntity)
-                                copy.id = JulGame.generate_uuid()
-                                push!(currentSceneMain.scene.entities, copy)
-                                currentSceneMain.selectedEntity = copy
-                            end
-                        end
-                        CImGui.End()
+                        show_inspector(currentSceneMain)
                     catch e
-                        handle_editor_exceptions("Entity inspector window:", latest_exceptions, e, is_test_mode)
+                        handle_editor_exceptions("Inspector window:", latest_exceptions, e, is_test_mode)
                     end
-
-                    try
-                        
-                        #region UI Inspector
-                        CImGui.Begin("UI Inspector") 
-                            show_help_marker("This is where we will display editable properties of textboxes and screen buttons")
-                            for uiElementIndex = eachindex(hierarchyUISelections)
-                                if hierarchyUISelections[uiElementIndex] # || currentSceneMain.selectedEntity == filteredEntities[entityIndex]
-                                    if length(currentSceneMain.scene.uiElements) < uiElementIndex
-                                        break
-                                    end
-                                    
-                                    if contains("$(typeof(currentSceneMain.scene.uiElements[uiElementIndex]))", "TextBox")
-                                        show_textbox_fields(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    else
-                                        show_screenbutton_fields1(currentSceneMain.scene.uiElements[uiElementIndex])
-                                    end
-
-                                    # CImGui.Separator()
-                                    # if CImGui.Button("Duplicate") 
-                                    #     push!(currentSceneMain.scene.uiElements, deepcopy(currentSceneMain.scene.uiElements[uiElementIndex]))
-                                    # copy.id = JulGame.generate_uuid()
-                                    #     # TODO: switch to duplicated entity
-                                    # end
-
-                                    CImGui.Separator()
-                                    CImGui.Text("Delete UI Element: NO CONFIRMATION")
-                                    if CImGui.Button("Delete")
-                                        JulGame.destroy_ui_element(currentSceneMain, currentSceneMain.scene.uiElements[uiElementIndex])
-                                        break
-                                    end
-                                    
-                                    break # TODO: Remove this when we can select multiple entities and edit them all at once
-                                end
-                            end
-                        CImGui.End()
-                    catch e
-                        handle_editor_exceptions("UI inspector window:", latest_exceptions, e, is_test_mode)
-                    end
-
-                    try
-                        show_camera_window(cameraWindow)
-                    catch e
-                        handle_editor_exceptions("Camera window:", latest_exceptions, e, is_test_mode)
-                    end
+                    tick_text_effect_preview_debounce!(currentSceneMain)
 
                     #region Config Window
                     try 
@@ -479,7 +652,13 @@ module Editor
                     SDL2.SDL_RenderClear(renderer)
                     try
                         if currentSceneMain !== nothing
-                            JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, camera)
+                            # Store the current camera scale value
+                            original_scale_units = JulGame.SCALE_UNITS
+                            # Apply zoom to rendering by temporarily modifying scale units
+                            JulGame.SCALE_UNITS = original_scale_units * zoom_level[]
+                            JulGame.MainLoopModule.render_scene_sprites_and_shapes(currentSceneMain, camera)
+                            # Restore the original scale value
+                            JulGame.SCALE_UNITS = original_scale_units
                         end
                     catch e
                         handle_editor_exceptions("Scene window:", latest_exceptions, e, is_test_mode)
@@ -490,16 +669,28 @@ module Editor
                     try 
                         if currentSceneMain !== nothing
                             JulGame.CameraModule.update(gameCamera)
-                            JulGame.MainLoop.render_scene_sprites_and_shapes(currentSceneMain, gameCamera)
+                            JulGame.MainLoopModule.render_scene_sprites_and_shapes(currentSceneMain, gameCamera)
                         end
                     catch e
                         handle_editor_exceptions("Game window:", latest_exceptions, e, is_test_mode)
                     end
 
                     try
-                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoop.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoopModule.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     catch e
                         handle_editor_exceptions("Game loop:", latest_exceptions, e, is_test_mode)
+                    end
+
+                    try
+                        handle_dropped_files(renderer, currentSceneMain)
+                    catch e
+                        handle_editor_exceptions("Dropped files:", latest_exceptions, e, is_test_mode)
+                    end
+                    
+                    try
+                        display_confirmation_dialog()
+                    catch e
+                        handle_editor_exceptions("Shared dialogs:", latest_exceptions, e, is_test_mode)
                     end
                     
                     SDL2.SDL_SetRenderTarget(renderer, C_NULL)
@@ -507,49 +698,193 @@ module Editor
                     
                     show_game_controls()
 
+                    # Add a floating project/scene info display at the top center
+                    # Calculate the current project name (last part of the path)
+                    currentProjectName = currentSelectedProjectPath[] != "" ? basename(currentSelectedProjectPath[]) : "No Project"
+                    currentSceneDisplayName = currentSceneName != "" ? replace(currentSceneName, ".json" => "") : "No Scene"
+                    
+                    # Create a floating window in the top center
+                    CImGui.SetNextWindowBgAlpha(0.7)
+                    # Position in top center of the screen
+                    display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
+                    CImGui.SetNextWindowPos(
+                        ImVec2(
+                            Math.TypeConversions.safe_int32_convert(round(display_width / 2.0)), 
+                            0
+                        ), 
+                        CImGui.ImGuiCond_Always, 
+                        ImVec2(0.5, 0.0)
+                    )
+                    
+                    project_window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                  CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                  CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                  CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                  CImGui.ImGuiWindowFlags_NoNav
+                    
+                    # Apply custom styling for the project/scene info window              
+                    CImGui.PushStyleColor(CImGui.ImGuiCol_WindowBg, (0.15, 0.15, 0.2, 0.8))  # Darker blue background
+                    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowBorderSize, 1.0)
+                    CImGui.PushStyleColor(CImGui.ImGuiCol_Border, (0.3, 0.3, 0.6, 0.6))
+                    
+                    CImGui.Begin("ProjectSceneInfo", C_NULL, project_window_flags)
+                    
+                    # Use a vibrant text color with a slight glow effect
+                    CImGui.PushStyleColor(CImGui.ImGuiCol_Text, (0.85, 0.85, 1.0, 0.95))
+                    
+                    # Display with some padding for visual comfort
+                    CImGui.SetCursorPosX(CImGui.GetCursorPosX() + 8)
+                    CImGui.Text("$(currentProjectName) - $(currentSceneDisplayName)")
+                    
+                    CImGui.PopStyleColor()  # Text color
+                    CImGui.End()
+                    
+                    CImGui.PopStyleColor(2)  # Window background and border
+                    CImGui.PopStyleVar()     # Border size
+
+                    # Add a floating play mode indicator when in play mode
+                    if JulGame.IS_EDITOR_PLAY_MODE
+                        # Calculate pulsing alpha for the text
+                        pulsing_alpha = 0.6 + 0.4 * sin(Float64(SDL2.SDL_GetTicks()) / 300.0)
+                        
+                        # Create a floating window in the corner
+                        CImGui.SetNextWindowBgAlpha(0.7)
+                        # Position below the project info
+                        CImGui.SetNextWindowPos(
+                            ImVec2(
+                                Math.TypeConversions.safe_int32_convert(round(display_width / 2.0)), 
+                                40
+                            ), 
+                            CImGui.ImGuiCond_Always, 
+                            ImVec2(0.5, 0.0)
+                        )
+                        
+                        window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                      CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                      CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                      CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                      CImGui.ImGuiWindowFlags_NoNav
+                                      
+                        CImGui.Begin("PlayModeIndicator", C_NULL, window_flags)
+                        CImGui.PushStyleColor(CImGui.ImGuiCol_Text, (1.0, 0.3, 0.3, pulsing_alpha))
+                        CImGui.TextColored((1.0, 0.3, 0.3, pulsing_alpha), "PLAY MODE ACTIVE")
+                        CImGui.PopStyleColor()
+                        CImGui.End()
+                    end
+
+                    # Add a floating auto-load notification if needed
+                    if auto_load_notification && auto_load_notification_time > 0
+                        # Calculate pulsing alpha for the text
+                        pulsing_alpha = 0.7 + 0.3 * sin(Float64(SDL2.SDL_GetTicks()) / 300.0)
+                        
+                        # Create a floating notification
+                        CImGui.SetNextWindowBgAlpha(0.8)
+                        # Position in bottom right of the screen
+                        display_width = unsafe_load(CImGui.GetIO().DisplaySize).x
+                        display_height = unsafe_load(CImGui.GetIO().DisplaySize).y
+                        CImGui.SetNextWindowPos(ImVec2(display_width - 10, display_height - 10), CImGui.ImGuiCond_Always, ImVec2(1.0, 1.0))
+                        
+                        window_flags = CImGui.ImGuiWindowFlags_NoDecoration | 
+                                      CImGui.ImGuiWindowFlags_AlwaysAutoResize | 
+                                      CImGui.ImGuiWindowFlags_NoSavedSettings |
+                                      CImGui.ImGuiWindowFlags_NoFocusOnAppearing |
+                                      CImGui.ImGuiWindowFlags_NoNav
+                                      
+                        CImGui.Begin("AutoLoadNotification", C_NULL, window_flags)
+                        CImGui.PushStyleColor(CImGui.ImGuiCol_Text, (0.3, 0.8, 0.3, pulsing_alpha))
+                        CImGui.Text("Auto-loaded project: $(basename(currentSelectedProjectPath[]))")
+                        CImGui.PopStyleColor()
+                        
+                        # Decrease the timer
+                        auto_load_notification_time -= DELTA_TIME > 0 ? DELTA_TIME : 0.016
+                        CImGui.End()
+                    end
+
                     #region Input
                     try
                         if currentSceneMain !== nothing
                             if currentSceneMain.scene.camera != gameCamera
                                 gameCamera = currentSceneMain.scene.camera
-                                cameraWindow.camera = gameCamera
                             end
-
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S")
-                                @info string("Saving scene")
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "S") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT")
+                                @debug string("Saving scene")
                                 events["Save"]()
+                            end
+                            # undo with ctrl+z
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Z") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT")
+                                JulGame.undo()
+                            end
+                            # redo with ctrl+y
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Y") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT")
+                                JulGame.redo()
+                            end
+                            # redo with ctrl+shift+z
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "Z")
+                                JulGame.redo()
                             end
                             # delete selected entity
                             if JulGame.InputModule.get_button_pressed(currentSceneMain.input, "DELETE")
-                                if currentSceneMain.selectedEntity !== nothing
-                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                                if currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0
+                                   for entity in currentSceneMain.selectedEntities
+                                    JulGame.destroy_entity(currentSceneMain, entity)
+                                   end
                                 end
                             end
                             # duplicate selected entity with ctrl+d
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                                copy = deepcopy(currentSceneMain.selectedEntity)
-                                copy.id = JulGame.generate_uuid()
-                                push!(currentSceneMain.scene.entities, copy)
-                                currentSceneMain.selectedEntity = copy
-                            end
-                            # turn on duplication mode with ctrl+shift+d
-                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntity !== nothing
-                                duplicationMode = !duplicationMode
-                                if duplicationMode
-                                    @info "Duplication mode on"
-                                    copy = deepcopy(currentSceneMain.selectedEntity)
-                                    copy.id = JulGame.generate_uuid()
-                                    push!(currentSceneMain.scene.entities, copy)
-                                    currentSceneMain.selectedEntity = copy
-                                else
-                                    @info "Duplication mode off"
-                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntity)
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0
+                                for entity in currentSceneMain.selectedEntities
+                                    JulGame.duplicate(entity)
                                 end
                             end
+                            # turn on duplication mode with ctrl+shift+d
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "D") && currentSceneMain.selectedEntities !== nothing && length(currentSceneMain.selectedEntities) > 0
+                                duplicationMode = !duplicationMode
+                                if duplicationMode
+                                    @debug "Duplication mode on"
+                                    copy = JulGame.duplicate(currentSceneMain.selectedEntities[1])
+                                    currentSceneMain.selectedEntities[1] = copy
+                                else
+                                    @debug "Duplication mode off"
+                                    JulGame.destroy_entity(currentSceneMain, currentSceneMain.selectedEntities[1])
+                                end
+                            end
+                            
+                            # Play/stop scene with LCTRL+R (with confirmation)
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && !JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "R")
+                                @debug "Play/Stop shortcut (with confirmation)"
+                                confirmation_modal.open = true
+                            end
+                            
+                            # Play/stop scene with LCTRL+LSHIFT+R (without confirmation)
+                            if JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LCTRL") && JulGame.InputModule.get_button_held_down(currentSceneMain.input, "LSHIFT") && JulGame.InputModule.get_button_pressed(currentSceneMain.input, "R")
+                                @debug "Play/Stop shortcut (without confirmation)"
+                                # Toggle play mode directly
+                                JulGame.IS_EDITOR_PLAY_MODE = !JulGame.IS_EDITOR_PLAY_MODE
+                                if JulGame.IS_EDITOR_PLAY_MODE
+                                    startTime[] = SDL2.SDL_GetTicks()
+                                    # Animate the text in the window title
+                                    SDL2.SDL_SetWindowTitle(window, "PLAYING $(windowTitle) - $(currentSelectedProjectPath[])")
+                                    JulGame.MainLoopModule.start_game_in_editor(currentSceneMain, currentSelectedProjectPath[])
+                                    currentSceneMain.scene.camera = gameCamera
+                                else
+                                    # Reset the window title when exiting play mode
+                                    SDL2.SDL_SetWindowTitle(window, "$(windowTitle) - $(currentSelectedProjectPath[])")
+                                    JulGame.MainLoopModule.stop_game_in_editor(currentSceneMain)
+                                    JulGame.change_scene(String(currentSceneName))
+                                end
+                            end
+                            
+                            # TODO: Replace the deepcopy+generate_uuid pattern with duplicate_entity utility function
                         end
                     catch e
                         handle_editor_exceptions("Inputs:", latest_exceptions, e, is_test_mode)
                     end
+                    
+                    # Pop the MenuBar style color if we're in play mode
+                    if JulGame.IS_EDITOR_PLAY_MODE
+                        CImGui.PopStyleColor()
+                    end
+                    
                     ################################# STOP RENDERING HERE
                     CImGui.Render()
                     SDL2.SDL_RenderSetScale(renderer, unsafe_load(io.DisplayFramebufferScale.x), unsafe_load(io.DisplayFramebufferScale.y));
@@ -559,6 +894,7 @@ module Editor
                     
                     screenA = Ref(SDL2.SDL_Rect(round(sceneWindowPos.x), sceneWindowPos.y + 20, sceneWindowSize.x, sceneWindowSize.y - 20))
                     SDL2.SDL_RenderSetViewport(renderer, screenA)
+                    
                     ################################################# Injecting game loop into editor
                     if currentSceneMain !== nothing
                         if currentSceneMain.input.editorCallback === nothing
@@ -579,17 +915,115 @@ module Editor
                     @error "Error in renderloop!" exception=e
                     Base.show_backtrace(stderr, catch_backtrace())
                 end
+
+                if current_path != currentSelectedProjectPath[]
+                    recent_projects = add_path_to_recents(currentSelectedProjectPath[])
+                    current_path = currentSelectedProjectPath[]
+                    #starting the file watcher
+                    condition, watch_task = start_file_watcher(string(currentSelectedProjectPath[]), filesToReload)
+                    # Update BasePath when project changes
+                    JulGame.BasePath = currentSelectedProjectPath[]
+                    @debug("Base path updated: $(JulGame.BasePath)")
+                    
+                elseif current_path !== nothing && current_path != "" && condition !== nothing && !istaskdone(watch_task)
+                    notify(condition)
+                    yield()
+                end
+
+                if length(filesToReload[]) > 0 && hot_reload_enabled[]
+                    for file in filesToReload[]
+                        classname = split(file, ".")[begin]
+                        try
+                            Base.include(JulGame.ScriptModule, joinpath(JulGame.BasePath, "scripts", file))
+                        catch e
+                            @error "Error reloading file: $(file)"
+                            @error "Error: $(e)"
+                            Base.show_backtrace(stderr, catch_backtrace())
+                            continue
+                        end
+                        
+                        # Only attempt to reload scripts if currentSceneMain exists and is loaded
+                        if currentSceneMain !== nothing
+                            for entity in currentSceneMain.scene.entities
+                                i = 1
+                                for script in entity.scripts
+                                    script_name = split("$(typeof(script))", ".")[end]
+                                    if script_name == classname
+                                        try 
+                                            @debug("reloading script: $(script_name)")
+                                            module_name = getfield(JulGame.ScriptModule, Symbol("$(classname)Module"))
+                                            constructor = Base.invokelatest(getfield, module_name, Symbol(script_name)) 
+                                            new_script::constructor = Base.invokelatest(constructor)
+
+                                            # Copy all fields from old_script to the new script
+                                            for fieldname in fieldnames(typeof(entity.scripts[i]))
+                                                if fieldname != :parent  # Skip the `parent` field to avoid overwriting it
+                                                    try
+                                                        if isdefined(entity.scripts[i], Symbol(fieldname))
+                                                            if typeof(getfield(entity.scripts[i], fieldname)) != JulGame.EntityModule.Entity && typeof(getfield(entity.scripts[i], fieldname)) != JulGame.UI.UIElement && typeof(getfield(entity.scripts[i], fieldname)) != fieldtype(typeof(new_script), Symbol(fieldname)) && fieldtype(typeof(new_script), Symbol(fieldname)) != Any
+                                                                @warn "Type mismatch for field: $(fieldname)"
+                                                                # @warn "Type of old script: $(typeof(entity.scripts[i])) field: $(fieldname) type: $(fieldtype(typeof(entity.scripts[i]), Symbol(fieldname)))"
+                                                                # @warn "Type of new script: $(typeof(new_script)) field: $(fieldname) type: $(fieldtype(typeof(new_script), Symbol(fieldname)))"
+                                                                @warn "This is probably a complex type, so we will skip it"
+                                                                inner_type = typeof(getfield(entity.scripts[i], fieldname))
+                                                                inner_script_replacement = setfield!(new_script, fieldname, fieldtype(typeof(new_script), Symbol(fieldname))())
+                                                                for field in fieldnames(inner_type)
+                                                                    @warn "Field: $(field) needs to be mapped"
+                                                                    if isdefined(inner_type, Symbol(field))
+                                                                        # set new_script.fieldname.field = entity.scripts[i].fieldname.field
+                                                                        setfield!(inner_script_replacement, Symbol(field), getfield(getfield(entity.scripts[i], fieldname), Symbol(field)))
+                                                                    end
+                                                                end
+                                                            else
+                                                                setfield!(new_script, fieldname, getfield(entity.scripts[i], fieldname))
+                                                            end
+                                                        end
+                                                    catch e
+                                                        @error("issue with field: $(fieldname): $e")
+                                                        Base.show_backtrace(stderr, catch_backtrace())
+                                                    end
+                                                end
+                                            end
+
+                                            entity.scripts[i] = new_script
+                                            entity.scripts[i].parent = entity
+
+                                            @debug "script reloaded successfully"
+                                        catch e
+                                            # replace everything after the first closing parenthesis
+                                            error_message = replace(string(e), r"\).*" => ")")
+                                            @error "Error reloading script: $(script_name): $(error_message)"
+                                            Base.show_backtrace(stderr, catch_backtrace())
+                                        end
+                                    end
+
+                                    i += 1
+                                end
+                            end
+                        else
+                            @debug "Skipping script reload as no scene is currently loaded"
+                        end
+                    end
+
+                    filesToReload[] = []
+                end
             end
         catch e
             backup_file_name = backup_file_name = "$(replace(currentSceneName, ".json" => ""))-backup-$(replace(Dates.format(Dates.now(), "yyyy-mm-ddTHH:MM:SS"), ":" => "-")).json"
-            @info string("Backup file name: ", backup_file_name)
+            @debug string("Backup file name: ", backup_file_name)
             SceneWriterModule.serialize_entities(currentSceneMain.scene.entities, currentSceneMain.scene.uiElements, gameCamera, currentSelectedProjectPath[], backup_file_name)
+            @error "Error in renderloop!" exception=e
             Base.show_backtrace(stderr, catch_backtrace())
-            @warn "Error in renderloop!" exception=e
         finally
             #TODO: fix these: ImGui_ImplSDLRenderer2_Shutdown();
-            # ImGui_ImplSDL2_Shutdown();
 
+            # Cleanup file explorer system
+            try
+                cleanup_file_explorer_system()
+            catch e
+                @error "Error during file explorer cleanup: $e"
+            end
+            
             CImGui.DestroyContext(ctx)
             SDL2.SDL_DestroyTexture(sceneTexture)
             SDL2.SDL_DestroyTexture(gameTexture)
@@ -597,6 +1031,27 @@ module Editor
             SDL2.SDL_DestroyWindow(window);
             SDL2.SDL_Quit()
             return 0
+        end
+    end
+
+    function poll_files(condition, path, filesToReload)
+        index = false
+        while !index
+            try
+                watched = FileWatching.watch_folder(joinpath(path, "scripts"), 0.01) 
+                if watched.first != ""
+                    @debug "Updated $(watched.first), renamed: $(watched.second.renamed), changed: $(watched.second.changed), timedout: $(watched.second.timedout)"
+                    if watched.second.changed
+                        @debug "pushing to files to reload"
+                        push!(filesToReload[], watched.first)
+                        @debug "pushed to files to reload"
+                    end
+                end
+            catch e
+                wait(condition)
+                @error "Error: ", e
+            end
+            wait(condition)
         end
     end
 
@@ -611,7 +1066,7 @@ module Editor
             file = top_frame.file
             line = top_frame.line
         else
-            @info("Stack trace is empty.")
+            @debug("Stack trace is empty.")
         end
 
         log_exceptions(error_location, latest_exceptions, e, "$(file):$(line)", is_test_mode)
@@ -632,33 +1087,6 @@ module Editor
             CImGui.SameLine()
             CImGui.InputInt("##FrameRate", currentProjectConfig.FrameRate)
             CImGui.NewLine()
-            CImGui.Text("Window Name")
-            CImGui.SameLine()
-            buf = "$(currentProjectConfig.WindowName[])"*"\0"^(64)
-            CImGui.InputText("##WindowName", buf, length(buf))
-            currentText = ""
-            for characterIndex = eachindex(buf)
-                if Int32(buf[characterIndex]) == 0 
-                    if characterIndex != 1
-                        currentText = String(SubString(buf, 1, characterIndex-1))
-                    end
-                    break
-                end
-            end
-            currentProjectConfig.WindowName[] = currentText
-            CImGui.NewLine()
-            CImGui.Text("Pixels Per Unit")
-            CImGui.SameLine()
-            CImGui.InputInt("##PixelsPerUnit", currentProjectConfig.PixelsPerUnit)
-            CImGui.NewLine()
-            CImGui.Text("Auto Scale Zoom")
-            CImGui.SameLine()
-            CImGui.Checkbox("##AutoScaleZoom", currentProjectConfig.AutoScaleZoom)
-            CImGui.NewLine()
-            CImGui.Text("Is Resizable")
-            CImGui.SameLine()
-            CImGui.Checkbox("##IsResizable", currentProjectConfig.IsResizable)
-            CImGui.NewLine()
             CImGui.Text("Fullscreen")
             CImGui.SameLine()
             CImGui.Checkbox("##Fullscreen", currentProjectConfig.Fullscreen)
@@ -673,14 +1101,9 @@ module Editor
         filename = joinpath(currentSelectedProjectPath[], "config.julgame")
         config = Dict{String, String}()
         
-        config["WindowName"] = String(currentProjectConfig.WindowName[])
         config["Width"] = string(currentProjectConfig.Width[])
         config["Height"] = string(currentProjectConfig.Height[])
-        config["PixelsPerUnit"] = string(currentProjectConfig.PixelsPerUnit[])
-        config["Zoom"] = "1.0"
-        config["AutoScaleZoom"] = string(Int(currentProjectConfig.AutoScaleZoom[]))
         config["Fullscreen"] = string(Int(currentProjectConfig.Fullscreen[]))
-        config["IsResizable"] = string(Int(currentProjectConfig.IsResizable[]))
         config["FrameRate"] = string(currentProjectConfig.FrameRate[])
         
         open(filename, "w") do file
@@ -689,7 +1112,7 @@ module Editor
             end
         end
 
-        @info "Saved config file to $(filename)"
+        @debug "Saved config file to $(filename)"
     end
 
     function load_project_config(currentSelectedProjectPath)
@@ -697,22 +1120,193 @@ module Editor
         config = Dict{String, String}()
         if isfile(filename)
             open(filename, "r") do file
-                for line in eachline(file)
-                    key, value = split(line, "=")
-                    config[key] = value
+                try
+                    for line in eachline(file)
+                        key, value = split(line, "=")
+                        config[key] = value
+                    end
+                catch e
+                    @warn e
                 end
             end
         end
 
-        Width = Ref(Int32(parse(Int, config["Width"])))
-        Height = Ref(Int32(parse(Int, config["Height"])))
-        FrameRate = Ref(Int32(parse(Int, config["FrameRate"])))
-        WindowName = Ref(config["WindowName"])
-        PixelsPerUnit = Ref(Int32(parse(Int, config["PixelsPerUnit"])))
-        AutoScaleZoom = Ref(parse(Bool, config["AutoScaleZoom"]))
-        IsResizable = Ref(parse(Bool, config["IsResizable"]))
+        Width = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["Width"])))
+        Height = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["Height"])))
+        FrameRate = Ref(Math.TypeConversions.safe_int32_convert(parse(Int, config["FrameRate"])))
         Fullscreen = Ref(parse(Bool, config["Fullscreen"]))
 
-        return (Width=Width, Height=Height, FrameRate=FrameRate, WindowName=WindowName, PixelsPerUnit=PixelsPerUnit, AutoScaleZoom=AutoScaleZoom, IsResizable=IsResizable, Fullscreen=Fullscreen)
+        return (Width=Width, Height=Height, FrameRate=FrameRate, Fullscreen=Fullscreen)
+    end
+
+    # Function to read and parse the recents file with timestamps
+    function get_raw_recents()
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+            projects = []
+            
+            if isfile(filename)
+                # Open the file for reading
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            # Check if the line contains a timestamp (format: "path|timestamp")
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                # Has timestamp format
+                                path = strip(parts[1])
+                                timestamp = strip(parts[2])
+                                # Only add if the path exists
+                                if isdir(path)
+                                    push!(projects, (path=path, timestamp=timestamp))
+                                end
+                            else
+                                # Old format without timestamp - if valid directory
+                                if isdir(line)
+                                    # Use current time as timestamp for old entries
+                                    push!(projects, (path=line, timestamp=string(Dates.now())))
+                                end
+                            end
+                        end
+                    end
+                end
+            else 
+                touch(filename)
+            end
+    
+            # Sort by timestamp, most recent first
+            sort!(projects, by = x -> x.timestamp, rev=true)
+            
+            return projects
+        catch e
+            @error "Error parsing recents file" exception=e
+            return []
+        end
+    end
+
+    # Function to get the most recent project path
+    function get_most_recent_project()
+        raw_recents = get_raw_recents()
+        if !isempty(raw_recents)
+            return string(raw_recents[1].path)
+        end
+        return ""
+    end
+
+    # Function to read and parse the recents file
+    function parse_recents()
+        try
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+            projects = []
+            
+            if isfile(filename)
+                # Open the file for reading
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            # Check if the line contains a timestamp (format: "path|timestamp")
+                            parts = split(line, "|")
+                            if length(parts) == 2
+                                # Has timestamp format
+                                path = strip(parts[1])
+                                timestamp = strip(parts[2])
+                                # Only add if the path exists
+                                if isdir(path)
+                                    push!(projects, (path=path, timestamp=timestamp))
+                                end
+                            else
+                                # Old format without timestamp - if valid directory
+                                if isdir(line)
+                                    # Use current time as timestamp for old entries
+                                    push!(projects, (path=line, timestamp=string(Dates.now())))
+                                end
+                            end
+                        end
+                    end
+                end
+            else 
+                touch(filename)
+            end
+    
+            # Sort by timestamp, most recent first
+            sort!(projects, by = x -> x.timestamp, rev=true)
+            
+            # Return just the paths for backward compatibility
+            return [p.path for p in projects]
+        catch e
+            @error "Error parsing recents file" exception=e
+            filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+            isfile(filename) && rm(filename; force=true)
+            touch(filename)
+            return []
+        end
+    end
+
+    # Function to write a path to the recents file with timestamp
+    function add_path_to_recents(path::String)
+        filename = joinpath(JulGame.PrefHandlerModule.get_pref_path("kyjor", "julgame"), "recents.txt")
+        try 
+            if !isfile(filename)
+                touch(filename)
+            end
+
+            # Get current timestamp
+            current_time = Dates.now()
+            
+            # Read existing entries with their timestamps
+            entries = []
+            if isfile(filename)
+                open(filename, "r") do file
+                    for line in eachline(file)
+                        line = strip(line)
+                        if !isempty(line)
+                            parts = split(line, "|")
+                            existing_path = length(parts) > 1 ? strip(parts[1]) : line
+                            existing_timestamp = length(parts) > 1 ? strip(parts[2]) : string(current_time)
+                            
+                            # Only keep entries that are different from the new path
+                            if existing_path != path && isdir(existing_path)
+                                push!(entries, (path=existing_path, timestamp=existing_timestamp))
+                            end
+                        end
+                    end
+                end
+            end
+            
+            # Add the new path with current timestamp at the beginning
+            pushfirst!(entries, (path=path, timestamp=string(current_time)))
+            
+            # Write all entries back to the file
+            open(filename, "w") do file
+                for entry in entries
+                    println(file, "$(entry.path)|$(entry.timestamp)")
+                end
+            end
+
+            # Return paths only for backward compatibility
+            return [e.path for e in entries]
+        catch e
+            @error "Error adding path to recents" exception=e
+            rm(filename; force=true)
+            touch(filename)
+            open(filename, "a") do file
+                println(file, "$(path)|$(Dates.now())")
+            end
+            return [path]
+        end
+    end
+
+    function start_file_watcher(path::String, filesToReload)
+        try
+            @debug "Starting file watcher"
+            condition = Condition()
+            watch_task = @task poll_files(condition, path, filesToReload) # FileWatching.watch_folder(joinpath(currentSelectedProjectPath[], "scripts"), 0.1)
+            schedule(watch_task)
+            return condition, watch_task
+        catch e
+            @error "Error starting file watcher" exception=e
+        end
     end
 end # module

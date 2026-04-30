@@ -1,17 +1,17 @@
 module SawModule
-    using ..JulGame
+    using JulGame
 
     mutable struct Saw
         animator::AnimatorModule.Animator
-        endingY::Int32
+        endingY::Int
         isMovingUp::Bool
-        rotation::Int32
+        rotation::Int
         parent::JulGame.EntityModule.Entity
         sound::SoundSourceModule.SoundSource
         speed::Number
-        startingY::Int32
+        startingY::Int
 
-        function Saw(speed::Number = 5, startingY::Int32 = Int32(0), endingY::Int32 = Int32(0))
+        function Saw(speed::Number = 5, startingY::Int = 0, endingY::Int = 0)
             this = new()
 
             this.endingY = endingY

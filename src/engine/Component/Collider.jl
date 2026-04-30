@@ -185,13 +185,14 @@ module ColliderModule
         isIntersection = SDL2.SDL_IntersectRect(Ref(a), Ref(b), result)
 
         camera = MAIN.scene.camera
+        camS = JulGame.pixels_per_world_unit(camera)
         cameraDiff = camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * SCALE_UNITS, (camera.position.y + camera.offset.y) * SCALE_UNITS) : 
+        Math.Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 
         Math.Vector2(0,0)
-        isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Int32(round(posA.x))), Ref(Int32(round(posA.y + 32))), Ref(Int32(round(posA.x))), Ref(Int32(round(posA.y + 80))))
+        isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x), round(posA.y + 80 - cameraDiff.y))
 
-        isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Int32(round(posA.x + colliderAXSize))), Ref(Int32(round(posA.y + 32))), Ref(Int32(round(posA.x + colliderAXSize))), Ref(Int32(round(posA.y + 80))))
+        isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
         if isLineIntersectionL == SDL2.SDL_TRUE
             isLineIntersectionL = true
@@ -221,18 +222,29 @@ module ColliderModule
             depthVertical = result[].h
             horizontalCollisionDir = None::CollisionDirection
             verticalCollisionDir = None::CollisionDirection
-            if result[].x == b.x 
+            if result[].x == b.x && !colliderB.isPlatformerCollider
                 @debug "colliding from left at depth $(depthHorizontal)"
                 horizontalCollisionDir = Left::CollisionDirection
-            elseif result[].x == a.x
+            elseif result[].x == a.x && !colliderB.isPlatformerCollider
                 @debug "colliding from right at depth $(depthHorizontal)"
                 horizontalCollisionDir = Right::CollisionDirection
             end
             if result[].y == b.y
                 @debug "colliding from top at depth $(depthVertical)"
+                # Check if moving upward through a platformer - if so, ignore to prevent snap-to-top
+                if colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== C_NULL
+                    # If moving upward (negative velocity in SDL coords), ignore collision
+                    if colliderA.parent.rigidbody.velocity.y < 0
+                        return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
+                    end
+                end
                 verticalCollisionDir = Bottom::CollisionDirection
             elseif result[].y == a.y
-                @debug "colliding from botrom at depth $(depthVertical)" 
+                @debug "colliding from bottom at depth $(depthVertical)" 
+                # Platformer colliders allow pass-through from below
+                if colliderB.isPlatformerCollider
+                    return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
+                end
                 verticalCollisionDir = Top::CollisionDirection
             end
             
@@ -246,5 +258,11 @@ module ColliderModule
         #SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 
         return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
+    end
+
+    function Component.duplicate(this::InternalCollider, parent::Any)
+        newCollider = InternalCollider(parent, this.size, this.offset, this.tag, this.isTrigger, this.isPlatformerCollider, this.enabled)
+        newCollider.collisionEvents = this.collisionEvents
+        return newCollider
     end
    end

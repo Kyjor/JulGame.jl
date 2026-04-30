@@ -5,6 +5,7 @@
     using ..Component.SpriteModule
     import ..Component
     export Animator
+    
     struct Animator
         animations::Vector{Animation}
     end
@@ -13,7 +14,7 @@
     mutable struct InternalAnimator
         animations::Vector{Animation}
         currentAnimation::Animation
-        lastFrame::Int32
+        lastFrame::Int
         lastUpdate::UInt64
         parent::Any
         playOnce::Bool
@@ -24,7 +25,7 @@
             
             this.animations = animations
             this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
-            this.lastFrame = 1
+            this.lastFrame = 0
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent
             this.sprite = C_NULL
@@ -48,7 +49,7 @@
     end
 
     function Component.append_array(this::InternalAnimator)
-        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], Int32(60)))
+        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], 60))
     end
     
     function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
@@ -62,16 +63,27 @@
 
         @warn "Animation index out of bounds"
     end
+
+    function Component.duplicate(this::InternalAnimator, parent::Any)
+        newAnimator = InternalAnimator(parent, this.animations)
+        newAnimator.currentAnimation = this.currentAnimation
+        newAnimator.lastFrame = this.lastFrame
+        newAnimator.lastUpdate = this.lastUpdate
+        newAnimator.playOnce = this.playOnce
+        newAnimator.sprite = this.sprite
+
+        return newAnimator
+    end
     
     
     """
-    force_frame_update(this::InternalAnimator, frameIndex::Int32)
+    force_frame_update(this::InternalAnimator, frameIndex::Int)
     
     Updates the sprite crop of the animator to the specified frame index.
     
     # Arguments
     - `this::InternalAnimator`: The animator object.
-    - `frameIndex::Int32`: The index of the frame to update the sprite crop to.
+    - `frameIndex::Int`: The index of the frame to update the sprite crop to.
     
     # Example
     ```
@@ -79,7 +91,8 @@
     force_frame_update(animator, 1)
     ```
     """
-    function force_frame_update(this::InternalAnimator, frameIndex)
+    function force_frame_update(this::InternalAnimator, frameIndex::Int)
+        frameIndex = frameIndex
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end
     export force_frame_update    

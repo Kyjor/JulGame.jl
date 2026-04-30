@@ -42,9 +42,8 @@ function mainFileContent(projectName)
         using JulGame
 
         function run()
-            JulGame.MAIN = JulGame.Main(Float64(1.0))
-            scene = SceneBuilderModule.Scene(\"scene.json\")
-            SceneBuilderModule.load_and_prepare_scene(;this=scene)
+            JulGame.ScriptModule = @__MODULE__
+            SceneBuilderModule.load_and_prepare_scene(SceneBuilderModule.Scene(\"scene.json\"), JulGame.MainLoop())
         end
 
         julia_main() = run()
@@ -77,13 +76,13 @@ end
 
 function newScriptContent(scriptName)
     return "module $(scriptName)Module
-    using ..JulGame
-    mutable struct $scriptName
-    parent # do not remove this line, this is a reference to the entity that this script is attached to
-    # This is where you define your script's fields
-    # Example: speed::Float64
+    using JulGame
+    mutable struct $(scriptName) <: Script
+        parent # do not remove this line, this is a reference to the entity that this script is attached to
+        # This is where you define your script's fields
+        # Example: speed::Float64
 
-        function $scriptName()
+        function $(scriptName)()
             this = new() # do not remove this line
             
             # this is where you initialize your script's fields
@@ -115,13 +114,8 @@ end
 
 function config_file_content(projectName)
     return
-    "WindowName=$projectName
-Width=800
-Height=800
-PixelsPerUnit=16
-IsResizable=1
-Zoom=1.0
-AutoScaleZoom=0
-Fullscreen=0
-FrameRate=60"
+    "Width=800
+    Height=800
+    Fullscreen=0
+    FrameRate=60"
 end

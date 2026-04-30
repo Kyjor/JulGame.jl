@@ -179,6 +179,20 @@ declare module 'astro:content' {
 
 	type ContentEntryMap = {
 		"docs": {
+"general/core-concepts.md": {
+	id: "general/core-concepts.md";
+  slug: "general/core-concepts";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"general/editor.md": {
+	id: "general/editor.md";
+  slug: "general/editor";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "general/what-is-julgame.md": {
 	id: "general/what-is-julgame.md";
   slug: "general/what-is-julgame";
@@ -186,9 +200,23 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
-"guides/example.md": {
-	id: "guides/example.md";
-  slug: "guides/example";
+"guides/examples.md": {
+	id: "guides/examples.md";
+  slug: "guides/examples";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"guides/getting-started.md": {
+	id: "guides/getting-started.md";
+  slug: "guides/getting-started";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"guides/tutorials.md": {
+	id: "guides/tutorials.md";
+  slug: "guides/tutorials";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -203,6 +231,13 @@ declare module 'astro:content' {
 "reference/Animation/animation.md": {
 	id: "reference/Animation/animation.md";
   slug: "reference/animation/animation";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Animation/index.md": {
+	id: "reference/Animation/index.md";
+  slug: "reference/animation";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -235,6 +270,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Animator/index.md": {
+	id: "reference/Animator/index.md";
+  slug: "reference/animator";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/Animator/properties/animations.md": {
 	id: "reference/Animator/properties/animations.md";
   slug: "reference/animator/properties/animations";
@@ -249,6 +291,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/CircleCollider/index.md": {
+	id: "reference/CircleCollider/index.md";
+  slug: "reference/circlecollider";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/Collider/collider.md": {
 	id: "reference/Collider/collider.md";
   slug: "reference/collider/collider";
@@ -256,9 +305,30 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Collider/index.md": {
+	id: "reference/Collider/index.md";
+  slug: "reference/collider";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/Collider/properties/collisionEvents.md": {
 	id: "reference/Collider/properties/collisionEvents.md";
   slug: "reference/collider/properties/collisionevents";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Component/index.md": {
+	id: "reference/Component/index.md";
+  slug: "reference/component";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Components.md": {
+	id: "reference/Components.md";
+  slug: "reference/components";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -277,6 +347,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/Rigidbody/index.md": {
+	id: "reference/Rigidbody/index.md";
+  slug: "reference/rigidbody";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/Rigidbody/properties/acceleration.md": {
 	id: "reference/Rigidbody/properties/acceleration.md";
   slug: "reference/rigidbody/properties/acceleration";
@@ -287,6 +364,13 @@ declare module 'astro:content' {
 "reference/Rigidbody/rigidbody.md": {
 	id: "reference/Rigidbody/rigidbody.md";
   slug: "reference/rigidbody/rigidbody";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Shape/index.md": {
+	id: "reference/Shape/index.md";
+  slug: "reference/shape";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
@@ -333,6 +417,13 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
+"reference/SoundSource/index.md": {
+	id: "reference/SoundSource/index.md";
+  slug: "reference/soundsource";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
 "reference/SoundSource/properties/acceleration.md": {
 	id: "reference/SoundSource/properties/acceleration.md";
   slug: "reference/soundsource/properties/acceleration";
@@ -343,6 +434,55 @@ declare module 'astro:content' {
 "reference/SoundSource/sound-source.md": {
 	id: "reference/SoundSource/sound-source.md";
   slug: "reference/soundsource/sound-source";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Sprite/index.md": {
+	id: "reference/Sprite/index.md";
+  slug: "reference/sprite";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/Transform/index.md": {
+	id: "reference/Transform/index.md";
+  slug: "reference/transform";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/UI/immediate-text.md": {
+	id: "reference/UI/immediate-text.md";
+  slug: "reference/ui/immediate-text";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/UI/immediate-ui.md": {
+	id: "reference/UI/immediate-ui.md";
+  slug: "reference/ui/immediate-ui";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/UI/index.md": {
+	id: "reference/UI/index.md";
+  slug: "reference/ui";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/UI/screen-button.md": {
+	id: "reference/UI/screen-button.md";
+  slug: "reference/ui/screen-button";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"reference/UI/text-box.md": {
+	id: "reference/UI/text-box.md";
+  slug: "reference/ui/text-box";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">
