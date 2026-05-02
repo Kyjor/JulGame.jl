@@ -735,11 +735,12 @@ module InputModule
                     n_ent_el = length(entitiesWithSpritesOrderedByLayerDescending)
                     @debug "Checking $(n_ui_el + n_ent_el) elements for mouse event at $(this.mousePosition)"
                     hc = _MouseUiHitLoop(0, 0, 0, 0, 0, 0, false, false)
+                    prof_in = prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}
                     for ui in uiElementsOrderedByLayerDescending
-                        _input_hit_scan_ui!(this, evt, prof, ui, canvases, hc)
+                        _input_hit_scan_ui!(this, evt, prof_in, ui::JulGame.IUIElement, canvases, hc)
                     end
                     for ent in entitiesWithSpritesOrderedByLayerDescending
-                        _input_hit_scan_entity!(this, evt, prof, ent, canvases, hc)
+                        _input_hit_scan_entity!(this, evt, prof_in, ent::JulGame.IEntity, canvases, hc)
                     end
                     t_tail = Ref(time_ns())
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP

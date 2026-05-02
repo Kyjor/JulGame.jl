@@ -26,10 +26,10 @@ module Mesh3DModule
     mutable struct triangle
         p::Vector{vec3d}
         sym::Any
-        color::Any
+        color::SDL_Color
         texCoords::Vector{vec3d}
         material::String
-        function triangle(p = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)], sym = nothing, color = nothing, texCoords = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)], material = "default")
+        function triangle(p = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)], sym = nothing, color::SDL_Color = SDL_Color(0, 0, 0, 255), texCoords = [vec3d(0,0,0), vec3d(0,0,0), vec3d(0,0,0)], material = "default")
             new(p, sym, color, texCoords, material)
         end
     end
@@ -283,7 +283,7 @@ module Mesh3DModule
     )
 
     mutable struct Mesh3D
-        parent
+        parent::Union{JulGame.IEntity, Nothing}
         layer::Int
         isWorldEntity::Bool
         mesh::mesh
@@ -307,7 +307,7 @@ module Mesh3DModule
 
         function Mesh3D()
             this = new()
-            this.parent = C_NULL
+            this.parent = nothing
             this.layer = 0
             this.isWorldEntity = true
             this.mesh = mesh()
@@ -333,7 +333,7 @@ module Mesh3DModule
 
         function Mesh3D(file_path::String; fNear::Float64=0.1, fFar::Float64=1000.0, fFov::Float64=90.0)
             this = new()
-            this.parent = C_NULL
+            this.parent = nothing
             this.layer = 0
             this.isWorldEntity = true
             this.mesh = mesh(nothing)
@@ -549,7 +549,8 @@ module Mesh3DModule
     end
 
     function Component.initialize(this::Mesh3D, main)
-        windowSize = main.windowManager.windowSize
+        wm = getfield(main, :windowManager)::JulGame.WindowManagerModule.WindowManager
+        windowSize = getfield(wm, :windowSize)::JulGame.Math._Vector2{Int32}
         this.fAspectRatio = windowSize.y / windowSize.x
         this.matProj = MatrixOps.matrix_make_projection(this.fFov, this.fAspectRatio, this.fNear, this.fFar)
         
@@ -566,64 +567,70 @@ module Mesh3DModule
 
         # Move the cube forward
         if this.parent !== nothing
-            this.parent.transform.position = Math.Vector3f(0.0, 0.0, 5.0)
+            ent = getfield(this, :parent)::JulGame.IEntity
+            xf = getfield(ent, :transform)::JulGame.TransformModule.Transform
+            xf.position = Math._Vector3{Float64}(0.0, 0.0, 5.0)
         end
     end
 
     function Component.update(this::Mesh3D, deltaTime::Float64)
-        if !this.parent.isActive
-            return
-        end
+        parent = getfield(this, :parent)
+        (parent === nothing || !(getfield(parent, :isActive)::Bool)) && return
+        xf = getfield(parent::JulGame.IEntity, :transform)::JulGame.TransformModule.Transform
 
         # Debug controls for 3D movement
         if JulGame.IS_DEBUG
             moveSpeed = 1.0 * deltaTime
+            px = getfield(xf, :position)::JulGame.Math._Vector3{Float64}
+            rotv = getfield(xf, :rotation)::JulGame.Math._Vector3{Float64}
             if JulGame.InputModule.get_button_held_down("Right")
-                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x + moveSpeed, this.parent.transform.position.y, this.parent.transform.position.z)
+                xf.position = Math._Vector3{Float64}(px.x + moveSpeed, px.y, px.z)
             elseif JulGame.InputModule.get_button_held_down("Left")
-                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x - moveSpeed, this.parent.transform.position.y, this.parent.transform.position.z)
+                xf.position = Math._Vector3{Float64}(px.x - moveSpeed, px.y, px.z)
             end
+            px = getfield(xf, :position)::JulGame.Math._Vector3{Float64}
 
             if !JulGame.InputModule.get_button_held_down("LCtrl")
                 if JulGame.InputModule.get_button_held_down("Down")
-                    this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y + moveSpeed, this.parent.transform.position.z)
+                    xf.position = Math._Vector3{Float64}(px.x, px.y + moveSpeed, px.z)
                 elseif JulGame.InputModule.get_button_held_down("Up")
-                    this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y - moveSpeed, this.parent.transform.position.z)
+                    xf.position = Math._Vector3{Float64}(px.x, px.y - moveSpeed, px.z)
                 end
             end
+            px = getfield(xf, :position)::JulGame.Math._Vector3{Float64}
 
             # Z-axis movement with Ctrl + Up/Down
             if JulGame.InputModule.get_button_held_down("LCtrl") && JulGame.InputModule.get_button_held_down("Up")
-                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y, this.parent.transform.position.z + moveSpeed)
+                xf.position = Math._Vector3{Float64}(px.x, px.y, px.z + moveSpeed)
             elseif JulGame.InputModule.get_button_held_down("LCtrl") && JulGame.InputModule.get_button_held_down("Down")
-                this.parent.transform.position = Math.Vector3f(this.parent.transform.position.x, this.parent.transform.position.y, this.parent.transform.position.z - moveSpeed)
+                xf.position = Math._Vector3{Float64}(px.x, px.y, px.z - moveSpeed)
             end
+            px = getfield(xf, :position)::JulGame.Math._Vector3{Float64}
+            rotv = getfield(xf, :rotation)::JulGame.Math._Vector3{Float64}
 
             # Rotation controls with Q/E
             if JulGame.InputModule.get_button_held_down("Q")
-                this.parent.transform.rotation = Math.Vector3f(this.parent.transform.rotation.x, this.parent.transform.rotation.y, this.parent.transform.rotation.z + 90.0 * deltaTime)
+                xf.rotation = Math._Vector3{Float64}(rotv.x, rotv.y, rotv.z + 90.0 * deltaTime)
             elseif JulGame.InputModule.get_button_held_down("E")
-                this.parent.transform.rotation = Math.Vector3f(this.parent.transform.rotation.x, this.parent.transform.rotation.y, this.parent.transform.rotation.z - 90.0 * deltaTime)
+                xf.rotation = Math._Vector3{Float64}(rotv.x, rotv.y, rotv.z - 90.0 * deltaTime)
             end
 
             # Look at cube with spacebar
             if JulGame.InputModule.get_button_pressed("2")
-
-                camera = JulGame.MAIN.scene.camera
+                ml = JulGame.current_main()
+                sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+                camera = getfield(sc, :camera)::Union{Nothing, JulGame.CameraModule.Camera}
                 @debug("trying to point at")
                 if camera !== nothing
                     @debug("point at")
-                    # Calculate direction to cube
-                    cubePos = this.parent.transform.position
+                    cubePos = getfield(xf, :position)::JulGame.Math._Vector3{Float64}
                     cameraPos = vec3d(camera.position.x, camera.position.y, camera.position.z)
                     direction = MatrixOps.vector_sub(vec3d(cubePos.x, cubePos.y, cubePos.z), cameraPos)
                     direction = MatrixOps.vector_normalize(direction)
 
-                    # Calculate yaw and pitch from direction
                     yaw = atan(direction.x, direction.z)
                     pitch = asin(direction.y)
 
-                    # Convert to degrees and set camera rotation
                     camera.yaw = yaw * 180.0 / π
                     camera.pitch = pitch * 180.0 / π
                 end
@@ -703,10 +710,13 @@ module Mesh3DModule
         # Clear triangles to raster
         empty!(this.vecTrianglesToRaster)
 
-        # Get world matrix from entity transform
-        pos = this.parent.transform.position
-        scale = this.parent.transform.scale
-        rot = this.parent.transform.rotation
+        parent = getfield(this, :parent)
+        parent === nothing && return
+        ent = parent::JulGame.IEntity
+        xf = getfield(ent, :transform)::JulGame.TransformModule.Transform
+        pos = getfield(xf, :position)::JulGame.Math._Vector3{Float64}
+        scale = getfield(xf, :scale)::JulGame.Math._Vector3{Float64}
+        rot = getfield(xf, :rotation)::JulGame.Math._Vector3{Float64}
 
         # Create world matrix (correct order: Scale -> Rotation -> Translation)
         matScale = MatrixOps.matrix_make_scale(scale.x, scale.y, scale.z)
@@ -721,14 +731,17 @@ module Mesh3DModule
         this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matRotZ)
         this.matWorld = MatrixOps.matrix_multiply_matrix(this.matWorld, matTrans)
 
+        sc = getfield(main, :scene)::JulGame.SceneModule.Scene
+        cam = getfield(sc, :camera)::JulGame.CameraModule.Camera
+
         # Get camera position and create view matrix
-        cameraPos = vec3d(main.scene.camera.position.x, main.scene.camera.position.y, main.scene.camera.position.z)
+        cameraPos = vec3d(cam.position.x, cam.position.y, cam.position.z)
         vUp = vec3d(0, 1, 0)
         vForward = vec3d(0, 0, 1)
 
         # Create rotation matrices for camera (convert degrees to radians)
-        matCameraRotY = MatrixOps.matrix_make_rotation_y(main.scene.camera.yaw * π / 180.0)
-        matCameraRotX = MatrixOps.matrix_make_rotation_x(main.scene.camera.pitch * π / 180.0)
+        matCameraRotY = MatrixOps.matrix_make_rotation_y(cam.yaw * π / 180.0)
+        matCameraRotX = MatrixOps.matrix_make_rotation_x(cam.pitch * π / 180.0)
 
         # Apply rotations to forward vector
         vForward = MatrixOps.matrix_multiply_vector(matCameraRotY, vForward)
@@ -740,6 +753,11 @@ module Mesh3DModule
         # Create camera matrix
         matCamera = MatrixOps.matrix_point_at(cameraPos, vTarget, vUp)
         matView = MatrixOps.matrix_quick_inverse(matCamera)
+
+        wm = getfield(main, :windowManager)::JulGame.WindowManagerModule.WindowManager
+        ws = getfield(wm, :windowSize)::JulGame.Math._Vector2{Int32}
+        wxf = Float64(ws.x)
+        wyf = Float64(ws.y)
 
         # Process each triangle
         for tri in this.mesh.tris
@@ -817,18 +835,17 @@ module Mesh3DModule
                         triProjected.p[3].z = viewZ3
 
                         # Scale to screen
-                        windowSize = main.windowManager.windowSize
                         vOffsetView = vec3d(1, 1, 0)
                         triProjected.p[1] = MatrixOps.vector_add(triProjected.p[1], vOffsetView)
                         triProjected.p[2] = MatrixOps.vector_add(triProjected.p[2], vOffsetView)
                         triProjected.p[3] = MatrixOps.vector_add(triProjected.p[3], vOffsetView)
 
-                        triProjected.p[1].x *= 0.5 * windowSize.x
-                        triProjected.p[1].y *= 0.5 * windowSize.y
-                        triProjected.p[2].x *= 0.5 * windowSize.x
-                        triProjected.p[2].y *= 0.5 * windowSize.y
-                        triProjected.p[3].x *= 0.5 * windowSize.x
-                        triProjected.p[3].y *= 0.5 * windowSize.y
+                        triProjected.p[1].x *= 0.5 * wxf
+                        triProjected.p[1].y *= 0.5 * wyf
+                        triProjected.p[2].x *= 0.5 * wxf
+                        triProjected.p[2].y *= 0.5 * wyf
+                        triProjected.p[3].x *= 0.5 * wxf
+                        triProjected.p[3].y *= 0.5 * wyf
 
                         # Calculate lighting
                         light_direction = vec3d(0.0, 0.0, -1.0)
@@ -876,11 +893,11 @@ module Mesh3DModule
                     if i == 1
                         nTrisToAdd = triangle_clip_against_plane(vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), test, clipped)
                     elseif i == 2
-                        nTrisToAdd = triangle_clip_against_plane(vec3d(0.0, main.windowManager.windowSize.y - 1.0, 0.0), vec3d(0.0, -1.0, 0.0), test, clipped)
+                        nTrisToAdd = triangle_clip_against_plane(vec3d(0.0, wyf - 1.0, 0.0), vec3d(0.0, -1.0, 0.0), test, clipped)
                     elseif i == 3
                         nTrisToAdd = triangle_clip_against_plane(vec3d(0.0, 0.0, 0.0), vec3d(1.0, 0.0, 0.0), test, clipped)
                     elseif i == 4
-                        nTrisToAdd = triangle_clip_against_plane(vec3d(main.windowManager.windowSize.x - 1.0, 0.0, 0.0), vec3d(-1.0, 0.0, 0.0), test, clipped)
+                        nTrisToAdd = triangle_clip_against_plane(vec3d(wxf - 1.0, 0.0, 0.0), vec3d(-1.0, 0.0, 0.0), test, clipped)
                     end
 
                     if nTrisToAdd > 0
@@ -911,38 +928,37 @@ module Mesh3DModule
         # Render triangles batched by material
         for (matName, triangles) in materialBatches
             # Lookup material once per batch
-            material = get(this.mesh.materials, matName, Material())
+            material = get(this.mesh.materials, matName, Material())::Material
             
-            # Get the diffuse texture (or any available texture) for rendering
-            texture = nothing
+            texture_opt::Union{Nothing, Texture} = nothing
             if haskey(material.textures, TEXTURE_TYPE_DIFFUSE)
-                texture = material.textures[TEXTURE_TYPE_DIFFUSE]
+                texture_opt = material.textures[TEXTURE_TYPE_DIFFUSE]::Texture
             elseif !isempty(material.textures)
-                texture = first(material.textures)[2]
+                texture_opt = first(material.textures)[2]::Texture
             end
             
-            texture_ptr = texture !== nothing ? texture.texture : C_NULL
+            texture_ptr::Ptr{SDL_Texture} = texture_opt !== nothing ? getfield(texture_opt::Texture, :texture)::Ptr{SDL_Texture} : Ptr{SDL_Texture}(C_NULL)
             
             # Render all triangles with this material
             for tri in triangles
                 # Apply texture coordinates based on texture mode if texture exists
                 tex_coords = tri.texCoords
                 
-                if texture !== nothing
-                    tex_coords = [apply_texture_mode(coord, texture) for coord in tex_coords]
+                if texture_opt !== nothing
+                    tex_coords = [apply_texture_mode(coord, texture_opt::Texture) for coord in tex_coords]
                 end
 
-                sdl_verts = [
-                    SDL_Vertex(SDL_FPoint(tri.p[1].x, tri.p[1].y), tri.color, SDL_FPoint(tex_coords[1].x, tex_coords[1].y)),
-                    SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), tri.color, SDL_FPoint(tex_coords[2].x, tex_coords[2].y)),
-                    SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), tri.color, SDL_FPoint(tex_coords[3].x, tex_coords[3].y))
-                ]
+                col = getfield(tri, :color)::SDL_Color
+                sdl_verts = Vector{SDL_Vertex}([
+                    SDL_Vertex(SDL_FPoint(tri.p[1].x, tri.p[1].y), col, SDL_FPoint(tex_coords[1].x, tex_coords[1].y)),
+                    SDL_Vertex(SDL_FPoint(tri.p[2].x, tri.p[2].y), col, SDL_FPoint(tex_coords[2].x, tex_coords[2].y)),
+                    SDL_Vertex(SDL_FPoint(tri.p[3].x, tri.p[3].y), col, SDL_FPoint(tex_coords[3].x, tex_coords[3].y)),
+                ])
 
-                # Set the blend mode for proper texture rendering
-                SDL_SetRenderDrawBlendMode(JulGame.Renderer, SDL_BLENDMODE_BLEND)
+                rend = JulGame.Renderer::Ptr{SDL_Renderer}
+                SDL_SetRenderDrawBlendMode(rend, SDL_BLENDMODE_BLEND)
                 
-                # Render the geometry
-                result = SDL_RenderGeometry(JulGame.Renderer, texture_ptr, sdl_verts, length(sdl_verts), C_NULL, 0)
+                result = SDL_RenderGeometry(rend, texture_ptr, sdl_verts, length(sdl_verts), C_NULL, 0)
                 if result < 0
                     @debug("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
                 end
@@ -952,19 +968,19 @@ module Mesh3DModule
                 
                 if JulGame.IS_DEBUG
                     SDL_RenderDrawLine(
-                        JulGame.Renderer,
+                        rend,
                         round(tri.p[1].x), round(tri.p[1].y),
                         round(tri.p[2].x), round(tri.p[2].y)
                     )
         
                     SDL_RenderDrawLine(
-                        JulGame.Renderer,
+                        rend,
                         round(tri.p[2].x), round(tri.p[2].y),
                         round(tri.p[3].x), round(tri.p[3].y)
                     )
         
                     SDL_RenderDrawLine(
-                        JulGame.Renderer,
+                        rend,
                         round(tri.p[3].x), round(tri.p[3].y),
                         round(tri.p[1].x), round(tri.p[1].y)
                     )
@@ -1071,34 +1087,34 @@ module Mesh3DModule
         meshCube = mesh(triangle[
             # SOUTH
             triangle([ vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)], 
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
             triangle([ vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
             # EAST
             triangle([ vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 1.0, 1.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 1.0, 1.0)]),
             triangle([ vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 0.0, 1.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 0.0, 1.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 0.0, 1.0)]),
             # NORTH
             triangle([ vec3d(1.0, 0.0, 1.0), vec3d(1.0, 1.0, 1.0), vec3d(0.0, 1.0, 1.0)],
-                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(0.0, 1.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(0.0, 1.0, 0.0)]),
             triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 0.0, 1.0)],
-                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 0.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 0.0, 0.0)]),
             # WEST
             triangle([ vec3d(0.0, 0.0, 1.0), vec3d(0.0, 1.0, 1.0), vec3d(0.0, 1.0, 0.0)],
-                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0)]),
             triangle([ vec3d(0.0, 0.0, 1.0), vec3d(0.0, 1.0, 0.0), vec3d(0.0, 0.0, 0.0)],
-                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(1.0, 0.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
             # TOP
             triangle([ vec3d(0.0, 1.0, 0.0), vec3d(0.0, 1.0, 1.0), vec3d(1.0, 1.0, 1.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
             triangle([ vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 1.0), vec3d(1.0, 1.0, 0.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
             # BOTTOM
             triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 0.0, 1.0), vec3d(0.0, 0.0, 0.0)],
-                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 1.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 0.0, 0.0), vec3d(0.0, 0.0, 1.0)]),
             triangle([ vec3d(1.0, 0.0, 1.0), vec3d(0.0, 0.0, 0.0), vec3d(1.0, 0.0, 0.0)],
-                    nothing, nothing, [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 0.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(1.0, 0.0, 0.0), vec3d(0.0, 0.0, 1.0), vec3d(1.0, 0.0, 1.0)]),
         ])
         
         # Set material for all triangles
@@ -1112,9 +1128,9 @@ module Mesh3DModule
     function create_plane()
         meshPlane = mesh(triangle[
             triangle([ vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(0.0, 1.0, 0.0), vec3d(1.0, 1.0, 0.0)]),
             triangle([ vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)],
-                    nothing, nothing, [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
+                    nothing, SDL_Color(0, 0, 0, 255), [vec3d(0.0, 0.0, 0.0), vec3d(1.0, 1.0, 0.0), vec3d(1.0, 0.0, 0.0)]),
         ])
         
         return meshPlane

@@ -24,7 +24,7 @@ module SoftwareRenderer3DModule
     using .MeshLoader3DModule
     using .MeshLoaderIntegrationModule
 
-    @inline _sr3d_main_loop() = JulGame.current_main()::JulGame.MainLoopModule.MainLoop
+    @inline _sr3d_main_loop() = JulGame.current_main()
 
     @inline function _sr3d_main_window_size()::JulGame.Math._Vector2{Int32}
         ml = _sr3d_main_loop()
@@ -1160,10 +1160,12 @@ module SoftwareRenderer3DModule
             
             # Update cached camera state
             if renderer.use_cached_sort
-                camera = _sr3d_main_scene_camera()
-                renderer.last_camera_position = Math.Vector3f(camera.position.x, camera.position.y, camera.position.z)
-                renderer.last_camera_yaw = camera.yaw
-                renderer.last_camera_pitch = camera.pitch
+                cam = _sr3d_main_scene_camera()
+                if cam !== nothing
+                    renderer.last_camera_position = JulGame.Math._Vector3{Float64}(cam.position.x, cam.position.y, cam.position.z)
+                    renderer.last_camera_yaw = cam.yaw
+                    renderer.last_camera_pitch = cam.pitch
+                end
             end
         else
             # Track skipped sorts for profiling
