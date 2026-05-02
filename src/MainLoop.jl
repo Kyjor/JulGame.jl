@@ -57,7 +57,7 @@ module MainLoopModule
 	```
 	"""
 	function enable_profiling(;buffer_size::Int=10000, report_interval::Float64=5.0)
-		this::MainLoop = MAIN
+		this = JulGame.current_main()
 		this.latencyProfiler = JulGame.LatencyProfilerModule.LatencyProfiler(
 			enabled=true,
 			buffer_size=buffer_size,
@@ -72,7 +72,7 @@ module MainLoopModule
 	Disable latency profiling and print final report.
 	"""
 	function disable_profiling()
-		this::MainLoop = MAIN
+		this = JulGame.current_main()
 		if this.latencyProfiler !== nothing
 			JulGame.LatencyProfilerModule.print_latency_report(this.latencyProfiler)
 			this.latencyProfiler = nothing
@@ -86,7 +86,7 @@ module MainLoopModule
 	Print a comprehensive latency profiling report including per-script performance.
 	"""
 	function print_profiling_report()
-		this::MainLoop = MAIN
+		this = JulGame.current_main()
 		if this.latencyProfiler !== nothing
 			JulGame.LatencyProfilerModule.print_latency_report(this.latencyProfiler)
 			
@@ -106,7 +106,7 @@ module MainLoopModule
 	Export profiling data to CSV file for external analysis.
 	"""
 	function export_profiling_data(filename::String)
-		this::MainLoop = MAIN
+		this = JulGame.current_main()
 		if this.latencyProfiler !== nothing
 			JulGame.LatencyProfilerModule.export_profiling_data(this.latencyProfiler, filename)
 		else
@@ -142,8 +142,11 @@ module MainLoopModule
 		if !_latency_env_atexit_registered[]
 			atexit() do
 				try
-					if JulGame.MAIN !== nothing && JulGame.MAIN.latencyProfiler !== nothing
-						disable_profiling()
+					if JulGame.MAIN !== nothing
+						this = JulGame.current_main()
+						if this.latencyProfiler !== nothing
+							disable_profiling()
+						end
 					end
 				catch
 				end
@@ -423,14 +426,15 @@ module MainLoopModule
 
     function prepare_window_scripts_and_start_loop(size)
         @debug "Preparing window"
-		MAIN.windowManager.windowSize = size
+		main = JulGame.current_main()
+		main.windowManager.windowSize = size
 		
 		@debug "Initializing scripts and components"
         initialize_scripts_and_components()
 
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			@debug "Starting non editor loop"
-            full_loop(MAIN)
+            full_loop(main)
             return
         end
     end
@@ -550,12 +554,12 @@ module MainLoopModule
 	end
 
 	function create_new_canvas()
-		canvas = create_new_canvas(MAIN)
+		canvas = create_new_canvas(JulGame.current_main())
 		return canvas
 	end
 
 	function initialize_scripts_and_components()
-		this::MainLoop = MAIN
+		this = JulGame.current_main()
 		scripts = Union{JulGame.Script, JSON3.Object}[]
 		for entity in this.scene.entities
 			for script in entity.scripts
@@ -587,7 +591,7 @@ module MainLoopModule
 			end
 			build_sprite_layers()
 
-			for entity in MAIN.scene.entities
+			for entity in this.scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
 				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
 					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
@@ -596,23 +600,23 @@ module MainLoopModule
 			end 
 		end
 				
-		MAIN.scene.rigidbodies = []
-		MAIN.scene.colliders = []
-		for entity in MAIN.scene.entities
+		this.scene.rigidbodies = []
+		this.scene.colliders = []
+		for entity in this.scene.entities
 			@debug "adding rigidbodies to global list"
 			if entity.rigidbody != C_NULL
-				push!(MAIN.scene.rigidbodies, entity.rigidbody)
+				push!(this.scene.rigidbodies, entity.rigidbody)
 					end
 			@debug "adding colliders to global list"
 			if entity.collider != C_NULL
-				push!(MAIN.scene.colliders, entity.collider)
+				push!(this.scene.colliders, entity.collider)
 			end
 		end 
 		
 		# Batch static sprites for performance
 		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 			@debug "Batching static sprites"
-			MAIN.scene.batchedLayers = JulGame.StaticSpriteBatcherModule.batch_static_sprites(MAIN.scene)
+			this.scene.batchedLayers = JulGame.StaticSpriteBatcherModule.batch_static_sprites(this.scene)
 		end
 		
 		# Mark input layer order dirty after initialization
@@ -630,7 +634,7 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 """
 function JulGame.change_scene(sceneFileName::String)
 	JulGame.IS_CHANGING_SCENE = true
-	this::MainLoop = MAIN
+	this = JulGame.current_main()
 	@debug "Changing scene to: $(sceneFileName)"
 	this.close = true
 	this.shouldChangeScene = true
@@ -731,7 +735,7 @@ function build_sprite_layers()
 	layerDict = Dict{Int, Vector{Any}}()  # Int keys instead of String - no allocations!
 	sortedLayers = Int[]
 	
-	for entity in MAIN.scene.entities
+	for entity in JulGame.current_main().scene.entities
 		entitySprite = entity.sprite
 		if entitySprite != C_NULL
 			layer = entitySprite.layer
@@ -789,11 +793,11 @@ function JulGame.destroy(this::MainLoop, entity::JulGame.Entity)
 end
 
 function JulGame.destroy(entity::JulGame.Entity)
-	JulGame.destroy(MAIN, entity)
+	JulGame.destroy(JulGame.current_main(), entity)
 end
 
 function JulGame.destroy_entity(entity)
-    JulGame.destroy_entity(MAIN, entity)
+    JulGame.destroy_entity(JulGame.current_main(), entity)
 end
 
 function JulGame.destroy_ui_element(this::MainLoop, uiElement)
@@ -859,7 +863,7 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 
 """
 function JulGame.create_entity(entity)
-	this::MainLoop = MAIN
+	this = JulGame.current_main()
 	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
 		layer = entity.sprite.layer
@@ -1447,8 +1451,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		SDL2.SDL_ClearError()
 		
 		# Use the WindowManager to close the window
-		if JulGame.MAIN.windowManager !== nothing
-			JulGame.WindowManagerModule.close_window()
+		if JulGame.MAIN !== nothing
+			main = JulGame.current_main()
+			if main.windowManager !== nothing
+				JulGame.WindowManagerModule.close_window()
+			end
 		end
 		
 		SDL2.SDL_ClearError()

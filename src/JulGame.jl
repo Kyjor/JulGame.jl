@@ -123,14 +123,14 @@ module JulGame
 
     Stores the top-left screen coordinate of the editor's game view panel. Updated by `GameViewer.jl`.
     """
-    EditorGameViewPosition = Math.Vector2(0,0)
+    EditorGameViewPosition::Math.Vector2 = Math._Vector2{Int32}(0, 0)
 
     """
         EditorGameViewSize::Math.Vector2
 
     Stores the rendered size (potentially scaled/letterboxed) of the editor's game view panel. Updated by `GameViewer.jl`.
     """
-    EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
+    EditorGameViewSize::Math.Vector2 = Math._Vector2{Int32}(0, 0) # Holds the size of the rendered game texture (could be letterboxed)
 
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule

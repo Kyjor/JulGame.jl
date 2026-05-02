@@ -82,7 +82,10 @@ module SceneBuilderModule
         config = fill_in_config(config)
 
         windowName::String = windowName
-        size::Math.Vector2 = Math.Vector2(parse(Int, string(get(config, "Width", DEFAULT_CONFIG["Width"]))), parse(Int, string(get(config, "Height", DEFAULT_CONFIG["Height"]))))
+        size = Math._Vector2{Int32}(
+            Int32(parse(Int, string(get(config, "Width", DEFAULT_CONFIG["Width"])))),
+            Int32(parse(Int, string(get(config, "Height", DEFAULT_CONFIG["Height"])))),
+        )
         isResizable::Bool = isWindowResizable
         targetFrameRate::Int = parse(Int, string(get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
         isFullscreen::Bool = get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1"
@@ -96,10 +99,10 @@ module SceneBuilderModule
         main_loop.level = this
         main_loop.scene.name = split(this.scene, ".")[1]
 
-        if size == Math.Vector2()
+        if size.x == 0 && size.y == 0
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
 			SDL2.SDL_GetCurrentDisplayMode(0, pointer(displayMode))
-			size = Math.Vector2(displayMode[1].w, displayMode[1].h)
+			size = Math._Vector2{Int32}(displayMode[1].w, displayMode[1].h)
 		end
         
         

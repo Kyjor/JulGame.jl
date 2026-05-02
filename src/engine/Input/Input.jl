@@ -126,7 +126,11 @@ module InputModule
         if evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
             @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
             @debug "mouse state: $(x[1]), $(y[1])"
-            window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
+            window_focused = false
+            if JulGame.MAIN !== nothing
+                main = JulGame.current_main()
+                window_focused = main.windowManager !== nothing && main.windowManager.isWindowFocused
+            end
             @debug "window focused: $window_focused"
             if !window_focused
                 @debug "using event coordinates"
@@ -140,9 +144,10 @@ module InputModule
         @debug "new mouse pos: $(this.mousePosition)"
 
         if !JulGame.IS_EDITOR
+            main = JulGame.current_main()
             window_width = Ref{Cint}(0)
             window_height = Ref{Cint}(0)
-            SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
+            SDL2.SDL_GetWindowSize(main.windowManager.window, window_width, window_height)
             logical_size = JulGame.WindowManagerModule.get_logical_size()
             safe_window_width = max(window_width[], 1)
             safe_window_height = max(window_height[], 1)
@@ -165,18 +170,19 @@ module InputModule
                 scaled_x = 0
                 scaled_y = 0
             end
-            window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
+            window_focused = (main.windowManager !== nothing && main.windowManager.isWindowFocused)
             this.mousePosition = JulGame.Math._Vector2{Int32}(
                 clamp(floor(Int, scaled_x), 0, logical_size.x),
                 clamp(floor(Int, scaled_y), 0, logical_size.y)
             )
             @debug "Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused"
         else
+            main = JulGame.current_main()
             raw_mouse_x = x[1] - JulGame.EditorGameViewPosition.x
             raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
             clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
             clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
-            camera_size = MAIN.scene.camera.size
+            camera_size = main.scene.camera.size
             if JulGame.EditorGameViewSize.x > 0 && JulGame.EditorGameViewSize.y > 0
                 scale_x = camera_size.x / JulGame.EditorGameViewSize.x
                 scale_y = camera_size.y / JulGame.EditorGameViewSize.y
@@ -191,8 +197,9 @@ module InputModule
     end
 
     @inline function _input_latency_profiler()
-        m = JulGame.MAIN
-        (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
+        JulGame.MAIN === nothing && return nothing
+        m = JulGame.current_main()
+        (m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
         return m.latencyProfiler
     end
 
@@ -257,9 +264,9 @@ module InputModule
         prof = _input_latency_profiler()
         t0 = Ref(time_ns())
 
-        this.buttonsPressedDown = []
-        this.mouseButtonsPressedDown = []
-        this.mouseButtonsReleased = []  # Clear the released buttons each frame
+        this.buttonsPressedDown = String[]
+        this.mouseButtonsPressedDown = String[]
+        this.mouseButtonsReleased = String[]  # Clear the released buttons each frame
         this.didMouseEventOccur = false
         this.didMouseMotionOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
@@ -348,13 +355,14 @@ module InputModule
                     @debug("Mouse button down at $(this.mousePosition)")
                 end
 
-                ui_hit_active = MAIN.scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
+                main = JulGame.current_main()
+                ui_hit_active = main.scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !main.isGameModeRunningInEditor)
                 if ui_hit_active
                     _input_ui_hit_span!(prof, t_ms_blk, :hit_mouse_evt_preamble)
                     t_ui_wall = time_ns()
                     t_hit = Ref(time_ns())
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = length(MAIN.scene.uiElements))
-                    if MAIN.scene.camera === nothing
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = length(main.scene.uiElements))
+                    if main.scene.camera === nothing
                         _input_ui_hit_step!(prof, t_hit, :hit_ui_abort_camera)
                         @warn ("Camera is not set in the main scene.")
                         _input_poll_accumulate!(prof, t0, :mouse_ui_aborted_no_camera)
@@ -362,25 +370,25 @@ module InputModule
                     end
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_camera_ok)
 
-                    canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
+                    canvases = filter(x -> isa(x, JulGame.ICanvas), main.scene.uiElements)
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_canvases = length(canvases))
 
                     # Use cached layer order instead of sorting every mouse event
                     # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
-                    #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
+                    #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(main)
                                         # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
 
-                    uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    uiElementsOrderedByLayerDescending = sort(reverse(main.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
 
-                    entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(entitiesWithSpritesOrderedByLayerDescending), n_entities = length(MAIN.scene.entities))
+                    entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, main.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(entitiesWithSpritesOrderedByLayerDescending), n_entities = length(main.scene.entities))
 
                     elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
 
                     # TODO: add rest of entities without sprites in default order
-                    # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, MAIN.scene.entities)
+                    # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, main.scene.entities)
                     # append!(elementsOrderedByLayerDescending, restOfEntities)
                     clickedAnElementAlready = false
                     hoveredAnElementAlready = false
@@ -683,9 +691,12 @@ module InputModule
             return
         end
 
-        # If we have access to the WindowManager through MAIN, delegate window events to it
-        if JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing
-            JulGame.WindowManagerModule.handle_window_event(event.window)
+        # If we have access to the WindowManager through the main loop, delegate window events to it
+        if JulGame.MAIN !== nothing
+            main = JulGame.current_main()
+            if main.windowManager !== nothing
+                JulGame.WindowManagerModule.handle_window_event(event.window)
+            end
         end
     end
 
@@ -1038,11 +1049,11 @@ module InputModule
     end
 
     function get_button_held_down(button::String)
-        return get_button_held_down(MAIN.input, button)
+        return get_button_held_down(JulGame.current_main().input, button)
     end
 
     function get_button_pressed(button::String)
-        return get_button_pressed(MAIN.input, button)
+        return get_button_pressed(JulGame.current_main().input, button)
     end
 
     function get_button_pressed(this::Input, button::String)
@@ -1053,7 +1064,7 @@ module InputModule
     end
 
     function get_button_released(button::String)
-        return get_button_released(MAIN.input, button)
+        return get_button_released(JulGame.current_main().input, button)
     end
 
     function get_button_released(this::Input, button::String)
@@ -1071,7 +1082,7 @@ module InputModule
     end
 
     function get_mouse_button(button::Any)
-        return get_mouse_button(MAIN.input, button)
+        return get_mouse_button(JulGame.current_main().input, button)
     end
 
     function get_mouse_button_pressed(this::Input, button::Any)
@@ -1082,7 +1093,7 @@ module InputModule
     end
 
     function get_mouse_button_pressed(button::Any)
-        return get_mouse_button_pressed(MAIN.input, button)
+        return get_mouse_button_pressed(JulGame.current_main().input, button)
     end
 
     function get_mouse_button_released(this::Input, button::Any)
@@ -1093,7 +1104,7 @@ module InputModule
     end
 
     function get_mouse_button_released(button::Any)
-        return get_mouse_button_released(MAIN.input, button)
+        return get_mouse_button_released(JulGame.current_main().input, button)
     end
 
     function get_mouse_position(this::Input)
@@ -1101,7 +1112,7 @@ module InputModule
     end
 
     function get_mouse_position()
-        return get_mouse_position(MAIN.input)
+        return get_mouse_position(JulGame.current_main().input)
     end
 
     function get_mouse_position_in_world_space(this::Input)
@@ -1109,7 +1120,7 @@ module InputModule
     end
 
     function get_mouse_position_in_world_space()
-        return get_mouse_position_in_world_space(MAIN.input)
+        return get_mouse_position_in_world_space(JulGame.current_main().input)
     end
 
     function create_cursor_bank(this::Input)
@@ -1244,7 +1255,8 @@ module InputModule
     end
 
     function simulate_mouse_click(x::Number, y::Number)
-        simulate_mouse_click(MAIN.input, MAIN.windowManager.window, x, y)
+        main = JulGame.current_main()
+        simulate_mouse_click(main.input, main.windowManager.window, x, y)
     end
 
     function lift_mouse_after_simulated_click(this)
@@ -1280,7 +1292,7 @@ module InputModule
     end
 
     function lift_mouse_after_simulated_click()
-        lift_mouse_after_simulated_click(MAIN.input)
+        lift_mouse_after_simulated_click(JulGame.current_main().input)
     end
 
     function simulate_key_press(this::Input, key::String)
@@ -1312,7 +1324,7 @@ module InputModule
     end
 
     function simulate_key_press(key::String)
-        simulate_key_press(MAIN.input, key)
+        simulate_key_press(JulGame.current_main().input, key)
     end
 
     function get_comma_separated_path(path::String)
@@ -1405,7 +1417,7 @@ module InputModule
     end
 
     function set_cursor_with_image(imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)
-        set_cursor_with_image(MAIN.input, imagePath, x, y, scale_factor)
+        set_cursor_with_image(JulGame.current_main().input, imagePath, x, y, scale_factor)
     end
 
     function set_cursor(cursor)
