@@ -29,9 +29,9 @@ module JulGame
     
     Coroutines::Vector = []
 
-    """Queued one-shot render callback (`Rendering.queue_render_function`). Concrete for JuliaC `--trim`."""
+    """Queued one-shot render callback (`Rendering.queue_render_function`). Callable is stored as `Function` for JuliaC `--trim`."""
     struct RenderQueuedFunction
-        function_to_call::Any
+        function_to_call::Function
         isWorldEntity::Bool
         layer::Int
     end
@@ -84,7 +84,7 @@ module JulGame
     using .HistoryModule
     export HistoryModule, undo, redo
 
-    FrameCount = 0
+    FrameCount::Int = 0
     UserGlobals = Dict{String, Any}()
 
     include("engine/Logging/Logging.jl")

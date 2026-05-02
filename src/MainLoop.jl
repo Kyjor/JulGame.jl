@@ -31,12 +31,8 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
-	@Base.noinline function _invoke_queued_render_fn(f::Any)::Nothing
-		if f isa Function
-			(f::Function)()
-		else
-			Base.invokelatest(f)
-		end
+	@Base.noinline function _invoke_queued_render_fn(f::Function)::Nothing
+		f()
 		return nothing
 	end
 
@@ -1103,8 +1099,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :ui_rendering)
 			end
 			
-			# Sort UI elements by layer before rendering
-			uiRenderingOrder = []
+			# Sort UI elements by layer before rendering (typed + insertion sort for JuliaC `--trim`)
+			uiRenderingOrder = Tuple{Int, Any}[]
 			prof_ui = this.latencyProfiler
 			t_ui = Ref(time_ns())
 			canvases = filter(x -> isa(x, JulGame.ICanvas), this.scene.uiElements)
@@ -1144,7 +1140,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_append_order)
 
-			sort!(uiRenderingOrder, by = x -> x[1])
+			n_ur = length(uiRenderingOrder)
+			@inbounds for si in 2:n_ur
+				cur_u = uiRenderingOrder[si]
+				cl_u = cur_u[1]
+				ju = si
+				while ju > 1 && uiRenderingOrder[ju - 1][1] > cl_u
+					uiRenderingOrder[ju] = uiRenderingOrder[ju - 1]
+					ju -= 1
+				end
+				uiRenderingOrder[ju] = cur_u
+			end
 			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_sort_render_order)
 			for i = eachindex(uiRenderingOrder)
 				try
@@ -1161,7 +1167,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					tgt = uiRenderingOrder[i][2]
 					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
 					if tgt isa JulGame.RenderQueuedFunction
-						_invoke_queued_render_fn(getfield(tgt::JulGame.RenderQueuedFunction, :function_to_call))
+						_invoke_queued_render_fn(getfield(tgt::JulGame.RenderQueuedFunction, :function_to_call)::Function)
 					else
 						JulGame.render(tgt)
 					end
@@ -1184,7 +1190,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						end
 						println(parent_info, " has a problem with it's render function")
 						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
 					end
 				end
 			end
@@ -1386,7 +1391,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				Component.draw(renderOrder[i][2], camera)
 			elseif renderOrder[i][2] isa JulGame.RenderQueuedFunction
 				rf = renderOrder[i][2]::JulGame.RenderQueuedFunction
-				_invoke_queued_render_fn(getfield(rf, :function_to_call))
+				_invoke_queued_render_fn(getfield(rf, :function_to_call)::Function)
 			elseif renderOrder[i][2] isa JulGame.StaticSpriteBatcherModule.BatchedLayer
 				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2]::JulGame.StaticSpriteBatcherModule.BatchedLayer, camera)
 			else
@@ -1416,7 +1421,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					end
 					@error "$(parent_info) has a problem with rendering"
 					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
 				end
 			end
 		end

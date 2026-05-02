@@ -1566,10 +1566,13 @@ module ImmediateUIModule
     # Arguments
     - `debug::Bool`: Whether to draw debug visualizations
     """
-    @inline function _immediate_latency_profiler()
-        m = JulGame.MAIN
-        (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
-        return m.latencyProfiler
+    @inline function _immediate_latency_profiler()::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}
+        JulGame.MAIN === nothing && return nothing
+        m = JulGame.current_main()
+        prof = getfield(m, :latencyProfiler)::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}
+        prof === nothing && return nothing
+        getfield(prof, :enabled)::Bool || return nothing
+        return prof
     end
 
     function manage_all_immediate_components()
@@ -1595,8 +1598,11 @@ module ImmediateUIModule
 
             # Check if this component hasn't been used for a while
             if getfield(component, :lifetime) == -1
-                if !haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) || abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount) > 2
-                    @debug "component $(composite_id) expired from frame difference $(abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount))"
+                fc::Int = JulGame.FrameCount
+                stale = !haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) || abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - fc) > 2
+                if stale
+                    df = haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) ? abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - fc) : -1
+                    @debug "component $(composite_id) expired from frame difference $df"
                     push!(expired_ids, composite_id)
                     continue
                 else 
@@ -1617,8 +1623,19 @@ module ImmediateUIModule
         end
 
         t_sort = time_ns()
-        # Sort component IDs by layer
-        sorted_ids = sort(collect(keys(component_layers)), by = id -> component_layers[id])
+        # Sort component IDs by layer (insertion sort; avoids Base.sort for JuliaC `--trim`)
+        sorted_ids = collect(keys(component_layers))
+        n_sid = length(sorted_ids)
+        @inbounds for si in 2:n_sid
+            cur_id = sorted_ids[si]
+            cl = component_layers[cur_id]
+            j = si
+            while j > 1 && component_layers[sorted_ids[j - 1]] > cl
+                sorted_ids[j] = sorted_ids[j - 1]
+                j -= 1
+            end
+            sorted_ids[j] = cur_id
+        end
         if prof !== nothing
             JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, :immediate_manage_sort_layer_ids, (time_ns() - t_sort) / 1e6)
         end
