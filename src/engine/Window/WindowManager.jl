@@ -24,6 +24,16 @@ module WindowManagerModule
         return nothing
     end
 
+    function _sdl_gfx_framerate_delay!(fps::Ref{SDL2.LibSDL2.FPSmanager})::Nothing
+        ccall(
+            (:SDL_framerateDelay, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+            Cvoid,
+            (Ptr{SDL2.LibSDL2.FPSmanager},),
+            fps,
+        )
+        return nothing
+    end
+
     """
         WindowManager
 

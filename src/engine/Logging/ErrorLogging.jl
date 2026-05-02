@@ -3,18 +3,16 @@ module ErrorLoggingModule
 
     export ErrorLogger
     mutable struct ErrorLogger
-        condition
+        condition::Condition
         errorStack::Vector{Any}
-        task 
+        task::Union{Nothing, Task}
 
         function ErrorLogger()
-            this = new()
-            
-            this.errorStack = Vector{Any}[]
-            this.condition = Condition()
-            this.task = nothing
+            condition = Condition()
+            errorStack = Vector{Any}()
+            task = nothing
+            this = new(condition, errorStack, task)
             run_error_coroutine(this)
-        
             return this
         end
     end
@@ -103,7 +101,6 @@ module ErrorLoggingModule
             
             println(file, "\n---\n")
         end
-        Base.show_backtrace(stdout, catch_backtrace())
     end
 
     function format_method_error(error_msg::String)

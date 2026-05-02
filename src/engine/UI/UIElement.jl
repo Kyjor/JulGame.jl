@@ -333,83 +333,18 @@ function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
     push!(this.hoverExitEvents, event)
 end
 
-function UI.handle_event(this::JulGame.IUIElement, evt, x, y)
-    prof = _latency_profiler_active()
-    t = time_ns()
-    isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
-    _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
-    t = time_ns()
-    if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        if isScreenButton
-            this.currentTexture = this.buttonDownTexture
-        end
-        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_down)
-    elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-        @debug "Mouse button up at $(x), $(y)"
-        if isScreenButton
-            this.currentTexture = this.buttonUpTexture
-        end
-        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_up_setup)
-        t_cb = time_ns()
-        for eventToCall in this.clickEvents
-            try
-                eventToCall((evt = evt, x = x, y = y))
-            catch e
-                eventToCall()
-            end
-        end
-        _latency_ui_hit_ms!(prof, t_cb, :ui_handle_evt_mouse_button_up_click_callbacks)
-    elseif evt.type == SDL2.SDL_MOUSEMOTION
-        if this.isHovered == false
-            this.isHovered = true
-        end
-        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
-    end
-    return nothing
-end
-
-function UI.handle_event(this::JulGame.IEntity, evt, x, y)
-    prof = _latency_profiler_active()
-    t = time_ns()
-    isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
-    _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
-    t = time_ns()
-    if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        if isScreenButton
-            this.currentTexture = this.buttonDownTexture
-        end
-        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_down)
-    elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-        @debug "Mouse button up at $(x), $(y)"
-        if isScreenButton
-            this.currentTexture = this.buttonUpTexture
-        end
-        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_up_setup)
-        t_cb = time_ns()
-        # Entity `clickEvents` are not invoked here: dynamic `Function` calls break JuliaC `--trim`.
-        # Use `IUIElement` (e.g. UI buttons) or scripts for clickable surfaces on entities.
-        _latency_ui_hit_ms!(prof, t_cb, :ui_handle_evt_mouse_button_up_click_callbacks)
-    elseif evt.type == SDL2.SDL_MOUSEMOTION
-        if this.isHovered == false
-            this.isHovered = true
-        end
-        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
-    end
-    return nothing
-end
+# `handle_event` methods for `IUIElement` / `IEntity` live in `InputEventDispatch.jl` (included after `ScreenButton.jl`).
 
 function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     prof = _latency_profiler_active()
     add_relationship_if_not_exists(this)
     inst = relationship_instance(this)
-    events = isEntering ? getfield(inst, :hoverEnterEvents) : getfield(inst, :hoverExitEvents)
+    events = (isEntering ? getfield(inst, :hoverEnterEvents) : getfield(inst, :hoverExitEvents))::Vector{Function}
     t0 = time_ns()
     for event in events
-        try
-            event()
+        try Base.invokelatest(event)
         catch e
             @error "Error calling hover event: $(e)"
-            Base.show_backtrace(stdout, catch_backtrace())
         end
     end
     key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations

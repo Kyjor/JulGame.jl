@@ -171,8 +171,8 @@ module ScreenButtonModule
     end
 
     function UI.initialize(this::ScreenButton)
-        this.buttonDownTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonDownSprite)
-        this.buttonUpTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonUpSprite)
+        this.buttonDownTexture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonDownSprite)
+        this.buttonUpTexture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.buttonUpSprite)
         this.currentTexture = this.buttonUpTexture
 
         if !this.isWorldEntity
@@ -199,7 +199,7 @@ module ScreenButtonModule
                     #println("Text dimensions for '$(this.text)': $(width)x$(height)")
                     
                     # Create texture from surface
-                    this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
+                    this.textTexture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
                     
                     # Always center the text by default
                     center_text_on_button(this)
@@ -250,7 +250,7 @@ module ScreenButtonModule
 
     function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
         sprite = load_image_sdl(joinpath(JulGame.BasePath, "assets", "images"), path)
-        texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, sprite)
+        texture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, sprite)
         if up
             this.buttonUpSpritePath = path
             this.buttonUpSprite = sprite
@@ -413,7 +413,7 @@ module ScreenButtonModule
                 #println("Text dimensions for '$(this.text)': $(width)x$(height)")
                 
                 # Create texture from surface
-                this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
+                this.textTexture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, textSurface)
                 
                 # Always center the text on the button
                 center_text_on_button(this)

@@ -33,7 +33,7 @@ module MainLoopModule
 
 	@Base.noinline function _invoke_queued_render_fn_juliac(rf::JulGame.RenderQueuedFunction)::Nothing
 		fn = getfield(rf, :function_to_call)::Function
-		fn()
+		Base.invokelatest(fn)
 		return nothing
 	end
 
@@ -482,7 +482,6 @@ module MainLoopModule
 							rethrow(e)
 						else
 							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
 						end
                     end
                 end
@@ -502,7 +501,6 @@ module MainLoopModule
 						else
 							if typeof(e) != ErrorException
 								println("Error shutting down script: $(typeof(script))")
-								Base.show_backtrace(stdout, catch_backtrace())
 							end
 						end
                     end
@@ -590,7 +588,6 @@ module MainLoopModule
 						rethrow(e)
 					else
 						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
 					end
 				end
 			end
@@ -678,7 +675,6 @@ function JulGame.change_scene(sceneFileName::String)
 						if typeof(e) != ErrorException
 							println("Error shutting down script: $(typeof(script))")
 							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
 						end
 					end
 				end
@@ -956,8 +952,18 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 			DEBUG = this.input.debug
-			cameraPosition = this.scene.camera !== nothing ? (this.scene.camera.position + this.scene.camera.offset) : Math.Vector2f(0,0)
-			cameraSize = this.scene.camera !== nothing ? this.scene.camera.size : Math.Vector2(0,0)
+			cam = this.scene.camera
+			local cameraPosition::JulGame.Math._Vector2{Float64}
+			local cameraSize::JulGame.Math._Vector2{Int32}
+			if cam === nothing
+				cameraPosition = JulGame.Math._Vector2{Float64}(0.0, 0.0)
+				cameraSize = JulGame.Math._Vector2{Int32}(0, 0)
+			else
+				p = getfield(cam, :position)::JulGame.Math._Vector3{Float64}
+				o = getfield(cam, :offset)::JulGame.Math._Vector2{Float64}
+				cameraPosition = JulGame.Math._Vector2{Float64}(p.x + o.x, p.y + o.y)
+				cameraSize = getfield(cam, :size)::JulGame.Math._Vector2{Int32}
+			end
 
 			x = 0
 			y = 0
@@ -999,7 +1005,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						else
 							println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
 							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
 						end
 					end
 				end
@@ -1048,7 +1053,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						else
 							@error "$(entity.name) with id: $(entity.id) has a problem with it's update"
 							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
 						end
 					end
 					entityAnimator = entity.animator
@@ -1198,10 +1202,19 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
 			end
 			
-			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			S_mouse = JulGame.pixels_per_world_unit(this.scene.camera)
-			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse)
-			rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
+			mp = getfield(this.input, :mousePosition)::JulGame.Math._Vector2{Int32}
+			cpx = getfield(cameraPosition, :x)::Float64
+			cpy = getfield(cameraPosition, :y)::Float64
+			mpx = getfield(mp, :x)::Int32
+			mpy = getfield(mp, :y)::Int32
+			this.input.mousePositionWorld = JulGame.Math._Vector2{Float64}(
+				(Float64(mpx) + (cpx * S_mouse)) / S_mouse,
+				(Float64(mpy) + (cpy * S_mouse)) / S_mouse,
+			)
+			wpx = getfield(windowPos, :x)::Int32
+			wpy = getfield(windowPos, :y)::Int32
+			rawMousePos = JulGame.Math._Vector2{Float64}(Float64(mpx - wpx), Float64(mpy - wpy))
 			#region Debug
 			if JulGame.IS_DEBUG
 				# Stats to display
@@ -1222,7 +1235,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if length(this.debugTextBoxes) == 0
 					for i = eachindex(statTexts)
-				 		textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 24, position = Math.Vector2(0, 35 * i))
+				 		textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 24, position = JulGame.Math._Vector2{Int32}(0, Int32(35 * i)))
 				 		push!(this.debugTextBoxes, textBox)
                          JulGame.initialize(textBox)
 				 	end
@@ -1246,13 +1259,13 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
-				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
+				JulGame.WindowManagerModule._sdl_gfx_framerate_delay!(this.windowManager.fpsManager)
 				
 				if this.latencyProfiler !== nothing
 					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
 				end
 			elseif JulGame.IS_WEB
-				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
+				JulGame.WindowManagerModule._sdl_gfx_framerate_delay!(this.windowManager.fpsManager)
 				entt = "["
 				for i = 1:length(this.scene.entities)
 					entt *= "{ \"x\": $(this.scene.entities[i].transform.position.x), \"y\": $(this.scene.entities[i].transform.position.y) }"
@@ -1271,7 +1284,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				rethrow(e)
 			else
 				@error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
 			end
 		end
 		
@@ -1281,9 +1293,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		end
     end
 
-	function render_scene_sprites_and_shapes(this::MainLoop, camera::Camera)
-		cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0,0)
-		cameraSize = camera !== nothing ? camera.size : Math.Vector2(0,0)
+	function render_scene_sprites_and_shapes(this::MainLoop, camera::Union{Nothing, Camera})
+		local cameraPosition::JulGame.Math._Vector2{Float64}
+		local cameraSize::JulGame.Math._Vector2{Int32}
+		if camera === nothing
+			cameraPosition = JulGame.Math._Vector2{Float64}(0.0, 0.0)
+			cameraSize = JulGame.Math._Vector2{Int32}(0, 0)
+		else
+			p = getfield(camera, :position)::JulGame.Math._Vector3{Float64}
+			cameraPosition = JulGame.Math._Vector2{Float64}(p.x, p.y)
+			cameraSize = getfield(camera, :size)::JulGame.Math._Vector2{Int32}
+		end
 		S = JulGame.pixels_per_world_unit(camera)
 			
 		skipcount = 0

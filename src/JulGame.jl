@@ -124,7 +124,7 @@ module JulGame
     export get_comma_separated_path
 
     include("utils/Utils.jl")
-    export CallSDLFunction
+    export CallSDLFunction, sdl_create_texture_from_surface
 
     include("utils/Constants.jl")
     export SCALE_UNITS_REF, GRAVITY

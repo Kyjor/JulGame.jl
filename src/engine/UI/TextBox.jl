@@ -278,7 +278,7 @@ module TextBoxModule
         surf = unsafe_wrap(Array, this.renderText, 10; own = false)[1]
         this.size = JulGame.Math._Vector2{Int32}(surf.w, surf.h)
         this.originalSize = this.size
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+        this.textTexture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
 
         if !this.isWorldEntity
             UI.align_to_anchor(this)
@@ -719,7 +719,7 @@ module TextBoxModule
                 # Don't destroy old texture - it might be cached and used by other TextBoxes
                 
                 # Use CallSDLFunction like the old system for better error handling
-                this.effectTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, result.surface)
+                this.effectTexture = JulGame.sdl_create_texture_from_surface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, result.surface)
                 
                 if this.effectTexture != C_NULL
                     # Update size from the effect texture
