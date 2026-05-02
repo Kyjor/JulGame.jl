@@ -171,7 +171,8 @@ module SpriteModule
         scaleY = getfield(scl, :y)::Float64
     
         # Calculate source rectangle
-        srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
+        zeroCrop = JulGame.Math._Vector4{Int32}(0, 0, 0, 0)
+        srcRect = (this.crop == zeroCrop || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
         # Check if using effect texture
         zeroSize = JulGame.Math._Vector2{Int32}(0, 0)

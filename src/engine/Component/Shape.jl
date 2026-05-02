@@ -1,6 +1,10 @@
 module ShapeModule
     using ..Component.JulGame
     import ..Component
+
+    @inline _shape_round_to_i32(x::Float64)::Int32 =
+        Math.TypeConversions.safe_int32_convert(Base.round(x)::Float64)
+
     export Shape
     struct Shape
         color::Math.Vector3
@@ -55,23 +59,37 @@ module ShapeModule
             return                    
         end
 
-        parentTransform = this.parent.transform
+        tr = getfield(this.parent, :transform)::JulGame.TransformModule.Transform
+        pos = getfield(tr, :position)::JulGame.Math._Vector3{Float64}
+        scl = getfield(tr, :scale)::JulGame.Math._Vector3{Float64}
+        scaleX = getfield(scl, :x)::Float64
+        scaleY = getfield(scl, :y)::Float64
 
-        S = (this.isWorldEntity && camera !== nothing) ? JulGame.pixels_per_world_unit(camera) : JulGame.scale_units()
-        cameraDiff = this.isWorldEntity && camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
-        Math.Vector2(0,0)
-        position = this.isWorldEntity ?
-        parentTransform.position :
-        this.position
+        S = ((this.isWorldEntity && camera !== nothing) ? JulGame.pixels_per_world_unit(camera) : JulGame.scale_units())::Float64
+        cameraDiff = if this.isWorldEntity && camera !== nothing
+            JulGame.Math._Vector2{Int32}(
+                Math.TypeConversions.safe_int32_convert((camera.position.x + camera.offset.x) * S),
+                Math.TypeConversions.safe_int32_convert((camera.position.y + camera.offset.y) * S),
+            )
+        else
+            JulGame.Math._Vector2{Int32}(0, 0)
+        end
+        posx::Float64 = this.isWorldEntity ? getfield(pos, :x) : getfield(this.position, :x)::Float64
+        posy::Float64 = this.isWorldEntity ? getfield(pos, :y) : getfield(this.position, :y)::Float64
+        offx = getfield(this.offset, :x)::Float64
+        offy = getfield(this.offset, :y)::Float64
+        camdx = Float64(getfield(cameraDiff, :x))
+        camdy = Float64(getfield(cameraDiff, :y))
 
-        # Convert coordinates to Int32 for SDL
-        x = Math.TypeConversions.safe_int32_convert(round((position.x + this.offset.x) * S - cameraDiff.x - (parentTransform.scale.x * S - S) / 2))
-        y = Math.TypeConversions.safe_int32_convert(round((position.y + this.offset.y) * S - cameraDiff.y - (parentTransform.scale.y * S - S) / 2))
-        w = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.x * S))
-        h = Math.TypeConversions.safe_int32_convert(round(parentTransform.scale.y * S))
-        
-        outlineRect = Ref(SDL2.SDL_FRect(x, y, w, h))
+        xn = (posx + offx) * S - camdx - (scaleX * S - S) / 2
+        yn = (posy + offy) * S - camdy - (scaleY * S - S) / 2
+        wn = scaleX * S
+        hn = scaleY * S
+        xi = _shape_round_to_i32(xn)::Int32
+        yi = _shape_round_to_i32(yn)::Int32
+        wi = _shape_round_to_i32(wn)::Int32
+        hi = _shape_round_to_i32(hn)::Int32
+        outlineRect = Ref(SDL2.SDL_FRect(Float64(xi), Float64(yi), Float64(wi), Float64(hi)))
 
         rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(0)))
         SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)

@@ -327,6 +327,24 @@ module InputModule
         return out
     end
 
+    Base.@noinline function _poll_input_run_ui_entity_hit_loops!(
+        this::Input,
+        evt::SDL2.SDL_Event,
+        prof_in::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler},
+        uiOrdered::Vector{JulGame.IUIElement},
+        entsOrdered,
+        canvases::Vector{JulGame.ICanvas},
+    )::Nothing
+        hc = _MouseUiHitLoop(0, 0, 0, 0, 0, 0, false, false)
+        @inbounds for i in eachindex(uiOrdered)
+            _input_hit_scan_ui!(this, evt, prof_in, uiOrdered[i], canvases, hc)::Nothing
+        end
+        @inbounds for i in eachindex(entsOrdered)
+            _input_hit_scan_entity!(this, evt, prof_in, entsOrdered[i]::JulGame.IEntity, canvases, hc)::Nothing
+        end
+        return nothing
+    end
+
     Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
@@ -734,14 +752,15 @@ module InputModule
                     n_ui_el = length(uiElementsOrderedByLayerDescending)
                     n_ent_el = length(entitiesWithSpritesOrderedByLayerDescending)
                     @debug "Checking $(n_ui_el + n_ent_el) elements for mouse event at $(this.mousePosition)"
-                    hc = _MouseUiHitLoop(0, 0, 0, 0, 0, 0, false, false)
                     prof_in = prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}
-                    for ui in uiElementsOrderedByLayerDescending
-                        _input_hit_scan_ui!(this, evt, prof_in, ui::JulGame.IUIElement, canvases, hc)::Nothing
-                    end
-                    for ent in entitiesWithSpritesOrderedByLayerDescending
-                        _input_hit_scan_entity!(this, evt, prof_in, ent::JulGame.IEntity, canvases, hc)::Nothing
-                    end
+                    _poll_input_run_ui_entity_hit_loops!(
+                        this,
+                        evt,
+                        prof_in,
+                        uiElementsOrderedByLayerDescending,
+                        entitiesWithSpritesOrderedByLayerDescending,
+                        canvases,
+                    )::Nothing
                     t_tail = Ref(time_ns())
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP
                         this.elementsBeingClickedDownOn = Union{JulGame.IUIElement, JulGame.IEntity}[]
