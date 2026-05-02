@@ -79,8 +79,8 @@ module ColliderModule
     end
 
     function Component.check_collisions(this::InternalCollider)
-        main = JulGame.MAIN
-        scene = getfield(main, :scene)
+        main = JulGame.current_main()
+        scene = getfield(main, :scene)::JulGame.SceneModule.Scene
         colliders = getfield(scene, :colliders)
         optimize = getfield(main, :optimizeSpriteRendering)::Bool
         onGround = false
@@ -93,8 +93,7 @@ module ColliderModule
         this_pos_x = (getfield(this_transform, :position)::Math._Vector3{Float64}).x
         this_size_x = Component.get_size(this).x
 
-        for collider_any in colliders
-            collider = collider_any::InternalCollider
+        for collider in colliders
             other_ent = collider.parent::JulGame.IEntity
             if !(getfield(other_ent, :isActive)::Bool) || !collider.enabled
                 continue
@@ -109,58 +108,57 @@ module ColliderModule
                 end
 
                 transform = this_transform
-                collision = check_collision(this, collider)
+                dir, depth, c3 = check_collision(this, collider)
                 transform = this_transform
                 tp = getfield(transform, :position)::Math._Vector3{Float64}
-                if collision[1] == Top::CollisionDirection
+                if dir == Top::CollisionDirection
                     push!(this.currentCollisions, collider)
                     for eventToCall in this.collisionEvents
-                        Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                        eventToCall((collider=collider, direction=dir))
                     end
                     if !collider.isTrigger && !this.isTrigger
-                        Component.set_position(transform, Math.Vector2f(tp.x, tp.y + collision[2]))
+                        Component.set_position(transform, Math._Vector2{Float64}(tp.x, tp.y + depth))
                     end
                 end
-                if collision[1] == Left::CollisionDirection
+                if dir == Left::CollisionDirection
                     push!(this.currentCollisions, collider)
                     for eventToCall in this.collisionEvents
-                        Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                        eventToCall((collider=collider, direction=dir))
                     end
                     if !collider.isTrigger && !this.isTrigger
-                        Component.set_position(transform, Math.Vector2f(tp.x + collision[2], tp.y))
+                        Component.set_position(transform, Math._Vector2{Float64}(tp.x + depth, tp.y))
                     end
                 end
-                if collision[1] == Right::CollisionDirection
+                if dir == Right::CollisionDirection
                     push!(this.currentCollisions, collider)
                     for eventToCall in this.collisionEvents
-                        Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                        eventToCall((collider=collider, direction=dir))
                     end
                     if !collider.isTrigger && !this.isTrigger
-                        Component.set_position(transform, Math.Vector2f(tp.x - collision[2], tp.y))
+                        Component.set_position(transform, Math._Vector2{Float64}(tp.x - depth, tp.y))
                     end
                 end
-                if collision[1] == Bottom::CollisionDirection
+                if dir == Bottom::CollisionDirection
                     push!(this.currentCollisions, collider)
                     for eventToCall in this.collisionEvents
-                        Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                        eventToCall((collider=collider, direction=dir))
                     end
                     rb_this = _c_rigidbody(this_ent)
                     if !collider.isTrigger && !this.isTrigger
-                        Component.set_position(transform, Math.Vector2f(tp.x, tp.y - collision[2]))
+                        Component.set_position(transform, Math._Vector2{Float64}(tp.x, tp.y - depth))
                         if rb_this !== C_NULL && (getfield(rb_this, :velocity)::Math._Vector2{Float64}).y >= 0
                             setfield!(rb_this, :grounded, true)
                         end
                     end
                 end
-                if collision[1] == Below::ColliderLocation
+                if dir == Below::ColliderLocation
                     push!(this.currentCollisions, collider)
                     for eventToCall in this.collisionEvents
-                        Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                        eventToCall((collider=collider, direction=dir))
                     end
                 end
-                # Read ground state after handlers may have set `grounded` on the rigidbody.
                 rb_chk = _c_rigidbody(this_ent)
-                if collision[3] && rb_chk !== C_NULL && (getfield(rb_chk, :grounded)::Bool)
+                if c3 && rb_chk !== C_NULL && (getfield(rb_chk, :grounded)::Bool)
                     onGround = true
                 end
             end
@@ -203,13 +201,17 @@ module ColliderModule
         result = Base.Ref(SDL2.SDL_Rect(0, 0, 0, 0))
         isIntersection = SDL2.SDL_IntersectRect(Base.Ref(a), Base.Ref(b), result)
 
-        main = JulGame.MAIN
-        scene = getfield(main, :scene)
-        camera = getfield(scene, :camera)
-        camS = JulGame.pixels_per_world_unit(camera)
-        cameraDiff = camera !== nothing ?
-                     Math.Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) :
-                     Math.Vector2(0, 0)
+        main = JulGame.current_main()
+        scene = getfield(main, :scene)::JulGame.SceneModule.Scene
+        camera = getfield(scene, :camera)::Union{Nothing, JulGame.CameraModule.Camera}
+        camS = JulGame.pixels_per_world_unit(camera)::Float64
+        cameraDiff = if camera === nothing
+            Math._Vector2{Float64}(0.0, 0.0)
+        else
+            pos = getfield(camera, :position)::Math._Vector3{Float64}
+            off = getfield(camera, :offset)::Math._Vector2{Float64}
+            Math._Vector2{Float64}((pos.x + off.x) * camS, (pos.y + off.y) * camS)
+        end
         isLineIntersectionL = SDL2.SDL_IntersectRectAndLine(
             Base.Ref(b),
             Base.Ref(Math.TypeConversions.safe_int32_convert(Base.round(posA.x))),

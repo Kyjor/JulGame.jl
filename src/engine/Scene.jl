@@ -4,7 +4,7 @@
     export Scene
     mutable struct Scene
         camera::Union{Nothing, JulGame.CameraModule.Camera}
-        colliders::Vector{Any}
+        colliders::Vector{JulGame.ColliderModule.InternalCollider}
         entities::Vector{Entity}
         rigidbodies::Vector{Any}
         uiElements::Vector{JulGame.IUIElement}
@@ -15,7 +15,7 @@
             this = new()
 
             this.camera = nothing
-            this.colliders = []
+            this.colliders = JulGame.ColliderModule.InternalCollider[]
             this.entities = Entity[]
             this.rigidbodies = []
             this.uiElements = JulGame.IUIElement[]

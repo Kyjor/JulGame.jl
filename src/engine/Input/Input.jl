@@ -301,45 +301,6 @@ module InputModule
         return false
     end
 
-    """Concrete UI type dispatch for JuliaC `--trim` (avoid `input_ui_set_isHovered!` / `handle_event` on `IUIElement`)."""
-    Base.@noinline function _input_dispatch_ui_set_hovered!(ui::JulGame.IUIElement, v::Bool)::Nothing
-        if ui isa JulGame.UI.TextBoxModule.TextBox
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui::JulGame.UI.TextBoxModule.TextBox, v)
-        elseif ui isa JulGame.UI.ScreenButtonModule.ScreenButton
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui::JulGame.UI.ScreenButtonModule.ScreenButton, v)
-        elseif ui isa JulGame.UI.RectangleModule.Rectangle
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui::JulGame.UI.RectangleModule.Rectangle, v)
-        elseif ui isa JulGame.UI.CircleModule.Circle
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui::JulGame.UI.CircleModule.Circle, v)
-        elseif ui isa JulGame.UI.CanvasModule.Canvas
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui::JulGame.UI.CanvasModule.Canvas, v)
-        elseif ui isa JulGame.UI.UIImageModule.UIImage
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui::JulGame.UI.UIImageModule.UIImage, v)
-        else
-            error("JuliaC trim: unhandled IUIElement for input hover dispatch")
-        end
-        return nothing
-    end
-
-    Base.@noinline function _input_dispatch_ui_handle_event!(ui::JulGame.IUIElement, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
-        if ui isa JulGame.UI.TextBoxModule.TextBox
-            Base.invokelatest(JulGame.UI.handle_event, ui::JulGame.UI.TextBoxModule.TextBox, evt, x, y)
-        elseif ui isa JulGame.UI.ScreenButtonModule.ScreenButton
-            Base.invokelatest(JulGame.UI.handle_event, ui::JulGame.UI.ScreenButtonModule.ScreenButton, evt, x, y)
-        elseif ui isa JulGame.UI.RectangleModule.Rectangle
-            Base.invokelatest(JulGame.UI.handle_event, ui::JulGame.UI.RectangleModule.Rectangle, evt, x, y)
-        elseif ui isa JulGame.UI.CircleModule.Circle
-            Base.invokelatest(JulGame.UI.handle_event, ui::JulGame.UI.CircleModule.Circle, evt, x, y)
-        elseif ui isa JulGame.UI.CanvasModule.Canvas
-            Base.invokelatest(JulGame.UI.handle_event, ui::JulGame.UI.CanvasModule.Canvas, evt, x, y)
-        elseif ui isa JulGame.UI.UIImageModule.UIImage
-            Base.invokelatest(JulGame.UI.handle_event, ui::JulGame.UI.UIImageModule.UIImage, evt, x, y)
-        else
-            error("JuliaC trim: unhandled IUIElement for handle_event dispatch")
-        end
-        return nothing
-    end
-
     @Base.noinline function _input_trim_entity_handle_event!(ent::JulGame.IEntity, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
         JulGame.UI.handle_event(ent, evt, x, y)
         return nothing
@@ -457,7 +418,21 @@ module InputModule
         _input_ui_hit_span!(prof, t_aabb, :hit_ui_iter_probe_aabb)
 
         if !eventWasInsideThisElement
-            _input_dispatch_ui_set_hovered!(ui, false)
+            if ui isa JulGame.UI.TextBoxModule.TextBox
+                JulGame.UI.input_ui_set_isHovered!(ui::JulGame.UI.TextBoxModule.TextBox, false)
+            elseif ui isa JulGame.UI.ScreenButtonModule.ScreenButton
+                JulGame.UI.input_ui_set_isHovered!(ui::JulGame.UI.ScreenButtonModule.ScreenButton, false)
+            elseif ui isa JulGame.UI.RectangleModule.Rectangle
+                JulGame.UI.input_ui_set_isHovered!(ui::JulGame.UI.RectangleModule.Rectangle, false)
+            elseif ui isa JulGame.UI.CircleModule.Circle
+                JulGame.UI.input_ui_set_isHovered!(ui::JulGame.UI.CircleModule.Circle, false)
+            elseif ui isa JulGame.UI.CanvasModule.Canvas
+                JulGame.UI.input_ui_set_isHovered!(ui::JulGame.UI.CanvasModule.Canvas, false)
+            elseif ui isa JulGame.UI.UIImageModule.UIImage
+                JulGame.UI.input_ui_set_isHovered!(ui::JulGame.UI.UIImageModule.UIImage, false)
+            else
+                error("JuliaC trim: unhandled IUIElement for input hover dispatch")
+            end
             t_ctr = time_ns()
             hc.n_miss_bounds += 1
             _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
@@ -491,7 +466,21 @@ module InputModule
 
             if shouldHandleEvent
                 @debug "  -> Handling event for element '$(ename)'"
-                _input_dispatch_ui_handle_event!(ui, evt, this.mousePosition.x, this.mousePosition.y)
+                if ui isa JulGame.UI.TextBoxModule.TextBox
+                    JulGame.UI.handle_event(ui::JulGame.UI.TextBoxModule.TextBox, evt, this.mousePosition.x, this.mousePosition.y)
+                elseif ui isa JulGame.UI.ScreenButtonModule.ScreenButton
+                    JulGame.UI.handle_event(ui::JulGame.UI.ScreenButtonModule.ScreenButton, evt, this.mousePosition.x, this.mousePosition.y)
+                elseif ui isa JulGame.UI.RectangleModule.Rectangle
+                    JulGame.UI.handle_event(ui::JulGame.UI.RectangleModule.Rectangle, evt, this.mousePosition.x, this.mousePosition.y)
+                elseif ui isa JulGame.UI.CircleModule.Circle
+                    JulGame.UI.handle_event(ui::JulGame.UI.CircleModule.Circle, evt, this.mousePosition.x, this.mousePosition.y)
+                elseif ui isa JulGame.UI.CanvasModule.Canvas
+                    JulGame.UI.handle_event(ui::JulGame.UI.CanvasModule.Canvas, evt, this.mousePosition.x, this.mousePosition.y)
+                elseif ui isa JulGame.UI.UIImageModule.UIImage
+                    JulGame.UI.handle_event(ui::JulGame.UI.UIImageModule.UIImage, evt, this.mousePosition.x, this.mousePosition.y)
+                else
+                    error("JuliaC trim: unhandled IUIElement for handle_event dispatch")
+                end
                 t_hi = time_ns()
                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                     push!(this.elementsBeingClickedDownOn, ui)

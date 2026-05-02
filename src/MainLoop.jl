@@ -645,7 +645,7 @@ module MainLoopModule
 		end
 				
 		this.scene.rigidbodies = []
-		this.scene.colliders = []
+		this.scene.colliders = JulGame.ColliderModule.InternalCollider[]
 		for entity in this.scene.entities
 			@debug "adding rigidbodies to global list"
 			if entity.rigidbody != C_NULL
