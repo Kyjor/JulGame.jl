@@ -1,27 +1,31 @@
 module TransformModule
     using ..Component.JulGame 
+    using ..Component.JulGame.Math: _Vector2, _Vector3
     import ..Component
     
     export Transform
     mutable struct Transform
-        position::Math.Vector3f
-        scale::Math.Vector3f
-        rotation::Math.Vector3f
-        screenPosition::Math.Vector2
-        screenRotation::Math.Vector2
+        position::_Vector3{Float64}
+        scale::_Vector3{Float64}
+        rotation::_Vector3{Float64}
+        screenPosition::_Vector2{Float64}
+        screenRotation::_Vector2{Float64}
         parent
 
-        function Transform(position::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), scale::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(1.0, 1.0, 1.0), rotation::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
-            this = new()
-            
-            this.position = position
-            this.scale = scale
-            this.rotation = rotation
-            this.screenPosition = Math.Vector2(0.0, 0.0)
-            this.screenRotation = Math.Vector2(0.0, 0.0)
-            this.parent = parent
+        function Transform(
+            position::Union{_Vector3{Float64}, _Vector2{Float64}} = _Vector3{Float64}(0.0, 0.0, 0.0),
+            scale::Union{_Vector3{Float64}, _Vector2{Float64}} = _Vector3{Float64}(1.0, 1.0, 1.0),
+            rotation::Union{_Vector3{Float64}, _Vector2{Float64}} = _Vector3{Float64}(0.0, 0.0, 0.0),
+            parent = nothing,
+        )
+            pos3::_Vector3{Float64} = position isa _Vector3{Float64} ? position :
+                _Vector3{Float64}(position.x, position.y, 0.0)
+            scl3::_Vector3{Float64} = scale isa _Vector3{Float64} ? scale :
+                _Vector3{Float64}(scale.x, scale.y, 0.0)
+            rot3::_Vector3{Float64} = rotation isa _Vector3{Float64} ? rotation :
+                _Vector3{Float64}(rotation.x, rotation.y, 0.0)
+            this = new(pos3, scl3, rot3, _Vector2{Float64}(0.0, 0.0), _Vector2{Float64}(0.0, 0.0), parent)
             JulGame.EventsModule.ObserverModule.add_observer((event, data) -> on_notify(event, data))
-
             return this
         end   
     end     
@@ -31,8 +35,9 @@ module TransformModule
         return newTransform
     end
 
-    function Component.set_position(this::Transform, position::Union{Math.Vector3f, Math.Vector2f})
-        this.position = position
+    function Component.set_position(this::Transform, position::Union{_Vector3{Float64}, _Vector2{Float64}})
+        this.position = position isa _Vector3{Float64} ? position :
+            _Vector3{Float64}(position.x, position.y, 0.0)
     end
 
     function Component.is_mouse_hovering(this::Transform)

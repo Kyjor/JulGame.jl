@@ -107,12 +107,11 @@ module SpriteModule
             Component.load_image(this::InternalSprite, imagePath::String)
             if this.image == C_NULL
                 error = unsafe_string(SDL2.SDL_GetError())
-                @error(string("Couldn't open image! path: $(fullPath) SDL Error: ", error))
-                Base.show_backtrace(stdout, catch_backtrace())
+                @error string("Couldn't open image! SDL Error: ", error)
                 return
             end
             surface = unsafe_wrap(Array, this.image, 10; own = false)
-            this.size = Math.Vector2(surface[1].w, surface[1].h)
+            this.size = Math._Vector2{Int32}(surface[1].w, surface[1].h)
         
             return this
         end

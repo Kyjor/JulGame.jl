@@ -1,7 +1,7 @@
 ﻿module AnimatorModule
     using ..Component.AnimationModule
     using ..Component.JulGame
-    using ..Component.JulGame.Math
+    using ..Component.JulGame.Math: _Vector4
     using ..Component.SpriteModule
     import ..Component
     export Animator
@@ -24,7 +24,7 @@
             this = new()
             
             this.animations = animations
-            this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
+            this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : Animation(Vector{_Vector4{Int32}}(), 0)
             this.lastFrame = 0
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent

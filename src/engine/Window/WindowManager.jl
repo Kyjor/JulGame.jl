@@ -45,6 +45,7 @@ module WindowManagerModule
         allowHighDPI::Bool
         position::JulGame.Math.Vector2
         fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
+        fpsManagerPtr::Ptr{SDL2.LibSDL2.FPSmanager}
         baseResolution::JulGame.Math.Vector2
 
         function WindowManager()
@@ -55,6 +56,9 @@ module WindowManagerModule
             _sdl_gfx_init_framerate!(fpsManager_ref)
             target_fps_u32::UInt32 = UInt32(targetFrameRate_int)
             _sdl_gfx_set_framerate!(fpsManager_ref, target_fps_u32)
+
+            fps_mgr_ptr::Ptr{SDL2.LibSDL2.FPSmanager} =
+                Base.unsafe_convert(Ptr{SDL2.LibSDL2.FPSmanager}, fpsManager_ref)
 
             displayMode_placeholder = SDL2.SDL_DisplayMode(0, 0, 0, 0, C_NULL)
             baseResolution_vec = JulGame.Math._Vector2{Int32}(1280, 720)
@@ -75,6 +79,7 @@ module WindowManagerModule
                 false,
                 JulGame.Math._Vector2{Int32}(SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED),
                 fpsManager_ref,
+                fps_mgr_ptr,
                 baseResolution_vec,
             )
         end
@@ -468,8 +473,13 @@ module WindowManagerModule
     function set_frame_rate(this::WindowManager, frameRate::Int)
         if JulGame.MAIN !== nothing
             this.targetFrameRate = frameRate
-            fps = this.fpsManager
-            _sdl_gfx_set_framerate!(fps, UInt32(frameRate))
+            ccall(
+                (:SDL_setFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+                Cint,
+                (Ptr{SDL2.LibSDL2.FPSmanager}, UInt32),
+                this.fpsManagerPtr,
+                UInt32(frameRate),
+            )
             @debug "Frame rate set to $frameRate FPS"
         else
             @warn "Cannot set frame rate: Main loop not initialized"

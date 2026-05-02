@@ -41,7 +41,38 @@ module EntityModule
         forceClickCheck::Bool
         ignoreInputEvents::Bool
 
-        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
+        function Entity(
+            name::String = "New entity",
+            id::String = JulGame.generate_uuid(),
+            transform::Transform = Transform(),
+            scripts::Vector = [];
+            clickEvents::Vector{Function} = Function[],
+            forceClickCheck::Bool = false,
+            ignoreInputEvents::Bool = false,
+        )
+            this = Entity(name, id, transform; clickEvents, forceClickCheck, ignoreInputEvents)
+            isempty(scripts) && return this
+            for script in scripts
+                @debug(string("Adding script of type: ", typeof(script), " to entity named ", this.name))
+                push!(this.scripts, script)
+                script.parent = this
+                try
+                    JulGame.initialize(script)
+                catch e
+                    @error sprint(showerror, e)
+                end
+            end
+            return this
+        end
+
+        function Entity(
+            name::String,
+            id::String,
+            transform::Transform;
+            clickEvents::Vector{Function} = Function[],
+            forceClickCheck::Bool = false,
+            ignoreInputEvents::Bool = false,
+        )
             this = new()
 
             this.id = id
@@ -55,9 +86,6 @@ module EntityModule
             this.scripts = []
             this.transform = transform
             this.transform.parent = this
-            for script in scripts
-                JulGame.add_script(this, script)
-            end
             this.shape = C_NULL
             this.soundSource = C_NULL
             this.sprite = C_NULL
@@ -73,6 +101,10 @@ module EntityModule
 
             return this
         end
+
+        function Entity(name::String, id::String)
+            Entity(name, id, Transform())
+        end
     end
 
     function JulGame.add_script(this::Entity, script)
@@ -82,8 +114,7 @@ module EntityModule
         try
             JulGame.initialize(script)
         catch e
-            @error string(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+            @error sprint(showerror, e)
         end
     end
 
@@ -104,7 +135,6 @@ module EntityModule
 
     function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
         if this.animator != C_NULL
-            println("Animator already exists on entity named ", this.name)
             return
         end
 
@@ -118,7 +148,6 @@ module EntityModule
 
     function JulGame.add_collider(this::Entity, collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
         if this.collider != C_NULL || this.circleCollider != C_NULL
-            println("Collider already exists on entity named ", this.name)
             return
         end
             
@@ -129,7 +158,6 @@ module EntityModule
 
     function JulGame.add_circle_collider(this::Entity, collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
         if this.collider != C_NULL || this.circleCollider != C_NULL
-            println("Collider already exists on entity named ", this.name)
             return
         end
 
@@ -140,7 +168,6 @@ module EntityModule
 
     function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody())
         if this.rigidbody != C_NULL
-            println("Rigidbody already exists on entity named ", this.name)
             return
         end
 
@@ -151,7 +178,6 @@ module EntityModule
 
     function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
         if this.soundSource != C_NULL
-            println("SoundSource already exists on entity named ", this.name)
             return
         end
 
@@ -167,7 +193,6 @@ module EntityModule
 
     function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite((255, 255, 255, 255), C_NULL, false, "", 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center, false))
         if this.sprite != C_NULL
-            println("Sprite already exists on entity named ", this.name)
             return
         end
 
@@ -182,7 +207,6 @@ module EntityModule
 
     function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255))
         if this.shape != C_NULL
-            println("Shape already exists on entity named ", this.name)
             return
         end
 
@@ -193,7 +217,6 @@ module EntityModule
 
     function JulGame.add_mesh3d(this::Entity, mesh3d::Mesh3D = Mesh3D())
         if this.mesh3d != C_NULL
-            println("Mesh3D already exists on entity named ", this.name)
             return
         end
 
@@ -206,7 +229,6 @@ module EntityModule
 
     function JulGame.add_software_renderer3d(this::Entity, softwareRenderer3d::SoftwareRenderer3D = SoftwareRenderer3D())
         if this.softwareRenderer3d != C_NULL
-            println("SoftwareRenderer3D already exists on entity named ", this.name)
             return
         end
 

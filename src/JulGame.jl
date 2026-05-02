@@ -20,7 +20,7 @@ module JulGame
     PRELOADED_SCENES::Dict{String, Any} = Dict{String, Any}()
     IMAGE_CACHE::Dict{String, Any} = Dict{String, Any}()
     FONT_CACHE::Dict{String, Any} = Dict{String, Any}()
-    AUDIO_CACHE::Dict{String, Any} = Dict{String, Any}()
+    AUDIO_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
     
     BUILT_IN_ASSETS::Dict{String, Any} = Dict{String, Any}()
     BUILT_IN_ASSETS["Font"] = read(joinpath(@__DIR__, "engine", "Assets", "Fonts", "FiraCode-Regular.ttf"))

@@ -18,13 +18,16 @@ module SceneReaderModule
     using ...TransformModule
     using ...JulGame
 
+    const SceneJSONObject = JSON.Object{String,Any}
+
     # Dict-shaped scene JSON wrapped for JSON3-like property/get/haskey access.
     struct JsonObj
-        d::Dict{String,Any}
+        d::Union{Dict{String,Any}, SceneJSONObject}
     end
 
     function _expose(v)
         v isa Dict{String,Any} && return JsonObj(v)
+        v isa SceneJSONObject && return JsonObj(v)
         v isa AbstractDict && return JsonObj(Dict{String,Any}(string(k) => x for (k, x) in pairs(v)))
         if v isa AbstractVector && !(v isa AbstractString)
             return [_expose(x) for x in v]
@@ -50,6 +53,20 @@ module SceneReaderModule
     _isempty_json_field(x::JsonObj) = isempty(x)
     _isempty_json_field(x::AbstractVector) = isempty(x)
     _isempty_json_field(_) = false
+
+    # JuliaC `--trim`: avoid JSON.parse (-> jsonreadstyle -> repr -> Base.show) and avoid `pairs(parsed)` on
+    # `Any`-typed SSA from `_parse`; keep parsed root as Dict-like `JSON.Object` or `Dict`.
+    function _scene_root_jsonobj_from_file(entitiesJson::String)::JsonObj
+        lv = JSON.lazy(entitiesJson)
+        root::AbstractDict{String,Any} = JSON._parse(
+            lv,
+            Any,
+            JSON.DEFAULT_OBJECT_TYPE,
+            nothing,
+            StructUtils.DefaultStyle(),
+        )::AbstractDict{String,Any}
+        JsonObj(root)
+    end
 
     export preload_scene
     """
@@ -91,8 +108,7 @@ module SceneReaderModule
                 @debug("using cached scene")
             else 
                 entitiesJson = read(filePath, String)
-                raw = JSON.parse(entitiesJson, dicttype = Dict{String,Any})
-                json = JsonObj(raw::Dict{String,Any})
+                json = _scene_root_jsonobj_from_file(entitiesJson)
                 @debug("using scene from scene file")
             end
 
