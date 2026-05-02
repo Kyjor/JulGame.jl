@@ -17,7 +17,6 @@ module JulGame
     # TODO: Create a globals file
     
     SCENE_CACHE::Dict{String, Any} = Dict{String, Any}()
-    PRELOADED_SCENES::Dict{String, Any} = Dict{String, Any}()
     IMAGE_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
     FONT_CACHE::Dict{String, Any} = Dict{String, Any}()
     AUDIO_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
@@ -33,7 +32,7 @@ module JulGame
 
     ProjectModule = ""
     ScriptModule = Module(:Scripts)
-    LoadedScripts = Set{String}()
+    const LoadedScripts::Set{String} = Set{String}()
 
     include("utils/Interfaces.jl")
     export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D, IObserver, IHistory, ICanvas
@@ -176,6 +175,9 @@ module JulGame
     """Stable id for observers / trim-verifier paths (`Transform.parent` is untyped elsewhere)."""
     scene_entity_id(e::Entity)::String = e.id::String
     export scene_entity_id
+
+    const PreloadedSceneData = @NamedTuple{entities::Vector{Entity}, uiElements::Vector{Any}, camera::Camera}
+    const PRELOADED_SCENES = Dict{String, PreloadedSceneData}()
 
     include("engine/Scene.jl")
     using .SceneModule: Scene

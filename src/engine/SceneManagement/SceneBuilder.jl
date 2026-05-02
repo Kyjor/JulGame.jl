@@ -1,5 +1,6 @@
 module SceneBuilderModule
     using ...JulGame
+    using ...UI
     using ...CameraModule
     using ...ColliderModule
     using ...EntityModule
@@ -63,11 +64,12 @@ module SceneBuilderModule
         isVsyncEnabled::Bool = get(config, "Vsync", DEFAULT_CONFIG["Vsync"]) == "1"
 
         JulGame.MAIN = main
-        MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
-        MAIN.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
-        MAIN.currentTestTime = 0.0
-        MAIN.level = this
-        MAIN.scene.name = split(this.scene, ".")[1]
+        main_loop = JulGame.current_main()
+        main_loop.testMode = get(ENV, "TEST_MODE", "false") == "true"
+        main_loop.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
+        main_loop.currentTestTime = 0.0
+        main_loop.level = this
+        main_loop.scene.name = split(this.scene, ".")[1]
 
         if size == Math.Vector2()
 			displayMode = SDL2.SDL_DisplayMode[SDL2.SDL_DisplayMode(0x12345678, 800, 600, 60, C_NULL)]
@@ -103,9 +105,9 @@ module SceneBuilderModule
             # "2" or "best": Currently this is the same as "linear"
 
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(main_loop.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
-                @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
+                @error "Failed to create renderer with window $(main_loop.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
             return
             end
 
@@ -168,23 +170,23 @@ module SceneBuilderModule
             end
         end
         
-        MAIN.scene.entities = scene[1]
-        MAIN.scene.uiElements = scene[2]
-        MAIN.scene.camera = scene[3]
+        main_loop.scene.entities = scene[1]
+        main_loop.scene.uiElements = scene[2]
+        main_loop.scene.camera = scene[3]
         
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
-            @debug "Setting logical size to $(MAIN.scene.camera.size.x)x$(MAIN.scene.camera.size.y)"
-            SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, MAIN.scene.camera.size.x, MAIN.scene.camera.size.y)
+            @debug "Setting logical size to $(main_loop.scene.camera.size.x)x$(main_loop.scene.camera.size.y)"
+            SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, main_loop.scene.camera.size.x, main_loop.scene.camera.size.y)
         end
         
-        for uiElement in MAIN.scene.uiElements
+        for uiElement in main_loop.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
                 UI.align_to_anchor(uiElement)
             end
         end
 
-        MAIN.scene.rigidbodies = InternalRigidbody[]
-        MAIN.scene.colliders = InternalCollider[]
+        main_loop.scene.rigidbodies = InternalRigidbody[]
+        main_loop.scene.colliders = InternalCollider[]
         add_scripts_to_entities(BasePath)
 
         JulGame.engine_states.current_state = :game_mode
@@ -192,10 +194,11 @@ module SceneBuilderModule
     end
 
     function deserialize_and_build_scene(this::Scene)
+        main_loop = JulGame.current_main()
         scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
         
         @debug String("Changing scene to $(this.scene)")
-        @debug String("Entities in main scene: $(length(MAIN.scene.entities))")
+        @debug String("Entities in main scene: $(length(main_loop.scene.entities))")
 
         if scene === nothing
             @error "Error deserialize_and_build_scene"
@@ -203,39 +206,39 @@ module SceneBuilderModule
         end
 
         for entity in scene[1]
-            if !any(e.id == entity.id for e in MAIN.scene.entities)
-                push!(MAIN.scene.entities, entity)
+            if !any(e.id == entity.id for e in main_loop.scene.entities)
+                push!(main_loop.scene.entities, entity)
             else
                 @debug("duplicate entity found (persistence)")
             end
         end
         
         for uiElement in scene[2]
-            if !any(e.id == uiElement.id for e in MAIN.scene.uiElements)
-                push!(MAIN.scene.uiElements, uiElement)
+            if !any(e.id == uiElement.id for e in main_loop.scene.uiElements)
+                push!(main_loop.scene.uiElements, uiElement)
             else
                 @debug("duplicate ui element found (persistence)")
             end
         end
 
-        for uiElement in MAIN.scene.uiElements
+        for uiElement in main_loop.scene.uiElements
             if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
                 UI.align_to_anchor(uiElement)
             end
         end
 
-        MAIN.scene.camera = scene[3]
+        main_loop.scene.camera = scene[3]
 
-        for entity in MAIN.scene.entities
+        for entity in main_loop.scene.entities
             if entity.persistentBetweenScenes #TODO: Verify if the entity is in it's first scene. If it is, don't skip the scripts.
                 continue
             end
             
             if entity.rigidbody != C_NULL
-                push!(MAIN.scene.rigidbodies, entity.rigidbody)
+                push!(main_loop.scene.rigidbodies, entity.rigidbody)
             end
             if entity.collider != C_NULL
-                push!(MAIN.scene.colliders, entity.collider)
+                push!(main_loop.scene.colliders, entity.collider)
             end
         end 
 
@@ -252,19 +255,22 @@ module SceneBuilderModule
 
     """
     function create_new_entity(this::Scene)
+        main_loop = JulGame.current_main()
         entity = Entity("New entity")
-        push!(MAIN.scene.entities, entity)
+        push!(main_loop.scene.entities, entity)
         return entity
     end
 
     function create_new_text_box(this::Scene)
+        main_loop = JulGame.current_main()
         textBox = TextBox("TextBox")
         JulGame.UI.initialize(textBox)
-        push!(MAIN.scene.uiElements, textBox)
+        push!(main_loop.scene.uiElements, textBox)
         return textBox
     end
     
     function create_new_screen_button(this::Scene)
+        main_loop = JulGame.current_main()
         screenButton = ScreenButton(
             nothing; # No click event defined here by default
             name="New Button", 
@@ -280,76 +286,83 @@ module SceneBuilderModule
         if !screenButton.isInitialized
             JulGame.initialize(screenButton)
         end
-        push!(MAIN.scene.uiElements, screenButton)
+        push!(main_loop.scene.uiElements, screenButton)
         return screenButton
     end
 
     function create_new_canvas(this::Scene)
+        main_loop = JulGame.current_main()
         canvas = Canvas(
             name="New Canvas",
             size=Math.Vector2(400, 300),
             position=Math.Vector2(100, 100),
             color=(255, 255, 255, 100)  # Semi-transparent white
         )
-        push!(MAIN.scene.uiElements, canvas)
+        push!(main_loop.scene.uiElements, canvas)
         return canvas
     end
 
     function create_new_image(this::Scene)
+        main_loop = JulGame.current_main()
         image = JulGame.UI.UIImageModule.UIImage(;
             size=Math.Vector2(400, 300),
             position=Math.Vector2(0, 0),
             color=(255, 255, 255, 100)
         )
-        push!(MAIN.scene.uiElements, image)
+        push!(main_loop.scene.uiElements, image)
         return image
     end
 
     function create_new_rectangle(this::Scene)
+        main_loop = JulGame.current_main()
         rectangle = JulGame.UI.RectangleModule.Rectangle(;
             name="New Rectangle",
             size=Math.Vector2(400, 300),
             position=Math.Vector2(0, 0),
         )
-        push!(MAIN.scene.uiElements, rectangle)
+        push!(main_loop.scene.uiElements, rectangle)
         return rectangle
     end
 
     function add_scripts_to_entities(path::String)
         @debug string("Adding scripts to entities")
         @debug string("Path: ", path)
-        @debug string("Entities: ", length(MAIN.scene.entities))
+        main_loop = JulGame.current_main()
+        entities = main_loop.scene.entities::Vector{Entity}
+        @debug string("Entities: ", length(entities))
+        loaded_scripts::Set{String} = JulGame.LoadedScripts
         
         # Track which scripts we've already loaded
         
         # Only load scripts for non-persistent entities or if package is not compiled
         if !JulGame.IS_PACKAGE_COMPILED
             @debug "Package not compiled, loading scripts"
-            @time begin
-                count = 0
             foreach(file -> try
-                if !(file in JulGame.LoadedScripts)
+                if !(file in loaded_scripts)
                     @debug("Loading $file")
-                    @time Base.include(JulGame.ScriptModule, file)
+                    Base.include(JulGame.ScriptModule, file)
                     @debug("Finished loading $file")
-                    push!(JulGame.LoadedScripts, file)
+                    push!(loaded_scripts, file)
                 end
             catch e
                 @error("Error including $file: ", e)
                 end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
-            end
             @debug "Finished loading scripts"
         end
 
-        if JulGame.ProjectModule != ""
-            @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
-            scripts_mod = filter(x -> occursin(r"\.Scripts$", string(x)), ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)"))))
-            if scripts_mod !== nothing && length(scripts_mod) > 0
-                JulGame.ScriptModule = scripts_mod[1]
+        project_module_name::String = JulGame.ProjectModule
+        if !isempty(project_module_name)
+            @debug "Loading scripts from project module: $(project_module_name)"
+            project_module_symbol = Symbol(project_module_name)
+            if isdefined(Main, project_module_symbol)
+                project_module = getfield(Main, project_module_symbol)
+                if isdefined(project_module, :Scripts)
+                    JulGame.ScriptModule = getfield(project_module, :Scripts)
+                end
             end
         end
 
-        for entity in MAIN.scene.entities
+        for entity in entities
             scriptCounter = 1
             for script in entity.scripts
                 if !isa(script, JSON3.Object)
@@ -357,14 +370,16 @@ module SceneBuilderModule
                     scriptCounter += 1
                     continue
                 end
-                @debug String("Adding script: $(script.name) to entity: $(entity.name)")
+                script_name_any = get(script, :name, "")
+                script_name = script_name_any isa String ? script_name_any : string(script_name_any)
+                @debug String("Adding script: $(script_name) to entity: $(entity.name)")
 
                 newScript = nothing
                 try
-                    module_name = getfield(JulGame.ScriptModule, Symbol("$(script.name)Module"))
-                    constructor = Base.invokelatest(getfield, module_name, Symbol(script.name)) 
+                    module_name = getfield(JulGame.ScriptModule, Symbol("$(script_name)Module"))
+                    constructor = Base.invokelatest(getfield, module_name, Symbol(script_name))
                     newScript = Base.invokelatest(constructor)
-                    scriptFields = get(script, "fields", Dict())
+                    scriptFields = get(script, :fields, Dict{Any, Any}())
                     @debug("getting fields for: $(script)")
                     for (key, value) in scriptFields
                         ftype = nothing

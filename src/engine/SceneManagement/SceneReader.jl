@@ -45,6 +45,14 @@ module SceneReaderModule
         return get(d, Symbol(k), default)
     end
 
+    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject}, k::Symbol, default = nothing)
+        return get(d, string(k), default)
+    end
+
+    function _json_value(d::JSON3.Object, k::Symbol, default = nothing)
+        return get(d, k, default)
+    end
+
     # JuliaC `--trim`: a single Union-typed entry helps the verifier resolve `_json_value(::Union{...}, ::String, ::Nothing)` calls
     # made from `getproperty(::JsonObj)` / `haskey(::JsonObj)` against a concrete dispatch target.
     function _json_value(d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}, k::String, default::Nothing)
@@ -117,7 +125,7 @@ module SceneReaderModule
 
     function Base.getproperty(o::JsonObj, k::Symbol)
         k === :d && return getfield(o, :d)
-        return _expose(_json_value(getfield(o, :d), String(k), nothing))
+        return _expose(_json_value(getfield(o, :d), k, nothing))
     end
 
     Base.haskey(o::JsonObj, k::AbstractString) = _json_value(getfield(o, :d), k, nothing) !== nothing
@@ -208,9 +216,10 @@ module SceneReaderModule
             entities = Entity[]
             childParentDict = Dict{String, String}()
     
-            entityIdsInCurrentScene = []
+            entityIdsInCurrentScene = String[]
             try
-                entityIdsInCurrentScene = [e.id for e in MAIN.scene.entities]
+                main_loop = JulGame.current_main()
+                entityIdsInCurrentScene = [e.id for e in main_loop.scene.entities]
             catch e
                 @error sprint(showerror, e)
             end
@@ -361,7 +370,9 @@ module SceneReaderModule
     function deserialize_ui_elements(jsonUIElements, entities)
         res = JulGame.UI.UIElement[]
         childParentDict = Dict{String, Any}()
-        default_Vector2 = Math.Vector2(0, 0)
+        uiElementsById = Dict{String, JulGame.IUIElement}()
+        entitiesById = Dict{String, Entity}(string(e.id) => e for e in entities)
+        default_Vector2 = Math._Vector2{Int32}(0, 0)
         for uiElement in jsonUIElements
             try
                 newUIElement = nothing
@@ -507,29 +518,36 @@ module SceneReaderModule
                     
                     # Make sure the button is initialized properly - Constructor likely handles this
                 end
+                currentUIId = string(get(uiElement, "id", ""))
                 newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 push!(res, newUIElement)
+                if currentUIId != ""
+                    uiElementsById[currentUIId] = newUIElement
+                end
             catch e 
                 @error sprint(showerror, e)
             end
         end
 
-        for uiElement in res
-            if haskey(childParentDict, string(uiElement.id)) && childParentDict[string(uiElement.id)] != "" && childParentDict[string(uiElement.id)] !== nothing
-                parentId, parentType = split(childParentDict[string(uiElement.id)], "::")
-                if parentType == "Entity"
-                    for e in entities
-                        if string(e.id) == string(parentId)
-                            uiElement.parent = e
-                        end
-                    end
-                else
-                    for e in res
-                        if string(e.id) == string(parentId)
-                            uiElement.parent = e
-                        end
-                    end
-                end
+        for (childId, parentRef) in childParentDict
+            parentRef === nothing && continue
+            pref = string(parentRef)
+            pref == "" && continue
+            split_ref = split(pref, "::")
+            length(split_ref) != 2 && continue
+            parentId, parentType = split_ref
+            child = get(uiElementsById, childId, nothing)
+            child === nothing && continue
+            if parentType == "Entity"
+                parentEntity = get(entitiesById, string(parentId), nothing)
+                parentEntity === nothing && continue
+                JulGame.UI.add_relationship_if_not_exists(child)
+                setfield!(JulGame.UI.relationships[child], :parent, parentEntity)
+            else
+                parentUI = get(uiElementsById, string(parentId), nothing)
+                parentUI === nothing && continue
+                JulGame.UI.add_relationship_if_not_exists(child)
+                setfield!(JulGame.UI.relationships[child], :parent, parentUI)
             end
         end
 

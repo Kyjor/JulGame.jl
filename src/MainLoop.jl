@@ -1,4 +1,5 @@
 module MainLoopModule
+	using JSON3
 	using ..JulGame
 	using ..JulGame.ErrorLoggingModule
 	using ..JulGame: Camera, Component, Entity, Input, Math, UI, SceneModule, WindowManager
@@ -555,7 +556,7 @@ module MainLoopModule
 
 	function initialize_scripts_and_components()
 		this::MainLoop = MAIN
-		scripts = []
+		scripts = Union{JulGame.Script, JSON3.Object}[]
 		for entity in this.scene.entities
 			for script in entity.scripts
 				push!(scripts, script)
@@ -645,8 +646,8 @@ function JulGame.change_scene(sceneFileName::String)
 	@debug "Entity count before destroying: $(length(this.scene.entities))" 
 	count = 0
 	skipcount = 0
-	persistentEntities = []	
-	entitiesToDestroy = []
+	persistentEntities = Entity[]
+	entitiesToDestroy = Entity[]
 
 	for entity in this.scene.entities
 		if entity.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
@@ -687,7 +688,7 @@ function JulGame.change_scene(sceneFileName::String)
 
 	@debug "Entities left after destroying while changing scenes (persistent): $(length(persistentEntities)) "
 
-	persistentUIElements = []
+	persistentUIElements = Any[]
 	# delete all UIElements
 	for uiElement in this.scene.uiElements
 		if uiElement.persistentBetweenScenes

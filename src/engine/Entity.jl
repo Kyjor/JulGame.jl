@@ -1,4 +1,5 @@
 module EntityModule
+    using JSON3
     using UUIDs
     using ..JulGame.AnimationModule
     using ..JulGame.AnimatorModule
@@ -22,7 +23,7 @@ module EntityModule
         isActive::Bool
         persistentBetweenScenes::Bool
         transform::Transform
-        scripts::Vector{Any}
+        scripts::Vector{Union{JulGame.Script, JSON3.Object}}
         parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
@@ -59,7 +60,7 @@ module EntityModule
             this.isActive = true
             this.mesh3d = C_NULL
             this.softwareRenderer3d = C_NULL
-            this.scripts = []
+            this.scripts = Union{JulGame.Script, JSON3.Object}[]
             this.transform = transform
             this.transform.parent = this
             this.shape = C_NULL

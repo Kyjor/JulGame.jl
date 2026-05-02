@@ -5,7 +5,7 @@
     mutable struct Scene
         camera::Union{Nothing, JulGame.CameraModule.Camera}
         colliders::Vector{Any}
-        entities::Vector{Any}
+        entities::Vector{Entity}
         rigidbodies::Vector{Any}
         uiElements::Vector{Any}
         name::String
@@ -16,7 +16,7 @@
 
             this.camera = nothing
             this.colliders = []
-            this.entities = []
+            this.entities = Entity[]
             this.rigidbodies = []
             this.uiElements = []
             this.batchedLayers = Dict{Int, Any}()
@@ -41,7 +41,7 @@
     end
 
     function get_entities_by_name(this::Scene, name)
-        entities = []
+        entities = Entity[]
         for entity in this.entities
             if entity.name == name
                 push!(entities, entity)
