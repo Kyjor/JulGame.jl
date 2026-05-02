@@ -621,12 +621,12 @@ module SceneReaderModule
                 parentEntity = get(entitiesById, string(parentId), nothing)
                 parentEntity === nothing && continue
                 JulGame.UI.add_relationship_if_not_exists(child)
-                setfield!(JulGame.UI.relationships[child], :parent, parentEntity)
+                setfield!(JulGame.UI.relationship_instance(child), :parent, parentEntity)
             else
                 parentUI = get(uiElementsById, string(parentId), nothing)
                 parentUI === nothing && continue
                 JulGame.UI.add_relationship_if_not_exists(child)
-                setfield!(JulGame.UI.relationships[child], :parent, parentUI)
+                setfield!(JulGame.UI.relationship_instance(child), :parent, parentUI)
             end
         end
 

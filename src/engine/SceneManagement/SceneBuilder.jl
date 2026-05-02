@@ -211,7 +211,7 @@ module SceneBuilderModule
         
         for uiElement in main_loop.scene.uiElements
             JulGame.UI.add_relationship_if_not_exists(uiElement)
-            is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
+            is_world_entity = getfield(JulGame.UI.relationship_instance(uiElement), :isWorldEntity)::Bool
             if !is_world_entity
                 UI.align_to_anchor(uiElement)
             end
@@ -255,7 +255,7 @@ module SceneBuilderModule
 
         for uiElement in main_loop.scene.uiElements
             JulGame.UI.add_relationship_if_not_exists(uiElement)
-            is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
+            is_world_entity = getfield(JulGame.UI.relationship_instance(uiElement), :isWorldEntity)::Bool
             if is_world_entity
                 UI.align_to_anchor(uiElement)
             end

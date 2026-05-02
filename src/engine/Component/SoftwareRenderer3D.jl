@@ -24,6 +24,20 @@ module SoftwareRenderer3DModule
     using .MeshLoader3DModule
     using .MeshLoaderIntegrationModule
 
+    @inline _sr3d_main_loop() = JulGame.current_main()::JulGame.MainLoopModule.MainLoop
+
+    @inline function _sr3d_main_window_size()::JulGame.Math._Vector2{Int32}
+        ml = _sr3d_main_loop()
+        wm = getfield(ml, :windowManager)::JulGame.WindowManagerModule.WindowManager
+        return getfield(wm, :windowSize)::JulGame.Math._Vector2{Int32}
+    end
+
+    @inline function _sr3d_main_scene_camera()::Union{Nothing, JulGame.CameraModule.Camera}
+        ml = _sr3d_main_loop()
+        sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+        return getfield(sc, :camera)::Union{Nothing, JulGame.CameraModule.Camera}
+    end
+
     export SoftwareRenderer3D, Vec3D, Mat4x4, Triangle3D, Vertex3D, RenderBox, RenderMesh, load_mesh_from_file!
     export LightType, Light3D, add_light!, remove_light!, clear_lights!, set_ambient_light!
     export enable_lighting!, disable_lighting!, enable_shadows!, disable_shadows!
@@ -613,9 +627,9 @@ module SoftwareRenderer3DModule
         end
         
         # Frustum culling (basic)
-        windowSize = JulGame.MAIN.windowManager.windowSize
-        width = windowSize.x
-        height = windowSize.y
+        windowSize = _sr3d_main_window_size()
+        width = Float64(windowSize.x)
+        height = Float64(windowSize.y)
         
         if (ta.x < 0 && tb.x < 0 && tc.x < 0) ||
            (ta.x > width && tb.x > width && tc.x > width) ||
@@ -1118,7 +1132,7 @@ module SoftwareRenderer3DModule
         needs_resort = true
         if renderer.use_cached_sort && renderer.last_camera_position !== nothing
             # Get current camera state (with safety check)
-            camera = JulGame.MAIN.scene.camera
+            camera = _sr3d_main_scene_camera()
             if camera !== nothing
                 # Calculate position delta (Manhattan distance for speed)
                 pos_delta = abs(camera.position.x - renderer.last_camera_position.x) +
@@ -1146,7 +1160,7 @@ module SoftwareRenderer3DModule
             
             # Update cached camera state
             if renderer.use_cached_sort
-                camera = JulGame.MAIN.scene.camera
+                camera = _sr3d_main_scene_camera()
                 renderer.last_camera_position = Math.Vector3f(camera.position.x, camera.position.y, camera.position.z)
                 renderer.last_camera_yaw = camera.yaw
                 renderer.last_camera_pitch = camera.pitch
@@ -1274,13 +1288,13 @@ module SoftwareRenderer3DModule
         # Handle backface culling toggle
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("B")
             this.enable_backface_culling = !this.enable_backface_culling
-            println("Backface culling: ", this.enable_backface_culling ? "ON" : "OFF")
+            @debug "Backface culling: $(this.enable_backface_culling ? "ON" : "OFF")"
         end
         
         # Handle winding order toggle
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("G")
             this.clockwise_front_faces = !this.clockwise_front_faces
-            println("Front face winding: ", this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")
+            @debug "Front face winding: $(this.clockwise_front_faces ? "CLOCKWISE" : "COUNTER-CLOCKWISE")"
         end
         
         # Profiling toggle removed - handled by Manager.jl to avoid double-toggle
@@ -1288,26 +1302,26 @@ module SoftwareRenderer3DModule
         # Handle fast sort toggle
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("N")
             this.use_fast_sort = !this.use_fast_sort
-            println("Fast Sort (QuickSort): ", this.use_fast_sort ? "ON (faster, may have minor z-fighting)" : "OFF (stable MergeSort)")
+            @debug "Fast Sort (QuickSort): $(this.use_fast_sort ? "ON (faster, may have minor z-fighting)" : "OFF (stable MergeSort)")"
         end
         
         # Handle lighting toggle
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("L")
             this.lighting_enabled = !this.lighting_enabled
-            println("Lighting: ", this.lighting_enabled ? "ON" : "OFF")
+            @debug "Lighting: $(this.lighting_enabled ? "ON" : "OFF")"
         end
         
         # Handle shadows toggle
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("K")
             this.shadows_enabled = !this.shadows_enabled
-            println("Shadows: ", this.shadows_enabled ? "ON" : "OFF")
+            @debug "Shadows: $(this.shadows_enabled ? "ON" : "OFF")"
         end
         
         # Handle shadow quality adjustment
         if JulGame.IS_DEBUG && JulGame.InputModule.get_button_pressed("J")
             this.shadow_quality = this.shadow_quality % 3 + 1  # Cycle through 1, 2, 3
-            println("Shadow quality: ", this.shadow_quality, " (", 
-                   this.shadow_quality == 1 ? "LOW" : this.shadow_quality == 2 ? "MEDIUM" : "HIGH", ")")
+            qtxt = this.shadow_quality == 1 ? "LOW" : this.shadow_quality == 2 ? "MEDIUM" : "HIGH"
+            @debug "Shadow quality: $(this.shadow_quality) ($qtxt)"
         end
         
         # Light manipulation controls

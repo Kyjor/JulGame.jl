@@ -80,7 +80,7 @@ function get_batched_layer_info(layer::Int)
     for (i, bounds) in enumerate(batched_layer.texturesBounds)
         println("\nChunk $(i):")
         println("  World bounds: ($(bounds.x), $(bounds.y)) size $(bounds.z)x$(bounds.t)")
-        println("  Texture size: $(ceil(Int, bounds.z * JulGame.SCALE_UNITS))x$(ceil(Int, bounds.t * JulGame.SCALE_UNITS)) pixels")
+        println("  Texture size: $(ceil(Int, bounds.z * JulGame.scale_units()))x$(ceil(Int, bounds.t * JulGame.scale_units())) pixels")
     end
 end
 

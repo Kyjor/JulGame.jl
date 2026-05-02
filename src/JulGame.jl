@@ -118,7 +118,10 @@ module JulGame
     export CallSDLFunction
 
     include("utils/Constants.jl")
-    export SCALE_UNITS, GRAVITY
+    export SCALE_UNITS_REF, GRAVITY
+
+    @inline scale_units()::Float64 = (SCALE_UNITS_REF[])::Float64
+    export scale_units
 
     """
     Editor-only SDL event sink (`Input.editorCallback`). Game builds use `nothing`.

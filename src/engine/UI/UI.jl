@@ -71,7 +71,7 @@
 
     export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
     export input_ui_is_active, input_ui_force_click_check, input_ui_name, input_ui_is_hovered, input_ui_set_isHovered!
-    export sort_reversed_ui_by_layer_for_input, canvas_active_for_input
+    export sort_reversed_ui_by_layer_for_input, canvas_active_for_input, relationship_instance
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components

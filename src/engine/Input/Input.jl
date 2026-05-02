@@ -327,7 +327,7 @@ module InputModule
         return out
     end
 
-    function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)
+    function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -345,7 +345,7 @@ module InputModule
             uactive = JulGame.UI.input_ui_is_active(ui)
             @debug "Skipping element $uname - isActive: $uactive, ignoreInputEvents: N/A"
             _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_skip_early)
-            return
+            return nothing
         end
 
         _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_probe_active_filter)
@@ -396,7 +396,7 @@ module InputModule
             t_ctr = time_ns()
             hc.n_miss_bounds += 1
             _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
-            return
+            return nothing
         end
 
         hc.n_hit_inside += 1
@@ -460,10 +460,10 @@ module InputModule
             hc.clickedAnElementAlready = true
         end
         _input_ui_hit_span!(prof, t_hi, :hit_inside_7_mouse_btn_tail)
-        return
+        return nothing
     end
 
-    function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)
+    function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -488,7 +488,7 @@ module InputModule
             eign = getfield(ent, :ignoreInputEvents)::Bool
             @debug "Skipping element $ename - isActive: $eactive, ignoreInputEvents: $eign"
             _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_skip_early)
-            return
+            return nothing
         end
 
         _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_probe_active_filter)
@@ -539,7 +539,7 @@ module InputModule
             t_ctr = time_ns()
             hc.n_miss_bounds += 1
             _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
-            return
+            return nothing
         end
 
         hc.n_hit_inside += 1
@@ -603,11 +603,11 @@ module InputModule
             hc.clickedAnElementAlready = true
         end
         _input_ui_hit_span!(prof, t_hi, :hit_inside_7_mouse_btn_tail)
-        return
+        return nothing
     end
 
     function poll_input(this::Input)
-        prof = _input_latency_profiler()
+        prof = _input_latency_profiler()::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}
         t0 = Ref(time_ns())
 
         this.buttonsPressedDown = String[]

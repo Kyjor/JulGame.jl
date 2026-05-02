@@ -57,7 +57,7 @@ module ShapeModule
 
         parentTransform = this.parent.transform
 
-        S = (this.isWorldEntity && camera !== nothing) ? JulGame.pixels_per_world_unit(camera) : JulGame.SCALE_UNITS
+        S = (this.isWorldEntity && camera !== nothing) ? JulGame.pixels_per_world_unit(camera) : JulGame.scale_units()
         cameraDiff = this.isWorldEntity && camera !== nothing ? 
         Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
         Math.Vector2(0,0)

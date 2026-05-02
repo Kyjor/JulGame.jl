@@ -769,7 +769,7 @@ Draws a debug outline showing the camera viewport in the scene viewer.
 """
 function draw_camera_debug_outline(draw_list, canvas_p0, camPos, zoom_level, camera, scene_camera)
     # Use engine's pixels-per-unit for consistency
-    ppu = JulGame.SCALE_UNITS
+    ppu = JulGame.scale_units()
     scale_factor = ppu * zoom_level[]
     
     # Draw camera viewport in world space: subtract (camera.position + camera.offset)

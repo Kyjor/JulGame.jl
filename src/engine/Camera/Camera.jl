@@ -42,7 +42,7 @@ module CameraModule
 
     """Pixels per world unit for 2D rendering (SCALE_UNITS × camera zoom)."""
     @inline function pixels_per_world_unit(camera::Union{Nothing, Camera})
-        su = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
+        su = JulGame.scale_units()
         camera === nothing && return su
         return su * camera.zoom
     end
@@ -55,7 +55,7 @@ module CameraModule
     """
     function apply_zoom_to_center!(camera::Camera, new_zoom::Float64)
         S_old = pixels_per_world_unit(camera)
-        S_new = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64 * new_zoom
+        S_new = JulGame.scale_units() * new_zoom
         half_w = Float64(camera.size.x) / 2
         half_h = Float64(camera.size.y) / 2
         inv_delta = inv(S_old) - inv(S_new)

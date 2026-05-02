@@ -62,27 +62,35 @@ mutable struct UIElementInstance
     end
 end
 
-const relationships = Dict{JulGame.IUIElement, UIElementInstance}()
+const _ui_relationships_by_objectid = Dict{UInt, UIElementInstance}()
+
+"""Ensure and return the `UIElementInstance` for `ui` (JuliaC `--trim`: keys are `UInt` object ids)."""
+@inline function relationship_instance(ui::JulGame.IUIElement)::UIElementInstance
+    oid = Base.objectid(ui)::UInt
+    return get!(_ui_relationships_by_objectid, oid) do
+        UIElementInstance()
+    end::UIElementInstance
+end
 
 # Input hit-test helpers: getfield/setfield paths for JuliaC --trim (avoid IUIElement getproperty in Input).
 function input_ui_is_active(ui::JulGame.IUIElement)::Bool
     add_relationship_if_not_exists(ui)
-    return getfield(relationships[ui], :isActive)::Bool
+    return getfield(relationship_instance(ui), :isActive)::Bool
 end
 
 function input_ui_force_click_check(ui::JulGame.IUIElement)::Bool
     add_relationship_if_not_exists(ui)
-    return getfield(relationships[ui], :forceClickCheck)::Bool
+    return getfield(relationship_instance(ui), :forceClickCheck)::Bool
 end
 
 function input_ui_name(ui::JulGame.IUIElement)::String
     add_relationship_if_not_exists(ui)
-    return getfield(relationships[ui], :name)::String
+    return getfield(relationship_instance(ui), :name)::String
 end
 
 function input_ui_is_hovered(ui::JulGame.IUIElement)::Bool
     add_relationship_if_not_exists(ui)
-    inst = relationships[ui]
+    inst = relationship_instance(ui)
     if getfield(inst, :isActive) == false
         return false
     end
@@ -91,7 +99,7 @@ end
 
 function input_ui_set_isHovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
     add_relationship_if_not_exists(ui)
-    inst = relationships[ui]
+    inst = relationship_instance(ui)
     prev = getfield(inst, :isHovered)
     setfield!(inst, :isHovered, value)
     if prev != value
@@ -110,12 +118,12 @@ function sort_reversed_ui_by_layer_for_input(v::Vector{JulGame.IUIElement})::Vec
     @inbounds for i in 2:n
         cur = out[i]
         add_relationship_if_not_exists(cur)
-        cl = getfield(relationships[cur], :layer)::Int
+        cl = getfield(relationship_instance(cur), :layer)::Int
         j = i
         while j > 1
             prev = out[j - 1]
             add_relationship_if_not_exists(prev)
-            pl = getfield(relationships[prev], :layer)::Int
+            pl = getfield(relationship_instance(prev), :layer)::Int
             pl < cl || break
             out[j] = out[j - 1]
             j -= 1
@@ -128,13 +136,14 @@ end
 function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
     # Check if the relationship exists
     add_relationship_if_not_exists(script)
+    rinst = relationship_instance(script)
 
-    if hasfield(typeof(relationships[script]), property)
+    if hasfield(UIElementInstance, property)
         #println("getproperty from parent: $(property) ")
-        if property == :isHovered && getfield(relationships[script], :isActive) == false
+        if property == :isHovered && getfield(rinst, :isActive) == false
             return false
         end
-        return getfield(relationships[script], property)
+        return getfield(rinst, property)
     end
 
     #println("getproperty from child: $(property) ")
@@ -149,11 +158,12 @@ end
 
 function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
     add_relationship_if_not_exists(script)
+    rinst = relationship_instance(script)
 
-    if hasfield(typeof(relationships[script]), property) # this is the child type TextBox, Rectangle, etc
+    if hasfield(UIElementInstance, property) # this is the child type TextBox, Rectangle, etc
         #println("setproperty! from parent: $(property) ")
         if property == :isHovered
-            inst = relationships[script]
+            inst = rinst
             prof = _latency_profiler_active()
             t_rw = time_ns()
             prev = getfield(inst, :isHovered)
@@ -166,7 +176,7 @@ function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
                 _latency_ui_hit_count!(prof, :hover_set_isHovered_skip_dispatch_same_value, 1)
             end
         else
-            setfield!(relationships[script], property, value)
+            setfield!(rinst, property, value)
         end
     else # this is the parent type UIElement
         #println("setproperty! from child: $(property) ")
@@ -188,20 +198,13 @@ function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
     end
 end
 
-function add_relationship_if_not_exists(script::JulGame.IUIElement)::Nothing
-    if !haskey(relationships, script)
-        #println("Adding relationship for $(script)")
-        relationships[script] = UIElementInstance()
-        return nothing
-    end
-    #println("Relationship already exists for $(script)")
+@inline function add_relationship_if_not_exists(script::JulGame.IUIElement)::Nothing
+    relationship_instance(script)
     return nothing
 end
 
 function delete_relationship(script::JulGame.IUIElement)
-    if haskey(relationships, script)
-        delete!(relationships, script)
-    end
+    delete!(_ui_relationships_by_objectid, Base.objectid(script)::UInt)
 end
 
 function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
@@ -312,7 +315,7 @@ function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
     push!(this.hoverExitEvents, event)
 end
 
-function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, x, y)
+function UI.handle_event(this::JulGame.IUIElement, evt, x, y)
     prof = _latency_profiler_active()
     t = time_ns()
     isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
@@ -344,6 +347,37 @@ function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, 
         end
         _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
     end
+    return nothing
+end
+
+function UI.handle_event(this::JulGame.IEntity, evt, x, y)
+    prof = _latency_profiler_active()
+    t = time_ns()
+    isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
+    _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
+    t = time_ns()
+    if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
+        if isScreenButton
+            this.currentTexture = this.buttonDownTexture
+        end
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_down)
+    elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
+        @debug "Mouse button up at $(x), $(y)"
+        if isScreenButton
+            this.currentTexture = this.buttonUpTexture
+        end
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_up_setup)
+        t_cb = time_ns()
+        # Entity `clickEvents` are not invoked here: dynamic `Function` calls break JuliaC `--trim`.
+        # Use `IUIElement` (e.g. UI buttons) or scripts for clickable surfaces on entities.
+        _latency_ui_hit_ms!(prof, t_cb, :ui_handle_evt_mouse_button_up_click_callbacks)
+    elseif evt.type == SDL2.SDL_MOUSEMOTION
+        if this.isHovered == false
+            this.isHovered = true
+        end
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
+    end
+    return nothing
 end
 
 function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)

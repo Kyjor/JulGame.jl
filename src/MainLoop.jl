@@ -1041,14 +1041,14 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						if this.testMode
 							rethrow(e)
 						else
-							println(entity.name, " with id: ", entity.id, " has a problem with it's update")
+							@error "$(entity.name) with id: $(entity.id) has a problem with it's update"
 							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						end
 					end
 					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
-                        Base.invokelatest(JulGame.update, entityAnimator, currentRenderTime, deltaTime)
+                        JulGame.update(entityAnimator, currentRenderTime, deltaTime)
 					end
 				end
 			end
@@ -1263,7 +1263,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 		skipcount = 0
 		rendercount = 0
-		renderOrder = []
+		renderOrder = Tuple{Int, Any}[]
 		for entity in this.scene.entities
 			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
 			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
@@ -1332,7 +1332,18 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		end
 	end
 	
-	sort!(renderOrder, by = x -> x[1])
+	# Stable insertion sort by layer (index 1); avoids Base.sort! for JuliaC --trim.
+	nro = length(renderOrder)
+	@inbounds for i in 2:nro
+		cur = renderOrder[i]
+		cl = cur[1]
+		j = i
+		while j > 1 && renderOrder[j - 1][1] > cl
+			renderOrder[j] = renderOrder[j - 1]
+			j -= 1
+		end
+		renderOrder[j] = cur
+	end
 		
 		for i = eachindex(renderOrder)
 			try
@@ -1351,7 +1362,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				# Render batched static sprite layer
 				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
 			else
-				println("Unknown item type: ", typeof(renderOrder[i][2]))
+				@debug "Unknown item type: $(typeof(renderOrder[i][2]))"
 			end
 			catch e
 				if this.testMode
@@ -1365,7 +1376,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					else 
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					end
-					println(parent_info, " has a problem with rendering")
+					@error "$(parent_info) has a problem with rendering"
 					@error string(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 				end

@@ -84,9 +84,9 @@ end
 Calculate the minimal bounding box that contains all sprites.
 Returns (min_x, min_y, max_x, max_y) in world coordinates.
 """
-function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.SpriteModule.InternalSprite})
+function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.SpriteModule.InternalSprite})::NTuple{4, Float64}
     if isempty(sprites)
-        return (0.0, 0.0, 0.0, 0.0)
+        return (0.0, 0.0, 0.0, 0.0)::NTuple{4, Float64}
     end
     
     min_x = Inf
@@ -94,7 +94,7 @@ function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.Sprite
     max_x = -Inf
     max_y = -Inf
     
-    SCALE_UNITS = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
+    SCALE_UNITS = JulGame.scale_units()
     
     for sprite in sprites
         entity = sprite.parent
@@ -162,7 +162,7 @@ function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.Sprite
         max_y = max(max_y, y2)
     end
     
-    return (min_x, min_y, max_x, max_y)
+    return (Float64(min_x), Float64(min_y), Float64(max_x), Float64(max_y))::NTuple{4, Float64}
 end
 
 """
@@ -175,7 +175,7 @@ function create_batched_texture_for_sprites(sprites::AbstractVector{JulGame.Comp
     min_x, min_y, max_x, max_y = bounds
     
     # Calculate texture dimensions in pixels
-    SCALE_UNITS = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
+    SCALE_UNITS = JulGame.scale_units()
     width = ceil(Int32, (max_x - min_x) * SCALE_UNITS)
     height = ceil(Int32, (max_y - min_y) * SCALE_UNITS)
     
@@ -378,7 +378,7 @@ function batch_static_sprites(scene::JulGame.SceneModule.Scene)
         end
         
         # Check if we need to chunk
-        su = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
+        su = JulGame.scale_units()
         texture_width = ceil(Int32, (max_x - min_x) * su)
         texture_height = ceil(Int32, (max_y - min_y) * su)
         
@@ -592,7 +592,12 @@ function check_and_rebatch_if_needed(scene::JulGame.SceneModule.Scene)
                 
                 if texture != C_NULL
                     push!(batched_layer.textures, texture)
-                    push!(batched_layer.texturesBounds, Math.Vector4(bounds[1], bounds[2], bounds[3] - bounds[1], bounds[4] - bounds[2]))
+                    bx = bounds[1]
+                    by = bounds[2]
+                    bw = bounds[3] - bounds[1]
+                    bh = bounds[4] - bounds[2]
+                    push!(batched_layer.texturesBounds, Math._Vector4{Int32}(
+                        round(Int32, bx), round(Int32, by), round(Int32, bw), round(Int32, bh)))
                     
                     for sprite in sprites
                         push!(batched_layer.spriteHashes, calculate_sprite_hash(sprite))
