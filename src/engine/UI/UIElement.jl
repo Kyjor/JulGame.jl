@@ -62,6 +62,12 @@ end
 
 const relationships = Dict{JulGame.IUIElement, UIElementInstance}()
 
+# Layer for input hit-test ordering; getfield path for JuliaC --trim (avoids IUIElement getproperty).
+function input_sort_ui_layer(ui::JulGame.IUIElement)::Int
+    add_relationship_if_not_exists(ui)
+    return getfield(relationships[ui], :layer)::Int
+end
+
 function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
     # Check if the relationship exists
     add_relationship_if_not_exists(script)

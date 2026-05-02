@@ -16,9 +16,9 @@ module InputModule
         didMouseMotionOccur::Bool
         editorCallback::Union{Function, Nothing}
         main
-        mouseButtonsPressedDown::Vector
-        mouseButtonsHeldDown::Vector
-        mouseButtonsReleased::Vector
+        mouseButtonsPressedDown::Vector{UInt8}
+        mouseButtonsHeldDown::Vector{UInt8}
+        mouseButtonsReleased::Vector{UInt8}
         mousePosition::JulGame.Math.Vector2
         mousePositionEditorGameWindowOffset::JulGame.Math.Vector2
         mousePositionWorld::JulGame.Math.Vector2f
@@ -27,16 +27,16 @@ module InputModule
         scanCodes::Vector{Tuple{SDL2.SDL_Scancode, SubString{String}}}
         quit::Bool
 
-        elementsBeingClickedDownOn
+        elementsBeingClickedDownOn::Vector{JulGame.IUIElement}
 
         #Gamepad
         jaxis
-        xDir
-        yDir
-        numAxes
-        numButtons
-        numHats
-        button
+        xDir::Int
+        yDir::Int
+        numAxes::Int
+        numButtons::Int
+        numHats::Int
+        button::Int
 
         # Cursor bank
         cursorBank::Dict{String, Ptr{SDL2.SDL_SystemCursor}} # Key is the name of the cursor, value is the SDL2 cursor
@@ -58,10 +58,10 @@ module InputModule
             this.didMouseEventOccur = false
             this.didMouseMotionOccur = false
             this.editorCallback = nothing
-            this.mouseButtonsPressedDown = []
-            this.mouseButtonsHeldDown = []
-            this.mouseButtonsReleased = []
-            this.elementsBeingClickedDownOn = []
+            this.mouseButtonsPressedDown = UInt8[]
+            this.mouseButtonsHeldDown = UInt8[]
+            this.mouseButtonsReleased = UInt8[]
+            this.elementsBeingClickedDownOn = JulGame.IUIElement[]
             this.mousePosition = JulGame.Math._Vector2{Int32}(0,0)
             this.mousePositionEditorGameWindowOffset = JulGame.Math._Vector2{Int32}(0,0)
             this.mousePositionWorld = JulGame.Math._Vector2{Float64}(0,0)
@@ -91,9 +91,9 @@ module InputModule
                     @debug("Warning: Unable to open game controller! SDL Error: ", unsafe_string(SDL2.SDL_GetError()))
                 end
                 name = SDL2.SDL_JoystickName(this.joystick)
-                this.numAxes = SDL2.SDL_JoystickNumAxes(this.joystick)
-                this.numButtons = SDL2.SDL_JoystickNumButtons(this.joystick)
-                this.numHats = SDL2.SDL_JoystickNumHats(this.joystick)
+                this.numAxes = Int(SDL2.SDL_JoystickNumAxes(this.joystick))
+                this.numButtons = Int(SDL2.SDL_JoystickNumButtons(this.joystick))
+                this.numHats = Int(SDL2.SDL_JoystickNumHats(this.joystick))
 
                 @debug("Now reading from joystick '$(unsafe_string(name))' with:")
                 @debug("$(this.numAxes) axes")
@@ -270,10 +270,10 @@ module InputModule
         end
         @inbounds for i in 2:n
             cur = out[i]
-            cl = cur.layer
+            cl = JulGame.UI.input_sort_ui_layer(cur)
             j = i
             while j > 1
-                pl = out[j - 1].layer
+                pl = JulGame.UI.input_sort_ui_layer(out[j - 1])
                 pl < cl || break
                 out[j] = out[j - 1]
                 j -= 1
@@ -288,8 +288,8 @@ module InputModule
         t0 = Ref(time_ns())
 
         this.buttonsPressedDown = String[]
-        this.mouseButtonsPressedDown = String[]
-        this.mouseButtonsReleased = String[]  # Clear the released buttons each frame
+        this.mouseButtonsPressedDown = UInt8[]
+        this.mouseButtonsReleased = UInt8[]  # Clear the released buttons each frame
         this.didMouseEventOccur = false
         this.didMouseMotionOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
@@ -572,7 +572,7 @@ module InputModule
                     end
                     t_tail = Ref(time_ns())
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP
-                        this.elementsBeingClickedDownOn = []
+                        this.elementsBeingClickedDownOn = JulGame.IUIElement[]
                         _input_ui_hit_step!(prof, t_tail, :hit_ui_clear_click_state)
                     end
                     _input_ui_hit_step!(prof, t_tail, :hit_ui_block_end)
@@ -593,7 +593,7 @@ module InputModule
                     this.jaxis = evt.jaxis
                 end
                 for i in 0:this.numAxes-1
-                    axis = SDL2.SDL_JoystickGetAxis(this.joystick, i)
+                    axis = SDL2.SDL_JoystickGetAxis(this.joystick, Cint(i))
                     if i < 0
                         @debug("Axis $i: $(SDL2.SDL_JoystickGetAxis(this.joystick, i))")
                     end
@@ -622,7 +622,7 @@ module InputModule
                 end
                 # @debug("x:$(this.xDir), y:$(this.yDir)")
                 for i in 0:this.numButtons-1
-                    button = SDL2.SDL_JoystickGetButton(this.joystick, i)
+                    button = SDL2.SDL_JoystickGetButton(this.joystick, Cint(i))
 
                     if button != 0
                         @debug("Button $i: $(button)")
@@ -636,7 +636,7 @@ module InputModule
 
                 for i in 0:this.numHats-1
 
-                    hat = SDL2.SDL_JoystickGetHat(this.joystick, i)
+                    hat = SDL2.SDL_JoystickGetHat(this.joystick, Cint(i))
                     if hat != 0
                         @debug("Hat $i: $(hat)")
                     end
@@ -744,15 +744,25 @@ module InputModule
         this.buttonsPressedDown = buttonsPressedDown
     end
 
-    function handle_mouse_event(this::Input, event)
+    function _delete_first!(v::Vector{UInt8}, x::UInt8)
+        for i in eachindex(v)
+            if @inbounds(v[i]) == x
+                deleteat!(v, i)
+                return
+            end
+        end
+        return
+    end
+
+    function handle_mouse_event(this::Input, event::SDL2.SDL_Event)
         if event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT
-            button = event.button.button
+            button = event.button.button % UInt8
             if event.type == SDL2.SDL_MOUSEBUTTONDOWN && !(button in this.mouseButtonsHeldDown)
                 push!(this.mouseButtonsPressedDown, button)
                 push!(this.mouseButtonsHeldDown, button)
             elseif event.type == SDL2.SDL_MOUSEBUTTONUP && (button in this.mouseButtonsHeldDown)
                 push!(this.mouseButtonsReleased, button)
-                deleteat!(this.mouseButtonsHeldDown, findfirst(x -> x == button, this.mouseButtonsHeldDown))
+                _delete_first!(this.mouseButtonsHeldDown, button)
             end
         end
     end
@@ -972,36 +982,30 @@ module InputModule
         return false
     end
 
-    function get_mouse_button(this::Input, button::Any)
-        if button in this.mouseButtonsHeldDown
-            return true
-        end
-        return false
+    function get_mouse_button(this::Input, button)
+        b = button isa UInt8 ? button : UInt8(button)
+        return b in this.mouseButtonsHeldDown
     end
 
-    function get_mouse_button(button::Any)
+    function get_mouse_button(button)
         return get_mouse_button(JulGame.current_main().input, button)
     end
 
-    function get_mouse_button_pressed(this::Input, button::Any)
-        if button in this.mouseButtonsPressedDown
-            return true
-        end
-        return false
+    function get_mouse_button_pressed(this::Input, button)
+        b = button isa UInt8 ? button : UInt8(button)
+        return b in this.mouseButtonsPressedDown
     end
 
-    function get_mouse_button_pressed(button::Any)
+    function get_mouse_button_pressed(button)
         return get_mouse_button_pressed(JulGame.current_main().input, button)
     end
 
-    function get_mouse_button_released(this::Input, button::Any)
-        if button in this.mouseButtonsReleased
-            return true
-        end
-        return false
+    function get_mouse_button_released(this::Input, button)
+        b = button isa UInt8 ? button : UInt8(button)
+        return b in this.mouseButtonsReleased
     end
 
-    function get_mouse_button_released(button::Any)
+    function get_mouse_button_released(button)
         return get_mouse_button_released(JulGame.current_main().input, button)
     end
 
@@ -1036,27 +1040,8 @@ module InputModule
         this.cursorBank["hand"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
     end
 
-    # Initialize an SDL_Event instance
     function init_sdl_event()::Ptr{SDL2.SDL_Event}
-        # Create a vector of UInt8
-        data = UInt8[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-
-         # Convert the vector to a tuple of size 56
-        ntuple_data = Tuple(data)
-
-        # Allocate memory for the SDL_Event struct itself
-        ptr_event = Ptr{SDL2.SDL_Event}(Libc.malloc(sizeof(SDL2.SDL_Event)))  # Allocate memory for SDL_Event struct
-
-        # Now, initialize the data field of the struct using unsafe_store!
-        unsafe_store!(ptr_event, SDL2.SDL_Event(ntuple_data))
-
-        # Return the pointer to the struct
+        ptr_event = Ptr{SDL2.SDL_Event}(Libc.calloc(1, sizeof(SDL2.SDL_Event)))
         return ptr_event
     end
 

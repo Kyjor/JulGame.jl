@@ -67,7 +67,7 @@
     export CanvasModule
     export UIImageModule
 
-    export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
+    export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable, input_sort_ui_layer
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components
