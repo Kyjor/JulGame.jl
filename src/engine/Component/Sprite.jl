@@ -108,7 +108,7 @@ module SpriteModule
             if this.image == C_NULL
                 error = unsafe_string(SDL2.SDL_GetError())
                 @error string("Couldn't open image! SDL Error: ", error)
-                return
+                return this
             end
             surface = unsafe_wrap(Array, this.image, 10; own = false)
             this.size = Math._Vector2{Int32}(surface[1].w, surface[1].h)

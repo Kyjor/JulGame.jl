@@ -50,6 +50,11 @@ module TransformModule
     end
 
     function Base.setproperty!(this::Transform, property::Symbol, value::Any)
+        if property == :parent
+            setfield!(this, :parent, value)
+            return
+        end
+
         # only log if the property is already defined
         if JulGame.IS_EDITOR && !JulGame.IS_EDITOR_PLAY_MODE && isdefined(this, property) && JulGame.engine_states.current_state == :game_mode && isdefined(this, :parent) && this.parent !== nothing
             #@debug "setting transform property $(property) to: $(value)"

@@ -134,7 +134,7 @@ module SceneReaderModule
             root::JsonObj = _as_scene_json_root(json)
 
             entities = Entity[]
-            childParentDict = Dict{String, Any}()
+            childParentDict = Dict{String, String}()
     
             entityIdsInCurrentScene = []
             try
@@ -155,7 +155,7 @@ module SceneReaderModule
                 end
                 
                 if haskey(entity, "parent") && entity.parent != ""
-                    childParentDict[string(entity.id)] = entity.parent
+                    childParentDict[string(entity.id)] = string(entity.parent)
                 end
                 newEntity = Entity(get(entity, "name", "New entity"), string(entity.id))
                 newEntity.isActive = get(entity, "isActive", true)
@@ -238,9 +238,9 @@ module SceneReaderModule
 
             for entity in entities
                 if haskey(childParentDict, string(entity.id))
-                    parentId = childParentDict[string(entity.id)]
+                    parentId::String = childParentDict[string(entity.id)]
                     for e in entities
-                        if string(e.id) == string(parentId)
+                        if string(e.id) == parentId
                             entity.parent = e
                         end
                     end
