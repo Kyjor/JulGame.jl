@@ -737,10 +737,10 @@ module InputModule
                     hc = _MouseUiHitLoop(0, 0, 0, 0, 0, 0, false, false)
                     prof_in = prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}
                     for ui in uiElementsOrderedByLayerDescending
-                        _input_hit_scan_ui!(this, evt, prof_in, ui::JulGame.IUIElement, canvases, hc)
+                        _input_hit_scan_ui!(this, evt, prof_in, ui::JulGame.IUIElement, canvases, hc)::Nothing
                     end
                     for ent in entitiesWithSpritesOrderedByLayerDescending
-                        _input_hit_scan_entity!(this, evt, prof_in, ent::JulGame.IEntity, canvases, hc)
+                        _input_hit_scan_entity!(this, evt, prof_in, ent::JulGame.IEntity, canvases, hc)::Nothing
                     end
                     t_tail = Ref(time_ns())
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP

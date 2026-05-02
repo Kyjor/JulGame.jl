@@ -149,11 +149,16 @@ module SpriteModule
             SDL2.SDL_SetTextureAlphaMod(texture_to_render, UInt8(clamp(this.color[4], 0, 255)))
         end
     
-        S = JulGame.pixels_per_world_unit(camera)
-        # Calculate camera difference
-        cameraDiff = camera !== nothing ? 
-            Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
-            Math.Vector2(0, 0)
+        S = JulGame.pixels_per_world_unit(camera)::Float64
+        # Calculate camera difference (concrete Int32 vector; matches Math.Vector2 / _Vector2{Int32})
+        cameraDiff = if camera !== nothing
+            JulGame.Math._Vector2{Int32}(
+                Math.TypeConversions.safe_int32_convert((camera.position.x + camera.offset.x) * S),
+                Math.TypeConversions.safe_int32_convert((camera.position.y + camera.offset.y) * S),
+            )
+        else
+            JulGame.Math._Vector2{Int32}(0, 0)
+        end
     
         # Calculate position
         position = this.parent.transform.position
@@ -165,7 +170,8 @@ module SpriteModule
         ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
     
         # Check if using effect texture
-        usingEffectTex = texture_to_render == this.effectTexture && this.effectSize != Math.Vector2(0, 0)
+        zeroSize = JulGame.Math._Vector2{Int32}(0, 0)
+        usingEffectTex = texture_to_render == this.effectTexture && this.effectSize != zeroSize
         
         # Always use original sprite size for positioning calculations
         cropWidth = srcRect == C_NULL ? this.size.x : this.crop.z
@@ -243,37 +249,41 @@ module SpriteModule
         end
     
         # Select float or integer precision
+        flip = this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
+        renderer = JulGame.Renderer::Ptr{SDL2.SDL_Renderer}
         if this.isFloatPrecision
             dstRect = Ref(SDL2.SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
+            rw = Float64(dstRect[].w)
+            rh = Float64(dstRect[].h)
+            calculatedCenter = JulGame.Math._Vector2{Float64}(rw * (this.center.x % 1.0), rh * (this.center.y % 1.0))
+            rotationCenter = Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
+            this.lastRenderedScreenPosition = JulGame.Math._Vector2{Float64}(Float64(dstRect[].x), Float64(dstRect[].y))
+            this.lastRenderedScreenSize = JulGame.Math._Vector2{Float64}(rw, rh)
+            if SDL2.SDL_RenderCopyExF(renderer, texture_to_render, srcRect, dstRect, this.rotation, rotationCenter, flip) != 0
+                error = unsafe_string(SDL2.SDL_GetError())
+            end
         else
             dstRect = Ref(SDL2.SDL_Rect(
-                Math.TypeConversions.safe_int32_convert(round(centeredX)),
-                Math.TypeConversions.safe_int32_convert(round(centeredY)),
-                Math.TypeConversions.safe_int32_convert(round(scaledWidth)),
-                Math.TypeConversions.safe_int32_convert(round(scaledHeight))
+                Math.TypeConversions.safe_int32_convert(Base.round(centeredX)::Float64),
+                Math.TypeConversions.safe_int32_convert(Base.round(centeredY)::Float64),
+                Math.TypeConversions.safe_int32_convert(Base.round(scaledWidth)::Float64),
+                Math.TypeConversions.safe_int32_convert(Base.round(scaledHeight)::Float64),
             ))
-        end
-    
-        # Calculate center for rotation
-        calculatedCenter = Math.Vector2(dstRect[].w * (this.center.x % 1), dstRect[].h * (this.center.y % 1))
-        rotationCenter = !this.isFloatPrecision ? 
-            Ref(SDL2.SDL_Point(Math.TypeConversions.safe_int32_convert(round(calculatedCenter.x)), Math.TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
-            Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
-    
-        this.lastRenderedScreenPosition = Math.Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
-        this.lastRenderedScreenSize = Math.Vector2f(convert(Float64, dstRect[].w), convert(Float64, dstRect[].h))
-        # Render with appropriate precision
-        renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
-        if renderFn(
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-            texture_to_render, 
-            srcRect, 
-            dstRect,
-            this.rotation, 
-            rotationCenter, 
-            this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
-        ) != 0
-            error = unsafe_string(SDL2.SDL_GetError())
+            rw_i = Int32(dstRect[].w)
+            rh_i = Int32(dstRect[].h)
+            calculatedCenter = JulGame.Math._Vector2{Float64}(
+                Float64(rw_i) * (this.center.x % 1.0),
+                Float64(rh_i) * (this.center.y % 1.0),
+            )
+            rotationCenter = Ref(SDL2.SDL_Point(
+                Math.TypeConversions.safe_int32_convert(Base.round(calculatedCenter.x)::Float64),
+                Math.TypeConversions.safe_int32_convert(Base.round(calculatedCenter.y)::Float64),
+            ))
+            this.lastRenderedScreenPosition = JulGame.Math._Vector2{Float64}(Float64(dstRect[].x), Float64(dstRect[].y))
+            this.lastRenderedScreenSize = JulGame.Math._Vector2{Float64}(Float64(rw_i), Float64(rh_i))
+            if SDL2.SDL_RenderCopyEx(renderer, texture_to_render, srcRect, dstRect, this.rotation, rotationCenter, flip) != 0
+                error = unsafe_string(SDL2.SDL_GetError())
+            end
         end
     end
 
@@ -290,7 +300,7 @@ module SpriteModule
     end
     
     # Shared effect texture cache for sprites (keyed by image+size+effects, not instance)
-    const SPRITE_EFFECT_CACHE = Dict{String, Tuple{Ptr{SDL2.SDL_Texture}, Math.Vector2}}()
+    const SPRITE_EFFECT_CACHE = Dict{String, Tuple{Ptr{SDL2.SDL_Texture}, JulGame.Math._Vector2{Int32}}}()
 
     # Shared texture cache for base images (keyed by image path)
     const TEXTURE_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
@@ -393,7 +403,7 @@ module SpriteModule
                     w = Ref{Cint}(0); h = Ref{Cint}(0)
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.effectSize = Math.Vector2(w[], h[])
+                    this.effectSize = JulGame.Math._Vector2{Int32}(Int32(w[]), Int32(h[]))
                     
                     # Cache the result for other sprites with same visuals
                     SPRITE_EFFECT_CACHE[this.effectCacheKey] = (this.effectTexture, this.effectSize)
@@ -420,8 +430,8 @@ module SpriteModule
         for (key, cached) in SPRITE_EFFECT_CACHE
             texture = cached[1]
             size = cached[2]
-            width = Int(round(size.x))
-            height = Int(round(size.y))
+            width = Int(Base.round(Float64(size.x)))
+            height = Int(Base.round(Float64(size.y)))
             if (width <= 0 || height <= 0) && texture != C_NULL
                 w = Ref{Cint}(0)
                 h = Ref{Cint}(0)
