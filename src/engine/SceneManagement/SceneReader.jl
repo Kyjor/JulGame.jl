@@ -39,8 +39,7 @@ module SceneReaderModule
             JulGame.PRELOADED_SCENES[basename(filePath)] = (entities = scene[1], uiElements = scene[2], camera = scene[3])
             @debug("Preloaded scene: $(basename(filePath))")
         catch e
-            @error string(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+            @error sprint(showerror, e)
         end
     end
 
@@ -70,8 +69,7 @@ module SceneReaderModule
             try
                 entityIdsInCurrentScene = [e.id for e in MAIN.scene.entities]
             catch e
-                @error string(e)
-                Base.show_backtrace(stdout, catch_backtrace())
+                @error sprint(showerror, e)
             end
             for entity in json.Entities
                 if entity.id in entityIdsInCurrentScene
@@ -100,7 +98,6 @@ module SceneReaderModule
                             JulGame.add_animator(newEntity, component::Animator)
                         catch e
                             @error "Failed to add animator to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
                         end
                         continue
                     elseif typeof(component) == Collider
@@ -109,7 +106,7 @@ module SceneReaderModule
                             JulGame.add_collider(newEntity, component::Collider)
                         catch e
                             @error "Failed to add collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
+
                         end
                         continue
                     elseif typeof(component) == CircleCollider
@@ -118,7 +115,7 @@ module SceneReaderModule
                             JulGame.add_circle_collider(newEntity, component::CircleCollider)
                         catch e
                             @error "Failed to add circle collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
+
                         end
                         continue
                     elseif typeof(component) == Rigidbody
@@ -127,7 +124,7 @@ module SceneReaderModule
                             JulGame.add_rigidbody(newEntity, component::Rigidbody)
                         catch e
                             @error "Failed to add rigidbody to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
+
                         end
                         continue
                     elseif typeof(component) == Shape
@@ -140,7 +137,7 @@ module SceneReaderModule
                             JulGame.add_sound_source(newEntity, component::SoundSource)
                         catch e
                             @error "Failed to add sound source to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
+
                         end
                         continue
                     elseif typeof(component) == Sprite
@@ -149,7 +146,7 @@ module SceneReaderModule
                             JulGame.add_sprite(newEntity, false, component::Sprite)
                         catch e
                             @error "Failed to add sprite to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
+
                         end
                         continue
                     elseif typeof(component) == Transform 
@@ -159,7 +156,7 @@ module SceneReaderModule
                             newEntity.transform.parent = newEntity
                         catch e
                             @error "Failed to add transform to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
+
                         end
                         continue 
                     end
@@ -191,8 +188,7 @@ module SceneReaderModule
 
             return (entities, uiElements, camera)
         catch e 
-            @error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
+            @error sprint(showerror, e)
             return nothing
         end
     end
@@ -349,8 +345,7 @@ module SceneReaderModule
                 newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 push!(res, newUIElement)
             catch e 
-                @error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
+                @error sprint(showerror, e)
             end
         end
 
@@ -441,8 +436,7 @@ module SceneReaderModule
             
             return newComponent
         catch e
-            @error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
+            @error sprint(showerror, e)
         end
     end
 
@@ -550,8 +544,7 @@ module SceneReaderModule
                     push!(children, newChild)
                 end
             catch e 
-                @error string(e)
-                Base.show_backtrace(stdout, catch_backtrace())
+                @error sprint(showerror, e)
             end
         end
         

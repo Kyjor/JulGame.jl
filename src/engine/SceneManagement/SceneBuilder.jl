@@ -386,8 +386,7 @@ module SceneBuilderModule
                         end
                     end
                 catch e
-                    @error string(e)
-                    Base.show_backtrace(stdout, catch_backtrace())
+                    @error sprint(showerror, e)
                 end
                 if newScript != C_NULL && newScript !== nothing
                     entity.scripts[scriptCounter] = newScript
@@ -414,16 +413,11 @@ module SceneBuilderModule
         config = copy(DEFAULT_CONFIG)
         
         if isfile(filename)
-            # Open the file for reading
-            open(filename, "r") do file
-                for line in eachline(file)
-                    # Split the line at the '=' character
-                    parts = split(line, "=", limit=2)
-                    if length(parts) == 2
-                        key, value = parts[1], parts[2]
-                        # Strip any extra whitespace and add to dictionary
-                        config[strip(key)] = strip(value)
-                    end
+            for line in readlines(filename)
+                parts = split(line, "=", limit=2)
+                if length(parts) == 2
+                    key, value = parts[1], parts[2]
+                    config[strip(key)] = strip(value)
                 end
             end
         end
@@ -447,13 +441,11 @@ module SceneBuilderModule
     # Function to write values to the config file
     function write_config(filename::String, config::Dict{String, String})
         @debug "Writing config to $(filename)"
-        # Open the file for writing
-        open(filename, "w") do file
-            for (key, value) in config
-                # Write each key-value pair to the file
-                println(file, "$key=$value")
-            end
+        buf = IOBuffer()
+        for (key, value) in config
+            println(buf, "$(key)=$(value)")
         end
+        write(filename, take!(buf))
     end
 end # module
 

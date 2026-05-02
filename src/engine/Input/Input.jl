@@ -62,9 +62,9 @@ module InputModule
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
             this.elementsBeingClickedDownOn = []
-            this.mousePosition = JulGame.Math.Vector2(0,0)
-            this.mousePositionEditorGameWindowOffset = JulGame.Math.Vector2(0,0)
-            this.mousePositionWorld = JulGame.Math.Vector2f(0,0)
+            this.mousePosition = JulGame.Math._Vector2{Int32}(0,0)
+            this.mousePositionEditorGameWindowOffset = JulGame.Math._Vector2{Int32}(0,0)
+            this.mousePositionWorld = JulGame.Math._Vector2{Float64}(0,0)
             this.quit = false
             this.scanCodes = Tuple{SDL2.SDL_Scancode, SubString{String}}[]
             this.scanCodeStrings = String[]
@@ -136,7 +136,7 @@ module InputModule
             end
         end
 
-        this.mousePosition = JulGame.Math.Vector2(x[1], y[1])
+        this.mousePosition = JulGame.Math._Vector2{Int32}(x[1], y[1])
         @debug "new mouse pos: $(this.mousePosition)"
 
         if !JulGame.IS_EDITOR
@@ -166,7 +166,7 @@ module InputModule
                 scaled_y = 0
             end
             window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
-            this.mousePosition = JulGame.Math.Vector2(
+            this.mousePosition = JulGame.Math._Vector2{Int32}(
                 clamp(floor(Int, scaled_x), 0, logical_size.x),
                 clamp(floor(Int, scaled_y), 0, logical_size.y)
             )
@@ -182,9 +182,9 @@ module InputModule
                 scale_y = camera_size.y / JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                this.mousePosition = JulGame.Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+                this.mousePosition = JulGame.Math._Vector2{Int32}(floor(Int, scaled_x), floor(Int, scaled_y))
             else
-                this.mousePosition = JulGame.Math.Vector2(0, 0)
+                this.mousePosition = JulGame.Math._Vector2{Int32}(0, 0)
             end
         end
         return
@@ -638,15 +638,15 @@ module InputModule
 
     function get_element_position(element::JulGame.IEntity)
         if element.sprite === nothing || element.sprite === C_NULL
-            return JulGame.Math.Vector2(0, 0)
+            return JulGame.Math._Vector2{Int32}(0, 0)
         end
-        basePosition = element.sprite.lastRenderedScreenPosition === nothing ? JulGame.Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+        basePosition = element.sprite.lastRenderedScreenPosition === nothing ? JulGame.Math._Vector2{Int32}(0, 0) : element.sprite.lastRenderedScreenPosition
+        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math._Vector2{Int32}(0, 0) : element.sprite.lastRenderedScreenSize
         # Center the scaled hitbox over the original sprite position
         interactionScale = try element.sprite.interactionScale catch; 1.0 end
         if interactionScale < 1.0
-            sizeDiff = JulGame.Math.Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
-            return JulGame.Math.Vector2(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
+            sizeDiff = JulGame.Math._Vector2{Int32}(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
+            return JulGame.Math._Vector2{Int32}(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
         end
         return basePosition
     end
@@ -657,12 +657,12 @@ module InputModule
 
     function get_element_size(element::JulGame.IEntity)
         if element.sprite === nothing || element.sprite === C_NULL
-            return JulGame.Math.Vector2(0, 0)
+            return JulGame.Math._Vector2{Int32}(0, 0)
         end
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math._Vector2{Int32}(0, 0) : element.sprite.lastRenderedScreenSize
         # Apply interaction scale to shrink/grow hitbox independently of visual size
         interactionScale = try element.sprite.interactionScale catch; 1.0 end
-        return JulGame.Math.Vector2(baseSize.x * interactionScale, baseSize.y * interactionScale)
+        return JulGame.Math._Vector2{Int32}(baseSize.x * interactionScale, baseSize.y * interactionScale)
     end
 
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)

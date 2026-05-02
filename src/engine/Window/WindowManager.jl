@@ -2,6 +2,27 @@ module WindowManagerModule
     using ..JulGame
     export WindowManager
     
+    # JuliaC --trim: explicit ccall signatures (avoid untyped SDL2 wrappers resolving to Any).
+    function _sdl_gfx_init_framerate!(fps::Ref{SDL2.LibSDL2.FPSmanager})::Nothing
+        ccall(
+            (:SDL_initFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+            Cvoid,
+            (Ptr{SDL2.LibSDL2.FPSmanager},),
+            fps,
+        )
+        return nothing
+    end
+    
+    function _sdl_gfx_set_framerate!(fps::Ref{SDL2.LibSDL2.FPSmanager}, rate::UInt32)::Cint
+        ccall(
+            (:SDL_setFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+            Cint,
+            (Ptr{SDL2.LibSDL2.FPSmanager}, UInt32),
+            fps,
+            rate,
+        )
+    end
+
     """
         WindowManager
 
@@ -26,27 +47,35 @@ module WindowManagerModule
         baseResolution::JulGame.Math.Vector2
 
         function WindowManager()
-            this = new()
-            
-            this.window = C_NULL
-            this.windowName = ""
-            this.windowSize = JulGame.Math.Vector2(0, 0)
-            this.screenSize = JulGame.Math.Vector2(0, 0)
-            this.isWindowFocused = false
-            this.isFullscreen = false
-            this.isResizable = false
-            this.isBorderless = false
-            this.isVsyncEnabled = false
-            this.renderScale = JulGame.Math.Vector2f(1.0, 1.0)
-            this.targetFrameRate = 60
-            this.allowHighDPI = false
-            this.position = JulGame.Math.Vector2(SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED)
-            this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
-            SDL2.SDL_initFramerate(this.fpsManager)
-			SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
-            this.baseResolution = JulGame.Math.Vector2(1280, 720)
-            
-            return this
+            # FPS setup on locals before `new(...)` avoids JuliaC trim seeing SDL `ccall` on `%new()` fields (`fpsManager`, etc.).
+            targetFrameRate_int::Int = 60
+            fpsManager_ref::Ref{SDL2.LibSDL2.FPSmanager} =
+                Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
+            _sdl_gfx_init_framerate!(fpsManager_ref)
+            target_fps_u32::UInt32 = UInt32(targetFrameRate_int)
+            _sdl_gfx_set_framerate!(fpsManager_ref, target_fps_u32)
+
+            displayMode_placeholder = SDL2.SDL_DisplayMode(0, 0, 0, 0, C_NULL)
+            baseResolution_vec = JulGame.Math._Vector2{Int32}(1280, 720)
+
+            return new(
+                Ptr{SDL2.SDL_Window}(C_NULL),
+                "",
+                JulGame.Math._Vector2{Int32}(0, 0),
+                JulGame.Math._Vector2{Int32}(0, 0),
+                false,
+                false,
+                false,
+                false,
+                false,
+                displayMode_placeholder,
+                JulGame.Math._Vector2{Float64}(1.0, 1.0),
+                targetFrameRate_int,
+                false,
+                JulGame.Math._Vector2{Int32}(SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED),
+                fpsManager_ref,
+                baseResolution_vec,
+            )
         end
     end
 
@@ -120,7 +149,7 @@ module WindowManagerModule
             return
         end
         
-        this.windowSize = JulGame.Math.Vector2(width, height)
+        this.windowSize = JulGame.Math._Vector2{Int32}(width, height)
         SDL2.SDL_SetWindowSize(this.window, JulGame.Math.TypeConversions.safe_int32_convert(width), JulGame.Math.TypeConversions.safe_int32_convert(height))
     end
 
@@ -183,7 +212,7 @@ module WindowManagerModule
             x = Ref{Cint}(0)
             y = Ref{Cint}(0)
             SDL2.SDL_GetWindowPosition(this.window, x, y)
-            this.position = JulGame.Math.Vector2(x[], y[])
+            this.position = JulGame.Math._Vector2{Int32}(x[], y[])
             
             # Get the display dimensions
             display_index = SDL2.SDL_GetWindowDisplayIndex(this.window)
@@ -275,7 +304,7 @@ module WindowManagerModule
         
         result = SDL2.SDL_RenderSetScale(JulGame.Renderer, scaleX, scaleY)
         if result == 0
-            this.renderScale = JulGame.Math.Vector2f(scaleX, scaleY)
+            this.renderScale = JulGame.Math._Vector2{Float64}(scaleX, scaleY)
             @debug "Render scale set to ($scaleX, $scaleY)"
         else
             @warn "Failed to set render scale: $(unsafe_string(SDL2.SDL_GetError()))"
@@ -312,14 +341,14 @@ module WindowManagerModule
     function get_logical_size(this::WindowManager)::JulGame.Math.Vector2
         if this.window == C_NULL
             @error "Cannot get logical size: Window has not been created"
-            return JulGame.Math.Vector2(0, 0)
+            return JulGame.Math._Vector2{Int32}(0, 0)
         end
 
         width = Ref{Cint}(0)
         height = Ref{Cint}(0)
         SDL2.SDL_RenderGetLogicalSize(JulGame.Renderer, width, height)
 
-        return JulGame.Math.Vector2(width[], height[])
+        return JulGame.Math._Vector2{Int32}(width[], height[])
     end
 
 
@@ -385,7 +414,7 @@ module WindowManagerModule
         x = Ref{Cint}(0)
         y = Ref{Cint}(0)
         SDL2.SDL_GetWindowPosition(this.window, x, y)
-        this.position = JulGame.Math.Vector2(x[], y[])
+        this.position = JulGame.Math._Vector2{Int32}(x[], y[])
     end
 
     function center_window()
@@ -404,7 +433,7 @@ module WindowManagerModule
         end
         
         SDL2.SDL_SetWindowPosition(this.window, JulGame.Math.TypeConversions.safe_int32_convert(x), JulGame.Math.TypeConversions.safe_int32_convert(y))
-        this.position = JulGame.Math.Vector2(x, y)
+        this.position = JulGame.Math._Vector2{Int32}(x, y)
     end
 
     function set_window_position(x::Int, y::Int)
@@ -438,7 +467,8 @@ module WindowManagerModule
     function set_frame_rate(this::WindowManager, frameRate::Int)
         if JulGame.MAIN !== nothing
             this.targetFrameRate = frameRate
-            SDL2.SDL_setFramerate(this.fpsManager, UInt32(frameRate))
+            fps = this.fpsManager
+            _sdl_gfx_set_framerate!(fps, UInt32(frameRate))
             @debug "Frame rate set to $frameRate FPS"
         else
             @warn "Cannot set frame rate: Main loop not initialized"
@@ -547,14 +577,14 @@ module WindowManagerModule
     """
     function get_window_size(this::WindowManager)::JulGame.Math.Vector2
         if this.window == C_NULL
-            return JulGame.Math.Vector2(0, 0)
+            return JulGame.Math._Vector2{Int32}(0, 0)
         end
         
         width = Ref{Cint}(0)
         height = Ref{Cint}(0)
         SDL2.SDL_GetWindowSize(this.window, width, height)
         
-        return JulGame.Math.Vector2(width[], height[])
+        return JulGame.Math._Vector2{Int32}(width[], height[])
     end
 
     function JulGame.get_window_size()
@@ -569,17 +599,17 @@ module WindowManagerModule
     function get_display_dimensions(this::WindowManager)::JulGame.Math.Vector2
         if this.window == C_NULL
             @error "Cannot get display dimensions: Window has not been created"
-            return JulGame.Math.Vector2(0, 0)
+            return JulGame.Math._Vector2{Int32}(0, 0)
         end
         
         display_index = SDL2.SDL_GetWindowDisplayIndex(this.window)
         mode = Ref{SDL2.SDL_DisplayMode}()
         
         if SDL2.SDL_GetCurrentDisplayMode(display_index, mode) == 0
-            return JulGame.Math.Vector2(mode[].w, mode[].h)
+            return JulGame.Math._Vector2{Int32}(mode[].w, mode[].h)
         else
             @warn "Failed to get display dimensions: $(unsafe_string(SDL2.SDL_GetError()))"
-            return JulGame.Math.Vector2(0, 0)
+            return JulGame.Math._Vector2{Int32}(0, 0)
         end
     end
 
@@ -743,7 +773,7 @@ module WindowManagerModule
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
             width = event.data1
             height = event.data2
-            this.windowSize = JulGame.Math.Vector2(width, height)
+            this.windowSize = JulGame.Math._Vector2{Int32}(width, height)
             @debug "Window resized to $(width)x$(height)"
             
             # Update all TextBoxes when window is resized
@@ -829,7 +859,7 @@ module WindowManagerModule
             @error "Base resolution must be positive"
             return
         end
-        this.baseResolution = JulGame.Math.Vector2(width, height)
+        this.baseResolution = JulGame.Math._Vector2{Int32}(width, height)
         # SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, this.baseResolution.x, this.baseResolution.y) # Commented out - let window events handle logical size
         @debug "Base resolution set to $(width)x$(height)"
     end
