@@ -260,6 +260,29 @@ module InputModule
         return
     end
 
+    # Reverse then stable-sort by layer descending; avoids Base.sort for JuliaC --trim.
+    function _sort_reversed_ui_by_layer_desc(v::Vector{JulGame.IUIElement})
+        n = length(v)
+        n == 0 && return JulGame.IUIElement[]
+        out = Vector{JulGame.IUIElement}(undef, n)
+        @inbounds for k in 1:n
+            out[k] = v[n - k + 1]
+        end
+        @inbounds for i in 2:n
+            cur = out[i]
+            cl = cur.layer
+            j = i
+            while j > 1
+                pl = out[j - 1].layer
+                pl < cl || break
+                out[j] = out[j - 1]
+                j -= 1
+            end
+            out[j] = cur
+        end
+        return out
+    end
+
     function poll_input(this::Input)
         prof = _input_latency_profiler()
         t0 = Ref(time_ns())
@@ -381,7 +404,7 @@ module InputModule
                     #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(main)
                                         # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
 
-                    uiElementsOrderedByLayerDescending = sort(reverse(main.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    uiElementsOrderedByLayerDescending = _sort_reversed_ui_by_layer_desc(main.scene.uiElements)
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
 
                     entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, main.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
