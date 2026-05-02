@@ -14,7 +14,7 @@ module InputModule
         defaultCursor
         didMouseEventOccur::Bool
         didMouseMotionOccur::Bool
-        editorCallback::Union{Function, Nothing}
+        editorCallback::Union{Nothing, JulGame.AbstractEditorSDLEventSink}
         main
         mouseButtonsPressedDown::Vector{UInt8}
         mouseButtonsHeldDown::Vector{UInt8}
@@ -207,7 +207,7 @@ module InputModule
         return
     end
 
-    @inline function _input_latency_profiler()
+    @inline function _input_latency_profiler()::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}
         JulGame.MAIN === nothing && return nothing
         m = JulGame.current_main()
         (m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
@@ -272,40 +272,15 @@ module InputModule
     end
 
     # Reverse then stable-sort by layer descending; avoids Base.sort for JuliaC --trim.
-    function _sort_reversed_ui_by_layer_desc(v::Vector{JulGame.IUIElement})
-        n = length(v)
-        n == 0 && return JulGame.IUIElement[]
-        out = Vector{JulGame.IUIElement}(undef, n)
-        @inbounds for k in 1:n
-            out[k] = v[n - k + 1]
-        end
-        @inbounds for i in 2:n
-            cur = out[i]
-            cl = _input_sort_ui_layer(cur)
-            j = i
-            while j > 1
-                pl = _input_sort_ui_layer(out[j - 1])
-                pl < cl || break
-                out[j] = out[j - 1]
-                j -= 1
-            end
-            out[j] = cur
-        end
-        return out
-    end
-
-    function _input_sort_ui_layer(ui::JulGame.IUIElement)::Int
-        JulGame.UI.add_relationship_if_not_exists(ui)
-        return getfield(JulGame.UI.relationships[ui], :layer)::Int
-    end
+    # Sorting lives in `JulGame.UI.sort_reversed_ui_by_layer_for_input` (relationship dict access).
 
     @inline function _canvas_children(c::JulGame.ICanvas)::Vector{JulGame.IUIElement}
         return (c::JulGame.UI.CanvasModule.Canvas).children::Vector{JulGame.IUIElement}
     end
 
-    function _ui_element_in_inactive_canvas(ui::JulGame.IUIElement, canvases)::Bool
+    function _ui_element_in_inactive_canvas(ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas})::Bool
         for canvas in canvases
-            JulGame.UI.input_ui_is_active(canvas) && continue
+            JulGame.UI.canvas_active_for_input(canvas) && continue
             for c in _canvas_children(canvas)
                 c === ui && return true
             end
@@ -313,9 +288,9 @@ module InputModule
         return false
     end
 
-    function _entity_in_inactive_canvas(ent::JulGame.IEntity, canvases)::Bool
+    function _entity_in_inactive_canvas(ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas})::Bool
         for canvas in canvases
-            JulGame.UI.input_ui_is_active(canvas) && continue
+            JulGame.UI.canvas_active_for_input(canvas) && continue
             for c in _canvas_children(canvas)
                 c === ent && return true
             end
@@ -352,7 +327,7 @@ module InputModule
         return out
     end
 
-    function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof, ui::JulGame.IUIElement, canvases, hc::_MouseUiHitLoop)
+    function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -488,7 +463,7 @@ module InputModule
         return
     end
 
-    function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof, ent::JulGame.IEntity, canvases, hc::_MouseUiHitLoop)
+    function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -672,7 +647,7 @@ module InputModule
             end
 
             if this.editorCallback !== nothing
-                this.editorCallback(evt)
+                JulGame.dispatch_editor_sdl_event(this.editorCallback, evt)
             end
 
             if evt.type == SDL2.SDL_DROPFILE
@@ -734,7 +709,12 @@ module InputModule
                     end
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_camera_ok)
 
-                    canvases = filter(x -> isa(x, JulGame.ICanvas), main.scene.uiElements)
+                    canvases = JulGame.ICanvas[]
+                    for x in main.scene.uiElements
+                        if isa(x, JulGame.ICanvas)
+                            push!(canvases, x::JulGame.ICanvas)
+                        end
+                    end
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_canvases = length(canvases))
 
                     # Use cached layer order instead of sorting every mouse event
@@ -742,7 +722,7 @@ module InputModule
                     #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(main)
                                         # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
 
-                    uiElementsOrderedByLayerDescending = _sort_reversed_ui_by_layer_desc(main.scene.uiElements)
+                    uiElementsOrderedByLayerDescending = JulGame.UI.sort_reversed_ui_by_layer_for_input(main.scene.uiElements)
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
 
                     entitiesWithSpritesOrderedByLayerDescending = _sort_reversed_entities_with_sprite_by_layer_desc(main.scene.entities)

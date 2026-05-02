@@ -697,3 +697,8 @@ keycode_dict = Dict(
         # SDL2.LibSDL2.SDLK_AC_BACK => CImGui.ImGuiKey_AppBack,
         # SDL2.LibSDL2.SDLK_AC_FORWARD => CImGui.ImGuiKey_AppForward
     )
+
+struct ImGuiSDL2EventSink <: JulGame.AbstractEditorSDLEventSink end
+function (sink::ImGuiSDL2EventSink)(evt::SDL2.SDL_Event)::Bool
+    return ImGui_ImplSDL2_ProcessEvent(evt)
+end

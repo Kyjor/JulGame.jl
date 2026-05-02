@@ -898,7 +898,7 @@ module Editor
                     ################################################# Injecting game loop into editor
                     if currentSceneMain !== nothing
                         if currentSceneMain.input.editorCallback === nothing
-                            currentSceneMain.input.editorCallback = ImGui_ImplSDL2_ProcessEvent
+                            currentSceneMain.input.editorCallback = ImGuiSDL2EventSink()
                         end
                         JulGame.InputModule.poll_input(currentSceneMain.input)
                         quit = currentSceneMain.input.quit

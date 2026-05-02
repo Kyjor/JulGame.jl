@@ -120,6 +120,17 @@ module JulGame
     include("utils/Constants.jl")
     export SCALE_UNITS, GRAVITY
 
+    """
+    Editor-only SDL event sink (`Input.editorCallback`). Game builds use `nothing`.
+    """
+    abstract type AbstractEditorSDLEventSink end
+    export AbstractEditorSDLEventSink
+
+    @inline function dispatch_editor_sdl_event(sink::AbstractEditorSDLEventSink, evt::SDL2.SDL_Event)::Bool
+        return sink(evt)
+    end
+    export dispatch_editor_sdl_event
+
     PIXELS_PER_UNIT = 16
     export PIXELS_PER_UNIT
     

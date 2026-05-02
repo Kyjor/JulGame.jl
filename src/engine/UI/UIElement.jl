@@ -1,18 +1,20 @@
 abstract type UIElement <: JulGame.IUIElement end
 
-@inline function _latency_profiler_active()
-    m = JulGame.MAIN
-    (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
-    return m.latencyProfiler
+@inline function _latency_profiler_active()::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}
+    JulGame.MAIN === nothing && return nothing
+    ml = JulGame.current_main()
+    prof = ml.latencyProfiler
+    (prof !== nothing && prof.enabled) || return nothing
+    return prof
 end
 
-@inline function _latency_ui_hit_ms!(prof, t0::UInt64, key::Symbol)
+@inline function _latency_ui_hit_ms!(prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, t0::UInt64, key::Symbol)
     prof === nothing && return
     dt = (time_ns() - t0) / 1e6
     JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
 end
 
-@inline function _latency_ui_hit_count!(prof, key::Symbol, n::Int = 1)
+@inline function _latency_ui_hit_count!(prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, key::Symbol, n::Int = 1)
     prof === nothing && return
     JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_count!(prof, key, n)
 end
@@ -96,6 +98,31 @@ function input_ui_set_isHovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
         UI.handle_hover_event(ui, value)
     end
     return nothing
+end
+
+function sort_reversed_ui_by_layer_for_input(v::Vector{JulGame.IUIElement})::Vector{JulGame.IUIElement}
+    n = length(v)
+    n == 0 && return JulGame.IUIElement[]
+    out = Vector{JulGame.IUIElement}(undef, n)
+    @inbounds for k in 1:n
+        out[k] = v[n - k + 1]
+    end
+    @inbounds for i in 2:n
+        cur = out[i]
+        add_relationship_if_not_exists(cur)
+        cl = getfield(relationships[cur], :layer)::Int
+        j = i
+        while j > 1
+            prev = out[j - 1]
+            add_relationship_if_not_exists(prev)
+            pl = getfield(relationships[prev], :layer)::Int
+            pl < cl || break
+            out[j] = out[j - 1]
+            j -= 1
+        end
+        out[j] = cur
+    end
+    return out
 end
 
 function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
@@ -291,7 +318,7 @@ function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, 
     isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
     _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
     t = time_ns()
-    if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
+    if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
         if isScreenButton
             this.currentTexture = this.buttonDownTexture
         end
@@ -305,9 +332,9 @@ function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, 
         t_cb = time_ns()
         for eventToCall in this.clickEvents
             try
-                Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
+                eventToCall((evt = evt, x = x, y = y))
             catch e
-                Base.invokelatest(eventToCall)
+                eventToCall()
             end
         end
         _latency_ui_hit_ms!(prof, t_cb, :ui_handle_evt_mouse_button_up_click_callbacks)
@@ -325,7 +352,7 @@ function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     t0 = time_ns()
     for event in events
         try
-            Base.invokelatest(event)
+            event()
         catch e
             @error "Error calling hover event: $(e)"
             Base.show_backtrace(stdout, catch_backtrace())

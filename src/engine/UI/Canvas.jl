@@ -162,4 +162,8 @@ module CanvasModule
         @error "Destroy method not implemented for Canvas"
     end
 
+    function UI.canvas_active_for_input(c::JulGame.ICanvas)::Bool
+        return getfield(c::Canvas, :isActive)::Bool
+    end
+
 end # module CanvasModule

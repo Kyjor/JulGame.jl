@@ -62,19 +62,19 @@ Collect all static sprites from the scene, grouped by layer.
 Returns a Dict{Int, Vector{InternalSprite}}.
 """
 function get_static_sprites_by_layer()
-    layer_sprites = Dict{Int, Vector{Any}}()
-    
+    Sp = JulGame.Component.SpriteModule.InternalSprite
+    layer_sprites = Dict{Int, Vector{Sp}}()
+    JulGame.MAIN === nothing && return layer_sprites
     for entity in JulGame.MAIN.scene.entities
         sprite = entity.sprite
         if sprite != C_NULL && sprite !== nothing && sprite.isStatic
             layer = sprite.layer
             if !haskey(layer_sprites, layer)
-                layer_sprites[layer] = []
+                layer_sprites[layer] = Sp[]
             end
             push!(layer_sprites[layer], sprite)
         end
     end
-    
     return layer_sprites
 end
 
@@ -84,7 +84,7 @@ end
 Calculate the minimal bounding box that contains all sprites.
 Returns (min_x, min_y, max_x, max_y) in world coordinates.
 """
-function calculate_bounding_box(sprites::Vector)
+function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.SpriteModule.InternalSprite})
     if isempty(sprites)
         return (0.0, 0.0, 0.0, 0.0)
     end
@@ -94,7 +94,7 @@ function calculate_bounding_box(sprites::Vector)
     max_x = -Inf
     max_y = -Inf
     
-    SCALE_UNITS = JulGame.SCALE_UNITS
+    SCALE_UNITS = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
     
     for sprite in sprites
         entity = sprite.parent
@@ -171,11 +171,11 @@ end
 Create a single texture containing all sprites.
 Returns the texture pointer or C_NULL on failure.
 """
-function create_batched_texture_for_sprites(sprites::Vector, bounds::NTuple{4, Float64})
+function create_batched_texture_for_sprites(sprites::AbstractVector{JulGame.Component.SpriteModule.InternalSprite}, bounds::NTuple{4, Float64})
     min_x, min_y, max_x, max_y = bounds
     
     # Calculate texture dimensions in pixels
-    SCALE_UNITS = JulGame.SCALE_UNITS
+    SCALE_UNITS = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
     width = ceil(Int32, (max_x - min_x) * SCALE_UNITS)
     height = ceil(Int32, (max_y - min_y) * SCALE_UNITS)
     
@@ -378,8 +378,9 @@ function batch_static_sprites(scene::JulGame.SceneModule.Scene)
         end
         
         # Check if we need to chunk
-        texture_width = ceil(Int32, (max_x - min_x) * JulGame.SCALE_UNITS)
-        texture_height = ceil(Int32, (max_y - min_y) * JulGame.SCALE_UNITS)
+        su = Base.convert(Float64, JulGame.SCALE_UNITS)::Float64
+        texture_width = ceil(Int32, (max_x - min_x) * su)
+        texture_height = ceil(Int32, (max_y - min_y) * su)
         
         if texture_width > MAX_TEXTURE_SIZE || texture_height > MAX_TEXTURE_SIZE
             @debug "Layer $(layer) exceeds max texture size, will need chunking in future"
@@ -532,7 +533,8 @@ function check_and_rebatch_if_needed(scene::JulGame.SceneModule.Scene)
     
     layer_sprites = get_static_sprites_by_layer()
     
-    for (layer, batched_layer) in scene.batchedLayers
+    for (layer, bl_u) in scene.batchedLayers
+        batched_layer = bl_u::BatchedLayer
         if batched_layer.needsRebatch
             continue  # Already marked for rebatch
         end
@@ -567,7 +569,8 @@ function check_and_rebatch_if_needed(scene::JulGame.SceneModule.Scene)
     end
     
     # Rebatch layers that need it
-    for (layer, batched_layer) in scene.batchedLayers
+    for (layer, bl_u) in scene.batchedLayers
+        batched_layer = bl_u::BatchedLayer
         if batched_layer.needsRebatch
             @debug "Rebatching layer $(layer)"
             
