@@ -45,6 +45,76 @@ module SceneReaderModule
         return get(d, Symbol(k), default)
     end
 
+    # JuliaC `--trim`: a single Union-typed entry helps the verifier resolve `_json_value(::Union{...}, ::String, ::Nothing)` calls
+    # made from `getproperty(::JsonObj)` / `haskey(::JsonObj)` against a concrete dispatch target.
+    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}, k::String, default::Nothing)
+        if d isa JSON3.Object
+            return get(d, Symbol(k), default)
+        else
+            return get(d, k, default)
+        end
+    end
+
+    @inline _scene_storage(o::JsonObj) = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+
+    function _scene_obj(v)::JsonObj
+        v isa JsonObj && return v
+        v isa Dict{String,Any} && return JsonObj(v)
+        v isa SceneJSONObject && return JsonObj(v)
+        v isa JSON3.Object && return JsonObj(v)
+        return JsonObj(Dict{String,Any}())
+    end
+
+    """Coerce a JSON scalar to `Float64` via concrete `isa` branches so the trim verifier can resolve every conversion."""
+    function _to_f64(v, default::Float64)::Float64
+        v === nothing && return default
+        v isa Float64 && return v
+        v isa Float32 && return Float64(v)
+        v isa Int && return Float64(v)
+        v isa Int32 && return Float64(v)
+        v isa Int16 && return Float64(v)
+        v isa Int8 && return Float64(v)
+        v isa UInt && return Float64(v)
+        v isa UInt32 && return Float64(v)
+        v isa UInt16 && return Float64(v)
+        v isa UInt8 && return Float64(v)
+        v isa Bool && return v ? 1.0 : 0.0
+        return default
+    end
+
+    """Coerce a JSON scalar to `Int` via concrete `isa` branches (mirrors `_to_f64`)."""
+    function _to_int(v, default::Int)::Int
+        v === nothing && return default
+        v isa Int && return v
+        v isa Int32 && return Int(v)
+        v isa Int16 && return Int(v)
+        v isa Int8 && return Int(v)
+        v isa UInt && return Int(v)
+        v isa UInt32 && return Int(v)
+        v isa UInt16 && return Int(v)
+        v isa UInt8 && return Int(v)
+        v isa Bool && return v ? 1 : 0
+        v isa Float64 && return Int(round(v))
+        v isa Float32 && return Int(round(Float64(v)))
+        return default
+    end
+
+    """Read `parent.sub_key.leaf_key` as `Float64` without going through `getproperty(::JsonObj)::Any` chains."""
+    function _scene_f64(parent::JsonObj, sub_key::String, leaf_key::String, default::Float64)::Float64
+        sub = _json_value(_scene_storage(parent), sub_key, nothing)
+        sub === nothing && return default
+        inner = _scene_obj(sub)
+        return _to_f64(_json_value(_scene_storage(inner), leaf_key, nothing), default)
+    end
+
+    """Read `parent.sub_key.leaf_key` as `Int` without going through `getproperty(::JsonObj)::Any` chains."""
+    function _scene_int(parent::JsonObj, sub_key::String, leaf_key::String, default::Int)::Int
+        sub = _json_value(_scene_storage(parent), sub_key, nothing)
+        sub === nothing && return default
+        inner = _scene_obj(sub)
+        return _to_int(_json_value(_scene_storage(inner), leaf_key, nothing), default)
+    end
+
     function Base.getproperty(o::JsonObj, k::Symbol)
         k === :d && return getfield(o, :d)
         return _expose(_json_value(getfield(o, :d), String(k), nothing))
@@ -66,16 +136,18 @@ module SceneReaderModule
     _isempty_json_field(_) = false
 
     # JuliaC `--trim`: avoid JSON.parse (-> jsonreadstyle -> repr -> Base.show) and avoid `pairs(parsed)` on
-    # `Any`-typed SSA from `_parse`; keep parsed root as Dict-like `JSON.Object` or `Dict`.
+    # `Any`-typed SSA from `_parse`. Assert `JSON.Object{String,Any}` (== `DEFAULT_OBJECT_TYPE`, the path
+    # `_parse(_, Any, DEFAULT_OBJECT_TYPE, _, _)` actually produces) so the `JsonObj(...)` ctor matches its
+    # field union directly instead of going through `AbstractDict{String,Any}` (was verifier #384).
     function _scene_root_jsonobj_from_file(entitiesJson::String)::JsonObj
         lv = JSON.lazy(entitiesJson)
-        root::AbstractDict{String,Any} = JSON._parse(
+        root::SceneJSONObject = JSON._parse(
             lv,
             Any,
             JSON.DEFAULT_OBJECT_TYPE,
             nothing,
             StructUtils.DefaultStyle(),
-        )::AbstractDict{String,Any}
+        )::SceneJSONObject
         JsonObj(root)
     end
 
@@ -255,19 +327,27 @@ module SceneReaderModule
                 Math._Vector2{Float64}(0.0, 0.0),
                 C_NULL)
             if haskey(root, "Camera")
-                cam = root.Camera
-                sx_c = Float64(cam.size.x)
-                sy_c = Float64(cam.size.y)
+                # JuliaC `--trim`: read camera fields via concrete `_scene_*` helpers instead of property
+                # syntax (`cam.size.x`, `cam.backgroundColor.r`, ...) so the verifier doesn't walk a stack of
+                # `getproperty(::JsonObj, ...)::Any` calls (was verifier #343–#380).
+                cam_raw = _json_value(_scene_storage(root), "Camera", nothing)
+                cam = _scene_obj(cam_raw)
+                sx_c = _scene_f64(cam, "size", "x", 0.0)
+                sy_c = _scene_f64(cam, "size", "y", 0.0)
                 camera = Camera(
                     Math._Vector2{Int32}(Int32(round(Int, sx_c)), Int32(round(Int, sy_c))),
-                    Math._Vector3{Float64}(Float64(cam.position.x), Float64(cam.position.y), 0.0),
-                    Math._Vector2{Float64}(Float64(cam.offset.x), Float64(cam.offset.y)),
+                    Math._Vector3{Float64}(_scene_f64(cam, "position", "x", 0.0), _scene_f64(cam, "position", "y", 0.0), 0.0),
+                    Math._Vector2{Float64}(_scene_f64(cam, "offset", "x", 0.0), _scene_f64(cam, "offset", "y", 0.0)),
                     C_NULL)
-                bg = cam.backgroundColor
-                camera.backgroundColor = (Int(bg.r), Int(bg.g), Int(bg.b), Int(bg.a))
-                zraw = get(cam, "zoom", nothing)
+                camera.backgroundColor = (
+                    _scene_int(cam, "backgroundColor", "r", 0),
+                    _scene_int(cam, "backgroundColor", "g", 0),
+                    _scene_int(cam, "backgroundColor", "b", 0),
+                    _scene_int(cam, "backgroundColor", "a", 255),
+                )
+                zraw = _json_value(_scene_storage(cam), "zoom", nothing)
                 if zraw !== nothing
-                    camera.zoom = Float64(zraw)
+                    camera.zoom = _to_f64(zraw, 1.0)
                 end
             end
 
