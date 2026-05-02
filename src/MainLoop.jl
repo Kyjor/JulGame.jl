@@ -31,12 +31,6 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
-	@Base.noinline function _invoke_queued_render_fn(f::Function)::Nothing
-		f()
-		return nothing
-	end
-
-	# Profiling helper functions
 	export enable_profiling, disable_profiling, print_profiling_report, export_profiling_data
 	export maybe_enable_latency_profiling_from_env!
 
@@ -1167,7 +1161,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					tgt = uiRenderingOrder[i][2]
 					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
 					if tgt isa JulGame.RenderQueuedFunction
-						_invoke_queued_render_fn(getfield(tgt::JulGame.RenderQueuedFunction, :function_to_call)::Function)
+						(getfield(tgt::JulGame.RenderQueuedFunction, :function_to_call)::Function)()
 					else
 						JulGame.render(tgt)
 					end
@@ -1183,8 +1177,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					else
 						parent_info = ""
 						if uiRenderingOrder[i][2] isa JulGame.RenderQueuedFunction
-							rf = uiRenderingOrder[i][2]::JulGame.RenderQueuedFunction
-							parent_info = "a queued render function ($(getfield(rf, :function_to_call)))"
+							parent_info = "a queued render function"
 						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						end
@@ -1391,7 +1384,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				Component.draw(renderOrder[i][2], camera)
 			elseif renderOrder[i][2] isa JulGame.RenderQueuedFunction
 				rf = renderOrder[i][2]::JulGame.RenderQueuedFunction
-				_invoke_queued_render_fn(getfield(rf, :function_to_call)::Function)
+				(getfield(rf, :function_to_call)::Function)()
 			elseif renderOrder[i][2] isa JulGame.StaticSpriteBatcherModule.BatchedLayer
 				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2]::JulGame.StaticSpriteBatcherModule.BatchedLayer, camera)
 			else
@@ -1406,8 +1399,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				else
 					parent_info = ""
 					if renderOrder[i][2] isa JulGame.RenderQueuedFunction
-						rf = renderOrder[i][2]::JulGame.RenderQueuedFunction
-						parent_info = "a queued render function ($(getfield(rf, :function_to_call)))"
+						parent_info = "a queued render function"
 					elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape
 						p = getfield(renderOrder[i][2], :parent)::JulGame.IEntity
 						if p isa Entity

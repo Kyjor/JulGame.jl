@@ -85,15 +85,15 @@ end
 end
 
 """Position for input hit-tests (`getfield` on relationship; JuliaC `--trim`)."""
-@inline function input_ui_position(ui::JulGame.IUIElement)::Math.Vector2
+@inline function input_ui_position(ui::JulGame.IUIElement)::JulGame.Math._Vector2{Int32}
     add_relationship_if_not_exists(ui)
-    return getfield(relationship_instance(ui), :position)::Math.Vector2
+    return getfield(relationship_instance(ui), :position)::JulGame.Math._Vector2{Int32}
 end
 
 """Size for input hit-tests (`getfield` on relationship; JuliaC `--trim`)."""
-@inline function input_ui_size(ui::JulGame.IUIElement)::Math.Vector2
+@inline function input_ui_size(ui::JulGame.IUIElement)::JulGame.Math._Vector2{Int32}
     add_relationship_if_not_exists(ui)
-    return getfield(relationship_instance(ui), :size)::Math.Vector2
+    return getfield(relationship_instance(ui), :size)::JulGame.Math._Vector2{Int32}
 end
 
 function input_ui_force_click_check(ui::JulGame.IUIElement)::Bool
@@ -400,7 +400,9 @@ end
 
 function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     prof = _latency_profiler_active()
-    events = isEntering ? this.hoverEnterEvents : this.hoverExitEvents
+    add_relationship_if_not_exists(this)
+    inst = relationship_instance(this)
+    events = isEntering ? getfield(inst, :hoverEnterEvents) : getfield(inst, :hoverExitEvents)
     t0 = time_ns()
     for event in events
         try

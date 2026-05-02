@@ -301,18 +301,18 @@ module InputModule
         return false
     end
 
-    @Base.noinline function _input_trim_ui_set_hovered!(ui::JulGame.IUIElement, v::Bool)::Nothing
-        Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui, v)
+    @Base.noinline function _input_trim_entity_handle_event!(ent::JulGame.IEntity, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
+        Base.invokelatest(JulGame.UI.handle_event, ent, evt, x, y)
+        return nothing
+    end
+
+    @Base.noinline function _input_trim_ui_set_hovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
+        Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui, value)
         return nothing
     end
 
     @Base.noinline function _input_trim_ui_handle_event!(ui::JulGame.IUIElement, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
         Base.invokelatest(JulGame.UI.handle_event, ui, evt, x, y)
-        return nothing
-    end
-
-    @Base.noinline function _input_trim_entity_handle_event!(ent::JulGame.IEntity, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
-        Base.invokelatest(JulGame.UI.handle_event, ent, evt, x, y)
         return nothing
     end
 
@@ -363,7 +363,7 @@ module InputModule
         return nothing
     end
 
-    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, @nospecialize(ui::JulGame.IUIElement), canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
+    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -394,11 +394,11 @@ module InputModule
         _input_ui_hit_span!(prof, t_prep0, :hit_ui_iter_probe_prep_hitbox)
         t_geom0 = time_ns()
 
-        elementPosition = get_element_position(ui)
+        elementPosition = JulGame.UI.input_ui_position(ui)
         _input_ui_hit_span!(prof, t_geom0, :hit_ui_iter_probe_get_position)
         t_sz0 = time_ns()
 
-        elementSize = get_element_size(ui)
+        elementSize = JulGame.UI.input_ui_size(ui)
         _input_ui_hit_span!(prof, t_sz0, :hit_ui_iter_probe_get_size)
         t_unpk0 = time_ns()
 
