@@ -45,16 +45,22 @@ module CircleColliderModule
     end
 
     @Base.noinline function _circle_collider_invoke_collision_events!(events::Vector{Function})::Nothing
+        JulGame.juliac_trim_active() && return nothing
         for eventToCall in events
-            eventToCall()
+            Base.invokelatest(eventToCall)
         end
         return nothing
     end
 
     @inline function _circle_dispatch_collision_events!(events::Vector{Function})::Nothing
-        JulGame.juliac_trim_active() && return nothing
         _circle_collider_invoke_collision_events!(events)
         return nothing
+    end
+
+    @inline function _ccircle_world_xy(ent::JulGame.IEntity, off::Math.Vector2f)::Math._Vector2{Float64}
+        tf = getfield(ent, :transform)::Component.TransformModule.Transform
+        p = getfield(tf, :position)::Math._Vector3{Float64}
+        return Math._Vector2{Float64}(Float64(p.x) + Float64(off.x), Float64(p.y) + Float64(off.y))
     end
 
     function Component.get_size(this::InternalCircleCollider)
@@ -82,7 +88,7 @@ module CircleColliderModule
             end
             if (getfield(rb, :velocity)::Math._Vector2{Float64}).y >= 0
                 collision = check_collision(this, oc)
-                if CheckIfResting(this, oc)[1] == true && length(this.currentRests) > 0 && !(oc in this.currentRests)
+                if CheckIfResting(this, oc)[1] === true && length(this.currentRests) > 0 && !(oc in this.currentRests)
                     for j in eachindex(this.currentRests)
                         rj = this.currentRests[j]
                         rjp = rj.parent::JulGame.IEntity
@@ -95,7 +101,7 @@ module CircleColliderModule
                     end
                 end
                 transform = getfield(this_ent, :transform)::Component.TransformModule.Transform
-                if collision[1] == true
+                if collision[1] === true
                     push!(this.currentRests, oc)
                     _circle_dispatch_collision_events!(this.collisionEvents)
                     pos = getfield(transform, :position)::Math._Vector3{Float64}
@@ -105,7 +111,7 @@ module CircleColliderModule
             end
         end
         for i in eachindex(this.currentRests)
-            if CheckIfResting(this, this.currentRests[i])[1] == false
+            if CheckIfResting(this, this.currentRests[i])[1] === false
                 deleteat!(this.currentRests, i)
                 break
             end
@@ -123,7 +129,7 @@ module CircleColliderModule
         # Calculate total radius squared
         totalRadiusSquared::Float64 = (a.diameter + b.diameter)^2
         # If the distance between the centers of the circles is less than the sum of their radii
-        if DistanceSquared(a.offset.x, a.offset.y, b.offset.x, b.offset.y)::Float64 < totalRadiusSquared
+        if DistanceSquared(Float64(a.offset.x), Float64(a.offset.y), Float64(b.offset.x), Float64(b.offset.y)) < totalRadiusSquared
             # The circles have collided
             return true
         end
@@ -131,18 +137,20 @@ module CircleColliderModule
         return false
     end
 
-    function check_collision(a::InternalCircleCollider, b::InternalCollider)
-        # Closest point on collision box
-        cX, cY = 0, 0
+    function check_collision(a::InternalCircleCollider, b::InternalCollider)::Tuple{Bool, Float64}
+        posA = _ccircle_world_xy(a.parent::JulGame.IEntity, a.offset)
+        posB = _ccircle_world_xy(b.parent::JulGame.IEntity, b.offset)
+        bx = Float64(b.size.x)
+        by = Float64(b.size.y)
 
-        posA = a.parent.transform.position + a.offset
-        posB = b.parent.transform.position + b.offset
+        cX::Float64 = 0.0
+        cY::Float64 = 0.0
 
         # Find closest x offset
         if posA.x < posB.x
             cX = posB.x
-        elseif posA.x > posB.x + b.size.x
-            cX = posB.x + b.size.x
+        elseif posA.x > posB.x + bx
+            cX = posB.x + bx
         else
             cX = posA.x
         end
@@ -150,54 +158,51 @@ module CircleColliderModule
         # Find closest y offset
         if posA.y < posB.y
             cY = posB.y
-        elseif posA.y > posB.y + b.size.y
-            cY = posB.y + b.size.y
+        elseif posA.y > posB.y + by
+            cY = posB.y + by
         else
             cY = posA.y
         end
 
         distanceSquared::Float64 = DistanceSquared(posA.x, posA.y, cX, cY)
-        # If the closest point is inside the circle
-        if distanceSquared < (a.diameter / 2)^2
-            # This circle and the rectangle have collided
-            return [true, distanceSquared]
+        rad = Float64(a.diameter) * 0.5
+        rsq = rad * rad
+        if distanceSquared < rsq
+            return (true, distanceSquared)
         end
-
-        # If the shapes have not collided
-        return [false, distanceSquared]
+        return (false, distanceSquared)
     end
 
-    function CheckIfResting(a::InternalCircleCollider, b::InternalCollider)
-        # Closest point on collision box
-        cX = 0
+    function CheckIfResting(a::InternalCircleCollider, b::InternalCollider)::Tuple{Bool, Float64}
+        posA = _ccircle_world_xy(a.parent::JulGame.IEntity, a.offset)
+        posB = _ccircle_world_xy(b.parent::JulGame.IEntity, b.offset)
+        bx = Float64(b.size.x)
+        radius = Float64(a.diameter) * 0.5
 
-        posA = a.parent.transform.position + a.offset
-        posB = b.parent.transform.position + b.offset
-        radius = a.diameter / 2
+        cX::Float64 = 0.0
 
-        # Find closest x offset
         if posA.x < posB.x
             cX = posB.x
-        elseif posA.x > posB.x + b.size.x
-            cX = posB.x + b.size.x
+        elseif posA.x > posB.x + bx
+            cX = posB.x + bx
         else
             cX = posA.x
         end
 
-        distance = (cX - posA.x)^2
-        # # If the closest point is inside the circle
-        if distance < (radius / 2)^2
-            # This circle and the rectangle have collided
-            return [true, distance]
+        dx = cX - posA.x
+        distance = dx * dx
+        # If the closest point is inside the circle
+        rrest = radius * 0.5
+        thr = rrest * rrest
+        if distance < thr
+            return (true, distance)
         end
-
-        # If the shapes have not collided
-        return [false, distance]
+        return (false, distance)
     end
 
-    function DistanceSquared(x1::Real, y1::Real, x2::Real, y2::Real)
-        deltaX = x2 - x1
-        deltaY = y2 - y1
-        return deltaX^2 + deltaY^2
+    function DistanceSquared(x1::Float64, y1::Float64, x2::Float64, y2::Float64)::Float64
+        dx = x2 - x1
+        dy = y2 - y1
+        return dx * dx + dy * dy
     end
 end

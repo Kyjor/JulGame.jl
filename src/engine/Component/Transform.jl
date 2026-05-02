@@ -25,7 +25,9 @@ module TransformModule
             rot3::_Vector3{Float64} = rotation isa _Vector3{Float64} ? rotation :
                 _Vector3{Float64}(rotation.x, rotation.y, 0.0)
             this = new(pos3, scl3, rot3, _Vector2{Float64}(0.0, 0.0), _Vector2{Float64}(0.0, 0.0), parent)
-            JulGame.EventsModule.ObserverModule.add_observer((event, data) -> on_notify(event, data))
+            if JulGame.IS_EDITOR
+                JulGame.EventsModule.ObserverModule.add_observer((event, data) -> on_notify(event, data))
+            end
             return this
         end   
     end     
@@ -58,7 +60,9 @@ module TransformModule
         # only log if the property is already defined
         if JulGame.IS_EDITOR && !JulGame.IS_EDITOR_PLAY_MODE && !JulGame.juliac_trim_active() && isdefined(this, property) && JulGame.engine_states.current_state == :game_mode && isdefined(this, :parent) && this.parent !== nothing
             #@debug "setting transform property $(property) to: $(value)"
-            JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (id = JulGame.scene_entity_id((this.parent)::JulGame.Entity), property = property, oldValue = getfield(this, property), newValue = value))
+            nt = (id = JulGame.scene_entity_id((this.parent)::JulGame.Entity), property = property, oldValue = getfield(this, property), newValue = value)
+            JulGame.HistoryModule.on_notify(:updated_transform, nt)
+            on_notify(:updated_transform, nt)
         end
         # Call the default setproperty! behavior
         invoke(setproperty!, Tuple{Any, Symbol, Any}, this, property, value)

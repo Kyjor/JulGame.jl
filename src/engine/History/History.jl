@@ -42,7 +42,9 @@ module HistoryModule
             return this
         end
     end
-    JulGame.EventsModule.ObserverModule.add_observer((event, data) -> on_notify(event, data))
+    if JulGame.IS_EDITOR
+        JulGame.EventsModule.ObserverModule.add_observer((event, data) -> on_notify(event, data))
+    end
 
     function on_notify(event::Symbol, data::Any)
         if event == :updated_transform
@@ -68,8 +70,8 @@ module HistoryModule
             @debug "  Initialized HistoryStackIndex to 0"
         end
         
-        history_stack = JulGame.EditorState["HistoryStack"]
-        current_index = JulGame.EditorState["HistoryStackIndex"]
+        history_stack = JulGame.EditorState["HistoryStack"]::Vector{FieldHistory}
+        current_index = JulGame.EditorState["HistoryStackIndex"]::Int
         #@debug "  Current stack length: $(length(history_stack)), Current index: $(current_index)"
         
         # Check if the last change is the same (deduplicate)
@@ -84,9 +86,9 @@ module HistoryModule
             # Check time difference for same property
             if last_entry.id == id && last_entry.property == property
                 time_diff = now() - last_entry.timestamp
-                time_diff_ms = Dates.value(time_diff)
+                time_diff_ms::Int64 = Dates.value(time_diff)
                 # @debug "  Time difference: $(time_diff_ms)ms"
-                if time_diff_ms < 1000  # Less than 1 second
+                if time_diff_ms < Int64(1000)  # Less than 1 second
                 #    @debug "  SKIPPED: Too soon (< 1000ms)"
                     # update the last entry with the new value
                     last_entry.newValue = newValue
@@ -118,8 +120,8 @@ module HistoryModule
             return
         end
         
-        history_stack = JulGame.EditorState["HistoryStack"]
-        current_index = JulGame.EditorState["HistoryStackIndex"]
+        history_stack = JulGame.EditorState["HistoryStack"]::Vector{FieldHistory}
+        current_index = JulGame.EditorState["HistoryStackIndex"]::Int
         @debug "  Stack length: $(length(history_stack)), Current index: $(current_index)"
         
         if current_index < 1
@@ -147,8 +149,8 @@ module HistoryModule
             return
         end
         
-        history_stack = JulGame.EditorState["HistoryStack"]
-        current_index = JulGame.EditorState["HistoryStackIndex"]
+        history_stack = JulGame.EditorState["HistoryStack"]::Vector{FieldHistory}
+        current_index = JulGame.EditorState["HistoryStackIndex"]::Int
         @debug "  Stack length: $(length(history_stack)), Current index: $(current_index)"
         
         if current_index >= length(history_stack)
@@ -159,7 +161,8 @@ module HistoryModule
         # Move forward and apply the newValue
         JulGame.EditorState["HistoryStackIndex"] += 1
         @debug "  New index: $(JulGame.EditorState["HistoryStackIndex"])"
-        entry = history_stack[JulGame.EditorState["HistoryStackIndex"]]
+        fwd_index = JulGame.EditorState["HistoryStackIndex"]::Int
+        entry = history_stack[fwd_index]
         @debug "  Redoing: $(entry.id).$(entry.property)"
         @debug "  From: $(entry.oldValue)"
         @debug "  To: $(entry.newValue)"

@@ -59,14 +59,15 @@ module ColliderModule
     end
 
     @Base.noinline function _collider_invoke_collision_callbacks!(events::Vector{Function}, collider::InternalCollider, @nospecialize(dir))::Nothing
+        JulGame.juliac_trim_active() && return nothing
+        nt = (collider = collider, direction = dir)
         for eventToCall in events
-            eventToCall((collider=collider, direction=dir))
+            Base.invokelatest(eventToCall, nt)
         end
         return nothing
     end
 
     @inline function _dispatch_collision_events!(events::Vector{Function}, collider::InternalCollider, @nospecialize(dir))::Nothing
-        JulGame.juliac_trim_active() && return nothing
         _collider_invoke_collision_callbacks!(events, collider, dir)
         return nothing
     end

@@ -81,6 +81,8 @@ module JulGame
     include("engine/History/History.jl")
     using .HistoryModule
     export HistoryModule, undo, redo
+    # Concrete element type so `add_field_history` infers `FieldHistory` (JuliaC `--trim`); plain `[]` is `Vector{Any}`.
+    EditorState["HistoryStack"] = HistoryModule.FieldHistory[]
 
     FrameCount::Int = 0
     UserGlobals = Dict{String, Any}()
