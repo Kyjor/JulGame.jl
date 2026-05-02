@@ -27,7 +27,6 @@ export_profiling_data(profiler, "profiling_results.csv")
 module LatencyProfilerModule
 using ...JulGame
 using Statistics
-using Dates
 
 export LatencyProfiler, ProfileSection, start_frame, end_frame, start_section, end_section
 export accumulate_script_update_ms!, accumulate_input_poll_ms!, accumulate_input_ui_hit_detail_ms!, accumulate_input_ui_hit_detail_count!, accumulate_ui_render_breakdown_ms!
@@ -192,14 +191,107 @@ function _fmt_pct(pct::Float64)::String
 end
 
 function _fmt_row_rank_ms_pct(i::Int, label::String, ms::Float64, pct::Float64, label_w::Int)::String
-    lab = rpad(first(label, label_w), label_w)
-    ms_part = lpad(string(round(ms, digits=2)), 9) * " ms"
-    pct_part = lpad(_fmt_pct(pct), 8)
-    return string("  │ ", lpad(string(i), 2), "  ", lab, " ", ms_part, "   ", pct_part)
+    lab_trunc = first(label, min(label_w, length(label)))
+    lab = _pad_right_str(lab_trunc, label_w)
+    ms_part = _pad_left_str(string(round(ms, digits=2)), 9) * " ms"
+    pct_part = _pad_left_str(_fmt_pct(pct), 8)
+    ii = string(i)
+    ii_pad = _pad_left_str(ii, 2)
+    return string("  │ ", ii_pad, "  ", lab, " ", ms_part, "   ", pct_part)
 end
 
 function _fmt2(x::Float64)::String
     string(round(x, digits=2))
+end
+
+# --- JuliaC `--trim`: avoid `Dates.format`, `Base.sort` / `sort!`, `lpad`/`rpad` (heavy Base string/show edges).
+function _spaces(n::Int)::String
+    n <= 0 && return ""
+    buf = IOBuffer()
+    for _ in 1:n
+        write(buf, UInt8(' '))
+    end
+    String(take!(buf))
+end
+
+function _pad_left_str(s::String, w::Int)::String
+    n = length(s)
+    n >= w && return s
+    return _spaces(w - n) * s
+end
+
+function _pad_right_str(s::String, w::Int)::String
+    n = length(s)
+    n >= w && return s
+    return s * _spaces(w - n)
+end
+
+"""Insertion sort descending by `x[2]` (pairs / tuples / two-field rows)."""
+function _sort_desc_by_key2!(v::Vector)::Nothing
+    n = length(v)
+    @inbounds for i in 2:n
+        cur = v[i]
+        val = cur[2]
+        j = i
+        while j > 1 && v[j - 1][2] < val
+            v[j] = v[j - 1]
+            j -= 1
+        end
+        v[j] = cur
+    end
+    return nothing
+end
+
+function _profile_section_mean_ms(s::ProfileSection)::Float64
+    isempty(s.times) && return 0.0
+    return mean(s.times)
+end
+
+function _sort_profile_sections_by_mean_desc!(v::Vector{ProfileSection})::Nothing
+    n = length(v)
+    @inbounds for i in 2:n
+        cur = v[i]
+        val = _profile_section_mean_ms(cur)
+        j = i
+        while j > 1 && _profile_section_mean_ms(v[j - 1]) < val
+            v[j] = v[j - 1]
+            j -= 1
+        end
+        v[j] = cur
+    end
+    return nothing
+end
+
+function _sort_symbols_asc!(v::Vector{Symbol})::Nothing
+    n = length(v)
+    @inbounds for i in 2:n
+        cur = v[i]
+        j = i
+        while j > 1 && v[j - 1] > cur
+            v[j] = v[j - 1]
+            j -= 1
+        end
+        v[j] = cur
+    end
+    return nothing
+end
+
+function _dict_key_label(@nospecialize(k))::String
+    k isa Symbol && return String(k)
+    k isa DataType && return String(nameof(k))
+    k isa String && return k
+    return "?"
+end
+
+function _wall_clock_hms()::String
+    t = round(Int, time()) % 86400
+    h = t ÷ 3600
+    m = (t % 3600) ÷ 60
+    s = t % 60
+    sh = h < 10 ? "0" * string(h) : string(h)
+    sm = m < 10 ? "0" * string(m) : string(m)
+    ss = s < 10 ? "0" * string(s) : string(s)
+    return sh * ":" * sm * ":" * ss
 end
 
 """
@@ -219,13 +311,13 @@ function slow_frame_terminal_detail(
     if isempty(sec_pairs)
         println(io, "  │ (no section samples this frame)")
     else
-        sort!(sec_pairs, by = x -> x[2], rev = true)
+        _sort_desc_by_key2!(sec_pairs)
         accounted = sum(x[2] for x in sec_pairs)
         nshow = min(section_top, length(sec_pairs))
         for i in 1:nshow
             nm, ms = sec_pairs[i]
             pct = frame_time_ms > 0 ? 100 * ms / frame_time_ms : 0.0
-            println(io, _fmt_row_rank_ms_pct(i, string(nm), ms, pct, 24))
+            println(io, _fmt_row_rank_ms_pct(i, String(nm), ms, pct, 24))
         end
         println(io, "  │     — sum (all sections): ", _fmt2(accounted), " ms")
         gap = frame_time_ms - accounted
@@ -236,21 +328,23 @@ function slow_frame_terminal_detail(
     if !isempty(profiler.ui_render_breakdown_ms)
         println(io, "  │")
         println(io, "  │   ui_render breakdown (sequential substeps; immediate_manage_* are nested in ui_immediate_manage_all):")
-        subs = sort(collect(profiler.ui_render_breakdown_ms), by = x -> x[2], rev = true)
+        subs = collect(profiler.ui_render_breakdown_ms)
+        _sort_desc_by_key2!(subs)
         for (k, ms) in subs
-            println(io, "  │      • ", string(k), "  ", _fmt2(ms), " ms")
+            println(io, "  │      • ", _dict_key_label(k), "  ", _fmt2(ms), " ms")
         end
         println(io, "  │     — sum (all rows, overlapping): ", _fmt2(sum(values(profiler.ui_render_breakdown_ms))), " ms")
     end
     if !isempty(profiler.ui_render_invoke_ms)
         println(io, "  │")
         println(io, "  │   ui invoke (sum of JulGame.render / queued fn per type, this frame):")
-        subs = sort(collect(profiler.ui_render_invoke_ms), by = x -> x[2], rev = true)
+        subs = collect(profiler.ui_render_invoke_ms)
+        _sort_desc_by_key2!(subs)
         nshow = min(10, length(subs))
         for i in 1:nshow
             k, ms = subs[i]
             pct = frame_time_ms > 0 ? 100 * ms / frame_time_ms : 0.0
-            println(io, _fmt_row_rank_ms_pct(i, string(k), ms, pct, 36))
+            println(io, _fmt_row_rank_ms_pct(i, _dict_key_label(k), ms, pct, 36))
         end
         if profiler.ui_render_invoke_peak_ms >= 0.5
             println(io, "  │     — slowest single invoke: ", _fmt2(profiler.ui_render_invoke_peak_ms), " ms  (", profiler.ui_render_invoke_peak_desc, ")")
@@ -259,19 +353,21 @@ function slow_frame_terminal_detail(
     if !isempty(profiler.input_poll_breakdown_ms)
         println(io, "  │")
         println(io, "  │   input_poll breakdown (inside :input_poll):")
-        subs = sort(collect(profiler.input_poll_breakdown_ms), by = x -> x[2], rev = true)
+        subs = collect(profiler.input_poll_breakdown_ms)
+        _sort_desc_by_key2!(subs)
         for (k, ms) in subs
-            println(io, "  │      • ", string(k), "  ", _fmt2(ms), " ms")
+            println(io, "  │      • ", _dict_key_label(k), "  ", _fmt2(ms), " ms")
         end
     end
     if !isempty(profiler.input_ui_hit_detail_ms)
         println(io, "  │")
         println(io, "  │   ui hit-test detail (summed this frame, all mouse events):")
         println(io, "  │   (rows below sum with overlap; use fence line to match input_poll.)")
-        subs = sort(collect(profiler.input_ui_hit_detail_ms), by = x -> x[2], rev = true)
+        subs = collect(profiler.input_ui_hit_detail_ms)
+        _sort_desc_by_key2!(subs)
         d = profiler.input_ui_hit_detail_ms
         for (k, ms) in subs
-            println(io, "  │      • ", string(k), "  ", _fmt2(ms), " ms")
+            println(io, "  │      • ", _dict_key_label(k), "  ", _fmt2(ms), " ms")
         end
         ui_ms_sum = sum(values(profiler.input_ui_hit_detail_ms))
         mouse_disp = get(profiler.input_poll_breakdown_ms, :mouse_ui_hit_test_dispatch, 0.0)
@@ -283,10 +379,11 @@ function slow_frame_terminal_detail(
         println(io, "  │   — fence (preamble + ui wall + handle_mouse + skip_ui): ", _fmt2(fence), " ms")
         println(io, "  │   — input_poll :mouse_ui_hit_test_dispatch: ", _fmt2(mouse_disp), " ms (Δ vs fence: ", _fmt2(mouse_disp - fence), ")")
         if !isempty(profiler.input_ui_hit_detail_counts)
-            cnts = sort(collect(profiler.input_ui_hit_detail_counts), by = x -> x[2], rev = true)
+            cnts = collect(profiler.input_ui_hit_detail_counts)
+            _sort_desc_by_key2!(cnts)
             println(io, "  │   ui hit-test counts (this frame):")
             for (k, n) in cnts
-                println(io, "  │      • ", string(k), "  ", n)
+                println(io, "  │      • ", _dict_key_label(k), "  ", n)
             end
         end
     end
@@ -295,7 +392,8 @@ function slow_frame_terminal_detail(
     if isempty(d)
         println(io, "  │ (no script samples this frame)")
     else
-        pairs = sort(collect(d), by = x -> x[2], rev = true)
+        pairs = collect(d)
+        _sort_desc_by_key2!(pairs)
         script_sum = sum(x[2] for x in pairs)
         nshow = min(script_top, length(pairs))
         for i in 1:nshow
@@ -375,7 +473,7 @@ function accumulate_ui_render_invoke_ms!(profiler::LatencyProfiler, target, elap
         if target isa NamedTuple || target isa JulGame.RenderQueuedFunction
             profiler.ui_render_invoke_peak_desc = "ui_queued_render_fn"
         else
-            profiler.ui_render_invoke_peak_desc = string(typeof(target))
+            profiler.ui_render_invoke_peak_desc = String(nameof(typeof(target)))
         end
     end
     return
@@ -611,7 +709,8 @@ function print_latency_report(profiler::LatencyProfiler)
     println("\n🔍 SUBSYSTEM BREAKDOWN")
     
     # Sort sections by mean time (highest first)
-    sorted_sections = sort(collect(values(profiler.sections)), by=s -> mean(s.times), rev=true)
+    sorted_sections = collect(values(profiler.sections))
+    _sort_profile_sections_by_mean_desc!(sorted_sections)
     
     for section in sorted_sections
         print_section_stats(section, profiler.frame_count)
@@ -645,7 +744,7 @@ function print_realtime_stats(profiler::LatencyProfiler)
     recent_max = maximum(recent_times)
     recent_p99 = calculate_percentile(recent_times, 0.99)
     
-    println("\n📊 [$(Dates.format(now(), "HH:MM:SS"))] Frame $(profiler.frame_count) | Recent performance:")
+    println("\n📊 [$(_wall_clock_hms())] Frame $(profiler.frame_count) | Recent performance:")
     println("   Mean: $(round(recent_mean, digits=2))ms | P99: $(round(recent_p99, digits=2))ms | Max: $(round(recent_max, digits=2))ms")
 end
 
@@ -664,7 +763,7 @@ function get_worst_frames(profiler::LatencyProfiler, n::Int=10)
     frame_pairs = [(i, time) for (i, time) in enumerate(profiler.frame_times)]
     
     # Sort by time (descending) and take top N
-    sort!(frame_pairs, by=x -> x[2], rev=true)
+    _sort_desc_by_key2!(frame_pairs)
     
     return frame_pairs[1:min(n, length(frame_pairs))]
 end
@@ -683,7 +782,8 @@ function export_profiling_data(profiler::LatencyProfiler, filename::String)
     try
         open(filename, "w") do io
             # Write header
-            section_names = sort(collect(keys(profiler.sections)))
+            section_names = collect(keys(profiler.sections))
+            _sort_symbols_asc!(section_names)
             header = "frame,frame_time_ms," * join(["$(name)_ms" for name in section_names], ",")
             println(io, header)
             

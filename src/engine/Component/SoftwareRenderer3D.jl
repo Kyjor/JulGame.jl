@@ -1224,7 +1224,7 @@ module SoftwareRenderer3DModule
             end
             
             if result < 0
-                println("SDL_RenderGeometry failed: ", unsafe_string(SDL_GetError()))
+                println("SDL_RenderGeometry failed: " * unsafe_string(SDL_GetError()))
             else
                 triangle_count += length(triangles)
             end

@@ -8,8 +8,6 @@ function CallSDLFunction(func::Function, args...)
         @error "SDL Error: $(unsafe_string(SDL2.SDL_GetError())) 
         || with function $(func) 
         || with args $(args)" 
-
-        IS_PACKAGE_COMPILED || Base.show_backtrace(stdout, stacktrace())
     end
 
     return ret
