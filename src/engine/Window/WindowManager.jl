@@ -13,7 +13,7 @@ module WindowManagerModule
         return nothing
     end
     
-    function _sdl_gfx_set_framerate!(fps::Ref{SDL2.LibSDL2.FPSmanager}, rate::UInt32)::Cint
+    function _sdl_gfx_set_framerate!(fps::Ref{SDL2.LibSDL2.FPSmanager}, rate::UInt32)::Nothing
         ccall(
             (:SDL_setFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
             Cint,
@@ -21,6 +21,7 @@ module WindowManagerModule
             fps,
             rate,
         )
+        return nothing
     end
 
     """

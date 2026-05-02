@@ -1,5 +1,5 @@
 module SceneReaderModule
-    using JSON3
+    using JSON
     using ...AnimatorModule
     using ...AnimationModule
     using ...CameraModule
@@ -17,6 +17,39 @@ module SceneReaderModule
     using ...UI.CanvasModule
     using ...TransformModule
     using ...JulGame
+
+    # Dict-shaped scene JSON wrapped for JSON3-like property/get/haskey access.
+    struct JsonObj
+        d::Dict{String,Any}
+    end
+
+    function _expose(v)
+        v isa Dict{String,Any} && return JsonObj(v)
+        v isa AbstractDict && return JsonObj(Dict{String,Any}(string(k) => x for (k, x) in pairs(v)))
+        if v isa AbstractVector && !(v isa AbstractString)
+            return [_expose(x) for x in v]
+        end
+        return v
+    end
+
+    function Base.getproperty(o::JsonObj, k::Symbol)
+        k === :d && return getfield(o, :d)
+        return _expose(get(getfield(o, :d), String(k), nothing))
+    end
+
+    Base.haskey(o::JsonObj, k::AbstractString) = haskey(getfield(o, :d), string(k))
+
+    function Base.get(o::JsonObj, k::AbstractString, default)
+        ks = string(k)
+        haskey(getfield(o, :d), ks) ? _expose(o.d[ks]) : default
+    end
+
+    Base.isempty(o::JsonObj) = isempty(getfield(o, :d))
+
+    _isempty_json_field(x::Nothing) = true
+    _isempty_json_field(x::JsonObj) = isempty(x)
+    _isempty_json_field(x::AbstractVector) = isempty(x)
+    _isempty_json_field(_) = false
 
     export preload_scene
     """
@@ -58,7 +91,8 @@ module SceneReaderModule
                 @debug("using cached scene")
             else 
                 entitiesJson = read(filePath, String)
-                json = JSON3.read(entitiesJson)
+                raw = JSON.parse(entitiesJson, dicttype = Dict{String,Any})
+                json = JsonObj(raw::Dict{String,Any})
                 @debug("using scene from scene file")
             end
 
@@ -206,7 +240,7 @@ module SceneReaderModule
                 if uiElement.type == "Canvas"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 100)
-                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
+                    if haskey(uiElement, "color") && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
                          color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
                     end
 
@@ -399,8 +433,8 @@ module SceneReaderModule
             elseif component.type == "SoundSource"
                 newComponent = SoundSource(component.channel, component.isMusic, component.path, get(component, "playOnStart", false), component.volume)
             elseif component.type == "Sprite"
-                color = !haskey(component, "color") || isempty(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
-                crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
+                color = !haskey(component, "color") || _isempty_json_field(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
+                crop = !haskey(component, "crop") || _isempty_json_field(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
                 layer = !haskey(component, "layer") ? 0 : component.layer
                 offset = !haskey(component, "offset") ? Math.Vector2f() : Math.Vector2f(component.offset.x, component.offset.y)
                 position = !haskey(component, "position") ? Math.Vector2f() : Math.Vector2f(component.position.x, component.position.y)
@@ -411,9 +445,9 @@ module SceneReaderModule
                 isStatic = !haskey(component, "isStatic") ? false : component.isStatic
                 newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Math.Vector2f, position::Math.Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Math.Vector2f, anchor::Symbol, isStatic::Bool)
             elseif component.type == "Shape"
-                color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
+                color = !haskey(component, "color") || _isempty_json_field(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 layer = !haskey(component, "layer") ? 0 : component.layer
-                size = !haskey(component, "size") || isempty(component.size) ? Math.Vector2f(1,1) : Math.Vector2f(component.size.x, component.size.y)
+                size = !haskey(component, "size") || _isempty_json_field(component.size) ? Math.Vector2f(1,1) : Math.Vector2f(component.size.x, component.size.y)
                 isFilled = !haskey(component, "isFilled") ? true : component.isFilled
                 isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
                 offset = !haskey(component, "offset") ? Math.Vector2f() : Math.Vector2f(component.offset.x, component.offset.y)
@@ -455,7 +489,7 @@ module SceneReaderModule
                 if child.type == "Canvas"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 100)
-                    if haskey(child, "color") && typeof(child.color) <: Dict && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
+                    if haskey(child, "color") && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
                          color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
                     end
 
@@ -516,7 +550,7 @@ module SceneReaderModule
                     # TextBox
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
-                    if haskey(child, "color") && typeof(child.color) <: Dict && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
+                    if haskey(child, "color") && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
                          color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
                     end
 

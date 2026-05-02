@@ -413,8 +413,12 @@ module SceneBuilderModule
         config = copy(DEFAULT_CONFIG)
         
         if isfile(filename)
-            for line in readlines(filename)
-                parts = split(line, "=", limit=2)
+            txt = read(filename, String)
+            # Avoid readlines()/open-do (Julia Base): JuliaC trim verifiers choke on iterate(EachLine) + closure open.
+            for raw in split(txt, '\n')
+                isempty(strip(raw)) && continue
+                line = strip(raw)
+                parts = split(line, "=", limit = 2)
                 if length(parts) == 2
                     key, value = parts[1], parts[2]
                     config[strip(key)] = strip(value)
@@ -445,7 +449,15 @@ module SceneBuilderModule
         for (key, value) in config
             println(buf, "$(key)=$(value)")
         end
-        write(filename, take!(buf))
+        data = take!(buf)
+        # Avoid write(::String, ::AbstractVector): it uses open with a callable (JuliaC trim rejects _apply_iterate on open).
+        io = Base.open(filename, "w")
+        try
+            write(io, data)
+        finally
+            close(io)
+        end
+        return nothing
     end
 end # module
 
