@@ -447,7 +447,7 @@ module SceneReaderModule
     end
 
     function deserialize_ui_elements(jsonUIElements, entities)
-        res = JulGame.UI.UIElement[]
+        res = JulGame.IUIElement[]
         childParentDict = Dict{String, Any}()
         uiElementsById = Dict{String, JulGame.IUIElement}()
         entitiesById = Dict{String, Entity}(string(e.id) => e for e in entities)
@@ -708,7 +708,7 @@ module SceneReaderModule
     Recursively deserializes Canvas children.
     """
     function deserialize_canvas_children(jsonChildren, parentCanvas)
-        children = UI.UIElement[]
+        children = JulGame.IUIElement[]
         default_Vector2 = Math.Vector2(0,0)
         
         for child in jsonChildren

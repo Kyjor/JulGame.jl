@@ -692,7 +692,7 @@ function JulGame.change_scene(sceneFileName::String)
 
 	@debug "Entities left after destroying while changing scenes (persistent): $(length(persistentEntities)) "
 
-	persistentUIElements = Any[]
+	persistentUIElements = JulGame.IUIElement[]
 	# delete all UIElements
 	for uiElement in this.scene.uiElements
 		if uiElement.persistentBetweenScenes

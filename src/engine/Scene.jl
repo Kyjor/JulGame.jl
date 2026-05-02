@@ -7,7 +7,7 @@
         colliders::Vector{Any}
         entities::Vector{Entity}
         rigidbodies::Vector{Any}
-        uiElements::Vector{Any}
+        uiElements::Vector{JulGame.IUIElement}
         name::String
         batchedLayers::Dict{Int, Any}  # Static sprite batching: layer => BatchedLayer
 
@@ -18,7 +18,7 @@
             this.colliders = []
             this.entities = Entity[]
             this.rigidbodies = []
-            this.uiElements = []
+            this.uiElements = JulGame.IUIElement[]
             this.batchedLayers = Dict{Int, Any}()
 
             return this

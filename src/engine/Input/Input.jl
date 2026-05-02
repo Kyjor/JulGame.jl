@@ -335,13 +335,16 @@ module InputModule
                 @debug "Clipboard update"
             end
 
-            # Handle Ctrl+V for clipboard paste in editor
+            #= Clipboard paste (Ctrl+V): disabled for JuliaC `--trim` static analysis (pulls in fragile
+            # Base process / SDL paths from reachability). Re-enable when building without `--trim` or
+            # when JuliaC supports this subgraph.
             if JulGame.IS_EDITOR && evt.type == SDL2.SDL_KEYDOWN
                 if evt.key.keysym.sym == SDL2.LibSDL2.SDLK_v && (evt.key.keysym.mod & SDL2.LibSDL2.KMOD_CTRL) != 0
                     @debug "Ctrl+V detected, checking clipboard for image"
                     handle_clipboard_paste()
                 end
             end
+            =#
 
             _input_poll_accumulate!(prof, t0, :window_routing)
 
@@ -737,7 +740,10 @@ module InputModule
     Handle Ctrl+V clipboard paste for images in the editor.
     Checks if clipboard contains image data and creates a temporary file for import.
     """
-    function handle_clipboard_paste()
+    function handle_clipboard_paste()::Nothing
+        # Disabled for JuliaC `--trim`; full implementation kept below for easy restore.
+        return nothing
+        #= 
         try
             # Try to get image data from platform-specific clipboard
             if Sys.islinux()
@@ -788,6 +794,7 @@ module InputModule
         catch e
             @error "Error handling clipboard paste: $(e)"
         end
+        =#
     end
 
     """

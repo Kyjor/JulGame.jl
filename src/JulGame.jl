@@ -176,7 +176,7 @@ module JulGame
     scene_entity_id(e::Entity)::String = e.id::String
     export scene_entity_id
 
-    const PreloadedSceneData = @NamedTuple{entities::Vector{Entity}, uiElements::Vector{Any}, camera::Camera}
+    const PreloadedSceneData = @NamedTuple{entities::Vector{Entity}, uiElements::Vector{IUIElement}, camera::Camera}
     const PRELOADED_SCENES = Dict{String, PreloadedSceneData}()
 
     include("engine/Scene.jl")

@@ -12,6 +12,8 @@ module SceneBuilderModule
     using ..SceneReaderModule
     using JSON3
 
+    const _JSON3_EMPTY_FIELDS = JSON3.read("{}")
+
     export Scene
     mutable struct Scene
         scene::String
@@ -58,10 +60,10 @@ module SceneBuilderModule
         return default
     end
 
-    function _json3_fields(obj::JSON3.Object)
+    function _json3_fields(obj::JSON3.Object)::JSON3.Object
         raw = get(obj, :fields, nothing)
         raw isa JSON3.Object && return raw
-        return nothing
+        return _JSON3_EMPTY_FIELDS
     end
     
     function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); 
@@ -208,12 +210,10 @@ module SceneBuilderModule
         end
         
         for uiElement in main_loop.scene.uiElements
-            if uiElement isa JulGame.IUIElement
-                JulGame.UI.add_relationship_if_not_exists(uiElement)
-                is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
-                if !is_world_entity
-                    UI.align_to_anchor(uiElement)
-                end
+            JulGame.UI.add_relationship_if_not_exists(uiElement)
+            is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
+            if !is_world_entity
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -254,12 +254,10 @@ module SceneBuilderModule
         end
 
         for uiElement in main_loop.scene.uiElements
-            if uiElement isa JulGame.IUIElement
-                JulGame.UI.add_relationship_if_not_exists(uiElement)
-                is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
-                if is_world_entity
-                    UI.align_to_anchor(uiElement)
-                end
+            JulGame.UI.add_relationship_if_not_exists(uiElement)
+            is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
+            if is_world_entity
+                UI.align_to_anchor(uiElement)
             end
         end
 
@@ -397,7 +395,8 @@ module SceneBuilderModule
                     scriptCounter += 1
                     continue
                 end
-                script_name = _json3_string(script, :name, "")
+                script_obj = script::JSON3.Object
+                script_name = _json3_string(script_obj, :name, "")
                 isempty(script_name) && (scriptCounter += 1; continue)
                 @debug String("Adding script: $(script_name) to entity: $(entity.name)")
 
@@ -408,9 +407,9 @@ module SceneBuilderModule
                     module_name = getfield(script_module, Symbol("$(script_name)Module"))
                     constructor = Base.invokelatest(getfield, module_name, Symbol(script_name))
                     newScript = Base.invokelatest(constructor)
-                    scriptFields = _json3_fields(script)
-                    @debug("getting fields for: $(script)")
-                    if scriptFields isa JSON3.Object && newScript !== nothing
+                    scriptFields = _json3_fields(script_obj)
+                    @debug("getting fields for: $(script_obj)")
+                    if newScript !== nothing
                         scriptFields_obj::JSON3.Object = scriptFields
                         for key_symbol in keys(scriptFields_obj)
                             value = get(scriptFields_obj, key_symbol, nothing)

@@ -125,13 +125,14 @@ function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
     end
 end
 
-function add_relationship_if_not_exists(script::JulGame.IUIElement)
+function add_relationship_if_not_exists(script::JulGame.IUIElement)::Nothing
     if !haskey(relationships, script)
         #println("Adding relationship for $(script)")
         relationships[script] = UIElementInstance()
-        return
+        return nothing
     end
     #println("Relationship already exists for $(script)")
+    return nothing
 end
 
 function delete_relationship(script::JulGame.IUIElement)
@@ -144,11 +145,11 @@ function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=2
     this.color = (r%256, g%256, b%256, a%256)
 end
 
-function UI.align_to_anchor(this::JulGame.IUIElement)
+function UI.align_to_anchor(this::JulGame.IUIElement)::Nothing
     main = JulGame.current_main()
     if main.scene.camera === nothing
         @debug "No camera found in scene"
-        return
+        return nothing
     end
 
     size = main.scene.camera.size
@@ -160,7 +161,7 @@ function UI.align_to_anchor(this::JulGame.IUIElement)
         else 
             if this.parent.lastRenderedScreenSize === nothing || this.parent.lastRenderedScreenPosition === nothing
                 @debug "No last rendered screen size or position found for parent of $(this.name)"
-                return
+                return nothing
             end
             size = this.parent.lastRenderedScreenSize
             parent_pos = this.parent.lastRenderedScreenPosition
@@ -237,6 +238,7 @@ function UI.align_to_anchor(this::JulGame.IUIElement)
     else
         @error "Invalid anchor state: $(this.anchor.current_state)"
     end
+    return nothing
 end
 
 function UI.add_hover_enter_event(this::JulGame.IUIElement, event)
