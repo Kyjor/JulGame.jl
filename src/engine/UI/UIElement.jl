@@ -60,7 +60,7 @@ mutable struct UIElementInstance
     end
 end
 
-relationships = Dict{JulGame.IUIElement, UIElementInstance}()
+const relationships = Dict{JulGame.IUIElement, UIElementInstance}()
 
 function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
     # Check if the relationship exists
@@ -145,12 +145,13 @@ function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=2
 end
 
 function UI.align_to_anchor(this::JulGame.IUIElement)
-    if MAIN.scene.camera === nothing
+    main = JulGame.current_main()
+    if main.scene.camera === nothing
         @debug "No camera found in scene"
         return
     end
 
-    size = MAIN.scene.camera.size
+    size = main.scene.camera.size
     parent_pos = Math.Vector2(0, 0)
     if this.parent !== nothing 
         if isa(this.parent, JulGame.IUIElement)
