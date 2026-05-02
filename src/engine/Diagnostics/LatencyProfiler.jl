@@ -367,12 +367,12 @@ function accumulate_ui_render_invoke_ms!(profiler::LatencyProfiler, target, elap
     if !profiler.enabled || elapsed_ms <= 0
         return
     end
-    key = target isa NamedTuple ? :ui_queued_render_fn : typeof(target)
+    key = (target isa NamedTuple || target isa JulGame.RenderQueuedFunction) ? :ui_queued_render_fn : typeof(target)
     d = profiler.ui_render_invoke_ms
     d[key] = get(d, key, 0.0) + elapsed_ms
     if elapsed_ms > profiler.ui_render_invoke_peak_ms
         profiler.ui_render_invoke_peak_ms = elapsed_ms
-        if target isa NamedTuple
+        if target isa NamedTuple || target isa JulGame.RenderQueuedFunction
             profiler.ui_render_invoke_peak_desc = "ui_queued_render_fn"
         else
             profiler.ui_render_invoke_peak_desc = string(typeof(target))

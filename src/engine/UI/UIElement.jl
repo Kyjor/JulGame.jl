@@ -78,6 +78,12 @@ function input_ui_is_active(ui::JulGame.IUIElement)::Bool
     return getfield(relationship_instance(ui), :isActive)::Bool
 end
 
+"""Layer for immediate UI / render ordering (relationship dict; avoids `getproperty` on `IUIElement`)."""
+@inline function input_ui_layer(ui::JulGame.IUIElement)::Int
+    add_relationship_if_not_exists(ui)
+    return getfield(relationship_instance(ui), :layer)::Int
+end
+
 function input_ui_force_click_check(ui::JulGame.IUIElement)::Bool
     add_relationship_if_not_exists(ui)
     return getfield(relationship_instance(ui), :forceClickCheck)::Bool

@@ -28,7 +28,16 @@ module JulGame
     IS_EDITOR_PLAY_MODE::Bool = false
     
     Coroutines::Vector = []
-    RENDER_FUNCTIONS::Vector = []
+
+    """Queued one-shot render callback (`Rendering.queue_render_function`). Concrete for JuliaC `--trim`."""
+    struct RenderQueuedFunction
+        function_to_call::Any
+        isWorldEntity::Bool
+        layer::Int
+    end
+    export RenderQueuedFunction
+
+    const RENDER_FUNCTIONS = RenderQueuedFunction[]
 
     ProjectModule = ""
     ScriptModule = Module(:Scripts)

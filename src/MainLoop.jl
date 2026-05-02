@@ -31,6 +31,15 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
+	@Base.noinline function _invoke_queued_render_fn(f::Any)::Nothing
+		if f isa Function
+			(f::Function)()
+		else
+			Base.invokelatest(f)
+		end
+		return nothing
+	end
+
 	# Profiling helper functions
 	export enable_profiling, disable_profiling, print_profiling_report, export_profiling_data
 	export maybe_enable_latency_profiling_from_env!
@@ -1109,12 +1118,21 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				# TODO: Only render UI elements that are not children of a Canvas
 				# Canvas children will be rendered by their parent Canvas
 				#if uiElement.parent === nothing || !isa(uiElement.parent, UI.Canvas)
-					push!(uiRenderingOrder, (uiElement.layer, uiElement))
+					push!(uiRenderingOrder, (UI.input_ui_layer(uiElement), uiElement))
 				#end
 			end
 			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_scene_elements_scan)
-			render_functions_to_call = filter(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
-			filter!(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
+			render_functions_to_call = JulGame.RenderQueuedFunction[]
+			rf_ui = JulGame.RENDER_FUNCTIONS
+			i_rf = 1
+			while i_rf <= length(rf_ui)
+				if !rf_ui[i_rf].isWorldEntity
+					push!(render_functions_to_call, rf_ui[i_rf])
+					deleteat!(rf_ui, i_rf)
+				else
+					i_rf += 1
+				end
+			end
 			for render_function in render_functions_to_call
 				push!(uiRenderingOrder, (render_function.layer, render_function))
 			end
@@ -1122,7 +1140,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			immediateUIComponents = UI.ImmediateUIModule.manage_all_immediate_components()
 			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_manage_all)
 			for immediateUIComponent in immediateUIComponents
-				push!(uiRenderingOrder, (immediateUIComponent.layer, immediateUIComponent))
+				push!(uiRenderingOrder, (UI.input_ui_layer(immediateUIComponent), immediateUIComponent))
 			end
 			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_append_order)
 
@@ -1142,9 +1160,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					end
 					tgt = uiRenderingOrder[i][2]
 					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
-					if tgt isa NamedTuple
-						func = tgt.function_to_call
-						Base.invokelatest(func)
+					if tgt isa JulGame.RenderQueuedFunction
+						_invoke_queued_render_fn(getfield(tgt::JulGame.RenderQueuedFunction, :function_to_call))
 					else
 						JulGame.render(tgt)
 					end
@@ -1154,10 +1171,14 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				catch e
 					if this.testMode
 						rethrow(e)
+					elseif JulGame.IS_PACKAGE_COMPILED
+						@error "UI render failed"
+						@error string(e)
 					else
 						parent_info = ""
-						if isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)
-							parent_info = "a queued render function ($(uiRenderingOrder[i][2].function_to_call))"
+						if uiRenderingOrder[i][2] isa JulGame.RenderQueuedFunction
+							rf = uiRenderingOrder[i][2]::JulGame.RenderQueuedFunction
+							parent_info = "a queued render function ($(getfield(rf, :function_to_call)))"
 						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						end
@@ -1318,8 +1339,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 		end
 
-	render_functions_to_call = filter(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
-	filter!(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
+	render_functions_to_call = JulGame.RenderQueuedFunction[]
+	rf_world = JulGame.RENDER_FUNCTIONS
+	i_rw = 1
+	while i_rw <= length(rf_world)
+		if rf_world[i_rw].isWorldEntity
+			push!(render_functions_to_call, rf_world[i_rw])
+			deleteat!(rf_world, i_rw)
+		else
+			i_rw += 1
+		end
+	end
 	for render_function in render_functions_to_call
 		push!(renderOrder, (render_function.layer, render_function))
 	end
@@ -1354,25 +1384,33 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				Component.render(renderOrder[i][2], this)
 			elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
 				Component.draw(renderOrder[i][2], camera)
-			elseif renderOrder[i][2] isa NamedTuple
-				# get the params	
-				func = renderOrder[i][2].function_to_call
-				Base.invokelatest(func)
-			elseif hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)
-				# Render batched static sprite layer
-				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
+			elseif renderOrder[i][2] isa JulGame.RenderQueuedFunction
+				rf = renderOrder[i][2]::JulGame.RenderQueuedFunction
+				_invoke_queued_render_fn(getfield(rf, :function_to_call))
+			elseif renderOrder[i][2] isa JulGame.StaticSpriteBatcherModule.BatchedLayer
+				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2]::JulGame.StaticSpriteBatcherModule.BatchedLayer, camera)
 			else
 				@debug "Unknown item type: $(typeof(renderOrder[i][2]))"
 			end
 			catch e
 				if this.testMode
 					rethrow(e)
+				elseif JulGame.IS_PACKAGE_COMPILED
+					@error "render failed for scene object"
+					@error string(e)
 				else
 					parent_info = ""
-					if isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)
-						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
-					elseif hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== nothing && isa(renderOrder[i][2].parent, JulGame.EntityModule.Entity)
-						parent_info = "$(renderOrder[i][2].parent.name) with id: $(renderOrder[i][2].parent.id)"
+					if renderOrder[i][2] isa JulGame.RenderQueuedFunction
+						rf = renderOrder[i][2]::JulGame.RenderQueuedFunction
+						parent_info = "a queued render function ($(getfield(rf, :function_to_call)))"
+					elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape
+						p = getfield(renderOrder[i][2], :parent)::JulGame.IEntity
+						if p isa Entity
+							ent = p::Entity
+							parent_info = "$(getfield(ent, :name)) with id: $(getfield(ent, :id))"
+						else
+							parent_info = "a component of type $(typeof(renderOrder[i][2]))"
+						end
 					else 
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					end

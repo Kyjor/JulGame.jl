@@ -13,8 +13,13 @@ module ImmediateUIModule
 
     export immediate_text, immediate_button, immediate_rect, immediate_line, immediate_circle, immediate_progress_bar, immediate_canvas, immediate_image, manage_all_immediate_components, cleanup_all_immediate_components, remove_immediate_component, set_immediate_component_lifetime
 
+    mutable struct ImmediateUICacheEntry
+        element::JulGame.IUIElement
+        lifetime::Int
+    end
+
     # Dictionary to store active immediate UI components by their id and type
-    const IMMEDIATE_UI_CACHE = Dict{String, Any}()
+    const IMMEDIATE_UI_CACHE = Dict{String, ImmediateUICacheEntry}()
     
     # Stores the last update timestamp for each component
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
@@ -226,7 +231,7 @@ module ImmediateUIModule
                 parent=parent)
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = textBox, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(textBox, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, textBox)
@@ -471,7 +476,7 @@ module ImmediateUIModule
             end
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = button, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(button, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, button)
@@ -700,7 +705,7 @@ module ImmediateUIModule
             rect.persistentBetweenScenes = false
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = rect, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(rect, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, rect)
@@ -818,7 +823,7 @@ module ImmediateUIModule
             line.persistentBetweenScenes = false
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = line, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(line, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, line)
@@ -982,7 +987,7 @@ module ImmediateUIModule
             )
 
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = image, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(image, lifetime)
 
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, image)
@@ -1119,7 +1124,7 @@ module ImmediateUIModule
             circle.persistentBetweenScenes = false
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = circle, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(circle, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, circle)
@@ -1307,7 +1312,7 @@ module ImmediateUIModule
             progressBar.persistentBetweenScenes = false
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = progressBar, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(progressBar, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, progressBar)
@@ -1514,7 +1519,7 @@ module ImmediateUIModule
             )
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = canvas, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateUICacheEntry(canvas, lifetime)
             
             # Add to scene's uiElements
             push!(MAIN.scene.uiElements, canvas)
@@ -1527,8 +1532,10 @@ module ImmediateUIModule
         end
     end
 
-    @inline function _immediate_wants_render(el)::Bool
-        !hasproperty(el, :isActive) || getproperty(el, :isActive)
+    @inline function _immediate_wants_render(el::JulGame.IUIElement)::Bool
+        UI.add_relationship_if_not_exists(el)
+        inst = UI.relationship_instance(el)
+        return !isdefined(inst, :isActive) || getfield(inst, :isActive)::Bool
     end
 
     """
@@ -1544,7 +1551,7 @@ module ImmediateUIModule
         n = length(IMMEDIATE_UI_CACHE)
         n > 0 && sizehint!(s, n)
         for packed in values(IMMEDIATE_UI_CACHE)
-            push!(s, Base.objectid(packed.element))
+            push!(s, Base.objectid(getfield(packed, :element)))
         end
         return s
     end
@@ -1576,18 +1583,18 @@ module ImmediateUIModule
         t_scan = time_ns()
         # First pass: collect layers for each component and check expiration
         for (composite_id, component) in IMMEDIATE_UI_CACHE
-            el = component.element
+            el = getfield(component, :element)::JulGame.IUIElement
 
             # Infinite lifetime: never expire; omit hidden pooled widgets from sort/render
-            if component.lifetime == INFINITE_LIFETIME
+            if getfield(component, :lifetime) == INFINITE_LIFETIME
                 if _immediate_wants_render(el)
-                    component_layers[composite_id] = el.layer
+                    component_layers[composite_id] = UI.input_ui_layer(el)
                 end
                 continue
             end
 
             # Check if this component hasn't been used for a while
-            if component.lifetime == -1
+            if getfield(component, :lifetime) == -1
                 if !haskey(IMMEDIATE_UI_FRAME_COUNT, composite_id) || abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount) > 2
                     @debug "component $(composite_id) expired from frame difference $(abs(IMMEDIATE_UI_FRAME_COUNT[composite_id] - JulGame.FrameCount))"
                     push!(expired_ids, composite_id)
@@ -1595,14 +1602,14 @@ module ImmediateUIModule
                 else 
                     @debug "component $(composite_id) is still active"
                 end
-            elseif component.lifetime >= 0 && (!haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime)
-                @debug "component $(composite_id) expired from lifetime $(component.lifetime)"
+            elseif getfield(component, :lifetime) >= 0 && (!haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > getfield(component, :lifetime))
+                @debug "component $(composite_id) expired from lifetime $(getfield(component, :lifetime))"
                 push!(expired_ids, composite_id)
                 continue
             end
 
             if _immediate_wants_render(el)
-                component_layers[composite_id] = el.layer
+                component_layers[composite_id] = UI.input_ui_layer(el)
             end
         end
         if prof !== nothing
@@ -1618,10 +1625,9 @@ module ImmediateUIModule
 
         t_list = time_ns()
         # Second pass: render components in layer order
-        itemsToRender = []
+        itemsToRender = JulGame.IUIElement[]
         for id in sorted_ids
-            component = IMMEDIATE_UI_CACHE[id].element
-            push!(itemsToRender, component)
+            push!(itemsToRender, getfield(IMMEDIATE_UI_CACHE[id], :element)::JulGame.IUIElement)
         end
         if prof !== nothing
             JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, :immediate_manage_build_render_list, (time_ns() - t_list) / 1e6)
@@ -1648,7 +1654,7 @@ module ImmediateUIModule
     """
     function cleanup_immediate_component(id::String)
         if haskey(IMMEDIATE_UI_CACHE, id)
-            component = IMMEDIATE_UI_CACHE[id].element
+            component = getfield(IMMEDIATE_UI_CACHE[id], :element)::JulGame.IUIElement
             
             # Remove from scene's uiElements if present
             if component in MAIN.scene.uiElements
@@ -1740,8 +1746,8 @@ module ImmediateUIModule
         for type_prefix in types_to_try
             composite_id = "$(type_prefix)_$(id)"
             if haskey(IMMEDIATE_UI_CACHE, composite_id)
-                component = IMMEDIATE_UI_CACHE[composite_id]
-                component.lifetime = lifetime
+                entry = IMMEDIATE_UI_CACHE[composite_id]
+                entry.lifetime = lifetime
                 
                 # Update timestamp to start the countdown from now
                 if lifetime >= 0
