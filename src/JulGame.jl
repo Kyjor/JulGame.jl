@@ -18,7 +18,7 @@ module JulGame
     
     SCENE_CACHE::Dict{String, Any} = Dict{String, Any}()
     PRELOADED_SCENES::Dict{String, Any} = Dict{String, Any}()
-    IMAGE_CACHE::Dict{String, Any} = Dict{String, Any}()
+    IMAGE_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
     FONT_CACHE::Dict{String, Any} = Dict{String, Any}()
     AUDIO_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
     
@@ -172,6 +172,10 @@ module JulGame
     include("engine/Entity.jl") 
     using .EntityModule   
     export Entity
+
+    """Stable id for observers / trim-verifier paths (`Transform.parent` is untyped elsewhere)."""
+    scene_entity_id(e::Entity)::String = e.id::String
+    export scene_entity_id
 
     include("engine/Scene.jl")
     using .SceneModule: Scene

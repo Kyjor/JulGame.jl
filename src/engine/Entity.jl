@@ -42,30 +42,6 @@ module EntityModule
         ignoreInputEvents::Bool
 
         function Entity(
-            name::String = "New entity",
-            id::String = JulGame.generate_uuid(),
-            transform::Transform = Transform(),
-            scripts::Vector = [];
-            clickEvents::Vector{Function} = Function[],
-            forceClickCheck::Bool = false,
-            ignoreInputEvents::Bool = false,
-        )
-            this = Entity(name, id, transform; clickEvents, forceClickCheck, ignoreInputEvents)
-            isempty(scripts) && return this
-            for script in scripts
-                @debug(string("Adding script of type: ", typeof(script), " to entity named ", this.name))
-                push!(this.scripts, script)
-                script.parent = this
-                try
-                    JulGame.initialize(script)
-                catch e
-                    @error sprint(showerror, e)
-                end
-            end
-            return this
-        end
-
-        function Entity(
             name::String,
             id::String,
             transform::Transform;
@@ -101,10 +77,33 @@ module EntityModule
 
             return this
         end
+    end
 
-        function Entity(name::String, id::String)
-            Entity(name, id, Transform())
+    function _attach_scripts!(this::Entity, scripts::Vector)
+        isempty(scripts) && return this
+        for script in scripts
+            @debug(string("Adding script of type: ", typeof(script), " to entity named ", this.name))
+            push!(this.scripts, script)
+            script.parent = this
+            try
+                JulGame.initialize(script)
+            catch e
+                @error sprint(showerror, e)
+            end
         end
+        return this
+    end
+
+    Entity(; kwargs...) = Entity("New entity", JulGame.generate_uuid(), Transform(); kwargs...)
+    Entity(name::String; kwargs...) = Entity(name, JulGame.generate_uuid(), Transform(); kwargs...)
+    Entity(name::String, id::String; kwargs...) = Entity(name, id, Transform(); kwargs...)
+
+    function Entity(name::String, id::String, scripts::Vector; kwargs...)
+        return _attach_scripts!(Entity(name, id; kwargs...), scripts)
+    end
+
+    function Entity(name::String, id::String, transform::Transform, scripts::Vector; kwargs...)
+        return _attach_scripts!(Entity(name, id, transform; kwargs...), scripts)
     end
 
     function JulGame.add_script(this::Entity, script)

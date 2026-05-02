@@ -1,6 +1,7 @@
 module CameraModule
     using ..JulGame
     using .Math
+    using .Math: _Vector2, _Vector3
 
     export Camera, pixels_per_world_unit, apply_zoom_to_center!
 
@@ -28,9 +29,9 @@ module CameraModule
             this.backgroundColor = (0,0,0, 255)
             this.size = size
             this.position = initialPosition
-            this.offset = Vector2f(offset.x, offset.y)
+            this.offset = Math._Vector2{Float64}(offset.x, offset.y)
             this.target = target
-            this.windowPos = Vector2(0,0)
+            this.windowPos = Math._Vector2{Int32}(0, 0)
             this.zoom = 1.0
             this.yaw = 0.0
             this.pitch = 0.0
@@ -59,7 +60,7 @@ module CameraModule
         inv_delta = inv(S_old) - inv(S_new)
         dx = half_w * inv_delta
         dy = half_h * inv_delta
-        camera.position = Vector3f(
+        camera.position = Math._Vector3{Float64}(
             camera.position.x + dx,
             camera.position.y + dy,
             camera.position.z,
@@ -81,13 +82,13 @@ module CameraModule
         SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         
-        center_pixels = Vector2f(this.size.x / 2, this.size.y / 2)
+        center_pixels = Math._Vector2{Float64}(Float64(this.size.x) / 2, Float64(this.size.y) / 2)
         center_world = center_pixels / pixels_per_world_unit(this)
 
         if this.target !== nothing && this.target !== C_NULL && newPosition === nothing
-            targetPos::Vector3f = this.target.position
-            targetScale::Vector2f = this.target.scale
-            this.position = Vector3f(targetPos.x - center_world.x + 0.5 * targetScale.x + this.offset.x,
+            targetPos::_Vector3{Float64} = this.target.position
+            targetScale::_Vector3{Float64} = this.target.scale
+            this.position = Math._Vector3{Float64}(targetPos.x - center_world.x + 0.5 * targetScale.x + this.offset.x,
                                      targetPos.y - center_world.y + 0.5 * targetScale.y + this.offset.y, 
                                      targetPos.z)
             return

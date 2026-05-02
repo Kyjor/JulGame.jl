@@ -494,7 +494,6 @@ module SpriteModule
                 throw(error)
             catch e
                 @error("Error loading image '$imagePath'! SDL Error: ", e)
-                Base.show_backtrace(stdout, catch_backtrace()) # Backtrace won't be shown if we don't throw the error
             end
             SDL2.SDL_ClearError()
     
@@ -512,14 +511,13 @@ module SpriteModule
     
         # Get image size
         surface = unsafe_wrap(Array, this.image, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        this.size = Math._Vector2{Int32}(surface[1].w, surface[1].h)
 
         # Create or get cached texture
         this.texture = get_or_create_texture(this.imagePath, this.image)
 
         if this.texture == C_NULL
             @error("Failed to create texture from image.")
-            Base.show_backtrace(stdout, catch_backtrace())
             return
         end
 

@@ -514,7 +514,8 @@ Mark a specific layer for rebatching on the next frame.
 """
 function mark_layer_for_rebatch(scene::JulGame.SceneModule.Scene, layer::Int)
     if hasfield(typeof(scene), :batchedLayers) && haskey(scene.batchedLayers, layer)
-        scene.batchedLayers[layer].needsRebatch = true
+        bl = scene.batchedLayers[layer]::BatchedLayer
+        bl.needsRebatch = true
         @debug "Marked layer $(layer) for rebatch"
     end
 end

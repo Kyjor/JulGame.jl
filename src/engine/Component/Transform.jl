@@ -53,7 +53,7 @@ module TransformModule
         # only log if the property is already defined
         if JulGame.IS_EDITOR && !JulGame.IS_EDITOR_PLAY_MODE && isdefined(this, property) && JulGame.engine_states.current_state == :game_mode && isdefined(this, :parent) && this.parent !== nothing
             #@debug "setting transform property $(property) to: $(value)"
-            JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (id = this.parent.id, property = property, oldValue = getfield(this, property), newValue = value))
+            JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (id = JulGame.scene_entity_id((this.parent)::JulGame.Entity), property = property, oldValue = getfield(this, property), newValue = value))
         end
         # Call the default setproperty! behavior
         invoke(setproperty!, Tuple{Any, Symbol, Any}, this, property, value)

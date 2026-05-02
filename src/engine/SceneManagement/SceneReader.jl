@@ -1,5 +1,6 @@
 module SceneReaderModule
     using JSON
+    using JSON3
     using ...AnimatorModule
     using ...AnimationModule
     using ...CameraModule
@@ -22,12 +23,13 @@ module SceneReaderModule
 
     # Dict-shaped scene JSON wrapped for JSON3-like property/get/haskey access.
     struct JsonObj
-        d::Union{Dict{String,Any}, SceneJSONObject}
+        d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
     end
 
     function _expose(v)
         v isa Dict{String,Any} && return JsonObj(v)
         v isa SceneJSONObject && return JsonObj(v)
+        v isa JSON3.Object && return JsonObj(v)
         v isa AbstractDict && return JsonObj(Dict{String,Any}(string(k) => x for (k, x) in pairs(v)))
         if v isa AbstractVector && !(v isa AbstractString)
             return [_expose(x) for x in v]
@@ -35,16 +37,25 @@ module SceneReaderModule
         return v
     end
 
-    function Base.getproperty(o::JsonObj, k::Symbol)
-        k === :d && return getfield(o, :d)
-        return _expose(get(getfield(o, :d), String(k), nothing))
+    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject}, k::AbstractString, default = nothing)
+        return get(d, string(k), default)
     end
 
-    Base.haskey(o::JsonObj, k::AbstractString) = haskey(getfield(o, :d), string(k))
+    function _json_value(d::JSON3.Object, k::AbstractString, default = nothing)
+        return get(d, Symbol(k), default)
+    end
+
+    function Base.getproperty(o::JsonObj, k::Symbol)
+        k === :d && return getfield(o, :d)
+        return _expose(_json_value(getfield(o, :d), String(k), nothing))
+    end
+
+    Base.haskey(o::JsonObj, k::AbstractString) = _json_value(getfield(o, :d), k, nothing) !== nothing
 
     function Base.get(o::JsonObj, k::AbstractString, default)
         ks = string(k)
-        haskey(getfield(o, :d), ks) ? _expose(o.d[ks]) : default
+        value = _json_value(getfield(o, :d), ks, default)
+        value === default ? default : _expose(value)
     end
 
     Base.isempty(o::JsonObj) = isempty(getfield(o, :d))
@@ -66,6 +77,14 @@ module SceneReaderModule
             StructUtils.DefaultStyle(),
         )::AbstractDict{String,Any}
         JsonObj(root)
+    end
+
+    """Normalize SCENE_CACHE entries (Dict, JSON3.Object, JsonObj) into `JsonObj` for stable typing under `--trim`."""
+    function _as_scene_json_root(x)::JsonObj
+        x isa JsonObj && return x
+        x isa JSON3.Object && return JsonObj(x)
+        x isa AbstractDict && !(x isa JsonObj) && return JsonObj(Dict{String,Any}(string(k) => v for (k, v) in pairs(x)))
+        return JsonObj(Dict{String,Any}("_" => x))
     end
 
     export preload_scene
@@ -112,6 +131,8 @@ module SceneReaderModule
                 @debug("using scene from scene file")
             end
 
+            root::JsonObj = _as_scene_json_root(json)
+
             entities = Entity[]
             childParentDict = Dict{String, Any}()
     
@@ -121,7 +142,7 @@ module SceneReaderModule
             catch e
                 @error sprint(showerror, e)
             end
-            for entity in json.Entities
+            for entity in root.Entities
                 if entity.id in entityIdsInCurrentScene
                     @debug "Entity with id $(entity.id) already exists in current scene"
                     continue
@@ -225,12 +246,24 @@ module SceneReaderModule
                     end
                 end
             end
-            uiElements = deserialize_ui_elements(json.UIElements, entities)
-            camera = Camera(Math.Vector2(500,500), Math.Vector3f(), Math.Vector2f(), C_NULL)
-            if haskey(json, "Camera")
-                camera = Camera(Math.Vector2(json.Camera.size.x, json.Camera.size.y), Math.Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Math.Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
-                camera.backgroundColor = (json.Camera.backgroundColor.r, json.Camera.backgroundColor.g, json.Camera.backgroundColor.b, json.Camera.backgroundColor.a)
-                zraw = get(json.Camera, "zoom", nothing)
+            uiElements = deserialize_ui_elements(root.UIElements, entities)
+            camera = Camera(
+                Math._Vector2{Int32}(500, 500),
+                Math._Vector3{Float64}(0.0, 0.0, 0.0),
+                Math._Vector2{Float64}(0.0, 0.0),
+                C_NULL)
+            if haskey(root, "Camera")
+                cam = root.Camera
+                sx_c = Float64(cam.size.x)
+                sy_c = Float64(cam.size.y)
+                camera = Camera(
+                    Math._Vector2{Int32}(Int32(round(Int, sx_c)), Int32(round(Int, sy_c))),
+                    Math._Vector3{Float64}(Float64(cam.position.x), Float64(cam.position.y), 0.0),
+                    Math._Vector2{Float64}(Float64(cam.offset.x), Float64(cam.offset.y)),
+                    C_NULL)
+                bg = cam.backgroundColor
+                camera.backgroundColor = (Int(bg.r), Int(bg.g), Int(bg.b), Int(bg.a))
+                zraw = get(cam, "zoom", nothing)
                 if zraw !== nothing
                     camera.zoom = Float64(zraw)
                 end
