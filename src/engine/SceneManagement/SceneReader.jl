@@ -159,7 +159,9 @@ module SceneReaderModule
                 end
                 newEntity = Entity(get(entity, "name", "New entity"), string(entity.id))
                 newEntity.isActive = get(entity, "isActive", true)
-                newEntity.scripts = get(entity, "scripts", [])
+                # Keep raw JSON3.Object/Dict entries here; SceneBuilder reifies them via `isa(script, JSON3.Object)`.
+                raw_scripts = _json_value(getfield(entity, :d), "scripts", Any[])
+                newEntity.scripts = raw_scripts isa AbstractVector ? collect(raw_scripts) : Any[]
                 newEntity.persistentBetweenScenes = get(entity, "persistentBetweenScenes", false)
 
                 for component in components
