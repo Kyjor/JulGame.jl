@@ -89,8 +89,8 @@ module EffectsModule
     end
     
     mutable struct SpriteTarget <: EffectTarget
-        sprite::Any  # InternalSprite
-        function SpriteTarget(sprite::Any)
+        sprite::JulGame.Component.SpriteModule.InternalSprite
+        function SpriteTarget(sprite::JulGame.Component.SpriteModule.InternalSprite)
             new(sprite)
         end
     end

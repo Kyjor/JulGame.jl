@@ -1,6 +1,6 @@
 abstract type UIElement <: JulGame.IUIElement end
 
-@inline function _latency_profiler_active()::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}
+@inline function _latency_profiler_active()::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}
     JulGame.MAIN === nothing && return nothing
     ml = JulGame.current_main()
     prof = ml.latencyProfiler
@@ -8,13 +8,13 @@ abstract type UIElement <: JulGame.IUIElement end
     return prof
 end
 
-@inline function _latency_ui_hit_ms!(prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, t0::UInt64, key::Symbol)
+@inline function _latency_ui_hit_ms!(prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, t0::UInt64, key::Symbol)
     prof === nothing && return
     dt = (time_ns() - t0) / 1e6
     JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
 end
 
-@inline function _latency_ui_hit_count!(prof::Union{Nothing, JulGame.LatencyProfilerModule.LatencyProfiler}, key::Symbol, n::Int = 1)
+@inline function _latency_ui_hit_count!(prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, key::Symbol, n::Int = 1)
     prof === nothing && return
     JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_count!(prof, key, n)
 end

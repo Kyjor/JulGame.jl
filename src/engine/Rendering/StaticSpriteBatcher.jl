@@ -418,20 +418,25 @@ end
 
 Render a batched layer with camera offset and culling.
 """
-function render_batched_layer(batched_layer::BatchedLayer, camera)
+function render_batched_layer(batched_layer::BatchedLayer, camera::Union{Nothing, JulGame.CameraModule.Camera})
     if isempty(batched_layer.textures)
         return
     end
     
-    S = JulGame.pixels_per_world_unit(camera)
+    S = JulGame.CameraModule.pixels_per_world_unit(camera)
     
-    # Calculate camera offset
-    cameraDiff = camera !== nothing ? 
-        Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
-        Math.Vector2(0, 0)
-    
-    cameraSize = camera !== nothing ? camera.size : Math.Vector2(0, 0)
-    cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0, 0)
+    if camera === nothing
+        cameraDiff = JulGame.Math._Vector2{Float64}(0.0, 0.0)
+        cameraSize = JulGame.Math._Vector2{Int32}(0, 0)
+        cameraPosition = JulGame.Math._Vector3{Float64}(0.0, 0.0, 0.0)
+    else
+        cam = camera::JulGame.CameraModule.Camera
+        pos = getfield(cam, :position)::JulGame.Math._Vector3{Float64}
+        off = getfield(cam, :offset)::JulGame.Math._Vector2{Float64}
+        cameraDiff = JulGame.Math._Vector2{Float64}((pos.x + off.x) * S, (pos.y + off.y) * S)
+        cameraSize = getfield(cam, :size)::JulGame.Math._Vector2{Int32}
+        cameraPosition = pos
+    end
     
     for i in eachindex(batched_layer.textures)
         texture = batched_layer.textures[i]
