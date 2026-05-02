@@ -95,6 +95,29 @@ module RectangleModule
             return this
         end
     end
+
+    @inline function _rectangle_scene()
+        main = JulGame.current_main()
+        return getfield(main, :scene)
+    end
+
+    @inline function _rectangle_scene_camera()::Union{Nothing, JulGame.Camera}
+        sc = _rectangle_scene()
+        return getfield(sc, :camera)::Union{Nothing, JulGame.Camera}
+    end
+
+    @inline function _rectangle_world_draw_dims(this::Rectangle, camera::JulGame.Camera)::NTuple{4, Float64}
+        S = Float64(JulGame.pixels_per_world_unit(camera))
+        cpos = getfield(camera, :position)::Math._Vector3{Float64}
+        coff = getfield(camera, :offset)::Math._Vector2{Float64}
+        px = Float64(this.position.x)
+        py = Float64(this.position.y)
+        posX = (px - (Float64(cpos.x) + Float64(coff.x))) * S
+        posY = (py - (Float64(cpos.y) + Float64(coff.y))) * S
+        width = Float64(this.size.x) * S
+        height = Float64(this.size.y) * S
+        return (posX, posY, width, height)
+    end
     
     """
     Draw a filled arc (quarter circle) with center, radius, and start/end angles
@@ -376,15 +399,11 @@ module RectangleModule
             return
         end
         
-        camera = MAIN.scene.camera
+        camera = _rectangle_scene_camera()
         
         # Calculate drawing coordinates based on world or screen position
         if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
-            posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
-            width = this.size.x * S
-            height = this.size.y * S
+            posX, posY, width, height = _rectangle_world_draw_dims(this, camera::JulGame.Camera)
             
             rect = SDL2.SDL_FRect(
                 Float32(posX),
@@ -495,7 +514,9 @@ module RectangleModule
             this.effectTexture = C_NULL
         end
         
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        scene = _rectangle_scene()
+        uis = getfield(scene, :uiElements)::Vector{JulGame.IUIElement}
+        setfield!(scene, :uiElements, filter(x -> x !== this, uis))
     end
     
     #  effects API
@@ -566,20 +587,16 @@ module RectangleModule
         # @debug("render_rectangle_with_effects: Starting for rectangle $(this.name)")
         # @debug("render_rectangle_with_effects: effectTexture=$(this.effectTexture)")
         
-        camera = MAIN.scene.camera
+        camera = _rectangle_scene_camera()
         
         # Calculate position
         if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
-            posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
-            width = this.size.x * S
-            height = this.size.y * S
+            posX, posY, width, height = _rectangle_world_draw_dims(this, camera::JulGame.Camera)
         else
-            posX = this.position.x
-            posY = this.position.y
-            width = this.size.x
-            height = this.size.y
+            posX = Float64(this.position.x)
+            posY = Float64(this.position.y)
+            width = Float64(this.size.x)
+            height = Float64(this.size.y)
         end
         
      #   @debug("render_rectangle_with_effects: Rendering at ($posX, $posY) with size $(width)x$(height)")

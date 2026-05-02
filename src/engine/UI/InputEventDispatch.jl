@@ -6,9 +6,9 @@
     nt = (evt = evt, x = x, y = y)
     for eventToCall in evs
         try
-            Base.invokelatest(eventToCall, nt)
+            eventToCall(nt)
         catch
-            Base.invokelatest(eventToCall)
+            eventToCall()
         end
     end
     return nothing
@@ -24,7 +24,7 @@ end
     JulGame.juliac_trim_active() && return nothing
     for event in events
         try
-            Base.invokelatest(event)
+            event()
         catch e
             @error "Error calling hover event: $(e)"
         end

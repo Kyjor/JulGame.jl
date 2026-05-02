@@ -50,8 +50,6 @@ module JulGame
 
     EditorState = Dict{String, Any}(
         "HistoryData" => Dict{String, IHistory}(),
-        "HistoryStack" => [],
-        "HistoryStackIndex" => 0,
     )
 
     # Typed SDL drop staging (Input polls into these; editor merges into EditorState).
@@ -81,8 +79,6 @@ module JulGame
     include("engine/History/History.jl")
     using .HistoryModule
     export HistoryModule, undo, redo
-    # Concrete element type so `add_field_history` infers `FieldHistory` (JuliaC `--trim`); plain `[]` is `Vector{Any}`.
-    EditorState["HistoryStack"] = HistoryModule.FieldHistory[]
 
     FrameCount::Int = 0
     UserGlobals = Dict{String, Any}()
@@ -205,6 +201,10 @@ module JulGame
     using .Effects
     export EffectsModule, EffectRendererModule, EffectCacheModule, EffectAlgorithmsModule, EffectExamplesModule
 
+    include("engine/Camera/Camera.jl")
+    using .CameraModule: Camera, pixels_per_world_unit, apply_zoom_to_center!
+    export Camera, pixels_per_world_unit, apply_zoom_to_center!
+
     include("engine/UI/UI.jl")
     using .UI
     export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule, UIImageModule
@@ -214,10 +214,6 @@ module JulGame
     include("engine/FX/FX.jl")
     using .FX
     export ImageFXModule, BackgroundFXModule
-    
-    include("engine/Camera/Camera.jl")
-    using .CameraModule: Camera, pixels_per_world_unit, apply_zoom_to_center!
-    export pixels_per_world_unit, apply_zoom_to_center!
     
     include("engine/Entity.jl") 
     using .EntityModule   

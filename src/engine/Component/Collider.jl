@@ -62,7 +62,7 @@ module ColliderModule
         JulGame.juliac_trim_active() && return nothing
         nt = (collider = collider, direction = dir)
         for eventToCall in events
-            Base.invokelatest(eventToCall, nt)
+            eventToCall(nt)
         end
         return nothing
     end

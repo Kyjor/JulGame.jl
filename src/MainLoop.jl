@@ -33,7 +33,7 @@ module MainLoopModule
 	end
 
 	@Base.noinline function _invoke_queued_render_fn_core!(fn::Function)::Nothing
-		Base.invokelatest(fn)
+		fn()
 		return nothing
 	end
 

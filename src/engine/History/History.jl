@@ -23,8 +23,11 @@ module HistoryModule
         return FieldHistory(id, property, oldValue, newValue, now())
     end
 
+    # Typed runtime stack (avoids `EditorState::Dict{String,Any}` in hot path — helps JuliaC `--trim`).
+    const _HISTORY_STACK = FieldHistory[]
+    const _HISTORY_STACK_INDEX = Ref{Int}(0)
+
     # Note: This struct is kept for backward compatibility but is no longer actively used
-    # History is now stored as a flat array in EditorState["HistoryStack"]
     mutable struct History <: JulGame.IHistory
         id::String
         fieldHistory::Dict{Symbol, Vector{FieldHistory}}
@@ -47,6 +50,7 @@ module HistoryModule
     end
 
     function on_notify(event::Symbol, data::Any)
+        JulGame.juliac_trim_active() && return nothing
         if event == :updated_transform
             add_field_history(data.id, data.property, data.oldValue, data.newValue)
 
@@ -54,24 +58,9 @@ module HistoryModule
     end
 
     function add_field_history(id::String, property::Symbol, oldValue::Any, newValue::Any)
-        # @debug "=== ADD_FIELD_HISTORY CALLED ==="
-        # @debug "  ID: $(id)"
-        # @debug "  Property: $(property)"
-        # @debug "  Old Value: $(oldValue)"
-        # @debug "  New Value: $(newValue)"
-        
-        # Ensure HistoryStack is initialized
-        if !haskey(JulGame.EditorState, "HistoryStack")
-            JulGame.EditorState["HistoryStack"] = FieldHistory[]
-            @debug "  Initialized new HistoryStack"
-        end
-        if !haskey(JulGame.EditorState, "HistoryStackIndex")
-            JulGame.EditorState["HistoryStackIndex"] = 0
-            @debug "  Initialized HistoryStackIndex to 0"
-        end
-        
-        history_stack = JulGame.EditorState["HistoryStack"]::Vector{FieldHistory}
-        current_index = JulGame.EditorState["HistoryStackIndex"]::Int
+        JulGame.juliac_trim_active() && return nothing
+        history_stack = _HISTORY_STACK
+        current_index = _HISTORY_STACK_INDEX[]::Int
         #@debug "  Current stack length: $(length(history_stack)), Current index: $(current_index)"
         
         # Check if the last change is the same (deduplicate)
@@ -107,21 +96,16 @@ module HistoryModule
         # Create new entry with id embedded
         entry = FieldHistory(id, property, oldValue, newValue, now())
         push!(history_stack, entry)
-        JulGame.EditorState["HistoryStackIndex"] = length(history_stack)
-        @debug "  ADDED: Stack length now $(length(history_stack)), Index now $(JulGame.EditorState["HistoryStackIndex"])"
+        _HISTORY_STACK_INDEX[] = length(history_stack)
+        @debug "  ADDED: Stack length now $(length(history_stack)), Index now $(_HISTORY_STACK_INDEX[])"
         @debug "=== END ADD_FIELD_HISTORY ==="
     end
     
     export undo
     function undo()
         @debug "=== UNDO CALLED ==="
-        if !haskey(JulGame.EditorState, "HistoryStack") || !haskey(JulGame.EditorState, "HistoryStackIndex")
-            @warn "  History not initialized"
-            return
-        end
-        
-        history_stack = JulGame.EditorState["HistoryStack"]::Vector{FieldHistory}
-        current_index = JulGame.EditorState["HistoryStackIndex"]::Int
+        history_stack = _HISTORY_STACK
+        current_index = _HISTORY_STACK_INDEX[]::Int
         @debug "  Stack length: $(length(history_stack)), Current index: $(current_index)"
         
         if current_index < 1
@@ -136,21 +120,16 @@ module HistoryModule
         @debug "  To: $(entry.oldValue)"
         
         apply_history_value(entry.id, entry.property, entry.oldValue)
-        JulGame.EditorState["HistoryStackIndex"] -= 1
-        @debug "  New index: $(JulGame.EditorState["HistoryStackIndex"])"
+        _HISTORY_STACK_INDEX[] = current_index - 1
+        @debug "  New index: $(_HISTORY_STACK_INDEX[])"
         @debug "=== END UNDO ==="
     end
     
     export redo
     function redo()
         @debug "=== REDO CALLED ==="
-        if !haskey(JulGame.EditorState, "HistoryStack") || !haskey(JulGame.EditorState, "HistoryStackIndex")
-            @warn "  History not initialized"
-            return
-        end
-        
-        history_stack = JulGame.EditorState["HistoryStack"]::Vector{FieldHistory}
-        current_index = JulGame.EditorState["HistoryStackIndex"]::Int
+        history_stack = _HISTORY_STACK
+        current_index = _HISTORY_STACK_INDEX[]::Int
         @debug "  Stack length: $(length(history_stack)), Current index: $(current_index)"
         
         if current_index >= length(history_stack)
@@ -159,9 +138,9 @@ module HistoryModule
         end
         
         # Move forward and apply the newValue
-        JulGame.EditorState["HistoryStackIndex"] += 1
-        @debug "  New index: $(JulGame.EditorState["HistoryStackIndex"])"
-        fwd_index = JulGame.EditorState["HistoryStackIndex"]::Int
+        fwd_index = current_index + 1
+        _HISTORY_STACK_INDEX[] = fwd_index
+        @debug "  New index: $(_HISTORY_STACK_INDEX[])"
         entry = history_stack[fwd_index]
         @debug "  Redoing: $(entry.id).$(entry.property)"
         @debug "  From: $(entry.oldValue)"
@@ -174,7 +153,10 @@ module HistoryModule
     function apply_history_value(id::String, property::Symbol, value::Any)
         @debug "  Applying value to entity $(id).$(property) = $(value)"
         found = false
-        for entity in MAIN.scene.entities
+        main = JulGame.current_main()
+        scene = getfield(main, :scene)::JulGame.SceneModule.Scene
+        ents = getfield(scene, :entities)
+        for entity in ents
             if entity.id == id
                 @debug "  Found entity $(id), setting property"
                 setfield!(entity.transform, property, value)
