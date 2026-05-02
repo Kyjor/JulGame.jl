@@ -32,8 +32,8 @@ module WindowManagerModule
     mutable struct WindowManager
         window::Ptr{SDL2.SDL_Window}
         windowName::String
-        windowSize::JulGame.Math.Vector2
-        screenSize::JulGame.Math.Vector2
+        windowSize::JulGame.Math._Vector2{Int32}
+        screenSize::JulGame.Math._Vector2{Int32}
         isWindowFocused::Bool
         isFullscreen::Bool
         isResizable::Bool
@@ -43,10 +43,10 @@ module WindowManagerModule
         renderScale::JulGame.Math.Vector2f
         targetFrameRate::Int
         allowHighDPI::Bool
-        position::JulGame.Math.Vector2
+        position::JulGame.Math._Vector2{Int32}
         fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
         fpsManagerPtr::Ptr{SDL2.LibSDL2.FPSmanager}
-        baseResolution::JulGame.Math.Vector2
+        baseResolution::JulGame.Math._Vector2{Int32}
 
         function WindowManager()
             # FPS setup on locals before `new(...)` avoids JuliaC trim seeing SDL `ccall` on `%new()` fields (`fpsManager`, etc.).
@@ -86,11 +86,11 @@ module WindowManagerModule
     end
 
     """
-        create_window(this::WindowManager, windowName::String, size::JulGame.Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
+        create_window(this::WindowManager, windowName::String, size::JulGame.Math._Vector2{Int32}, isFullscreen::Bool=false, isResizable::Bool=false)
 
     Creates and initializes the game window with the specified parameters.
     """
-    function create_window(this::WindowManager, windowName::String, size::JulGame.Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
+    function create_window(this::WindowManager, windowName::String, size::JulGame.Math._Vector2{Int32}, isFullscreen::Bool=false, isResizable::Bool=false)
         @debug "Creating window"
         this.windowName = windowName
         this.windowSize = size
@@ -140,7 +140,7 @@ module WindowManagerModule
         return true
     end
 
-    function create_window(windowName::String, size::JulGame.Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
+    function create_window(windowName::String, size::JulGame.Math._Vector2{Int32}, isFullscreen::Bool=false, isResizable::Bool=false)
         return create_window(JulGame.current_main().windowManager, windowName, size, isFullscreen, isResizable)
     end
 
@@ -344,7 +344,7 @@ module WindowManagerModule
         set_logical_size(JulGame.current_main().windowManager, width, height)
     end
 
-    function get_logical_size(this::WindowManager)::JulGame.Math.Vector2
+    function get_logical_size(this::WindowManager)::JulGame.Math._Vector2{Int32}
         if this.window == C_NULL
             @error "Cannot get logical size: Window has not been created"
             return JulGame.Math._Vector2{Int32}(0, 0)
@@ -582,11 +582,11 @@ module WindowManagerModule
     end
 
     """
-        get_window_size(this::WindowManager)::JulGame.Math.Vector2
+        get_window_size(this::WindowManager)::JulGame.Math._Vector2{Int32}
 
     Returns the current window size.
     """
-    function get_window_size(this::WindowManager)::JulGame.Math.Vector2
+    function get_window_size(this::WindowManager)::JulGame.Math._Vector2{Int32}
         if this.window == C_NULL
             return JulGame.Math._Vector2{Int32}(0, 0)
         end
@@ -603,11 +603,11 @@ module WindowManagerModule
     end
 
     """
-        get_display_dimensions(this::WindowManager)::JulGame.Math.Vector2
+        get_display_dimensions(this::WindowManager)::JulGame.Math._Vector2{Int32}
 
     Gets the dimensions of the display the window is on.
     """
-    function get_display_dimensions(this::WindowManager)::JulGame.Math.Vector2
+    function get_display_dimensions(this::WindowManager)::JulGame.Math._Vector2{Int32}
         if this.window == C_NULL
             @error "Cannot get display dimensions: Window has not been created"
             return JulGame.Math._Vector2{Int32}(0, 0)
@@ -880,18 +880,18 @@ module WindowManagerModule
     end
 
     """
-        get_base_resolution(this::WindowManager)::JulGame.Math.Vector2
+        get_base_resolution(this::WindowManager)::JulGame.Math._Vector2{Int32}
 
     Gets the current base resolution used for UI scaling.
 
     # Returns
     - `JulGame.Math.Vector2`: The current base resolution
     """
-    function get_base_resolution(this::WindowManager)::JulGame.Math.Vector2
+    function get_base_resolution(this::WindowManager)::JulGame.Math._Vector2{Int32}
         return this.baseResolution
     end
 
-    function get_base_resolution()::JulGame.Math.Vector2
+    function get_base_resolution()::JulGame.Math._Vector2{Int32}
         return get_base_resolution(JulGame.current_main().windowManager)
     end
 end 

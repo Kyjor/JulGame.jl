@@ -222,8 +222,7 @@ module SceneBuilderModule
         add_scripts_to_entities(BasePath)
 
         JulGame.engine_states.current_state = :game_mode
-        loop_size::Math.Vector2 = size
-        JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(loop_size)
+        JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
     end
 
     function deserialize_and_build_scene(this::Scene)
@@ -411,15 +410,15 @@ module SceneBuilderModule
                     newScript = Base.invokelatest(constructor)
                     scriptFields = _json3_fields(script)
                     @debug("getting fields for: $(script)")
-                    if scriptFields !== nothing
-                        for key_symbol in keys(scriptFields)
-                            value = get(scriptFields, key_symbol, nothing)
+                    if scriptFields isa JSON3.Object && newScript !== nothing
+                        scriptFields_obj::JSON3.Object = scriptFields
+                        for key_symbol in keys(scriptFields_obj)
+                            value = get(scriptFields_obj, key_symbol, nothing)
                             try
                                 ftype = fieldtype(typeof(newScript), key_symbol)
                                 @debug("type: $(ftype)")
                                 if ftype <: EditorExport
                                     @debug "Overwriting $(key_symbol) to $(value) using scene file"
-                                    # Get the wrapped type from EditorExport{T}
                                     underlying_type = ftype.parameters[1]
                                     Base.invokelatest(setfield!, newScript, key_symbol, EditorExport(convert(underlying_type, value)))
                                     continue

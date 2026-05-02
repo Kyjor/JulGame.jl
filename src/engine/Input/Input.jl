@@ -796,52 +796,10 @@ module InputModule
     Try to get image data from X11 clipboard using xclip command.
     """
     function handle_x11_clipboard_image()
-        try
-            # Check if xclip is available
-            if success(`which xclip`)
-                @debug "xclip found, attempting to get image from clipboard"
-
-                # Try to get PNG data from clipboard
-                try
-                    png_data = read(`xclip -selection clipboard -t image/png -o`)
-                    if length(png_data) > 0
-                        @debug "Found PNG data in clipboard"
-                        # Create temporary file for PNG data
-                        temp_file = tempname() * ".png"
-                        open(temp_file, "w") do file
-                            write(file, png_data)
-                        end
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    end
-                catch e
-                    @debug "No PNG data in clipboard: $(e)"
-                end
-
-                # Try to get JPEG data from clipboard
-                try
-                    jpeg_data = read(`xclip -selection clipboard -t image/jpeg -o`)
-                    if length(jpeg_data) > 0
-                        @debug "Found JPEG data in clipboard"
-                        # Create temporary file for JPEG data
-                        temp_file = tempname() * ".jpg"
-                        open(temp_file, "w") do file
-                            write(file, jpeg_data)
-                        end
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    end
-                catch e
-                    @debug "No JPEG data in clipboard: $(e)"
-                end
-
-                @debug "No image data found in X11 clipboard"
-            else
-                @debug "xclip not available, cannot access X11 clipboard"
-            end
-        catch e
-            @warn "Error accessing X11 clipboard: $(e)"
-        end
+        # Image paste via xclip uses `Base.Cmd` (`success`/`read`/`open`), which drags in Base's
+        # process and I/O show stack. JuliaC `--trim` cannot verify that code; SDL text clipboard in
+        # `handle_clipboard_paste` is unchanged.
+        return nothing
     end
 
     """
@@ -850,69 +808,8 @@ module InputModule
     Try to get image data from macOS clipboard using pbpaste command.
     """
     function handle_macos_clipboard_image()
-        try
-            # Check if pbpaste is available (should be on all macOS systems)
-            if success(`which pbpaste`)
-                @debug "pbpaste found, attempting to get image from clipboard"
-
-                # Try to get PNG data from clipboard
-                try
-                    png_data = read(`pbpaste -pboard general -Prefer png`)
-                    if length(png_data) > 0
-                        @debug "Found PNG data in clipboard"
-                        # Create temporary file for PNG data
-                        temp_file = tempname() * ".png"
-                        open(temp_file, "w") do file
-                            write(file, png_data)
-                        end
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    end
-                catch e
-                    @debug "No PNG data in clipboard: $(e)"
-                end
-
-                # Try to get TIFF data from clipboard (common on macOS)
-                try
-                    tiff_data = read(`pbpaste -pboard general -Prefer tiff`)
-                    if length(tiff_data) > 0
-                        @debug "Found TIFF data in clipboard"
-                        # Create temporary file for TIFF data
-                        temp_file = tempname() * ".tiff"
-                        open(temp_file, "w") do file
-                            write(file, tiff_data)
-                        end
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    end
-                catch e
-                    @debug "No TIFF data in clipboard: $(e)"
-                end
-
-                # Try to get JPEG data from clipboard
-                try
-                    jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
-                    if length(jpeg_data) > 0
-                        @debug "Found JPEG data in clipboard"
-                        # Create temporary file for JPEG data
-                        temp_file = tempname() * ".jpg"
-                        open(temp_file, "w") do file
-                            write(file, jpeg_data)
-                        end
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    end
-                catch e
-                    @debug "No JPEG data in clipboard: $(e)"
-                end
-
-                @debug "No image data found in macOS clipboard"
-            else
-                @debug "pbpaste not available, cannot access macOS clipboard"
-            end
-        catch e
-            @warn "Error accessing macOS clipboard: $(e)"
-        end
+        # Image paste via pbpaste uses `Base.Cmd`; see `handle_x11_clipboard_image`.
+        return nothing
     end
 
     """
@@ -921,37 +818,8 @@ module InputModule
     Try to get image data from Windows clipboard using PowerShell.
     """
     function handle_windows_clipboard_image()
-        try
-            @debug "Attempting to get image from Windows clipboard using PowerShell"
-
-            # PowerShell script to get image from clipboard and save as PNG
-            powershell_script = """
-            Add-Type -AssemblyName System.Windows.Forms
-            Add-Type -AssemblyName System.Drawing
-            \$clipboard = [System.Windows.Forms.Clipboard]::GetImage()
-            if (\$clipboard -ne \$null) {
-                \$temp_file = [System.IO.Path]::GetTempFileName() + ".png"
-                \$clipboard.Save(\$temp_file, [System.Drawing.Imaging.ImageFormat]::Png)
-                Write-Output \$temp_file
-            }
-            """
-
-            try
-                # Run PowerShell script
-                result = readchomp(`powershell -Command "$powershell_script"`)
-                if !isempty(result) && isfile(result)
-                    @debug "Found image data in Windows clipboard, saved to: $(result)"
-                    add_clipboard_file_to_import_queue(result)
-                    return
-                end
-            catch e
-                @debug "No image data in Windows clipboard: $(e)"
-            end
-
-            @debug "No image data found in Windows clipboard"
-        catch e
-            @warn "Error accessing Windows clipboard: $(e)"
-        end
+        # Image paste via PowerShell uses `Base.Cmd`; see `handle_x11_clipboard_image`.
+        return nothing
     end
 
     """
