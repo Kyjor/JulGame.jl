@@ -5,6 +5,9 @@ module SpriteModule
     # Effects imports - will be available after Effects module is loaded
     import ..Component.JulGame as JG
 
+    @inline _sprite_round_to_i32(x::Float64)::Int32 =
+        Math.TypeConversions.safe_int32_convert(Base.round(x)::Float64)
+
     export Sprite
     struct Sprite
         color::NTuple{4, Int}
@@ -160,14 +163,15 @@ module SpriteModule
             JulGame.Math._Vector2{Int32}(0, 0)
         end
     
-        # Calculate position
-        position = this.parent.transform.position
+        # `parent` is `IEntity`; use typed `getfield` so trim sees concrete `Transform` / `Float64` math.
+        tr = getfield(this.parent, :transform)::JulGame.TransformModule.Transform
+        pos = getfield(tr, :position)::JulGame.Math._Vector3{Float64}
+        scl = getfield(tr, :scale)::JulGame.Math._Vector3{Float64}
+        scaleX = getfield(scl, :x)::Float64
+        scaleY = getfield(scl, :y)::Float64
     
         # Calculate source rectangle
         srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
-    
-        # Calculate pixels per unit
-        ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
     
         # Check if using effect texture
         zeroSize = JulGame.Math._Vector2{Int32}(0, 0)
@@ -176,23 +180,21 @@ module SpriteModule
         # Always use original sprite size for positioning calculations
         cropWidth = srcRect == C_NULL ? this.size.x : this.crop.z
         cropHeight = srcRect == C_NULL ? this.size.y : this.crop.t
-        scaleX = this.parent.transform.scale.x
-        scaleY = this.parent.transform.scale.y
     
         # Compute position adjustment
-        adjustedX = (position.x + this.offset.x) * S - cameraDiff.x
-        adjustedY = (position.y + this.offset.y) * S - cameraDiff.y
+        adjustedX = (getfield(pos, :x) + getfield(this.offset, :x)) * S - Float64(getfield(cameraDiff, :x))
+        adjustedY = (getfield(pos, :y) + getfield(this.offset, :y)) * S - Float64(getfield(cameraDiff, :y))
     
         # Handle pixelsPerUnit == 0 (use true size without scaling)
         if this.pixelsPerUnit == 0
-            scaledWidth = cropWidth * scaleX * S / 64.0
-            scaledHeight = cropHeight * scaleY * S / 64.0
+            scaledWidth = Float64(cropWidth) * scaleX * S / 64.0
+            scaledHeight = Float64(cropHeight) * scaleY * S / 64.0
         else
             # Use pixelsPerUnit or default PIXELS_PER_UNIT for scaling
-            ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
-            scaleFactor = S / ppu
-            scaledWidth = cropWidth * scaleFactor * scaleX
-            scaledHeight = cropHeight * scaleFactor * scaleY
+            local_ppu::Int = (this.pixelsPerUnit > 0 ? this.pixelsPerUnit : JulGame.PIXELS_PER_UNIT)::Int
+            scaleFactor = S / Float64(local_ppu)
+            scaledWidth = Float64(cropWidth) * scaleFactor * scaleX
+            scaledHeight = Float64(cropHeight) * scaleFactor * scaleY
         end
     
         # Compute position based on anchor (using original sprite dimensions)
@@ -237,9 +239,9 @@ module SpriteModule
         
         # AFTER anchor positioning: expand render size for effect texture and offset to center it
         if usingEffectTex
-            scaleFactor = this.pixelsPerUnit == 0 ? (S / 64.0) : (S / ppu)
-            effectScaledWidth = this.effectSize.x * scaleFactor * scaleX
-            effectScaledHeight = this.effectSize.y * scaleFactor * scaleY
+            scaleFactor = this.pixelsPerUnit == 0 ? (S / 64.0) : (S / Float64(this.pixelsPerUnit))
+            effectScaledWidth = Float64(this.effectSize.x) * scaleFactor * scaleX
+            effectScaledHeight = Float64(this.effectSize.y) * scaleFactor * scaleY
             # Offset to center the larger effect texture over the original sprite position
             centeredX -= (effectScaledWidth - scaledWidth) / 2
             centeredY -= (effectScaledHeight - scaledHeight) / 2
@@ -248,11 +250,15 @@ module SpriteModule
             scaledHeight = effectScaledHeight
         end
     
-        # Select float or integer precision
+        # Select float or integer precision (anchor branches merge SSAs; re-bind as `Float64` for SDL / round)
+        cx = Float64(centeredX)::Float64
+        cy = Float64(centeredY)::Float64
+        sw = Float64(scaledWidth)::Float64
+        sh = Float64(scaledHeight)::Float64
         flip = this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
         renderer = JulGame.Renderer::Ptr{SDL2.SDL_Renderer}
         if this.isFloatPrecision
-            dstRect = Ref(SDL2.SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
+            dstRect = Ref(SDL2.SDL_FRect(cx, cy, sw, sh))
             rw = Float64(dstRect[].w)
             rh = Float64(dstRect[].h)
             calculatedCenter = JulGame.Math._Vector2{Float64}(rw * (this.center.x % 1.0), rh * (this.center.y % 1.0))
@@ -264,10 +270,10 @@ module SpriteModule
             end
         else
             dstRect = Ref(SDL2.SDL_Rect(
-                Math.TypeConversions.safe_int32_convert(Base.round(centeredX)::Float64),
-                Math.TypeConversions.safe_int32_convert(Base.round(centeredY)::Float64),
-                Math.TypeConversions.safe_int32_convert(Base.round(scaledWidth)::Float64),
-                Math.TypeConversions.safe_int32_convert(Base.round(scaledHeight)::Float64),
+                _sprite_round_to_i32(cx),
+                _sprite_round_to_i32(cy),
+                _sprite_round_to_i32(sw),
+                _sprite_round_to_i32(sh),
             ))
             rw_i = Int32(dstRect[].w)
             rh_i = Int32(dstRect[].h)
@@ -276,8 +282,8 @@ module SpriteModule
                 Float64(rh_i) * (this.center.y % 1.0),
             )
             rotationCenter = Ref(SDL2.SDL_Point(
-                Math.TypeConversions.safe_int32_convert(Base.round(calculatedCenter.x)::Float64),
-                Math.TypeConversions.safe_int32_convert(Base.round(calculatedCenter.y)::Float64),
+                _sprite_round_to_i32(getfield(calculatedCenter, :x)::Float64),
+                _sprite_round_to_i32(getfield(calculatedCenter, :y)::Float64),
             ))
             this.lastRenderedScreenPosition = JulGame.Math._Vector2{Float64}(Float64(dstRect[].x), Float64(dstRect[].y))
             this.lastRenderedScreenSize = JulGame.Math._Vector2{Float64}(Float64(rw_i), Float64(rh_i))
@@ -406,7 +412,8 @@ module SpriteModule
                     this.effectSize = JulGame.Math._Vector2{Int32}(Int32(w[]), Int32(h[]))
                     
                     # Cache the result for other sprites with same visuals
-                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = (this.effectTexture, this.effectSize)
+                    tex_nonnull = this.effectTexture::Ptr{SDL2.SDL_Texture}
+                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = (tex_nonnull, this.effectSize)
                     @debug "Cached sprite effect texture" path=this.imagePath key=this.effectCacheKey
                 end
                 this.needsEffectUpdate = false

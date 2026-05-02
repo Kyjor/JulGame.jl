@@ -327,7 +327,7 @@ module InputModule
         return out
     end
 
-    function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
+    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -463,7 +463,7 @@ module InputModule
         return nothing
     end
 
-    function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
+    Base.@noinline function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
