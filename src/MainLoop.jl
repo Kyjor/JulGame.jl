@@ -31,6 +31,11 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
+	@Base.noinline function _invoke_queued_render_fn_juliac(rf::JulGame.RenderQueuedFunction)::Nothing
+		Base.invokelatest(getfield(rf, :function_to_call)::Function)
+		return nothing
+	end
+
 	export enable_profiling, disable_profiling, print_profiling_report, export_profiling_data
 	export maybe_enable_latency_profiling_from_env!
 
@@ -1161,7 +1166,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					tgt = uiRenderingOrder[i][2]
 					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
 					if tgt isa JulGame.RenderQueuedFunction
-						(getfield(tgt::JulGame.RenderQueuedFunction, :function_to_call)::Function)()
+						_invoke_queued_render_fn_juliac(tgt::JulGame.RenderQueuedFunction)
 					else
 						JulGame.render(tgt)
 					end
@@ -1181,7 +1186,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						end
-						println(parent_info, " has a problem with it's render function")
+						@error "$(parent_info) has a problem with its render function"
 						@error string(e)
 					end
 				end
@@ -1384,7 +1389,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				Component.draw(renderOrder[i][2], camera)
 			elseif renderOrder[i][2] isa JulGame.RenderQueuedFunction
 				rf = renderOrder[i][2]::JulGame.RenderQueuedFunction
-				(getfield(rf, :function_to_call)::Function)()
+				_invoke_queued_render_fn_juliac(rf)
 			elseif renderOrder[i][2] isa JulGame.StaticSpriteBatcherModule.BatchedLayer
 				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2]::JulGame.StaticSpriteBatcherModule.BatchedLayer, camera)
 			else

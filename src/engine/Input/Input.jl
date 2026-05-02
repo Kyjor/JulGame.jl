@@ -363,7 +363,7 @@ module InputModule
         return nothing
     end
 
-    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
+    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, @nospecialize(ui::JulGame.IUIElement), canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 

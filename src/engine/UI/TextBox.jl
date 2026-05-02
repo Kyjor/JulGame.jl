@@ -56,10 +56,10 @@ module TextBoxModule
             id::String=JulGame.generate_uuid(), 
             name::String = "TextBox", 
             anchor::Symbol = :none,
-            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            anchorOffset::JulGame.Math._Vector2{Int32} = JulGame.Math._Vector2{Int32}(0, 0), 
             isWorldEntity::Bool=false, 
             layer::Int=0,
-            position::Math.Vector2 = Math.Vector2(0,0), 
+            position::JulGame.Math._Vector2{Int32} = JulGame.Math._Vector2{Int32}(0, 0), 
             clickEvents::Vector{Function} = Function[],
             hoverEnterEvents::Vector{Function} = Function[],
             hoverExitEvents::Vector{Function} = Function[],
@@ -180,14 +180,23 @@ module TextBoxModule
             SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         end
 
-        camera = MAIN.scene.camera
-        
+        ml = JulGame.current_main()
+        sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+        camera = getfield(sc, :camera)
+
         SDL2.SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         # Handle world coordinates for world entities, similar to Sprite component
         if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
-            posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
+            cam = camera::JulGame.CameraModule.Camera
+            S = JulGame.pixels_per_world_unit(cam)
+            pos3 = getfield(cam, :position)::JulGame.Math._Vector3{Float64}
+            off2 = getfield(cam, :offset)::JulGame.Math._Vector2{Float64}
+            z = getfield(cam, :zoom)::Float64
+            rinst = UI.relationship_instance(this)
+            pos2 = getfield(rinst, :position)::JulGame.Math._Vector2{Int32}
+            sz2 = getfield(rinst, :size)::JulGame.Math._Vector2{Int32}
+            posX = (pos2.x - (pos3.x + off2.x)) * S
+            posY = (pos2.y - (pos3.y + off2.y)) * S
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
                 texture_to_render, 
@@ -195,19 +204,25 @@ module TextBoxModule
                 Ref(SDL2.SDL_FRect(
                     Float32(posX), 
                     Float32(posY), 
-                    Float32(this.size.x * camera.zoom), 
-                    Float32(this.size.y * camera.zoom)
+                    Float32(sz2.x * z), 
+                    Float32(sz2.y * z)
                 ))
             ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
         else
             # Render with screen-space positioning (traditional UI)
-            adjusted_position = Math.Vector2(0, 0)
-            if this.originalSize != this.size && this.anchor.current_state == :none
-                adjusted_position = Math.Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
-                # @debug "difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)"
-                # @debug "adjusted position: $(adjusted_position.x), $(adjusted_position.y)"
+            rinst = UI.relationship_instance(this)
+            pos2 = getfield(rinst, :position)::JulGame.Math._Vector2{Int32}
+            sz2 = getfield(rinst, :size)::JulGame.Math._Vector2{Int32}
+            orig2 = getfield(rinst, :originalSize)::JulGame.Math._Vector2{Int32}
+            anc_state = getfield(getfield(rinst, :anchor), :current_state)
+            adjusted_position = JulGame.Math._Vector2{Int32}(0, 0)
+            if sz2 != orig2 && anc_state == :none
+                adjusted_position = JulGame.Math._Vector2{Int32}(
+                    Int32(round(pos2.x - (sz2.x - orig2.x) / 2)),
+                    Int32(round(pos2.y - (sz2.y - orig2.y) / 2)),
+                )
             else
-                adjusted_position = this.position
+                adjusted_position = pos2
             end
             @assert SDL2.SDL_RenderCopyF(
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
@@ -216,8 +231,8 @@ module TextBoxModule
                 Ref(SDL2.SDL_FRect(
                     Float32(adjusted_position.x), 
                     Float32(adjusted_position.y), 
-                    Float32(this.size.x), 
-                    Float32(this.size.y)
+                    Float32(sz2.x), 
+                    Float32(sz2.y)
                 ))
             ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
         end
@@ -242,7 +257,8 @@ module TextBoxModule
         if this.font == C_NULL
             error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError())), loading default font")
             this.fontPath = DEFAULT_FONT
-            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(JulGame.BUILT_IN_ASSETS["Font"]), length(JulGame.BUILT_IN_ASSETS["Font"])), 1, Math.TypeConversions.safe_int32_convert(fontSize))
+            rawf = (JulGame.BUILT_IN_ASSETS["Font"])::Vector{UInt8}
+            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(rawf), length(rawf)), 1, Math.TypeConversions.safe_int32_convert(trueFontSize))
         end
         if fontPath != "Default"
             this.fontPath = fontPath
@@ -259,8 +275,8 @@ module TextBoxModule
             error("Failed to render text for textbox $(this.name)")
             return
         end
-        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        surf = unsafe_wrap(Array, this.renderText, 10; own = false)[1]
+        this.size = JulGame.Math._Vector2{Int32}(surf.w, surf.h)
         this.originalSize = this.size
         this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
 
@@ -285,10 +301,10 @@ module TextBoxModule
     function load_font_sdl(fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
             if fontPath == "Default" || fontPath == ""
-                raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+                raw_data = (JulGame.BUILT_IN_ASSETS["Font"])::Vector{UInt8}
                 @debug "loading default font"
             else
-                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+                raw_data = (JulGame.FONT_CACHE[get_comma_separated_path(fontPath)])::Vector{UInt8}
                 @debug "loading font from cache"
             end
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
@@ -349,9 +365,9 @@ module TextBoxModule
             @debug("Failed to render text for textbox $(this.name)")
             return
         end
-        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
-        this.originalSize = Math.Vector2(this.size.x, this.size.y)
+        surface_row_f = unsafe_wrap(Array, this.renderText, 10; own = false)[1]
+        this.size = JulGame.Math._Vector2{Int32}(surface_row_f.w, surface_row_f.h)
+        this.originalSize = JulGame.Math._Vector2{Int32}(this.size.x, this.size.y)
         this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
 
         if !this.isWorldEntity
@@ -482,7 +498,7 @@ module TextBoxModule
     function get_true_font_size(baseFontSize::Int)::Int
         # Get current window size and base resolution
         windowSize = JulGame.get_window_size()
-        baseResolution = JulGame.MAIN.windowManager.baseResolution
+        baseResolution = getfield(getfield(JulGame.current_main(), :windowManager), :baseResolution)::JulGame.Math._Vector2{Int32}
         
         # Calculate scaling factors
         scaleX = windowSize.x / baseResolution.x
@@ -503,7 +519,10 @@ module TextBoxModule
         
         free_text_resources(this)
 
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        ml = JulGame.current_main()
+        sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+        uiels = getfield(sc, :uiElements)::Vector{JulGame.IUIElement}
+        setfield!(sc, :uiElements, filter(x -> x !== this, uiels))
     end
     
     # Generate a stable string for effects to use in cache keys
@@ -647,7 +666,7 @@ module TextBoxModule
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                 SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                this.size = Math.Vector2(w[], h[])
+                this.size = JulGame.Math._Vector2{Int32}(w[], h[])
                 @debug "Cached effect texture size updated" name=this.name w=w[] h=h[]
             end
             
@@ -707,7 +726,7 @@ module TextBoxModule
                     w = Ref{Cint}(0); h = Ref{Cint}(0)
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.size = Math.Vector2(w[], h[])
+                    this.size = JulGame.Math._Vector2{Int32}(w[], h[])
                     @debug "Effect texture created" name=this.name tex_ptr=this.effectTexture w=w[] h=h[]
                     # Set scaling mode according to JulGame.SCALE_QUALITY
                     SDL2.SDL_SetTextureScaleMode(this.effectTexture, get_scale_mode_from_quality())
@@ -825,7 +844,9 @@ module TextBoxModule
         parent=this.parent
     )
         UI.initialize(newTextBox)
-        push!(MAIN.scene.uiElements, newTextBox)
+        ml = JulGame.current_main()
+        sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+        push!(getfield(sc, :uiElements)::Vector{JulGame.IUIElement}, newTextBox)
         return newTextBox
     end
 end

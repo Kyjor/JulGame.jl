@@ -9,7 +9,7 @@ function CallSDLFunction(func::Function, args...)
         || with function $(func) 
         || with args $(args)" 
 
-        Base.show_backtrace(stdout, stacktrace())
+        IS_PACKAGE_COMPILED || Base.show_backtrace(stdout, stacktrace())
     end
 
     return ret
