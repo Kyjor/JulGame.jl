@@ -1027,6 +1027,7 @@ Main function to call from the editor loop to handle dropped files.
 This should be called where the current file drop handling is done.
 """
 function handle_dropped_files(renderer, current_scene_main=nothing)
+    JulGame.sync_editor_sdl_drops_to_editor_state!()
     dropped_files = get(JulGame.EditorState, "dropped_files", nothing)
     is_from_scene_viewer = get(JulGame.EditorState, "is_from_scene_viewer", false)
     if dropped_files !== nothing && !isempty(dropped_files)

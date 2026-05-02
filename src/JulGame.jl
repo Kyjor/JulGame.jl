@@ -46,7 +46,31 @@ module JulGame
         "HistoryStack" => [],
         "HistoryStackIndex" => 0,
     )
-   
+
+    # Typed SDL drop staging (Input polls into these; editor merges into EditorState).
+    const EDITOR_SDL_DROP_FILE_PATHS = String[]
+    const EDITOR_SDL_DROP_TEXT_PATHS = String[]
+
+    function sync_editor_sdl_drops_to_editor_state!()::Nothing
+        if !isempty(EDITOR_SDL_DROP_FILE_PATHS)
+            if !haskey(EditorState, "dropped_files")
+                EditorState["dropped_files"] = String[]
+            end
+            df = EditorState["dropped_files"]::Vector{String}
+            append!(df, EDITOR_SDL_DROP_FILE_PATHS)
+            empty!(EDITOR_SDL_DROP_FILE_PATHS)
+        end
+        if !isempty(EDITOR_SDL_DROP_TEXT_PATHS)
+            if !haskey(EditorState, "dropped_texts")
+                EditorState["dropped_texts"] = String[]
+            end
+            dt = EditorState["dropped_texts"]::Vector{String}
+            append!(dt, EDITOR_SDL_DROP_TEXT_PATHS)
+            empty!(EDITOR_SDL_DROP_TEXT_PATHS)
+        end
+        return nothing
+    end
+
     include("engine/History/History.jl")
     using .HistoryModule
     export HistoryModule, undo, redo

@@ -62,10 +62,40 @@ end
 
 const relationships = Dict{JulGame.IUIElement, UIElementInstance}()
 
-# Layer for input hit-test ordering; getfield path for JuliaC --trim (avoids IUIElement getproperty).
-function input_sort_ui_layer(ui::JulGame.IUIElement)::Int
+# Input hit-test helpers: getfield/setfield paths for JuliaC --trim (avoid IUIElement getproperty in Input).
+function input_ui_is_active(ui::JulGame.IUIElement)::Bool
     add_relationship_if_not_exists(ui)
-    return getfield(relationships[ui], :layer)::Int
+    return getfield(relationships[ui], :isActive)::Bool
+end
+
+function input_ui_force_click_check(ui::JulGame.IUIElement)::Bool
+    add_relationship_if_not_exists(ui)
+    return getfield(relationships[ui], :forceClickCheck)::Bool
+end
+
+function input_ui_name(ui::JulGame.IUIElement)::String
+    add_relationship_if_not_exists(ui)
+    return getfield(relationships[ui], :name)::String
+end
+
+function input_ui_is_hovered(ui::JulGame.IUIElement)::Bool
+    add_relationship_if_not_exists(ui)
+    inst = relationships[ui]
+    if getfield(inst, :isActive) == false
+        return false
+    end
+    return getfield(inst, :isHovered)::Bool
+end
+
+function input_ui_set_isHovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
+    add_relationship_if_not_exists(ui)
+    inst = relationships[ui]
+    prev = getfield(inst, :isHovered)
+    setfield!(inst, :isHovered, value)
+    if prev != value
+        UI.handle_hover_event(ui, value)
+    end
+    return nothing
 end
 
 function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
