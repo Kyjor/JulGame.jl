@@ -52,7 +52,7 @@ module ObserverModule
             return
         end
         for observer in this.observers
-            observer(event, data)
+            Base.invokelatest(observer, event, data)
         end
     end
 end

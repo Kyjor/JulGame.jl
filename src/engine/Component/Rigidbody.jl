@@ -19,11 +19,11 @@
         grounded::Bool
         mass::Float64
         offset::_Vector2{Float64}
-        parent::Any
+        parent::JulGame.IEntity
         useGravity::Bool
         velocity::_Vector2{Float64}
 
-        function InternalRigidbody(parent::Any; mass::Float64 = 1.0, useGravity::Bool = true)
+        function InternalRigidbody(parent::JulGame.IEntity; mass::Float64 = 1.0, useGravity::Bool = true)
             return new(
                 _Vector2{Float64}(),
                 0.1,
@@ -40,9 +40,10 @@
     function Component.update(this::InternalRigidbody, dt)
         dt = clamp(dt, 0, .5)
         velocityMultiplier = _Vector2{Float64}(1.0, 1.0)
-        transform = this.parent.transform
+        parent = this.parent::JulGame.IEntity
+        transform = getfield(parent, :transform)::Component.TransformModule.Transform
         currentPosition = transform.position
-        
+
         newPosition = transform.position + this.velocity*dt + this.acceleration*(dt*dt*0.5)
         if this.grounded
             newPosition = _Vector2{Float64}(newPosition.x, currentPosition.y)
@@ -55,13 +56,15 @@
         set_velocity(this, newVelocity * velocityMultiplier)
         this.acceleration = newAcceleration
 
-        if this.parent.collider != C_NULL
-            Component.check_collisions(this.parent.collider)
+        pc = getfield(parent, :collider)
+        if pc !== C_NULL
+            Component.check_collisions(pc)
         end
     end
 
     function Component.apply_forces(this::InternalRigidbody)
-        gravityAcceleration = _Vector2{Float64}(0.0, this.useGravity ? GRAVITY : 0.0)
+        gy = this.useGravity ? JulGame.GRAVITY : 0.0
+        gravityAcceleration = _Vector2{Float64}(0.0, gy)
         dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
         dragAcceleration = dragForce / this.mass
         return gravityAcceleration - dragAcceleration
@@ -84,8 +87,9 @@
         this.velocity = this.velocity + velocity
         if(velocity.y < 0)
             this.grounded = false
-            if this.parent.collider != C_NULL
-                this.parent.collider.currentRests = []
+            pc = getfield(this.parent, :collider)
+            if pc !== C_NULL
+                pc.currentRests = []
             end
         end
     end
@@ -108,7 +112,7 @@
     end
     export set_velocity
 
-    function Component.duplicate(this::InternalRigidbody, parent::Any)
+    function Component.duplicate(this::InternalRigidbody, parent::JulGame.IEntity)
         newRigidbody = InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)
         newRigidbody.acceleration = this.acceleration
         newRigidbody.drag = this.drag
