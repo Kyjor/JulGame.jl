@@ -16,22 +16,22 @@ module CircleColliderModule
     export InternalCircleCollider
     mutable struct InternalCircleCollider
         collisionEvents::Vector{Function}
-        currentCollisions::Vector{Collider}
-        currentRests::Vector{Collider}
+        currentCollisions::Vector{InternalCollider}
+        currentRests::Vector{InternalCollider}
         diameter::Float64
         enabled::Bool
         isGrounded::Bool
         isTrigger::Bool
         offset::Math.Vector2f
-        parent::Any
+        parent::JulGame.IEntity
         tag::String
 
-        function InternalCircleCollider(parent::Any, diameter::Float64, offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, enabled::Bool=true)
+        function InternalCircleCollider(parent::JulGame.IEntity, diameter::Float64, offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, enabled::Bool=true)
             this = new()
-    
-            this.collisionEvents = []
-            this.currentCollisions = []
-            this.currentRests = []
+
+            this.collisionEvents = Function[]
+            this.currentCollisions = InternalCollider[]
+            this.currentRests = InternalCollider[]
             this.diameter = diameter
             this.enabled = enabled
             this.isGrounded = false
@@ -39,84 +39,69 @@ module CircleColliderModule
             this.offset = offset
             this.parent = parent
             this.tag = tag
-    
+
             return this
         end
     end
-    
-    function Component.get_size(this::CircleCollider)
-        return this.size
+
+    @Base.noinline function _circle_collider_invoke_collision_events!(events::Vector{Function})::Nothing
+        for eventToCall in events
+            eventToCall()
+        end
+        return nothing
     end
 
-    function Component.check_collisions(this::CircleCollider)
-        colliders = MAIN.scene.colliders
-        #Only check the player against other colliders
-        counter = 0
-        
-        this.isGrounded = this.parent.rigidbody.grounded
+    @inline function _circle_dispatch_collision_events!(events::Vector{Function})::Nothing
+        JulGame.juliac_trim_active() && return nothing
+        _circle_collider_invoke_collision_events!(events)
+        return nothing
+    end
+
+    function Component.get_size(this::InternalCircleCollider)
+        d = this.diameter
+        return Math.Vector2f(d, d)
+    end
+
+    function Component.check_collisions(this::InternalCircleCollider)
+        main = JulGame.current_main()
+        scene = getfield(main, :scene)::JulGame.SceneModule.Scene
+        colliders = getfield(scene, :colliders)
+        this_ent = this.parent::JulGame.IEntity
+        rb = getfield(this_ent, :rigidbody)::Union{Component.RigidbodyModule.InternalRigidbody, Ptr{Nothing}}
+        rb === C_NULL && return
+        this.isGrounded = (getfield(rb, :grounded)::Bool)
 
         for i in eachindex(colliders)
-            #TODO: Skip any out of a certain range of this. This will prevent a bunch of unnecessary collision checks
-            if !colliders[i].parent.isActive || !colliders[i].enabled
-                if this.parent.rigidbody.grounded && i == length(colliders)
-                    this.parent.rigidbody.grounded = false
+            oc = colliders[i]::InternalCollider
+            oent = oc.parent::JulGame.IEntity
+            if !(getfield(oent, :isActive)::Bool) || !oc.enabled
+                if (getfield(rb, :grounded)::Bool) && i == length(colliders)
+                    setfield!(rb, :grounded, false)
                 end
                 continue
             end
-            if this != colliders[i] && Component.get_velocity(this.parent.rigidbody).y >= 0
-                collision = check_collision(this, colliders[i])
-                if CheckIfResting(this, colliders[i])[1] == true && length(this.currentRests) > 0 && !(colliders[i] in this.currentRests)
-                    # if this collider isn't already in the list of current rests, check if it is on the same Y level and the same size as any of the current rests, if it is, then add it to current rests
+            if (getfield(rb, :velocity)::Math._Vector2{Float64}).y >= 0
+                collision = check_collision(this, oc)
+                if CheckIfResting(this, oc)[1] == true && length(this.currentRests) > 0 && !(oc in this.currentRests)
                     for j in eachindex(this.currentRests)
-                        if this.currentRests[j].parent.transform.position.y == colliders[i].parent.transform.position.y && Component.get_size(this.currentRests[j]).y == Component.get_size(colliders[i]).y
-                            push!(this.currentRests, colliders[i])
+                        rj = this.currentRests[j]
+                        rjp = rj.parent::JulGame.IEntity
+                        otp_tf = getfield(oent, :transform)::Component.TransformModule.Transform
+                        rt_tf = getfield(rjp, :transform)::Component.TransformModule.Transform
+                        if (getfield(rt_tf, :position)::Math._Vector3{Float64}).y == (getfield(otp_tf, :position)::Math._Vector3{Float64}).y && Component.get_size(rj).y == Component.get_size(oc).y
+                            push!(this.currentRests, oc)
                             break
                         end
                     end
                 end
-                transform = this.parent.transform
-                # if collision[1] == Top::CollisionDirection
-                #     push!(this.currentCollisions, colliders[i])
-                #     for eventToCall in this.collisionEvents
-                #         eventToCall()
-                #     end
-                #     #Begin to overlap, correct position
-                #     transform.setPosition(Math.Vector2f(transform.position.x, transform.position.y + collision[2]))
-                # end
-                # if collision[1] == Left::CollisionDirection
-                #     push!(this.currentCollisions, colliders[i])
-                #     for eventToCall in this.collisionEvents
-                #         eventToCall()
-                #     end
-                #     #Begin to overlap, correct position
-                #     transform.setPosition(Math.Vector2f(transform.position.x + collision[2], transform.position.y))
-                # end
-                # if collision[1] == Right::CollisionDirection
-                #     push!(this.currentCollisions, colliders[i])
-                #     for eventToCall in this.collisionEvents
-                #         eventToCall()
-                #     end
-                #     #Begin to overlap, correct position
-                #     transform.setPosition(Math.Vector2f(transform.position.x - collision[2], transform.position.y))
-                # end
-                # if collision[1] == Bottom::CollisionDirection
-                #this.isGrounded = collision[1]
+                transform = getfield(this_ent, :transform)::Component.TransformModule.Transform
                 if collision[1] == true
-                    push!(this.currentRests, colliders[i])
-                    for eventToCall in this.collisionEvents
-                        eventToCall()
-                    end
-                    #Begin to overlap, correct position
-                    Component.set_position(transform, Math.Vector2f(transform.position.x, transform.position.y - collision[2]))
+                    push!(this.currentRests, oc)
+                    _circle_dispatch_collision_events!(this.collisionEvents)
+                    pos = getfield(transform, :position)::Math._Vector3{Float64}
+                    Component.set_position(transform, Math._Vector2{Float64}(pos.x, pos.y - collision[2]))
                     this.isGrounded = true
                 end
-                # end
-                # if collision[1] == Below::ColliderLocation
-                #     push!(this.currentCollisions, colliders[i])
-                #     for eventToCall in this.collisionEvents
-                #         eventToCall()
-                #     end
-                # end
             end
         end
         for i in eachindex(this.currentRests)
@@ -125,12 +110,12 @@ module CircleColliderModule
                 break
             end
         end
-   
-        this.parent.rigidbody.grounded = length(this.currentRests) > 0 && Component.get_velocity(this.parent.rigidbody).y >= 0
-        this.currentCollisions = []
+
+        setfield!(rb, :grounded, length(this.currentRests) > 0 && (getfield(rb, :velocity)::Math._Vector2{Float64}).y >= 0)
+        this.currentCollisions = InternalCollider[]
     end
 
-    function Component.add_collision_event(this::CircleCollider, event)
+    function Component.add_collision_event(this::InternalCircleCollider, event)
         push!(this.collisionEvents, event)
     end   
 

@@ -14,7 +14,7 @@ module EffectRendererModule
         elseif target isa EffectsModule.SpriteTarget
             return target.sprite.color
         elseif target isa EffectsModule.RectangleTarget
-            return target.rectangle.color
+            return JulGame._trim_effect_rect_target_color(target)
         elseif target isa EffectsModule.LineTarget
             return target.line.color
         elseif target isa EffectsModule.ImageTarget
@@ -35,7 +35,7 @@ module EffectRendererModule
         end
     end
 
-    export apply_effects!, to_surface, from_surface, apply_effects_chain!
+    export apply_effects!, to_surface, from_surface, apply_effects_chain!, _render_rectangle_to_surface_core
 
     # Heuristic: determine if a surface's non-transparent pixels are nearly white
     function is_surface_nearly_white(surface::Ptr{SDL2.SDL_Surface})::Bool
@@ -133,7 +133,7 @@ module EffectRendererModule
         elseif target isa EffectsModule.SpriteTarget
             return target.sprite.image
         elseif target isa EffectsModule.RectangleTarget
-            return render_rectangle_to_surface(target.rectangle)
+            return JulGame._trim_effect_rect_target_to_surface(target)
         elseif target isa EffectsModule.LineTarget
             return render_line_to_surface(target.line)
         elseif target isa EffectsModule.ImageTarget
@@ -171,22 +171,7 @@ module EffectRendererModule
             target.sprite.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         elseif target isa EffectsModule.RectangleTarget
-            # Update rectangle's effect texture
-            @debug("from_surface: Creating effect texture for rectangle")
-            if target.rectangle.effectTexture != C_NULL
-                @debug("from_surface: Destroying old effect texture")
-                SDL2.SDL_DestroyTexture(target.rectangle.effectTexture)
-            end
-            target.rectangle.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
-            if target.rectangle.effectTexture == C_NULL
-                @error("from_surface: Failed to create texture from surface: $(unsafe_string(SDL2.SDL_GetError()))")
-            else
-                SDL2.SDL_SetTextureBlendMode(target.rectangle.effectTexture, SDL2.SDL_BLENDMODE_BLEND)
-                w = Ref{Cint}(0); h = Ref{Cint}(0)
-                SDL2.SDL_QueryTexture(target.rectangle.effectTexture, C_NULL, C_NULL, w, h)
-                @debug("from_surface: Created effect texture $(w[])x$(h[]) for rectangle")
-            end
-            return target
+            return JulGame._trim_effect_rect_target_from_surface!(target, surface)
         elseif target isa EffectsModule.LineTarget
             # Update line's effect texture
             if target.line.effectTexture != C_NULL
@@ -257,7 +242,7 @@ module EffectRendererModule
         return surface
     end
 
-    function render_rectangle_to_surface(rect::Any)::Ptr{SDL2.SDL_Surface}
+    function _render_rectangle_to_surface_core(rect::Any)::Ptr{SDL2.SDL_Surface}
         if rect === nothing
             @error("render_rectangle_to_surface: rect is nothing")
             return C_NULL

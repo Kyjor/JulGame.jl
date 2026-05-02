@@ -16,8 +16,8 @@ module ScreenButtonModule
         fontSize::Int
         isInitialized::Bool
         text::String
-        textOffset::Math.Vector2
-        textSize::Math.Vector2
+        textOffset::Math._Vector2{Float32}
+        textSize::Math._Vector2{Float32}
         textTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         textColor::NTuple{4, Int}
         crop::Union{Ptr{Nothing}, Math.Vector4}
@@ -74,9 +74,9 @@ module ScreenButtonModule
             this.name = name
             this.position = position
             this.text = text
-            this.textOffset = textOffset
+            this.textOffset = Math._Vector2{Float32}(Float32(textOffset.x), Float32(textOffset.y))
             this.textTexture = C_NULL
-            this.textSize = Math.Vector2(0, 0)
+            this.textSize = Math._Vector2{Float32}(0f0, 0f0)
             this.persistentBetweenScenes = persistentBetweenScenes
             this.isHovered = false
             this.isActive = isActive
@@ -99,10 +99,10 @@ module ScreenButtonModule
 
             # If the textOffset is at (0,0), we'll consider it as "should center text"
             # This ensures text is centered by default if no explicit offset is provided
-            if this.textOffset == Math.Vector2(0, 0) && this.text != ""
+            if this.textOffset == Math._Vector2{Float32}(0f0, 0f0) && this.text != ""
                 # Even though we don't have the text size yet, we'll mark it for centering
                 # The actual centering will happen in UI.initialize
-                this.textOffset = Math.Vector2(-1, -1)  # Special value to indicate centering is needed
+                this.textOffset = Math._Vector2{Float32}(-1f0, -1f0)  # Special value to indicate centering is needed
             end
 
             return this
@@ -195,7 +195,7 @@ module ScreenButtonModule
                     surface = unsafe_wrap(Array, textSurface, 10; own = false)
                     width = Float32(surface[1].w)
                     height = Float32(surface[1].h)
-                    this.textSize = Math.Vector2(width, height)
+                    this.textSize = Math._Vector2{Float32}(width, height)
                     
                     # Debug the exact text dimensions
                     #println("Text dimensions for '$(this.text)': $(width)x$(height)")
@@ -227,7 +227,7 @@ module ScreenButtonModule
         # Reset any previous offset settings
         if button.textSize.x == 0 || button.textSize.y == 0
             # If text size isn't set yet, just use 0,0 offset
-            button.textOffset = Math.Vector2(0, 0)
+            button.textOffset = Math._Vector2{Float32}(0f0, 0f0)
             return
         end
         
@@ -247,7 +247,7 @@ module ScreenButtonModule
         #println("Calculated offsets - X: $textX, Y: $textY")
         
         # Update the text offset with precise floating-point coordinates
-        button.textOffset = Math.Vector2(textX, textY)
+        button.textOffset = Math._Vector2{Float32}(textX, textY)
     end
 
     function UI.load_button_sprite_editor(this::ScreenButton, path::String, up::Bool)
@@ -421,7 +421,7 @@ module ScreenButtonModule
                 surface = unsafe_wrap(Array, textSurface, 10; own = false)
                 width = Float32(surface[1].w)
                 height = Float32(surface[1].h)
-                this.textSize = Math.Vector2(width, height)
+                this.textSize = Math._Vector2{Float32}(width, height)
                 
                 # Debug the exact text dimensions
                 #println("Text dimensions for '$(this.text)': $(width)x$(height)")
@@ -457,10 +457,10 @@ module ScreenButtonModule
     function load_font_sdl(basePath::String, fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""
             if fontPath == "Default" || fontPath == ""
-                raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+                raw_data = JulGame.BUILT_IN_ASSETS["Font"]::Vector{UInt8}
                 @debug "loading default font"
             else
-                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]::Vector{UInt8}
                 @debug "loading font from cache"
             end
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))

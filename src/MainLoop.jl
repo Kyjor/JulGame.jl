@@ -32,9 +32,15 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
-	@Base.noinline function _invoke_queued_render_fn_juliac(rf::JulGame.RenderQueuedFunction)::Nothing
-		fn = getfield(rf, :function_to_call)::Function
+	@Base.noinline function _invoke_queued_render_fn_core!(fn::Function)::Nothing
 		Base.invokelatest(fn)
+		return nothing
+	end
+
+	@Base.noinline function _invoke_queued_render_fn_juliac(rf::JulGame.RenderQueuedFunction)::Nothing
+		JulGame.juliac_trim_active() && return nothing
+		fn = getfield(rf, :function_to_call)::Function
+		_invoke_queued_render_fn_core!(fn)
 		return nothing
 	end
 

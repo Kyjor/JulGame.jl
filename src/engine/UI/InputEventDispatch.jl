@@ -1,13 +1,30 @@
 # Mouse/input dispatch for UI. Loaded after `ScreenButton.jl` so `ScreenButtonModule` resolves
 # and JuliaC `--trim` can use concrete `isa` branches.
 
-@inline function _ui_run_click_event_callbacks!(inst::UIElementInstance, evt, x, y)::Nothing
-    evs = getfield(inst, :clickEvents)::Vector{Function}
+@Base.noinline function _ui_invoke_click_event_callbacks!(evs::Vector{Function}, evt, x, y)::Nothing
     for eventToCall in evs
         try
-            Base.invokelatest(eventToCall, (evt = evt, x = x, y = y))
+            eventToCall((evt = evt, x = x, y = y))
         catch
-            Base.invokelatest(eventToCall)
+            eventToCall()
+        end
+    end
+    return nothing
+end
+
+@inline function _ui_run_click_event_callbacks!(inst::UIElementInstance, evt, x, y)::Nothing
+    JulGame.juliac_trim_active() && return nothing
+    evs = getfield(inst, :clickEvents)::Vector{Function}
+    _ui_invoke_click_event_callbacks!(evs, evt, x, y)
+    return nothing
+end
+
+@Base.noinline function _ui_invoke_simple_hover_callbacks!(events::Vector{Function})::Nothing
+    for event in events
+        try
+            event()
+        catch e
+            @error "Error calling hover event: $(e)"
         end
     end
     return nothing
@@ -23,13 +40,12 @@ end
     _latency_ui_hit_ms!(prof, t_rw, :hover_set_isHovered_field_rw)
     prev == true && return nothing
     t0 = time_ns()
-    events = getfield(inst, :hoverEnterEvents)::Vector{Function}
-    for event in events
-        try Base.invokelatest(event)
-        catch e
-            @error "Error calling hover event: $(e)"
-        end
+    if JulGame.juliac_trim_active()
+        _latency_ui_hit_ms!(prof, t0, :hover_dispatch_enter_invocations)
+        return nothing
     end
+    events = getfield(inst, :hoverEnterEvents)::Vector{Function}
+    _ui_invoke_simple_hover_callbacks!(events)
     _latency_ui_hit_ms!(prof, t0, :hover_dispatch_enter_invocations)
     return nothing
 end

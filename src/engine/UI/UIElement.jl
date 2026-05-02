@@ -352,18 +352,29 @@ end
 
 # `handle_event` methods for `IUIElement` / `IEntity` live in `InputEventDispatch.jl` (included after `ScreenButton.jl`).
 
+@Base.noinline function _ui_invoke_hover_exit_enter_callbacks!(events::Vector{Function})::Nothing
+    for event in events
+        try
+            event()
+        catch e
+            @error "Error calling hover event: $(e)"
+        end
+    end
+    return nothing
+end
+
 function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     prof = _latency_profiler_active()
     add_relationship_if_not_exists(this)
     inst = relationship_instance(this)
     events = (isEntering ? getfield(inst, :hoverEnterEvents) : getfield(inst, :hoverExitEvents))::Vector{Function}
     t0 = time_ns()
-    for event in events
-        try Base.invokelatest(event)
-        catch e
-            @error "Error calling hover event: $(e)"
-        end
+    if JulGame.juliac_trim_active()
+        key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations
+        _latency_ui_hit_ms!(prof, t0, key)
+        return nothing
     end
+    _ui_invoke_hover_exit_enter_callbacks!(events)
     key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations
     _latency_ui_hit_ms!(prof, t0, key)
 end

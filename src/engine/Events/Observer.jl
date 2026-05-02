@@ -16,6 +16,13 @@ module ObserverModule
     end
     Observer() # Create a new Observer instance
 
+    @Base.noinline function _observer_invoke_all!(observers::Vector{Function}, event::Symbol, data::Any)::Nothing
+        for observer in observers
+            observer(event, data)
+        end
+        return nothing
+    end
+
     export add_observer
     function add_observer(observer::Function)
         add_observer(ObserverInstance, observer)
@@ -51,8 +58,7 @@ module ObserverModule
             @error "ObserverInstance is nothing"
             return
         end
-        for observer in this.observers
-            observer(event, data)
-        end
+        JulGame.juliac_trim_active() && return nothing
+        _observer_invoke_all!(this.observers, event, data)
     end
 end

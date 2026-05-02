@@ -207,6 +207,8 @@ module JulGame
     using .UI
     export ScreenButtonModule, TextBoxModule, ImmediateUIModule, CanvasModule, UIImageModule
 
+    include("engine/Effects/EffectRectangleTrimBridge.jl")
+
     include("engine/FX/FX.jl")
     using .FX
     export ImageFXModule, BackgroundFXModule
@@ -259,6 +261,12 @@ module JulGame
         return m::MainLoop
     end
     export current_main
+
+    """True while building with `julia --trim` / `juliac --trim` (`JLOptions().trim != 0`). Used to drop dynamic `Function` call sites so trim verification sees only static or builtin calls in reachable IR."""
+    @inline function juliac_trim_active()::Bool
+        Base.JLOptions().trim != Int8(0)
+    end
+    export juliac_trim_active
 
     # JuliaC `--trim` static verifier: SDL/ccall edges and `invokelatest` script calls may remain unresolved
     # until the engine exposes more concrete types or JuliaC adds trim hooks. Prefer `current_main()` over

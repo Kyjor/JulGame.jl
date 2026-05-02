@@ -58,6 +58,19 @@ module ColliderModule
         end
     end
 
+    @Base.noinline function _collider_invoke_collision_callbacks!(events::Vector{Function}, collider::InternalCollider, @nospecialize(dir))::Nothing
+        for eventToCall in events
+            eventToCall((collider=collider, direction=dir))
+        end
+        return nothing
+    end
+
+    @inline function _dispatch_collision_events!(events::Vector{Function}, collider::InternalCollider, @nospecialize(dir))::Nothing
+        JulGame.juliac_trim_active() && return nothing
+        _collider_invoke_collision_callbacks!(events, collider, dir)
+        return nothing
+    end
+
     function Component.get_size(this::InternalCollider)
         return this.size
     end
@@ -113,36 +126,28 @@ module ColliderModule
                 tp = getfield(transform, :position)::Math._Vector3{Float64}
                 if dir == Top::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
-                        eventToCall((collider=collider, direction=dir))
-                    end
+                    _dispatch_collision_events!(this.collisionEvents, collider, dir)
                     if !collider.isTrigger && !this.isTrigger
                         Component.set_position(transform, Math._Vector2{Float64}(tp.x, tp.y + depth))
                     end
                 end
                 if dir == Left::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
-                        eventToCall((collider=collider, direction=dir))
-                    end
+                    _dispatch_collision_events!(this.collisionEvents, collider, dir)
                     if !collider.isTrigger && !this.isTrigger
                         Component.set_position(transform, Math._Vector2{Float64}(tp.x + depth, tp.y))
                     end
                 end
                 if dir == Right::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
-                        eventToCall((collider=collider, direction=dir))
-                    end
+                    _dispatch_collision_events!(this.collisionEvents, collider, dir)
                     if !collider.isTrigger && !this.isTrigger
                         Component.set_position(transform, Math._Vector2{Float64}(tp.x - depth, tp.y))
                     end
                 end
                 if dir == Bottom::CollisionDirection
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
-                        eventToCall((collider=collider, direction=dir))
-                    end
+                    _dispatch_collision_events!(this.collisionEvents, collider, dir)
                     rb_this = _c_rigidbody(this_ent)
                     if !collider.isTrigger && !this.isTrigger
                         Component.set_position(transform, Math._Vector2{Float64}(tp.x, tp.y - depth))
@@ -153,9 +158,7 @@ module ColliderModule
                 end
                 if dir == Below::ColliderLocation
                     push!(this.currentCollisions, collider)
-                    for eventToCall in this.collisionEvents
-                        eventToCall((collider=collider, direction=dir))
-                    end
+                    _dispatch_collision_events!(this.collisionEvents, collider, dir)
                 end
                 rb_chk = _c_rigidbody(this_ent)
                 if c3 && rb_chk !== C_NULL && (getfield(rb_chk, :grounded)::Bool)
