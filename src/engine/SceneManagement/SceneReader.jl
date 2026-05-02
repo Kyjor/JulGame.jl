@@ -30,7 +30,7 @@ module SceneReaderModule
     """
     function preload_scene(filePath::String)
         try
-            if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
+            if Base.haskey(JulGame.PRELOADED_SCENES, basename(filePath))
                 @debug("Scene already preloaded: $(basename(filePath))")
                 return
             end
@@ -45,15 +45,16 @@ module SceneReaderModule
     end
 
     export deserialize_scene
-    function deserialize_scene(filePath)
+    function deserialize_scene(filePath::String)::Union{Nothing, Tuple{Vector{Entity}, Vector{JulGame.UI.UIElement}, Camera}}
         try
-            if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
+            if Base.haskey(JulGame.PRELOADED_SCENES, basename(filePath))
                 @debug "deserialize_scene: Using preloaded scene: $(basename(filePath))"
-                return JulGame.PRELOADED_SCENES[basename(filePath)]
+                cached = JulGame.PRELOADED_SCENES[basename(filePath)]
+                return (cached.entities, cached.uiElements, cached.camera)
             end
 
             json = nothing
-            if haskey(JulGame.SCENE_CACHE, basename(filePath))
+            if Base.haskey(JulGame.SCENE_CACHE, basename(filePath))
                 json = JulGame.SCENE_CACHE[basename(filePath)]
                 @debug("using cached scene")
             else 
@@ -62,10 +63,8 @@ module SceneReaderModule
                 @debug("using scene from scene file")
             end
 
-            entities = []
-            uiElements = []
-            res = []
-            childParentDict = Dict()
+            entities = Entity[]
+            childParentDict = Dict{String, Any}()
     
             entityIdsInCurrentScene = []
             try
@@ -79,7 +78,7 @@ module SceneReaderModule
                     @debug "Entity with id $(entity.id) already exists in current scene"
                     continue
                 end
-                components = []
+                components = Any[]
     
                 for component in entity.components
                     @debug "Deserializing component: $(component.type)"
@@ -180,20 +179,17 @@ module SceneReaderModule
                 end
             end
             uiElements = deserialize_ui_elements(json.UIElements, entities)
-            camera = Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
+            camera = Camera(Math.Vector2(500,500), Math.Vector3f(), Math.Vector2f(), C_NULL)
             if haskey(json, "Camera")
-                camera = Camera(Vector2(json.Camera.size.x, json.Camera.size.y), Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
+                camera = Camera(Math.Vector2(json.Camera.size.x, json.Camera.size.y), Math.Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Math.Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
                 camera.backgroundColor = (json.Camera.backgroundColor.r, json.Camera.backgroundColor.g, json.Camera.backgroundColor.b, json.Camera.backgroundColor.a)
                 zraw = get(json.Camera, "zoom", nothing)
                 if zraw !== nothing
                     camera.zoom = Float64(zraw)
                 end
             end
-             
-            push!(res, entities)
-            push!(res, uiElements)
-            push!(res, camera)
-            return res
+
+            return (entities, uiElements, camera)
         catch e 
             @error string(e)
 			Base.show_backtrace(stdout, catch_backtrace())
@@ -202,9 +198,9 @@ module SceneReaderModule
     end
 
     function deserialize_ui_elements(jsonUIElements, entities)
-        res = []
-        childParentDict = Dict()
-        default_Vector2 = Vector2(0,0)
+        res = JulGame.UI.UIElement[]
+        childParentDict = Dict{String, Any}()
+        default_Vector2 = Math.Vector2(0, 0)
         for uiElement in jsonUIElements
             try
                 newUIElement = nothing
@@ -222,11 +218,11 @@ module SceneReaderModule
                         id = string(get(uiElement, "id", JulGame.generate_uuid())),
                         name = get(uiElement, "name", "Canvas"), 
                         anchor = Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset = Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset = Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
                         isWorldEntity = get(uiElement, "isWorldEntity", false),
                         layer = Int(get(uiElement, "layer", 0)),
-                        position = Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
-                        size = Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        position = Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        size = Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
                         isActive = get(uiElement, "isActive", true),
                         persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
                         color = color_tuple,
@@ -255,10 +251,10 @@ module SceneReaderModule
                         id = string(get(uiElement, "id", JulGame.generate_uuid())),
                         name = get(uiElement, "name", "TextBox"), 
                         anchor = Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset = Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset = Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
                         isWorldEntity = get(uiElement, "isWorldEntity", false),
                         layer = Int(get(uiElement, "layer", 0)),
-                        position = Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y), 
+                        position = Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y), 
                         isActive = get(uiElement, "isActive", true),
                         persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
                         color = color_tuple,
@@ -318,10 +314,10 @@ module SceneReaderModule
                     )
                 else
                     # For text offset, check if it should be centered (if not specified or all zeros)
-                    textOffset = Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
+                    textOffset = Math.Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
                     if !haskey(uiElement, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
                         # Use (-1,-1) as a special value to indicate the text should be centered
-                        textOffset = Vector2(-1, -1)
+                        textOffset = Math.Vector2(-1, -1)
                     end
                     
                     newUIElement = ScreenButton(
@@ -384,7 +380,7 @@ module SceneReaderModule
     function deserialize_component(component)
         try
             if component.type == "Transform"
-                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y))
+                newComponent = Transform(Math.Vector2f(component.position.x, component.position.y), Math.Vector2f(component.scale.x, component.scale.y))
             elseif component.type == "Animator"
                 newAnimations = Animation[]
                 for animation in component.animations
@@ -399,10 +395,10 @@ module SceneReaderModule
                 isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
                 enabled::Bool = !haskey(component, "enabled") ? true : component.enabled
                 isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
-                offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
-                newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
+                offset::Math.Vector2f = !haskey(component, "offset") ? Math.Vector2f(0,0) : Math.Vector2f(component.offset.x, component.offset.y)
+                newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Math.Vector2f(component.size.x, component.size.y), component.tag::String)
             elseif component.type == "CircleCollider"
-                newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Vector2f(component.offset.x, component.offset.y), component.tag)
+                newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Math.Vector2f(component.offset.x, component.offset.y), component.tag)
             elseif component.type == "Rigidbody"
                 newComponent = Rigidbody(; mass = convert(Float64, component.mass), useGravity = !haskey(component, "useGravity") ? true : component.useGravity)
             elseif component.type == "SoundSource"
@@ -411,24 +407,24 @@ module SceneReaderModule
                 color = !haskey(component, "color") || isempty(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
                 crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
                 layer = !haskey(component, "layer") ? 0 : component.layer
-                offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
-                position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
+                offset = !haskey(component, "offset") ? Math.Vector2f() : Math.Vector2f(component.offset.x, component.offset.y)
+                position = !haskey(component, "position") ? Math.Vector2f() : Math.Vector2f(component.position.x, component.position.y)
                 rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
                 pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                center = !haskey(component, "center") ? Vector2f(0.5,0.5) : Vector2f(component.center.x, component.center.y)
+                center = !haskey(component, "center") ? Math.Vector2f(0.5,0.5) : Math.Vector2f(component.center.x, component.center.y)
                 anchor = !haskey(component, "anchor") ? :center : Symbol(component.anchor)
                 isStatic = !haskey(component, "isStatic") ? false : component.isStatic
-                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f, anchor::Symbol, isStatic::Bool)
+                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Math.Vector2f, position::Math.Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Math.Vector2f, anchor::Symbol, isStatic::Bool)
             elseif component.type == "Shape"
                 color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
                 layer = !haskey(component, "layer") ? 0 : component.layer
-                size = !haskey(component, "size") || isempty(component.size) ? Vector2f(1,1) : Vector2f(component.size.x, component.size.y)
+                size = !haskey(component, "size") || isempty(component.size) ? Math.Vector2f(1,1) : Math.Vector2f(component.size.x, component.size.y)
                 isFilled = !haskey(component, "isFilled") ? true : component.isFilled
                 isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
-                offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
-                position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
+                offset = !haskey(component, "offset") ? Math.Vector2f() : Math.Vector2f(component.offset.x, component.offset.y)
+                position = !haskey(component, "position") ? Math.Vector2f() : Math.Vector2f(component.position.x, component.position.y)
                 alpha = !haskey(component, "alpha") ? 255 : component.alpha
-                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, size::Vector2f, alpha::Int)
+                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int, offset::Math.Vector2f, position::Math.Vector2f, size::Math.Vector2f, alpha::Int)
             elseif component.type == "Mesh3D"
                 vCamera = vec3d(component.vCamera.x, component.vCamera.y, component.vCamera.z, component.vCamera.w)
                 vLookDir = vec3d(component.vLookDir.x, component.vLookDir.y, component.vLookDir.z, component.vLookDir.w)
@@ -457,7 +453,7 @@ module SceneReaderModule
     """
     function deserialize_canvas_children(jsonChildren, parentCanvas)
         children = UI.UIElement[]
-        default_Vector2 = Vector2(0,0)
+        default_Vector2 = Math.Vector2(0,0)
         
         for child in jsonChildren
             try
@@ -473,11 +469,11 @@ module SceneReaderModule
                         id = string(get(child, "id", JulGame.generate_uuid())),
                         name = get(child, "name", "Canvas"), 
                         anchor = Symbol(get(child, "anchor", "none")),
-                        anchorOffset = Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        anchorOffset = Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
                         isWorldEntity = get(child, "isWorldEntity", false),
                         layer = Int(get(child, "layer", 0)),
-                        position = Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
-                        size = Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
+                        position = Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
+                        size = Math.Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
                         isActive = get(child, "isActive", true),
                         persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
                         color = color_tuple,
@@ -496,10 +492,10 @@ module SceneReaderModule
                     end
                 elseif child.type == "ScreenButton"
                     # For text offset, check if it should be centered (if not specified or all zeros)
-                    textOffset = Vector2(child.textOffset.x, child.textOffset.y)
+                    textOffset = Math.Vector2(child.textOffset.x, child.textOffset.y)
                     if !haskey(child, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
                         # Use (-1,-1) as a special value to indicate the text should be centered
-                        textOffset = Vector2(-1, -1)
+                        textOffset = Math.Vector2(-1, -1)
                     end
                     
                     newChild = ScreenButton(
@@ -535,10 +531,10 @@ module SceneReaderModule
                         id = string(get(child, "id", JulGame.generate_uuid())),
                         name = get(child, "name", "TextBox"), 
                         anchor = Symbol(get(child, "anchor", "none")),
-                        anchorOffset = Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        anchorOffset = Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
                         isWorldEntity = get(child, "isWorldEntity", false),
                         layer = Int(get(child, "layer", 0)),
-                        position = Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y), 
+                        position = Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y), 
                         isActive = get(child, "isActive", true),
                         persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
                         color = color_tuple,

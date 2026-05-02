@@ -19,12 +19,12 @@ module InputModule
         mouseButtonsPressedDown::Vector
         mouseButtonsHeldDown::Vector
         mouseButtonsReleased::Vector
-        mousePosition
-        mousePositionEditorGameWindowOffset::Vector2
-        mousePositionWorld::Math.Vector2f
-        joystick
+        mousePosition::JulGame.Math.Vector2
+        mousePositionEditorGameWindowOffset::JulGame.Math.Vector2
+        mousePositionWorld::JulGame.Math.Vector2f
+        joystick::Ptr{SDL2.SDL_Joystick}
         scanCodeStrings::Vector{String}
-        scanCodes::Vector
+        scanCodes::Vector{Tuple{SDL2.SDL_Scancode, SubString{String}}}
         quit::Bool
 
         elementsBeingClickedDownOn
@@ -43,7 +43,7 @@ module InputModule
 
         # Testing
         isTestButtonClicked::Bool
-        simulatedClickPosition::Union{Math.Vector2, Nothing}
+        simulatedClickPosition::Union{JulGame.Math.Vector2, Nothing}
 
         # SDL events pulled while coalescing SDL_MOUSEMOTION (processed on following poll_input iterations)
         pending_sdl_events::Vector{SDL2.SDL_Event}
@@ -51,9 +51,9 @@ module InputModule
         function Input()
             this = new()
 
-            this.buttonsPressedDown = []
-            this.buttonsHeldDown = []
-            this.buttonsReleased = []
+            this.buttonsPressedDown = String[]
+            this.buttonsHeldDown = String[]
+            this.buttonsReleased = String[]
             this.debug = false
             this.didMouseEventOccur = false
             this.didMouseMotionOccur = false
@@ -62,19 +62,20 @@ module InputModule
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
             this.elementsBeingClickedDownOn = []
-            this.mousePosition = Math.Vector2(0,0)
-            this.mousePositionEditorGameWindowOffset = Math.Vector2(0,0)
-            this.mousePositionWorld = Math.Vector2f(0,0)
+            this.mousePosition = JulGame.Math.Vector2(0,0)
+            this.mousePositionEditorGameWindowOffset = JulGame.Math.Vector2(0,0)
+            this.mousePositionWorld = JulGame.Math.Vector2f(0,0)
             this.quit = false
-            this.scanCodes = []
+            this.scanCodes = Tuple{SDL2.SDL_Scancode, SubString{String}}[]
             this.scanCodeStrings = String[]
+            this.joystick = Ptr{SDL2.SDL_Joystick}(C_NULL)
             for m in instances(SDL2.SDL_Scancode)
                 codeString = "$(m)"
                 code::SDL2.SDL_Scancode = m
                 if codeString == "SDL_NUM_SCANCODES"
                     continue
                 end
-                push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
+                push!(this.scanCodes, (code, SubString(codeString, 14, length(codeString))))
             end
 
             SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
@@ -135,7 +136,7 @@ module InputModule
             end
         end
 
-        this.mousePosition = Math.Vector2(x[1], y[1])
+        this.mousePosition = JulGame.Math.Vector2(x[1], y[1])
         @debug "new mouse pos: $(this.mousePosition)"
 
         if !JulGame.IS_EDITOR
@@ -165,7 +166,7 @@ module InputModule
                 scaled_y = 0
             end
             window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
-            this.mousePosition = Math.Vector2(
+            this.mousePosition = JulGame.Math.Vector2(
                 clamp(floor(Int, scaled_x), 0, logical_size.x),
                 clamp(floor(Int, scaled_y), 0, logical_size.y)
             )
@@ -181,9 +182,9 @@ module InputModule
                 scale_y = camera_size.y / JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+                this.mousePosition = JulGame.Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
             else
-                this.mousePosition = Math.Vector2(0, 0)
+                this.mousePosition = JulGame.Math.Vector2(0, 0)
             end
         end
         return
@@ -637,15 +638,15 @@ module InputModule
 
     function get_element_position(element::JulGame.IEntity)
         if element.sprite === nothing || element.sprite === C_NULL
-            return Math.Vector2(0, 0)
+            return JulGame.Math.Vector2(0, 0)
         end
-        basePosition = element.sprite.lastRenderedScreenPosition === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+        basePosition = element.sprite.lastRenderedScreenPosition === nothing ? JulGame.Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
+        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
         # Center the scaled hitbox over the original sprite position
         interactionScale = try element.sprite.interactionScale catch; 1.0 end
         if interactionScale < 1.0
-            sizeDiff = Math.Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
-            return Math.Vector2(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
+            sizeDiff = JulGame.Math.Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
+            return JulGame.Math.Vector2(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
         end
         return basePosition
     end
@@ -656,12 +657,12 @@ module InputModule
 
     function get_element_size(element::JulGame.IEntity)
         if element.sprite === nothing || element.sprite === C_NULL
-            return Math.Vector2(0, 0)
+            return JulGame.Math.Vector2(0, 0)
         end
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
         # Apply interaction scale to shrink/grow hitbox independently of visual size
         interactionScale = try element.sprite.interactionScale catch; 1.0 end
-        return Math.Vector2(baseSize.x * interactionScale, baseSize.y * interactionScale)
+        return JulGame.Math.Vector2(baseSize.x * interactionScale, baseSize.y * interactionScale)
     end
 
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
@@ -1196,8 +1197,8 @@ module InputModule
         # Convert logical coordinates to window coordinates (inverse of poll_input mapping)
         window_x = round(Int, (x * scale) + bar_x)
         window_y = round(Int, (y * scale) + bar_y)
-        x = Math.TypeConversions.safe_int32_convert(window_x)
-        y = Math.TypeConversions.safe_int32_convert(window_y)
+        x = JulGame.Math.TypeConversions.safe_int32_convert(window_x)
+        y = JulGame.Math.TypeConversions.safe_int32_convert(window_y)
         # Move the mouse to the specified position
         @debug "Moving mouse to $(x), $(y)"
         SDL2.SDL_WarpMouseInWindow(window, x, y)

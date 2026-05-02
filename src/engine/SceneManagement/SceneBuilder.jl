@@ -13,7 +13,7 @@ module SceneBuilderModule
 
     export Scene
     mutable struct Scene
-        scene
+        scene::String
         srcPath::String
         type::String
 
@@ -56,7 +56,7 @@ module SceneBuilderModule
         config = fill_in_config(config)
 
         windowName::String = windowName
-        size::Vector2 = Vector2(parse(Int, string(get(config, "Width", DEFAULT_CONFIG["Width"]))), parse(Int, string(get(config, "Height", DEFAULT_CONFIG["Height"]))))
+        size::Math.Vector2 = Math.Vector2(parse(Int, string(get(config, "Width", DEFAULT_CONFIG["Width"]))), parse(Int, string(get(config, "Height", DEFAULT_CONFIG["Height"]))))
         isResizable::Bool = isWindowResizable
         targetFrameRate::Int = parse(Int, string(get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
         isFullscreen::Bool = get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1"

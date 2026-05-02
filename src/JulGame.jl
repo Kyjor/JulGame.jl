@@ -16,13 +16,13 @@ module JulGame
     DELTA_TIME = 0.0
     # TODO: Create a globals file
     
-    SCENE_CACHE::Dict = Dict{String, Any}()
-    PRELOADED_SCENES::Dict = Dict{String, Any}()
-    IMAGE_CACHE::Dict = Dict{String, Any}()
-    FONT_CACHE::Dict = Dict{String, Any}()
-    AUDIO_CACHE::Dict = Dict{String, Any}()
+    SCENE_CACHE::Dict{String, Any} = Dict{String, Any}()
+    PRELOADED_SCENES::Dict{String, Any} = Dict{String, Any}()
+    IMAGE_CACHE::Dict{String, Any} = Dict{String, Any}()
+    FONT_CACHE::Dict{String, Any} = Dict{String, Any}()
+    AUDIO_CACHE::Dict{String, Any} = Dict{String, Any}()
     
-    BUILT_IN_ASSETS::Dict = Dict{String, Any}()
+    BUILT_IN_ASSETS::Dict{String, Any} = Dict{String, Any}()
     BUILT_IN_ASSETS["Font"] = read(joinpath(@__DIR__, "engine", "Assets", "Fonts", "FiraCode-Regular.ttf"))
     
     IS_EDITOR::Bool = false
@@ -100,10 +100,10 @@ module JulGame
     PIXELS_PER_UNIT = 16
     export PIXELS_PER_UNIT
     
-    BasePath = ""
+    global BasePath::String = ""
     export BasePath
     
-    Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
+    global Renderer::Ptr{SDL2.SDL_Renderer} = Ptr{SDL2.SDL_Renderer}(C_NULL)
     export Renderer
 
     Headless = false
@@ -194,6 +194,22 @@ module JulGame
     include("MainLoop.jl") 
     using .MainLoopModule: MainLoop, enable_profiling, disable_profiling, print_profiling_report, export_profiling_data, maybe_enable_latency_profiling_from_env!, mark_input_layer_order_dirty!
     export MainLoop, enable_profiling, disable_profiling, print_profiling_report, export_profiling_data, maybe_enable_latency_profiling_from_env!, mark_input_layer_order_dirty!
+
+    """
+        current_main() -> MainLoop
+
+    Active main loop after `JulGame.MAIN` is assigned. Prefer this over raw `MAIN` in library code so return type is `MainLoop` for inference (helps JuliaC `--trim` verification).
+    """
+    function current_main()::MainLoop
+        m = MAIN
+        m === nothing && error("JulGame.MAIN is not set; start the game loop / load a scene first")
+        return m::MainLoop
+    end
+    export current_main
+
+    # JuliaC `--trim` static verifier: SDL/ccall edges and `invokelatest` script calls may remain unresolved
+    # until the engine exposes more concrete types or JuliaC adds trim hooks. Prefer `current_main()` over
+    # raw `MAIN` in library code so `MainLoop` return type is known to inference.
 
     include("utils/Exports.jl")
 end

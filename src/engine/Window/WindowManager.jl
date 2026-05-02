@@ -10,52 +10,52 @@ module WindowManagerModule
     mutable struct WindowManager
         window::Ptr{SDL2.SDL_Window}
         windowName::String
-        windowSize::Math.Vector2
-        screenSize::Math.Vector2
+        windowSize::JulGame.Math.Vector2
+        screenSize::JulGame.Math.Vector2
         isWindowFocused::Bool
         isFullscreen::Bool
         isResizable::Bool
         isBorderless::Bool
         isVsyncEnabled::Bool
         displayMode::SDL2.SDL_DisplayMode
-        renderScale::Math.Vector2f
+        renderScale::JulGame.Math.Vector2f
         targetFrameRate::Int
         allowHighDPI::Bool
-        position::Math.Vector2
+        position::JulGame.Math.Vector2
         fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
-        baseResolution::Math.Vector2
+        baseResolution::JulGame.Math.Vector2
 
         function WindowManager()
             this = new()
             
             this.window = C_NULL
             this.windowName = ""
-            this.windowSize = Math.Vector2(0, 0)
-            this.screenSize = Math.Vector2(0, 0)
+            this.windowSize = JulGame.Math.Vector2(0, 0)
+            this.screenSize = JulGame.Math.Vector2(0, 0)
             this.isWindowFocused = false
             this.isFullscreen = false
             this.isResizable = false
             this.isBorderless = false
             this.isVsyncEnabled = false
-            this.renderScale = Math.Vector2f(1.0, 1.0)
+            this.renderScale = JulGame.Math.Vector2f(1.0, 1.0)
             this.targetFrameRate = 60
             this.allowHighDPI = false
-            this.position = Math.Vector2(SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED)
+            this.position = JulGame.Math.Vector2(SDL2.SDL_WINDOWPOS_CENTERED, SDL2.SDL_WINDOWPOS_CENTERED)
             this.fpsManager = Ref(SDL2.LibSDL2.FPSmanager(UInt32(0), Cfloat(0.0), UInt32(0), UInt32(0), UInt32(0)))
             SDL2.SDL_initFramerate(this.fpsManager)
 			SDL2.SDL_setFramerate(this.fpsManager, UInt32(this.targetFrameRate))
-            this.baseResolution = Math.Vector2(1280, 720)
+            this.baseResolution = JulGame.Math.Vector2(1280, 720)
             
             return this
         end
     end
 
     """
-        create_window(this::WindowManager, windowName::String, size::Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
+        create_window(this::WindowManager, windowName::String, size::JulGame.Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
 
     Creates and initializes the game window with the specified parameters.
     """
-    function create_window(this::WindowManager, windowName::String, size::Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
+    function create_window(this::WindowManager, windowName::String, size::JulGame.Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
         @debug "Creating window"
         this.windowName = windowName
         this.windowSize = size
@@ -105,8 +105,8 @@ module WindowManagerModule
         return true
     end
 
-    function create_window(windowName::String, size::Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
-        return create_window(JulGame.MAIN.windowManager, windowName, size, isFullscreen, isResizable)
+    function create_window(windowName::String, size::JulGame.Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
+        return create_window(JulGame.current_main().windowManager, windowName, size, isFullscreen, isResizable)
     end
 
     """
@@ -120,12 +120,12 @@ module WindowManagerModule
             return
         end
         
-        this.windowSize = Math.Vector2(width, height)
-        SDL2.SDL_SetWindowSize(this.window, Math.TypeConversions.safe_int32_convert(width), Math.TypeConversions.safe_int32_convert(height))
+        this.windowSize = JulGame.Math.Vector2(width, height)
+        SDL2.SDL_SetWindowSize(this.window, JulGame.Math.TypeConversions.safe_int32_convert(width), JulGame.Math.TypeConversions.safe_int32_convert(height))
     end
 
     function resize_window(width::Int, height::Int)
-        resize_window(JulGame.MAIN.windowManager, width, height)
+        resize_window(JulGame.current_main().windowManager, width, height)
     end
 
     """
@@ -144,7 +144,7 @@ module WindowManagerModule
     end
 
     function toggle_fullscreen()
-        toggle_fullscreen(JulGame.MAIN.windowManager)
+        toggle_fullscreen(JulGame.current_main().windowManager)
     end
 
     """
@@ -164,7 +164,7 @@ module WindowManagerModule
     end
 
     function set_fullscreen(fullscreen::Bool)
-        set_fullscreen(JulGame.MAIN.windowManager, fullscreen)
+        set_fullscreen(JulGame.current_main().windowManager, fullscreen)
     end
 
     """
@@ -183,7 +183,7 @@ module WindowManagerModule
             x = Ref{Cint}(0)
             y = Ref{Cint}(0)
             SDL2.SDL_GetWindowPosition(this.window, x, y)
-            this.position = Math.Vector2(x[], y[])
+            this.position = JulGame.Math.Vector2(x[], y[])
             
             # Get the display dimensions
             display_index = SDL2.SDL_GetWindowDisplayIndex(this.window)
@@ -201,13 +201,13 @@ module WindowManagerModule
             # Restore window borders and original size
             this.isBorderless = false
             SDL2.SDL_SetWindowBordered(this.window, SDL2.SDL_TRUE)
-            SDL2.SDL_SetWindowSize(this.window, Math.TypeConversions.safe_int32_convert(this.windowSize.x), Math.TypeConversions.safe_int32_convert(this.windowSize.y))
-            SDL2.SDL_SetWindowPosition(this.window, Math.TypeConversions.safe_int32_convert(this.position.x), Math.TypeConversions.safe_int32_convert(this.position.y))
+            SDL2.SDL_SetWindowSize(this.window, JulGame.Math.TypeConversions.safe_int32_convert(this.windowSize.x), JulGame.Math.TypeConversions.safe_int32_convert(this.windowSize.y))
+            SDL2.SDL_SetWindowPosition(this.window, JulGame.Math.TypeConversions.safe_int32_convert(this.position.x), JulGame.Math.TypeConversions.safe_int32_convert(this.position.y))
         end
     end
 
     function set_borderless_fullscreen(enable::Bool)
-        set_borderless_fullscreen(JulGame.MAIN.windowManager, enable)
+        set_borderless_fullscreen(JulGame.current_main().windowManager, enable)
     end
 
     """
@@ -226,7 +226,7 @@ module WindowManagerModule
     end
 
     function toggle_borderless()
-        toggle_borderless(JulGame.MAIN.windowManager)
+        toggle_borderless(JulGame.current_main().windowManager)
     end
 
     """
@@ -250,7 +250,7 @@ module WindowManagerModule
     end
 
     function set_vsync(enabled::Bool)
-        set_vsync(JulGame.MAIN.windowManager, enabled)
+        set_vsync(JulGame.current_main().windowManager, enabled)
     end
 
     """
@@ -259,7 +259,7 @@ module WindowManagerModule
     Toggles vertical synchronization on/off.
     """
     function toggle_vsync(this::WindowManager)
-        toggle_vsync(JulGame.MAIN.windowManager)
+        toggle_vsync(JulGame.current_main().windowManager)
     end
 
     """
@@ -275,7 +275,7 @@ module WindowManagerModule
         
         result = SDL2.SDL_RenderSetScale(JulGame.Renderer, scaleX, scaleY)
         if result == 0
-            this.renderScale = Math.Vector2f(scaleX, scaleY)
+            this.renderScale = JulGame.Math.Vector2f(scaleX, scaleY)
             @debug "Render scale set to ($scaleX, $scaleY)"
         else
             @warn "Failed to set render scale: $(unsafe_string(SDL2.SDL_GetError()))"
@@ -283,7 +283,7 @@ module WindowManagerModule
     end
 
     function set_render_scale(scaleX::Float32, scaleY::Float32)
-        set_render_scale(JulGame.MAIN.windowManager, scaleX, scaleY)
+        set_render_scale(JulGame.current_main().windowManager, scaleX, scaleY)
     end
 
     """
@@ -306,20 +306,20 @@ module WindowManagerModule
     end
 
     function set_logical_size(width::Int32, height::Int32)
-        set_logical_size(JulGame.MAIN.windowManager, width, height)
+        set_logical_size(JulGame.current_main().windowManager, width, height)
     end
 
-    function get_logical_size(this::WindowManager)::Math.Vector2
+    function get_logical_size(this::WindowManager)::JulGame.Math.Vector2
         if this.window == C_NULL
             @error "Cannot get logical size: Window has not been created"
-            return Math.Vector2(0, 0)
+            return JulGame.Math.Vector2(0, 0)
         end
 
         width = Ref{Cint}(0)
         height = Ref{Cint}(0)
         SDL2.SDL_RenderGetLogicalSize(JulGame.Renderer, width, height)
 
-        return Math.Vector2(width[], height[])
+        return JulGame.Math.Vector2(width[], height[])
     end
 
 
@@ -329,7 +329,7 @@ module WindowManagerModule
     Gets the logical size of the window.
     """
     function get_logical_size()
-        get_logical_size(JulGame.MAIN.windowManager)
+        get_logical_size(JulGame.current_main().windowManager)
     end
 
     """
@@ -365,7 +365,7 @@ module WindowManagerModule
     end
 
     function set_display_mode(width::Int32, height::Int32, refresh_rate::Int32 = 0)
-        set_display_mode(JulGame.MAIN.windowManager, width, height, refresh_rate)
+        set_display_mode(JulGame.current_main().windowManager, width, height, refresh_rate)
     end
 
     """
@@ -385,11 +385,11 @@ module WindowManagerModule
         x = Ref{Cint}(0)
         y = Ref{Cint}(0)
         SDL2.SDL_GetWindowPosition(this.window, x, y)
-        this.position = Math.Vector2(x[], y[])
+        this.position = JulGame.Math.Vector2(x[], y[])
     end
 
     function center_window()
-        center_window(JulGame.MAIN.windowManager)
+        center_window(JulGame.current_main().windowManager)
     end
 
     """
@@ -403,12 +403,12 @@ module WindowManagerModule
             return
         end
         
-        SDL2.SDL_SetWindowPosition(this.window, Math.TypeConversions.safe_int32_convert(x), Math.TypeConversions.safe_int32_convert(y))
-        this.position = Math.Vector2(x, y)
+        SDL2.SDL_SetWindowPosition(this.window, JulGame.Math.TypeConversions.safe_int32_convert(x), JulGame.Math.TypeConversions.safe_int32_convert(y))
+        this.position = JulGame.Math.Vector2(x, y)
     end
 
     function set_window_position(x::Int, y::Int)
-        set_window_position(JulGame.MAIN.windowManager, x, y)
+        set_window_position(JulGame.current_main().windowManager, x, y)
     end
 
     """
@@ -427,7 +427,7 @@ module WindowManagerModule
     end
 
     function set_window_title(title::String)
-        set_window_title(JulGame.MAIN.windowManager, title)
+        set_window_title(JulGame.current_main().windowManager, title)
     end
 
     """
@@ -446,7 +446,7 @@ module WindowManagerModule
     end
 
     function set_frame_rate(frameRate::Int)
-        set_frame_rate(JulGame.MAIN.windowManager, frameRate)
+        set_frame_rate(JulGame.current_main().windowManager, frameRate)
     end
 
     """
@@ -475,7 +475,7 @@ module WindowManagerModule
     end
 
     function set_window_icon(iconPath::String)
-        set_window_icon(JulGame.MAIN.windowManager, iconPath)
+        set_window_icon(JulGame.current_main().windowManager, iconPath)
     end
 
     """
@@ -499,7 +499,7 @@ module WindowManagerModule
     end
 
     function set_window_opacity()
-        set_window_opacity(JulGame.MAIN.windowManager, opacity)
+        set_window_opacity(JulGame.current_main().windowManager, opacity)
     end
 
     """
@@ -518,7 +518,7 @@ module WindowManagerModule
     end
 
     function toggle_resizable()
-        toggle_resizable(JulGame.MAIN.windowManager)
+        toggle_resizable(JulGame.current_main().windowManager)
     end
 
     """
@@ -537,54 +537,54 @@ module WindowManagerModule
     end
 
     function set_resizable(resizable::Bool)
-        set_resizable(JulGame.MAIN.windowManager, resizable)
+        set_resizable(JulGame.current_main().windowManager, resizable)
     end
 
     """
-        get_window_size(this::WindowManager)::Math.Vector2
+        get_window_size(this::WindowManager)::JulGame.Math.Vector2
 
     Returns the current window size.
     """
-    function get_window_size(this::WindowManager)::Math.Vector2
+    function get_window_size(this::WindowManager)::JulGame.Math.Vector2
         if this.window == C_NULL
-            return Math.Vector2(0, 0)
+            return JulGame.Math.Vector2(0, 0)
         end
         
         width = Ref{Cint}(0)
         height = Ref{Cint}(0)
         SDL2.SDL_GetWindowSize(this.window, width, height)
         
-        return Math.Vector2(width[], height[])
+        return JulGame.Math.Vector2(width[], height[])
     end
 
     function JulGame.get_window_size()
-        get_window_size(JulGame.MAIN.windowManager)
+        get_window_size(JulGame.current_main().windowManager)
     end
 
     """
-        get_display_dimensions(this::WindowManager)::Math.Vector2
+        get_display_dimensions(this::WindowManager)::JulGame.Math.Vector2
 
     Gets the dimensions of the display the window is on.
     """
-    function get_display_dimensions(this::WindowManager)::Math.Vector2
+    function get_display_dimensions(this::WindowManager)::JulGame.Math.Vector2
         if this.window == C_NULL
             @error "Cannot get display dimensions: Window has not been created"
-            return Math.Vector2(0, 0)
+            return JulGame.Math.Vector2(0, 0)
         end
         
         display_index = SDL2.SDL_GetWindowDisplayIndex(this.window)
         mode = Ref{SDL2.SDL_DisplayMode}()
         
         if SDL2.SDL_GetCurrentDisplayMode(display_index, mode) == 0
-            return Math.Vector2(mode[].w, mode[].h)
+            return JulGame.Math.Vector2(mode[].w, mode[].h)
         else
             @warn "Failed to get display dimensions: $(unsafe_string(SDL2.SDL_GetError()))"
-            return Math.Vector2(0, 0)
+            return JulGame.Math.Vector2(0, 0)
         end
     end
 
     function get_display_dimensions()
-        get_display_dimensions(JulGame.MAIN.windowManager)
+        get_display_dimensions(JulGame.current_main().windowManager)
     end
 
     """
@@ -670,7 +670,7 @@ module WindowManagerModule
     end
 
     function get_display_refresh_rate()
-        get_display_refresh_rate(JulGame.MAIN.windowManager)
+        get_display_refresh_rate(JulGame.current_main().windowManager)
     end
 
     """
@@ -688,7 +688,7 @@ module WindowManagerModule
     end
 
     function minimize_window()
-        minimize_window(JulGame.MAIN.windowManager)
+        minimize_window(JulGame.current_main().windowManager)
     end
 
     """
@@ -706,7 +706,7 @@ module WindowManagerModule
     end
 
     function maximize_window()
-        maximize_window(JulGame.MAIN.windowManager)
+        maximize_window(JulGame.current_main().windowManager)
     end
 
     """
@@ -724,7 +724,7 @@ module WindowManagerModule
     end
 
     function restore_window()
-        restore_window(JulGame.MAIN.windowManager)
+        restore_window(JulGame.current_main().windowManager)
     end
 
     """
@@ -743,15 +743,18 @@ module WindowManagerModule
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED
             width = event.data1
             height = event.data2
-            this.windowSize = Math.Vector2(width, height)
+            this.windowSize = JulGame.Math.Vector2(width, height)
             @debug "Window resized to $(width)x$(height)"
             
             # Update all TextBoxes when window is resized
-            if JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
-                for element in JulGame.MAIN.scene.uiElements
+            if JulGame.MAIN !== nothing
+                main = JulGame.current_main()
+                if main.scene !== nothing
+                for element in main.scene.uiElements
                     if "$(typeof(element))" == "JulGame.UI.TextBoxModule.TextBox"
                         JulGame.UI.handle_window_resize(element)
                     end
+                end
                 end
             end
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
@@ -788,7 +791,7 @@ module WindowManagerModule
     end
 
     function handle_window_event(event::SDL2.SDL_WindowEvent)
-        handle_window_event(JulGame.MAIN.windowManager, event)
+        handle_window_event(JulGame.current_main().windowManager, event)
     end
 
     """
@@ -808,7 +811,7 @@ module WindowManagerModule
     end
 
     function close_window()
-        close_window(JulGame.MAIN.windowManager)
+        close_window(JulGame.current_main().windowManager)
     end
 
     """
@@ -826,28 +829,28 @@ module WindowManagerModule
             @error "Base resolution must be positive"
             return
         end
-        this.baseResolution = Math.Vector2(width, height)
+        this.baseResolution = JulGame.Math.Vector2(width, height)
         # SDL2.SDL_RenderSetLogicalSize(JulGame.Renderer, this.baseResolution.x, this.baseResolution.y) # Commented out - let window events handle logical size
         @debug "Base resolution set to $(width)x$(height)"
     end
 
     function set_base_resolution(width::Int, height::Int)
-        set_base_resolution(JulGame.MAIN.windowManager, width, height)
+        set_base_resolution(JulGame.current_main().windowManager, width, height)
     end
 
     """
-        get_base_resolution(this::WindowManager)::Math.Vector2
+        get_base_resolution(this::WindowManager)::JulGame.Math.Vector2
 
     Gets the current base resolution used for UI scaling.
 
     # Returns
-    - `Math.Vector2`: The current base resolution
+    - `JulGame.Math.Vector2`: The current base resolution
     """
-    function get_base_resolution(this::WindowManager)::Math.Vector2
+    function get_base_resolution(this::WindowManager)::JulGame.Math.Vector2
         return this.baseResolution
     end
 
-    function get_base_resolution()::Math.Vector2
-        return get_base_resolution(JulGame.MAIN.windowManager)
+    function get_base_resolution()::JulGame.Math.Vector2
+        return get_base_resolution(JulGame.current_main().windowManager)
     end
 end 

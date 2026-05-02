@@ -1,7 +1,7 @@
 module MainLoopModule
 	using ..JulGame
 	using ..JulGame.ErrorLoggingModule
-	using ..JulGame: Camera, Component, Input, Math, UI, SceneModule, WindowManager
+	using ..JulGame: Camera, Component, Entity, Input, Math, UI, SceneModule, WindowManager
     import ..JulGame: Component
     import ..JulGame.SceneManagement: SceneBuilderModule
 	import ..JulGame
@@ -181,7 +181,7 @@ module MainLoopModule
 		spriteRenderBuffer::Vector{Tuple{Int, Any}}
 		coroutineRemovalBuffer::Vector{Any}
 		
-		cachedInputLayerOrder::Vector{Any}
+		cachedInputLayerOrder::Vector{Union{Entity, UI.UIElement}}
 		# Cached input layer order (rebuilt only when layers change)
 		inputLayerOrderDirty::Bool
 		# Scratch buffers for input hit-testing (avoid per-event allocations)
@@ -235,7 +235,7 @@ module MainLoopModule
 			sizehint!(this.coroutineRemovalBuffer, 10)  # Pre-allocate for ~10 coroutines
 			
 			# Initialize cached input layer order
-			this.cachedInputLayerOrder = Vector{Any}()
+			this.cachedInputLayerOrder = Vector{Union{Entity, UI.UIElement}}()
 			sizehint!(this.cachedInputLayerOrder, 100)  # Pre-allocate
 			this.inputLayerOrderDirty = true  # Build on first use
 			this.scratchInputCanvases = Vector{Any}()
