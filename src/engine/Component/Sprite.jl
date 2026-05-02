@@ -93,7 +93,7 @@ module SpriteModule
             # Initialize effects
             this.effects = Any[]
             this.effectTexture = C_NULL
-            this.effectSize = Math.Vector2(0, 0)
+            this.effectSize = Math._Vector2{Int32}(0, 0)
             this.effectCacheKey = ""
             this.needsEffectUpdate = false
             this.useEffectTexture = true  # Default to showing effects when applied
@@ -572,6 +572,13 @@ module SpriteModule
        return false
     end
 
+    """Mark static-sprite layer dirty when MAIN is set; uses typeassert so `--trim` sees `MainLoop.scene`, not `Any`."""
+    function _mark_static_layer_rebatch_if_main!(layer::Int)
+        m = JulGame.MAIN
+        m === nothing && return
+        JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch((m::JulGame.MainLoop).scene, layer)
+    end
+
     function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")
         try
@@ -586,8 +593,8 @@ module SpriteModule
                     Component.load_image(this, String(x))
                     needs_rebatch = isdefined(this, :isStatic) && this.isStatic
                 end
-                if needs_rebatch && JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
-                    JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch(JulGame.MAIN.scene, this.layer)
+                if needs_rebatch
+                    _mark_static_layer_rebatch_if_main!(this.layer)
                 end
                 return
             end
@@ -600,13 +607,12 @@ module SpriteModule
             setfield!(this, s, x)
             
             # Mark layer for rebatch if needed
-            if needs_rebatch && JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
-                JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch(JulGame.MAIN.scene, this.layer)
+            if needs_rebatch
+                _mark_static_layer_rebatch_if_main!(this.layer)
             end
         catch e
             @error "Error setting sprite property $(s) to: $(x)"
-            @error "Error: $e"
-            Base.show_backtrace(stderr, catch_backtrace())
+            @error sprint(showerror, e)
         end
     end
 end
