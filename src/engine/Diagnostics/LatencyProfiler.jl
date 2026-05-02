@@ -461,20 +461,15 @@ function accumulate_ui_render_breakdown_ms!(profiler::LatencyProfiler, key::Symb
     return
 end
 
-function accumulate_ui_render_invoke_ms!(profiler::LatencyProfiler, target, elapsed_ms::Float64)
+function accumulate_ui_render_invoke_ms!(profiler::LatencyProfiler, key::Symbol, elapsed_ms::Float64)
     if !profiler.enabled || elapsed_ms <= 0
         return
     end
-    key = (target isa NamedTuple || target isa JulGame.RenderQueuedFunction) ? :ui_queued_render_fn : typeof(target)
     d = profiler.ui_render_invoke_ms
     d[key] = get(d, key, 0.0) + elapsed_ms
     if elapsed_ms > profiler.ui_render_invoke_peak_ms
         profiler.ui_render_invoke_peak_ms = elapsed_ms
-        if target isa NamedTuple || target isa JulGame.RenderQueuedFunction
-            profiler.ui_render_invoke_peak_desc = "ui_queued_render_fn"
-        else
-            profiler.ui_render_invoke_peak_desc = String(nameof(typeof(target)))
-        end
+        profiler.ui_render_invoke_peak_desc = String(key)
     end
     return
 end
@@ -744,8 +739,12 @@ function print_realtime_stats(profiler::LatencyProfiler)
     recent_max = maximum(recent_times)
     recent_p99 = calculate_percentile(recent_times, 0.99)
     
-    println("\n📊 [$(_wall_clock_hms())] Frame $(profiler.frame_count) | Recent performance:")
-    println("   Mean: $(round(recent_mean, digits=2))ms | P99: $(round(recent_p99, digits=2))ms | Max: $(round(recent_max, digits=2))ms")
+    if !JulGame.IS_PACKAGE_COMPILED
+        println("\n📊 [$(_wall_clock_hms())] Frame $(profiler.frame_count) | Recent performance:")
+        println("   Mean: $(round(recent_mean, digits=2))ms | P99: $(round(recent_p99, digits=2))ms | Max: $(round(recent_max, digits=2))ms")
+    else
+        @debug "Profiler frame $(profiler.frame_count) mean=$(round(recent_mean, digits=2))ms p99=$(round(recent_p99, digits=2))ms max=$(round(recent_max, digits=2))ms"
+    end
 end
 
 """

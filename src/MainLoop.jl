@@ -39,7 +39,25 @@ module MainLoopModule
 	end
 
 	@Base.noinline function _render_ui_target_juliac(@nospecialize(tgt))::Nothing
-		JulGame.render(tgt)
+		if tgt isa JulGame.UI.TextBoxModule.TextBox
+			JulGame.UI.render(tgt::JulGame.UI.TextBoxModule.TextBox)
+		elseif tgt isa JulGame.UI.ScreenButtonModule.ScreenButton
+			JulGame.UI.render(tgt::JulGame.UI.ScreenButtonModule.ScreenButton)
+		elseif tgt isa JulGame.UI.RectangleModule.Rectangle
+			JulGame.UI.render(tgt::JulGame.UI.RectangleModule.Rectangle)
+		elseif tgt isa JulGame.UI.CircleModule.Circle
+			JulGame.UI.render(tgt::JulGame.UI.CircleModule.Circle)
+		elseif tgt isa JulGame.UI.CanvasModule.Canvas
+			JulGame.UI.render(tgt::JulGame.UI.CanvasModule.Canvas)
+		elseif tgt isa JulGame.UI.UIImageModule.UIImage
+			JulGame.UI.render(tgt::JulGame.UI.UIImageModule.UIImage)
+		elseif tgt isa JulGame.UI.ProgressBarModule.ProgressBar
+			JulGame.UI.render(tgt::JulGame.UI.ProgressBarModule.ProgressBar)
+		elseif tgt isa JulGame.UI.LineModule.Line
+			JulGame.UI.render(tgt::JulGame.UI.LineModule.Line)
+		else
+			JulGame.render(tgt)
+		end
 		return nothing
 	end
 
@@ -311,6 +329,16 @@ module MainLoopModule
 	# Uses Base.invokelatest to handle world age issues. Tracks first calls for profiling.
 	# ============================================================================
 	
+	@Base.noinline function _juliac_script_update_json(o::JSON3.Object, deltaTime::Float64)::Nothing
+		JulGame.update(o, deltaTime)
+		return nothing
+	end
+	
+	@Base.noinline function _juliac_script_update_user(s::JulGame.Script, deltaTime::Float64)::Nothing
+		JulGame.update(s, deltaTime)
+		return nothing
+	end
+
 	"""
 		call_script_initialize(this::MainLoop, script)
 	
@@ -348,7 +376,11 @@ module MainLoopModule
 		# Profile if requested
 		if profile && haskey(this.scriptTimings, script_type)
 			start_time = time_ns()
-			JulGame.update(script, deltaTime)
+			if script isa JSON3.Object
+				_juliac_script_update_json(script::JSON3.Object, deltaTime)
+			else
+				_juliac_script_update_user(script::JulGame.Script, deltaTime)
+			end
 			elapsed = (time_ns() - start_time) / 1e6
 			if this.latencyProfiler !== nothing
 				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
@@ -360,7 +392,11 @@ module MainLoopModule
 				deleteat!(v, 1:10_000)
 			end
 		else
-			JulGame.update(script, deltaTime)
+			if script isa JSON3.Object
+				_juliac_script_update_json(script::JSON3.Object, deltaTime)
+			else
+				_juliac_script_update_user(script::JulGame.Script, deltaTime)
+			end
 		end
 	end
 	
@@ -1005,7 +1041,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						Component.update(rigidbody, deltaTime)
+						rb_i = rigidbody::JulGame.RigidbodyModule.InternalRigidbody
+						Component.update(rb_i, deltaTime)
 					catch e
 						if this.testMode
 							rethrow(e)
@@ -1068,8 +1105,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						end
 					end
 					entityAnimator = entity.animator
-					if entityAnimator != C_NULL
-                        JulGame.update(entityAnimator, currentRenderTime, deltaTime)
+					if entityAnimator isa JulGame.AnimatorModule.InternalAnimator
+						an = entityAnimator::JulGame.AnimatorModule.InternalAnimator
+						Component.update(an, currentRenderTime, deltaTime)
 					end
 				end
 			end
@@ -1204,7 +1242,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						_render_ui_target_juliac(tgt)
 					end
 					if prof_ui !== nothing
-						JulGame.LatencyProfilerModule.accumulate_ui_render_invoke_ms!(prof_ui, tgt, (time_ns() - t_r) / 1e6)
+						rk = (tgt isa JulGame.RenderQueuedFunction || tgt isa NamedTuple) ? :ui_queued_render_fn : :ui_render_element
+						JulGame.LatencyProfilerModule.accumulate_ui_render_invoke_ms!(prof_ui, rk, (time_ns() - t_r) / 1e6)
 					end
 				catch e
 					if this.testMode

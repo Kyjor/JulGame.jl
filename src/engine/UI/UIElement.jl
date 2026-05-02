@@ -115,7 +115,7 @@ function input_ui_is_hovered(ui::JulGame.IUIElement)::Bool
     return getfield(inst, :isHovered)::Bool
 end
 
-function input_ui_set_isHovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
+function _input_ui_set_isHovered_inner!(ui::JulGame.IUIElement, value::Bool)::Nothing
     add_relationship_if_not_exists(ui)
     inst = relationship_instance(ui)
     prev = getfield(inst, :isHovered)
@@ -124,6 +124,10 @@ function input_ui_set_isHovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
         UI.handle_hover_event(ui, value)
     end
     return nothing
+end
+
+function input_ui_set_isHovered!(ui::JulGame.IUIElement, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
 end
 
 function sort_reversed_ui_by_layer_for_input(v::Vector{JulGame.IUIElement})::Vector{JulGame.IUIElement}
@@ -228,98 +232,112 @@ function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=2
     this.color = (r%256, g%256, b%256, a%256)
 end
 
+@inline function _align_set_position_cells!(tinst::UIElementInstance, x::Float64, y::Float64)::Nothing
+    nx = round(Int32, x)
+    ny = round(Int32, y)
+    setfield!(tinst, :position, JulGame.Math._Vector2{Int32}(nx, ny))
+    return nothing
+end
+
 function UI.align_to_anchor(this::JulGame.IUIElement)::Nothing
     main = JulGame.current_main()
-    if main.scene.camera === nothing
+    sc = getfield(main, :scene)
+    cam = getfield(sc, :camera)
+    if cam === nothing
         @debug "No camera found in scene"
         return nothing
     end
 
-    size = main.scene.camera.size
-    parent_pos = Math.Vector2(0, 0)
-    if this.parent !== nothing 
-        if isa(this.parent, JulGame.IUIElement)
-            size = this.parent.size
-            parent_pos = this.parent.position
-        else 
-            if this.parent.lastRenderedScreenSize === nothing || this.parent.lastRenderedScreenPosition === nothing
-                @debug "No last rendered screen size or position found for parent of $(this.name)"
-                return nothing
-            end
-            size = this.parent.lastRenderedScreenSize
-            parent_pos = this.parent.lastRenderedScreenPosition
+    add_relationship_if_not_exists(this)
+    tinst = relationship_instance(this)
+    tw = getfield(tinst, :size)::JulGame.Math._Vector2{Int32}
+    thx = getfield(tw, :x)::Int32
+    thy = getfield(tw, :y)::Int32
+    tao = getfield(tinst, :anchorOffset)::JulGame.Math._Vector2{Int32}
+    t_aox = Float64(getfield(tao, :x)::Int32)
+    t_aoy = Float64(getfield(tao, :y)::Int32)
+    anch = getfield(tinst, :anchor)
+    if anch === nothing
+        try
+            anch = getfield(this, :anchor)::JulGame.Enum{Any}
+        catch
+            @debug "align_to_anchor: missing anchor on $(getfield(tinst, :name)::String)"
+            return nothing
         end
     end
+    cur = getfield(anch::JulGame.Enum{Any}, :current_state)::Symbol
 
-    if this.anchor.current_state == :center
-        this.position = Math.Vector2(
-            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
-            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
-        )  
-    elseif this.anchor.current_state == :top
-        this.position = Math.Vector2(
-            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
-            parent_pos.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :bottom
-        this.position = Math.Vector2(
-            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
-            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :left
-        this.position = Math.Vector2(
-            parent_pos.x + this.anchorOffset.x, 
-            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :right
-        this.position = Math.Vector2(
-            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
-            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :topLeft
-        this.position = Math.Vector2(
-            parent_pos.x + this.anchorOffset.x, 
-            parent_pos.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :topRight
-        this.position = Math.Vector2(
-            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
-            parent_pos.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :bottomLeft
-        this.position = Math.Vector2(
-            parent_pos.x + this.anchorOffset.x, 
-            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :bottomRight
-        this.position = Math.Vector2(
-            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
-            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :centerLeft
-        this.position = Math.Vector2(
-            parent_pos.x + this.anchorOffset.x, 
-            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :centerRight
-        this.position = Math.Vector2(
-            parent_pos.x + size.x - this.size.x + this.anchorOffset.x, 
-            parent_pos.y + size.y/2 - this.size.y/2 + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :centerTop
-        this.position = Math.Vector2(
-            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
-            parent_pos.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :centerBottom
-        this.position = Math.Vector2(
-            parent_pos.x + size.x/2 - this.size.x/2 + this.anchorOffset.x, 
-            parent_pos.y + size.y - this.size.y + this.anchorOffset.y
-        )
-    elseif this.anchor.current_state == :none
-        @debug "No anchor set for textbox $(this.name)"
+    sx::Float64
+    sy::Float64
+    ox::Float64
+    oy::Float64
+    par = getfield(tinst, :parent)
+    if par === nothing
+        cam_sz = getfield(cam, :size)::JulGame.Math._Vector2{Int32}
+        sx = Float64(getfield(cam_sz, :x)::Int32)
+        sy = Float64(getfield(cam_sz, :y)::Int32)
+        ox = 0.0
+        oy = 0.0
+    elseif par isa JulGame.IUIElement
+        add_relationship_if_not_exists(par)
+        pinst = relationship_instance(par)
+        p_sz = getfield(pinst, :size)::JulGame.Math._Vector2{Int32}
+        p_pos = getfield(pinst, :position)::JulGame.Math._Vector2{Int32}
+        sx = Float64(getfield(p_sz, :x)::Int32)
+        sy = Float64(getfield(p_sz, :y)::Int32)
+        ox = Float64(getfield(p_pos, :x)::Int32)
+        oy = Float64(getfield(p_pos, :y)::Int32)
+    elseif hasfield(typeof(par), :lastRenderedScreenSize) && hasfield(typeof(par), :lastRenderedScreenPosition)
+        lrs = getfield(par, :lastRenderedScreenSize)
+        lrp = getfield(par, :lastRenderedScreenPosition)
+        if lrs === nothing || lrp === nothing
+            @debug "No last rendered screen size or position found for parent of $(getfield(tinst, :name)::String)"
+            return nothing
+        end
+        lrsf = lrs::JulGame.Math._Vector2{Float64}
+        lrpf = lrp::JulGame.Math._Vector2{Float64}
+        sx = getfield(lrsf, :x)::Float64
+        sy = getfield(lrsf, :y)::Float64
+        ox = getfield(lrpf, :x)::Float64
+        oy = getfield(lrpf, :y)::Float64
     else
-        @error "Invalid anchor state: $(this.anchor.current_state)"
+        @debug "align_to_anchor: parent type has no layout for $(getfield(tinst, :name)::String)"
+        return nothing
+    end
+
+    fx = Float64(thx)
+    fy = Float64(thy)
+
+    if cur === :center
+        _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+    elseif cur === :top
+        _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + t_aoy)
+    elseif cur === :bottom
+        _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + sy - fy + t_aoy)
+    elseif cur === :left
+        _align_set_position_cells!(tinst, ox + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+    elseif cur === :right
+        _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+    elseif cur === :topLeft
+        _align_set_position_cells!(tinst, ox + t_aox, oy + t_aoy)
+    elseif cur === :topRight
+        _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + t_aoy)
+    elseif cur === :bottomLeft
+        _align_set_position_cells!(tinst, ox + t_aox, oy + sy - fy + t_aoy)
+    elseif cur === :bottomRight
+        _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + sy - fy + t_aoy)
+    elseif cur === :centerLeft
+        _align_set_position_cells!(tinst, ox + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+    elseif cur === :centerRight
+        _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+    elseif cur === :centerTop
+        _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + t_aoy)
+    elseif cur === :centerBottom
+        _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + sy - fy + t_aoy)
+    elseif cur === :none
+        @debug "No anchor set for textbox $(getfield(tinst, :name)::String)"
+    else
+        @error "Invalid anchor state: $(cur)"
     end
     return nothing
 end

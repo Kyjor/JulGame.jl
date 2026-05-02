@@ -5,22 +5,22 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton <: UI.UIElement
-        currentTexture
-        buttonDownSprite
+        currentTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        buttonDownSprite::Union{Ptr{SDL2.SDL_Surface}, Ptr{Nothing}}
         buttonDownSpritePath::String
-        buttonDownTexture
-        buttonUpSprite
+        buttonDownTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        buttonUpSprite::Union{Ptr{SDL2.SDL_Surface}, Ptr{Nothing}}
         buttonUpSpritePath::String
-        buttonUpTexture
+        buttonUpTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         fontPath::Union{String, Ptr{Nothing}}
         fontSize::Int
         isInitialized::Bool
         text::String
         textOffset::Math.Vector2
         textSize::Math.Vector2
-        textTexture
+        textTexture::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
         textColor::NTuple{4, Int}
-        crop
+        crop::Union{Ptr{Nothing}, Math.Vector4}
 
         function ScreenButton(clickEvent::Union{Function, Nothing} = nothing; 
             id::String=JulGame.generate_uuid(), 
@@ -65,6 +65,8 @@ module ScreenButtonModule
             this.hoverEnterEvents = Function[]
             this.hoverExitEvents = Function[]
             this.currentTexture = C_NULL
+            this.buttonDownTexture = C_NULL
+            this.buttonUpTexture = C_NULL
             this.fontSize = fontSize
             this.id = id
             this.size = size
@@ -310,7 +312,7 @@ module ScreenButtonModule
         newButton.hoverExitEvents = this.hoverExitEvents
         
         UI.initialize(newButton)
-        push!(MAIN.scene.uiElements, newButton)
+        push!(getfield(getfield(JulGame.current_main(), :scene), :uiElements), newButton)
         return newButton
     end
 
@@ -346,21 +348,33 @@ module ScreenButtonModule
     end
 
     function UI.destroy(this::ScreenButton)
-        if this.buttonDownTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.buttonDownTexture)
+        bdt = getfield(this, :buttonDownTexture)::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        if bdt !== C_NULL
+            SDL2.SDL_DestroyTexture(bdt)
         end
-        if this.buttonUpTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.buttonUpTexture)
+        but = getfield(this, :buttonUpTexture)::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        if but !== C_NULL
+            SDL2.SDL_DestroyTexture(but)
         end
-        if this.textTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.textTexture)
+        tt = getfield(this, :textTexture)::Union{Ptr{SDL2.SDL_Texture}, Ptr{Nothing}}
+        if tt !== C_NULL
+            SDL2.SDL_DestroyTexture(tt)
         end
         this.buttonDownTexture = C_NULL
         this.buttonUpTexture = C_NULL
         this.textTexture = C_NULL
         this.currentTexture = C_NULL
 
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        ml = JulGame.current_main()
+        sc = getfield(ml, :scene)
+        u0 = getfield(sc, :uiElements)::Vector{JulGame.IUIElement}
+        out = JulGame.IUIElement[]
+        for u in u0
+            if u !== this
+                push!(out, u)
+            end
+        end
+        setfield!(sc, :uiElements, out)
     end
 
     """

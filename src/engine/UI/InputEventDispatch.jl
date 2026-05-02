@@ -34,25 +34,16 @@ end
     return nothing
 end
 
-function UI.handle_event(this::JulGame.IUIElement, evt, x, y)
+function _ui_handle_event_non_screen_button!(this::JulGame.IUIElement, evt, x, y)::Nothing
     prof = _latency_profiler_active()
     t = time_ns()
     inst = relationship_instance(this)
-    isScreenButton = this isa ScreenButtonModule.ScreenButton
     _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
     t = time_ns()
     if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        if isScreenButton
-            sb = this::ScreenButtonModule.ScreenButton
-            setfield!(sb, :currentTexture, getfield(sb, :buttonDownTexture))
-        end
         _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_down)
     elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
         @debug "Mouse button up at $(x), $(y)"
-        if isScreenButton
-            sb = this::ScreenButtonModule.ScreenButton
-            setfield!(sb, :currentTexture, getfield(sb, :buttonUpTexture))
-        end
         _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_up_setup)
         t_cb = time_ns()
         _ui_run_click_event_callbacks!(inst, evt, x, y)
@@ -62,6 +53,72 @@ function UI.handle_event(this::JulGame.IUIElement, evt, x, y)
         _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
     end
     return nothing
+end
+
+function UI.handle_event(this::ScreenButtonModule.ScreenButton, evt, x, y)::Nothing
+    prof = _latency_profiler_active()
+    t = time_ns()
+    inst = relationship_instance(this)
+    _latency_ui_hit_ms!(prof, t, :ui_handle_evt_preamble_typecheck)
+    t = time_ns()
+    if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
+        setfield!(this, :currentTexture, getfield(this, :buttonDownTexture))
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_down)
+    elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
+        @debug "Mouse button up at $(x), $(y)"
+        setfield!(this, :currentTexture, getfield(this, :buttonUpTexture))
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_button_up_setup)
+        t_cb = time_ns()
+        _ui_run_click_event_callbacks!(inst, evt, x, y)
+        _latency_ui_hit_ms!(prof, t_cb, :ui_handle_evt_mouse_button_up_click_callbacks)
+    elseif evt.type == SDL2.SDL_MOUSEMOTION
+        _ui_motion_set_hovered!(this)
+        _latency_ui_hit_ms!(prof, t, :ui_handle_evt_mouse_motion)
+    end
+    return nothing
+end
+
+function UI.handle_event(this::TextBoxModule.TextBox, evt, x, y)::Nothing
+    _ui_handle_event_non_screen_button!(this, evt, x, y)
+end
+
+function UI.handle_event(this::RectangleModule.Rectangle, evt, x, y)::Nothing
+    _ui_handle_event_non_screen_button!(this, evt, x, y)
+end
+
+function UI.handle_event(this::CircleModule.Circle, evt, x, y)::Nothing
+    _ui_handle_event_non_screen_button!(this, evt, x, y)
+end
+
+function UI.handle_event(this::CanvasModule.Canvas, evt, x, y)::Nothing
+    _ui_handle_event_non_screen_button!(this, evt, x, y)
+end
+
+function UI.handle_event(this::UIImageModule.UIImage, evt, x, y)::Nothing
+    _ui_handle_event_non_screen_button!(this, evt, x, y)
+end
+
+function UI.handle_event(this::JulGame.IUIElement, evt, x, y)::Nothing
+    _ui_handle_event_non_screen_button!(this, evt, x, y)
+end
+
+function UI.input_ui_set_isHovered!(ui::TextBoxModule.TextBox, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
+end
+function UI.input_ui_set_isHovered!(ui::ScreenButtonModule.ScreenButton, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
+end
+function UI.input_ui_set_isHovered!(ui::RectangleModule.Rectangle, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
+end
+function UI.input_ui_set_isHovered!(ui::CircleModule.Circle, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
+end
+function UI.input_ui_set_isHovered!(ui::CanvasModule.Canvas, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
+end
+function UI.input_ui_set_isHovered!(ui::UIImageModule.UIImage, value::Bool)::Nothing
+    _input_ui_set_isHovered_inner!(ui, value)
 end
 
 function UI.handle_event(this::JulGame.IEntity, evt, x, y)
