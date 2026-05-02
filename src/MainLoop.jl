@@ -19,10 +19,11 @@ module MainLoopModule
 	"""
 	function cleanup_coroutines()
 		@debug "Cleaning up coroutines"
-		for coroutine in JulGame.Coroutines
-			if !istaskdone(coroutine.task)
+		for coroutine::JulGame.Coroutine in JulGame.Coroutines
+			t = getfield(coroutine, :task)
+			if t !== nothing && !istaskdone(t)
 				try
-					schedule(coroutine.task, InterruptException(), error=true)
+					schedule(t, InterruptException(), error=true)
 				catch e
 					@debug "Error interrupting coroutine: $e"
 				end
@@ -34,6 +35,11 @@ module MainLoopModule
 	@Base.noinline function _invoke_queued_render_fn_juliac(rf::JulGame.RenderQueuedFunction)::Nothing
 		fn = getfield(rf, :function_to_call)::Function
 		Base.invokelatest(fn)
+		return nothing
+	end
+
+	@Base.noinline function _render_ui_target_juliac(@nospecialize(tgt))::Nothing
+		JulGame.render(tgt)
 		return nothing
 	end
 
@@ -342,7 +348,7 @@ module MainLoopModule
 		# Profile if requested
 		if profile && haskey(this.scriptTimings, script_type)
 			start_time = time_ns()
-			Base.invokelatest(JulGame.update, script, deltaTime)
+			JulGame.update(script, deltaTime)
 			elapsed = (time_ns() - start_time) / 1e6
 			if this.latencyProfiler !== nothing
 				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
@@ -354,7 +360,7 @@ module MainLoopModule
 				deleteat!(v, 1:10_000)
 			end
 		else
-			Base.invokelatest(JulGame.update, script, deltaTime)
+			JulGame.update(script, deltaTime)
 		end
 	end
 	
@@ -500,7 +506,7 @@ module MainLoopModule
 							rethrow(e)
 						else
 							if typeof(e) != ErrorException
-								println("Error shutting down script: $(typeof(script))")
+								@error "Error shutting down script: $(typeof(script))"
 							end
 						end
                     end
@@ -673,7 +679,7 @@ function JulGame.change_scene(sceneFileName::String)
 						rethrow(e)
 					else
 						if typeof(e) != ErrorException
-							println("Error shutting down script: $(typeof(script))")
+							@error "Error shutting down script: $(typeof(script))"
 							@error string(e)
 						end
 					end
@@ -891,14 +897,15 @@ function JulGame.create_entity(entity)
 end
 
 """
-game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), close::Ref{Bool} = Ref(Bool(false)), Vector{Any}} = C_NULL)
+	game_loop(this, startTime, lastPhysicsTime, windowPos, windowSize)
 
 Runs the game loop.
 
 Parameters:
 - `this`: The main struct.
-- `startTime`: A reference to the start time of the game loop.
-- `lastPhysicsTime`: A reference to the last physics time of the game loop.
+- `startTime`: Start time counter ref (`SDL_GetPerformanceCounter`).
+- `lastPhysicsTime`: Last physics tick ref (`SDL_GetTicks`).
+- `windowPos` / `windowSize`: Window position and size in pixels (`_Vector2{Int32}`).
 """
 @inline function _accum_ui_render_breakdown_ms!(prof, t0::Ref{UInt64}, key::Symbol)
 	prof === nothing && return
@@ -908,7 +915,7 @@ Parameters:
 	return
 end
 
-function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
+function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::JulGame.Math._Vector2{Int32} = JulGame.Math._Vector2{Int32}(0, 0), windowSize::JulGame.Math._Vector2{Int32} = JulGame.Math._Vector2{Int32}(0, 0))
 	# Start frame profiling
 	if this.latencyProfiler !== nothing
 		JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
@@ -998,12 +1005,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						Base.invokelatest(JulGame.update, rigidbody, deltaTime)
+						Component.update(rigidbody, deltaTime)
 					catch e
 						if this.testMode
 							rethrow(e)
 						else
-							println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
+							par = getfield(rigidbody, :parent)
+							if par isa Entity
+								@error "$(getfield(par, :name)) with id: $(getfield(par, :id)) has a problem with it's rigidbody"
+							else
+								@error "Rigidbody has a problem (parent not Entity)"
+							end
 							@error string(e)
 						end
 					end
@@ -1062,20 +1074,29 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 			end
 
-			coroutines_to_remove = []
-			for coroutine in JulGame.Coroutines
-				if istaskdone(coroutine.task)
+			coroutines_to_remove = JulGame.Coroutine[]
+			for coroutine::JulGame.Coroutine in JulGame.Coroutines
+				t = getfield(coroutine, :task)
+				if t === nothing || istaskdone(t)
 					push!(coroutines_to_remove, coroutine)
 					continue
 				end
-
-				notify(coroutine.condition)
+				cnd = getfield(coroutine, :condition)
+				if cnd isa Base.Condition
+					notify(cnd)
+				end
 				yield()
 			end
-
+			coroutine_vec = JulGame.Coroutines
 			for coroutine_to_remove in coroutines_to_remove
 				@debug("coroutine done, removing")
-				deleteat!(JulGame.Coroutines, findfirst(x -> x == coroutine_to_remove, JulGame.Coroutines))
+				n_cv = length(coroutine_vec)
+				@inbounds for j in n_cv:-1:1
+					if coroutine_vec[j] === coroutine_to_remove
+						deleteat!(coroutine_vec, j)
+						break
+					end
+				end
 			end
 			
 			if this.latencyProfiler !== nothing
@@ -1159,21 +1180,28 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			for i = eachindex(uiRenderingOrder)
 				try
 					skipCanvasChild = false
-					for canvas in canvases
-						if uiRenderingOrder[i][2] in canvas.children && !canvas.isActive
-							skipCanvasChild = true
-							break
+					elem = uiRenderingOrder[i][2]
+					for cv in canvases
+						if cv isa JulGame.UI.CanvasModule.Canvas && !getfield(cv, :isActive)
+							children = getfield(cv, :children)::Vector{JulGame.IUIElement}
+							for child in children
+								if child === elem
+									skipCanvasChild = true
+									break
+								end
+							end
 						end
+						skipCanvasChild && break
 					end
 					if skipCanvasChild
 						continue
 					end
-					tgt = uiRenderingOrder[i][2]
+					tgt = elem
 					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
 					if tgt isa JulGame.RenderQueuedFunction
 						_invoke_queued_render_fn_juliac(tgt::JulGame.RenderQueuedFunction)
 					else
-						JulGame.render(tgt)
+						_render_ui_target_juliac(tgt)
 					end
 					if prof_ui !== nothing
 						JulGame.LatencyProfilerModule.accumulate_ui_render_invoke_ms!(prof_ui, tgt, (time_ns() - t_r) / 1e6)

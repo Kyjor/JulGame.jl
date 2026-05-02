@@ -46,7 +46,7 @@ module UIImageModule
         )
             this = new()
 
-            this.anchor = JulGame.Enum{Any}(JulGame.UI.ANCHOR_STATE_SYMBOLS...)
+            this.anchor = JulGame.copy_enum(UI.anchor_types)
             this.isActive = isActive
             this.id = id
             this.persistentBetweenScenes = persistentBetweenScenes
@@ -413,7 +413,6 @@ module UIImageModule
         catch e
             @error "Error setting image property $(s) to: $(x)"
             @error "Error: $e"
-            Base.show_backtrace(stderr, catch_backtrace())
         end
     end
     

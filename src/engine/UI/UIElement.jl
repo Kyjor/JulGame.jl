@@ -169,7 +169,6 @@ function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
         return getfield(script, property)
     catch e
         @warn "Error getting property $(property) for $(script): $(e)"
-        Base.show_backtrace(stderr, catch_backtrace())
         return nothing
     end
 end

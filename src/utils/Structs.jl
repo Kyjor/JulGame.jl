@@ -117,6 +117,14 @@ function Enum{T}(pairs...) where T
     return Enum{T}(states, first_state, states[first_state])
 end
 
+"""Shallow copy of `Enum` state table (avoids `Enum{T}(pairs...)` / `enumerate` at runtime; JuliaC `--trim`)."""
+function copy_enum(e::Enum{T}) where T
+    st = copy(getfield(e, :states))
+    cs = getfield(e, :current_state)
+    cv = getfield(e, :current_value)
+    return Enum{T}(st, cs, cv)
+end
+
 # Check if a state exists
 has_state(se::Enum, state::Symbol) = haskey(se.states, state)
 

@@ -3,15 +3,11 @@ module CoroutineModule
 
     export Coroutine
     mutable struct Coroutine
-        condition
-        task
+        condition::Union{Nothing, Base.Condition}
+        task::Union{Nothing, Task}
 
         function Coroutine(condition = nothing)
-            this = new()
-
-            this.condition = condition
-
-            return this
+            return new(condition, nothing)
         end
     end
 
@@ -20,7 +16,7 @@ module CoroutineModule
         schedule(this.task)
 
         push!(JulGame.Coroutines, this)
-        this.condition = this.condition === nothing ? MAIN.coroutine_condition : Condition()
+        this.condition = this.condition === nothing ? MAIN.coroutine_condition : Base.Condition()
 
         return this
     end

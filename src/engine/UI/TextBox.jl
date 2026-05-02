@@ -77,7 +77,7 @@ module TextBoxModule
             this = new()
             
             this.isConstructed = false
-            this.anchor = JulGame.Enum{Any}(JulGame.UI.ANCHOR_STATE_SYMBOLS...)
+            this.anchor = JulGame.copy_enum(UI.anchor_types)
 
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
@@ -753,7 +753,6 @@ module TextBoxModule
             end
         catch e
             @error("Failed to apply effects", name=this.name, err=e)
-            Base.show_backtrace(stderr, catch_backtrace())
             # Clean up on error
             if baseSurface != C_NULL
                 SDL2.SDL_FreeSurface(baseSurface)

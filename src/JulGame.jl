@@ -26,8 +26,6 @@ module JulGame
     
     IS_EDITOR::Bool = false
     IS_EDITOR_PLAY_MODE::Bool = false
-    
-    Coroutines::Vector = []
 
     """Queued one-shot render callback (`Rendering.queue_render_function`). Callable is stored as `Function` for JuliaC `--trim`."""
     struct RenderQueuedFunction
@@ -100,7 +98,7 @@ module JulGame
     export DELTA_TIME, IS_EDITOR, SDL2, SDL2E, MAIN
 
     include("utils/Structs.jl")
-    export EditorExport, Enum
+    export EditorExport, Enum, copy_enum
 
     const engine_states = Enum{Any}(
         :startup, 
@@ -116,7 +114,9 @@ module JulGame
     include("Coroutine/Coroutine.jl")
     using .CoroutineModule
     export Coroutine
-    
+
+    const Coroutines = Coroutine[]
+
     include("utils/Types.jl")
     export Script
 

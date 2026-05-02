@@ -302,7 +302,7 @@ module InputModule
     end
 
     @Base.noinline function _input_trim_entity_handle_event!(ent::JulGame.IEntity, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
-        Base.invokelatest(JulGame.UI.handle_event, ent, evt, x, y)
+        JulGame.UI.handle_event(ent, evt, x, y)
         return nothing
     end
 
@@ -418,7 +418,7 @@ module InputModule
         _input_ui_hit_span!(prof, t_aabb, :hit_ui_iter_probe_aabb)
 
         if !eventWasInsideThisElement
-            Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui, false)
+            JulGame.UI.input_ui_set_isHovered!(ui, false)
             t_ctr = time_ns()
             hc.n_miss_bounds += 1
             _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
@@ -452,7 +452,7 @@ module InputModule
 
             if shouldHandleEvent
                 @debug "  -> Handling event for element '$(ename)'"
-                Base.invokelatest(JulGame.UI.handle_event, ui, evt, this.mousePosition.x, this.mousePosition.y)
+                JulGame.UI.handle_event(ui, evt, this.mousePosition.x, this.mousePosition.y)
                 t_hi = time_ns()
                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                     push!(this.elementsBeingClickedDownOn, ui)

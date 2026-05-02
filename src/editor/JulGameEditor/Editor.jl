@@ -674,7 +674,7 @@ module Editor
                     end
 
                     try
-                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoopModule.game_loop(currentSceneMain, startTime, lastPhysicsTime, Math.Vector2(sceneWindowPos.x + 8, sceneWindowPos.y + 25), Math.Vector2(sceneWindowSize.x, sceneWindowSize.y)) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
+                        gameInfo = currentSceneMain === nothing ? [] : JulGame.MainLoopModule.game_loop(currentSceneMain, startTime, lastPhysicsTime, JulGame.Math._Vector2{Int32}(Int32(sceneWindowPos.x + 8), Int32(sceneWindowPos.y + 25)), JulGame.Math._Vector2{Int32}(Int32(sceneWindowSize.x), Int32(sceneWindowSize.y))) # Magic numbers for the border of the imgui window. TODO: Make this dynamic if possible
                     catch e
                         handle_editor_exceptions("Game loop:", latest_exceptions, e, is_test_mode)
                     end
