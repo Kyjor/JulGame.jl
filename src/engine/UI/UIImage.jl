@@ -46,7 +46,7 @@ module UIImageModule
         )
             this = new()
 
-            this.anchor = deepcopy(UI.anchor_types)
+            this.anchor = JulGame.Enum{Any}(JulGame.UI.ANCHOR_STATE_SYMBOLS...)
             this.isActive = isActive
             this.id = id
             this.persistentBetweenScenes = persistentBetweenScenes

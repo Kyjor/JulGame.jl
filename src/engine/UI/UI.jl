@@ -25,7 +25,7 @@
         update_button_text,
         update_font_size
 
-    const anchor_types = JulGame.Enum{Any}(
+    const ANCHOR_STATE_SYMBOLS = (
         :center,
         :top,
         :bottom,
@@ -41,6 +41,7 @@
         :centerBottom,
         :none
     )
+    const anchor_types = JulGame.Enum{Any}(ANCHOR_STATE_SYMBOLS...)
 
     function canvas_active_for_input end
 

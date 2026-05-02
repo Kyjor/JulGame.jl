@@ -1259,13 +1259,13 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
-				JulGame.WindowManagerModule._sdl_gfx_framerate_delay!(this.windowManager.fpsManager)
+				JulGame.WindowManagerModule._sdl_gfx_framerate_delay!(this.windowManager.fpsManagerPtr)
 				
 				if this.latencyProfiler !== nothing
 					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
 				end
 			elseif JulGame.IS_WEB
-				JulGame.WindowManagerModule._sdl_gfx_framerate_delay!(this.windowManager.fpsManager)
+				JulGame.WindowManagerModule._sdl_gfx_framerate_delay!(this.windowManager.fpsManagerPtr)
 				entt = "["
 				for i = 1:length(this.scene.entities)
 					entt *= "{ \"x\": $(this.scene.entities[i].transform.position.x), \"y\": $(this.scene.entities[i].transform.position.y) }"
@@ -1481,25 +1481,34 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 				pos = entity.transform.position
 				scale = entity.transform.scale
+				px = getfield(pos, :x)::Float64
+				py = getfield(pos, :y)::Float64
+				sx = getfield(scale, :x)::Float64
+				sy = getfield(scale, :y)::Float64
+				camx = getfield(cameraPosition, :x)::Float64
+				camy = getfield(cameraPosition, :y)::Float64
+				cs_x = getfield(cameraSize, :x)::Int32
+				cs_y = getfield(cameraSize, :y)::Int32
 	
-				if ((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/S || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/S)  && this.optimizeSpriteRendering 
+				if ((px + sx) < camx || py < camy || px > camx + cs_x/S || (py - sy) > camy + cs_y/S)  && this.optimizeSpriteRendering 
 					colliderSkipCount += 1
 					continue
 				end
 				colliderRenderCount += 1
 				collider = entity.collider
 	
-				
-				colSize = collider.size
-				colSize = Math.Vector2f(colSize.x, colSize.y)
-				colOffset = collider.offset
-				colOffset = Math.Vector2f(colOffset.x, colOffset.y)
+				colSize = getfield(collider, :size)::JulGame.Math._Vector2{Float64}
+				colOffset = getfield(collider, :offset)::JulGame.Math._Vector2{Float64}
+				csizex = getfield(colSize, :x)::Float64
+				csizey = getfield(colSize, :y)::Float64
+				coffx = getfield(colOffset, :x)::Float64
+				coffy = getfield(colOffset, :y)::Float64
 						
 				SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
-				Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
-				(pos.y + colOffset.y - cameraPosition.y) * S, 
-				entity.transform.scale.x * colSize.x * S, 
-				entity.transform.scale.y * colSize.y * S)))
+				Ref(SDL2.SDL_FRect((px + coffx - camx) * S, 
+				(py + coffy - camy) * S, 
+				sx * csizex * S, 
+				sy * csizey * S)))
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
 			end
 		end

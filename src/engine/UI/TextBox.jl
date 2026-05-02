@@ -77,7 +77,7 @@ module TextBoxModule
             this = new()
             
             this.isConstructed = false
-            this.anchor = deepcopy(UI.anchor_types)
+            this.anchor = JulGame.Enum{Any}(JulGame.UI.ANCHOR_STATE_SYMBOLS...)
 
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset

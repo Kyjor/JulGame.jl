@@ -60,7 +60,7 @@ module CanvasModule
             this = new()
             this.children = JulGame.IUIElement[]
             this.clipChildren = clipChildren
-            this.anchor = deepcopy(UI.anchor_types)
+            this.anchor = JulGame.Enum{Any}(JulGame.UI.ANCHOR_STATE_SYMBOLS...)
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
             this.id = id
