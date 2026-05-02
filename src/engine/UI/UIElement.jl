@@ -84,6 +84,18 @@ end
     return getfield(relationship_instance(ui), :layer)::Int
 end
 
+"""Position for input hit-tests (`getfield` on relationship; JuliaC `--trim`)."""
+@inline function input_ui_position(ui::JulGame.IUIElement)::Math.Vector2
+    add_relationship_if_not_exists(ui)
+    return getfield(relationship_instance(ui), :position)::Math.Vector2
+end
+
+"""Size for input hit-tests (`getfield` on relationship; JuliaC `--trim`)."""
+@inline function input_ui_size(ui::JulGame.IUIElement)::Math.Vector2
+    add_relationship_if_not_exists(ui)
+    return getfield(relationship_instance(ui), :size)::Math.Vector2
+end
+
 function input_ui_force_click_check(ui::JulGame.IUIElement)::Bool
     add_relationship_if_not_exists(ui)
     return getfield(relationship_instance(ui), :forceClickCheck)::Bool

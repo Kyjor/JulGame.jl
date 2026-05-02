@@ -275,13 +275,15 @@ module InputModule
     # Sorting lives in `JulGame.UI.sort_reversed_ui_by_layer_for_input` (relationship dict access).
 
     @inline function _canvas_children(c::JulGame.ICanvas)::Vector{JulGame.IUIElement}
-        return (c::JulGame.UI.CanvasModule.Canvas).children::Vector{JulGame.IUIElement}
+        cv = c::JulGame.UI.CanvasModule.Canvas
+        return getfield(cv, :children)::Vector{JulGame.IUIElement}
     end
 
     function _ui_element_in_inactive_canvas(ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas})::Bool
         for canvas in canvases
-            JulGame.UI.canvas_active_for_input(canvas) && continue
-            for c in _canvas_children(canvas)
+            cv = canvas::JulGame.UI.CanvasModule.Canvas
+            getfield(cv, :isActive)::Bool && continue
+            for c in _canvas_children(cv)
                 c === ui && return true
             end
         end
@@ -290,12 +292,28 @@ module InputModule
 
     function _entity_in_inactive_canvas(ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas})::Bool
         for canvas in canvases
-            JulGame.UI.canvas_active_for_input(canvas) && continue
-            for c in _canvas_children(canvas)
+            cv = canvas::JulGame.UI.CanvasModule.Canvas
+            getfield(cv, :isActive)::Bool && continue
+            for c in _canvas_children(cv)
                 c === ent && return true
             end
         end
         return false
+    end
+
+    @Base.noinline function _input_trim_ui_set_hovered!(ui::JulGame.IUIElement, v::Bool)::Nothing
+        Base.invokelatest(JulGame.UI.input_ui_set_isHovered!, ui, v)
+        return nothing
+    end
+
+    @Base.noinline function _input_trim_ui_handle_event!(ui::JulGame.IUIElement, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
+        Base.invokelatest(JulGame.UI.handle_event, ui, evt, x, y)
+        return nothing
+    end
+
+    @Base.noinline function _input_trim_entity_handle_event!(ent::JulGame.IEntity, evt::SDL2.SDL_Event, x::Int32, y::Int32)::Nothing
+        Base.invokelatest(JulGame.UI.handle_event, ent, evt, x, y)
+        return nothing
     end
 
     function _sort_reversed_entities_with_sprite_by_layer_desc(entities)
@@ -332,7 +350,7 @@ module InputModule
         evt::SDL2.SDL_Event,
         prof_in::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler},
         uiOrdered::Vector{JulGame.IUIElement},
-        entsOrdered,
+        entsOrdered::AbstractVector{<:JulGame.IEntity},
         canvases::Vector{JulGame.ICanvas},
     )::Nothing
         hc = _MouseUiHitLoop(0, 0, 0, 0, 0, 0, false, false)
@@ -345,7 +363,7 @@ module InputModule
         return nothing
     end
 
-    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, @nospecialize(ui::JulGame.IUIElement), canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
+    Base.@noinline function _input_hit_scan_ui!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ui::JulGame.IUIElement, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -410,7 +428,7 @@ module InputModule
         _input_ui_hit_span!(prof, t_aabb, :hit_ui_iter_probe_aabb)
 
         if !eventWasInsideThisElement
-            JulGame.UI.input_ui_set_isHovered!(ui, false)
+            _input_trim_ui_set_hovered!(ui, false)
             t_ctr = time_ns()
             hc.n_miss_bounds += 1
             _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
@@ -444,7 +462,7 @@ module InputModule
 
             if shouldHandleEvent
                 @debug "  -> Handling event for element '$(ename)'"
-                JulGame.UI.handle_event(ui, evt, this.mousePosition.x, this.mousePosition.y)
+                _input_trim_ui_handle_event!(ui, evt, this.mousePosition.x, this.mousePosition.y)
                 t_hi = time_ns()
                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                     push!(this.elementsBeingClickedDownOn, ui)
@@ -481,7 +499,7 @@ module InputModule
         return nothing
     end
 
-    Base.@noinline function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, @nospecialize(ent::JulGame.IEntity), canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
+    Base.@noinline function _input_hit_scan_entity!(this::Input, evt::SDL2.SDL_Event, prof::Union{Nothing, JulGame.Diagnostics.LatencyProfilerModule.LatencyProfiler}, ent::JulGame.IEntity, canvases::Vector{JulGame.ICanvas}, hc::_MouseUiHitLoop)::Nothing
         hc.n_iter += 1
         t_iter = time_ns()
 
@@ -587,7 +605,7 @@ module InputModule
 
             if shouldHandleEvent
                 @debug "  -> Handling event for element '$(ename)'"
-                JulGame.UI.handle_event(ent, evt, this.mousePosition.x, this.mousePosition.y)
+                _input_trim_entity_handle_event!(ent, evt, this.mousePosition.x, this.mousePosition.y)
                 t_hi = time_ns()
                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                     push!(this.elementsBeingClickedDownOn, ent)
@@ -857,37 +875,48 @@ module InputModule
         return element in this.elementsBeingClickedDownOn
     end
 
-    function get_element_position(element::JulGame.IUIElement)
-        return element.position
+    function get_element_position(element::JulGame.IUIElement)::Math._Vector2{Int32}
+        return JulGame.UI.input_ui_position(element)
     end
 
-    function get_element_position(element::JulGame.IEntity)
-        if element.sprite === nothing || element.sprite === C_NULL
-            return JulGame.Math._Vector2{Int32}(0, 0)
+    function get_element_position(element::JulGame.IEntity)::Math._Vector2{Int32}
+        sp = getfield(element, :sprite)
+        if sp === nothing || sp === C_NULL
+            return Math._Vector2{Int32}(0, 0)
         end
-        basePosition = element.sprite.lastRenderedScreenPosition === nothing ? JulGame.Math._Vector2{Int32}(0, 0) : element.sprite.lastRenderedScreenPosition
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math._Vector2{Int32}(0, 0) : element.sprite.lastRenderedScreenSize
-        # Center the scaled hitbox over the original sprite position
-        interactionScale = try element.sprite.interactionScale catch; 1.0 end
+        lrp = getfield(sp, :lastRenderedScreenPosition)
+        lrs = getfield(sp, :lastRenderedScreenSize)
+        basePosition = lrp === nothing ? Math._Vector2{Int32}(0, 0) : lrp::Math._Vector2{Int32}
+        baseSize = lrs === nothing ? Math._Vector2{Int32}(0, 0) : lrs::Math._Vector2{Int32}
+        interactionScale = try
+            getfield(sp, :interactionScale)
+        catch
+            1.0
+        end
         if interactionScale < 1.0
-            sizeDiff = JulGame.Math._Vector2{Int32}(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
-            return JulGame.Math._Vector2{Int32}(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
+            sizeDiff = Math._Vector2{Int32}(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
+            return Math._Vector2{Int32}(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
         end
         return basePosition
     end
 
-    function get_element_size(element::JulGame.IUIElement)
-        return element.size
+    function get_element_size(element::JulGame.IUIElement)::Math._Vector2{Int32}
+        return JulGame.UI.input_ui_size(element)
     end
 
-    function get_element_size(element::JulGame.IEntity)
-        if element.sprite === nothing || element.sprite === C_NULL
-            return JulGame.Math._Vector2{Int32}(0, 0)
+    function get_element_size(element::JulGame.IEntity)::Math._Vector2{Int32}
+        sp = getfield(element, :sprite)
+        if sp === nothing || sp === C_NULL
+            return Math._Vector2{Int32}(0, 0)
         end
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? JulGame.Math._Vector2{Int32}(0, 0) : element.sprite.lastRenderedScreenSize
-        # Apply interaction scale to shrink/grow hitbox independently of visual size
-        interactionScale = try element.sprite.interactionScale catch; 1.0 end
-        return JulGame.Math._Vector2{Int32}(baseSize.x * interactionScale, baseSize.y * interactionScale)
+        lrs = getfield(sp, :lastRenderedScreenSize)
+        baseSize = lrs === nothing ? Math._Vector2{Int32}(0, 0) : lrs::Math._Vector2{Int32}
+        interactionScale = try
+            getfield(sp, :interactionScale)
+        catch
+            1.0
+        end
+        return Math._Vector2{Int32}(baseSize.x * interactionScale, baseSize.y * interactionScale)
     end
 
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
