@@ -38,6 +38,31 @@ module SceneBuilderModule
             return this
         end    
     end
+
+    function _json3_string(obj::JSON3.Object, key::Symbol, default::String)::String
+        v = get(obj, key, nothing)
+        v === nothing && return default
+        v isa String && return v
+        v isa Symbol && return String(v)
+        v isa Bool && return v ? "true" : "false"
+        v isa Int && return string(v)
+        v isa Int32 && return string(v)
+        v isa Int16 && return string(v)
+        v isa Int8 && return string(v)
+        v isa UInt && return string(v)
+        v isa UInt32 && return string(v)
+        v isa UInt16 && return string(v)
+        v isa UInt8 && return string(v)
+        v isa Float64 && return string(v)
+        v isa Float32 && return string(v)
+        return default
+    end
+
+    function _json3_fields(obj::JSON3.Object)
+        raw = get(obj, :fields, nothing)
+        raw isa JSON3.Object && return raw
+        return nothing
+    end
     
     function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); 
         config=parse_config(), 
@@ -180,8 +205,12 @@ module SceneBuilderModule
         end
         
         for uiElement in main_loop.scene.uiElements
-            if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity
-                UI.align_to_anchor(uiElement)
+            if uiElement isa JulGame.IUIElement
+                JulGame.UI.add_relationship_if_not_exists(uiElement)
+                is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
+                if !is_world_entity
+                    UI.align_to_anchor(uiElement)
+                end
             end
         end
 
@@ -190,7 +219,8 @@ module SceneBuilderModule
         add_scripts_to_entities(BasePath)
 
         JulGame.engine_states.current_state = :game_mode
-        JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
+        loop_size::Math.Vector2 = size
+        JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(loop_size)
     end
 
     function deserialize_and_build_scene(this::Scene)
@@ -222,8 +252,12 @@ module SceneBuilderModule
         end
 
         for uiElement in main_loop.scene.uiElements
-            if "$(typeof(uiElement))" == "JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity
-                UI.align_to_anchor(uiElement)
+            if uiElement isa JulGame.IUIElement
+                JulGame.UI.add_relationship_if_not_exists(uiElement)
+                is_world_entity = getfield(JulGame.UI.relationships[uiElement], :isWorldEntity)::Bool
+                if is_world_entity
+                    UI.align_to_anchor(uiElement)
+                end
             end
         end
 
@@ -335,22 +369,13 @@ module SceneBuilderModule
         # Track which scripts we've already loaded
         
         # Only load scripts for non-persistent entities or if package is not compiled
+        # JuliaC trim path: avoid dynamic runtime `include` here; rely on package module Scripts in compiled mode.
         if !JulGame.IS_PACKAGE_COMPILED
-            @debug "Package not compiled, loading scripts"
-            foreach(file -> try
-                if !(file in loaded_scripts)
-                    @debug("Loading $file")
-                    Base.include(JulGame.ScriptModule, file)
-                    @debug("Finished loading $file")
-                    push!(loaded_scripts, file)
-                end
-            catch e
-                @error("Error including $file: ", e)
-                end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
-            @debug "Finished loading scripts"
+            @debug "Package not compiled, skipping dynamic script includes in trim-safe path"
         end
 
-        project_module_name::String = JulGame.ProjectModule
+        project_module_value = JulGame.ProjectModule
+        project_module_name = project_module_value isa String ? project_module_value : ""
         if !isempty(project_module_name)
             @debug "Loading scripts from project module: $(project_module_name)"
             project_module_symbol = Symbol(project_module_name)
@@ -370,42 +395,45 @@ module SceneBuilderModule
                     scriptCounter += 1
                     continue
                 end
-                script_name_any = get(script, :name, "")
-                script_name = script_name_any isa String ? script_name_any : string(script_name_any)
+                script_name = _json3_string(script, :name, "")
+                isempty(script_name) && (scriptCounter += 1; continue)
                 @debug String("Adding script: $(script_name) to entity: $(entity.name)")
 
                 newScript = nothing
                 try
-                    module_name = getfield(JulGame.ScriptModule, Symbol("$(script_name)Module"))
+                    script_module = JulGame.ScriptModule
+                    script_module isa Module || continue
+                    module_name = getfield(script_module, Symbol("$(script_name)Module"))
                     constructor = Base.invokelatest(getfield, module_name, Symbol(script_name))
                     newScript = Base.invokelatest(constructor)
-                    scriptFields = get(script, :fields, Dict{Any, Any}())
+                    scriptFields = _json3_fields(script)
                     @debug("getting fields for: $(script)")
-                    for (key, value) in scriptFields
-                        ftype = nothing
-                        try
-                            ftype = fieldtype(typeof(newScript), Symbol(key))
-                            @debug("type: $(ftype)")
-                            if ftype <: EditorExport
-                                @debug "Overwriting $(key) to $(value) using scene file"
-                                # Get the wrapped type from EditorExport{T}
-                                underlying_type = ftype.parameters[1]
-                                Base.invokelatest(setfield!, newScript, key, EditorExport(convert(underlying_type, value)))
-                                continue
-                            elseif value === nothing
-                                @debug "Value is nothing"
-                                continue
+                    if scriptFields !== nothing
+                        for key_symbol in keys(scriptFields)
+                            value = get(scriptFields, key_symbol, nothing)
+                            try
+                                ftype = fieldtype(typeof(newScript), key_symbol)
+                                @debug("type: $(ftype)")
+                                if ftype <: EditorExport
+                                    @debug "Overwriting $(key_symbol) to $(value) using scene file"
+                                    # Get the wrapped type from EditorExport{T}
+                                    underlying_type = ftype.parameters[1]
+                                    Base.invokelatest(setfield!, newScript, key_symbol, EditorExport(convert(underlying_type, value)))
+                                    continue
+                                elseif value === nothing
+                                    @debug "Value is nothing"
+                                    continue
+                                end
+                            catch e
+                                @warn string(e)
                             end
-                        catch e
-                            @warn string(e)
                         end
                     end
                 catch e
                     @error sprint(showerror, e)
                 end
-                if newScript != C_NULL && newScript !== nothing
+                if newScript !== nothing
                     entity.scripts[scriptCounter] = newScript
-                    newScript.parent = entity
                 end
                 scriptCounter += 1
             end

@@ -53,6 +53,14 @@ module SceneReaderModule
         return get(d, k, default)
     end
 
+    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}, k::Symbol, default::Nothing)
+        if d isa JSON3.Object
+            return get(d, k, default)
+        else
+            return get(d, string(k), default)
+        end
+    end
+
     # JuliaC `--trim`: a single Union-typed entry helps the verifier resolve `_json_value(::Union{...}, ::String, ::Nothing)` calls
     # made from `getproperty(::JsonObj)` / `haskey(::JsonObj)` against a concrete dispatch target.
     function _json_value(d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}, k::String, default::Nothing)
@@ -105,6 +113,62 @@ module SceneReaderModule
         v isa Float64 && return Int(round(v))
         v isa Float32 && return Int(round(Float64(v)))
         return default
+    end
+
+    function _to_bool(v, default::Bool)::Bool
+        v === nothing && return default
+        v isa Bool && return v
+        v isa Int && return v != 0
+        v isa Int32 && return v != 0
+        v isa Int16 && return v != 0
+        v isa Int8 && return v != 0
+        v isa UInt && return v != 0
+        v isa UInt32 && return v != 0
+        v isa UInt16 && return v != 0
+        v isa UInt8 && return v != 0
+        v isa Float64 && return v != 0.0
+        v isa Float32 && return v != 0.0f0
+        return default
+    end
+
+    function _json_string(o::JsonObj, key::String, default::String)::String
+        v = _json_value(_scene_storage(o), key, nothing)
+        v === nothing && return default
+        v isa String && return v
+        v isa Symbol && return String(v)
+        v isa Bool && return v ? "true" : "false"
+        v isa Int && return string(v)
+        v isa Int32 && return string(v)
+        v isa Int16 && return string(v)
+        v isa Int8 && return string(v)
+        v isa UInt && return string(v)
+        v isa UInt32 && return string(v)
+        v isa UInt16 && return string(v)
+        v isa UInt8 && return string(v)
+        v isa Float64 && return string(v)
+        v isa Float32 && return string(v)
+        return default
+    end
+
+    function _json_any_array(o::JsonObj, key::String)::Vector{Any}
+        v = _json_value(_scene_storage(o), key, nothing)
+        v === nothing && return Any[]
+        if v isa Vector{Any}
+            return v
+        elseif v isa Vector
+            out = Any[]
+            for x in v
+                push!(out, x)
+            end
+            return out
+        elseif v isa JSON3.Array
+            out = Any[]
+            for x in v
+                push!(out, x)
+            end
+            return out
+        end
+        return Any[]
     end
 
     """Read `parent.sub_key.leaf_key` as `Float64` without going through `getproperty(::JsonObj)::Any` chains."""
@@ -201,17 +265,24 @@ module SceneReaderModule
                 return (cached.entities, cached.uiElements, cached.camera)
             end
 
-            json = nothing
+            root::JsonObj = JsonObj(Dict{String, Any}())
             if Base.haskey(JulGame.SCENE_CACHE, basename(filePath))
-                json = JulGame.SCENE_CACHE[basename(filePath)]
+                cached_json = JulGame.SCENE_CACHE[basename(filePath)]
+                if cached_json isa JsonObj
+                    root = cached_json
+                elseif cached_json isa Dict{String, Any}
+                    root = JsonObj(cached_json)
+                elseif cached_json isa SceneJSONObject
+                    root = JsonObj(cached_json)
+                elseif cached_json isa JSON3.Object
+                    root = JsonObj(cached_json)
+                end
                 @debug("using cached scene")
             else 
                 entitiesJson = read(filePath, String)
-                json = _scene_root_jsonobj_from_file(entitiesJson)
+                root = _scene_root_jsonobj_from_file(entitiesJson)
                 @debug("using scene from scene file")
             end
-
-            root::JsonObj = _as_scene_json_root(json)
 
             entities = Entity[]
             childParentDict = Dict{String, String}()
@@ -223,27 +294,34 @@ module SceneReaderModule
             catch e
                 @error sprint(showerror, e)
             end
-            for entity in root.Entities
-                if entity.id in entityIdsInCurrentScene
-                    @debug "Entity with id $(entity.id) already exists in current scene"
+            entities_json = _json_any_array(root, "Entities")
+            for entity_raw in entities_json
+                entity = _scene_obj(entity_raw)
+                entity_id = _json_string(entity, "id", "")
+                if entity_id in entityIdsInCurrentScene
+                    @debug "Entity with id $(entity_id) already exists in current scene"
                     continue
                 end
                 components = Any[]
     
-                for component in entity.components
-                    @debug "Deserializing component: $(component.type)"
+                components_raw = _json_any_array(entity, "components")
+                for component_raw in components_raw
+                    component = _scene_obj(component_raw)
+                    component_type = _json_string(component, "type", "")
+                    @debug "Deserializing component: $(component_type)"
                     push!(components, deserialize_component(component))
                 end
                 
-                if haskey(entity, "parent") && entity.parent != ""
-                    childParentDict[string(entity.id)] = string(entity.parent)
+                entity_parent = _json_string(entity, "parent", "")
+                if entity_parent != ""
+                    childParentDict[entity_id] = entity_parent
                 end
-                newEntity = Entity(get(entity, "name", "New entity"), string(entity.id))
-                newEntity.isActive = get(entity, "isActive", true)
+                entity_name = _json_string(entity, "name", "New entity")
+                newEntity = Entity(entity_name, entity_id)
+                newEntity.isActive = _to_bool(_json_value(_scene_storage(entity), "isActive", true), true)
                 # Keep raw JSON3.Object/Dict entries here; SceneBuilder reifies them via `isa(script, JSON3.Object)`.
-                raw_scripts = _json_value(getfield(entity, :d), "scripts", Any[])
-                newEntity.scripts = raw_scripts isa AbstractVector ? collect(raw_scripts) : Any[]
-                newEntity.persistentBetweenScenes = get(entity, "persistentBetweenScenes", false)
+                newEntity.scripts = _json_any_array(entity, "scripts")
+                newEntity.persistentBetweenScenes = _to_bool(_json_value(_scene_storage(entity), "persistentBetweenScenes", false), false)
 
                 for component in components
                     if typeof(component) == Animator
@@ -329,17 +407,18 @@ module SceneReaderModule
                     end
                 end
             end
-            uiElements = deserialize_ui_elements(root.UIElements, entities)
+            ui_raw = _json_any_array(root, "UIElements")
+            uiElements = deserialize_ui_elements(ui_raw, entities)
             camera = Camera(
                 Math._Vector2{Int32}(500, 500),
                 Math._Vector3{Float64}(0.0, 0.0, 0.0),
                 Math._Vector2{Float64}(0.0, 0.0),
                 C_NULL)
-            if haskey(root, "Camera")
+            cam_raw = _json_value(_scene_storage(root), "Camera", nothing)
+            if cam_raw !== nothing
                 # JuliaC `--trim`: read camera fields via concrete `_scene_*` helpers instead of property
                 # syntax (`cam.size.x`, `cam.backgroundColor.r`, ...) so the verifier doesn't walk a stack of
                 # `getproperty(::JsonObj, ...)::Any` calls (was verifier #343–#380).
-                cam_raw = _json_value(_scene_storage(root), "Camera", nothing)
                 cam = _scene_obj(cam_raw)
                 sx_c = _scene_f64(cam, "size", "x", 0.0)
                 sy_c = _scene_f64(cam, "size", "y", 0.0)
