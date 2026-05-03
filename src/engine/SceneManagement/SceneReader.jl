@@ -26,50 +26,41 @@ module SceneReaderModule
         d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
     end
 
-    function _expose(v)
-        v isa Dict{String,Any} && return JsonObj(v)
-        v isa SceneJSONObject && return JsonObj(v)
-        v isa JSON3.Object && return JsonObj(v)
-        v isa AbstractDict && return JsonObj(Dict{String,Any}(string(k) => x for (k, x) in pairs(v)))
-        if v isa AbstractVector && !(v isa AbstractString)
-            return [_expose(x) for x in v]
-        end
-        return v
-    end
-
-    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject}, k::AbstractString, default = nothing)
-        return get(d, string(k), default)
-    end
-
-    function _json_value(d::JSON3.Object, k::AbstractString, default = nothing)
-        return get(d, Symbol(k), default)
-    end
-
-    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject}, k::Symbol, default = nothing)
-        return get(d, string(k), default)
-    end
-
-    function _json_value(d::JSON3.Object, k::Symbol, default = nothing)
-        return get(d, k, default)
-    end
-
-    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}, k::Symbol, default::Nothing)
+    """Two-argument lookup only: avoid `default`/`@nospecialize`, which JuliaC `--trim` reports as unresolved when default is `Nothing`."""
+    @Base.noinline function _json_lookup(
+        d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object},
+        k::AbstractString,
+    )::Any
+        ks = string(k)
         if d isa JSON3.Object
-            return get(d, k, default)
-        else
-            return get(d, string(k), default)
+            sym = Symbol(ks)
+            return haskey(d, sym) ? d[sym] : nothing
         end
+        return haskey(d, ks) ? d[ks] : nothing
     end
 
-    # JuliaC `--trim`: a single Union-typed entry helps the verifier resolve `_json_value(::Union{...}, ::String, ::Nothing)` calls
-    # made from `getproperty(::JsonObj)` / `haskey(::JsonObj)` against a concrete dispatch target.
-    function _json_value(d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}, k::String, default::Nothing)
-        if d isa JSON3.Object
-            return get(d, Symbol(k), default)
-        else
-            return get(d, k, default)
+    @Base.noinline function _expose_vector_for_scene(v::AbstractVector)::Vector{Any}
+        out = Any[]
+        for i = 1:length(v)
+            push!(out, _expose(v[i]))
         end
+        return out
     end
+
+    @inline _expose_dictlike_to_jsonobj(v::AbstractDict)::JsonObj =
+        JsonObj(Dict{String,Any}(string(k) => x for (k, x) in pairs(v)))
+
+    @Base.noinline _expose(v::Dict{String,Any}) = JsonObj(v)
+    @Base.noinline _expose(v::SceneJSONObject) = JsonObj(v)
+    @Base.noinline _expose(v::JSON3.Object) = JsonObj(v)
+    @Base.noinline function _expose(v::AbstractDict)
+        return _expose_dictlike_to_jsonobj(v)
+    end
+    @Base.noinline function _expose(v::AbstractVector)
+        return _expose_vector_for_scene(v)
+    end
+    @Base.noinline _expose(v::Nothing) = nothing
+    @Base.noinline _expose(v) = v
 
     @inline _scene_storage(o::JsonObj) = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
 
@@ -132,7 +123,7 @@ module SceneReaderModule
     end
 
     function _json_string(o::JsonObj, key::String, default::String)::String
-        v = _json_value(_scene_storage(o), key, nothing)
+        v = _json_lookup(_scene_storage(o), key)
         v === nothing && return default
         v isa String && return v
         v isa Symbol && return String(v)
@@ -151,7 +142,7 @@ module SceneReaderModule
     end
 
     function _json_any_array(o::JsonObj, key::String)::Vector{Any}
-        v = _json_value(_scene_storage(o), key, nothing)
+        v = _json_lookup(_scene_storage(o), key)
         v === nothing && return Any[]
         if v isa Vector{Any}
             return v
@@ -173,31 +164,62 @@ module SceneReaderModule
 
     """Read `parent.sub_key.leaf_key` as `Float64` without going through `getproperty(::JsonObj)::Any` chains."""
     function _scene_f64(parent::JsonObj, sub_key::String, leaf_key::String, default::Float64)::Float64
-        sub = _json_value(_scene_storage(parent), sub_key, nothing)
+        sub = _json_lookup(_scene_storage(parent), sub_key)
         sub === nothing && return default
         inner = _scene_obj(sub)
-        return _to_f64(_json_value(_scene_storage(inner), leaf_key, nothing), default)
+        return _to_f64(_json_lookup(_scene_storage(inner), leaf_key), default)
     end
 
     """Read `parent.sub_key.leaf_key` as `Int` without going through `getproperty(::JsonObj)::Any` chains."""
     function _scene_int(parent::JsonObj, sub_key::String, leaf_key::String, default::Int)::Int
-        sub = _json_value(_scene_storage(parent), sub_key, nothing)
+        sub = _json_lookup(_scene_storage(parent), sub_key)
         sub === nothing && return default
         inner = _scene_obj(sub)
-        return _to_int(_json_value(_scene_storage(inner), leaf_key, nothing), default)
+        return _to_int(_json_lookup(_scene_storage(inner), leaf_key), default)
+    end
+
+    @Base.noinline function _vec2f_from_json(c::JsonObj, sub_key::String, def_x::Float64, def_y::Float64)::Math._Vector2{Float64}
+        xf = _scene_f64(c, sub_key, "x", def_x)
+        yf = _scene_f64(c, sub_key, "y", def_y)
+        return Math._Vector2{Float64}(xf, yf)
     end
 
     function Base.getproperty(o::JsonObj, k::Symbol)
         k === :d && return getfield(o, :d)
-        return _expose(_json_value(getfield(o, :d), k, nothing))
+        d = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+        raw = if d isa JSON3.Object
+            get(d, k, Base.nothing)
+        else
+            get(d, string(k), Base.nothing)
+        end
+        raw === nothing && return nothing
+        return _expose(raw)
     end
 
-    Base.haskey(o::JsonObj, k::AbstractString) = _json_value(getfield(o, :d), k, nothing) !== nothing
+    function Base.haskey(o::JsonObj, k::AbstractString)
+        d = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+        ks = string(k)
+        if d isa JSON3.Object
+            return haskey(d, Symbol(ks))
+        end
+        return haskey(d, ks)
+    end
 
     function Base.get(o::JsonObj, k::AbstractString, default)
+        @nospecialize default
+        d = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
         ks = string(k)
-        value = _json_value(getfield(o, :d), ks, default)
-        value === default ? default : _expose(value)
+        if d isa JSON3.Object
+            sym = Symbol(ks)
+            if !haskey(d, sym)
+                return default
+            end
+            return _expose(get(d, sym, Base.nothing))
+        end
+        if !haskey(d, ks)
+            return default
+        end
+        return _expose(get(d, ks, Base.nothing))
     end
 
     Base.isempty(o::JsonObj) = isempty(getfield(o, :d))
@@ -309,7 +331,10 @@ module SceneReaderModule
                     component = _scene_obj(component_raw)
                     component_type = _json_string(component, "type", "")
                     @debug "Deserializing component: $(component_type)"
-                    push!(components, deserialize_component(component))
+                    dc = deserialize_component(component)
+                    if dc !== nothing
+                        push!(components, dc)
+                    end
                 end
                 
                 entity_parent = _json_string(entity, "parent", "")
@@ -318,10 +343,10 @@ module SceneReaderModule
                 end
                 entity_name = _json_string(entity, "name", "New entity")
                 newEntity = Entity(entity_name, entity_id)
-                newEntity.isActive = _to_bool(_json_value(_scene_storage(entity), "isActive", true), true)
+                newEntity.isActive = _to_bool(_json_lookup(_scene_storage(entity), "isActive"), true)
                 # Keep raw JSON3.Object/Dict entries here; SceneBuilder reifies them via `isa(script, JSON3.Object)`.
                 newEntity.scripts = _json_any_array(entity, "scripts")
-                newEntity.persistentBetweenScenes = _to_bool(_json_value(_scene_storage(entity), "persistentBetweenScenes", false), false)
+                newEntity.persistentBetweenScenes = _to_bool(_json_lookup(_scene_storage(entity), "persistentBetweenScenes"), false)
 
                 for component in components
                     if typeof(component) == Animator
@@ -414,7 +439,7 @@ module SceneReaderModule
                 Math._Vector3{Float64}(0.0, 0.0, 0.0),
                 Math._Vector2{Float64}(0.0, 0.0),
                 C_NULL)
-            cam_raw = _json_value(_scene_storage(root), "Camera", nothing)
+            cam_raw = _json_lookup(_scene_storage(root), "Camera")
             if cam_raw !== nothing
                 # JuliaC `--trim`: read camera fields via concrete `_scene_*` helpers instead of property
                 # syntax (`cam.size.x`, `cam.backgroundColor.r`, ...) so the verifier doesn't walk a stack of
@@ -433,7 +458,7 @@ module SceneReaderModule
                     _scene_int(cam, "backgroundColor", "b", 0),
                     _scene_int(cam, "backgroundColor", "a", 255),
                 )
-                zraw = _json_value(_scene_storage(cam), "zoom", nothing)
+                zraw = _json_lookup(_scene_storage(cam), "zoom")
                 if zraw !== nothing
                     camera.zoom = _to_f64(zraw, 1.0)
                 end
@@ -615,15 +640,15 @@ module SceneReaderModule
             split_ref = split(pref, "::")
             length(split_ref) != 2 && continue
             parentId, parentType = split_ref
-            child = get(uiElementsById, childId, nothing)
+            child = get(uiElementsById, childId, Base.nothing)
             child === nothing && continue
             if parentType == "Entity"
-                parentEntity = get(entitiesById, string(parentId), nothing)
+                parentEntity = get(entitiesById, string(parentId), Base.nothing)
                 parentEntity === nothing && continue
                 JulGame.UI.add_relationship_if_not_exists(child)
                 setfield!(JulGame.UI.relationship_instance(child), :parent, parentEntity)
             else
-                parentUI = get(uiElementsById, string(parentId), nothing)
+                parentUI = get(uiElementsById, string(parentId), Base.nothing)
                 parentUI === nothing && continue
                 JulGame.UI.add_relationship_if_not_exists(child)
                 setfield!(JulGame.UI.relationship_instance(child), :parent, parentUI)
@@ -634,68 +659,145 @@ module SceneReaderModule
     end
 
     export deserialize_component
-    function deserialize_component(component)
+    function deserialize_component(component::JsonObj)
         try
-            if component.type == "Transform"
-                newComponent = Transform(Math.Vector2f(component.position.x, component.position.y), Math.Vector2f(component.scale.x, component.scale.y))
-            elseif component.type == "Animator"
+            ty = _json_string(component, "type", "")
+            st = _scene_storage(component)
+            local newComponent
+            if ty == "Transform"
+                newComponent = Transform(
+                    _vec2f_from_json(component, "position", 0.0, 0.0),
+                    _vec2f_from_json(component, "scale", 1.0, 1.0),
+                )
+            elseif ty == "Animator"
                 newAnimations = Animation[]
-                for animation in component.animations
-                newAnimationFrames = Vector{Vector4}()
-                for animationFrame in animation.frames
-                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
+                for anim_raw in _json_any_array(component, "animations")
+                    anim = _scene_obj(anim_raw)
+                    sta = _scene_storage(anim)
+                    newAnimationFrames = Vector{Math._Vector4{Int32}}()
+                    for frame_raw in _json_any_array(anim, "frames")
+                        fr = _scene_obj(frame_raw)
+                        stf = _scene_storage(fr)
+                        push!(newAnimationFrames, Math._Vector4{Int32}(
+                            Int32(_to_int(_json_lookup(stf, "x"), 0)),
+                            Int32(_to_int(_json_lookup(stf, "y"), 0)),
+                            Int32(_to_int(_json_lookup(stf, "z"), 0)),
+                            Int32(_to_int(_json_lookup(stf, "t"), 0)),
+                        ))
                     end
-                    push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+                    fps = _to_int(_json_lookup(sta, "animatedFPS"), 0)
+                    push!(newAnimations, Animation(newAnimationFrames, fps))
                 end
                 newComponent = Animator(newAnimations)
-            elseif component.type == "Collider"
-                isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
-                enabled::Bool = !haskey(component, "enabled") ? true : component.enabled
-                isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
-                offset::Math.Vector2f = !haskey(component, "offset") ? Math.Vector2f(0,0) : Math.Vector2f(component.offset.x, component.offset.y)
-                newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Math.Vector2f(component.size.x, component.size.y), component.tag::String)
-            elseif component.type == "CircleCollider"
-                newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Math.Vector2f(component.offset.x, component.offset.y), component.tag)
-            elseif component.type == "Rigidbody"
-                newComponent = Rigidbody(; mass = convert(Float64, component.mass), useGravity = !haskey(component, "useGravity") ? true : component.useGravity)
-            elseif component.type == "SoundSource"
-                newComponent = SoundSource(component.channel, component.isMusic, component.path, get(component, "playOnStart", false), component.volume)
-            elseif component.type == "Sprite"
-                color = !haskey(component, "color") || _isempty_json_field(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
-                crop = !haskey(component, "crop") || _isempty_json_field(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
-                layer = !haskey(component, "layer") ? 0 : component.layer
-                offset = !haskey(component, "offset") ? Math.Vector2f() : Math.Vector2f(component.offset.x, component.offset.y)
-                position = !haskey(component, "position") ? Math.Vector2f() : Math.Vector2f(component.position.x, component.position.y)
-                rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
-                pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                center = !haskey(component, "center") ? Math.Vector2f(0.5,0.5) : Math.Vector2f(component.center.x, component.center.y)
-                anchor = !haskey(component, "anchor") ? :center : Symbol(component.anchor)
-                isStatic = !haskey(component, "isStatic") ? false : component.isStatic
-                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Math.Vector2f, position::Math.Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Math.Vector2f, anchor::Symbol, isStatic::Bool)
-            elseif component.type == "Shape"
-                color = !haskey(component, "color") || _isempty_json_field(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
-                layer = !haskey(component, "layer") ? 0 : component.layer
-                size = !haskey(component, "size") || _isempty_json_field(component.size) ? Math.Vector2f(1,1) : Math.Vector2f(component.size.x, component.size.y)
-                isFilled = !haskey(component, "isFilled") ? true : component.isFilled
-                isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
-                offset = !haskey(component, "offset") ? Math.Vector2f() : Math.Vector2f(component.offset.x, component.offset.y)
-                position = !haskey(component, "position") ? Math.Vector2f() : Math.Vector2f(component.position.x, component.position.y)
-                alpha = !haskey(component, "alpha") ? 255 : component.alpha
-                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int, offset::Math.Vector2f, position::Math.Vector2f, size::Math.Vector2f, alpha::Int)
-            elseif component.type == "Mesh3D"
-                vCamera = vec3d(component.vCamera.x, component.vCamera.y, component.vCamera.z, component.vCamera.w)
-                vLookDir = vec3d(component.vLookDir.x, component.vLookDir.y, component.vLookDir.z, component.vLookDir.w)
-                newComponent = Mesh3D()
-                newComponent.fNear = get(component, "fNear", 0.1)
-                newComponent.fFar = get(component, "fFar", 1000.0)
-                newComponent.fFov = get(component, "fFov", 90.0)
-                newComponent.fYaw = get(component, "fYaw", 0.0)
-                newComponent.fTheta = get(component, "fTheta", 0.0)
-                newComponent.fAspectRatio = get(component, "fAspectRatio", 0.0)
-                newComponent.vCamera = vCamera
-                newComponent.vLookDir = vLookDir
+            elseif ty == "Collider"
+                isTrigger = _to_bool(_json_lookup(st, "isTrigger"), false)
+                enabled = _to_bool(_json_lookup(st, "enabled"), true)
+                isPlatformerCollider = _to_bool(_json_lookup(st, "isPlatformerCollider"), false)
+                offset = _vec2f_from_json(component, "offset", 0.0, 0.0)
+                sz = _vec2f_from_json(component, "size", 0.0, 0.0)
+                tag = _json_string(component, "tag", "")
+                newComponent = Collider(enabled, isPlatformerCollider, isTrigger, offset, sz, tag)
+            elseif ty == "CircleCollider"
+                newComponent = CircleCollider(
+                    _to_f64(_json_lookup(st, "diameter"), 0.0),
+                    _to_bool(_json_lookup(st, "enabled"), true),
+                    _to_bool(_json_lookup(st, "isTrigger"), false),
+                    _vec2f_from_json(component, "offset", 0.0, 0.0),
+                    _json_string(component, "tag", "Default"),
+                )
+            elseif ty == "Rigidbody"
+                newComponent = Rigidbody(;
+                    mass = _to_f64(_json_lookup(st, "mass"), 0.0),
+                    useGravity = _to_bool(_json_lookup(st, "useGravity"), true),
+                )
+            elseif ty == "SoundSource"
+                newComponent = SoundSource(
+                    _to_int(_json_lookup(st, "channel"), -1),
+                    _to_bool(_json_lookup(st, "isMusic"), false),
+                    _json_string(component, "path", ""),
+                    _to_bool(_json_lookup(st, "playOnStart"), false),
+                    _to_int(_json_lookup(st, "volume"), -1),
+                )
+            elseif ty == "Sprite"
+                color_raw = _json_lookup(st, "color")
+                local color_tup::NTuple{4, Int}
+                if color_raw === nothing || color_raw === Base.nothing
+                    color_tup = (255, 255, 255, 255)
+                else
+                    cj = _scene_obj(color_raw)
+                    stc = _scene_storage(cj)
+                    color_tup = (
+                        _to_int(_json_lookup(stc, "x"), 255),
+                        _to_int(_json_lookup(stc, "y"), 255),
+                        _to_int(_json_lookup(stc, "z"), 255),
+                        _to_int(_json_lookup(stc, "t"), 255),
+                    )
+                end
+                crop_raw = _json_lookup(st, "crop")
+                local crop_v::Math._Vector4{Int32}
+                if crop_raw === nothing || crop_raw === Base.nothing
+                    crop_v = Math._Vector4{Int32}(Int32(0), Int32(0), Int32(0), Int32(0))
+                else
+                    cj = _scene_obj(crop_raw)
+                    stc = _scene_storage(cj)
+                    crop_v = Math._Vector4{Int32}(
+                        Int32(_to_int(_json_lookup(stc, "x"), 0)),
+                        Int32(_to_int(_json_lookup(stc, "y"), 0)),
+                        Int32(_to_int(_json_lookup(stc, "z"), 0)),
+                        Int32(_to_int(_json_lookup(stc, "t"), 0)),
+                    )
+                end
+                layer_i::Int = _to_int(_json_lookup(st, "layer"), 0)
+                offset_v::Math._Vector2{Float64} = _vec2f_from_json(component, "offset", 0.0, 0.0)
+                position_v::Math._Vector2{Float64} = _vec2f_from_json(component, "position", 0.0, 0.0)
+                rotation_f::Float64 = _to_f64(_json_lookup(st, "rotation"), 0.0)
+                pixels_i::Int = _to_int(_json_lookup(st, "pixelsPerUnit"), -1)
+                center_v::Math._Vector2{Float64} = _vec2f_from_json(component, "center", 0.5, 0.5)
+                anchor_sym::Symbol = Symbol(_json_string(component, "anchor", "center"))
+                isStatic_b::Bool = _to_bool(_json_lookup(st, "isStatic"), false)
+                isFlipped_b::Bool = _to_bool(_json_lookup(st, "isFlipped"), false)
+                newComponent = Sprite(
+                    color_tup,
+                    crop_v,
+                    isFlipped_b,
+                    _json_string(component, "imagePath", ""),
+                    layer_i,
+                    offset_v,
+                    position_v,
+                    rotation_f,
+                    pixels_i,
+                    center_v,
+                    anchor_sym,
+                    isStatic_b,
+                )
+            elseif ty == "Shape"
+                color_raw = _json_lookup(st, "color")
+                local color_v::Math._Vector3{Int32}
+                if color_raw === nothing || color_raw === Base.nothing
+                    color_v = Math._Vector3{Int32}(Int32(255), Int32(255), Int32(255))
+                else
+                    cj = _scene_obj(color_raw)
+                    stc = _scene_storage(cj)
+                    color_v = Math._Vector3{Int32}(
+                        Int32(_to_int(_json_lookup(stc, "x"), 255)),
+                        Int32(_to_int(_json_lookup(stc, "y"), 255)),
+                        Int32(_to_int(_json_lookup(stc, "z"), 255)),
+                    )
+                end
+                shape_layer::Int = _to_int(_json_lookup(st, "layer"), 0)
+                size_v::Math._Vector2{Float64} = _vec2f_from_json(component, "size", 1.0, 1.0)
+                isFilled_b::Bool = _to_bool(_json_lookup(st, "isFilled"), true)
+                isWorld_b::Bool = _to_bool(_json_lookup(st, "isWorldEntity"), true)
+                shape_offset_v::Math._Vector2{Float64} = _vec2f_from_json(component, "offset", 0.0, 0.0)
+                shape_position_v::Math._Vector2{Float64} = _vec2f_from_json(component, "position", 0.0, 0.0)
+                alpha_i::Int = _to_int(_json_lookup(st, "alpha"), 255)
+                newComponent = Shape(color_v, isFilled_b, isWorld_b, shape_layer, shape_offset_v, shape_position_v, size_v, alpha_i)
+            elseif ty == "Mesh3D"
+                # Omitted for JuliaC `--trim` (Mesh3D / JSON3 paths); scenes with 3D entities skip this component.
+                newComponent = nothing
+            else
+                newComponent = nothing
             end
-            
             return newComponent
         catch e
             @error sprint(showerror, e)

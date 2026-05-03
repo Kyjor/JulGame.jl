@@ -119,11 +119,11 @@
         end
         cur = getfield(anch::JulGame.Enum{Any}, :current_state)::Symbol
 
-        sx::Float64
-        sy::Float64
-        ox::Float64
-        oy::Float64
         par = getfield(tinst, :parent)
+        sx::Float64 = 0.0
+        sy::Float64 = 0.0
+        ox::Float64 = 0.0
+        oy::Float64 = 0.0
         if par === nothing
             cam_sz = getfield(cam, :size)::JulGame.Math._Vector2{Int32}
             sx = Float64(getfield(cam_sz, :x)::Int32)

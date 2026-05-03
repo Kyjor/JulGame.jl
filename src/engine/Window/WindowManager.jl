@@ -1,11 +1,16 @@
 module WindowManagerModule
     using ..JulGame
+    using SDL2_gfx_jll
     export WindowManager
-    
+
+    const _SDL2_GFX_LIB = SDL2_gfx_jll.libsdl2_gfx
+
     # JuliaC --trim: explicit ccall signatures (avoid untyped SDL2 wrappers resolving to Any).
+    # Use `SDL2_gfx_jll` directly — `SDL2.SDL2_gfx_jll` is a getproperty on SimpleDirectMediaLayer that
+    # can fail in static images (MethodError on :SDL2_gfx_jll).
     function _sdl_gfx_init_framerate!(fps::Ref{SDL2.LibSDL2.FPSmanager})::Nothing
         ccall(
-            (:SDL_initFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+            (:SDL_initFramerate, _SDL2_GFX_LIB),
             Cvoid,
             (Ptr{SDL2.LibSDL2.FPSmanager},),
             fps,
@@ -15,7 +20,7 @@ module WindowManagerModule
     
     function _sdl_gfx_set_framerate!(fps::Ref{SDL2.LibSDL2.FPSmanager}, rate::UInt32)::Nothing
         ccall(
-            (:SDL_setFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+            (:SDL_setFramerate, _SDL2_GFX_LIB),
             Cint,
             (Ptr{SDL2.LibSDL2.FPSmanager}, UInt32),
             fps,
@@ -26,7 +31,7 @@ module WindowManagerModule
 
     function _sdl_gfx_framerate_delay!(fps::Ptr{SDL2.LibSDL2.FPSmanager})::Nothing
         ccall(
-            (:SDL_framerateDelay, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+            (:SDL_framerateDelay, _SDL2_GFX_LIB),
             Cvoid,
             (Ptr{SDL2.LibSDL2.FPSmanager},),
             fps,
@@ -484,7 +489,7 @@ module WindowManagerModule
         if JulGame.MAIN !== nothing
             this.targetFrameRate = frameRate
             ccall(
-                (:SDL_setFramerate, SDL2.SDL2_gfx_jll.libsdl2_gfx),
+                (:SDL_setFramerate, _SDL2_GFX_LIB),
                 Cint,
                 (Ptr{SDL2.LibSDL2.FPSmanager}, UInt32),
                 this.fpsManagerPtr,

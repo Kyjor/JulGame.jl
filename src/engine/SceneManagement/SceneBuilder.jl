@@ -109,10 +109,10 @@ module SceneBuilderModule
     )
         JulGame.engine_states.current_state = :scene_change
         if config === nothing
-            @debug("Config is nothing, parsing config")
+            println(Core.stderr, "Config is nothing, parsing config")
             config = parse_config()
         else
-            @debug("Config is not nothing, using provided config")
+            println(Core.stderr, "Config is not nothing, using provided config")
         end
 
         config = fill_in_config(config)
@@ -147,10 +147,11 @@ module SceneBuilderModule
             # Initialize window manager
             windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
             if !windowCreated
-                @error "Failed to create window"
+                println(Core.stderr, "Failed to create window")
                 return
             end
-            
+
+            println(Core.stderr, "Window created")
             # Create renderer
             # todo move to window manager
             # Enable high-quality scaling
@@ -171,25 +172,27 @@ module SceneBuilderModule
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(main_loop.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             if JulGame.Renderer == C_NULL
+                #println(Core.stderr, "Failed to create renderer with window $(main_loop.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))")
                 @error "Failed to create renderer with window $(main_loop.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
             return
             end
 
             # Preload all scenes if requested
             if preloadAllScenes
-                @debug "Preloading all scenes..."
+                println(Core.stderr, "Preloading all scenes...")
                 scenesDir = joinpath(BasePath, "scenes")
                 if isdir(scenesDir)
                     for file in readdir(scenesDir)
                         if endswith(file, ".json")
                             scenePath = joinpath(scenesDir, file)
-                            @debug "Preloading scene: $file"
+                            println(Core.stderr, "Preloading scene: $file")
                             SceneReaderModule.preload_scene(scenePath)
                         end
                     end
-                    @debug "Finished preloading scenes"
+                    println(Core.stderr, "Finished preloading scenes")
                 else
-                    @warn "Scenes directory not found: $scenesDir"
+                    #println(Core.stderr, "Scenes directory not found: $scenesDir")
+                    @error "Scenes directory not found: $scenesDir"
                 end
             end
             
@@ -197,19 +200,25 @@ module SceneBuilderModule
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
             
             # Apply additional window settings from config
-            @debug "Setting frame rate to $(targetFrameRate)"
+            println(Core.stderr, "Setting frame rate to $(targetFrameRate)")
             JulGame.WindowManagerModule.set_frame_rate(targetFrameRate)
-            @debug "Setting vsync to $(isVsyncEnabled)"
+            println(Core.stderr, "Setting vsync to $(isVsyncEnabled)")
             JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
             
-            @debug "Deserializing scene"
+            println(Core.stderr, "Deserializing scene")
             # Use preloaded scene if available
             if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
-                @debug "Using preloaded scene: $(this.scene)"
+                println(Core.stderr, "Using preloaded scene: $(this.scene)")
                 scene = JulGame.PRELOADED_SCENES[this.scene]
             else
                 scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
             end
+            if scene === nothing
+                @error "Failed to load scene \"$(this.scene)\" from $(joinpath(BasePath, "scenes", this.scene)) (file missing, unreadable, or invalid JSON)"
+                println(Core.stderr, "Failed to load scene \"$(this.scene)\"  (file missing, unreadable, or invalid JSON)")
+                return nothing
+            end
+            println(Core.stderr, "Scene loaded successfully")
             camera = scene[3]
             # Set logical rendering size based on camera
             @debug "Setting logical size to $(size.x)x$(size.y)"
@@ -232,6 +241,10 @@ module SceneBuilderModule
             else
                 scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
             end
+        end
+        if scene === nothing
+            @error "Failed to load scene \"$(this.scene)\" from $(joinpath(BasePath, "scenes", this.scene)) (file missing, unreadable, or invalid JSON)"
+            return nothing
         end
         
         main_loop.scene.entities = scene[1]
