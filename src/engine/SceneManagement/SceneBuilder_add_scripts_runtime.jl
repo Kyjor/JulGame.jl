@@ -1,3 +1,36 @@
+@Base.noinline function _scenebuilder_abstract_dict_as_string_dict(ad::AbstractDict)::Dict{String,Any}
+    ad isa Dict{String,Any} && return ad::Dict{String,Any}
+    ad isa Dict{Symbol,Any} && return SceneReaderModule._symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any})
+    ad isa JSON3.Object && return SceneReaderModule._json3_object_to_string_dict(ad::JSON3.Object)
+    return Dict{String,Any}()
+end
+
+@Base.noinline function _scenebuilder_script_entry_dict(script)::Union{Nothing, Dict{String,Any}}
+    script isa JSON3.Object && return SceneReaderModule._json3_object_to_string_dict(script::JSON3.Object)
+    script isa Dict{String,Any} && return script::Dict{String,Any}
+    script isa AbstractDict && return _scenebuilder_abstract_dict_as_string_dict(script::AbstractDict)
+    return nothing
+end
+
+@Base.noinline function _scenebuilder_script_string_from_dict(d::Dict{String,Any}, k::String, default::String)::String
+    v = Base.get(d, k, nothing)
+    v === nothing && return default
+    v isa String && return v
+    v isa Symbol && return String(v)
+    v isa Bool && return v ? "true" : "false"
+    v isa Int && return string(v)
+    v isa Int32 && return string(v)
+    v isa Float64 && return string(v)
+    return default
+end
+
+@Base.noinline function _scenebuilder_script_fields_dict(d::Dict{String,Any})::Dict{String,Any}
+    raw = Base.get(d, "fields", nothing)
+    raw isa Dict{String,Any} && return raw
+    raw isa AbstractDict && return _scenebuilder_abstract_dict_as_string_dict(raw::AbstractDict)
+    return Dict{String,Any}()
+end
+
 function add_scripts_to_entities(path::String)
     JulGame.juliac_trim_active() && return nothing
     @debug string("Adding scripts to entities")
@@ -27,12 +60,9 @@ function add_scripts_to_entities(path::String)
     for entity in entities
         scriptCounter = 1
         for script in entity.scripts
-            if !isa(script, JSON3.Object)
-                scriptCounter += 1
-                continue
-            end
-            script_obj = script::JSON3.Object
-            script_name = _json3_string(script_obj, :name, "")
+            script_dict = _scenebuilder_script_entry_dict(script)
+            script_dict === nothing && (scriptCounter += 1; continue)
+            script_name = _scenebuilder_script_string_from_dict(script_dict, "name", "")
             isempty(script_name) && (scriptCounter += 1; continue)
             @debug String("Adding script: $(script_name) to entity: $(entity.name)")
 
@@ -43,12 +73,12 @@ function add_scripts_to_entities(path::String)
                 module_name = getfield(script_module, Symbol("$(script_name)Module"))
                 constructor = Base.invokelatest(getfield, module_name, Symbol(script_name))
                 newScript = Base.invokelatest(constructor)
-                scriptFields = _json3_fields(script_obj)
-                @debug("getting fields for: $(script_obj)")
+                scriptFields_obj = _scenebuilder_script_fields_dict(script_dict)
+                @debug("getting fields for script dict: $(script_name)")
                 if newScript !== nothing
-                    scriptFields_obj::JSON3.Object = scriptFields
-                    for key_symbol in keys(scriptFields_obj)
-                        value = get(scriptFields_obj, key_symbol, nothing)
+                    for key_str in keys(scriptFields_obj)
+                        key_symbol = Symbol(key_str)
+                        value = Base.get(scriptFields_obj, key_str, nothing)
                         try
                             ftype = fieldtype(typeof(newScript), key_symbol)
                             @debug("type: $(ftype)")

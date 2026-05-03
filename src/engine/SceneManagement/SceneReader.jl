@@ -20,74 +20,261 @@ module SceneReaderModule
     using ...JulGame
 
     const SceneJSONObject = JSON.Object{String,Any}
-    const SceneJSONDictLike = Union{Dict{String,Any}, SceneJSONObject}
-    const SceneJSONStorage = Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
 
-    # Single concrete type `JsonObj` (not `JsonObj{T}`) so JuliaC `--trim` resolves `_scene_json_get(::JsonObj, ...)`,
-    # `_json_string(::JsonObj, ...)`, etc. Parametric `JsonObj{T}` was a `UnionAll` and broke the verifier.
-    struct JsonObj
-        d::SceneJSONStorage
-    end
-
-    @Base.noinline function _json_lookup(d::Dict{String,Any}, k::AbstractString)::Any
-        ks = string(k)
-        return Base.haskey(d, ks) ? d[ks] : nothing
-    end
-
-    @Base.noinline function _json_lookup(d::SceneJSONObject, k::AbstractString)::Any
-        ks = string(k)
-        return Base.haskey(d, ks) ? d[ks] : nothing
-    end
-
-    @Base.noinline function _json_lookup(d::JSON3.Object, k::AbstractString)::Any
-        ks = string(k)
-        sym = Symbol(ks)
-        return Base.haskey(d, sym) ? d[sym] : nothing
-    end
-
-    """Read key `k` from scene JSON wrapped in `JsonObj`. JuliaC `--trim` needs this entry on concrete `JsonObj`, not `getfield(::JsonObj, :d)::Union{...}`."""
-    @Base.noinline function _json_field(o::JsonObj, k::AbstractString)::Any
-        d = getfield(o, :d)
-        if d isa JSON3.Object
-            return _json_lookup(d, k)
-        elseif d isa SceneJSONObject
-            return _json_lookup(d, k)
-        else
-            return _json_lookup(d::Dict{String,Any}, k)
+    """Shallow copy of `JSON3.Object` into `Dict{String,Any}` via `pairs` (no `Generator` dict ctor)."""
+    # JuliaC `--trim`: avoid top-level helpers `_plain_value(::Any)` / `_deep_normalize_json_value(::Any)` (unresolved
+    # dynamic calls). Expand JSON cell handling via a macro so each branch calls only concretely-typed routines.
+    macro _scene_json_tree_cell(ex)
+        jv = gensym(:jv)
+        quote
+            let $jv = $(esc(ex))
+                if $jv === nothing
+                    nothing
+                elseif $jv isa Bool || $jv isa Int || $jv isa Int32 || $jv isa Int64 || $jv isa UInt8 || $jv isa UInt16 || $jv isa UInt32 || $jv isa UInt64 || $jv isa Float64 || $jv isa Float32 || $jv isa String || $jv isa Symbol || $jv isa SubString{String}
+                    $jv
+                elseif $jv isa SceneJSONObject
+                    _scene_jsonobject_to_plain_dict($jv::SceneJSONObject)
+                elseif $jv isa JSON3.Object
+                    _json3_object_to_string_dict($jv::JSON3.Object)
+                elseif $jv isa Dict{String,Any}
+                    _deep_normalize_json_dict($jv::Dict{String,Any})
+                elseif $jv isa Dict{Symbol,Any}
+                    _deep_normalize_json_dict(_symbol_dict_to_stringkey_tree($jv::Dict{Symbol,Any}))
+                elseif $jv isa AbstractDict
+                    let ad = $jv::AbstractDict
+                        if ad isa JSON3.Object
+                            _json3_object_to_string_dict(ad::JSON3.Object)
+                        elseif ad isa Dict{String,Any}
+                            _deep_normalize_json_dict(ad::Dict{String,Any})
+                        elseif ad isa Dict{Symbol,Any}
+                            _deep_normalize_json_dict(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
+                        else
+                            Dict{String,Any}()
+                        end
+                    end
+                elseif $jv isa JSON3.Array
+                    _json3_array_to_vector_any($jv::JSON3.Array)
+                elseif $jv isa AbstractVector
+                    _scene_json_tree_vector($jv::AbstractVector)
+                else
+                    $jv
+                end
+            end
         end
     end
 
-    @Base.noinline function _expose_vector_for_scene(v::AbstractVector)::Vector{Any}
-        out = Any[]
-        for i = 1:length(v)
-            push!(out, _expose(v[i]))
+    @Base.noinline function _scene_json_tree_vector(v::AbstractVector)::Vector{Any}
+        a = firstindex(v)
+        b = lastindex(v)
+        n = b - a + 1
+        out = Vector{Any}(undef, n)
+        j = 1
+        @inbounds for i in a:b
+            out[j] = @_scene_json_tree_cell v[i]
+            j += 1
         end
         return out
     end
 
-    @inline _expose_dictlike_to_jsonobj(v::AbstractDict)::JsonObj =
-        JsonObj(Dict{String,Any}(string(k) => x for (k, x) in pairs(v)))
-
-    @Base.noinline _expose(v::Dict{String,Any}) = JsonObj(v)
-    @Base.noinline _expose(v::SceneJSONObject) = JsonObj(v)
-    @Base.noinline _expose(v::JSON3.Object) = JsonObj(v)
-    @Base.noinline function _expose(v::AbstractDict)
-        return _expose_dictlike_to_jsonobj(v)
+    """JuliaC `--trim`: avoid `JSON.parse`/`JSON3.write` and `Base.copy(::JSON3.Object)` (often unresolved)."""
+    @Base.noinline function _json3_array_to_vector_any(a::JSON3.Array)::Vector{Any}
+        n = length(a)
+        out = Vector{Any}(undef, n)
+        @inbounds for i in 1:n
+            out[i] = @_scene_json_tree_cell a[i]
+        end
+        return out
     end
-    @Base.noinline function _expose(v::AbstractVector)
-        return _expose_vector_for_scene(v)
+
+    """Normalize a value read from `JSON3.Object` / `JSON3.Array` tape (JuliaC `--trim`; no `Base.copy(::JSON3.Object)`)."""
+    @Base.noinline function _json3_field_value_to_tree(v)::Any
+        v === nothing && return nothing
+        v isa JSON3.Object && return _json3_object_to_string_dict(v::JSON3.Object)
+        v isa JSON3.Array && return _json3_array_to_vector_any(v::JSON3.Array)
+        v isa Dict{Symbol,Any} && return _symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any})
+        v isa AbstractVector && return _scene_json_tree_vector(v::AbstractVector)
+        return v
     end
-    @Base.noinline _expose(v::Nothing) = nothing
-    @Base.noinline _expose(v) = v
 
-    @inline _scene_storage(o::JsonObj)::SceneJSONStorage = getfield(o, :d)
+    """Walk `JSON3.Object` via concrete `iterate(::JSON3.Object, ...)` (not `Base.copy`, which trim often cannot resolve)."""
+    @Base.noinline function _json3_object_to_string_dict(o::JSON3.Object)::Dict{String,Any}
+        out = Dict{String,Any}()
+        for p in o
+            pr = p::Pair{Symbol,Any}
+            ks = Base.string((pr.first)::Symbol)::String
+            out[ks] = _json3_field_value_to_tree(pr.second)
+        end
+        return out
+    end
 
-    function _scene_obj(v)
-        v isa JsonObj && return v
-        v isa Dict{String,Any} && return JsonObj(v)
-        v isa SceneJSONObject && return JsonObj(v)
-        v isa JSON3.Object && return JsonObj(v)
-        return JsonObj(Dict{String,Any}())
+    @Base.noinline function _symbol_dict_to_stringkey_tree(d::Dict{Symbol,Any})::Dict{String,Any}
+        out = Dict{String,Any}()
+        for p in d
+            pr = p::Pair{Symbol,Any}
+            ks = Base.string((pr.first)::Symbol)::String
+            out[ks] = _json3_field_value_to_tree(pr.second)
+        end
+        return out
+    end
+
+    @Base.noinline function _deep_normalize_json_dict(d::Dict{String,Any})::Dict{String,Any}
+        out = Dict{String,Any}()
+        for (k, xv) in d
+            out[Base.string(k)::String] = @_scene_json_tree_cell xv
+        end
+        return out
+    end
+
+    # JuliaC `--trim`: do not use `JSON.json` / `JSON.parse` on `SceneJSONObject` (pulls in StructUtils + `repr`/`show`).
+    @Base.noinline function _scene_jsonobject_to_plain_dict(o::SceneJSONObject)::Dict{String,Any}
+        d = Dict{String,Any}()
+        for (k, v) in o
+            d[Base.string(k)::String] = @_scene_json_tree_cell v
+        end
+        return d
+    end
+
+    # `JsonObj` stores only `Dict{String,Any}` so JuliaC `--trim` never resolves `get`/`haskey`/`iterate` on
+    # `JSON3.Object` from `getfield(::JsonObj, :d)`. JSON3 / JSON.Object roots are normalized in `JsonObj` ctors.
+    struct JsonObj
+        d::Dict{String,Any}
+        function JsonObj(d::Dict{String,Any})
+            new(_deep_normalize_json_dict(d))
+        end
+    end
+
+    function JsonObj(o::SceneJSONObject)
+        JsonObj(_scene_jsonobject_to_plain_dict(o))
+    end
+
+    # JuliaC `--trim`: do not define `JsonObj(::JSON3.Object)` (verifier cannot resolve that ctor); always build
+    # via `JsonObj(_json3_object_to_string_dict(x)::Dict{String,Any})` at use sites.
+
+    # Must not nest `@_unwrap_scene_field_value` inside its own expansion (infinite macro expansion / stack overflow).
+    # `@_unwrap_scene_field_value` delegates here; array recursion is runtime-only.
+    @Base.noinline function _unwrap_scene_field_value_runtime(v)
+        if v === nothing
+            return nothing
+        elseif v isa JsonObj
+            return v::JsonObj
+        elseif v isa Dict{String,Any}
+            return JsonObj(v::Dict{String,Any})
+        elseif v isa SceneJSONObject
+            return JsonObj(v::SceneJSONObject)
+        elseif v isa JSON3.Object
+            return JsonObj(_json3_object_to_string_dict(v::JSON3.Object)::Dict{String,Any})
+        elseif v isa Dict{Symbol,Any}
+            return JsonObj(_symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any}))
+        elseif v isa AbstractDict
+            let ad = v::AbstractDict
+                if ad isa JSON3.Object
+                    return JsonObj(_json3_object_to_string_dict(ad::JSON3.Object)::Dict{String,Any})
+                elseif ad isa Dict{String,Any}
+                    return JsonObj(ad::Dict{String,Any})
+                elseif ad isa Dict{Symbol,Any}
+                    return JsonObj(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
+                else
+                    return JsonObj(Dict{String,Any}())
+                end
+            end
+        elseif v isa JSON3.Array
+            a = v::JSON3.Array
+            n = length(a)
+            out = Vector{Any}(undef, n)
+            @inbounds for i in 1:n
+                out[i] = _unwrap_scene_field_value_runtime(a[i])
+            end
+            return out
+        elseif v isa AbstractVector
+            vv = v::AbstractVector
+            fa = firstindex(vv)
+            fb = lastindex(vv)
+            out = Vector{Any}(undef, fb - fa + 1)
+            j = 1
+            for i in fa:fb
+                out[j] = _unwrap_scene_field_value_runtime(vv[i])
+                j += 1
+            end
+            return out
+        else
+            return v
+        end
+    end
+
+    macro _unwrap_scene_field_value(ex)
+        quote
+            _unwrap_scene_field_value_runtime($(esc(ex)))
+        end
+    end
+
+    macro _coerce_jsonobj_row(ex)
+        rv = gensym(:row_v)
+        tmp = gensym(:row_tmp)
+        quote
+            let $rv = $(esc(ex))
+                if $rv isa JsonObj
+                    $rv::JsonObj
+                elseif $rv isa Dict{String,Any}
+                    JsonObj($rv::Dict{String,Any})
+                elseif $rv isa SceneJSONObject
+                    JsonObj($rv::SceneJSONObject)
+                elseif $rv isa JSON3.Object
+                    JsonObj(_json3_object_to_string_dict($rv::JSON3.Object)::Dict{String,Any})
+                elseif $rv isa Dict{Symbol,Any}
+                    JsonObj(_symbol_dict_to_stringkey_tree($rv::Dict{Symbol,Any}))
+                elseif $rv isa AbstractDict
+                    let ad = $rv::AbstractDict
+                        ad isa JSON3.Object ? JsonObj(_json3_object_to_string_dict(ad::JSON3.Object)::Dict{String,Any}) :
+                        ad isa Dict{String,Any} ? JsonObj(ad::Dict{String,Any}) :
+                        ad isa Dict{Symbol,Any} ? JsonObj(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any})) :
+                        JsonObj(Dict{String,Any}())
+                    end
+                else
+                    JsonObj(Dict{String,Any}())
+                end
+            end
+        end
+    end
+
+    """JuliaC `--trim`: `setproperty!(::IUIElement, :parent, ...)` is unresolved; narrow to concrete canvas children."""
+    @Base.noinline function _attach_ui_to_canvas!(canvas::JulGame.UI.CanvasModule.Canvas, el::JulGame.IUIElement)::Nothing
+        if el isa JulGame.UI.CanvasModule.Canvas
+            ch = el::JulGame.UI.CanvasModule.Canvas
+            push!(canvas.children, ch)
+            ch.parent = canvas
+        elseif el isa ScreenButton
+            sb = el::ScreenButton
+            push!(canvas.children, sb)
+            sb.parent = canvas
+        elseif el isa TextBox
+            tb = el::TextBox
+            push!(canvas.children, tb)
+            tb.parent = canvas
+        end
+        return nothing
+    end
+
+    @Base.noinline function _json_obj_array(o::JsonObj, key::String)::Vector{JsonObj}
+        v = _json_field(o, key)
+        v === nothing && return JsonObj[]
+        u = @_unwrap_scene_field_value v
+        u isa Vector{Any} || return JsonObj[]
+        vec = u::Vector{Any}
+        out = Vector{JsonObj}(undef, length(vec))
+        @inbounds for i in eachindex(vec)
+            out[i] = @_coerce_jsonobj_row vec[i]
+        end
+        return out
+    end
+
+    @Base.noinline function _json_lookup_dict(d::Dict{String,Any}, k::AbstractString)::Any
+        ks = string(k)
+        return Base.haskey(d, ks) ? d[ks] : nothing
+    end
+
+    """Read key `k` from scene JSON wrapped in `JsonObj` (storage is always `Dict{String,Any}`)."""
+    @Base.noinline function _json_field(o::JsonObj, k::AbstractString)::Any
+        return _json_lookup_dict(getfield(o, :d)::Dict{String,Any}, k)
     end
 
     """Coerce a JSON scalar to `Float64` via concrete `isa` branches so the trim verifier can resolve every conversion."""
@@ -162,21 +349,8 @@ module SceneReaderModule
     function _json_any_array(o::JsonObj, key::String)::Vector{Any}
         v = _json_field(o, key)
         v === nothing && return Any[]
-        if v isa Vector{Any}
-            return v
-        elseif v isa Vector
-            out = Any[]
-            for x in v
-                push!(out, x)
-            end
-            return out
-        elseif v isa JSON3.Array
-            out = Any[]
-            for x in v
-                push!(out, x)
-            end
-            return out
-        end
+        u = @_unwrap_scene_field_value v
+        u isa Vector{Any} && return u::Vector{Any}
         return Any[]
     end
 
@@ -184,7 +358,7 @@ module SceneReaderModule
     function _scene_f64(parent::JsonObj, sub_key::String, leaf_key::String, default::Float64)::Float64
         sub = _json_field(parent, sub_key)
         sub === nothing && return default
-        inner = _scene_obj(sub)
+        inner = @_coerce_jsonobj_row sub
         return _to_f64(_json_field(inner, leaf_key), default)
     end
 
@@ -192,7 +366,7 @@ module SceneReaderModule
     function _scene_int(parent::JsonObj, sub_key::String, leaf_key::String, default::Int)::Int
         sub = _json_field(parent, sub_key)
         sub === nothing && return default
-        inner = _scene_obj(sub)
+        inner = @_coerce_jsonobj_row sub
         return _to_int(_json_field(inner, leaf_key), default)
     end
 
@@ -211,17 +385,26 @@ module SceneReaderModule
     end
 
     @Base.noinline function _ui_screen_button_font_path(o::JsonObj)::Union{String, Ptr{Nothing}}
-        v = _scene_json_get(o, "fontPath", C_NULL)
+        v = _json_field(o, "fontPath")
         v === nothing && return C_NULL
         v === C_NULL && return C_NULL
         v isa String && return v
         v isa Ptr{Nothing} && return v
         v isa Symbol && return String(v)
-        v isa AbstractString && return String(v)
+        v isa AbstractString && return v === "" ? "" : String(copy(v))  # avoid `Base.string(::AbstractString)` under trim
         return C_NULL
     end
 
-    """RGBA tuple from UI JSON `color` / `borderColor` (keys `"1"`..`"4"`) or a plain `Dict` (JuliaC `--trim`)."""
+    @Base.noinline function _ui_named_color_rgba_tuple(color_o::JsonObj)::NTuple{4, Int}
+        (
+            _to_int(_json_field(color_o, "r"), 255),
+            _to_int(_json_field(color_o, "g"), 255),
+            _to_int(_json_field(color_o, "b"), 255),
+            _to_int(_json_field(color_o, "a"), 255),
+        )
+    end
+
+    """RGBA from UI JSON `color` / `borderColor` with keys `"1"`..`"4"` or a dict; unknown `c` returns white/opaque."""
     function _ui_rgba_tuple_from_color_field(c)::NTuple{4, Int}
         if c isa JsonObj
             return (
@@ -231,51 +414,40 @@ module SceneReaderModule
                 _to_int(_json_field(c, "4"), 255),
             )
         end
-        d = c::AbstractDict
-        return (
-            Int(Base.get(d, "1", 255)),
-            Int(Base.get(d, "2", 255)),
-            Int(Base.get(d, "3", 255)),
-            Int(Base.get(d, "4", 255)),
-        )
+        if c isa AbstractDict
+            d = c
+            return (
+                Int(_to_int(Base.get(d, "1", 255), 255)),
+                Int(_to_int(Base.get(d, "2", 255), 255)),
+                Int(_to_int(Base.get(d, "3", 255), 255)),
+                Int(_to_int(Base.get(d, "4", 255), 255)),
+            )
+        end
+        return (255, 255, 255, 255)
     end
 
     # JuliaC `--trim` often cannot resolve `Base.get` / `Base.haskey` on `JsonObj` when added via extension in this module.
     @Base.noinline function _scene_json_haskey(o::JsonObj, k::AbstractString)::Bool
         ks = string(k)
-        d = getfield(o, :d)
-        if d isa JSON3.Object
-            return Base.haskey(d, Symbol(ks))
-        end
-        return Base.haskey(d, ks)
+        return Base.haskey(getfield(o, :d)::Dict{String,Any}, ks)
     end
 
     @Base.noinline function _scene_json_get(o::JsonObj, k::AbstractString, default)
         ks = string(k)
-        d = getfield(o, :d)
-        if d isa JSON3.Object
-            sym = Symbol(ks)
-            if !Base.haskey(d, sym)
-                return default
-            end
-            return _expose(Base.get(d, sym, Base.nothing))
-        end
+        d = getfield(o, :d)::Dict{String,Any}
         if !Base.haskey(d, ks)
             return default
         end
-        return _expose(Base.get(d, ks, Base.nothing))
+        return @_unwrap_scene_field_value d[ks]
     end
 
     function Base.getproperty(o::JsonObj, k::Symbol)
         k === :d && return getfield(o, :d)
-        d = getfield(o, :d)
-        if d isa JSON3.Object
-            raw = Base.get(d, k, Base.nothing)
-        else
-            raw = Base.get(d, string(k), Base.nothing)
-        end
+        d = getfield(o, :d)::Dict{String,Any}
+        ks = string(k)
+        raw = Base.haskey(d, ks) ? d[ks] : nothing
         raw === nothing && return nothing
-        return _expose(raw)
+        return @_unwrap_scene_field_value raw
     end
 
     Base.haskey(o::JsonObj, k::AbstractString) = _scene_json_haskey(o, k)
@@ -308,10 +480,18 @@ module SceneReaderModule
     end
 
     """Normalize SCENE_CACHE entries (Dict, JSON3.Object, JsonObj) into `JsonObj` for stable typing under `--trim`."""
-    function _as_scene_json_root(x)
+    @Base.noinline function _as_scene_json_root(x)
         x isa JsonObj && return x
-        x isa JSON3.Object && return JsonObj(x)
-        x isa AbstractDict && !(x isa JsonObj) && return JsonObj(Dict{String,Any}(string(k) => v for (k, v) in pairs(x)))
+        x isa JSON3.Object && return JsonObj(_json3_object_to_string_dict(x::JSON3.Object)::Dict{String,Any})
+        x isa Dict{String,Any} && return JsonObj(x::Dict{String,Any})
+        x isa Dict{Symbol,Any} && return JsonObj(_symbol_dict_to_stringkey_tree(x::Dict{Symbol,Any}))
+        if x isa AbstractDict && !(x isa JsonObj)
+            ad = x::AbstractDict
+            ad isa Dict{String,Any} && return JsonObj(ad::Dict{String,Any})
+            ad isa Dict{Symbol,Any} && return JsonObj(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
+            ad isa JSON3.Object && return JsonObj(_json3_object_to_string_dict(ad::JSON3.Object)::Dict{String,Any})
+            return JsonObj(Dict{String,Any}())
+        end
         return JsonObj(Dict{String,Any}("_" => x))
     end
 
@@ -359,7 +539,7 @@ module SceneReaderModule
                 elseif cached_json isa SceneJSONObject
                     root = JsonObj(cached_json)
                 elseif cached_json isa JSON3.Object
-                    root = JsonObj(cached_json)
+                    root = JsonObj(_json3_object_to_string_dict(cached_json::JSON3.Object)::Dict{String,Any})
                 end
                 @debug("using cached scene")
             else 
@@ -378,9 +558,8 @@ module SceneReaderModule
             catch e
                 @error sprint(showerror, e)
             end
-            entities_json = _json_any_array(root, "Entities")
-            for entity_raw in entities_json
-                entity = _scene_obj(entity_raw)
+            entities_json = _json_obj_array(root, "Entities")
+            for entity in entities_json
                 entity_id = _json_string(entity, "id", "")
                 if entity_id in entityIdsInCurrentScene
                     @debug "Entity with id $(entity_id) already exists in current scene"
@@ -388,9 +567,8 @@ module SceneReaderModule
                 end
                 components = Any[]
     
-                components_raw = _json_any_array(entity, "components")
-                for component_raw in components_raw
-                    component = _scene_obj(component_raw)
+                components_raw = _json_obj_array(entity, "components")
+                for component in components_raw
                     component_type = _json_string(component, "type", "")
                     @debug "Deserializing component: $(component_type)"
                     dc = deserialize_component(component)
@@ -406,7 +584,7 @@ module SceneReaderModule
                 entity_name = _json_string(entity, "name", "New entity")
                 newEntity = Entity(entity_name, entity_id)
                 newEntity.isActive = _to_bool(_json_field(entity, "isActive"), true)
-                # Keep raw JSON3.Object/Dict entries here; SceneBuilder reifies them via `isa(script, JSON3.Object)`.
+                # Script entries are plain `Dict`/`Vector` after `JsonObj` normalization (see `SceneReaderModule.JsonObj`).
                 newEntity.scripts = _json_any_array(entity, "scripts")
                 newEntity.persistentBetweenScenes = _to_bool(_json_field(entity, "persistentBetweenScenes"), false)
 
@@ -494,7 +672,7 @@ module SceneReaderModule
                     end
                 end
             end
-            ui_raw = _json_any_array(root, "UIElements")
+            ui_raw = _json_obj_array(root, "UIElements")
             uiElements = deserialize_ui_elements(ui_raw, entities)
             camera = Camera(
                 Math._Vector2{Int32}(500, 500),
@@ -506,7 +684,7 @@ module SceneReaderModule
                 # JuliaC `--trim`: read camera fields via concrete `_scene_*` helpers instead of property
                 # syntax (`cam.size.x`, `cam.backgroundColor.r`, ...) so the verifier doesn't walk a stack of
                 # `getproperty(::JsonObj, ...)::Any` calls (was verifier #343–#380).
-                cam = _scene_obj(cam_raw)
+                cam = @_coerce_jsonobj_row cam_raw
                 sx_c = _scene_f64(cam, "size", "x", 0.0)
                 sy_c = _scene_f64(cam, "size", "y", 0.0)
                 camera = Camera(
@@ -533,27 +711,30 @@ module SceneReaderModule
         end
     end
 
-    function deserialize_ui_elements(jsonUIElements, entities)
+    function deserialize_ui_elements(jsonUIElements::Vector{JsonObj}, entities)
         res = JulGame.IUIElement[]
         childParentDict = Dict{String,String}()
         uiElementsById = Dict{String, JulGame.IUIElement}()
         entitiesById = Dict{String, Entity}(string(e.id) => e for e in entities)
         default_Vector2 = Math._Vector2{Int32}(0, 0)
-        for ui_raw in jsonUIElements
+        for uiElement in jsonUIElements
             try
-                uiElement = _scene_obj(ui_raw)::JsonObj
+                ty = _json_string(uiElement, "type", "")
                 newUIElement = nothing
-                if _scene_json_haskey(uiElement, "parent") && uiElement.parent != ""
-                    childParentDict[string(uiElement.id)] = string(uiElement.parent)
+                if _scene_json_haskey(uiElement, "parent") && _json_string(uiElement, "parent", "") != ""
+                    childParentDict[_json_string(uiElement, "id", "")] = _json_string(uiElement, "parent", "")
                 end
-                if uiElement.type == "Canvas"
+                if ty == "Canvas"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 100)
-                    if _scene_json_haskey(uiElement, "color") && _scene_json_haskey(uiElement.color, "r") && _scene_json_haskey(uiElement.color, "g") && _scene_json_haskey(uiElement.color, "b") && _scene_json_haskey(uiElement.color, "a")
-                         color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
+                    if _scene_json_haskey(uiElement, "color")
+                        color_o = @_coerce_jsonobj_row(_json_field(uiElement, "color"))
+                        if _scene_json_haskey(color_o, "r") && _scene_json_haskey(color_o, "g") && _scene_json_haskey(color_o, "b") && _scene_json_haskey(color_o, "a")
+                            color_tuple = _ui_named_color_rgba_tuple(color_o)
+                        end
                     end
 
-                    newUIElement = Canvas(
+                    newUIElement = JulGame.UI.CanvasModule.Canvas(
                         id = _json_string(uiElement, "id", string(JulGame.generate_uuid())),
                         name = _json_string(uiElement, "name", "Canvas"),
                         anchor = Symbol(_json_string(uiElement, "anchor", "none")),
@@ -570,19 +751,19 @@ module SceneReaderModule
                         rotation = _to_f64(_scene_json_get(uiElement, "rotation", 0.0), 0.0)
                     )
                     
-                    # Deserialize children if they exist
-                    if _scene_json_haskey(uiElement, "children") && length(uiElement.children) > 0
-                        children = deserialize_canvas_children(uiElement.children, newUIElement)
-                        for child in children
-                            add_child(newUIElement, child)
+                    ch = _json_obj_array(uiElement, "children")
+                    if !isempty(ch)
+                        for c in deserialize_canvas_children(ch, newUIElement)
+                            _attach_ui_to_canvas!(newUIElement, c::JulGame.IUIElement)
                         end
                     end
-                elseif uiElement.type == "TextBox"
+                elseif ty == "TextBox"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
                     if _scene_json_haskey(uiElement, "color")
-                        @debug "color of $(uiElement.name): $(uiElement.color)"
-                        color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
+                        color_o = @_coerce_jsonobj_row(_json_field(uiElement, "color"))
+                        @debug "TextBox color" _json_string(uiElement, "name", "TextBox")
+                        color_tuple = _ui_named_color_rgba_tuple(color_o)
                     end
 
                     newUIElement = TextBox(
@@ -602,9 +783,11 @@ module SceneReaderModule
                         maxLineWidth = _to_int(_scene_json_get(uiElement, "maxLineWidth", 0), 0),
                         wrapWords = _to_bool(_scene_json_get(uiElement, "wrapWords", true), true)
                     )
-                elseif uiElement.type == "UIImage"
-                    color = _scene_json_get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    color_tuple = _ui_rgba_tuple_from_color_field(color)
+                elseif ty == "UIImage"
+                    color_tuple = (255, 255, 255, 255)
+                    if _scene_json_haskey(uiElement, "color")
+                        color_tuple = _ui_rgba_tuple_from_color_field(@_coerce_jsonobj_row(_json_field(uiElement, "color")))
+                    end
                   
                     newUIElement = UIImage(
                         _json_string(uiElement, "path", "Default");
@@ -624,11 +807,15 @@ module SceneReaderModule
                         # hoverEnterEvents=_scene_json_get(uiElement, "hoverEnterEvents", Function[]),
                         # hoverExitEvents=_scene_json_get(uiElement, "hoverExitEvents", Function[]),
                     )
-                elseif uiElement.type == "Rectangle"
-                    color = _scene_json_get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    color_tuple = _ui_rgba_tuple_from_color_field(color)
-                    borderColor = _scene_json_get(uiElement, "borderColor", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    borderColor_tuple = _ui_rgba_tuple_from_color_field(borderColor)
+                elseif ty == "Rectangle"
+                    color_tuple = (255, 255, 255, 255)
+                    if _scene_json_haskey(uiElement, "color")
+                        color_tuple = _ui_rgba_tuple_from_color_field(@_coerce_jsonobj_row(_json_field(uiElement, "color")))
+                    end
+                    borderColor_tuple = (255, 255, 255, 255)
+                    if _scene_json_haskey(uiElement, "borderColor")
+                        borderColor_tuple = _ui_rgba_tuple_from_color_field(@_coerce_jsonobj_row(_json_field(uiElement, "borderColor")))
+                    end
                     newUIElement = JulGame.UI.RectangleModule.Rectangle(;
                         id=_json_string(uiElement, "id", string(JulGame.generate_uuid())),
                         name=_json_string(uiElement, "name", "Rectangle"),
@@ -733,11 +920,9 @@ module SceneReaderModule
                 )
             elseif ty == "Animator"
                 newAnimations = Animation[]
-                for anim_raw in _json_any_array(component, "animations")
-                    anim = _scene_obj(anim_raw)
+                for anim in _json_obj_array(component, "animations")
                     newAnimationFrames = Vector{Math._Vector4{Int32}}()
-                    for frame_raw in _json_any_array(anim, "frames")
-                        fr = _scene_obj(frame_raw)
+                    for fr in _json_obj_array(anim, "frames")
                         push!(newAnimationFrames, Math._Vector4{Int32}(
                             Int32(_to_int(_json_field(fr, "x"), 0)),
                             Int32(_to_int(_json_field(fr, "y"), 0)),
@@ -784,7 +969,7 @@ module SceneReaderModule
                 if color_raw === nothing || color_raw === Base.nothing
                     color_tup = (255, 255, 255, 255)
                 else
-                    cj = _scene_obj(color_raw)
+                    cj = @_coerce_jsonobj_row(color_raw)
                     color_tup = (
                         _to_int(_json_field(cj, "x"), 255),
                         _to_int(_json_field(cj, "y"), 255),
@@ -797,7 +982,7 @@ module SceneReaderModule
                 if crop_raw === nothing || crop_raw === Base.nothing
                     crop_v = Math._Vector4{Int32}(Int32(0), Int32(0), Int32(0), Int32(0))
                 else
-                    cj = _scene_obj(crop_raw)
+                    cj = @_coerce_jsonobj_row(crop_raw)
                     crop_v = Math._Vector4{Int32}(
                         Int32(_to_int(_json_field(cj, "x"), 0)),
                         Int32(_to_int(_json_field(cj, "y"), 0)),
@@ -834,7 +1019,7 @@ module SceneReaderModule
                 if color_raw === nothing || color_raw === Base.nothing
                     color_v = Math._Vector3{Int32}(Int32(255), Int32(255), Int32(255))
                 else
-                    cj = _scene_obj(color_raw)
+                    cj = @_coerce_jsonobj_row(color_raw)
                     color_v = Math._Vector3{Int32}(
                         Int32(_to_int(_json_field(cj, "x"), 255)),
                         Int32(_to_int(_json_field(cj, "y"), 255)),
@@ -866,22 +1051,25 @@ module SceneReaderModule
     
     Recursively deserializes Canvas children.
     """
-    function deserialize_canvas_children(jsonChildren, parentCanvas)
+    function deserialize_canvas_children(jsonChildren::Vector{JsonObj}, parentCanvas)
         children = JulGame.IUIElement[]
         default_Vector2 = Math._Vector2{Int32}(Int32(0), Int32(0))
         
-        for child_raw in jsonChildren
+        for child in jsonChildren
             try
-                child = _scene_obj(child_raw)::JsonObj
+                cty = _json_string(child, "type", "")
                 newChild = nothing
-                if child.type == "Canvas"
+                if cty == "Canvas"
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 100)
-                    if _scene_json_haskey(child, "color") && _scene_json_haskey(child.color, "r") && _scene_json_haskey(child.color, "g") && _scene_json_haskey(child.color, "b") && _scene_json_haskey(child.color, "a")
-                         color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
+                    if _scene_json_haskey(child, "color")
+                        color_o = @_coerce_jsonobj_row(_json_field(child, "color"))
+                        if _scene_json_haskey(color_o, "r") && _scene_json_haskey(color_o, "g") && _scene_json_haskey(color_o, "b") && _scene_json_haskey(color_o, "a")
+                            color_tuple = _ui_named_color_rgba_tuple(color_o)
+                        end
                     end
 
-                    newChild = Canvas(
+                    newChild = JulGame.UI.CanvasModule.Canvas(
                         id = _json_string(child, "id", string(JulGame.generate_uuid())),
                         name = _json_string(child, "name", "Canvas"),
                         anchor = Symbol(_json_string(child, "anchor", "none")),
@@ -899,14 +1087,13 @@ module SceneReaderModule
                         parent = parentCanvas
                     )
                     
-                    # Recursively deserialize children if they exist
-                    if _scene_json_haskey(child, "children") && length(child.children) > 0
-                        grandChildren = deserialize_canvas_children(child.children, newChild)
-                        for grandChild in grandChildren
-                            add_child(newChild, grandChild)
+                    gch = _json_obj_array(child, "children")
+                    if !isempty(gch)
+                        for grandChild in deserialize_canvas_children(gch, newChild)
+                            _attach_ui_to_canvas!(newChild, grandChild::JulGame.IUIElement)
                         end
                     end
-                elseif child.type == "ScreenButton"
+                elseif cty == "ScreenButton"
                     # For text offset, check if it should be centered (if not specified or all zeros)
                     textOffset = _ui_vec2i_from_json(child, "textOffset", default_Vector2)
                     if !_scene_json_haskey(child, "textOffset") || (textOffset.x == Int32(0) && textOffset.y == Int32(0))
@@ -938,8 +1125,11 @@ module SceneReaderModule
                     # TextBox
                     # Parse color, default to white if not present or malformed
                     color_tuple = (255, 255, 255, 255)
-                    if _scene_json_haskey(child, "color") && _scene_json_haskey(child.color, "r") && _scene_json_haskey(child.color, "g") && _scene_json_haskey(child.color, "b") && _scene_json_haskey(child.color, "a")
-                         color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
+                    if _scene_json_haskey(child, "color")
+                        color_o = @_coerce_jsonobj_row(_json_field(child, "color"))
+                        if _scene_json_haskey(color_o, "r") && _scene_json_haskey(color_o, "g") && _scene_json_haskey(color_o, "b") && _scene_json_haskey(color_o, "a")
+                            color_tuple = _ui_named_color_rgba_tuple(color_o)
+                        end
                     end
 
                     newChild = TextBox(

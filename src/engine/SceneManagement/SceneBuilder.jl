@@ -10,6 +10,7 @@ module SceneBuilderModule
     using ...ScreenButtonModule
     using ...CanvasModule
     using ..SceneReaderModule
+    using JSON
     using JSON3
 
     const _JSON3_EMPTY_FIELDS = JSON3.read("{}")

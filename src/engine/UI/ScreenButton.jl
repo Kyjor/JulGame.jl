@@ -43,7 +43,7 @@ module ScreenButtonModule
             size::Math.Vector2=Math.Vector2(0,0), 
             text::String="", 
             textOffset::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0,
             crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL
         )

@@ -456,24 +456,17 @@ module UIImageModule
     end
     
     # Helpers to serialize effects and generate cache keys (mirrors TextBox)
+    # JuliaC `--trim`: avoid `fieldnames` / `string(::Symbol, ::Any)` on unknown effect types (unresolved calls).
     function serialize_effects(effects::Vector{Any})::String
         if isempty(effects)
             return "[]"
         end
         parts = String[]
-        for eff in effects
+        @inbounds for i in 1:length(effects)
+            eff = effects[i]
             T = typeof(eff)
-            fnames = fieldnames(T)
-            vals = String[]
-            for f in fnames
-                v = getfield(eff, f)
-                if v isa Ptr
-                    push!(vals, string(f, "=Ptr"))
-                else
-                    push!(vals, string(f, "=", v))
-                end
-            end
-            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
+            nm = String(nameof(T))
+            push!(parts, string(nm, "@", Base.objectid(eff)::UInt, "#", i::Int))
         end
         return "[" * join(parts, ";") * "]"
     end

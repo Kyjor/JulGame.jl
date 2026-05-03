@@ -71,7 +71,7 @@ module TextBoxModule
             maxLineWidth::Int=0, 
             wrapWords::Bool=true,
             isDynamic::Bool=false,
-            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
         )
 
             this = new()
