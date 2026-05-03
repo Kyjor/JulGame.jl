@@ -46,6 +46,36 @@ module LineModule
             return this
         end
     end
+
+    @inline function _line_scene_camera()::Union{Nothing, JulGame.Camera}
+        main = JulGame.current_main()
+        sc = getfield(main, :scene)
+        return getfield(sc, :camera)::Union{Nothing, JulGame.Camera}
+    end
+
+    """World or screen endpoints in pixel space as `Float64` (JuliaC `--trim` friendly)."""
+    @inline function _line_screen_endpoints(this::Line, camera::Union{Nothing, JulGame.Camera})::NTuple{4, Float64}
+        sp = getfield(this, :startPoint)::Math._Vector2{Int32}
+        ep = getfield(this, :endPoint)::Math._Vector2{Int32}
+        sx0 = Float64(getfield(sp, :x))
+        sy0 = Float64(getfield(sp, :y))
+        ex0 = Float64(getfield(ep, :x))
+        ey0 = Float64(getfield(ep, :y))
+        if this.isWorldEntity && camera !== nothing
+            S = Float64(JulGame.pixels_per_world_unit(camera))
+            cpos = getfield(camera, :position)::Math._Vector3{Float64}
+            coff = getfield(camera, :offset)::Math._Vector2{Float64}
+            cx = Float64(cpos.x) + Float64(coff.x)
+            cy = Float64(cpos.y) + Float64(coff.y)
+            return (
+                (sx0 - cx) * S,
+                (sy0 - cy) * S,
+                (ex0 - cx) * S,
+                (ey0 - cy) * S,
+            )
+        end
+        return (sx0, sy0, ex0, ey0)
+    end
     
     function UI.render(this::Line)
         if !this.isActive
@@ -58,21 +88,8 @@ module LineModule
             return
         end
         
-        camera = MAIN.scene.camera
-        
-        # Calculate drawing coordinates based on world or screen position
-        if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            startX = (this.startPoint.x - (camera.position.x + camera.offset.x)) * S
-            startY = (this.startPoint.y - (camera.position.y + camera.offset.y)) * S
-            endX = (this.endPoint.x - (camera.position.x + camera.offset.x)) * S
-            endY = (this.endPoint.y - (camera.position.y + camera.offset.y)) * S
-        else
-            startX = this.startPoint.x
-            startY = this.startPoint.y
-            endX = this.endPoint.x
-            endY = this.endPoint.y
-        end
+        camera = _line_scene_camera()
+        startX, startY, endX, endY = _line_screen_endpoints(this, camera)
         
         # Save current render draw color
         r = Ref(UInt8(0))
@@ -103,19 +120,20 @@ module LineModule
             )
         else
             # For thicker lines, we need to draw multiple lines
-            dx = endX - startX
-            dy = endY - startY
-            length = sqrt(dx*dx + dy*dy)
+            dx::Float64 = endX - startX
+            dy::Float64 = endY - startY
+            len::Float64 = sqrt(dx * dx + dy * dy)
             
-            if length > 0
+            if len > 0
                 # Normalized perpendicular vector
-                perpX = -dy / length
-                perpY = dx / length
+                perpX::Float64 = -dy / len
+                perpY::Float64 = dx / len
                 
                 # Draw multiple parallel lines to create thickness
-                for i in -(this.thickness÷2):(this.thickness÷2)
-                    offsetX = perpX * i
-                    offsetY = perpY * i
+                half = this.thickness ÷ 2
+                for i in -half:half
+                    offsetX::Float64 = perpX * i
+                    offsetY::Float64 = perpY * i
                     
                     SDL2.SDL_RenderDrawLineF(
                         JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
@@ -177,34 +195,20 @@ module LineModule
     end
     
     function render_line_with_effects(this::Line)
-        camera = MAIN.scene.camera
+        camera = _line_scene_camera()
+        startX, startY, endX, endY = _line_screen_endpoints(this, camera)
         
-        # Calculate position
-        if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            startX = (this.startPoint.x - (camera.position.x + camera.offset.x)) * S
-            startY = (this.startPoint.y - (camera.position.y + camera.offset.y)) * S
-            endX = (this.endPoint.x - (camera.position.x + camera.offset.x)) * S
-            endY = (this.endPoint.y - (camera.position.y + camera.offset.y)) * S
-        else
-            startX = this.startPoint.x
-            startY = this.startPoint.y
-            endX = this.endPoint.x
-            endY = this.endPoint.y
-        end
+        min_x = Base.min(startX, endX)
+        min_y = Base.min(startY, endY)
+        max_x = Base.max(startX, endX)
+        max_y = Base.max(startY, endY)
         
-        # Calculate bounds for texture positioning
-        min_x = min(startX, endX)
-        min_y = min(startY, endY)
-        max_x = max(startX, endX)
-        max_y = max(startY, endY)
-        
-        width = max_x - min_x
-        height = max_y - min_y
+        width::Float64 = max_x - min_x
+        height::Float64 = max_y - min_y
         
         # Render effect texture
         SDL2.SDL_RenderCopyF(
-            JulGame.Renderer,
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
             this.effectTexture,
             C_NULL,
             Ref(SDL2.SDL_FRect(Float32(min_x), Float32(min_y), Float32(width), Float32(height)))
