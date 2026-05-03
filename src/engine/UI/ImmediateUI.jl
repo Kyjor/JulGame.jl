@@ -1673,9 +1673,11 @@ module ImmediateUIModule
         if haskey(IMMEDIATE_UI_CACHE, id)
             component = getfield(IMMEDIATE_UI_CACHE[id], :element)::JulGame.IUIElement
             
-            # Remove from scene's uiElements if present
-            if component in MAIN.scene.uiElements
-                filter!(x -> x !== component, MAIN.scene.uiElements)
+            ml = JulGame.current_main()
+            sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+            uis = getfield(sc, :uiElements)::Vector{JulGame.IUIElement}
+            if component in uis
+                filter!(x -> x !== component, uis)
             end
             
             # Clean up component resources using appropriate destroy method

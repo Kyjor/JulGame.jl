@@ -10,22 +10,25 @@ export BatchedLayer, batch_static_sprites, render_batched_layer, cleanup_batched
 Holds a batched texture for a specific sprite layer.
 Automatically chunks textures if they exceed maximum size.
 """
+# Trim-native math: avoid `getglobal(Math, :Vector4)` / alias constructors in inferrable paths.
+const _BATCH_V4_ZERO_I32 = Math._Vector4{Int32}(0, 0, 0, 0)
+
 mutable struct BatchedLayer
     layer::Int
     textures::Vector{Ptr{SDL2.SDL_Texture}}
-    texturesBounds::Vector{Math.Vector4}  # x, y, width, height for each chunk
-    spriteHashes::Vector{UInt64}  # Track sprite state to detect changes
+    texturesBounds::Vector{Math._Vector4{Float64}}
+    spriteHashes::Vector{UInt64}
     needsRebatch::Bool
-    debugOffset::Math.Vector2f  # Manual offset for debugging alignment issues
+    debugOffset::Math._Vector2{Float64}
     
     function BatchedLayer(layer::Int)
         this = new()
         this.layer = layer
         this.textures = Ptr{SDL2.SDL_Texture}[]
-        this.texturesBounds = Math.Vector4[]
+        this.texturesBounds = Math._Vector4{Float64}[]
         this.spriteHashes = UInt64[]
         this.needsRebatch = true
-        this.debugOffset = Math.Vector2f(0.0, 0.0)
+        this.debugOffset = Math._Vector2{Float64}(0.0, 0.0)
         return this
     end
 end
@@ -65,15 +68,19 @@ function get_static_sprites_by_layer()
     Sp = JulGame.Component.SpriteModule.InternalSprite
     layer_sprites = Dict{Int, Vector{Sp}}()
     JulGame.MAIN === nothing && return layer_sprites
-    for entity in JulGame.MAIN.scene.entities
-        sprite = entity.sprite
-        if sprite != C_NULL && sprite !== nothing && sprite.isStatic
-            layer = sprite.layer
-            if !haskey(layer_sprites, layer)
-                layer_sprites[layer] = Sp[]
-            end
-            push!(layer_sprites[layer], sprite)
+    ml = JulGame.current_main()
+    sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+    ents = getfield(sc, :entities)::Vector{JulGame.EntityModule.Entity}
+    for entity in ents
+        spr = getfield(entity, :sprite)
+        spr isa Sp || continue
+        sp = spr::Sp
+        getfield(sp, :isStatic) || continue
+        ly = getfield(sp, :layer)::Int
+        if !haskey(layer_sprites, ly)
+            layer_sprites[ly] = Sp[]
         end
+        push!(layer_sprites[ly], sp)
     end
     return layer_sprites
 end
@@ -89,66 +96,83 @@ function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.Sprite
         return (0.0, 0.0, 0.0, 0.0)::NTuple{4, Float64}
     end
     
-    min_x = Inf
-    min_y = Inf
-    max_x = -Inf
-    max_y = -Inf
+    min_x::Float64 = Inf
+    min_y::Float64 = Inf
+    max_x::Float64 = -Inf
+    max_y::Float64 = -Inf
     
     SCALE_UNITS = JulGame.scale_units()
     
     for sprite in sprites
-        entity = sprite.parent
-        pos = entity.transform.position
-        scale = entity.transform.scale
+        entity = getfield(sprite, :parent)::JulGame.EntityModule.Entity
+        tr = getfield(entity, :transform)::JulGame.TransformModule.Transform
+        pos = getfield(tr, :position)
+        scale = getfield(tr, :scale)
         
-        # Calculate sprite size in world units
-        cropWidth = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? sprite.size.x : sprite.crop.z
-        cropHeight = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? sprite.size.y : sprite.crop.t
-        
-        if sprite.pixelsPerUnit == 0
-            sprite_width = cropWidth * scale.x / 64.0
-            sprite_height = cropHeight * scale.y / 64.0
+        cr = getfield(sprite, :crop)
+        cropWidth::Float64 = if cr isa Math.Vector4
+            cv = cr::Math._Vector4{Int32}
+            if cv == _BATCH_V4_ZERO_I32
+                Float64(getfield(getfield(sprite, :size), :x))
+            else
+                Float64(getfield(cv, :z))
+            end
         else
-            ppu = sprite.pixelsPerUnit > 0 ? sprite.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
-            sprite_width = cropWidth * scale.x / ppu
-            sprite_height = cropHeight * scale.y / ppu
+            Float64(getfield(getfield(sprite, :size), :x))
+        end
+        cropHeight::Float64 = if cr isa Math.Vector4
+            cv = cr::Math._Vector4{Int32}
+            if cv == _BATCH_V4_ZERO_I32
+                Float64(getfield(getfield(sprite, :size), :y))
+            else
+                Float64(getfield(cv, :t))
+            end
+        else
+            Float64(getfield(getfield(sprite, :size), :y))
         end
         
-        # Calculate base position
-        base_x = pos.x + sprite.offset.x
-        base_y = pos.y + sprite.offset.y
+        if getfield(sprite, :pixelsPerUnit) == 0
+            sprite_width = cropWidth * Float64(getfield(scale, :x)) / 64.0
+            sprite_height = cropHeight * Float64(getfield(scale, :y)) / 64.0
+        else
+            ppu = getfield(sprite, :pixelsPerUnit)
+            ppu_eff::Float64 = ppu > 0 ? Float64(ppu) : Float64(JulGame.PIXELS_PER_UNIT)
+            sprite_width = cropWidth * Float64(getfield(scale, :x)) / ppu_eff
+            sprite_height = cropHeight * Float64(getfield(scale, :y)) / ppu_eff
+        end
         
-        # Calculate sprite bounds based on anchor (matching Sprite.jl anchor logic)
-        # The anchor determines where the transform position is relative to the sprite
-        if sprite.anchor == :center
+        base_x = Float64(getfield(pos, :x)) + Float64(getfield(getfield(sprite, :offset), :x))
+        base_y = Float64(getfield(pos, :y)) + Float64(getfield(getfield(sprite, :offset), :y))
+        
+        anch = getfield(sprite, :anchor)::Symbol
+        if anch === :center
             x1 = base_x - sprite_width / 2
             y1 = base_y - sprite_height / 2
-        elseif sprite.anchor == :top
+        elseif anch === :top
             x1 = base_x - sprite_width / 2
             y1 = base_y
-        elseif sprite.anchor == :bottom
+        elseif anch === :bottom
             x1 = base_x - sprite_width / 2
             y1 = base_y - sprite_height
-        elseif sprite.anchor == :left
+        elseif anch === :left
             x1 = base_x
             y1 = base_y - sprite_height / 2
-        elseif sprite.anchor == :right
+        elseif anch === :right
             x1 = base_x - sprite_width
             y1 = base_y - sprite_height / 2
-        elseif sprite.anchor == :topleft
+        elseif anch === :topleft
             x1 = base_x
             y1 = base_y
-        elseif sprite.anchor == :topright
+        elseif anch === :topright
             x1 = base_x - sprite_width
             y1 = base_y
-        elseif sprite.anchor == :bottomleft
+        elseif anch === :bottomleft
             x1 = base_x
             y1 = base_y - sprite_height
-        elseif sprite.anchor == :bottomright
+        elseif anch === :bottomright
             x1 = base_x - sprite_width
             y1 = base_y - sprite_height
         else
-            # Default to center if unknown anchor
             x1 = base_x - sprite_width / 2
             y1 = base_y - sprite_height / 2
         end
@@ -156,13 +180,13 @@ function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.Sprite
         x2 = x1 + sprite_width
         y2 = y1 + sprite_height
         
-        min_x = min(min_x, x1)
-        min_y = min(min_y, y1)
-        max_x = max(max_x, x2)
-        max_y = max(max_y, y2)
+        min_x = Base.min(min_x, x1)
+        min_y = Base.min(min_y, y1)
+        max_x = Base.max(max_x, x2)
+        max_y = Base.max(max_y, y2)
     end
     
-    return (Float64(min_x), Float64(min_y), Float64(max_x), Float64(max_y))::NTuple{4, Float64}
+    return (min_x, min_y, max_x, max_y)::NTuple{4, Float64}
 end
 
 """
@@ -393,7 +417,7 @@ function batch_static_sprites(scene::JulGame.SceneModule.Scene)
         
         if texture != C_NULL
             push!(batched_layer.textures, texture)
-            push!(batched_layer.texturesBounds, Math.Vector4(min_x, min_y, max_x - min_x, max_y - min_y))
+            push!(batched_layer.texturesBounds, Math._Vector4{Float64}(min_x, min_y, max_x - min_x, max_y - min_y))
             
             # Store sprite hashes for change detection
             for sprite in sprites
@@ -601,8 +625,7 @@ function check_and_rebatch_if_needed(scene::JulGame.SceneModule.Scene)
                     by = bounds[2]
                     bw = bounds[3] - bounds[1]
                     bh = bounds[4] - bounds[2]
-                    push!(batched_layer.texturesBounds, Math._Vector4{Int32}(
-                        round(Int32, bx), round(Int32, by), round(Int32, bw), round(Int32, bh)))
+                    push!(batched_layer.texturesBounds, Math._Vector4{Float64}(bx, by, bw, bh))
                     
                     for sprite in sprites
                         push!(batched_layer.spriteHashes, calculate_sprite_hash(sprite))

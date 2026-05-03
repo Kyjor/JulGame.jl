@@ -338,7 +338,10 @@ module UIImageModule
         this.surface = C_NULL
         this.texture = C_NULL
 
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        ml = JulGame.current_main()
+        sc = getfield(ml, :scene)::JulGame.SceneModule.Scene
+        old_uis = getfield(sc, :uiElements)::Vector{JulGame.IUIElement}
+        setfield!(sc, :uiElements, filter(x -> x !== this, old_uis))
     end
 
     function UI.set_color(this::UIImage)

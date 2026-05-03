@@ -355,7 +355,7 @@ end
 @Base.noinline function _ui_invoke_hover_exit_enter_callbacks!(events::Vector{Function})::Nothing
     for event in events
         try
-            event()
+            JulGame.trim_call0(event::Function)
         catch e
             @error "Error calling hover event: $(e)"
         end
@@ -369,11 +369,6 @@ function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     inst = relationship_instance(this)
     events = (isEntering ? getfield(inst, :hoverEnterEvents) : getfield(inst, :hoverExitEvents))::Vector{Function}
     t0 = time_ns()
-    if JulGame.juliac_trim_active()
-        key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations
-        _latency_ui_hit_ms!(prof, t0, key)
-        return nothing
-    end
     _ui_invoke_hover_exit_enter_callbacks!(events)
     key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations
     _latency_ui_hit_ms!(prof, t0, key)

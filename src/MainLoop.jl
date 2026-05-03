@@ -62,7 +62,7 @@ module MainLoopModule
 		elseif tgt isa JulGame.UI.LineModule.Line
 			JulGame.UI.render(tgt::JulGame.UI.LineModule.Line)
 		else
-			JulGame.render(tgt)
+			return nothing
 		end
 		return nothing
 	end
@@ -334,6 +334,17 @@ module MainLoopModule
 	# Wrapper functions for calling dynamically-loaded script methods.
 	# Uses Base.invokelatest to handle world age issues. Tracks first calls for profiling.
 	# ============================================================================
+
+	@Base.noinline function _mainloop_register_script_type!(this::MainLoop, script_type::DataType, init_timings::Bool)::Nothing
+		if script_type in this.knownScriptTypes
+			return nothing
+		end
+		push!(this.knownScriptTypes, script_type)
+		if init_timings
+			this.scriptTimings[script_type] = Float64[]
+		end
+		return nothing
+	end
 	
 	@Base.noinline function _juliac_script_update_json(o::JSON3.Object, deltaTime::Float64)::Nothing
 		JulGame.update(o, deltaTime)
@@ -351,13 +362,11 @@ module MainLoopModule
 	Call script initialization method. Tracks first call for profiling/debugging.
 	"""
 	@inline function call_script_initialize(this::MainLoop, script)
-		script_type = typeof(script)
+		script_type = typeof(script)::DataType
 		
 		if !(script_type in this.knownScriptTypes)
-			# First time: JIT compiles the method (slow but only once)
 			@debug "First initialize call for $(script_type) - compiling..."
-			push!(this.knownScriptTypes, script_type)
-			this.scriptTimings[script_type] = Float64[]
+			_mainloop_register_script_type!(this, script_type, true)
 		end
 		
 		Base.invokelatest(JulGame.initialize, script)
@@ -369,40 +378,49 @@ module MainLoopModule
 	Call script update method with optional per-script profiling.
 	When profiling is enabled, tracks execution time per script type.
 	"""
-	@inline function call_script_update(this::MainLoop, script, deltaTime::Float64, profile::Bool=false)
-		script_type = typeof(script)
-		
+	@Base.noinline function call_script_update(this::MainLoop, script::JSON3.Object, deltaTime::Float64, profile::Bool=false)
+		script_type = typeof(script)::DataType
 		if !(script_type in this.knownScriptTypes)
-			# First call: register type (compilation happens here)
 			@debug "First update call for $(script_type) - compiling..."
-			push!(this.knownScriptTypes, script_type)
-			this.scriptTimings[script_type] = Float64[]
+			_mainloop_register_script_type!(this, script_type, true)
 		end
-		
-		# Profile if requested
 		if profile && haskey(this.scriptTimings, script_type)
 			start_time = time_ns()
-			if script isa JSON3.Object
-				_juliac_script_update_json(script::JSON3.Object, deltaTime)
-			else
-				_juliac_script_update_user(script::JulGame.Script, deltaTime)
-			end
+			_juliac_script_update_json(script, deltaTime)
 			elapsed = (time_ns() - start_time) / 1e6
 			if this.latencyProfiler !== nothing
 				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
 			end
 			v = this.scriptTimings[script_type]
 			push!(v, elapsed)
-			# Cap growth when profiling stays on for long sessions (avoids unbounded vectors / GC pressure).
 			if length(v) > 25_000
 				deleteat!(v, 1:10_000)
 			end
 		else
-			if script isa JSON3.Object
-				_juliac_script_update_json(script::JSON3.Object, deltaTime)
-			else
-				_juliac_script_update_user(script::JulGame.Script, deltaTime)
+			_juliac_script_update_json(script, deltaTime)
+		end
+	end
+
+	@Base.noinline function call_script_update(this::MainLoop, script::JulGame.Script, deltaTime::Float64, profile::Bool=false)
+		script_type = typeof(script)::DataType
+		if !(script_type in this.knownScriptTypes)
+			@debug "First update call for $(script_type) - compiling..."
+			_mainloop_register_script_type!(this, script_type, true)
+		end
+		if profile && haskey(this.scriptTimings, script_type)
+			start_time = time_ns()
+			_juliac_script_update_user(script, deltaTime)
+			elapsed = (time_ns() - start_time) / 1e6
+			if this.latencyProfiler !== nothing
+				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
 			end
+			v = this.scriptTimings[script_type]
+			push!(v, elapsed)
+			if length(v) > 25_000
+				deleteat!(v, 1:10_000)
+			end
+		else
+			_juliac_script_update_user(script, deltaTime)
 		end
 	end
 	
@@ -412,14 +430,11 @@ module MainLoopModule
 	Call script shutdown/cleanup method.
 	"""
 	@inline function call_script_shutdown(this::MainLoop, script)
-		script_type = typeof(script)
-		
+		script_type = typeof(script)::DataType
 		if !(script_type in this.knownScriptTypes)
-			push!(this.knownScriptTypes, script_type)
 			@debug "First shutdown call for $(script_type) - compiling..."
+			_mainloop_register_script_type!(this, script_type, false)
 		end
-		
-		# Always use invokelatest (fast after first compilation)
 		Base.invokelatest(JulGame.on_shutdown, script)
 	end
 	
@@ -1095,7 +1110,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						# Call scripts with optional per-script profiling
 						for script in entity.scripts
 							profile_scripts = this.latencyProfiler !== nothing
-							call_script_update(this, script, deltaTime, profile_scripts)
+							if script isa JSON3.Object
+								call_script_update(this, script::JSON3.Object, deltaTime, profile_scripts)
+							else
+								call_script_update(this, script::JulGame.Script, deltaTime, profile_scripts)
+							end
 						end
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"

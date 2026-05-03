@@ -106,7 +106,7 @@ mutable struct LatencyProfiler
     # Sub-steps inside `:ui_rendering` (MainLoop + ImmediateUI); shown on slow-frame reports.
     ui_render_breakdown_ms::Dict{Symbol, Float64}
     # Time inside `render` / queued render fn per concrete type (or :ui_queued_render_fn); slow-frame only.
-    ui_render_invoke_ms::Dict{Any, Float64}
+    ui_render_invoke_ms::Dict{Symbol, Float64}
     ui_render_invoke_peak_ms::Float64
     ui_render_invoke_peak_desc::String
     
@@ -145,7 +145,7 @@ mutable struct LatencyProfiler
         this.input_ui_hit_detail_ms = Dict{Symbol, Float64}()
         this.input_ui_hit_detail_counts = Dict{Symbol, Int}()
         this.ui_render_breakdown_ms = Dict{Symbol, Float64}()
-        this.ui_render_invoke_ms = Dict{Any, Float64}()
+        this.ui_render_invoke_ms = Dict{Symbol, Float64}()
         this.ui_render_invoke_peak_ms = 0.0
         this.ui_render_invoke_peak_desc = ""
 
@@ -727,6 +727,7 @@ end
 Print real-time statistics (called periodically during profiling).
 """
 function print_realtime_stats(profiler::LatencyProfiler)
+    JulGame.juliac_trim_active() && return nothing
     if profiler.frame_count < 10
         return  # Need some data first
     end
@@ -740,8 +741,13 @@ function print_realtime_stats(profiler::LatencyProfiler)
     recent_p99 = calculate_percentile(recent_times, 0.99)
     
     if !JulGame.IS_PACKAGE_COMPILED
-        println("\n📊 [$(_wall_clock_hms())] Frame $(profiler.frame_count) | Recent performance:")
-        println("   Mean: $(round(recent_mean, digits=2))ms | P99: $(round(recent_p99, digits=2))ms | Max: $(round(recent_max, digits=2))ms")
+        h = _wall_clock_hms()
+        fc = profiler.frame_count
+        m = round(recent_mean, digits=2)
+        p99 = round(recent_p99, digits=2)
+        mx = round(recent_max, digits=2)
+        println(string("\n📊 [", h, "] Frame ", fc, " | Recent performance:"))
+        println(string("   Mean: ", m, "ms | P99: ", p99, "ms | Max: ", mx, "ms"))
     else
         @debug "Profiler frame $(profiler.frame_count) mean=$(round(recent_mean, digits=2))ms p99=$(round(recent_p99, digits=2))ms max=$(round(recent_max, digits=2))ms"
     end
