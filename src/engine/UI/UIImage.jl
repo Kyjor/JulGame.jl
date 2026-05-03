@@ -79,7 +79,11 @@ module UIImageModule
             this.needsEffectUpdate = false
             this.effectCacheKey = ""
 
-            this.path = path
+            # Avoid `setproperty!(:path)` here: its effect-cache path pulls in `serialize_effects` / `fieldnames`
+            # which JuliaC `--trim` cannot verify; ctor always starts with `effects === []`.
+            path_s = String(path)
+            setfield!(this, :path, path_s)
+            UI.load_image(this, path_s)
 
             this.clickEvents = clickEvents
             this.hoverEnterEvents = hoverEnterEvents

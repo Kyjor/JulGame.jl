@@ -92,11 +92,12 @@ mutable struct Enum{T}
     current_value::T
 end
 
-function Enum{T}(pairs...) where T
+function Enum{T}(pairs::Vararg{Any,N}) where {T,N}
     states = Dict{Symbol,Union{T,Nothing}}()
     first_state = nothing  # Track the first state added
 
-    for (i, pair) in enumerate(pairs)
+    for i in 1:N
+        pair = @inbounds pairs[i]
         if pair isa Pair  # If it's a key-value pair
             states[pair.first] = pair.second
         elseif pair isa Symbol  # If it's just a symbol, store as nothing
