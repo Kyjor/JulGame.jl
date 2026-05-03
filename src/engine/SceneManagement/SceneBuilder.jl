@@ -65,6 +65,27 @@ module SceneBuilderModule
         raw isa JSON3.Object && return raw
         return _JSON3_EMPTY_FIELDS
     end
+
+    @Base.noinline function _scenebuilder_align_to_anchor!(el::JulGame.IUIElement)::Nothing
+        if el isa TextBox
+            JulGame.UI.align_to_anchor(el::TextBox)
+        elseif el isa ScreenButton
+            JulGame.UI.align_to_anchor(el::ScreenButton)
+        elseif el isa Rectangle
+            JulGame.UI.align_to_anchor(el::Rectangle)
+        elseif el isa Line
+            JulGame.UI.align_to_anchor(el::Line)
+        elseif el isa Circle
+            JulGame.UI.align_to_anchor(el::Circle)
+        elseif el isa ProgressBar
+            JulGame.UI.align_to_anchor(el::ProgressBar)
+        elseif el isa Canvas
+            JulGame.UI.align_to_anchor(el::Canvas)
+        elseif el isa UIImage
+            JulGame.UI.align_to_anchor(el::UIImage)
+        end
+        return nothing
+    end
     
     function load_and_prepare_scene(this::Scene, main = JulGame.MainLoop(); 
         config=parse_config(), 
@@ -213,13 +234,15 @@ module SceneBuilderModule
             JulGame.UI.add_relationship_if_not_exists(uiElement)
             is_world_entity = getfield(JulGame.UI.relationship_instance(uiElement), :isWorldEntity)::Bool
             if !is_world_entity
-                JulGame.UI.align_to_anchor(uiElement)
+                _scenebuilder_align_to_anchor!(uiElement)
             end
         end
 
         main_loop.scene.rigidbodies = InternalRigidbody[]
         main_loop.scene.colliders = InternalCollider[]
-        add_scripts_to_entities(BasePath)
+        if !JulGame.juliac_trim_active()
+            add_scripts_to_entities(BasePath)
+        end
 
         JulGame.engine_states.current_state = :game_mode
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
@@ -240,7 +263,7 @@ module SceneBuilderModule
         for entity in scene[1]
             dup_entity = false
             for e in main_loop.scene.entities
-                if getfield(e, :id) == getfield(entity, :id)
+                if (getfield(e, :id)::String == getfield(entity, :id)::String)
                     dup_entity = true
                     break
                 end
@@ -255,7 +278,7 @@ module SceneBuilderModule
         for uiElement in scene[2]
             dup_ui = false
             for e in main_loop.scene.uiElements
-                if getfield(e, :id) == getfield(uiElement, :id)
+                if (getfield(e, :id)::String == getfield(uiElement, :id)::String)
                     dup_ui = true
                     break
                 end
@@ -271,7 +294,7 @@ module SceneBuilderModule
             JulGame.UI.add_relationship_if_not_exists(uiElement)
             is_world_entity = getfield(JulGame.UI.relationship_instance(uiElement), :isWorldEntity)::Bool
             if is_world_entity
-                JulGame.UI.align_to_anchor(uiElement)
+                _scenebuilder_align_to_anchor!(uiElement)
             end
         end
 
@@ -290,7 +313,9 @@ module SceneBuilderModule
             end
         end 
 
-        add_scripts_to_entities(BasePath)
+        if !JulGame.juliac_trim_active()
+            add_scripts_to_entities(BasePath)
+        end
     end
 
     """

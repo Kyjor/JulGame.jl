@@ -12,6 +12,11 @@ Automatically chunks textures if they exceed maximum size.
 """
 # Trim-native math: avoid `getglobal(Math, :Vector4)` / alias constructors in inferrable paths.
 const _BATCH_V4_ZERO_I32 = Math._Vector4{Int32}(0, 0, 0, 0)
+const _STATIC_BATCH_DEFAULT_PPU = 16
+
+@inline function _batch_safe_round_i32(x::Float64)::Int32
+    return Math.TypeConversions.safe_int32_convert(Base.round(x)::Float64)
+end
 
 mutable struct BatchedLayer
     layer::Int
@@ -136,7 +141,7 @@ function calculate_bounding_box(sprites::AbstractVector{JulGame.Component.Sprite
             sprite_height = cropHeight * Float64(getfield(scale, :y)) / 64.0
         else
             ppu = getfield(sprite, :pixelsPerUnit)
-            ppu_eff::Float64 = ppu > 0 ? Float64(ppu) : Float64(JulGame.PIXELS_PER_UNIT)
+            ppu_eff::Float64 = ppu > 0 ? Float64(ppu) : Float64(_STATIC_BATCH_DEFAULT_PPU)
             sprite_width = cropWidth * Float64(getfield(scale, :x)) / ppu_eff
             sprite_height = cropHeight * Float64(getfield(scale, :y)) / ppu_eff
         end
@@ -239,8 +244,9 @@ function create_batched_texture_for_sprites(sprites::AbstractVector{JulGame.Comp
     SDL2.SDL_RenderClear(JulGame.Renderer)
     
     # Render each sprite to the texture
+    su_tex::Float64 = Float64(SCALE_UNITS)
     for sprite in sprites
-        render_sprite_to_texture(sprite, min_x, min_y, SCALE_UNITS)
+        render_sprite_to_texture(sprite, min_x, min_y, su_tex)
     end
     
     # Reset render target to screen
@@ -254,118 +260,137 @@ end
 
 Render a single sprite to the current render target (batched texture).
 """
-function render_sprite_to_texture(sprite, offset_x::Float64, offset_y::Float64, scale_units)
-    # Ensure sprite has a texture
-    if sprite.texture == C_NULL && sprite.image != C_NULL
-        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, sprite.image)
+function render_sprite_to_texture(sprite::JulGame.Component.SpriteModule.InternalSprite, offset_x::Float64, offset_y::Float64, scale_units::Float64)::Nothing
+    if getfield(sprite, :texture) == C_NULL && getfield(sprite, :image) != C_NULL
+        setfield!(sprite, :texture, SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, getfield(sprite, :image)))
         JulGame.Component.set_color(sprite)
     end
     
-    if sprite.texture == C_NULL
-        return
+    if getfield(sprite, :texture) == C_NULL
+        return nothing
     end
     
-    # Set color modulation
+    col = getfield(sprite, :color)::NTuple{4, Int}
     SDL2.SDL_SetTextureColorMod(
-        sprite.texture,
-        UInt8(clamp(sprite.color[1], 0, 255)),
-        UInt8(clamp(sprite.color[2], 0, 255)),
-        UInt8(clamp(sprite.color[3], 0, 255))
+        getfield(sprite, :texture),
+        UInt8(clamp(col[1], 0, 255)),
+        UInt8(clamp(col[2], 0, 255)),
+        UInt8(clamp(col[3], 0, 255))
     )
-    SDL2.SDL_SetTextureAlphaMod(sprite.texture, UInt8(clamp(sprite.color[4], 0, 255)))
+    SDL2.SDL_SetTextureAlphaMod(getfield(sprite, :texture), UInt8(clamp(col[4], 0, 255)))
     
-    # Calculate sprite position and size
-    entity = sprite.parent
-    pos = entity.transform.position
-    scale = entity.transform.scale
+    entity = getfield(sprite, :parent)
+    tr = getfield(entity, :transform)::JulGame.TransformModule.Transform
+    pos = getfield(tr, :position)
+    scale = getfield(tr, :scale)
     
-    # Calculate size
-    cropWidth = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? sprite.size.x : sprite.crop.z
-    cropHeight = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? sprite.size.y : sprite.crop.t
-    
-    if sprite.pixelsPerUnit == 0
-        scaledWidth = cropWidth * scale.x * scale_units / 64.0
-        scaledHeight = cropHeight * scale.y * scale_units / 64.0
+    cr = getfield(sprite, :crop)
+    cropWidth::Float64 = if cr isa Math.Vector4
+        cv = cr::Math._Vector4{Int32}
+        (cv == _BATCH_V4_ZERO_I32) ? Float64(getfield(getfield(sprite, :size), :x)) : Float64(getfield(cv, :z))
     else
-        ppu = sprite.pixelsPerUnit > 0 ? sprite.pixelsPerUnit : JulGame.PIXELS_PER_UNIT
-        scaleFactor = scale_units / ppu
-        scaledWidth = cropWidth * scaleFactor * scale.x
-        scaledHeight = cropHeight * scaleFactor * scale.y
+        Float64(getfield(getfield(sprite, :size), :x))
+    end
+    cropHeight::Float64 = if cr isa Math.Vector4
+        cv = cr::Math._Vector4{Int32}
+        (cv == _BATCH_V4_ZERO_I32) ? Float64(getfield(getfield(sprite, :size), :y)) : Float64(getfield(cv, :t))
+    else
+        Float64(getfield(getfield(sprite, :size), :y))
     end
     
-    # Match Sprite.jl's positioning logic EXACTLY
-    # Step 1: Calculate base position in pixels (relative to texture origin)
-    adjustedX = (pos.x + sprite.offset.x) * scale_units - offset_x * scale_units
-    adjustedY = (pos.y + sprite.offset.y) * scale_units - offset_y * scale_units
-    
-    # Step 2: Apply anchor positioning (EXACTLY as Sprite.jl does it)
-    # The anchor offset is based on the difference between scaledWidth/Height and SCALE_UNITS * scale
-    centeredX = adjustedX
-    centeredY = adjustedY
-    
-    if sprite.anchor == :center
-        centeredX -= (scaledWidth - scale_units * scale.x) / 2
-        centeredY -= (scaledHeight - scale_units * scale.y) / 2
-    elseif sprite.anchor == :top
-        centeredX -= (scaledWidth - scale_units * scale.x) / 2
-        # No Y adjustment
-    elseif sprite.anchor == :bottom
-        centeredX -= (scaledWidth - scale_units * scale.x) / 2
-        centeredY -= (scaledHeight - scale_units * scale.y)
-    elseif sprite.anchor == :left
-        # No X adjustment
-        centeredY -= (scaledHeight - scale_units * scale.y) / 2
-    elseif sprite.anchor == :right
-        centeredX -= (scaledWidth - scale_units * scale.x)
-        centeredY -= (scaledHeight - scale_units * scale.y) / 2
-    elseif sprite.anchor == :topleft
-        # No adjustment
-    elseif sprite.anchor == :topright
-        centeredX -= (scaledWidth - scale_units * scale.x)
-        # No Y adjustment
-    elseif sprite.anchor == :bottomleft
-        # No X adjustment
-        centeredY -= (scaledHeight - scale_units * scale.y)
-    elseif sprite.anchor == :bottomright
-        centeredX -= (scaledWidth - scale_units * scale.x)
-        centeredY -= (scaledHeight - scale_units * scale.y)
+    scx = Float64(getfield(scale, :x))
+    scy = Float64(getfield(scale, :y))
+    if getfield(sprite, :pixelsPerUnit) == 0
+        scaledWidth = cropWidth * scx * scale_units / 64.0
+        scaledHeight = cropHeight * scy * scale_units / 64.0
+    else
+        ppu = getfield(sprite, :pixelsPerUnit)
+        ppu_eff::Float64 = ppu > 0 ? Float64(ppu) : Float64(_STATIC_BATCH_DEFAULT_PPU)
+        scaleFactor = scale_units / ppu_eff
+        scaledWidth = cropWidth * scaleFactor * scx
+        scaledHeight = cropHeight * scaleFactor * scy
     end
     
-    # Source rectangle
-    srcRect = (sprite.crop == Math.Vector4(0, 0, 0, 0) || sprite.crop == C_NULL) ? 
-        C_NULL : 
-        Ref(SDL2.SDL_Rect(
-            Math.TypeConversions.safe_int32_convert(sprite.crop.x),
-            Math.TypeConversions.safe_int32_convert(sprite.crop.y),
-            Math.TypeConversions.safe_int32_convert(sprite.crop.z),
-            Math.TypeConversions.safe_int32_convert(sprite.crop.t)
-        ))
+    off = getfield(sprite, :offset)::Math._Vector2{Float64}
+    px = Float64(getfield(pos, :x))
+    py = Float64(getfield(pos, :y))
+    ox = Float64(getfield(off, :x))
+    oy = Float64(getfield(off, :y))
+    adjustedX = (px + ox) * scale_units - offset_x * scale_units
+    adjustedY = (py + oy) * scale_units - offset_y * scale_units
     
-    # Destination rectangle
+    centeredX::Float64 = adjustedX
+    centeredY::Float64 = adjustedY
+    su_scx = scale_units * scx
+    su_scy = scale_units * scy
+    
+    anch = getfield(sprite, :anchor)::Symbol
+    if anch === :center
+        centeredX -= (scaledWidth - su_scx) / 2
+        centeredY -= (scaledHeight - su_scy) / 2
+    elseif anch === :top
+        centeredX -= (scaledWidth - su_scx) / 2
+    elseif anch === :bottom
+        centeredX -= (scaledWidth - su_scx) / 2
+        centeredY -= (scaledHeight - su_scy)
+    elseif anch === :left
+        centeredY -= (scaledHeight - su_scy) / 2
+    elseif anch === :right
+        centeredX -= (scaledWidth - su_scx)
+        centeredY -= (scaledHeight - su_scy) / 2
+    elseif anch === :topleft
+    elseif anch === :topright
+        centeredX -= (scaledWidth - su_scx)
+    elseif anch === :bottomleft
+        centeredY -= (scaledHeight - su_scy)
+    elseif anch === :bottomright
+        centeredX -= (scaledWidth - su_scx)
+        centeredY -= (scaledHeight - su_scy)
+    end
+    
+    srcRect = if cr isa Math.Vector4
+        cvr = cr::Math._Vector4{Int32}
+        if cvr == _BATCH_V4_ZERO_I32
+            C_NULL
+        else
+            Ref(SDL2.SDL_Rect(
+                Math.TypeConversions.safe_int32_convert(Float64(getfield(cvr, :x))),
+                Math.TypeConversions.safe_int32_convert(Float64(getfield(cvr, :y))),
+                Math.TypeConversions.safe_int32_convert(Float64(getfield(cvr, :z))),
+                Math.TypeConversions.safe_int32_convert(Float64(getfield(cvr, :t))),
+            ))
+        end
+    else
+        C_NULL
+    end
+    
     dstRect = Ref(SDL2.SDL_Rect(
-        Math.TypeConversions.safe_int32_convert(round(centeredX)),
-        Math.TypeConversions.safe_int32_convert(round(centeredY)),
-        Math.TypeConversions.safe_int32_convert(round(scaledWidth)),
-        Math.TypeConversions.safe_int32_convert(round(scaledHeight))
+        _batch_safe_round_i32(centeredX),
+        _batch_safe_round_i32(centeredY),
+        _batch_safe_round_i32(scaledWidth),
+        _batch_safe_round_i32(scaledHeight),
     ))
     
-    # Rotation center
-    calculatedCenter = Math.Vector2(dstRect[].w * (sprite.center.x % 1), dstRect[].h * (sprite.center.y % 1))
+    ctr = getfield(sprite, :center)::Math._Vector2{Float64}
+    wrect = getfield(dstRect[], :w)
+    hrect = getfield(dstRect[], :h)
+    cx_f = Float64(wrect) * (Float64(getfield(ctr, :x)) % 1.0)
+    cy_f = Float64(hrect) * (Float64(getfield(ctr, :y)) % 1.0)
     rotationCenter = Ref(SDL2.SDL_Point(
-        Math.TypeConversions.safe_int32_convert(round(calculatedCenter.x)),
-        Math.TypeConversions.safe_int32_convert(round(calculatedCenter.y))
+        _batch_safe_round_i32(cx_f),
+        _batch_safe_round_i32(cy_f),
     ))
     
-    # Render to texture
     SDL2.SDL_RenderCopyEx(
         JulGame.Renderer,
-        sprite.texture,
+        getfield(sprite, :texture),
         srcRect,
         dstRect,
-        sprite.rotation,
+        getfield(sprite, :rotation),
         rotationCenter,
-        sprite.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
+        getfield(sprite, :isFlipped) ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
     )
+    return nothing
 end
 
 """

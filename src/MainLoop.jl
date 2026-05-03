@@ -126,7 +126,7 @@ module MainLoopModule
 			JulGame.LatencyProfilerModule.print_latency_report(this.latencyProfiler)
 			
 			# Also print script-specific profiling if data is available
-			if !isempty(this.scriptTimings)
+			if _mainloop_any_script_timing_samples(this)
 				println("\n")  # Spacing
 				print_script_profiling_report(this)
 			end
@@ -212,8 +212,8 @@ module MainLoopModule
 		windowManager::WindowManager
 		
 		# Script tracking for profiling and debugging
-		knownScriptTypes::Set{DataType}
-		scriptTimings::Dict{DataType, Vector{Float64}}  # For profiling per script type
+		knownScriptTypes::Vector{DataType}
+		scriptTimingStorage::Vector{Union{Nothing, Vector{Float64}}}
 		
 		uiRenderBuffer::Vector{Tuple{Int, Any}}
 		# Pre-allocated buffers to reduce GC pressure
@@ -282,8 +282,8 @@ module MainLoopModule
 			this.scratchInputHiddenCanvasChildIds = Set{UInt}()
 			
 			# Initialize script tracking
-			this.knownScriptTypes = Set{DataType}()
-			this.scriptTimings = Dict{DataType, Vector{Float64}}()
+			this.knownScriptTypes = DataType[]
+			this.scriptTimingStorage = Union{Nothing, Vector{Float64}}[]
 
 			return this
 		end
@@ -335,14 +335,35 @@ module MainLoopModule
 	# Uses Base.invokelatest to handle world age issues. Tracks first calls for profiling.
 	# ============================================================================
 
+	@inline function _mainloop_script_type_index(types::Vector{DataType}, t::DataType)::Int
+		@inbounds for i = 1:length(types)
+			if types[i] === t
+				return i
+			end
+		end
+		return 0
+	end
+
+	function _mainloop_any_script_timing_samples(this::MainLoop)::Bool
+		for i = 1:length(this.scriptTimingStorage)
+			s = this.scriptTimingStorage[i]
+			if s !== nothing && !isempty(s::Vector{Float64})
+				return true
+			end
+		end
+		return false
+	end
+
 	@Base.noinline function _mainloop_register_script_type!(this::MainLoop, script_type::DataType, init_timings::Bool)::Nothing
-		if script_type in this.knownScriptTypes
+		idx = _mainloop_script_type_index(this.knownScriptTypes, script_type)
+		if idx > 0
+			if init_timings && this.scriptTimingStorage[idx] === nothing
+				this.scriptTimingStorage[idx] = Float64[]
+			end
 			return nothing
 		end
 		push!(this.knownScriptTypes, script_type)
-		if init_timings
-			this.scriptTimings[script_type] = Float64[]
-		end
+		push!(this.scriptTimingStorage, init_timings ? Float64[] : nothing)
 		return nothing
 	end
 	
@@ -364,7 +385,7 @@ module MainLoopModule
 	@inline function call_script_initialize(this::MainLoop, script)
 		script_type = typeof(script)::DataType
 		
-		if !(script_type in this.knownScriptTypes)
+		if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
 			@debug "First initialize call for $(script_type) - compiling..."
 			_mainloop_register_script_type!(this, script_type, true)
 		end
@@ -380,18 +401,20 @@ module MainLoopModule
 	"""
 	@Base.noinline function call_script_update(this::MainLoop, script::JSON3.Object, deltaTime::Float64, profile::Bool=false)
 		script_type = typeof(script)::DataType
-		if !(script_type in this.knownScriptTypes)
+		if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
 			@debug "First update call for $(script_type) - compiling..."
 			_mainloop_register_script_type!(this, script_type, true)
 		end
-		if profile && haskey(this.scriptTimings, script_type)
+		idx_u = _mainloop_script_type_index(this.knownScriptTypes, script_type)
+		st_v = idx_u > 0 ? this.scriptTimingStorage[idx_u] : nothing
+		if profile && st_v !== nothing
 			start_time = time_ns()
 			_juliac_script_update_json(script, deltaTime)
 			elapsed = (time_ns() - start_time) / 1e6
 			if this.latencyProfiler !== nothing
 				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
 			end
-			v = this.scriptTimings[script_type]
+			v = st_v::Vector{Float64}
 			push!(v, elapsed)
 			if length(v) > 25_000
 				deleteat!(v, 1:10_000)
@@ -403,18 +426,20 @@ module MainLoopModule
 
 	@Base.noinline function call_script_update(this::MainLoop, script::JulGame.Script, deltaTime::Float64, profile::Bool=false)
 		script_type = typeof(script)::DataType
-		if !(script_type in this.knownScriptTypes)
+		if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
 			@debug "First update call for $(script_type) - compiling..."
 			_mainloop_register_script_type!(this, script_type, true)
 		end
-		if profile && haskey(this.scriptTimings, script_type)
+		idx_u = _mainloop_script_type_index(this.knownScriptTypes, script_type)
+		st_v = idx_u > 0 ? this.scriptTimingStorage[idx_u] : nothing
+		if profile && st_v !== nothing
 			start_time = time_ns()
 			_juliac_script_update_user(script, deltaTime)
 			elapsed = (time_ns() - start_time) / 1e6
 			if this.latencyProfiler !== nothing
 				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
 			end
-			v = this.scriptTimings[script_type]
+			v = st_v::Vector{Float64}
 			push!(v, elapsed)
 			if length(v) > 25_000
 				deleteat!(v, 1:10_000)
@@ -431,7 +456,7 @@ module MainLoopModule
 	"""
 	@inline function call_script_shutdown(this::MainLoop, script)
 		script_type = typeof(script)::DataType
-		if !(script_type in this.knownScriptTypes)
+		if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
 			@debug "First shutdown call for $(script_type) - compiling..."
 			_mainloop_register_script_type!(this, script_type, false)
 		end
@@ -445,7 +470,14 @@ module MainLoopModule
 	Print profiling statistics for each script type showing mean, P95, P99, and max execution times.
 	"""
 	function print_script_profiling_report(this::MainLoop)
-		if isempty(this.scriptTimings)
+		rows = Tuple{DataType, Vector{Float64}}[]
+		@inbounds for i = 1:length(this.knownScriptTypes)
+			st = this.scriptTimingStorage[i]
+			if st !== nothing && !isempty(st::Vector{Float64})
+				push!(rows, (this.knownScriptTypes[i], st::Vector{Float64}))
+			end
+		end
+		if isempty(rows)
 			println("No script profiling data available")
 			return
 		end
@@ -454,14 +486,9 @@ module MainLoopModule
 		println("📊 SCRIPT PERFORMANCE REPORT")
 		println("="^80)
 		
-		# Sort by mean time (slowest first)
-		sorted_scripts = sort(collect(this.scriptTimings), by = kv -> isempty(kv[2]) ? 0.0 : Statistics.mean(kv[2]), rev=true)
+		sorted_scripts = sort(rows, by = kv -> Statistics.mean(kv[2]), rev=true)
 		
 		for (script_type, timings) in sorted_scripts
-			if isempty(timings)
-				continue
-			end
-			
 			mean_time = mean(timings)
 			p95 = quantile(timings, 0.95)
 			p99 = quantile(timings, 0.99)
@@ -484,8 +511,11 @@ module MainLoopModule
 	Clear all script profiling data.
 	"""
 	function clear_script_profiling_data!(this::MainLoop)
-		for (_, timings) in this.scriptTimings
-			empty!(timings)
+		@inbounds for i = 1:length(this.scriptTimingStorage)
+			st = this.scriptTimingStorage[i]
+			if st !== nothing
+				empty!(st::Vector{Float64})
+			end
 		end
 	end
 	
@@ -1107,13 +1137,57 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
-						# Call scripts with optional per-script profiling
+						# Call scripts with optional per-script profiling (inlined for JuliaC `--trim` inference)
 						for script in entity.scripts
 							profile_scripts = this.latencyProfiler !== nothing
 							if script isa JSON3.Object
-								call_script_update(this, script::JSON3.Object, deltaTime, profile_scripts)
+								jo = script::JSON3.Object
+								st_json = typeof(jo)::DataType
+								if _mainloop_script_type_index(this.knownScriptTypes, st_json) == 0
+									@debug "First update call for $(st_json) - compiling..."
+									_mainloop_register_script_type!(this, st_json, true)
+								end
+								idx_j = _mainloop_script_type_index(this.knownScriptTypes, st_json)
+								st_vj = idx_j > 0 ? this.scriptTimingStorage[idx_j] : nothing
+								if profile_scripts && st_vj !== nothing
+									start_time = time_ns()
+									_juliac_script_update_json(jo, deltaTime)
+									elapsed = (time_ns() - start_time) / 1e6
+									if this.latencyProfiler !== nothing
+										JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, st_json, elapsed)
+									end
+									vj = st_vj::Vector{Float64}
+									push!(vj, elapsed)
+									if length(vj) > 25_000
+										deleteat!(vj, 1:10_000)
+									end
+								else
+									_juliac_script_update_json(jo, deltaTime)
+								end
 							else
-								call_script_update(this, script::JulGame.Script, deltaTime, profile_scripts)
+								sc = script::JulGame.Script
+								st_sc = typeof(sc)::DataType
+								if _mainloop_script_type_index(this.knownScriptTypes, st_sc) == 0
+									@debug "First update call for $(st_sc) - compiling..."
+									_mainloop_register_script_type!(this, st_sc, true)
+								end
+								idx_s = _mainloop_script_type_index(this.knownScriptTypes, st_sc)
+								st_vs = idx_s > 0 ? this.scriptTimingStorage[idx_s] : nothing
+								if profile_scripts && st_vs !== nothing
+									start_time = time_ns()
+									_juliac_script_update_user(sc, deltaTime)
+									elapsed = (time_ns() - start_time) / 1e6
+									if this.latencyProfiler !== nothing
+										JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, st_sc, elapsed)
+									end
+									vs = st_vs::Vector{Float64}
+									push!(vs, elapsed)
+									if length(vs) > 25_000
+										deleteat!(vs, 1:10_000)
+									end
+								else
+									_juliac_script_update_user(sc, deltaTime)
+								end
 							end
 						end
 						if this.close && !this.isGameModeRunningInEditor
@@ -1538,7 +1612,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 	function start_game_in_editor(this::MainLoop, path::String)
 		this.isGameModeRunningInEditor = true
-		SceneBuilderModule.add_scripts_to_entities(path)
+		if !JulGame.juliac_trim_active()
+			SceneBuilderModule.add_scripts_to_entities(path)
+		end
 		initialize_scripts_and_components()
 	end
 

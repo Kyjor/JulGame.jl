@@ -1,4 +1,5 @@
 function add_scripts_to_entities(path::String)
+    JulGame.juliac_trim_active() && return nothing
     @debug string("Adding scripts to entities")
     @debug string("Path: ", path)
     main_loop = JulGame.current_main()

@@ -729,28 +729,15 @@ Print real-time statistics (called periodically during profiling).
 function print_realtime_stats(profiler::LatencyProfiler)
     JulGame.juliac_trim_active() && return nothing
     if profiler.frame_count < 10
-        return  # Need some data first
+        return nothing
     end
-    
-    # Get last N frames for recent performance
-    recent_count = min(120, length(profiler.frame_times))  # Last ~2 seconds at 60fps
+    recent_count = min(120, length(profiler.frame_times))
     recent_times = profiler.frame_times[end-recent_count+1:end]
-    
     recent_mean = mean(recent_times)
     recent_max = maximum(recent_times)
     recent_p99 = calculate_percentile(recent_times, 0.99)
-    
-    if !JulGame.IS_PACKAGE_COMPILED
-        h = _wall_clock_hms()
-        fc = profiler.frame_count
-        m = round(recent_mean, digits=2)
-        p99 = round(recent_p99, digits=2)
-        mx = round(recent_max, digits=2)
-        println(string("\n📊 [", h, "] Frame ", fc, " | Recent performance:"))
-        println(string("   Mean: ", m, "ms | P99: ", p99, "ms | Max: ", mx, "ms"))
-    else
-        @debug "Profiler frame $(profiler.frame_count) mean=$(round(recent_mean, digits=2))ms p99=$(round(recent_p99, digits=2))ms max=$(round(recent_max, digits=2))ms"
-    end
+    @debug "Profiler frame $(profiler.frame_count) mean=$(round(recent_mean, digits=2))ms p99=$(round(recent_p99, digits=2))ms max=$(round(recent_max, digits=2))ms"
+    return nothing
 end
 
 """
