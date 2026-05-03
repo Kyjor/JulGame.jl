@@ -78,4 +78,119 @@
 
     # Re-export UI components
     export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Canvas, UIImage#, Draggable
+
+    # JuliaC `--trim`: public entry uses a concrete Union so verification does not collapse to `align_to_anchor(::IUIElement)`.
+    const SceneAlignableUI = Union{
+        TextBoxModule.TextBox,
+        ScreenButtonModule.ScreenButton,
+        RectangleModule.Rectangle,
+        LineModule.Line,
+        CircleModule.Circle,
+        ProgressBarModule.ProgressBar,
+        CanvasModule.Canvas,
+        UIImageModule.UIImage,
+    }
+
+    function UI.align_to_anchor(this::SceneAlignableUI)::Nothing
+        main = JulGame.current_main()
+        sc = getfield(main, :scene)
+        cam = getfield(sc, :camera)
+        if cam === nothing
+            @debug "No camera found in scene"
+            return nothing
+        end
+
+        add_relationship_if_not_exists(this)
+        tinst = relationship_instance(this)
+        tw = getfield(tinst, :size)::JulGame.Math._Vector2{Int32}
+        thx = getfield(tw, :x)::Int32
+        thy = getfield(tw, :y)::Int32
+        tao = getfield(tinst, :anchorOffset)::JulGame.Math._Vector2{Int32}
+        t_aox = Float64(getfield(tao, :x)::Int32)
+        t_aoy = Float64(getfield(tao, :y)::Int32)
+        anch = getfield(tinst, :anchor)
+        if anch === nothing
+            try
+                anch = getfield(this, :anchor)::JulGame.Enum{Any}
+            catch
+                @debug "align_to_anchor: missing anchor on $(getfield(tinst, :name)::String)"
+                return nothing
+            end
+        end
+        cur = getfield(anch::JulGame.Enum{Any}, :current_state)::Symbol
+
+        sx::Float64
+        sy::Float64
+        ox::Float64
+        oy::Float64
+        par = getfield(tinst, :parent)
+        if par === nothing
+            cam_sz = getfield(cam, :size)::JulGame.Math._Vector2{Int32}
+            sx = Float64(getfield(cam_sz, :x)::Int32)
+            sy = Float64(getfield(cam_sz, :y)::Int32)
+            ox = 0.0
+            oy = 0.0
+        elseif par isa JulGame.IUIElement
+            add_relationship_if_not_exists(par)
+            pinst = relationship_instance(par)
+            p_sz = getfield(pinst, :size)::JulGame.Math._Vector2{Int32}
+            p_pos = getfield(pinst, :position)::JulGame.Math._Vector2{Int32}
+            sx = Float64(getfield(p_sz, :x)::Int32)
+            sy = Float64(getfield(p_sz, :y)::Int32)
+            ox = Float64(getfield(p_pos, :x)::Int32)
+            oy = Float64(getfield(p_pos, :y)::Int32)
+        elseif hasfield(typeof(par), :lastRenderedScreenSize) && hasfield(typeof(par), :lastRenderedScreenPosition)
+            lrs = getfield(par, :lastRenderedScreenSize)
+            lrp = getfield(par, :lastRenderedScreenPosition)
+            if lrs === nothing || lrp === nothing
+                @debug "No last rendered screen size or position found for parent of $(getfield(tinst, :name)::String)"
+                return nothing
+            end
+            lrsf = lrs::JulGame.Math._Vector2{Float64}
+            lrpf = lrp::JulGame.Math._Vector2{Float64}
+            sx = getfield(lrsf, :x)::Float64
+            sy = getfield(lrsf, :y)::Float64
+            ox = getfield(lrpf, :x)::Float64
+            oy = getfield(lrpf, :y)::Float64
+        else
+            @debug "align_to_anchor: parent type has no layout for $(getfield(tinst, :name)::String)"
+            return nothing
+        end
+
+        fx = Float64(thx)
+        fy = Float64(thy)
+
+        if cur === :center
+            _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+        elseif cur === :top
+            _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + t_aoy)
+        elseif cur === :bottom
+            _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + sy - fy + t_aoy)
+        elseif cur === :left
+            _align_set_position_cells!(tinst, ox + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+        elseif cur === :right
+            _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+        elseif cur === :topLeft
+            _align_set_position_cells!(tinst, ox + t_aox, oy + t_aoy)
+        elseif cur === :topRight
+            _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + t_aoy)
+        elseif cur === :bottomLeft
+            _align_set_position_cells!(tinst, ox + t_aox, oy + sy - fy + t_aoy)
+        elseif cur === :bottomRight
+            _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + sy - fy + t_aoy)
+        elseif cur === :centerLeft
+            _align_set_position_cells!(tinst, ox + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+        elseif cur === :centerRight
+            _align_set_position_cells!(tinst, ox + sx - fx + t_aox, oy + sy / 2.0 - fy / 2.0 + t_aoy)
+        elseif cur === :centerTop
+            _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + t_aoy)
+        elseif cur === :centerBottom
+            _align_set_position_cells!(tinst, ox + sx / 2.0 - fx / 2.0 + t_aox, oy + sy - fy + t_aoy)
+        elseif cur === :none
+            @debug "No anchor set for textbox $(getfield(tinst, :name)::String)"
+        else
+            @error "Invalid anchor state: $(cur)"
+        end
+        return nothing
+    end
 end

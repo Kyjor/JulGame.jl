@@ -705,7 +705,18 @@ module MainLoopModule
 
 			for script in scripts
 				try
-					call_script_initialize(this, script)
+					if !JulGame.juliac_trim_active()
+						script_type = typeof(script)::DataType
+						if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
+							@debug "First initialize call for $(script_type) - compiling..."
+							_mainloop_register_script_type!(this, script_type, true)
+						end
+					end
+					if script isa JSON3.Object
+						Base.invokelatest(JulGame.initialize, script::JSON3.Object)
+					else
+						Base.invokelatest(JulGame.initialize, script::JulGame.Script)
+					end
 				catch e
 					if this.testMode
 						rethrow(e)
@@ -1167,68 +1178,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
-						if JulGame.juliac_trim_active() || this.latencyProfiler === nothing
-							for script in entity.scripts
-								if script isa JSON3.Object
-									_juliac_script_update_json(script::JSON3.Object, deltaTime)
-								else
-									_juliac_script_update_user(script::JulGame.Script, deltaTime)
-								end
-							end
-						else
-						# Call scripts with optional per-script profiling (inlined for JuliaC `--trim` inference)
 						for script in entity.scripts
-							profile_scripts = this.latencyProfiler !== nothing
 							if script isa JSON3.Object
-								jo = script::JSON3.Object
-								st_json = typeof(jo)::DataType
-								if _mainloop_script_type_index(this.knownScriptTypes, st_json) == 0
-									@debug "First update call for $(st_json) - compiling..."
-									_mainloop_register_script_type!(this, st_json, true)
-								end
-								idx_j = _mainloop_script_type_index(this.knownScriptTypes, st_json)
-								st_vj = idx_j > 0 ? this.scriptTimingStorage[idx_j] : nothing
-								if profile_scripts && st_vj !== nothing
-									start_time = time_ns()
-									_juliac_script_update_json(jo, deltaTime)
-									elapsed = (time_ns() - start_time) / 1e6
-									if this.latencyProfiler !== nothing
-										JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, st_json, elapsed)
-									end
-									vj = st_vj::Vector{Float64}
-									push!(vj, elapsed)
-									if length(vj) > 25_000
-										deleteat!(vj, 1:10_000)
-									end
-								else
-									_juliac_script_update_json(jo, deltaTime)
-								end
+								_juliac_script_update_json(script::JSON3.Object, deltaTime)
 							else
-								sc = script::JulGame.Script
-								st_sc = typeof(sc)::DataType
-								if _mainloop_script_type_index(this.knownScriptTypes, st_sc) == 0
-									@debug "First update call for $(st_sc) - compiling..."
-									_mainloop_register_script_type!(this, st_sc, true)
-								end
-								idx_s = _mainloop_script_type_index(this.knownScriptTypes, st_sc)
-								st_vs = idx_s > 0 ? this.scriptTimingStorage[idx_s] : nothing
-								if profile_scripts && st_vs !== nothing
-									start_time = time_ns()
-									_juliac_script_update_user(sc, deltaTime)
-									elapsed = (time_ns() - start_time) / 1e6
-									if this.latencyProfiler !== nothing
-										JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, st_sc, elapsed)
-									end
-									vs = st_vs::Vector{Float64}
-									push!(vs, elapsed)
-									if length(vs) > 25_000
-										deleteat!(vs, 1:10_000)
-									end
-								else
-									_juliac_script_update_user(sc, deltaTime)
-								end
+								_juliac_script_update_user(script::JulGame.Script, deltaTime)
 							end
-						end
 						end
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"

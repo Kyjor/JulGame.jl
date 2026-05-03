@@ -41,12 +41,24 @@ end
 # Maximum texture size before chunking (most GPUs support 8192+)
 const MAX_TEXTURE_SIZE = 8192
 
+@inline function _static_sprite_hash_mix(h::UInt64, x::UInt64)::UInt64
+    return xor(h, x + 0x9e3779b97f4a7c15 + (h << 6) + (h >> 2))
+end
+
+@inline function _static_sprite_hash_string(s::String)::UInt64
+    h = UInt64(14695981039346656037)
+    for b in codeunits(s)
+        h = _static_sprite_hash_mix(h, UInt64(b))
+    end
+    return h
+end
+
 """
     calculate_sprite_hash(sprite::JulGame.Component.SpriteModule.InternalSprite)
 
 Calculate a hash of sprite properties to detect changes.
 """
-function calculate_sprite_hash(sprite::JulGame.Component.SpriteModule.InternalSprite)
+function calculate_sprite_hash(sprite::JulGame.Component.SpriteModule.InternalSprite)::UInt64
     px::Float64 = 0.0
     py::Float64 = 0.0
     sx::Float64 = 1.0
@@ -62,20 +74,41 @@ function calculate_sprite_hash(sprite::JulGame.Component.SpriteModule.InternalSp
         sx = getfield(scl, :x)::Float64
         sy = getfield(scl, :y)::Float64
     end
-    return hash((
-        getfield(sprite, :imagePath)::String,
-        px,
-        py,
-        sx,
-        sy,
-        getfield(sprite, :rotation)::Float64,
-        getfield(sprite, :color)::NTuple{4, Int},
-        getfield(sprite, :crop)::Union{Ptr{Nothing}, JulGame.Math._Vector4{Int32}},
-        getfield(sprite, :isFlipped)::Bool,
-        getfield(getfield(sprite, :offset)::JulGame.Math._Vector2{Float64}, :x)::Float64,
-        getfield(getfield(sprite, :offset)::JulGame.Math._Vector2{Float64}, :y)::Float64,
-        getfield(sprite, :layer)::Int,
-    ))
+    path = getfield(sprite, :imagePath)::String
+    rot = getfield(sprite, :rotation)::Float64
+    col = getfield(sprite, :color)::NTuple{4, Int}
+    cr = getfield(sprite, :crop)::Union{Ptr{Nothing}, JulGame.Math._Vector4{Int32}}
+    flip = getfield(sprite, :isFlipped)::Bool
+    off = getfield(sprite, :offset)::JulGame.Math._Vector2{Float64}
+    ox = getfield(off, :x)::Float64
+    oy = getfield(off, :y)::Float64
+    ly = getfield(sprite, :layer)::Int
+    h = UInt64(0x243f6a8885a308d3)
+    h = _static_sprite_hash_mix(h, _static_sprite_hash_string(path))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, px))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, py))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, sx))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, sy))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, rot))
+    h = _static_sprite_hash_mix(h, UInt64(col[1]))
+    h = _static_sprite_hash_mix(h, UInt64(col[2]))
+    h = _static_sprite_hash_mix(h, UInt64(col[3]))
+    h = _static_sprite_hash_mix(h, UInt64(col[4]))
+    if cr isa JulGame.Math._Vector4{Int32}
+        v = cr::JulGame.Math._Vector4{Int32}
+        h = _static_sprite_hash_mix(h, UInt64(getfield(v, :x)))
+        h = _static_sprite_hash_mix(h, UInt64(getfield(v, :y)))
+        h = _static_sprite_hash_mix(h, UInt64(getfield(v, :z)))
+        h = _static_sprite_hash_mix(h, UInt64(getfield(v, :w)))
+    else
+        p = cr::Ptr{Nothing}
+        h = _static_sprite_hash_mix(h, UInt64(UInt(p)))
+    end
+    h = _static_sprite_hash_mix(h, UInt64(flip ? 0x01 : 0x00))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, ox))
+    h = _static_sprite_hash_mix(h, Core.bitcast(UInt64, oy))
+    h = _static_sprite_hash_mix(h, UInt64(ly))
+    return h
 end
 
 """

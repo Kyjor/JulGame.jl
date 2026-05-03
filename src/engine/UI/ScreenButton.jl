@@ -188,7 +188,7 @@ module ScreenButtonModule
             
             if font != C_NULL
                 # Render the text
-                textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(this.textColor[1], this.textColor[2], this.textColor[3], this.textColor[4]))
+                textSurface = JulGame.ttf_render_utf8_blended(font, this.text, SDL2.SDL_Color(this.textColor[1], this.textColor[2], this.textColor[3], this.textColor[4]))
                 
                 if textSurface != C_NULL
                     # Get the size of the rendered text
@@ -414,7 +414,7 @@ module ScreenButtonModule
         
         if font != C_NULL
             # Render the text
-            textSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, font, this.text, SDL2.SDL_Color(255, 255, 255, 255))
+            textSurface = JulGame.ttf_render_utf8_blended(font, this.text, SDL2.SDL_Color(255, 255, 255, 255))
             
             if textSurface != C_NULL
                 # Get the size of the rendered text
