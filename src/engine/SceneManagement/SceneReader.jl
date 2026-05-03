@@ -45,7 +45,9 @@ module SceneReaderModule
         return Base.haskey(d, sym) ? d[sym] : nothing
     end
 
-    @Base.noinline function _json_lookup_storage(d::SceneJSONStorage, k::AbstractString)::Any
+    """Read key `k` from scene JSON wrapped in `JsonObj`. JuliaC `--trim` needs this entry on concrete `JsonObj`, not `getfield(::JsonObj, :d)::Union{...}`."""
+    @Base.noinline function _json_field(o::JsonObj, k::AbstractString)::Any
+        d = getfield(o, :d)
         if d isa JSON3.Object
             return _json_lookup(d, k)
         elseif d isa SceneJSONObject
@@ -139,7 +141,7 @@ module SceneReaderModule
     end
 
     function _json_string(o::JsonObj, key::String, default::String)::String
-        v = _json_lookup_storage(_scene_storage(o), key)
+        v = _json_field(o, key)
         v === nothing && return default
         v isa String && return v
         v isa Symbol && return String(v)
@@ -158,7 +160,7 @@ module SceneReaderModule
     end
 
     function _json_any_array(o::JsonObj, key::String)::Vector{Any}
-        v = _json_lookup_storage(_scene_storage(o), key)
+        v = _json_field(o, key)
         v === nothing && return Any[]
         if v isa Vector{Any}
             return v
@@ -180,18 +182,18 @@ module SceneReaderModule
 
     """Read `parent.sub_key.leaf_key` as `Float64` without going through `getproperty(::JsonObj)::Any` chains."""
     function _scene_f64(parent::JsonObj, sub_key::String, leaf_key::String, default::Float64)::Float64
-        sub = _json_lookup_storage(_scene_storage(parent), sub_key)
+        sub = _json_field(parent, sub_key)
         sub === nothing && return default
         inner = _scene_obj(sub)
-        return _to_f64(_json_lookup_storage(_scene_storage(inner), leaf_key), default)
+        return _to_f64(_json_field(inner, leaf_key), default)
     end
 
     """Read `parent.sub_key.leaf_key` as `Int` without going through `getproperty(::JsonObj)::Any` chains."""
     function _scene_int(parent::JsonObj, sub_key::String, leaf_key::String, default::Int)::Int
-        sub = _json_lookup_storage(_scene_storage(parent), sub_key)
+        sub = _json_field(parent, sub_key)
         sub === nothing && return default
         inner = _scene_obj(sub)
-        return _to_int(_json_lookup_storage(_scene_storage(inner), leaf_key), default)
+        return _to_int(_json_field(inner, leaf_key), default)
     end
 
     @Base.noinline function _vec2f_from_json(c::JsonObj, sub_key::String, def_x::Float64, def_y::Float64)::Math._Vector2{Float64}
@@ -222,12 +224,11 @@ module SceneReaderModule
     """RGBA tuple from UI JSON `color` / `borderColor` (keys `"1"`..`"4"`) or a plain `Dict` (JuliaC `--trim`)."""
     function _ui_rgba_tuple_from_color_field(c)::NTuple{4, Int}
         if c isa JsonObj
-            st = _scene_storage(c)
             return (
-                _to_int(_json_lookup_storage(st, "1"), 255),
-                _to_int(_json_lookup_storage(st, "2"), 255),
-                _to_int(_json_lookup_storage(st, "3"), 255),
-                _to_int(_json_lookup_storage(st, "4"), 255),
+                _to_int(_json_field(c, "1"), 255),
+                _to_int(_json_field(c, "2"), 255),
+                _to_int(_json_field(c, "3"), 255),
+                _to_int(_json_field(c, "4"), 255),
             )
         end
         d = c::AbstractDict
@@ -404,10 +405,10 @@ module SceneReaderModule
                 end
                 entity_name = _json_string(entity, "name", "New entity")
                 newEntity = Entity(entity_name, entity_id)
-                newEntity.isActive = _to_bool(_json_lookup_storage(_scene_storage(entity), "isActive"), true)
+                newEntity.isActive = _to_bool(_json_field(entity, "isActive"), true)
                 # Keep raw JSON3.Object/Dict entries here; SceneBuilder reifies them via `isa(script, JSON3.Object)`.
                 newEntity.scripts = _json_any_array(entity, "scripts")
-                newEntity.persistentBetweenScenes = _to_bool(_json_lookup_storage(_scene_storage(entity), "persistentBetweenScenes"), false)
+                newEntity.persistentBetweenScenes = _to_bool(_json_field(entity, "persistentBetweenScenes"), false)
 
                 for component in components
                     if typeof(component) == Animator
@@ -500,7 +501,7 @@ module SceneReaderModule
                 Math._Vector3{Float64}(0.0, 0.0, 0.0),
                 Math._Vector2{Float64}(0.0, 0.0),
                 C_NULL)
-            cam_raw = _json_lookup_storage(_scene_storage(root), "Camera")
+            cam_raw = _json_field(root, "Camera")
             if cam_raw !== nothing
                 # JuliaC `--trim`: read camera fields via concrete `_scene_*` helpers instead of property
                 # syntax (`cam.size.x`, `cam.backgroundColor.r`, ...) so the verifier doesn't walk a stack of
@@ -519,7 +520,7 @@ module SceneReaderModule
                     _scene_int(cam, "backgroundColor", "b", 0),
                     _scene_int(cam, "backgroundColor", "a", 255),
                 )
-                zraw = _json_lookup_storage(_scene_storage(cam), "zoom")
+                zraw = _json_field(cam, "zoom")
                 if zraw !== nothing
                     camera.zoom = _to_f64(zraw, 1.0)
                 end
@@ -724,7 +725,6 @@ module SceneReaderModule
     function deserialize_component(component::JsonObj)
         try
             ty = _json_string(component, "type", "")
-            st = _scene_storage(component)
             local newComponent
             if ty == "Transform"
                 newComponent = Transform(
@@ -735,89 +735,85 @@ module SceneReaderModule
                 newAnimations = Animation[]
                 for anim_raw in _json_any_array(component, "animations")
                     anim = _scene_obj(anim_raw)
-                    sta = _scene_storage(anim)
                     newAnimationFrames = Vector{Math._Vector4{Int32}}()
                     for frame_raw in _json_any_array(anim, "frames")
                         fr = _scene_obj(frame_raw)
-                        stf = _scene_storage(fr)
                         push!(newAnimationFrames, Math._Vector4{Int32}(
-                            Int32(_to_int(_json_lookup_storage(stf, "x"), 0)),
-                            Int32(_to_int(_json_lookup_storage(stf, "y"), 0)),
-                            Int32(_to_int(_json_lookup_storage(stf, "z"), 0)),
-                            Int32(_to_int(_json_lookup_storage(stf, "t"), 0)),
+                            Int32(_to_int(_json_field(fr, "x"), 0)),
+                            Int32(_to_int(_json_field(fr, "y"), 0)),
+                            Int32(_to_int(_json_field(fr, "z"), 0)),
+                            Int32(_to_int(_json_field(fr, "t"), 0)),
                         ))
                     end
-                    fps = _to_int(_json_lookup_storage(sta, "animatedFPS"), 0)
+                    fps = _to_int(_json_field(anim, "animatedFPS"), 0)
                     push!(newAnimations, Animation(newAnimationFrames, fps))
                 end
                 newComponent = Animator(newAnimations)
             elseif ty == "Collider"
-                isTrigger = _to_bool(_json_lookup_storage(st, "isTrigger"), false)
-                enabled = _to_bool(_json_lookup_storage(st, "enabled"), true)
-                isPlatformerCollider = _to_bool(_json_lookup_storage(st, "isPlatformerCollider"), false)
+                isTrigger = _to_bool(_json_field(component, "isTrigger"), false)
+                enabled = _to_bool(_json_field(component, "enabled"), true)
+                isPlatformerCollider = _to_bool(_json_field(component, "isPlatformerCollider"), false)
                 offset = _vec2f_from_json(component, "offset", 0.0, 0.0)
                 sz = _vec2f_from_json(component, "size", 0.0, 0.0)
                 tag = _json_string(component, "tag", "")
                 newComponent = Collider(enabled, isPlatformerCollider, isTrigger, offset, sz, tag)
             elseif ty == "CircleCollider"
                 newComponent = CircleCollider(
-                    _to_f64(_json_lookup_storage(st, "diameter"), 0.0),
-                    _to_bool(_json_lookup_storage(st, "enabled"), true),
-                    _to_bool(_json_lookup_storage(st, "isTrigger"), false),
+                    _to_f64(_json_field(component, "diameter"), 0.0),
+                    _to_bool(_json_field(component, "enabled"), true),
+                    _to_bool(_json_field(component, "isTrigger"), false),
                     _vec2f_from_json(component, "offset", 0.0, 0.0),
                     _json_string(component, "tag", "Default"),
                 )
             elseif ty == "Rigidbody"
                 newComponent = Rigidbody(;
-                    mass = _to_f64(_json_lookup_storage(st, "mass"), 0.0),
-                    useGravity = _to_bool(_json_lookup_storage(st, "useGravity"), true),
+                    mass = _to_f64(_json_field(component, "mass"), 0.0),
+                    useGravity = _to_bool(_json_field(component, "useGravity"), true),
                 )
             elseif ty == "SoundSource"
                 newComponent = SoundSource(
-                    _to_int(_json_lookup_storage(st, "channel"), -1),
-                    _to_bool(_json_lookup_storage(st, "isMusic"), false),
+                    _to_int(_json_field(component, "channel"), -1),
+                    _to_bool(_json_field(component, "isMusic"), false),
                     _json_string(component, "path", ""),
-                    _to_bool(_json_lookup_storage(st, "playOnStart"), false),
-                    _to_int(_json_lookup_storage(st, "volume"), -1),
+                    _to_bool(_json_field(component, "playOnStart"), false),
+                    _to_int(_json_field(component, "volume"), -1),
                 )
             elseif ty == "Sprite"
-                color_raw = _json_lookup_storage(st, "color")
+                color_raw = _json_field(component, "color")
                 local color_tup::NTuple{4, Int}
                 if color_raw === nothing || color_raw === Base.nothing
                     color_tup = (255, 255, 255, 255)
                 else
                     cj = _scene_obj(color_raw)
-                    stc = _scene_storage(cj)
                     color_tup = (
-                        _to_int(_json_lookup_storage(stc, "x"), 255),
-                        _to_int(_json_lookup_storage(stc, "y"), 255),
-                        _to_int(_json_lookup_storage(stc, "z"), 255),
-                        _to_int(_json_lookup_storage(stc, "t"), 255),
+                        _to_int(_json_field(cj, "x"), 255),
+                        _to_int(_json_field(cj, "y"), 255),
+                        _to_int(_json_field(cj, "z"), 255),
+                        _to_int(_json_field(cj, "t"), 255),
                     )
                 end
-                crop_raw = _json_lookup_storage(st, "crop")
+                crop_raw = _json_field(component, "crop")
                 local crop_v::Math._Vector4{Int32}
                 if crop_raw === nothing || crop_raw === Base.nothing
                     crop_v = Math._Vector4{Int32}(Int32(0), Int32(0), Int32(0), Int32(0))
                 else
                     cj = _scene_obj(crop_raw)
-                    stc = _scene_storage(cj)
                     crop_v = Math._Vector4{Int32}(
-                        Int32(_to_int(_json_lookup_storage(stc, "x"), 0)),
-                        Int32(_to_int(_json_lookup_storage(stc, "y"), 0)),
-                        Int32(_to_int(_json_lookup_storage(stc, "z"), 0)),
-                        Int32(_to_int(_json_lookup_storage(stc, "t"), 0)),
+                        Int32(_to_int(_json_field(cj, "x"), 0)),
+                        Int32(_to_int(_json_field(cj, "y"), 0)),
+                        Int32(_to_int(_json_field(cj, "z"), 0)),
+                        Int32(_to_int(_json_field(cj, "t"), 0)),
                     )
                 end
-                layer_i::Int = _to_int(_json_lookup_storage(st, "layer"), 0)
+                layer_i::Int = _to_int(_json_field(component, "layer"), 0)
                 offset_v::Math._Vector2{Float64} = _vec2f_from_json(component, "offset", 0.0, 0.0)
                 position_v::Math._Vector2{Float64} = _vec2f_from_json(component, "position", 0.0, 0.0)
-                rotation_f::Float64 = _to_f64(_json_lookup_storage(st, "rotation"), 0.0)
-                pixels_i::Int = _to_int(_json_lookup_storage(st, "pixelsPerUnit"), -1)
+                rotation_f::Float64 = _to_f64(_json_field(component, "rotation"), 0.0)
+                pixels_i::Int = _to_int(_json_field(component, "pixelsPerUnit"), -1)
                 center_v::Math._Vector2{Float64} = _vec2f_from_json(component, "center", 0.5, 0.5)
                 anchor_sym::Symbol = Symbol(_json_string(component, "anchor", "center"))
-                isStatic_b::Bool = _to_bool(_json_lookup_storage(st, "isStatic"), false)
-                isFlipped_b::Bool = _to_bool(_json_lookup_storage(st, "isFlipped"), false)
+                isStatic_b::Bool = _to_bool(_json_field(component, "isStatic"), false)
+                isFlipped_b::Bool = _to_bool(_json_field(component, "isFlipped"), false)
                 newComponent = Sprite(
                     color_tup,
                     crop_v,
@@ -833,26 +829,25 @@ module SceneReaderModule
                     isStatic_b,
                 )
             elseif ty == "Shape"
-                color_raw = _json_lookup_storage(st, "color")
+                color_raw = _json_field(component, "color")
                 local color_v::Math._Vector3{Int32}
                 if color_raw === nothing || color_raw === Base.nothing
                     color_v = Math._Vector3{Int32}(Int32(255), Int32(255), Int32(255))
                 else
                     cj = _scene_obj(color_raw)
-                    stc = _scene_storage(cj)
                     color_v = Math._Vector3{Int32}(
-                        Int32(_to_int(_json_lookup_storage(stc, "x"), 255)),
-                        Int32(_to_int(_json_lookup_storage(stc, "y"), 255)),
-                        Int32(_to_int(_json_lookup_storage(stc, "z"), 255)),
+                        Int32(_to_int(_json_field(cj, "x"), 255)),
+                        Int32(_to_int(_json_field(cj, "y"), 255)),
+                        Int32(_to_int(_json_field(cj, "z"), 255)),
                     )
                 end
-                shape_layer::Int = _to_int(_json_lookup_storage(st, "layer"), 0)
+                shape_layer::Int = _to_int(_json_field(component, "layer"), 0)
                 size_v::Math._Vector2{Float64} = _vec2f_from_json(component, "size", 1.0, 1.0)
-                isFilled_b::Bool = _to_bool(_json_lookup_storage(st, "isFilled"), true)
-                isWorld_b::Bool = _to_bool(_json_lookup_storage(st, "isWorldEntity"), true)
+                isFilled_b::Bool = _to_bool(_json_field(component, "isFilled"), true)
+                isWorld_b::Bool = _to_bool(_json_field(component, "isWorldEntity"), true)
                 shape_offset_v::Math._Vector2{Float64} = _vec2f_from_json(component, "offset", 0.0, 0.0)
                 shape_position_v::Math._Vector2{Float64} = _vec2f_from_json(component, "position", 0.0, 0.0)
-                alpha_i::Int = _to_int(_json_lookup_storage(st, "alpha"), 255)
+                alpha_i::Int = _to_int(_json_field(component, "alpha"), 255)
                 newComponent = Shape(color_v, isFilled_b, isWorld_b, shape_layer, shape_offset_v, shape_position_v, size_v, alpha_i)
             elseif ty == "Mesh3D"
                 # Omitted for JuliaC `--trim` (Mesh3D / JSON3 paths); scenes with 3D entities skip this component.
