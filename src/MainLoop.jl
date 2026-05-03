@@ -705,13 +705,8 @@ module MainLoopModule
 
 			for script in scripts
 				try
-					if !JulGame.juliac_trim_active()
-						script_type = typeof(script)::DataType
-						if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
-							@debug "First initialize call for $(script_type) - compiling..."
-							_mainloop_register_script_type!(this, script_type, true)
-						end
-					end
+					# JuliaC `--trim`: `typeof(sc)` for `sc::JulGame.Script` is `Type{<:Script}`, not `DataType`;
+					# avoid `_mainloop_script_type_index` here (knownScriptTypes is for optional profiling elsewhere).
 					if script isa JSON3.Object
 						Base.invokelatest(JulGame.initialize, script::JSON3.Object)
 					else

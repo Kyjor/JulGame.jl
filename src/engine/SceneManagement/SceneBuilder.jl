@@ -14,6 +14,40 @@ module SceneBuilderModule
 
     const _JSON3_EMPTY_FIELDS = JSON3.read("{}")
 
+    # JuliaC `--trim`: `uiElements` iteration stays `IUIElement`; narrow dispatch with concrete-parameter `@noinline` calls.
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.TextBoxModule.TextBox)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.ScreenButtonModule.ScreenButton)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.RectangleModule.Rectangle)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.LineModule.Line)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.CircleModule.Circle)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.ProgressBarModule.ProgressBar)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.CanvasModule.Canvas)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+    @Base.noinline function _scenebuilder_align_to_anchor!(x::JulGame.UI.UIImageModule.UIImage)::Nothing
+        JulGame.align_to_anchor(x)
+        return nothing
+    end
+
     export Scene
     mutable struct Scene
         scene::String
@@ -214,21 +248,21 @@ module SceneBuilderModule
             is_world_entity = getfield(JulGame.UI.relationship_instance(uiElement), :isWorldEntity)::Bool
             if !is_world_entity
                 if uiElement isa TextBox
-                    JulGame.UI.align_to_anchor(uiElement::TextBox)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.TextBoxModule.TextBox)
                 elseif uiElement isa ScreenButton
-                    JulGame.UI.align_to_anchor(uiElement::ScreenButton)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.ScreenButtonModule.ScreenButton)
                 elseif uiElement isa Rectangle
-                    JulGame.UI.align_to_anchor(uiElement::Rectangle)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.RectangleModule.Rectangle)
                 elseif uiElement isa Line
-                    JulGame.UI.align_to_anchor(uiElement::Line)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.LineModule.Line)
                 elseif uiElement isa Circle
-                    JulGame.UI.align_to_anchor(uiElement::Circle)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.CircleModule.Circle)
                 elseif uiElement isa ProgressBar
-                    JulGame.UI.align_to_anchor(uiElement::ProgressBar)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.ProgressBarModule.ProgressBar)
                 elseif uiElement isa Canvas
-                    JulGame.UI.align_to_anchor(uiElement::Canvas)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.CanvasModule.Canvas)
                 elseif uiElement isa UIImage
-                    JulGame.UI.align_to_anchor(uiElement::UIImage)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.UIImageModule.UIImage)
                 end
             end
         end
@@ -288,21 +322,21 @@ module SceneBuilderModule
             is_world_entity = getfield(JulGame.UI.relationship_instance(uiElement), :isWorldEntity)::Bool
             if is_world_entity
                 if uiElement isa TextBox
-                    JulGame.UI.align_to_anchor(uiElement::TextBox)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.TextBoxModule.TextBox)
                 elseif uiElement isa ScreenButton
-                    JulGame.UI.align_to_anchor(uiElement::ScreenButton)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.ScreenButtonModule.ScreenButton)
                 elseif uiElement isa Rectangle
-                    JulGame.UI.align_to_anchor(uiElement::Rectangle)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.RectangleModule.Rectangle)
                 elseif uiElement isa Line
-                    JulGame.UI.align_to_anchor(uiElement::Line)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.LineModule.Line)
                 elseif uiElement isa Circle
-                    JulGame.UI.align_to_anchor(uiElement::Circle)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.CircleModule.Circle)
                 elseif uiElement isa ProgressBar
-                    JulGame.UI.align_to_anchor(uiElement::ProgressBar)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.ProgressBarModule.ProgressBar)
                 elseif uiElement isa Canvas
-                    JulGame.UI.align_to_anchor(uiElement::Canvas)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.CanvasModule.Canvas)
                 elseif uiElement isa UIImage
-                    JulGame.UI.align_to_anchor(uiElement::UIImage)
+                    _scenebuilder_align_to_anchor!(uiElement::JulGame.UI.UIImageModule.UIImage)
                 end
             end
         end

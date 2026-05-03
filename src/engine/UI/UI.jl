@@ -79,7 +79,7 @@
     # Re-export UI components
     export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Canvas, UIImage#, Draggable
 
-    # JuliaC `--trim`: public entry uses a concrete Union so verification does not collapse to `align_to_anchor(::IUIElement)`.
+    # JuliaC `--trim`: add methods to `JulGame.align_to_anchor` (CommonFunctions stub) so calls are not a separate `UI.align_to_anchor` generic that the verifier maps to `align_to_anchor(::IUIElement)`.
     const SceneAlignableUI = Union{
         TextBoxModule.TextBox,
         ScreenButtonModule.ScreenButton,
@@ -91,7 +91,7 @@
         UIImageModule.UIImage,
     }
 
-    function UI.align_to_anchor(this::SceneAlignableUI)::Nothing
+    function JulGame.align_to_anchor(this::SceneAlignableUI)::Nothing
         main = JulGame.current_main()
         sc = getfield(main, :scene)
         cam = getfield(sc, :camera)
