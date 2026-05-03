@@ -52,27 +52,45 @@ module ProgressBarModule
             return this
         end
     end
+
+    @inline function _progressbar_scene_camera()::Union{Nothing, JulGame.Camera}
+        main = JulGame.current_main()
+        sc = getfield(main, :scene)
+        return getfield(sc, :camera)::Union{Nothing, JulGame.Camera}
+    end
     
     function UI.render(this::ProgressBar)
         if !this.isActive
             return
         end
         
-        camera = MAIN.scene.camera
-        
-        # Calculate drawing coordinates based on world or screen position
+        camera = _progressbar_scene_camera()
+        pos = getfield(this, :position)::Math._Vector2{Int32}
+        sz = getfield(this, :size)::Math._Vector2{Int32}
+        px = Float64(getfield(pos, :x))
+        py = Float64(getfield(pos, :y))
+        sw = Float64(getfield(sz, :x))
+        sh = Float64(getfield(sz, :y))
+        prog = Float64(getfield(this, :progress)::Float32)
+
+        local posX::Float64, posY::Float64, width::Float64, height::Float64
         if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
-            posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
-            width = this.size.x * S
-            height = this.size.y * S
+            S = Float64(JulGame.pixels_per_world_unit(camera))
+            cpos = getfield(camera, :position)::Math._Vector3{Float64}
+            coff = getfield(camera, :offset)::Math._Vector2{Float64}
+            posX = (px - (Float64(cpos.x) + Float64(coff.x))) * S
+            posY = (py - (Float64(cpos.y) + Float64(coff.y))) * S
+            width = sw * S
+            height = sh * S
         else
-            posX = this.position.x
-            posY = this.position.y
-            width = this.size.x
-            height = this.size.y
+            posX = px
+            posY = py
+            width = sw
+            height = sh
         end
+
+        fillHeight = height * prog
+        fillWidth = width * prog
         
         # Save current render draw color
         r = Ref(UInt8(0))
@@ -119,22 +137,18 @@ module ProgressBarModule
         
         # Calculate the progress fill rectangle
         fillRect = if this.vertical
-            # Vertical bar (fills from bottom to top)
-            fillHeight = height * this.progress
             SDL2.SDL_FRect(
                 Float32(posX),
                 Float32(posY + height - fillHeight),
                 Float32(width),
-                Float32(fillHeight)
+                Float32(fillHeight),
             )
         else
-            # Horizontal bar (fills from left to right)
-            fillWidth = width * this.progress
             SDL2.SDL_FRect(
                 Float32(posX),
                 Float32(posY),
                 Float32(fillWidth),
-                Float32(height)
+                Float32(height),
             )
         end
         
@@ -145,18 +159,18 @@ module ProgressBarModule
             if this.vertical
                 # Vertical progress bar
                 clipRect = SDL2.SDL_Rect(
-                    Math.TypeConversions.safe_int32_convert(posX),
-                    Math.TypeConversions.safe_int32_convert(posY + height - fillHeight),
-                    Math.TypeConversions.safe_int32_convert(width),
-                    Math.TypeConversions.safe_int32_convert(fillHeight)
+                    Math.TypeConversions.safe_int32_convert(posX::Float64),
+                    Math.TypeConversions.safe_int32_convert((posY + height - fillHeight)::Float64),
+                    Math.TypeConversions.safe_int32_convert(width::Float64),
+                    Math.TypeConversions.safe_int32_convert(fillHeight::Float64),
                 )
             else
                 # Horizontal progress bar
                 clipRect = SDL2.SDL_Rect(
-                    Math.TypeConversions.safe_int32_convert(posX),
-                    Math.TypeConversions.safe_int32_convert(posY),
-                    Math.TypeConversions.safe_int32_convert(fillWidth),
-                    Math.TypeConversions.safe_int32_convert(height)
+                    Math.TypeConversions.safe_int32_convert(posX::Float64),
+                    Math.TypeConversions.safe_int32_convert(posY::Float64),
+                    Math.TypeConversions.safe_int32_convert(fillWidth::Float64),
+                    Math.TypeConversions.safe_int32_convert(height::Float64),
                 )
             end
             
