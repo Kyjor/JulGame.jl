@@ -24,16 +24,16 @@ mutable struct UIElementInstance
     id::String
     name::String
 
-    # positioning
+    # positioning (JuliaC `--trim`: use `Math._Vector2{Int32}`; `Vector2` alias becomes `JulGame.UI.Vector2::Any` here.)
     anchor::Union{JulGame.Enum, Nothing}
-    anchorOffset::Vector2
+    anchorOffset::JulGame.Math._Vector2{Int32}
     isWorldEntity::Bool
     layer::Int
     parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}
-    position::Vector2
+    position::JulGame.Math._Vector2{Int32}
     rotation::Float64
-    size::Vector2
-    originalSize::Vector2
+    size::JulGame.Math._Vector2{Int32}
+    originalSize::JulGame.Math._Vector2{Int32}
 
     # events
     clickEvents::Vector{Function}
@@ -53,11 +53,27 @@ mutable struct UIElementInstance
     function UIElementInstance()
         this = new()
 
+        this.id = ""
+        this.name = ""
+        this.anchor = nothing
+        z = JulGame.Math._Vector2{Int32}(Int32(0), Int32(0))
+        this.anchorOffset = z
+        this.isWorldEntity = false
+        this.layer = 0
+        this.parent = nothing
+        this.position = z
+        this.rotation = 0.0
+        this.size = z
+        this.originalSize = z
         this.clickEvents = Function[]
         this.hoverEnterEvents = Function[]
         this.hoverExitEvents = Function[]
         this.forceClickCheck = false
-        
+        this.isActive = true
+        this.isHovered = false
+        this.persistentBetweenScenes = false
+        this.color = (255, 255, 255, 255)
+
         return this
     end
 end

@@ -22,45 +22,24 @@ module SceneReaderModule
     const SceneJSONObject = JSON.Object{String,Any}
 
     """Shallow copy of `JSON3.Object` into `Dict{String,Any}` via `pairs` (no `Generator` dict ctor)."""
-    # JuliaC `--trim`: avoid top-level helpers `_plain_value(::Any)` / `_deep_normalize_json_value(::Any)` (unresolved
-    # dynamic calls). Expand JSON cell handling via a macro so each branch calls only concretely-typed routines.
+    # JuliaC `--trim`: dict iteration yields `Any`; macro-expanded branches still emitted `invoke` to
+    # `_json3_array_to_vector_any` / `_scene_json_tree_vector`. Route all cell work through `jl_call1` + runtime body.
     macro _scene_json_tree_cell(ex)
-        jv = gensym(:jv)
-        quote
-            let $jv = $(esc(ex))
-                if $jv === nothing
-                    nothing
-                elseif $jv isa Bool || $jv isa Int || $jv isa Int32 || $jv isa Int64 || $jv isa UInt8 || $jv isa UInt16 || $jv isa UInt32 || $jv isa UInt64 || $jv isa Float64 || $jv isa Float32 || $jv isa String || $jv isa Symbol || $jv isa SubString{String}
-                    $jv
-                elseif $jv isa SceneJSONObject
-                    _scene_jsonobject_to_plain_dict($jv::SceneJSONObject)
-                elseif $jv isa JSON3.Object
-                    ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), $jv)::Dict{String,Any}
-                elseif $jv isa Dict{String,Any}
-                    _deep_normalize_json_dict($jv::Dict{String,Any})
-                elseif $jv isa Dict{Symbol,Any}
-                    _deep_normalize_json_dict(_symbol_dict_to_stringkey_tree($jv::Dict{Symbol,Any}))
-                elseif $jv isa AbstractDict
-                    let ad = $jv::AbstractDict
-                        if ad isa JSON3.Object
-                            ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), ad)::Dict{String,Any}
-                        elseif ad isa Dict{String,Any}
-                            _deep_normalize_json_dict(ad::Dict{String,Any})
-                        elseif ad isa Dict{Symbol,Any}
-                            _deep_normalize_json_dict(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
-                        else
-                            Dict{String,Any}()
-                        end
-                    end
-                elseif $jv isa JSON3.Array
-                    _json3_array_to_vector_any($jv::JSON3.Array)
-                elseif $jv isa AbstractVector
-                    _scene_json_tree_vector($jv::AbstractVector)
-                else
-                    $jv
-                end
-            end
+        :(ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_scene_json_tree_cell_runtime)), $(esc(ex)))::Any)
+    end
+
+    """Some JSON parse paths leave `#undef` holes in `Vector{Any}`; reading `v[i]` throws `UndefRefError`."""
+    @Base.noinline function _json_safe_vector_get(v::AbstractVector, i::Integer)::Any
+        if v isa Vector{Any}
+            Base.isassigned(v, i) || return nothing
         end
+        return @inbounds v[i]
+    end
+
+    """`for x in v` can throw on `#undef` slots in `Array`; use before indexed read in hot loops."""
+    @inline function _scene_vector_slot_assigned(v::AbstractVector, i::Integer)::Bool
+        v isa Array || return true
+        return Base.isassigned(v, i)
     end
 
     @Base.noinline function _scene_json_tree_vector(v::AbstractVector)::Vector{Any}
@@ -70,7 +49,7 @@ module SceneReaderModule
         out = Vector{Any}(undef, n)
         j = 1
         @inbounds for i in a:b
-            out[j] = @_scene_json_tree_cell v[i]
+            out[j] = @_scene_json_tree_cell _json_safe_vector_get(v, i)
             j += 1
         end
         return out
@@ -89,11 +68,17 @@ module SceneReaderModule
     """Normalize a value read from `JSON3.Object` / `JSON3.Array` tape (JuliaC `--trim`; no `Base.copy(::JSON3.Object)`)."""
     @Base.noinline function _json3_field_value_to_tree(v)::Any
         v === nothing && return nothing
-        v isa JSON3.Object && return ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, v::JSON3.Object)::Dict{String,Any}
-        v isa JSON3.Array && return _json3_array_to_vector_any(v::JSON3.Array)
-        v isa Dict{Symbol,Any} && return _symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any})
-        v isa AbstractVector && return _scene_json_tree_vector(v::AbstractVector)
-        return v
+        if v isa JSON3.Object
+            return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body), v::JSON3.Object)::Dict{String,Any}
+        elseif v isa JSON3.Array
+            return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_array_to_vector_any), v::JSON3.Array)::Vector{Any}
+        elseif v isa Dict{Symbol,Any}
+            return _symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any})
+        elseif v isa AbstractVector
+            return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_scene_json_tree_vector), v::AbstractVector)::Vector{Any}
+        else
+            return v
+        end
     end
 
     """Walk `JSON3.Object` via `populateinds!` + `getinds` + `get`; call sites use `ccall(:jl_call1, …, _json3_object_to_string_dict_body, …)` for JuliaC `--trim`."""
@@ -105,25 +90,37 @@ module SceneReaderModule
         for (ksym, _) in inds
             ks = Base.string(ksym)::String
             val = JSON3.get(o, ksym)::Any
-            out[ks] = _json3_field_value_to_tree(val)
+            out[ks] = ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_field_value_to_tree), val)::Any
         end
         return out
     end
 
     @Base.noinline function _symbol_dict_to_stringkey_tree(d::Dict{Symbol,Any})::Dict{String,Any}
         out = Dict{String,Any}()
-        for p in d
-            pr = p::Pair{Symbol,Any}
-            ks = Base.string((pr.first)::Symbol)::String
-            out[ks] = _json3_field_value_to_tree(pr.second)
+        for k in keys(d)
+            ks = Base.string(k)::String
+            xv = try
+                d[k]
+            catch err
+                err isa UndefRefError && continue
+                rethrow()
+            end
+            out[ks] = ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_field_value_to_tree), xv)::Any
         end
         return out
     end
 
     @Base.noinline function _deep_normalize_json_dict(d::Dict{String,Any})::Dict{String,Any}
         out = Dict{String,Any}()
-        for (k, xv) in d
-            out[Base.string(k)::String] = @_scene_json_tree_cell xv
+        for k in keys(d)
+            ks = Base.string(k)::String
+            xv = try
+                d[k]
+            catch err
+                err isa UndefRefError && continue
+                rethrow()
+            end
+            out[ks] = @_scene_json_tree_cell xv
         end
         return out
     end
@@ -131,10 +128,50 @@ module SceneReaderModule
     # JuliaC `--trim`: do not use `JSON.json` / `JSON.parse` on `SceneJSONObject` (pulls in StructUtils + `repr`/`show`).
     @Base.noinline function _scene_jsonobject_to_plain_dict(o::SceneJSONObject)::Dict{String,Any}
         d = Dict{String,Any}()
-        for (k, v) in o
-            d[Base.string(k)::String] = @_scene_json_tree_cell v
+        for k in keys(o)
+            ks = Base.string(k)::String
+            v = try
+                o[k]
+            catch err
+                err isa UndefRefError && continue
+                rethrow()
+            end
+            d[ks] = @_scene_json_tree_cell v
         end
         return d
+    end
+
+    @Base.noinline function _scene_json_tree_cell_runtime(v::Any)::Any
+        if v === nothing
+            return nothing
+        elseif v isa Bool || v isa Int || v isa Int32 || v isa Int64 || v isa UInt8 || v isa UInt16 || v isa UInt32 || v isa UInt64 || v isa Float64 || v isa Float32 || v isa String || v isa Symbol || v isa SubString{String}
+            return v
+        elseif v isa SceneJSONObject
+            return _scene_jsonobject_to_plain_dict(v::SceneJSONObject)
+        elseif v isa JSON3.Object
+            return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body), v::JSON3.Object)::Dict{String,Any}
+        elseif v isa Dict{String,Any}
+            return _deep_normalize_json_dict(v::Dict{String,Any})
+        elseif v isa Dict{Symbol,Any}
+            return _deep_normalize_json_dict(_symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any}))
+        elseif v isa AbstractDict
+            ad = v::AbstractDict
+            if ad isa JSON3.Object
+                return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body), ad::JSON3.Object)::Dict{String,Any}
+            elseif ad isa Dict{String,Any}
+                return _deep_normalize_json_dict(ad::Dict{String,Any})
+            elseif ad isa Dict{Symbol,Any}
+                return _deep_normalize_json_dict(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
+            else
+                return Dict{String,Any}()
+            end
+        elseif v isa JSON3.Array
+            return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_json3_array_to_vector_any), v::JSON3.Array)::Vector{Any}
+        elseif v isa AbstractVector
+            return ccall(:jl_call1, Any, (Any, Any), GlobalRef(SceneReaderModule, :_scene_json_tree_vector), v::AbstractVector)::Vector{Any}
+        else
+            return v
+        end
     end
 
     # `JsonObj` stores only `Dict{String,Any}` so JuliaC `--trim` never resolves `get`/`haskey`/`iterate` on
@@ -166,7 +203,7 @@ module SceneReaderModule
         out = Vector{Any}(undef, fb - fa + 1)
         j = 1
         for i in fa:fb
-            out[j] = _unwrap_scene_field_value_runtime(vv[i])
+            out[j] = _unwrap_scene_field_value_runtime(_json_safe_vector_get(vv, i))
             j += 1
         end
         return out
@@ -299,7 +336,7 @@ module SceneReaderModule
         vec = u::Vector{Any}
         out = Vector{JsonObj}(undef, length(vec))
         @inbounds for i in eachindex(vec)
-            out[i] = @_coerce_jsonobj_row vec[i]
+            out[i] = @_coerce_jsonobj_row _json_safe_vector_get(vec, i)
         end
         return out
     end
@@ -387,8 +424,15 @@ module SceneReaderModule
         v = _json_field(o, key)
         v === nothing && return Any[]
         u = @_unwrap_scene_field_value v
-        u isa Vector{Any} && return u::Vector{Any}
-        return Any[]
+        u isa Vector{Any} || return Any[]
+        vec = u::Vector{Any}
+        # Some JSON stacks leave `#undef` in `Vector{Any}`; `convert` to `Vector{Union{…}}` (e.g. `Entity.scripts`)
+        # reads every slot and throws `UndefRefError`. Always return a dense copy.
+        out = Vector{Any}(undef, length(vec))
+        @inbounds for i in eachindex(vec)
+            out[i] = _json_safe_vector_get(vec, i)
+        end
+        return out
     end
 
     """Read `parent.sub_key.leaf_key` as `Float64` without going through `getproperty(::JsonObj)::Any` chains."""
@@ -596,7 +640,9 @@ module SceneReaderModule
                 @error sprint(showerror, e)
             end
             entities_json = _json_obj_array(root, "Entities")
-            for entity in entities_json
+            for ie in eachindex(entities_json)
+                _scene_vector_slot_assigned(entities_json, ie) || continue
+                entity = entities_json[ie]
                 entity_id = _json_string(entity, "id", "")
                 if entity_id in entityIdsInCurrentScene
                     @debug "Entity with id $(entity_id) already exists in current scene"
@@ -605,7 +651,9 @@ module SceneReaderModule
                 components = Any[]
     
                 components_raw = _json_obj_array(entity, "components")
-                for component in components_raw
+                for ic in eachindex(components_raw)
+                    _scene_vector_slot_assigned(components_raw, ic) || continue
+                    component = components_raw[ic]
                     component_type = _json_string(component, "type", "")
                     @debug "Deserializing component: $(component_type)"
                     dc = deserialize_component(component)
@@ -625,7 +673,9 @@ module SceneReaderModule
                 newEntity.scripts = _json_any_array(entity, "scripts")
                 newEntity.persistentBetweenScenes = _to_bool(_json_field(entity, "persistentBetweenScenes"), false)
 
-                for component in components
+                for icp in eachindex(components)
+                    _scene_vector_slot_assigned(components, icp) || continue
+                    component = components[icp]
                     if typeof(component) == Animator
                         @debug "Adding animator to entity: $(newEntity.name), path: $(component.path)"
                         try
@@ -699,10 +749,14 @@ module SceneReaderModule
                 push!(entities, newEntity)
             end
 
-            for entity in entities
+            for ient in eachindex(entities)
+                _scene_vector_slot_assigned(entities, ient) || continue
+                entity = entities[ient]
                 if Base.haskey(childParentDict, string(entity.id))
                     parentId::String = childParentDict[string(entity.id)]
-                    for e in entities
+                    for je in eachindex(entities)
+                        _scene_vector_slot_assigned(entities, je) || continue
+                        e = entities[je]
                         if string(e.id) == parentId
                             entity.parent = e
                         end
@@ -743,6 +797,7 @@ module SceneReaderModule
 
             return (entities, uiElements, camera)
         catch e 
+            #Base.show_backtrace(Core.stderr, catch_backtrace())
             @error sprint(showerror, e)
             return nothing
         end
@@ -752,9 +807,16 @@ module SceneReaderModule
         res = JulGame.IUIElement[]
         childParentDict = Dict{String,String}()
         uiElementsById = Dict{String, JulGame.IUIElement}()
-        entitiesById = Dict{String, Entity}(string(e.id) => e for e in entities)
+        entitiesById = Dict{String, Entity}()
+        for ie in eachindex(entities)
+            _scene_vector_slot_assigned(entities, ie) || continue
+            e = entities[ie]
+            entitiesById[string(e.id)] = e
+        end
         default_Vector2 = Math._Vector2{Int32}(0, 0)
-        for uiElement in jsonUIElements
+        for iu in eachindex(jsonUIElements)
+            _scene_vector_slot_assigned(jsonUIElements, iu) || continue
+            uiElement = jsonUIElements[iu]
             try
                 ty = _json_string(uiElement, "type", "")
                 newUIElement = nothing
@@ -1099,7 +1161,9 @@ module SceneReaderModule
         children = JulGame.IUIElement[]
         default_Vector2 = Math._Vector2{Int32}(Int32(0), Int32(0))
         
-        for child in jsonChildren
+        for ic in eachindex(jsonChildren)
+            _scene_vector_slot_assigned(jsonChildren, ic) || continue
+            child = jsonChildren[ic]
             try
                 cty = _json_string(child, "type", "")
                 newChild = nothing
