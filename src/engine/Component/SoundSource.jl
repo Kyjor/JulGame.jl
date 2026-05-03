@@ -36,8 +36,7 @@ module SoundSourceModule
             error = unsafe_string(SDL2.SDL_GetError())
 
             if (sound == C_NULL || !isempty(error)) && length(path) > 0
-                println(fullPath)
-                error("Error loading file at $path. SDL Error: $(error)")
+                error("Error loading file at $path (tried: $fullPath). SDL Error: $(error)")
                 SDL2.SDL_ClearError()
             end
             

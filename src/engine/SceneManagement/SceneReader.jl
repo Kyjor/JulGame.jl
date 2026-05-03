@@ -20,23 +20,28 @@ module SceneReaderModule
     using ...JulGame
 
     const SceneJSONObject = JSON.Object{String,Any}
+    const SceneJSONDictLike = Union{Dict{String,Any}, SceneJSONObject}
 
-    # Dict-shaped scene JSON wrapped for JSON3-like property/get/haskey access.
-    struct JsonObj
-        d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+    # Parametric storage so `_scene_storage(::JsonObj{T})::T` and `_json_lookup(st, k)` dispatch to concrete methods (JuliaC `--trim`).
+    struct JsonObj{T<:Union{SceneJSONDictLike,JSON3.Object}}
+        d::T
+    end
+    @inline JsonObj(d::T) where {T<:Union{SceneJSONDictLike,JSON3.Object}} = JsonObj{T}(d)
+
+    @Base.noinline function _json_lookup(d::Dict{String,Any}, k::AbstractString)::Any
+        ks = string(k)
+        return haskey(d, ks) ? d[ks] : nothing
     end
 
-    """Two-argument lookup only: avoid `default`/`@nospecialize`, which JuliaC `--trim` reports as unresolved when default is `Nothing`."""
-    @Base.noinline function _json_lookup(
-        d::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object},
-        k::AbstractString,
-    )::Any
+    @Base.noinline function _json_lookup(d::SceneJSONObject, k::AbstractString)::Any
         ks = string(k)
-        if d isa JSON3.Object
-            sym = Symbol(ks)
-            return haskey(d, sym) ? d[sym] : nothing
-        end
         return haskey(d, ks) ? d[ks] : nothing
+    end
+
+    @Base.noinline function _json_lookup(d::JSON3.Object, k::AbstractString)::Any
+        ks = string(k)
+        sym = Symbol(ks)
+        return haskey(d, sym) ? d[sym] : nothing
     end
 
     @Base.noinline function _expose_vector_for_scene(v::AbstractVector)::Vector{Any}
@@ -62,9 +67,9 @@ module SceneReaderModule
     @Base.noinline _expose(v::Nothing) = nothing
     @Base.noinline _expose(v) = v
 
-    @inline _scene_storage(o::JsonObj) = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+    @inline _scene_storage(o::JsonObj{T}) where {T} = getfield(o, :d)::T
 
-    function _scene_obj(v)::JsonObj
+    function _scene_obj(v)
         v isa JsonObj && return v
         v isa Dict{String,Any} && return JsonObj(v)
         v isa SceneJSONObject && return JsonObj(v)
@@ -184,42 +189,79 @@ module SceneReaderModule
         return Math._Vector2{Float64}(xf, yf)
     end
 
-    function Base.getproperty(o::JsonObj, k::Symbol)
-        k === :d && return getfield(o, :d)
-        d = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
-        raw = if d isa JSON3.Object
-            get(d, k, Base.nothing)
-        else
-            get(d, string(k), Base.nothing)
+    """Integer `Vector2` from `sub_key.{x,y}` for UI scene JSON (JuliaC `--trim`, avoids `get(::Any,...)` and `Vector2::Any`)."""
+    @inline function _ui_vec2i_from_json(o::JsonObj, sub_key::String, def::Math._Vector2{Int32})::Math._Vector2{Int32}
+        Math._Vector2{Int32}(
+            Int32(_scene_int(o, sub_key, "x", Int(def.x))),
+            Int32(_scene_int(o, sub_key, "y", Int(def.y))),
+        )
+    end
+
+    """RGBA tuple from UI JSON `color` / `borderColor` (keys `"1"`..`"4"`) or a plain `Dict` (JuliaC `--trim`)."""
+    function _ui_rgba_tuple_from_color_field(c)::NTuple{4, Int}
+        if c isa JsonObj
+            st = _scene_storage(c)
+            return (
+                _to_int(_json_lookup(st, "1"), 255),
+                _to_int(_json_lookup(st, "2"), 255),
+                _to_int(_json_lookup(st, "3"), 255),
+                _to_int(_json_lookup(st, "4"), 255),
+            )
         end
+        d = c::AbstractDict
+        return (
+            Int(get(d, "1", 255)),
+            Int(get(d, "2", 255)),
+            Int(get(d, "3", 255)),
+            Int(get(d, "4", 255)),
+        )
+    end
+
+    function Base.getproperty(o::JsonObj{T}, k::Symbol) where {T<:SceneJSONDictLike}
+        k === :d && return getfield(o, :d)
+        d = getfield(o, :d)::T
+        raw = get(d, string(k), Base.nothing)
         raw === nothing && return nothing
         return _expose(raw)
     end
 
-    function Base.haskey(o::JsonObj, k::AbstractString)
-        d = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+    function Base.getproperty(o::JsonObj{T}, k::Symbol) where {T<:JSON3.Object}
+        k === :d && return getfield(o, :d)
+        d = getfield(o, :d)::T
+        raw = get(d, k, Base.nothing)
+        raw === nothing && return nothing
+        return _expose(raw)
+    end
+
+    function Base.haskey(o::JsonObj{T}, k::AbstractString) where {T<:SceneJSONDictLike}
+        d = getfield(o, :d)::T
         ks = string(k)
-        if d isa JSON3.Object
-            return haskey(d, Symbol(ks))
-        end
         return haskey(d, ks)
     end
 
-    function Base.get(o::JsonObj, k::AbstractString, default)
+    function Base.haskey(o::JsonObj{T}, k::AbstractString) where {T<:JSON3.Object}
+        d = getfield(o, :d)::T
+        return haskey(d, Symbol(string(k)))
+    end
+
+    function Base.get(o::JsonObj{T}, k::AbstractString, default) where {T<:SceneJSONDictLike}
         @nospecialize default
-        d = getfield(o, :d)::Union{Dict{String,Any}, SceneJSONObject, JSON3.Object}
+        d = getfield(o, :d)::T
         ks = string(k)
-        if d isa JSON3.Object
-            sym = Symbol(ks)
-            if !haskey(d, sym)
-                return default
-            end
-            return _expose(get(d, sym, Base.nothing))
-        end
         if !haskey(d, ks)
             return default
         end
         return _expose(get(d, ks, Base.nothing))
+    end
+
+    function Base.get(o::JsonObj{T}, k::AbstractString, default) where {T<:JSON3.Object}
+        @nospecialize default
+        d = getfield(o, :d)::T
+        sym = Symbol(string(k))
+        if !haskey(d, sym)
+            return default
+        end
+        return _expose(get(d, sym, Base.nothing))
     end
 
     Base.isempty(o::JsonObj) = isempty(getfield(o, :d))
@@ -246,7 +288,7 @@ module SceneReaderModule
     end
 
     """Normalize SCENE_CACHE entries (Dict, JSON3.Object, JsonObj) into `JsonObj` for stable typing under `--trim`."""
-    function _as_scene_json_root(x)::JsonObj
+    function _as_scene_json_root(x)
         x isa JsonObj && return x
         x isa JSON3.Object && return JsonObj(x)
         x isa AbstractDict && !(x isa JsonObj) && return JsonObj(Dict{String,Any}(string(k) => v for (k, v) in pairs(x)))
@@ -477,8 +519,9 @@ module SceneReaderModule
         uiElementsById = Dict{String, JulGame.IUIElement}()
         entitiesById = Dict{String, Entity}(string(e.id) => e for e in entities)
         default_Vector2 = Math._Vector2{Int32}(0, 0)
-        for uiElement in jsonUIElements
+        for ui_raw in jsonUIElements
             try
+                uiElement = _scene_obj(ui_raw)::JsonObj
                 newUIElement = nothing
                 if haskey(uiElement, "parent") && uiElement.parent != ""
                     childParentDict[string(uiElement.id)] = uiElement.parent
@@ -494,11 +537,11 @@ module SceneReaderModule
                         id = string(get(uiElement, "id", JulGame.generate_uuid())),
                         name = get(uiElement, "name", "Canvas"), 
                         anchor = Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset = Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset = _ui_vec2i_from_json(uiElement, "anchorOffset", default_Vector2),
                         isWorldEntity = get(uiElement, "isWorldEntity", false),
                         layer = Int(get(uiElement, "layer", 0)),
-                        position = Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
-                        size = Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        position = _ui_vec2i_from_json(uiElement, "position", default_Vector2),
+                        size = _ui_vec2i_from_json(uiElement, "size", default_Vector2),
                         isActive = get(uiElement, "isActive", true),
                         persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
                         color = color_tuple,
@@ -527,10 +570,10 @@ module SceneReaderModule
                         id = string(get(uiElement, "id", JulGame.generate_uuid())),
                         name = get(uiElement, "name", "TextBox"), 
                         anchor = Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset = Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset = _ui_vec2i_from_json(uiElement, "anchorOffset", default_Vector2),
                         isWorldEntity = get(uiElement, "isWorldEntity", false),
                         layer = Int(get(uiElement, "layer", 0)),
-                        position = Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y), 
+                        position = _ui_vec2i_from_json(uiElement, "position", default_Vector2), 
                         isActive = get(uiElement, "isActive", true),
                         persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
                         color = color_tuple,
@@ -541,20 +584,20 @@ module SceneReaderModule
                     )
                 elseif uiElement.type == "UIImage"
                     color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
+                    color_tuple = _ui_rgba_tuple_from_color_field(color)
                   
                     newUIElement = UIImage(
                         get(uiElement, "path", "Default");
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
                         name=get(uiElement, "name", "Image"),
                         anchor=Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset=_ui_vec2i_from_json(uiElement, "anchorOffset", default_Vector2),
                         layer=Int(get(uiElement, "layer", 0)),
-                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        position=_ui_vec2i_from_json(uiElement, "position", default_Vector2),
                         isActive=get(uiElement, "isActive", true),
                         persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
                         color=color_tuple,
-                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        size=_ui_vec2i_from_json(uiElement, "size", default_Vector2),
                         parent=nothing,
                         rotation=convert(Float64, get(uiElement, "rotation", 0.0)),
                         # clickEvents=get(uiElement, "clickEvents", Function[]),
@@ -563,17 +606,17 @@ module SceneReaderModule
                     )
                 elseif uiElement.type == "Rectangle"
                     color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
+                    color_tuple = _ui_rgba_tuple_from_color_field(color)
                     borderColor = get(uiElement, "borderColor", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    borderColor_tuple = (get(borderColor, "1", 255), get(borderColor, "2", 255), get(borderColor, "3", 255), get(borderColor, "4", 255))
+                    borderColor_tuple = _ui_rgba_tuple_from_color_field(borderColor)
                     newUIElement = JulGame.UI.RectangleModule.Rectangle(;
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
                         name=get(uiElement, "name", "Rectangle"),
                         anchor=Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset=_ui_vec2i_from_json(uiElement, "anchorOffset", default_Vector2),
                         isWorldEntity=get(uiElement, "isWorldEntity", false),
                         layer=Int(get(uiElement, "layer", 0)),
-                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        position=_ui_vec2i_from_json(uiElement, "position", default_Vector2),
                         isActive=get(uiElement, "isActive", true),
                         persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
                         color=color_tuple,
@@ -581,7 +624,7 @@ module SceneReaderModule
                         borderRadius=Int(get(uiElement, "borderRadius", 0)),
                         borderWidth=Int(get(uiElement, "borderWidth", 0)),
                         borderColor=borderColor_tuple,
-                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        size=_ui_vec2i_from_json(uiElement, "size", default_Vector2),
                         parent=nothing,
                         forceClickCheck=get(uiElement, "forceClickCheck", false),
                         # clickEvents=get(uiElement, "clickEvents", Function[]),
@@ -590,10 +633,10 @@ module SceneReaderModule
                     )
                 else
                     # For text offset, check if it should be centered (if not specified or all zeros)
-                    textOffset = Math.Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
-                    if !haskey(uiElement, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
+                    textOffset = _ui_vec2i_from_json(uiElement, "textOffset", default_Vector2)
+                    if !haskey(uiElement, "textOffset") || (textOffset.x == Int32(0) && textOffset.y == Int32(0))
                         # Use (-1,-1) as a special value to indicate the text should be centered
-                        textOffset = Math.Vector2(-1, -1)
+                        textOffset = Math._Vector2{Int32}(Int32(-1), Int32(-1))
                     end
                     
                     newUIElement = ScreenButton(
@@ -601,10 +644,10 @@ module SceneReaderModule
                         id=string(get(uiElement, "id", JulGame.generate_uuid())),
                         name=get(uiElement, "name", "Button"),
                         anchor=Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
+                        anchorOffset=_ui_vec2i_from_json(uiElement, "anchorOffset", default_Vector2),
                         isWorldEntity=get(uiElement, "isWorldEntity", false),
                         layer=Int(get(uiElement, "layer", 0)),
-                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
+                        position=_ui_vec2i_from_json(uiElement, "position", default_Vector2),
                         buttonUpSpritePath=get(uiElement, "buttonUpSpritePath", "Default"),
                         buttonDownSpritePath=get(uiElement, "buttonDownSpritePath", "Default"),
                         # hoverEnterEvent=nothing, # Default
@@ -614,7 +657,7 @@ module SceneReaderModule
                         #color=color_tuple,
                         fontPath=get(uiElement, "fontPath", C_NULL),
                         fontSize=Int(get(uiElement, "fontSize", 24)),
-                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
+                        size=_ui_vec2i_from_json(uiElement, "size", default_Vector2),
                         text=get(uiElement, "text", ""),
                         textOffset=textOffset,
                         # parent=nothing # Default
@@ -640,7 +683,7 @@ module SceneReaderModule
             split_ref = split(pref, "::")
             length(split_ref) != 2 && continue
             parentId, parentType = split_ref
-            child = get(uiElementsById, childId, Base.nothing)
+            child = get(uiElementsById, string(childId), Base.nothing)
             child === nothing && continue
             if parentType == "Entity"
                 parentEntity = get(entitiesById, string(parentId), Base.nothing)
@@ -659,7 +702,7 @@ module SceneReaderModule
     end
 
     export deserialize_component
-    function deserialize_component(component::JsonObj)
+    function deserialize_component(component::JsonObj{T}) where {T}
         try
             ty = _json_string(component, "type", "")
             st = _scene_storage(component)
@@ -811,10 +854,11 @@ module SceneReaderModule
     """
     function deserialize_canvas_children(jsonChildren, parentCanvas)
         children = JulGame.IUIElement[]
-        default_Vector2 = Math.Vector2(0,0)
+        default_Vector2 = Math._Vector2{Int32}(Int32(0), Int32(0))
         
-        for child in jsonChildren
+        for child_raw in jsonChildren
             try
+                child = _scene_obj(child_raw)::JsonObj
                 newChild = nothing
                 if child.type == "Canvas"
                     # Parse color, default to white if not present or malformed
@@ -827,11 +871,11 @@ module SceneReaderModule
                         id = string(get(child, "id", JulGame.generate_uuid())),
                         name = get(child, "name", "Canvas"), 
                         anchor = Symbol(get(child, "anchor", "none")),
-                        anchorOffset = Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        anchorOffset = _ui_vec2i_from_json(child, "anchorOffset", default_Vector2),
                         isWorldEntity = get(child, "isWorldEntity", false),
                         layer = Int(get(child, "layer", 0)),
-                        position = Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
-                        size = Math.Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
+                        position = _ui_vec2i_from_json(child, "position", default_Vector2),
+                        size = _ui_vec2i_from_json(child, "size", default_Vector2),
                         isActive = get(child, "isActive", true),
                         persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
                         color = color_tuple,
@@ -850,10 +894,10 @@ module SceneReaderModule
                     end
                 elseif child.type == "ScreenButton"
                     # For text offset, check if it should be centered (if not specified or all zeros)
-                    textOffset = Math.Vector2(child.textOffset.x, child.textOffset.y)
-                    if !haskey(child, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
+                    textOffset = _ui_vec2i_from_json(child, "textOffset", default_Vector2)
+                    if !haskey(child, "textOffset") || (textOffset.x == Int32(0) && textOffset.y == Int32(0))
                         # Use (-1,-1) as a special value to indicate the text should be centered
-                        textOffset = Math.Vector2(-1, -1)
+                        textOffset = Math._Vector2{Int32}(Int32(-1), Int32(-1))
                     end
                     
                     newChild = ScreenButton(
@@ -861,17 +905,17 @@ module SceneReaderModule
                         id=string(get(child, "id", JulGame.generate_uuid())),
                         name=get(child, "name", "Button"),
                         anchor=Symbol(get(child, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        anchorOffset=_ui_vec2i_from_json(child, "anchorOffset", default_Vector2),
                         isWorldEntity=get(child, "isWorldEntity", false),
                         layer=Int(get(child, "layer", 0)),
-                        position=Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
+                        position=_ui_vec2i_from_json(child, "position", default_Vector2),
                         buttonUpSpritePath=get(child, "buttonUpSpritePath", "Default"),
                         buttonDownSpritePath=get(child, "buttonDownSpritePath", "Default"),
                         isActive=get(child, "isActive", true),
                         persistentBetweenScenes=get(child, "persistentBetweenScenes", false),
                         fontPath=get(child, "fontPath", C_NULL),
                         fontSize=Int(get(child, "fontSize", 24)),
-                        size=Math.Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
+                        size=_ui_vec2i_from_json(child, "size", default_Vector2),
                         text=get(child, "text", ""),
                         textOffset=textOffset,
                         parent = parentCanvas
@@ -889,10 +933,10 @@ module SceneReaderModule
                         id = string(get(child, "id", JulGame.generate_uuid())),
                         name = get(child, "name", "TextBox"), 
                         anchor = Symbol(get(child, "anchor", "none")),
-                        anchorOffset = Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
+                        anchorOffset = _ui_vec2i_from_json(child, "anchorOffset", default_Vector2),
                         isWorldEntity = get(child, "isWorldEntity", false),
                         layer = Int(get(child, "layer", 0)),
-                        position = Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y), 
+                        position = _ui_vec2i_from_json(child, "position", default_Vector2), 
                         isActive = get(child, "isActive", true),
                         persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
                         color = color_tuple,
