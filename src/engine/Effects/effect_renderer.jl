@@ -137,16 +137,7 @@ module EffectRendererModule
         elseif target isa EffectsModule.LineTarget
             return render_line_to_surface(target.line)
         elseif target isa EffectsModule.ImageTarget
-            # UIImage might not have a surface, so create one from texture if needed
-            if target.image.surface != C_NULL
-                return target.image.surface
-            elseif target.image.texture != C_NULL
-                # Create surface from texture for effects processing
-                return texture_to_surface(target.image.texture)
-            else
-                @error("UIImage has no surface or texture for effects processing")
-                return C_NULL
-            end
+            return JulGame._trim_effect_image_target_to_surface(target)
         elseif target isa EffectsModule.Mesh3DTarget
             return render_mesh3d_to_surface(target.mesh)
         else
@@ -180,11 +171,7 @@ module EffectRendererModule
             target.line.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         elseif target isa EffectsModule.ImageTarget
-            # Update image's effect texture
-            # Note: UIImage now manages its own texture lifecycle, so we don't destroy here
-            # The old texture cleanup is handled in UIImage.update_effects()
-            target.image.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
-            return target
+            return JulGame._trim_effect_image_target_from_surface!(target, surface)
         elseif target isa EffectsModule.Mesh3DTarget
             # Update mesh's effect texture
             if target.mesh.effectTexture != C_NULL

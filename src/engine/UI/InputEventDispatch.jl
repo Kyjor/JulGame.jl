@@ -6,9 +6,9 @@
     nt = (evt = evt, x = x, y = y)
     for eventToCall in evs
         try
-            eventToCall(nt)
+            JulGame.trim_call1(eventToCall, nt)
         catch
-            eventToCall()
+            JulGame.trim_call0(eventToCall)
         end
     end
     return nothing
@@ -24,7 +24,7 @@ end
     JulGame.juliac_trim_active() && return nothing
     for event in events
         try
-            event()
+            JulGame.trim_call0(event)
         catch e
             @error "Error calling hover event: $(e)"
         end

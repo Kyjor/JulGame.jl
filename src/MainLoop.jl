@@ -33,7 +33,7 @@ module MainLoopModule
 	end
 
 	@Base.noinline function _invoke_queued_render_fn_core!(fn::Function)::Nothing
-		fn()
+		JulGame.trim_call0(fn)
 		return nothing
 	end
 

@@ -41,32 +41,59 @@ module CircleModule
             return this
         end
     end
+
+    @inline function _circle_scene_camera()::Union{Nothing, JulGame.Camera}
+        main = JulGame.current_main()
+        sc = getfield(main, :scene)
+        return getfield(sc, :camera)::Union{Nothing, JulGame.Camera}
+    end
     
     function UI.render(this::Circle)
         if !this.isActive
             return
         end
         
-        camera = MAIN.scene.camera
-        
+        camera = _circle_scene_camera()
+        center_vec = getfield(this, :center)::Math.Vector2f
+        rad = getfield(this, :radius)::Float32
+        rend = JulGame.Renderer::Ptr{SDL2.LibSDL2.SDL_Renderer}
+
         # Calculate drawing coordinates based on world or screen position
+        local centerX::Float64, centerY::Float64, scaledR::Float64
         if this.isWorldEntity && camera !== nothing
-            S = JulGame.pixels_per_world_unit(camera)
-            centerX = (this.center.x - (camera.position.x + camera.offset.x)) * S
-            centerY = (this.center.y - (camera.position.y + camera.offset.y)) * S
-            scaledRadius = this.radius * S
+            S = Float64(JulGame.pixels_per_world_unit(camera))
+            cpos = getfield(camera, :position)::Math._Vector3{Float64}
+            coff = getfield(camera, :offset)::Math._Vector2{Float64}
+            cx = Float64(center_vec.x)
+            cy = Float64(center_vec.y)
+            centerX = (cx - (Float64(cpos.x) + Float64(coff.x))) * S
+            centerY = (cy - (Float64(cpos.y) + Float64(coff.y))) * S
+            scaledR = Float64(rad) * S
         else
-            centerX = this.center.x
-            centerY = this.center.y
-            scaledRadius = this.radius
+            centerX = Float64(center_vec.x)
+            centerY = Float64(center_vec.y)
+            scaledR = Float64(rad)
         end
+
+        sx = round(Cint, centerX)
+        sy = round(Cint, centerY)
+        sr = round(Cint, scaledR)
         
         # Draw border if borderWidth > 0
         if this.borderWidth > 0
-            SDL2.aacircleRGBA(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, centerX, centerY, scaledRadius, UInt8(this.borderColor[1]), UInt8(this.borderColor[2]), UInt8(this.borderColor[3]), UInt8(this.borderColor[4]))
+            bc = getfield(this, :borderColor)::NTuple{4, Int}
+            SDL2.LibSDL2.aacircleRGBA(
+                rend, sx, sy, sr,
+                UInt8(bc[1]), UInt8(bc[2]), UInt8(bc[3]), UInt8(bc[4]),
+            )
         end
 
-        SDL2.aacircleRGBA(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, centerX, centerY, scaledRadius, UInt8(this.color[1]), UInt8(this.color[2]), UInt8(this.color[3]), UInt8(this.color[4]))
+        inst = UI.relationship_instance(this::JulGame.IUIElement)
+        fc = getfield(inst, :color)::NTuple{4, Int}
+        SDL2.LibSDL2.aacircleRGBA(
+            rend, sx, sy, sr,
+            UInt8(fc[1]), UInt8(fc[2]), UInt8(fc[3]), UInt8(fc[4]),
+        )
     end
     
     function UI.initialize(this::Circle)

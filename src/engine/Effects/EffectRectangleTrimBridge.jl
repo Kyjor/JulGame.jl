@@ -33,3 +33,27 @@ function _trim_effect_rect_target_from_surface!(
     end
     return target
 end
+
+function _trim_effect_image_target_to_surface(target::EffectsModule.ImageTarget)::Ptr{SDL2.SDL_Surface}
+    img = getfield(target, :image)::UI.UIImageModule.UIImage
+    surf = getfield(img, :surface)::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Surface}}
+    if surf != C_NULL
+        return surf::Ptr{SDL2.LibSDL2.SDL_Surface}
+    end
+    tex = getfield(img, :texture)::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
+    if tex != C_NULL
+        return EffectRendererModule.texture_to_surface(tex::Ptr{SDL2.SDL_Texture})
+    end
+    @error("UIImage has no surface or texture for effects processing")
+    return C_NULL
+end
+
+function _trim_effect_image_target_from_surface!(
+    target::EffectsModule.ImageTarget,
+    surface::Ptr{SDL2.SDL_Surface},
+)::EffectsModule.ImageTarget
+    img = getfield(target, :image)::UI.UIImageModule.UIImage
+    nt = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+    setfield!(img, :effectTexture, nt)
+    return target
+end

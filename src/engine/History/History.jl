@@ -67,9 +67,14 @@ module HistoryModule
         if current_index > 0
             last_entry = history_stack[current_index]
             #@debug "  Last entry: $(last_entry.id).$(last_entry.property) = $(last_entry.newValue)"
-            if last_entry.id == id && last_entry.property == property && last_entry.newValue == newValue
-                #@debug "  SKIPPED: Duplicate value"
-                return
+            if last_entry.id == id && last_entry.property == property
+                if newValue isa JulGame.Math._Vector3{Float64} && last_entry.newValue isa JulGame.Math._Vector3{Float64}
+                    a = last_entry.newValue::JulGame.Math._Vector3{Float64}
+                    b = newValue::JulGame.Math._Vector3{Float64}
+                    if a.x == b.x && a.y == b.y && a.z == b.z
+                        return
+                    end
+                end
             end
             
             # Check time difference for same property

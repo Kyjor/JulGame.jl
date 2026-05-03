@@ -130,6 +130,20 @@ module JulGame
     @inline scale_units()::Float64 = (SCALE_UNITS_REF[])::Float64
     export scale_units
 
+    """Dynamic `f()` via `jl_call0` (not `f()::Function`) — helps JuliaC `--trim` verification."""
+    @Base.noinline function trim_call0(f::Function)::Nothing
+        ccall(:jl_call0, Any, (Any,), f)
+        return nothing
+    end
+    export trim_call0
+
+    """Dynamic `f(x)` via `jl_call1`."""
+    @Base.noinline function trim_call1(f::Function, @nospecialize(arg))::Nothing
+        ccall(:jl_call1, Any, (Any, Any), f, arg)
+        return nothing
+    end
+    export trim_call1
+
     """
     Editor-only SDL event sink (`Input.editorCallback`). Game builds use `nothing`.
     """

@@ -6,6 +6,10 @@ module UIImageModule
     using JulGame.EffectRendererModule
     using JulGame.EffectCacheModule
     include(joinpath(@__DIR__, "..", "Resource", "InternalImages.jl"))
+
+    # Concrete constructors for JuliaC `--trim` (avoid `getglobal(Math, :Vector2)::Any` on aliases).
+    const _IMG_V2_ZERO = Math._Vector2{Int32}(0, 0)
+    const _IMG_V4_ZERO = Math._Vector4{Int32}(0, 0, 0, 0)
     
     export UIImage
     mutable struct UIImage <: UI.UIElement
@@ -28,14 +32,14 @@ module UIImageModule
             id::String=JulGame.generate_uuid(), 
             name::String="Image",
             anchor::Symbol = :none,
-            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            anchorOffset::Math.Vector2 = Math._Vector2{Int32}(0, 0), 
             crop::Union{Ptr{Nothing}, Math.Vector4} = C_NULL,
             layer::Int=0,
-            position::Math.Vector2 = Math.Vector2(0,0), 
+            position::Math.Vector2 = Math._Vector2{Int32}(0, 0), 
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
-            size::Math.Vector2=Math.Vector2(0,0), 
+            size::Math.Vector2 = Math._Vector2{Int32}(0, 0), 
             parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0,
             clickEvents::Vector{Function} = Function[],
@@ -71,7 +75,7 @@ module UIImageModule
             # Before `this.path = …`: setproperty!(:path) touches effects / effectCacheKey / effectTexture.
             this.effects = Any[]
             this.effectTexture = C_NULL
-            this.effectSize = Math.Vector2(0, 0)
+            this.effectSize = _IMG_V2_ZERO
             this.needsEffectUpdate = false
             this.effectCacheKey = ""
 
@@ -92,10 +96,11 @@ module UIImageModule
         )
             return
         end
-        if this.size == Math.Vector2(0,0)
+        if this.size == _IMG_V2_ZERO
             surface = unsafe_wrap(Array, this.surface, 10; own = false)
-            this.size = Math.Vector2(surface[1].w, surface[1].h)
-            this.originalSize = Math.Vector2(this.size.x, this.size.y)
+            sz = Math._Vector2{Int32}(Int32(surface[1].w), Int32(surface[1].h))
+            this.size = sz
+            this.originalSize = sz
         end
         UI.align_to_anchor(this)
 
@@ -139,38 +144,64 @@ module UIImageModule
         if colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || colorRefs[3][] != this.color[3] || this.color[4] != alphaRef[]
             UI.set_color(this)
         end
-        srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
+        cr = getfield(this, :crop)
+        srcRect = if cr === C_NULL
+            C_NULL
+        else
+            cv = cr::Math._Vector4{Int32}
+            if cv == _IMG_V4_ZERO
+                C_NULL
+            else
+                Ref(SDL2.SDL_Rect(cv.x, cv.y, cv.z, cv.t))
+            end
+        end
     
         # Determine render size and position based on whether effects are being used
-        adjusted_position = this.position
-        render_size = this.originalSize
+        rinst = UI.relationship_instance(this::JulGame.IUIElement)
+        adjusted_position::Math._Vector2{Int32} = getfield(rinst, :position)::Math._Vector2{Int32}
+        render_size::Math._Vector2{Int32} = getfield(rinst, :originalSize)::Math._Vector2{Int32}
         
         if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
             # When using effect texture, use the cached effectSize
-            if this.effectSize != Math.Vector2(0, 0) && this.effectSize != this.originalSize
-                size_diff_x = (this.effectSize.x - this.originalSize.x) / 2
-                size_diff_y = (this.effectSize.y - this.originalSize.y) / 2
-                adjusted_position = Math.Vector2(this.position.x - size_diff_x, this.position.y - size_diff_y)
-                render_size = this.effectSize
+            es = getfield(this, :effectSize)::Math._Vector2{Int32}
+            osz = getfield(rinst, :originalSize)::Math._Vector2{Int32}
+            pos0 = getfield(rinst, :position)::Math._Vector2{Int32}
+            if es != _IMG_V2_ZERO && es != osz
+                size_diff_x = Float64(es.x - osz.x) / 2
+                size_diff_y = Float64(es.y - osz.y) / 2
+                adjusted_position = Math._Vector2{Int32}(
+                    round(Int32, Float64(pos0.x) - size_diff_x),
+                    round(Int32, Float64(pos0.y) - size_diff_y),
+                )
+                render_size = es
             end
         end
         if JulGame.IS_DEBUG
             rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
             SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
             SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 255, 255, 0, 255);
+            apx = getfield(adjusted_position, :x)::Int32
+            apy = getfield(adjusted_position, :y)::Int32
+            rw = getfield(render_size, :x)::Int32
+            rh = getfield(render_size, :y)::Int32
             SDL2.SDL_RenderDrawLines(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, [
-                SDL2.SDL_Point(adjusted_position.x, adjusted_position.y), 
-                SDL2.SDL_Point(adjusted_position.x + render_size.x, adjusted_position.y),
-                SDL2.SDL_Point(adjusted_position.x + render_size.x, adjusted_position.y + render_size.y), 
-                SDL2.SDL_Point(adjusted_position.x, adjusted_position.y + render_size.y), 
-                SDL2.SDL_Point(adjusted_position.x, adjusted_position.y)], 5)
+                SDL2.SDL_Point(Cint(apx), Cint(apy)),
+                SDL2.SDL_Point(Cint(apx + rw), Cint(apy)),
+                SDL2.SDL_Point(Cint(apx + rw), Cint(apy + rh)),
+                SDL2.SDL_Point(Cint(apx), Cint(apy + rh)),
+                SDL2.SDL_Point(Cint(apx), Cint(apy)),
+            ], 5)
             SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         end
+        aprx = getfield(adjusted_position, :x)::Int32
+        apry = getfield(adjusted_position, :y)::Int32
+        rrw = getfield(render_size, :x)::Int32
+        rrh = getfield(render_size, :y)::Int32
         @assert SDL2.SDL_RenderCopyExF(
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
             texture_to_render, 
             srcRect, 
-            Ref(SDL2.SDL_FRect(adjusted_position.x, adjusted_position.y, render_size.x,render_size.y)), 
+            Ref(SDL2.SDL_FRect(Float32(aprx), Float32(apry), Float32(rrw), Float32(rrh))),
             this.rotation, 
             C_NULL, 
             SDL2.SDL_FLIP_NONE
@@ -251,10 +282,11 @@ module UIImageModule
     
         # Get image size
         surface = unsafe_wrap(Array, this.surface, 10; own = false)
-        if this.size == Math.Vector2(0,0)
-            this.size = Math.Vector2(surface[1].w, surface[1].h)
+        if this.size == _IMG_V2_ZERO
+            this.size = Math._Vector2{Int32}(Int32(surface[1].w), Int32(surface[1].h))
         end
-        this.originalSize = Math.Vector2(this.size.x, this.size.y)
+        sz2 = this.size::Math._Vector2{Int32}
+        this.originalSize = Math._Vector2{Int32}(sz2.x, sz2.y)
         # Create texture
         this.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.surface)
     
@@ -533,7 +565,7 @@ module UIImageModule
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                 SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                this.effectSize = Math.Vector2(w[], h[])
+                this.effectSize = Math._Vector2{Int32}(Int32(w[]), Int32(h[]))
             end
             this.needsEffectUpdate = false
             return
@@ -544,7 +576,7 @@ module UIImageModule
         end
         
         # Scale surface to match desired size before applying effects
-        if this.surface != C_NULL && this.size != Math.Vector2(0, 0)
+        if this.surface != C_NULL && this.size != _IMG_V2_ZERO
             surf_arr = unsafe_wrap(Array, this.surface, 10; own=false)
             current_w = Int(surf_arr[1].w)
             current_h = Int(surf_arr[1].h)
@@ -579,7 +611,7 @@ module UIImageModule
                     w = Ref{Cint}(0); h = Ref{Cint}(0)
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.effectSize = Math.Vector2(w[], h[])
+                    this.effectSize = Math._Vector2{Int32}(Int32(w[]), Int32(h[]))
                     
                     # Cache it (cache key includes instance ID, so no sharing issues)
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)

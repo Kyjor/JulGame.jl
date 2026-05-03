@@ -47,7 +47,7 @@ module CircleColliderModule
     @Base.noinline function _circle_collider_invoke_collision_events!(events::Vector{Function})::Nothing
         JulGame.juliac_trim_active() && return nothing
         for eventToCall in events
-            eventToCall()
+            JulGame.trim_call0(eventToCall)
         end
         return nothing
     end
