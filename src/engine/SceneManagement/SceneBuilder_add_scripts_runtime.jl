@@ -1,12 +1,12 @@
 @Base.noinline function _scenebuilder_abstract_dict_as_string_dict(ad::AbstractDict)::Dict{String,Any}
     ad isa Dict{String,Any} && return ad::Dict{String,Any}
     ad isa Dict{Symbol,Any} && return SceneReaderModule._symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any})
-    ad isa JSON3.Object && return SceneReaderModule._json3_object_to_string_dict(ad::JSON3.Object)
+    ad isa JSON3.Object && return ccall(:jl_call1, Any, (Any, Any), SceneReaderModule._json3_object_to_string_dict_body, ad::JSON3.Object)::Dict{String,Any}
     return Dict{String,Any}()
 end
 
 @Base.noinline function _scenebuilder_script_entry_dict(script)::Union{Nothing, Dict{String,Any}}
-    script isa JSON3.Object && return SceneReaderModule._json3_object_to_string_dict(script::JSON3.Object)
+    script isa JSON3.Object && return ccall(:jl_call1, Any, (Any, Any), SceneReaderModule._json3_object_to_string_dict_body, script::JSON3.Object)::Dict{String,Any}
     script isa Dict{String,Any} && return script::Dict{String,Any}
     script isa AbstractDict && return _scenebuilder_abstract_dict_as_string_dict(script::AbstractDict)
     return nothing

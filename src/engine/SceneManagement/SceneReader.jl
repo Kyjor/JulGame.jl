@@ -35,7 +35,7 @@ module SceneReaderModule
                 elseif $jv isa SceneJSONObject
                     _scene_jsonobject_to_plain_dict($jv::SceneJSONObject)
                 elseif $jv isa JSON3.Object
-                    _json3_object_to_string_dict($jv::JSON3.Object)
+                    ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), $jv)::Dict{String,Any}
                 elseif $jv isa Dict{String,Any}
                     _deep_normalize_json_dict($jv::Dict{String,Any})
                 elseif $jv isa Dict{Symbol,Any}
@@ -43,7 +43,7 @@ module SceneReaderModule
                 elseif $jv isa AbstractDict
                     let ad = $jv::AbstractDict
                         if ad isa JSON3.Object
-                            _json3_object_to_string_dict(ad::JSON3.Object)
+                            ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), ad)::Dict{String,Any}
                         elseif ad isa Dict{String,Any}
                             _deep_normalize_json_dict(ad::Dict{String,Any})
                         elseif ad isa Dict{Symbol,Any}
@@ -89,20 +89,23 @@ module SceneReaderModule
     """Normalize a value read from `JSON3.Object` / `JSON3.Array` tape (JuliaC `--trim`; no `Base.copy(::JSON3.Object)`)."""
     @Base.noinline function _json3_field_value_to_tree(v)::Any
         v === nothing && return nothing
-        v isa JSON3.Object && return _json3_object_to_string_dict(v::JSON3.Object)
+        v isa JSON3.Object && return ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, v::JSON3.Object)::Dict{String,Any}
         v isa JSON3.Array && return _json3_array_to_vector_any(v::JSON3.Array)
         v isa Dict{Symbol,Any} && return _symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any})
         v isa AbstractVector && return _scene_json_tree_vector(v::AbstractVector)
         return v
     end
 
-    """Walk `JSON3.Object` via concrete `iterate(::JSON3.Object, ...)` (not `Base.copy`, which trim often cannot resolve)."""
-    @Base.noinline function _json3_object_to_string_dict(o::JSON3.Object)::Dict{String,Any}
+    """Walk `JSON3.Object` via `populateinds!` + `getinds` + `get`; call sites use `ccall(:jl_call1, …, _json3_object_to_string_dict_body, …)` for JuliaC `--trim`."""
+    @Base.noinline function _json3_object_to_string_dict_body(o::JSON3.Object)::Dict{String,Any}
+        JSON3.populateinds!(o)
+        inds = JSON3.getinds(o)::Dict{Symbol,Int}
         out = Dict{String,Any}()
-        for p in o
-            pr = p::Pair{Symbol,Any}
-            ks = Base.string((pr.first)::Symbol)::String
-            out[ks] = _json3_field_value_to_tree(pr.second)
+        sizehint!(out, length(inds))
+        for (ksym, _) in inds
+            ks = Base.string(ksym)::String
+            val = JSON3.get(o, ksym)::Any
+            out[ks] = _json3_field_value_to_tree(val)
         end
         return out
     end
@@ -147,11 +150,28 @@ module SceneReaderModule
         JsonObj(_scene_jsonobject_to_plain_dict(o))
     end
 
-    # JuliaC `--trim`: do not define `JsonObj(::JSON3.Object)` (verifier cannot resolve that ctor); always build
-    # via `JsonObj(_json3_object_to_string_dict(x)::Dict{String,Any})` at use sites.
+    # JuliaC `--trim`: do not define `JsonObj(::JSON3.Object)`; use `ccall(:jl_call1, …, _json3_object_to_string_dict_body, …)` at use sites.
 
-    # Must not nest `@_unwrap_scene_field_value` inside its own expansion (infinite macro expansion / stack overflow).
-    # `@_unwrap_scene_field_value` delegates here; array recursion is runtime-only.
+    @Base.noinline function _unwrap_json3_array_runtime_body(a::JSON3.Array)::Vector{Any}
+        n = length(a)
+        out = Vector{Any}(undef, n)
+        @inbounds for i in 1:n
+            out[i] = _unwrap_scene_field_value_runtime(a[i])
+        end
+        return out
+    end
+    @Base.noinline function _unwrap_abstract_vector_runtime_body(vv::AbstractVector)::Vector{Any}
+        fa = firstindex(vv)
+        fb = lastindex(vv)
+        out = Vector{Any}(undef, fb - fa + 1)
+        j = 1
+        for i in fa:fb
+            out[j] = _unwrap_scene_field_value_runtime(vv[i])
+            j += 1
+        end
+        return out
+    end
+
     @Base.noinline function _unwrap_scene_field_value_runtime(v)
         if v === nothing
             return nothing
@@ -162,13 +182,13 @@ module SceneReaderModule
         elseif v isa SceneJSONObject
             return JsonObj(v::SceneJSONObject)
         elseif v isa JSON3.Object
-            return JsonObj(_json3_object_to_string_dict(v::JSON3.Object)::Dict{String,Any})
+            return JsonObj(ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, v::JSON3.Object)::Dict{String,Any})
         elseif v isa Dict{Symbol,Any}
             return JsonObj(_symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any}))
         elseif v isa AbstractDict
             let ad = v::AbstractDict
                 if ad isa JSON3.Object
-                    return JsonObj(_json3_object_to_string_dict(ad::JSON3.Object)::Dict{String,Any})
+                    return JsonObj(ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, ad::JSON3.Object)::Dict{String,Any})
                 elseif ad isa Dict{String,Any}
                     return JsonObj(ad::Dict{String,Any})
                 elseif ad isa Dict{Symbol,Any}
@@ -178,32 +198,50 @@ module SceneReaderModule
                 end
             end
         elseif v isa JSON3.Array
-            a = v::JSON3.Array
-            n = length(a)
-            out = Vector{Any}(undef, n)
-            @inbounds for i in 1:n
-                out[i] = _unwrap_scene_field_value_runtime(a[i])
-            end
-            return out
+            return ccall(:jl_call1, Any, (Any, Any), _unwrap_json3_array_runtime_body, v::JSON3.Array)::Vector{Any}
         elseif v isa AbstractVector
-            vv = v::AbstractVector
-            fa = firstindex(vv)
-            fb = lastindex(vv)
-            out = Vector{Any}(undef, fb - fa + 1)
-            j = 1
-            for i in fa:fb
-                out[j] = _unwrap_scene_field_value_runtime(vv[i])
-                j += 1
-            end
-            return out
+            return ccall(:jl_call1, Any, (Any, Any), _unwrap_abstract_vector_runtime_body, v::AbstractVector)::Vector{Any}
         else
             return v
         end
     end
 
+    # Inline non-array branches so `_scene_json_get` / `getproperty` avoid `_unwrap_scene_field_value_runtime(::Any)` at top level.
     macro _unwrap_scene_field_value(ex)
         quote
-            _unwrap_scene_field_value_runtime($(esc(ex)))
+            let v = $(esc(ex))
+                if v === nothing
+                    nothing
+                elseif v isa $(esc(:JsonObj))
+                    v::$(esc(:JsonObj))
+                elseif v isa Dict{String,Any}
+                    JsonObj(v::Dict{String,Any})
+                elseif v isa $(esc(:SceneJSONObject))
+                    JsonObj(v::$(esc(:SceneJSONObject)))
+                elseif v isa JSON3.Object
+                    JsonObj(ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), v)::Dict{String,Any})
+                elseif v isa Dict{Symbol,Any}
+                    JsonObj(_symbol_dict_to_stringkey_tree(v::Dict{Symbol,Any}))
+                elseif v isa AbstractDict
+                    let ad = v::AbstractDict
+                        if ad isa JSON3.Object
+                            JsonObj(ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), ad)::Dict{String,Any})
+                        elseif ad isa Dict{String,Any}
+                            JsonObj(ad::Dict{String,Any})
+                        elseif ad isa Dict{Symbol,Any}
+                            JsonObj(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
+                        else
+                            JsonObj(Dict{String,Any}())
+                        end
+                    end
+                elseif v isa JSON3.Array
+                    ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_unwrap_json3_array_runtime_body)), v)::Vector{Any}
+                elseif v isa AbstractVector
+                    ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_unwrap_abstract_vector_runtime_body)), v)::Vector{Any}
+                else
+                    v
+                end
+            end
         end
     end
 
@@ -219,12 +257,12 @@ module SceneReaderModule
                 elseif $rv isa SceneJSONObject
                     JsonObj($rv::SceneJSONObject)
                 elseif $rv isa JSON3.Object
-                    JsonObj(_json3_object_to_string_dict($rv::JSON3.Object)::Dict{String,Any})
+                    JsonObj(ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), $rv)::Dict{String,Any})
                 elseif $rv isa Dict{Symbol,Any}
                     JsonObj(_symbol_dict_to_stringkey_tree($rv::Dict{Symbol,Any}))
                 elseif $rv isa AbstractDict
                     let ad = $rv::AbstractDict
-                        ad isa JSON3.Object ? JsonObj(_json3_object_to_string_dict(ad::JSON3.Object)::Dict{String,Any}) :
+                        ad isa JSON3.Object ? JsonObj(ccall(:jl_call1, Any, (Any, Any), $(GlobalRef(SceneReaderModule, :_json3_object_to_string_dict_body)), ad)::Dict{String,Any}) :
                         ad isa Dict{String,Any} ? JsonObj(ad::Dict{String,Any}) :
                         ad isa Dict{Symbol,Any} ? JsonObj(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any})) :
                         JsonObj(Dict{String,Any}())
@@ -236,21 +274,20 @@ module SceneReaderModule
         end
     end
 
-    """JuliaC `--trim`: `setproperty!(::IUIElement, :parent, ...)` is unresolved; narrow to concrete canvas children."""
-    @Base.noinline function _attach_ui_to_canvas!(canvas::JulGame.UI.CanvasModule.Canvas, el::JulGame.IUIElement)::Nothing
-        if el isa JulGame.UI.CanvasModule.Canvas
-            ch = el::JulGame.UI.CanvasModule.Canvas
-            push!(canvas.children, ch)
-            ch.parent = canvas
-        elseif el isa ScreenButton
-            sb = el::ScreenButton
-            push!(canvas.children, sb)
-            sb.parent = canvas
-        elseif el isa TextBox
-            tb = el::TextBox
-            push!(canvas.children, tb)
-            tb.parent = canvas
-        end
+    """JuliaC `--trim`: `setproperty!(::IUIElement, :parent, ...)` is unresolved; overload on concrete child types only."""
+    @Base.noinline function _attach_ui_to_canvas!(canvas::JulGame.UI.CanvasModule.Canvas, ch::JulGame.UI.CanvasModule.Canvas)::Nothing
+        push!(canvas.children, ch)
+        ch.parent = canvas
+        return nothing
+    end
+    @Base.noinline function _attach_ui_to_canvas!(canvas::JulGame.UI.CanvasModule.Canvas, sb::ScreenButton)::Nothing
+        push!(canvas.children, sb)
+        sb.parent = canvas
+        return nothing
+    end
+    @Base.noinline function _attach_ui_to_canvas!(canvas::JulGame.UI.CanvasModule.Canvas, tb::TextBox)::Nothing
+        push!(canvas.children, tb)
+        tb.parent = canvas
         return nothing
     end
 
@@ -482,14 +519,14 @@ module SceneReaderModule
     """Normalize SCENE_CACHE entries (Dict, JSON3.Object, JsonObj) into `JsonObj` for stable typing under `--trim`."""
     @Base.noinline function _as_scene_json_root(x)
         x isa JsonObj && return x
-        x isa JSON3.Object && return JsonObj(_json3_object_to_string_dict(x::JSON3.Object)::Dict{String,Any})
+        x isa JSON3.Object && return JsonObj(ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, x::JSON3.Object)::Dict{String,Any})
         x isa Dict{String,Any} && return JsonObj(x::Dict{String,Any})
         x isa Dict{Symbol,Any} && return JsonObj(_symbol_dict_to_stringkey_tree(x::Dict{Symbol,Any}))
         if x isa AbstractDict && !(x isa JsonObj)
             ad = x::AbstractDict
             ad isa Dict{String,Any} && return JsonObj(ad::Dict{String,Any})
             ad isa Dict{Symbol,Any} && return JsonObj(_symbol_dict_to_stringkey_tree(ad::Dict{Symbol,Any}))
-            ad isa JSON3.Object && return JsonObj(_json3_object_to_string_dict(ad::JSON3.Object)::Dict{String,Any})
+            ad isa JSON3.Object && return JsonObj(ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, ad::JSON3.Object)::Dict{String,Any})
             return JsonObj(Dict{String,Any}())
         end
         return JsonObj(Dict{String,Any}("_" => x))
@@ -539,7 +576,7 @@ module SceneReaderModule
                 elseif cached_json isa SceneJSONObject
                     root = JsonObj(cached_json)
                 elseif cached_json isa JSON3.Object
-                    root = JsonObj(_json3_object_to_string_dict(cached_json::JSON3.Object)::Dict{String,Any})
+                    root = JsonObj(ccall(:jl_call1, Any, (Any, Any), _json3_object_to_string_dict_body, cached_json::JSON3.Object)::Dict{String,Any})
                 end
                 @debug("using cached scene")
             else 
@@ -754,7 +791,14 @@ module SceneReaderModule
                     ch = _json_obj_array(uiElement, "children")
                     if !isempty(ch)
                         for c in deserialize_canvas_children(ch, newUIElement)
-                            _attach_ui_to_canvas!(newUIElement, c::JulGame.IUIElement)
+                            el = c::JulGame.IUIElement
+                            if el isa JulGame.UI.CanvasModule.Canvas
+                                _attach_ui_to_canvas!(newUIElement, el::JulGame.UI.CanvasModule.Canvas)
+                            elseif el isa ScreenButton
+                                _attach_ui_to_canvas!(newUIElement, el::ScreenButton)
+                            elseif el isa TextBox
+                                _attach_ui_to_canvas!(newUIElement, el::TextBox)
+                            end
                         end
                     end
                 elseif ty == "TextBox"
@@ -1090,7 +1134,14 @@ module SceneReaderModule
                     gch = _json_obj_array(child, "children")
                     if !isempty(gch)
                         for grandChild in deserialize_canvas_children(gch, newChild)
-                            _attach_ui_to_canvas!(newChild, grandChild::JulGame.IUIElement)
+                            el = grandChild::JulGame.IUIElement
+                            if el isa JulGame.UI.CanvasModule.Canvas
+                                _attach_ui_to_canvas!(newChild, el::JulGame.UI.CanvasModule.Canvas)
+                            elseif el isa ScreenButton
+                                _attach_ui_to_canvas!(newChild, el::ScreenButton)
+                            elseif el isa TextBox
+                                _attach_ui_to_canvas!(newChild, el::TextBox)
+                            end
                         end
                     end
                 elseif cty == "ScreenButton"
