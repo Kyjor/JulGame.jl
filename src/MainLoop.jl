@@ -383,14 +383,19 @@ module MainLoopModule
 	Call script initialization method. Tracks first call for profiling/debugging.
 	"""
 	@inline function call_script_initialize(this::MainLoop, script)
-		script_type = typeof(script)::DataType
-		
-		if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
-			@debug "First initialize call for $(script_type) - compiling..."
-			_mainloop_register_script_type!(this, script_type, true)
+		if !JulGame.juliac_trim_active()
+			script_type = typeof(script)::DataType
+			if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
+				@debug "First initialize call for $(script_type) - compiling..."
+				_mainloop_register_script_type!(this, script_type, true)
+			end
 		end
-		
-		Base.invokelatest(JulGame.initialize, script)
+		if script isa JSON3.Object
+			Base.invokelatest(JulGame.initialize, script::JSON3.Object)
+		else
+			Base.invokelatest(JulGame.initialize, script::JulGame.Script)
+		end
+		return nothing
 	end
 	
 	"""
@@ -455,12 +460,19 @@ module MainLoopModule
 	Call script shutdown/cleanup method.
 	"""
 	@inline function call_script_shutdown(this::MainLoop, script)
-		script_type = typeof(script)::DataType
-		if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
-			@debug "First shutdown call for $(script_type) - compiling..."
-			_mainloop_register_script_type!(this, script_type, false)
+		if !JulGame.juliac_trim_active()
+			script_type = typeof(script)::DataType
+			if _mainloop_script_type_index(this.knownScriptTypes, script_type) == 0
+				@debug "First shutdown call for $(script_type) - compiling..."
+				_mainloop_register_script_type!(this, script_type, false)
+			end
 		end
-		Base.invokelatest(JulGame.on_shutdown, script)
+		if script isa JSON3.Object
+			Base.invokelatest(JulGame.on_shutdown, script::JSON3.Object)
+		else
+			Base.invokelatest(JulGame.on_shutdown, script::JulGame.Script)
+		end
+		return nothing
 	end
 	
 	
@@ -587,7 +599,11 @@ module MainLoopModule
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-                        call_script_shutdown(this, script)
+                        if script isa JSON3.Object
+                            Base.invokelatest(JulGame.on_shutdown, script::JSON3.Object)
+                        else
+                            Base.invokelatest(JulGame.on_shutdown, script::JulGame.Script)
+                        end
                     catch e
 						if this.testMode
 							rethrow(e)
@@ -665,7 +681,21 @@ module MainLoopModule
 
 		if !this.isGameModeRunningInEditor
 			for uiElement in this.scene.uiElements
-				JulGame.initialize(uiElement)
+				if uiElement isa JulGame.UI.TextBoxModule.TextBox
+					JulGame.UI.initialize(uiElement::JulGame.UI.TextBoxModule.TextBox)
+				elseif uiElement isa JulGame.UI.ScreenButtonModule.ScreenButton
+					JulGame.UI.initialize(uiElement::JulGame.UI.ScreenButtonModule.ScreenButton)
+				elseif uiElement isa JulGame.UI.RectangleModule.Rectangle
+					JulGame.UI.initialize(uiElement::JulGame.UI.RectangleModule.Rectangle)
+				elseif uiElement isa JulGame.UI.LineModule.Line
+					JulGame.UI.initialize(uiElement::JulGame.UI.LineModule.Line)
+				elseif uiElement isa JulGame.UI.CircleModule.Circle
+					JulGame.UI.initialize(uiElement::JulGame.UI.CircleModule.Circle)
+				elseif uiElement isa JulGame.UI.ProgressBarModule.ProgressBar
+					JulGame.UI.initialize(uiElement::JulGame.UI.ProgressBarModule.ProgressBar)
+				elseif uiElement isa JulGame.UI.UIImageModule.UIImage
+					JulGame.UI.initialize(uiElement::JulGame.UI.UIImageModule.UIImage)
+				end
 			end
 		end
 
@@ -1137,6 +1167,15 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
+						if JulGame.juliac_trim_active() || this.latencyProfiler === nothing
+							for script in entity.scripts
+								if script isa JSON3.Object
+									_juliac_script_update_json(script::JSON3.Object, deltaTime)
+								else
+									_juliac_script_update_user(script::JulGame.Script, deltaTime)
+								end
+							end
+						else
 						# Call scripts with optional per-script profiling (inlined for JuliaC `--trim` inference)
 						for script in entity.scripts
 							profile_scripts = this.latencyProfiler !== nothing
@@ -1189,6 +1228,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 									_juliac_script_update_user(sc, deltaTime)
 								end
 							end
+						end
 						end
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"
@@ -1612,9 +1652,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 	function start_game_in_editor(this::MainLoop, path::String)
 		this.isGameModeRunningInEditor = true
-		if !JulGame.juliac_trim_active()
-			SceneBuilderModule.add_scripts_to_entities(path)
-		end
+		JulGame.trim_call1(SceneBuilderModule.add_scripts_to_entities, path)
 		initialize_scripts_and_components()
 	end
 

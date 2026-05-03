@@ -207,9 +207,13 @@ module JulGame
     using .InputModule: Input
     export Input
 
+    """Mesh3D / SoftwareRenderer3D: set to `true` in source to load full 3D stack; `false` uses stubs (2D-only, friendlier to JuliaC `--trim`)."""
+    const ENABLE_SCENE_3D = false
+    export ENABLE_SCENE_3D
+
     include("engine/Component/Component.jl")
     using .Component
-    export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule, SoftwareRenderer3DModule
+    export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule, Mesh3DModule, SoftwareRenderer3DModule
 
     include("engine/Effects/Effects.jl")
     using .Effects

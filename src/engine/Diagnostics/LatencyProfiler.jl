@@ -95,7 +95,8 @@ mutable struct LatencyProfiler
     critical_frame_time::Float64  # Critical if frame exceeds this
 
     # Sum of `update` times per concrete script type within the current frame (all instances).
-    current_frame_script_ms::Dict{DataType, Float64}
+    current_frame_script_types::Vector{DataType}
+    current_frame_script_ms_acc::Vector{Float64}
 
     # Finer breakdown inside `InputModule.poll_input` (only when profiling).
     input_poll_breakdown_ms::Dict{Symbol, Float64}
@@ -140,7 +141,8 @@ mutable struct LatencyProfiler
         this.section_start_gc_time = 0.0
         this.section_start_allocs = 0
 
-        this.current_frame_script_ms = Dict{DataType, Float64}()
+        this.current_frame_script_types = DataType[]
+        this.current_frame_script_ms_acc = Float64[]
         this.input_poll_breakdown_ms = Dict{Symbol, Float64}()
         this.input_ui_hit_detail_ms = Dict{Symbol, Float64}()
         this.input_ui_hit_detail_counts = Dict{Symbol, Int}()
@@ -388,11 +390,12 @@ function slow_frame_terminal_detail(
         end
     end
     println(io, "  ├─ script types (all instances summed per type) ──────────")
-    d = profiler.current_frame_script_ms
-    if isempty(d)
+    sty = profiler.current_frame_script_types
+    sac = profiler.current_frame_script_ms_acc
+    if isempty(sty)
         println(io, "  │ (no script samples this frame)")
     else
-        pairs = collect(d)
+        pairs = Tuple{DataType, Float64}[(sty[i], sac[i]) for i in 1:length(sty)]
         _sort_desc_by_key2!(pairs)
         script_sum = sum(x[2] for x in pairs)
         nshow = min(script_top, length(pairs))
@@ -420,9 +423,17 @@ function accumulate_script_update_ms!(profiler::LatencyProfiler, script_type::Da
     if !profiler.enabled
         return
     end
-    d = profiler.current_frame_script_ms
-    d[script_type] = get(d, script_type, 0.0) + elapsed_ms
-    return
+    ty = profiler.current_frame_script_types
+    acc = profiler.current_frame_script_ms_acc
+    @inbounds for i = 1:length(ty)
+        if ty[i] === script_type
+            acc[i] = acc[i] + elapsed_ms
+            return nothing
+        end
+    end
+    push!(ty, script_type)
+    push!(acc, elapsed_ms)
+    return nothing
 end
 
 function accumulate_input_poll_ms!(profiler::LatencyProfiler, key::Symbol, elapsed_ms::Float64)
@@ -485,7 +496,8 @@ function start_frame(profiler::LatencyProfiler)
     end
     
     profiler.frame_count += 1
-    empty!(profiler.current_frame_script_ms)
+    empty!(profiler.current_frame_script_types)
+    empty!(profiler.current_frame_script_ms_acc)
     empty!(profiler.input_poll_breakdown_ms)
     empty!(profiler.input_ui_hit_detail_ms)
     empty!(profiler.input_ui_hit_detail_counts)

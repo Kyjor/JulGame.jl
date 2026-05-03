@@ -47,19 +47,34 @@ const MAX_TEXTURE_SIZE = 8192
 Calculate a hash of sprite properties to detect changes.
 """
 function calculate_sprite_hash(sprite::JulGame.Component.SpriteModule.InternalSprite)
+    px::Float64 = 0.0
+    py::Float64 = 0.0
+    sx::Float64 = 1.0
+    sy::Float64 = 1.0
+    par = getfield(sprite, :parent)::JulGame.IEntity
+    if par isa JulGame.EntityModule.Entity
+        ent = par::JulGame.EntityModule.Entity
+        tr = getfield(ent, :transform)::JulGame.TransformModule.Transform
+        pos = getfield(tr, :position)::JulGame.Math._Vector3{Float64}
+        scl = getfield(tr, :scale)::JulGame.Math._Vector3{Float64}
+        px = getfield(pos, :x)::Float64
+        py = getfield(pos, :y)::Float64
+        sx = getfield(scl, :x)::Float64
+        sy = getfield(scl, :y)::Float64
+    end
     return hash((
-        sprite.imagePath,
-        sprite.parent.transform.position.x,
-        sprite.parent.transform.position.y,
-        sprite.parent.transform.scale.x,
-        sprite.parent.transform.scale.y,
-        sprite.rotation,
-        sprite.color,
-        sprite.crop,
-        sprite.isFlipped,
-        sprite.offset.x,
-        sprite.offset.y,
-        sprite.layer
+        getfield(sprite, :imagePath)::String,
+        px,
+        py,
+        sx,
+        sy,
+        getfield(sprite, :rotation)::Float64,
+        getfield(sprite, :color)::NTuple{4, Int},
+        getfield(sprite, :crop)::Union{Ptr{Nothing}, JulGame.Math._Vector4{Int32}},
+        getfield(sprite, :isFlipped)::Bool,
+        getfield(getfield(sprite, :offset)::JulGame.Math._Vector2{Float64}, :x)::Float64,
+        getfield(getfield(sprite, :offset)::JulGame.Math._Vector2{Float64}, :y)::Float64,
+        getfield(sprite, :layer)::Int,
     ))
 end
 

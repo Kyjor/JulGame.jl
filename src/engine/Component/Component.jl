@@ -10,8 +10,12 @@ module Component
     include("CircleCollider.jl")
     include("Shape.jl")
     include("SoundSource.jl")
-    include("Mesh3D.jl")
-    include("SoftwareRenderer3D.jl")
+    if JulGame.ENABLE_SCENE_3D
+        include("Mesh3D.jl")
+        include("SoftwareRenderer3D.jl")
+    else
+        include("Scene3DStub.jl")
+    end
 
     export AnimationModule
     export AnimatorModule
