@@ -23,7 +23,7 @@ module EntityModule
         isActive::Bool
         persistentBetweenScenes::Bool
         transform::Transform
-        scripts::Vector{Union{JulGame.Script, JSON3.Object}}
+        scripts::Vector{Union{JulGame.Script, JSON3.Object, Dict{String,Any}}}
         parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
@@ -60,7 +60,7 @@ module EntityModule
             this.isActive = true
             this.mesh3d = C_NULL
             this.softwareRenderer3d = C_NULL
-            this.scripts = Union{JulGame.Script, JSON3.Object}[]
+            this.scripts = Union{JulGame.Script, JSON3.Object, Dict{String,Any}}[]
             this.transform = transform
             this.transform.parent = this
             this.shape = C_NULL
@@ -84,6 +84,10 @@ module EntityModule
         isempty(scripts) && return this
         for script in scripts
             @debug(string("Adding script of type: ", typeof(script), " to entity named ", this.name))
+            if script isa Dict{String,Any}
+                push!(this.scripts, script)
+                continue
+            end
             push!(this.scripts, script)
             script.parent = this
             try
@@ -109,6 +113,10 @@ module EntityModule
 
     function JulGame.add_script(this::Entity, script)
         @debug(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
+        if script isa Dict{String,Any}
+            push!(this.scripts, script)
+            return
+        end
         push!(this.scripts, script)
         script.parent = this
         try
@@ -125,6 +133,7 @@ module EntityModule
         end
 
         for script in this.scripts
+            script isa Dict{String,Any} && continue
             try
                 Base.invokelatest(JulGame.update, script, deltaTime) 
             catch e

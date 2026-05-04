@@ -305,6 +305,17 @@ module SceneWriterModule
 
         for script in scripts
             fields = Dict{String, Any}()
+            if script isa Dict{String,Any}
+                d = script::Dict{String,Any}
+                nm = get(d, "name", nothing)
+                fd = get(d, "fields", nothing)
+                if nm isa String && fd isa Dict{String,Any}
+                    push!(scriptsDict, Dict{String,Any}("name" => nm, "fields" => fd))
+                elseif nm isa String
+                    push!(scriptsDict, Dict{String,Any}("name" => nm, "fields" => Dict{String,Any}()))
+                end
+                continue
+            end
             if isa(script, JSON3.Object) || isa(script, Base.CodeUnits)
                 @warn "Skipping script: $(script) because it is a JSON3.Object or CodeUnits, there is probably a compilation error"
                 continue

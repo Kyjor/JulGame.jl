@@ -390,7 +390,9 @@ module MainLoopModule
 				_mainloop_register_script_type!(this, script_type, true)
 			end
 		end
-		if script isa JSON3.Object
+		if script isa Dict{String,Any}
+			return nothing
+		elseif script isa JSON3.Object
 			Base.invokelatest(JulGame.initialize, script::JSON3.Object)
 		else
 			Base.invokelatest(JulGame.initialize, script::JulGame.Script)
@@ -467,7 +469,9 @@ module MainLoopModule
 				_mainloop_register_script_type!(this, script_type, false)
 			end
 		end
-		if script isa JSON3.Object
+		if script isa Dict{String,Any}
+			return nothing
+		elseif script isa JSON3.Object
 			Base.invokelatest(JulGame.on_shutdown, script::JSON3.Object)
 		else
 			Base.invokelatest(JulGame.on_shutdown, script::JulGame.Script)
@@ -599,7 +603,9 @@ module MainLoopModule
             for entity in this.scene.entities
                 for script in entity.scripts
                     try
-                        if script isa JSON3.Object
+                        if script isa Dict{String,Any}
+                            continue
+                        elseif script isa JSON3.Object
                             Base.invokelatest(JulGame.on_shutdown, script::JSON3.Object)
                         else
                             Base.invokelatest(JulGame.on_shutdown, script::JulGame.Script)
@@ -672,7 +678,7 @@ module MainLoopModule
 
 	function initialize_scripts_and_components()
 		this = JulGame.current_main()
-		scripts = Union{JulGame.Script, JSON3.Object}[]
+		scripts = Union{JulGame.Script, JSON3.Object, Dict{String,Any}}[]
 		for entity in this.scene.entities
 			for script in entity.scripts
 				push!(scripts, script)
@@ -707,7 +713,9 @@ module MainLoopModule
 				try
 					# JuliaC `--trim`: `typeof(sc)` for `sc::JulGame.Script` is `Type{<:Script}`, not `DataType`;
 					# avoid `_mainloop_script_type_index` here (knownScriptTypes is for optional profiling elsewhere).
-					if script isa JSON3.Object
+					if script isa Dict{String,Any}
+						continue
+					elseif script isa JSON3.Object
 						Base.invokelatest(JulGame.initialize, script::JSON3.Object)
 					else
 						Base.invokelatest(JulGame.initialize, script::JulGame.Script)
@@ -1174,7 +1182,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
 						for script in entity.scripts
-							if script isa JSON3.Object
+							if script isa Dict{String,Any}
+								continue
+							elseif script isa JSON3.Object
 								_juliac_script_update_json(script::JSON3.Object, deltaTime)
 							else
 								_juliac_script_update_user(script::JulGame.Script, deltaTime)

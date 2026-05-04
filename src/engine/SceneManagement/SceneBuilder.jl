@@ -207,12 +207,13 @@ module SceneBuilderModule
             JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
             
             println(Core.stderr, "Deserializing scene")
-            # Use preloaded scene if available
-            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
+            # Use preloaded scene if available (keyed by absolute scene path, not basename alone)
+            scene_path_abs = abspath(joinpath(BasePath, "scenes", this.scene))
+            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, scene_path_abs)
                 println(Core.stderr, "Using preloaded scene: $(this.scene)")
-                scene = JulGame.PRELOADED_SCENES[this.scene]
+                scene = JulGame.PRELOADED_SCENES[scene_path_abs]
             else
-                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+                scene = deserialize_scene(scene_path_abs)
             end
             if scene === nothing
                 @error "Failed to load scene \"$(this.scene)\" from $(joinpath(BasePath, "scenes", this.scene)) (file missing, unreadable, or invalid JSON)"
@@ -235,12 +236,12 @@ module SceneBuilderModule
         end
 
         if scene === nothing
-            # Use preloaded scene if available
-            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, this.scene)
+            scene_path_abs = abspath(joinpath(BasePath, "scenes", this.scene))
+            if preloadAllScenes && haskey(JulGame.PRELOADED_SCENES, scene_path_abs)
                 @debug "Using preloaded scene: $(this.scene)"
-                scene = JulGame.PRELOADED_SCENES[this.scene]
+                scene = JulGame.PRELOADED_SCENES[scene_path_abs]
             else
-                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+                scene = deserialize_scene(scene_path_abs)
             end
         end
         if scene === nothing
@@ -251,6 +252,22 @@ module SceneBuilderModule
         main_loop.scene.entities = scene[1]
         main_loop.scene.uiElements = scene[2]
         main_loop.scene.camera = scene[3]
+
+        ents = main_loop.scene.entities
+        script_slots = sum(e -> length(getfield(e, :scripts)), ents; init=0)
+        println(
+            Core.stderr,
+            "[SceneBuilder] scene='$(this.scene)' entities=$(length(ents)) uiElements=$(length(main_loop.scene.uiElements)) script_json_slots=$script_slots juliac_trim_active=$(JulGame.juliac_trim_active())",
+        )
+        cam_dbg = main_loop.scene.camera
+        if cam_dbg !== nothing
+            println(
+                Core.stderr,
+                "[SceneBuilder] camera size=$(getfield(cam_dbg, :size).x)x$(getfield(cam_dbg, :size).y) backgroundColor=$(getfield(cam_dbg, :backgroundColor))",
+            )
+        else
+            println(Core.stderr, "[SceneBuilder] camera is nothing")
+        end
         
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             @debug "Setting logical size to $(main_loop.scene.camera.size.x)x$(main_loop.scene.camera.size.y)"
@@ -284,6 +301,10 @@ module SceneBuilderModule
         main_loop.scene.rigidbodies = InternalRigidbody[]
         main_loop.scene.colliders = InternalCollider[]
         JulGame.trim_call1(add_scripts_to_entities, BasePath)
+        println(
+            Core.stderr,
+            "[SceneBuilder] after add_scripts_to_entities (if juliac_trim_active, dynamic script attach was skipped)",
+        )
 
         JulGame.engine_states.current_state = :game_mode
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)

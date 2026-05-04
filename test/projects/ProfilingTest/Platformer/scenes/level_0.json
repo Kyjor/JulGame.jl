@@ -1,4 +1,561 @@
 {
-    "Entities": [ ],
-    "UIElements": [ ]
+    "Entities": [
+        {
+            "isActive": true,
+            "name": "Title",
+            "scripts": [
+                {
+                    "name": "Title",
+                    "fields": {
+                    }
+                }
+            ],
+            "id": "1",
+            "parent": null,
+            "components": [
+                {
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1.75,
+                        "y": 1.5
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "Background",
+            "scripts": [
+            ],
+            "id": "2",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 0,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 320,
+                        "y": 180
+                    },
+                    "imagePath": "Forest_Background_0.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 5.8125,
+                        "y": 1.09375
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 20,
+                        "y": 11.25
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "Logo",
+            "scripts": [
+            ],
+            "id": "3",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 0,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 64,
+                        "y": 48
+                    },
+                    "imagePath": "Logo.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 10.8125,
+                        "y": 2.5625
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 8,
+                        "y": 5
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "SpaceKey",
+            "scripts": [
+            ],
+            "id": "4",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 64,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 100,
+                        "y": 100
+                    },
+                    "imagePath": "Space_Key_Dark.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 26.5625,
+                        "y": 14.59375
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 2,
+                        "y": 2
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "ArrowKeyUp",
+            "scripts": [
+            ],
+            "id": "5",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 80,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 100,
+                        "y": 100
+                    },
+                    "imagePath": "Arrow_Up_Key_Dark.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 27.125,
+                        "y": 11.96875
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "ArrowKeyDown",
+            "scripts": [
+            ],
+            "id": "6",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 80,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 100,
+                        "y": 100
+                    },
+                    "imagePath": "Arrow_Down_Key_Dark.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 27.09375,
+                        "y": 13.03125
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "ArrowKeyLeft",
+            "scripts": [
+            ],
+            "id": "7",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 80,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 100,
+                        "y": 100
+                    },
+                    "imagePath": "Arrow_Left_Key_Dark.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 26,
+                        "y": 13.03125
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        },
+        {
+            "isActive": true,
+            "name": "ArrowKeyRight",
+            "scripts": [
+            ],
+            "id": "8",
+            "parent": null,
+            "components": [
+                {
+                    "rotation": 0,
+                    "crop": {
+                        "t": 0,
+                        "x": 0,
+                        "z": 0,
+                        "y": 0
+                    },
+                    "isFlipped": false,
+                    "layer": 0,
+                    "position": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "pixelsPerUnit": 80,
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "center": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "size": {
+                        "x": 100,
+                        "y": 100
+                    },
+                    "imagePath": "Arrow_Right_Key_Dark.png",
+                    "color": {
+                        "t": 255,
+                        "x": 255,
+                        "z": 255,
+                        "y": 255
+                    },
+                    "type": "Sprite"
+                },
+                {
+                    "position": {
+                        "x": 28.15625,
+                        "y": 13.03125
+                    },
+                    "type": "Transform",
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                }
+            ],
+            "persistentBetweenScenes": false
+        }
+    ],
+    "Camera": {
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "position": {
+            "x": 0,
+            "y": 0
+        },
+        "size": {
+            "x": 1920,
+            "y": 1080
+        },
+        "backgroundColor": {
+            "g": 0,
+            "b": 0,
+            "r": 0,
+            "a": 255
+        }
+    },
+    "UIElements": [
+        {
+            "anchor": "centerBottom",
+            "parent": null,
+            "fontSize": 40,
+            "isActive": true,
+            "name": "TextBox",
+            "layer": 0,
+            "id": "1",
+            "isWorldEntity": false,
+            "position": {
+                "x": 658,
+                "y": 874
+            },
+            "persistentBetweenScenes": false,
+            "wrapWords": true,
+            "size": {
+                "x": 603,
+                "y": 38
+            },
+            "maxLineWidth": 0,
+            "anchorOffset": {
+                "x": 0,
+                "y": -168
+            },
+            "color": {
+                "g": 255,
+                "b": 255,
+                "r": 255,
+                "a": 255
+            },
+            "fontPath": "Round9x13.ttf",
+            "text": "Press [ENTER] To Start Game",
+            "type": "TextBox"
+        },
+        {
+            "anchor": "none",
+            "parent": null,
+            "fontSize": 40,
+            "isActive": true,
+            "name": "TextBox",
+            "layer": 0,
+            "id": "2",
+            "isWorldEntity": false,
+            "position": {
+                "x": 1552,
+                "y": 851
+            },
+            "persistentBetweenScenes": false,
+            "wrapWords": true,
+            "size": {
+                "x": 100,
+                "y": 38
+            },
+            "maxLineWidth": 0,
+            "anchorOffset": {
+                "x": 0,
+                "y": 0
+            },
+            "color": {
+                "g": 255,
+                "b": 255,
+                "r": 255,
+                "a": 255
+            },
+            "fontPath": "Round9x13.ttf",
+            "text": "Move",
+            "type": "TextBox"
+        },
+        {
+            "anchor": "none",
+            "parent": null,
+            "fontSize": 40,
+            "isActive": true,
+            "name": "TextBox",
+            "layer": 0,
+            "id": "3",
+            "isWorldEntity": false,
+            "position": {
+                "x": 1554,
+                "y": 991
+            },
+            "persistentBetweenScenes": false,
+            "wrapWords": true,
+            "size": {
+                "x": 100,
+                "y": 38
+            },
+            "maxLineWidth": 0,
+            "anchorOffset": {
+                "x": 0,
+                "y": 0
+            },
+            "color": {
+                "g": 255,
+                "b": 255,
+                "r": 255,
+                "a": 255
+            },
+            "fontPath": "Round9x13.ttf",
+            "text": "Jump",
+            "type": "TextBox"
+        }
+    ]
 }
