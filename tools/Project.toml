@@ -1,0 +1,6 @@
+name = "JulGameTools"
+uuid = "c8f4a2e1-4b0d-4c7a-9f2e-1d3a5b7c9e0f"
+version = "0.0.0"
+
+[compat]
+julia = "1.9"
