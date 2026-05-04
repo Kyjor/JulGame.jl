@@ -61,9 +61,11 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     mkpath(dirname(path_ts))
     data = read(path_jl, String)
     data = replace_module(data)
+    data = replace_end(data)
     data = replace_exports(data)
     data = replace_comments(data)
     data = replace_imports_usings(data)
+    data = replace_mutable_structs(data)
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -78,6 +80,12 @@ function replace_module(data::AbstractString)
     r === nothing && return data
     head = data[1:prevind(data, first(r))]
     return head * ""
+end
+
+function replace_end(data::AbstractString)
+    # replace the line with end with empty string
+    data = replace(data, r"end" => "}")
+    return data
 end
 
 function replace_exports(data::AbstractString)
@@ -95,6 +103,13 @@ end
 function replace_imports_usings(data::AbstractString)
     # Comment-out `using` lines; `\1` is the captured match (SubstitutionString).
     data = replace(data, r"(using .*)" => s"// \1")
+    data = replace(data, r"(import .*)" => s"// \1")
+    return data
+end
+
+function replace_mutable_structs(data::AbstractString)
+    # `mutable struct Name` → `class Name {` (must capture `\1` in the regex)
+    data = replace(data, r"mutable struct\s+(\w+)" => s"class \1 {")
     return data
 end
 
