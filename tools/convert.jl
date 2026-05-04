@@ -66,6 +66,11 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_comments(data)
     data = replace_imports_usings(data)
     data = replace_mutable_structs(data)
+    data = replace_types(data)
+    data = replace_constructor(data)
+    data = replace_function_declaration_dots(data)
+    data = replace_component_qualified_calls(data)
+    data = replace_function_definitions(data)
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -83,8 +88,8 @@ function replace_module(data::AbstractString)
 end
 
 function replace_end(data::AbstractString)
-    # replace the line with end with empty string
-    data = replace(data, r"end" => "}")
+    # Julia block closer only: plain `r"end"` would mangle identifiers like `append_*`.
+    data = replace(data, r"\bend\b" => "}")
     return data
 end
 
@@ -110,6 +115,83 @@ end
 function replace_mutable_structs(data::AbstractString)
     # `mutable struct Name` → `class Name {` (must capture `\1` in the regex)
     data = replace(data, r"mutable struct\s+(\w+)" => s"class \1 {")
+    return data
+end
+
+function replace_types(data::AbstractString)
+    type_map = Dict{String, String}(
+        "Int32" => "number",
+        "Float64" => "number",
+        "String" => "string",
+        "Bool" => "boolean",
+        "Vector{Int32}" => "number[]",
+        "Vector{Float64}" => "number[]",
+        "Vector{String}" => "string[]",
+        "Int" => "number",
+        "Animation" => "JulGameAnimation",
+        # regexes for Vector{*}:
+        "Vector{Math.Vector4}" => "Vector4[]",
+    )
+    # Longer keys first so `::Int` does not chew `::Int32` into `: number` + `32`.
+    for k in sort(collect(keys(type_map)), by = length, rev = true)
+        data = replace(data, "::$k" => ": $(type_map[k])")
+    end
+    return data
+end
+
+function replace_constructor(data::AbstractString)
+    # Julia inner ctor is `function ClassName(args)` (no `{`). Only the ctor whose name
+    # matches a `class Name {` in this file becomes `constructor(args)`.
+    seen = Set{String}()
+    for m in eachmatch(r"class\s+(\w+)\s*\{", data)
+        name = m.captures[1]::AbstractString
+        name in seen && continue
+        push!(seen, name)
+        # `name` comes from `(\w+)` on the class line — no regex metacharacters to escape.
+        pat = Regex("function\\s+" * string(name) * "\\s*\\(")
+        data = replace(data, pat => "constructor(")
+    end
+    # TS needs `{` before the body; Julia starts the block on the next line.
+    data = replace(data, r"(?m)^(\s*constructor\([^)]*\))\s*$" => s"\1 {")
+
+    data = replace(data, "this = new()" => "")
+    data = replace(data, "return this" => "")
+    return data
+end
+
+# `function A.B.c(` → `function A_B_c(` — TS cannot use `.` in a `function` name.
+# Uses `findnext` + `match` (no `replace(str, regex, f)` — that overload is newer Julia).
+function replace_function_declaration_dots(data::AbstractString)
+    s = String(data)
+    pat = r"(?m)^(function\s+)([^\s(]+)(\()"
+    io = IOBuffer()
+    idx = firstindex(s)
+    n = lastindex(s)
+    while idx <= n
+        rg = findnext(pat, s, idx)
+        if rg === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        f = first(rg)
+        f > idx && write(io, SubString(s, idx, prevind(s, f)))
+        m = match(pat, s, f)
+        m === nothing && break
+        write(io, string(m[1], replace(m[2], "." => "_"), m[3]))
+        idx = nextind(s, last(rg))
+    end
+    return String(take!(io))
+end
+
+# `Component.foo(` → `Component_foo(` so calls match mangled declarations.
+function replace_component_qualified_calls(data::AbstractString)
+    replace(data, r"\bComponent\.(\w+)\s*\(" => s"Component_\1(")
+end
+
+function replace_function_definitions(data::AbstractString)
+    # Julia: `function qual_name(args)` then newline — no `{`. TS needs `{` on the same line.
+    # Name is `[^\s(]+`; `constructor(...)` is unchanged.
+    data = replace(data, r"(?m)^(\s*function\s+[^\s(]+\([^)]*\))\s*$" => s"\1 {")
     return data
 end
 
