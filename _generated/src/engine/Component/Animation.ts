@@ -1,13 +1,13 @@
-AnimationModule 
-    using ..Component.JulGame
+
+    // using ..Component.JulGame
     import ..Component
-    export Animation
+    
     mutable struct Animation
         animatedFPS::Int32
         frames::Vector{Math.Vector4}
 
         function Animation(frames::Vector{Math.Vector4}, animatedFPS::Int)
-            # Convert animatedFPS to Int32
+            // Convert animatedFPS to Int32
             animatedFPS = Math.TypeConversions.safe_int32_convert(animatedFPS)
             this = new()
             
@@ -19,7 +19,7 @@ AnimationModule
     end
 
     function Component.update_array_value(this::Animation, value, field, index::Int)
-        # Convert index to Int32
+        // Convert index to Int32
         index = Math.TypeConversions.safe_int32_convert(index)
         fieldToUpdate = getfield(this, field)
         if Component.get_type(this, value) == "_Vector4"
@@ -35,4 +35,3 @@ AnimationModule
         componentFieldType = "$(typeof(item).name.wrapper)"
         return String(split(componentFieldType, '.')[length(split(componentFieldType, '.'))])
     end
-}
