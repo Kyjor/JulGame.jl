@@ -71,6 +71,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_function_declaration_dots(data)
     data = replace_component_qualified_calls(data)
     data = replace_function_definitions(data)
+    data = custom_function_removal(data)
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -193,6 +194,48 @@ function replace_function_definitions(data::AbstractString)
     # Name is `[^\s(]+`; `constructor(...)` is unchanged.
     data = replace(data, r"(?m)^(\s*function\s+[^\s(]+\([^)]*\))\s*$" => s"\1 {")
     return data
+end
+
+function custom_function_removal(data::AbstractString)
+    functions_to_remove = [
+        "Component_update_array_value",
+        "Component_append_array",
+        "Component_get_type",
+    ]
+    s = String(data)
+    for func in functions_to_remove
+        s = remove_ts_function_block(s, func)
+    end
+    return s
+end
+
+# Strip a whole `function name(...) { ... }` (names are already TS/mangled). `r"...$var"` does not interpolate.
+function remove_ts_function_block(s::String, func::AbstractString)::String
+    pat = Regex("(?m)^\\s*function\\s+" * func * "\\s*\\([^)]*\\)\\s*\\{")
+    while true
+        rg = findfirst(pat, s)
+        rg === nothing && return s
+        lo = first(rg)
+        hi = last(rg)  # `{` that opens the body
+
+        depth = 1
+        p = nextind(s, hi)
+        n = lastindex(s)
+        while p <= n && depth > 0
+            c = s[p]
+            if c == '{'
+                depth += 1
+            elseif c == '}'
+                depth -= 1
+            end
+            p = nextind(s, p)
+        end
+
+        fi = firstindex(s)
+        prefix = lo > fi ? s[fi:prevind(s, lo)] : ""
+        suffix = p <= n ? s[p:n] : ""
+        s = string(prefix, suffix)
+    end
 end
 
 function main()
