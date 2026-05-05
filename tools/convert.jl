@@ -64,8 +64,10 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_end(data)
     data = replace_exports(data)
     data = replace_comments(data)
+    data = replace_docstrings(data)
     data = replace_imports_usings(data)
     data = replace_mutable_structs(data)
+    data = replace_structs(data)
     data = replace_types(data)
     data = replace_constructor(data)
     data = replace_function_declaration_dots(data)
@@ -107,6 +109,37 @@ function replace_comments(data::AbstractString)
     return data
 end
 
+# Julia `""" ... """` docstrings → TS block comments. Run after `#` → `//` inside the doc body.
+# Break `*/` in the body so the comment does not end early.
+function replace_docstrings(data::AbstractString)::String
+    s = String(data)
+    delim = "\"\"\""
+    io = IOBuffer()
+    idx = firstindex(s)
+    n = lastindex(s)
+    while idx <= n
+        rg_open = findnext(delim, s, idx)
+        if rg_open === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        lo = first(rg_open)
+        lo > idx && write(io, SubString(s, idx, prevind(s, lo)))
+        inner_start = nextind(s, last(rg_open))
+        rg_close = findnext(delim, s, inner_start)
+        if rg_close === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        inner_end = prevind(s, first(rg_close))
+        body = inner_start <= inner_end ? s[inner_start:inner_end] : ""
+        safe = replace(String(body), "*/" => "* /")
+        write(io, "/*", safe, "*/")
+        idx = nextind(s, last(rg_close))
+    end
+    return String(take!(io))
+end
+
 function replace_imports_usings(data::AbstractString)
     # Comment-out `using` lines; `\1` is the captured match (SubstitutionString).
     data = replace(data, r"(using .*)" => s"// \1")
@@ -120,23 +153,114 @@ function replace_mutable_structs(data::AbstractString)
     return data
 end
 
+function replace_structs(data::AbstractString)
+    # replace the line with struct with empty string
+    data = replace(data, r"struct\s+(\w+)" => s"class \1 {")
+    return data
+end
+
+# `::Union{A, B, Ptr{Nothing}}` → `: unknown` (brace-balanced; `[^}]+` cannot handle nested `{`).
+function replace_union_annotations(data::AbstractString)::String
+    s = String(data)
+    needle = "::Union{"
+    io = IOBuffer()
+    idx = firstindex(s)
+    n = lastindex(s)
+    while idx <= n
+        rg = findnext(needle, s, idx)
+        if rg === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        lo = first(rg)
+        brace_open = last(rg)
+        lo > idx && write(io, SubString(s, idx, prevind(s, lo)))
+        depth = 1
+        p = nextind(s, brace_open)
+        while p <= n && depth > 0
+            c = s[p]
+            if c == '{'
+                depth += 1
+            elseif c == '}'
+                depth -= 1
+            end
+            p = nextind(s, p)
+        end
+        write(io, ": unknown")
+        idx = p
+    end
+    return String(take!(io))
+end
+
+function vector_inner_to_ts(inner::AbstractString, scalar_map::Dict{String,String})::String
+    inner = String(strip(inner))
+    if haskey(scalar_map, inner)
+        return scalar_map[inner] * "[]"
+    end
+    if occursin('.', inner)
+        leaf = String(split(inner, '.')[end])
+        return string(get(scalar_map, leaf, leaf)) * "[]"
+    end
+    return string(get(scalar_map, inner, inner)) * "[]"
+end
+
+# `::Vector{Inner}` → `: ts[]` using scalar_map for bare names and the last segment for `Mod.Type`.
+# Nested `Vector{Vector{Int}}` is not supported (single `[^}]+` capture).
+function replace_vector_annotations(data::AbstractString, scalar_map::Dict{String,String})
+    s = String(data)
+    pat = r"::Vector\{([^}]+)\}"
+    io = IOBuffer()
+    idx = firstindex(s)
+    n = lastindex(s)
+    while idx <= n
+        rg = findnext(pat, s, idx)
+        if rg === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        f = first(rg)
+        f > idx && write(io, SubString(s, idx, prevind(s, f)))
+        m = match(pat, s, f)
+        m === nothing && break
+        inner = m[1]::AbstractString
+        write(io, ": ", vector_inner_to_ts(inner, scalar_map))
+        idx = nextind(s, last(rg))
+    end
+    return String(take!(io))
+end
+
 function replace_types(data::AbstractString)
-    type_map = Dict{String, String}(
+    scalar_map = Dict{String,String}(
         "Int32" => "number",
+        "UInt64" => "number",
+        "UInt32" => "number",
+        "UInt16" => "number",
+        "UInt8" => "number",
+        "Int64" => "number",
+        "Int16" => "number",
+        "Int8" => "number",
+        "Float32" => "number",
         "Float64" => "number",
         "String" => "string",
         "Bool" => "boolean",
-        "Vector{Int32}" => "number[]",
-        "Vector{Float64}" => "number[]",
-        "Vector{String}" => "string[]",
+        "InternalAnimator" => "InternalAnimator",
+        "InternalSprite" => "InternalSprite",
+        "InternalShape" => "InternalShape",
+        "InternalRigidbody" => "InternalRigidbody",
+        "InternalSoundSource" => "InternalSoundSource",
+        "InternalSprite" => "InternalSprite",
+        "InternalShape" => "InternalShape",
+        "InternalRigidbody" => "InternalRigidbody",
+        "InternalSoundSource" => "InternalSoundSource",
         "Int" => "number",
         "Animation" => "JulGameAnimation",
-        # regexes for Vector{*}:
-        "Vector{Math.Vector4}" => "Vector4[]",
+        "Any" => "any",
     )
+    data = replace_union_annotations(data)
+    data = replace_vector_annotations(data, scalar_map)
     # Longer keys first so `::Int` does not chew `::Int32` into `: number` + `32`.
-    for k in sort(collect(keys(type_map)), by = length, rev = true)
-        data = replace(data, "::$k" => ": $(type_map[k])")
+    for k in sort(collect(keys(scalar_map)), by = length, rev = true)
+        data = replace(data, "::$k" => ": $(scalar_map[k])")
     end
     return data
 end
@@ -256,7 +380,7 @@ function remove_ts_function_block(s::String, func::AbstractString)::String
 end
 
 function main()
-    files = [joinpath(REPO_ROOT, "src", "engine", "Component", "Animation.jl")]
+    files = [joinpath(REPO_ROOT, "src", "engine", "Component", "Animator.jl")]
     mkpath(default_out_dir())
     for f in files
         isfile(f) || error("not a file: $f")
