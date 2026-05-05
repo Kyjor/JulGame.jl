@@ -74,6 +74,8 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_component_qualified_calls(data)
     data = replace_function_definitions(data)
     data = replace_if_statements(data)
+    data = replace_first_assignments_with_let(data)
+    data = replace_julia_ts_literals(data)
     data = custom_function_removal(data)
     open(path_ts, "w") do io
         print(io, data)
@@ -140,6 +142,13 @@ function replace_docstrings(data::AbstractString)::String
     return String(take!(io))
 end
 
+function replace_julia_ts_literals(data::AbstractString)
+    data = replace(data, r"\bC_NULL\b" => "null")
+    # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
+    data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
+    return data
+end
+
 function replace_imports_usings(data::AbstractString)
     # Comment-out `using` lines; `\1` is the captured match (SubstitutionString).
     data = replace(data, r"(using .*)" => s"// \1")
@@ -159,8 +168,47 @@ function replace_structs(data::AbstractString)
     return data
 end
 
-# `::Union{A, B, Ptr{Nothing}}` → `: unknown` (brace-balanced; `[^}]+` cannot handle nested `{`).
-function replace_union_annotations(data::AbstractString)::String
+# Split by commas at top level, ignoring commas inside `{...}`.
+function split_top_level_commas(s::AbstractString)::Vector{String}
+    out = String[]
+    part = IOBuffer()
+    depth = 0
+    for c in String(s)
+        if c == '{'
+            depth += 1
+            write(part, c)
+        elseif c == '}'
+            depth -= 1
+            write(part, c)
+        elseif c == ',' && depth == 0
+            push!(out, strip(String(take!(part))))
+        else
+            write(part, c)
+        end
+    end
+    push!(out, strip(String(take!(part))))
+    return out
+end
+
+function scalar_type_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
+    t = String(strip(t))
+    t == "Ptr{Nothing}" && return "null"
+    if startswith(t, "Vector{") && endswith(t, "}")
+        inner = t[nextind(t, firstindex(t), 7):prevind(t, lastindex(t))]
+        return vector_inner_to_ts(inner, scalar_map)
+    end
+    if haskey(scalar_map, t)
+        return scalar_map[t]
+    end
+    if occursin('.', t)
+        leaf = String(split(t, '.')[end])
+        return string(get(scalar_map, leaf, leaf))
+    end
+    return string(get(scalar_map, t, t))
+end
+
+# `::Union{A, B, Ptr{Nothing}}` → `: A | B | null` (brace-balanced).
+function replace_union_annotations(data::AbstractString, scalar_map::Dict{String,String})::String
     s = String(data)
     needle = "::Union{"
     io = IOBuffer()
@@ -186,7 +234,10 @@ function replace_union_annotations(data::AbstractString)::String
             end
             p = nextind(s, p)
         end
-        write(io, ": unknown")
+        union_inner = s[nextind(s, brace_open):prevind(s, prevind(s, p))]
+        members = split_top_level_commas(union_inner)
+        ts_members = map(m -> scalar_type_to_ts(m, scalar_map), members)
+        write(io, ": ", join(ts_members, " | "))
         idx = p
     end
     return String(take!(io))
@@ -256,7 +307,7 @@ function replace_types(data::AbstractString)
         "Animation" => "JulGameAnimation",
         "Any" => "any",
     )
-    data = replace_union_annotations(data)
+    data = replace_union_annotations(data, scalar_map)
     data = replace_vector_annotations(data, scalar_map)
     # Longer keys first so `::Int` does not chew `::Int32` into `: number` + `32`.
     for k in sort(collect(keys(scalar_map)), by = length, rev = true)
@@ -335,6 +386,41 @@ function replace_if_statements(data::AbstractString)
         end,
         '\n',
     )
+end
+
+function replace_first_assignments_with_let(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    seen = Set{String}()
+    pat = r"^(\s*)([A-Za-z_]\w*)\s*=\s*(.+)$"
+    header_pat = r"^\s*(?:function\s+[^\s(]+|constructor)\s*\(([^)]*)\)"
+    out = map(lines) do line
+        hm = match(header_pat, line)
+        if hm !== nothing
+            params = split(String(hm[1]), ',')
+            for p in params
+                pm = match(r"^\s*([A-Za-z_]\w*)", p)
+                pm === nothing && continue
+                push!(seen, String(pm[1]))
+            end
+            return line
+        end
+        m = match(pat, line)
+        m === nothing && return line
+        indent = String(m[1])
+        name = String(m[2])
+        rhs = String(m[3])
+        # Skip obvious non-declarations / already-TS declarations.
+        startswith(rhs, "=") && return line  # `==`, `===`
+        startswith(rhs, ">") && return line  # `=>`
+        startswith(rhs, "<") && return line  # `=<` / malformed cases
+        startswith(name, "this") && return line
+        if name in seen
+            return line
+        end
+        push!(seen, name)
+        return string(indent, "let ", name, " = ", rhs)
+    end
+    return join(out, '\n')
 end
 
 function custom_function_removal(data::AbstractString)
