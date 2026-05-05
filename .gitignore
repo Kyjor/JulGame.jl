@@ -50,3 +50,5 @@ src/editor/Build/
 *.so
 
 _generated/
+
+*.zip
