@@ -71,6 +71,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_function_declaration_dots(data)
     data = replace_component_qualified_calls(data)
     data = replace_function_definitions(data)
+    data = replace_if_statements(data)
     data = custom_function_removal(data)
     open(path_ts, "w") do io
         print(io, data)
@@ -194,6 +195,22 @@ function replace_function_definitions(data::AbstractString)
     # Name is `[^\s(]+`; `constructor(...)` is unchanged.
     data = replace(data, r"(?m)^(\s*function\s+[^\s(]+\([^)]*\))\s*$" => s"\1 {")
     return data
+end
+
+function replace_if_statements(data::AbstractString)
+    # Julia: `if cond` then newline — TS: `if (cond) {`. Single-line condition only; else/elseif later.
+    s = String(data)
+    lines = split(s, '\n'; keepempty = true)
+    done_line = r"^\s*if\s*\([^)]*\)\s*\{\s*$"
+    pat = r"^(\s*)if\b\s+(.+)$"
+    return join(
+        map(lines) do line
+            occursin(done_line, line) && return line
+            m = match(pat, line)
+            m === nothing ? line : string(m[1], "if (", strip(m[2]), ") {")
+        end,
+        '\n',
+    )
 end
 
 function custom_function_removal(data::AbstractString)
