@@ -1,35 +1,38 @@
-const width = 800;
-const height = 600;
+import { Engine } from "./src/engine/core/Engine";
+import { BrowserPlatform } from "./src/platform/web/BrowserPlatform";
+import { SDLPlatform } from "./src/platform/sdl-wasm";
+import { createGameMain } from "./src/game/GameMain";
 
-document.title = "JulGame Web Test";
-
-const canvas = document.createElement("canvas");
-canvas.width = width;
-canvas.height = height;
-canvas.style.display = "block";
-canvas.style.margin = "0 auto";
-document.body.style.margin = "0";
-document.body.style.background = "#0f172a";
-document.body.appendChild(canvas);
-
-function getContext2DOrThrow(target: HTMLCanvasElement): CanvasRenderingContext2D {
-    const ctx = target.getContext("2d");
-    if (!ctx) throw new Error("Failed to acquire 2D context");
-    return ctx;
+function getRequiredElement<T extends Element>(id: string, ctor: { new (): T }): T {
+    const el = document.getElementById(id);
+    if (!(el instanceof ctor)) {
+        throw new Error(`Missing #${id}`);
+    }
+    return el;
 }
 
-const context = getContext2DOrThrow(canvas);
+async function boot() {
+    const canvas = getRequiredElement("canvas", HTMLCanvasElement);
+    const status = getRequiredElement("status", HTMLElement);
+    const url = new URL(window.location.href);
+    const useSDL = url.searchParams.get("backend") !== "web";
 
-let t = 0;
-function frame() {
-    t += 0.016;
-    const r = Math.floor(40 + Math.sin(t) * 20);
-    const g = Math.floor(80 + Math.sin(t * 1.7) * 30);
-    const b = Math.floor(130 + Math.sin(t * 1.2) * 25);
-    context.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    context.fillRect(0, 0, width, height);
-    requestAnimationFrame(frame);
+    if (useSDL) {
+        const platform = new SDLPlatform(canvas, status);
+        await platform.init();
+        return;
+    }
+
+    const platform = new BrowserPlatform(canvas, status);
+    const engine = new Engine(platform, createGameMain());
+    await engine.start();
 }
 
-requestAnimationFrame(frame);
+boot().catch((err: unknown) => {
+    console.error(err);
+    const status = document.getElementById("status");
+    if (status) {
+        status.textContent = `Boot failed: ${String(err)}`;
+    }
+});
 

@@ -1,0 +1,1 @@
+export { SDLPlatform } from "./SDLPlatform";
