@@ -7,7 +7,7 @@
 
 const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
 
-default_out_dir() = joinpath(REPO_ROOT, "_generated")
+default_out_dir() = joinpath(REPO_ROOT, "ts", "_generated")
 
 """
     ts_output_path(jl_path; repo_root, generated_dir)
@@ -32,8 +32,8 @@ function ts_output_path(
     end
     rel_dir, rel_file = splitdir(rel)
     stem = splitext(rel_file)[1]
-    isempty(rel_dir) && return joinpath(abs_root, generated_dir, stem * ".ts")
-    joinpath(abs_root, generated_dir, rel_dir, stem * ".ts")
+    isempty(rel_dir) && return joinpath(abs_root, "ts", generated_dir, stem * ".ts")
+    joinpath(abs_root, "ts", generated_dir, rel_dir, stem * ".ts")
 end
 
 function emit_stub(path_ts::AbstractString, path_jl::AbstractString)
