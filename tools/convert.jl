@@ -65,7 +65,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_exports(data)
     data = replace_comments(data)
     data = replace_docstrings(data)
-    data = replace_imports_usings(data)
+    data = replace_imports_usings_includes(data)
     data = replace_mutable_structs(data)
     data = replace_structs(data)
     data = replace_types(data)
@@ -77,6 +77,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
     data = custom_function_removal(data)
+    data = remove_!_from_function_names(data)
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -146,10 +147,16 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
     # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
     data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
+    # error with string literal
+    data = replace(data, r"@error\s+\"([^\"]*)\"" => s"console.error(\"\1\")")
+    # debug with string literal
+    data = replace(data, r"@debug\s+\"([^\"]*)\"" => s"console.debug(\"\1\")")
+    # info with string literal
+    data = replace(data, r"@info\s+\"([^\"]*)\"" => s"console.info(\"\1\")")
     return data
 end
 
-function replace_imports_usings(data::AbstractString)
+function replace_imports_usings_includes(data::AbstractString)
     # Comment-out `using` lines; `\1` is the captured match (SubstitutionString).
     data = replace(data, r"(using .*)" => s"// \1")
     data = replace(data, r"(import .*)" => s"// \1")
@@ -428,6 +435,9 @@ function custom_function_removal(data::AbstractString)
         "Component_update_array_value",
         "Component_append_array",
         "Component_get_type",
+
+        # MainLoop
+        
     ]
     s = String(data)
     for func in functions_to_remove
@@ -465,8 +475,12 @@ function remove_ts_function_block(s::String, func::AbstractString)::String
     end
 end
 
+function remove_!_from_function_names(data::AbstractString)
+    return replace(data, "!(" => "(")
+end
+
 function main()
-    files = [joinpath(REPO_ROOT, "src", "engine", "Component", "Animator.jl")]
+    files = [joinpath(REPO_ROOT, "src", "MainLoop.jl")]#, "Component", "Animator.jl")]
     mkpath(default_out_dir())
     for f in files
         isfile(f) || error("not a file: $f")
