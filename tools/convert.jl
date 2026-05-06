@@ -341,7 +341,8 @@ function replace_constructor(data::AbstractString)
     data = replace(data, r"(?m)^(\s*constructor\([^)]*\))\s*$" => s"\1 {")
 
     data = replace(data, "this = new()" => "")
-    data = replace(data, "return this" => "")
+    # Only the ctor idiom `return this` on its own line — not `return this.foo`.
+    data = replace(data, r"(?m)^\s*return this\s*$" => "")
     return data
 end
 

@@ -116,36 +116,6 @@ module MainLoopModule
 	end
 
 	"""
-		get_input_layer_order(this::MainLoop)
-	
-	Get the cached input layer order, rebuilding if dirty.
-	This avoids sorting on every mouse event - only rebuilds when layers change.
-	"""
-	function get_input_layer_order(this::MainLoop)
-		n_ent_with_sprite = 0
-		for e in this.scene.entities
-			if e.sprite !== nothing && e.sprite !== C_NULL
-				n_ent_with_sprite += 1
-			end
-		end
-		expected_len = length(this.scene.uiElements) + n_ent_with_sprite
-		if this.inputLayerOrderDirty || length(this.cachedInputLayerOrder) != expected_len
-			empty!(this.cachedInputLayerOrder)
-			ui_sorted = sort(this.scene.uiElements, by = el -> el.layer, rev = true)
-			for el in ui_sorted
-				push!(this.cachedInputLayerOrder, el)
-			end
-			entitiesWithSprites = filter(e -> e.sprite !== nothing && e.sprite !== C_NULL, this.scene.entities)
-			sort!(entitiesWithSprites, by = e -> e.sprite.layer, rev = true)
-			for e in entitiesWithSprites
-				push!(this.cachedInputLayerOrder, e)
-			end
-			this.inputLayerOrderDirty = false
-		end
-		return this.cachedInputLayerOrder
-	end
-	
-	"""
 		mark_input_layer_order_dirty!(this::MainLoop)
 	
 	Mark the input layer order cache as dirty, forcing a rebuild on next access.
