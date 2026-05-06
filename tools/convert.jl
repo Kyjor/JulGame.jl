@@ -74,9 +74,11 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_component_qualified_calls(data)
     data = replace_function_definitions(data)
     data = replace_if_statements(data)
+    data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
     data = custom_function_removal(data)
+    data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
     open(path_ts, "w") do io
         print(io, data)
@@ -379,6 +381,18 @@ function replace_function_definitions(data::AbstractString)
     return data
 end
 
+# `for x in xs` → `for (const x of xs) {` (line-wise; body closing stays `}` from Julia `end`).
+function replace_for_in_loops(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    pat = r"^(\s*)for\s+([A-Za-z_]\w*)\s+in\s+(.+)$"
+    out = map(lines) do line
+        m = match(pat, line)
+        m === nothing && return line
+        string(m[1], "for (const ", m[2], " of ", strip(String(m[3])), ") {")
+    end
+    return join(out, '\n')
+end
+
 function replace_if_statements(data::AbstractString)
     # Julia: `if cond` then newline — TS: `if (cond) {`. Single-line condition only; else/elseif later.
     s = String(data)
@@ -473,6 +487,161 @@ function remove_ts_function_block(s::String, func::AbstractString)::String
         suffix = p <= n ? s[p:n] : ""
         s = string(prefix, suffix)
     end
+end
+
+# `push!(collection, item)` → `collection.push(item)` (balanced parens/brackets; skips `"..."` segments).
+function replace_push_calls(data::AbstractString)::String
+    s = String(data)
+    needle = "push!("
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        res = _parse_push_two_args(s, inner_start, n)
+        if res === nothing
+            close_idx = _find_outer_push_close(s, inner_start, n)
+            if close_idx === nothing
+                write(buf, SubString(s, lo:n))
+                break
+            end
+            write(buf, SubString(s, lo:close_idx))
+            seg_start = nextind(s, close_idx)
+            continue
+        end
+        arg1, arg2, close_idx = res
+        write(buf, strip(String(arg1)), ".push(", strip(String(arg2)), ")")
+        seg_start = nextind(s, close_idx)
+    end
+    return String(take!(buf))
+end
+
+function _find_outer_push_close(s::String, inner_start::Int, n::Int)::Union{Nothing, Int}
+    i = inner_start
+    paren = 1
+    bracket = 0
+    brace = 0
+    while i <= n
+        c = s[i]
+        if c == '"'
+            i = _skip_double_quoted_string(s, i, n)
+            i > n && return nothing
+            i = nextind(s, i)
+            continue
+        end
+        if c == '('
+            paren += 1
+        elseif c == ')'
+            paren -= 1
+            if paren == 0
+                return i
+            end
+        elseif c == '['
+            bracket += 1
+        elseif c == ']'
+            bracket -= 1
+        elseif c == '{'
+            brace += 1
+        elseif c == '}'
+            brace -= 1
+        end
+        i = nextind(s, i)
+    end
+    return nothing
+end
+
+function _skip_double_quoted_string(s::String, open_quote_at::Int, n::Int)::Int
+    i = nextind(s, open_quote_at)
+    while i <= n
+        c = s[i]
+        if c == '\\'
+            i = nextind(s, i)
+            i = nextind(s, i)
+            continue
+        end
+        if c == '"'
+            return i
+        end
+        i = nextind(s, i)
+    end
+    return i
+end
+
+function _parse_push_two_args(s::String, inner_start::Int, n::Int)::Union{Nothing, Tuple{SubString{String}, SubString{String}, Int}}
+    i = inner_start
+    paren = 1
+    bracket = 0
+    brace = 0
+    arg1_lo = i
+    split_at = nothing
+    while i <= n
+        c = s[i]
+        if c == '"'
+            i = _skip_double_quoted_string(s, i, n)
+            i > n && return nothing
+            i = nextind(s, i)
+            continue
+        end
+        if c == '('
+            paren += 1
+        elseif c == ')'
+            paren -= 1
+            if paren == 0
+                return nothing
+            end
+        elseif c == '['
+            bracket += 1
+        elseif c == ']'
+            bracket -= 1
+        elseif c == '{'
+            brace += 1
+        elseif c == '}'
+            brace -= 1
+        elseif c == ',' && paren == 1 && bracket == 0 && brace == 0
+            split_at = i
+            break
+        end
+        i = nextind(s, i)
+    end
+    split_at === nothing && return nothing
+    arg1 = SubString(s, arg1_lo, prevind(s, split_at))
+    i = nextind(s, split_at)
+    arg2_lo = i
+    while i <= n
+        c = s[i]
+        if c == '"'
+            i = _skip_double_quoted_string(s, i, n)
+            i > n && return nothing
+            i = nextind(s, i)
+            continue
+        end
+        if c == '('
+            paren += 1
+        elseif c == ')'
+            paren -= 1
+            if paren == 0
+                arg2 = SubString(s, arg2_lo, prevind(s, i))
+                return (arg1, arg2, i)
+            end
+        elseif c == '['
+            bracket += 1
+        elseif c == ']'
+            bracket -= 1
+        elseif c == '{'
+            brace += 1
+        elseif c == '}'
+            brace -= 1
+        end
+        i = nextind(s, i)
+    end
+    return nothing
 end
 
 function remove_!_from_function_names(data::AbstractString)
