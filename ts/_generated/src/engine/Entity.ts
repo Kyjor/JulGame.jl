@@ -115,7 +115,7 @@
         return this.animator
     }
 
-    function JulGame.add_collider(this: Entity,  collider: Collider = Collider(true,  false,  false,  Vector2f(0, 0), Vector2f(1,1), "Default"))
+    function JulGame.add_collider(this: Entity,  collider: Collider = Collider(true,  false,  false,  {x: 0, y: 0}, {x: 1, y: 1}, "Default"))
         if (this.collider != null || this.circleCollider != null) {
             println("Collider already exists on entity named ", this.name)
             return
@@ -126,7 +126,7 @@
         return this.collider
     }
 
-    function JulGame.add_circle_collider(this: Entity,  collider: CircleCollider = CircleCollider(1.0,  true,  false,  Vector2f(0, 0), "Default"))
+    function JulGame.add_circle_collider(this: Entity,  collider: CircleCollider = CircleCollider(1.0,  true,  false,  {x: 0, y: 0}, "Default"))
         if (this.collider != null || this.circleCollider != null) {
             println("Collider already exists on entity named ", this.name)
             return
@@ -164,7 +164,7 @@
         return newSoundSource
     }
 
-    function JulGame.add_sprite(this: Entity,  isCreatedInEditor: boolean = false,  sprite: Sprite = Sprite((255,  255,  255,  255), null, false, "", 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center, false))
+    function JulGame.add_sprite(this: Entity,  isCreatedInEditor: boolean = false,  sprite: Sprite = Sprite((255,  255,  255,  255), null, false, "", 0, {x: 0, y: 0}, {x: 0, y: 0}, 0, -1, {x: 0.5, y: 0.5}, :center, false))
         if (this.sprite != null) {
             println("Sprite already exists on entity named ", this.name)
             return
@@ -179,7 +179,7 @@
         return this.sprite
     }
 
-    function JulGame.add_shape(this: Entity,  shape: Shape = Shape(Math.Vector3(255, 0, 0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255))
+    function JulGame.add_shape(this: Entity,  shape: Shape = Shape(Math.Vector3(255, 0, 0), true, true, 0, {x: 0, y: 0}, {x: 0, y: 0}, {x: 1, y: 1}, 255))
         if (this.shape != null) {
             println("Shape already exists on entity named ", this.name)
             return

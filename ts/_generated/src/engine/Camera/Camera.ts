@@ -22,10 +22,10 @@
             
             this.id = JulGame.generate_uuid()
             this.name = "Camera"
-            this.backgroundColor = (0,0,0, 255)
+            this.backgroundColor = [0,0,0, 255]
             this.size = size
             this.position = initialPosition
-            this.offset = Vector2f(offset.x, offset.y)
+            this.offset = {x: offset.x, y: offset.y}
             this.target = target
             this.windowPos = Vector2(0,0)
             this.zoom = 1.0
@@ -36,7 +36,7 @@
     }
 
     /*Pixels per world unit for 2D rendering (SCALE_UNITS × camera zoom).*/
-    @inline function pixels_per_world_unit(camera: Nothing | Camera)
+    function pixels_per_world_unit(camera: Nothing | Camera) {
         camera === nothing && return JulGame.SCALE_UNITS
         return JulGame.SCALE_UNITS * camera.zoom
     }
@@ -77,7 +77,7 @@
         SDL2.SDL_RenderFillRectF(Renderer, Ref(SDL2.SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
         SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         
-        let center_pixels = Vector2f(this.size.x / 2, this.size.y / 2)
+        let center_pixels = {x: this.size.x / 2, y: this.size.y / 2}
         let center_world = center_pixels / pixels_per_world_unit(this)
 
         if (this.target !== nothing && this.target !== null && newPosition === nothing) {

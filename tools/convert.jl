@@ -154,6 +154,11 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
     data = replace(data, r"\bfloor\(" => "Math.floor(")
+    # Julia tuple literals in value position: `(a, b, c)` -> `[a, b, c]`.
+    data = replace(data, r"=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s"= [\1]")
+    data = replace(data, r":\s*([A-Za-z_]\w*)\s*=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s": \1 = [\2]")
+    # Vector2f constructor calls -> plain object literals for TS compatibility.
+    data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2f\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
     # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
     data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
     # error with string literal
@@ -470,6 +475,7 @@ function replace_component_qualified_calls(data::AbstractString)
 end
 
 function replace_function_definitions(data::AbstractString)
+    data = replace(data, r"@inline\s+" => "")
     # Julia: `function qual_name(args)` then newline — no `{`. TS needs `{` on the same line.
     # Name is `[^\s(]+`; `constructor(...)` is unchanged.
     data = replace(data, r"(?m)^(\s*function\s+[^\s(]+\([^)]*\))\s*$" => s"\1 {")

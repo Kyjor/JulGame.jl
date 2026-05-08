@@ -56,15 +56,15 @@
             imagePath: String,
             crop: null | Vector4=null, 
             isFlipped: boolean=false, 
-            color::NTuple{4, Int} = (255,255,255,255), 
+            color::NTuple{4, Int} = [255,255,255,255], 
             isCreatedInEditor: boolean=false; 
             pixelsPerUnit: number=0, 
-            position::Math.Vector2f = Math.Vector2f(0,0), 
+            position::Math.Vector2f = {x: 0, y: 0}, 
             rotation: number = 0.0, 
             layer: number = 0, 
-            center::Math.Vector2f = Math.Vector2f(0.5,0.5), 
+            center::Math.Vector2f = {x: 0.5, y: 0.5}, 
             anchor::Symbol = :center, 
-            offset::Math.Vector2f = Math.Vector2f(0,0), 
+            offset::Math.Vector2f = {x: 0, y: 0}, 
             isStatic: boolean = false
         )
             
@@ -396,7 +396,7 @@
                     this.effectSize = Math.Vector2(w[], h[])
                     
                     // Cache the result for other sprites with same visuals
-                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = (this.effectTexture, this.effectSize)
+                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = [this.effectTexture, this.effectSize]
                     console.debug("Cached sprite effect texture") path=this.imagePath key=this.effectCacheKey
                 }
                 this.needsEffectUpdate = false

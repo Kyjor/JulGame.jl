@@ -65,7 +65,7 @@
             hoverExitEvents: Function[] = Function[],
             isActive: boolean=true,
             persistentBetweenScenes: boolean=false,
-            color::NTuple{4, Int}=(255, 255, 255, 255), 
+            color::NTuple{4, Int}= [255, 255, 255, 255], 
             fontPath: string = "FiraCode-Regular.ttf", 
             fontSize: number = 16, 
             maxLineWidth: number=0, 
@@ -161,7 +161,7 @@
             console.debug("No texture to render") name=this.name
             return  // No texture to render
         }
-        console.debug("Rendering texture") name=this.name ptr=texture_to_render size=(this.size.x,this.size.y) position=(this.position.x,this.position.y)
+        console.debug("Rendering texture") name=this.name ptr=texture_to_render size= [this.size.x,this.size.y] position= [this.position.x,this.position.y]
         if (!this.isWorldEntity) {
             UI.align_to_anchor(this)
         }
@@ -439,7 +439,7 @@
     }
 
     function UI.set_color(this: TextBox; r: number=255,  g: number=255,  b: number=255,  a: number=255) {
-        this.color = (r%256, g%256, b%256, a%256)
+        this.color = [r%256, g%256, b%256, a%256]
         // Invalidate effects cache when color changes
         if (!isempty(this.effects)) {
             this.needsEffectUpdate = true

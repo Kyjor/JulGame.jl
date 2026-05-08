@@ -20,7 +20,10 @@ declare global {
   interface IObserver {}
   interface IHistory {}
   interface ICanvas extends IUIElement {}
-  const JulGame: any;
+  const JulGame: {
+    SCALE_UNITS: number;
+    [key: string]: any;
+  };
   const MAIN: any;
   const C_NULL: null;
   const Renderer: any;

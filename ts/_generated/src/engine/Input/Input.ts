@@ -64,7 +64,7 @@
             this.elementsBeingClickedDownOn = []
             this.mousePosition = Math.Vector2(0,0)
             this.mousePositionEditorGameWindowOffset = Math.Vector2(0,0)
-            this.mousePositionWorld = Math.Vector2f(0,0)
+            this.mousePositionWorld = {x: 0, y: 0}
             this.quit = false
             this.scanCodes = []
             this.scanCodeStrings = String[]
@@ -188,13 +188,13 @@
         return
     }
 
-    @inline function _input_latency_profiler()
+    function _input_latency_profiler() {
         let m = JulGame.MAIN
         (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
         return m.latencyProfiler
     }
 
-    @inline function _input_poll_accumulate(prof, t0::Ref{UInt64}, key::Symbol)
+    function _input_poll_accumulate(prof, t0::Ref{UInt64}, key::Symbol) {
         prof === nothing && return
         let dt = (time_ns() - t0[]) / 1e6
         JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
@@ -351,7 +351,7 @@
                     _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_preamble)
                     let t_ui_wall = time_ns()
                     let t_hit = Ref(time_ns())
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = MAIN.scene.uiElements.length)
+                    _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = [this.mousePosition.x, this.mousePosition.y], n_ui = MAIN.scene.uiElements.length)
                     if (MAIN.scene.camera === nothing) {
                         _input_ui_hit_step(prof, t_hit, :hit_ui_abort_camera)
                         @warn ("Camera is not set in the main scene.")

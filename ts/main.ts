@@ -1,3 +1,4 @@
+import "./src/engine/core/globalConstants";
 import { Engine } from "./src/engine/core/Engine";
 import { BrowserPlatform } from "./src/platform/web/BrowserPlatform";
 import { SDLPlatform } from "./src/platform/sdl-wasm";

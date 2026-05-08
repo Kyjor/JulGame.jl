@@ -135,7 +135,7 @@
 	
 	Call script initialization method. Tracks first call for profiling/debugging.
 	*/
-	@inline function call_script_initialize(this::MainLoop, script)
+	function call_script_initialize(this::MainLoop, script) {
 		let script_type = typeof(script)
 		
 		if ((script_type in this.knownScriptTypes)) {
@@ -154,7 +154,7 @@
 	Call script update method with optional per-script profiling.
 	When profiling is enabled, tracks execution time per script type.
 	*/
-	@inline function call_script_update(this::MainLoop, script, deltaTime: number, profile: boolean=false)
+	function call_script_update(this::MainLoop, script, deltaTime: number, profile: boolean=false) {
 		script_type = typeof(script)
 		
 		if ((script_type in this.knownScriptTypes)) {
@@ -188,7 +188,7 @@
 	
 	Call script shutdown/cleanup method.
 	*/
-	@inline function call_script_shutdown(this::MainLoop, script)
+	function call_script_shutdown(this::MainLoop, script) {
 		script_type = typeof(script)
 		
 		if ((script_type in this.knownScriptTypes)) {
@@ -728,7 +728,7 @@ Parameters:
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 */
-@inline function _accum_ui_render_breakdown_ms(prof, t0::Ref{UInt64}, key::Symbol)
+function _accum_ui_render_breakdown_ms(prof, t0::Ref{UInt64}, key::Symbol) {
 	prof === nothing && return
 	let t1 = time_ns()
 	JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0[]) / 1e6)
@@ -780,7 +780,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			}
 
 			DEBUG = this.input.debug
-			cameraPosition = this.scene.camera !== nothing ? (this.scene.camera.position + this.scene.camera.offset) : Math.Vector2f(0,0)
+			cameraPosition = this.scene.camera !== nothing ? (this.scene.camera.position + this.scene.camera.offset) : {x: 0, y: 0}
 			let cameraSize = this.scene.camera !== nothing ? this.scene.camera.size : Math.Vector2(0,0)
 
 			let x = 0
@@ -1005,7 +1005,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
 			let S_mouse = JulGame.pixels_per_world_unit(this.scene.camera)
 			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse)
-			let rawMousePos = Math.Vector2f(this.input.mousePosition.x - pos1.x , this.input.mousePosition.y - pos1.y)
+			let rawMousePos = {x: this.input.mousePosition.x - pos1.x , y: this.input.mousePosition.y - pos1.y}
 			//region Debug
 			if (JulGame.IS_DEBUG) {
 				// Stats to display
@@ -1019,7 +1019,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 				// Draw a gray rect under the debug textboxes
 				let rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
 				SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
-				let currentColor = (r = rgba.r[], g = rgba.g[], b = rgba.b[], a = rgba.a[])
+				let currentColor = [r = rgba.r[], g = rgba.g[], b = rgba.b[], a = rgba.a[]]
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 100, 100, 100, 255)
 				SDL2.SDL_RenderFillRect(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(0, 35, 400, 35 * statTexts.length)))
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, currentColor[1], currentColor[2], currentColor[3], currentColor[4])
@@ -1072,7 +1072,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
     }
 
 	function render_scene_sprites_and_shapes(this: MainLoop,  camera: Camera) {
-		cameraPosition = camera !== nothing ? camera.position : Math.Vector2f(0,0)
+		cameraPosition = camera !== nothing ? camera.position : {x: 0, y: 0}
 		cameraSize = camera !== nothing ? camera.size : Math.Vector2(0,0)
 		let S = JulGame.pixels_per_world_unit(camera)
 			
@@ -1235,9 +1235,9 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 	
 				
 				let colSize = collider.size
-				colSize = Math.Vector2f(colSize.x, colSize.y)
+				colSize = {x: colSize.x, y: colSize.y}
 				let colOffset = collider.offset
-				colOffset = Math.Vector2f(colOffset.x, colOffset.y)
+				colOffset = {x: colOffset.x, y: colOffset.y}
 						
 				SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
 				Ref(SDL2.SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
