@@ -1,3 +1,4 @@
+export {}
 
     // using ..Component.JulGame
     // import ..Component
@@ -26,19 +27,19 @@
         constructor(parent: any,  path: string,  channel: number = -1,  volume: number = -1,  isMusic: boolean = false,  playOnStart: boolean = false) {
             
 
-            SDL2.SDL_ClearError()
+            (globalThis as any).JulGameSdl.glue_SDL_ClearError()
             let fullPath = joinpath(BasePath, "assets", "sounds", path)
             if (path.length < 1) {
                 let sound = null    
             else
                 sound = load_sound_sdl(path, isMusic)
             }
-            let error = unsafe_string(SDL2.SDL_GetError())
+            let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
 
             if ((sound == null || !isempty(error)) && path.length > 0) {
-                println(fullPath)
+                console.log(fullPath)
                 error("Error loading file at $path. SDL Error: $(error)")
-                SDL2.SDL_ClearError()
+                (globalThis as any).JulGameSdl.glue_SDL_ClearError()
             }
             
             // Convert channel and volume to Int32
@@ -56,13 +57,13 @@
         }
     }
 
-    function Component_toggle_sound(this: InternalSoundSource | Nothing,  loops = 0) {
-        if (this === nothing) {
-            console.warn("toggle_sound: SoundSource is nothing")
+    function Component_toggle_sound(this: InternalSoundSource | null,  loops = 0) {
+        if (this === null) {
+            console.warn("toggle_sound: SoundSource is null")
             return
         }
-        @debug("toggle_sound: Toggling sound from $(this.path), isMusic: $(this.isMusic), loops: $(loops)")
-        try
+        console.debug("toggle_sound: Toggling sound from $(this.path), isMusic: $(this.isMusic), loops: $(loops)")
+        try {
             if (this.isMusic) {
                 if (SDL2.Mix_PlayingMusic() == 0) {
                     SDL2.Mix_PlayMusic( this.sound, -1 )
@@ -78,29 +79,29 @@
                 }
             else
                 if (SDL2.Mix_PlayChannel(this.channel, this.sound, loops) == -1) {
-                    console.error("toggle_sound: Error playing channel $(unsafe_string(SDL2.SDL_GetError()))")
+                    console.error("toggle_sound: Error playing channel $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
                     throw(e)
                 }
             }
-        catch e
+        } catch (e) {
             console.error("toggle_sound: Error in toggle_sound") exception=(e, catch_backtrace())
         }
     }
     
     function Component_stop_music(this: InternalSoundSource) {
-        @debug("stop_music: Stopping music from $(this.path)")
+        console.debug("stop_music: Stopping music from $(this.path)")
         SDL2.Mix_HaltMusic()
     }
 
     function Component_load_sound(this: InternalSoundSource,  soundPath: string,  isMusic: boolean) {
-        @debug("load_sound: Loading sound from $(soundPath), isMusic: $(isMusic)")
+        console.debug("load_sound: Loading sound from $(soundPath), isMusic: $(isMusic)")
         this.isMusic = isMusic
-        SDL2.SDL_ClearError()
+        (globalThis as any).JulGameSdl.glue_SDL_ClearError()
         this.sound = load_sound_sdl(soundPath, isMusic)
-        error = unsafe_string(SDL2.SDL_GetError())
+        error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
         if (!isempty(error)) {
-            println(string("Couldn't open sound! SDL Error: ", error))
-            SDL2.SDL_ClearError()
+            console.log(string("Couldn't open sound! SDL Error: ", error))
+            (globalThis as any).JulGameSdl.glue_SDL_ClearError()
             this.sound = null
             return
         }
@@ -108,17 +109,17 @@
     }
 
     function load_sound_sdl(soundPath: string,  isMusic: boolean) {
-        @debug("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
-        if (haskey(JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))) {
-            let raw_data = JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
+        console.debug("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
+        if (haskey((globalThis as any).JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))) {
+            let raw_data = (globalThis as any).JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
+            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
-                @debug("loading sound from cache")
-                @debug("comma separated path: ", get_comma_separated_path(soundPath))
+                console.debug("loading sound from cache")
+                console.debug("comma separated path: ", get_comma_separated_path(soundPath))
                 return isMusic ? SDL2.Mix_LoadMUS_RW(rw, 1) : SDL2.Mix_LoadWAV_RW(rw, 1)
             }
         }
-        console.debug("load_sound_sdl: Loading sound from disk, there are $(JulGame.AUDIO_CACHE.length) sounds in cache")
+        console.debug("load_sound_sdl: Loading sound from disk, there are $((globalThis as any).JulGame.AUDIO_CACHE.length) sounds in cache")
 
         fullPath = joinpath(BasePath, "assets", "sounds", soundPath)
         return isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
@@ -137,7 +138,7 @@
     }
 
     function Component_unload_sound(this: InternalSoundSource) {
-        @debug("unload_sound: Unloading sound from $(this.path), isMusic: $(this.isMusic)")
+        console.debug("unload_sound: Unloading sound from $(this.path), isMusic: $(this.isMusic)")
         if (this.isMusic) {
             SDL2.Mix_FreeMusic(this.sound)
         else
@@ -147,7 +148,7 @@
     }
 
     function Component_set_volume(this: InternalSoundSource,  volume: number = 128,  channel: number = -1) {
-        @debug("set_volume: Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(volume), channel: $(channel)")
+        console.debug("set_volume: Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(volume), channel: $(channel)")
         // Convert volume to Int32 for SDL
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
@@ -159,7 +160,7 @@
         // Convert loops to Int32
         loops = loops
         
-        @debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
+        console.debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
         if (this.isMusic) {
             SDL2.Mix_PlayMusic(this.sound, -1)
         else
@@ -169,13 +170,13 @@
 
     function set_master_volume(volume: number) {
         // Convert volume to Int32 and clamp between 0 and 128
-        @debug("set_master_volume: Setting master volume to $(volume)")
+        console.debug("set_master_volume: Setting master volume to $(volume)")
         volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
         SDL2.Mix_MasterVolume(volume)
     }
 
     function Component_duplicate(this: InternalSoundSource,  parent: any) {
-        @debug("duplicate: Duplicating sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), volume: $(this.volume), playOnStart: $(this.playOnStart)")
+        console.debug("duplicate: Duplicating sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), volume: $(this.volume), playOnStart: $(this.playOnStart)")
         let newSoundSource = InternalSoundSource(parent, this.path, this.channel, this.volume, this.isMusic, this.playOnStart)
         newSoundSource.isPlaying = this.isPlaying
         return newSoundSource

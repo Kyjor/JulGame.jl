@@ -61,3 +61,28 @@ int glue_poll_quit(void) {
     }
     return 0;
 }
+
+EMSCRIPTEN_KEEPALIVE
+void glue_SDL_SetRenderDrawBlendMode_BLEND(void) {
+    if (renderer == NULL) {
+        return;
+    }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_SDL_SetRenderDrawColor(int r, int g, int b, int a) {
+    if (renderer == NULL) {
+        return;
+    }
+    SDL_SetRenderDrawColor(renderer, (Uint8)r, (Uint8)g, (Uint8)b, (Uint8)a);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_SDL_RenderFillRectF(float x, float y, float w, float h) {
+    if (renderer == NULL) {
+        return;
+    }
+    SDL_FRect rect = {x, y, w, h};
+    SDL_RenderFillRectF(renderer, &rect);
+}

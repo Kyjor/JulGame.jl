@@ -1,3 +1,4 @@
+export {}
 
     // using ..Component.JulGame
     // import ..Component

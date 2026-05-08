@@ -77,10 +77,13 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
+    data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
     data = custom_function_removal(data)
     data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
+    data = replace_setfield_calls(data)
+    data = "export {}\n" * data
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -148,26 +151,121 @@ end
 
 function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
+    data = replace(data, r"\bnothing\b" => "null")
+    data = replace(data, r"\bNothing\b" => "null")
+    data = replace(data, ": null | Transform" => ": null | ITransform")
+    # Drop leftover Julia type assertions in expressions, e.g. `x::Ptr{...}`.
+    data = replace(data, r"::[A-Za-z_][A-Za-z0-9_\.]*(?:\{[^}]*\})?" => "")
     # Drop redundant int32 conversion helper in generated TS.
     data = replace(data, r"Math\.TypeConversions\.safe_int32_convert\(([^()]*)\)" => s"\1")
     # Julia `length(x)` -> TS `x.length` for simple non-nested args.
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
     data = replace(data, r"\bfloor\(" => "Math.floor(")
+    # Numeric helpers.
+    data = replace(data, r"\bFloat64\(" => "Number(")
+    data = replace(data, r"\binv\(([^()]+)\)" => s"(1 / (\1))")
     # Julia tuple literals in value position: `(a, b, c)` -> `[a, b, c]`.
     data = replace(data, r"=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s"= [\1]")
     data = replace(data, r":\s*([A-Za-z_]\w*)\s*=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s": \1 = [\2]")
     # Vector2f constructor calls -> plain object literals for TS compatibility.
     data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2f\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
+    data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
+    data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector3f\(\s*([^,()]+)\s*,\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2, z: \3}")
+    # `a && return b` is valid Julia shorthand; TS needs an explicit if.
+    data = replace(data, r"(?m)^(\s*)(.+?)\s*&&\s*return\s+(.+)$" => s"\1if (\2) { return \3 }")
+    # Julia try/catch forms.
+    data = replace(data, r"(?m)^(\s*)try\s*$" => s"\1try {")
+    data = replace(data, r"(?m)^(\s*)catch\s+([A-Za-z_]\w*)\s*$" => s"\1} catch (\2) {")
+    # Local typed assignment `x::T = ...` -> `let x = ...`.
+    data = replace(data, r"(?m)^(\s*)([A-Za-z_]\w*)::[^\s=]+\s*=\s*(.+)$" => s"\1let \2 = \3")
+    # Ref cell reads in Julia (`x[]`) become plain property/value access.
+    data = replace(data, r"\.r\[\]" => ".r")
+    data = replace(data, r"\.g\[\]" => ".g")
+    data = replace(data, r"\.b\[\]" => ".b")
+    data = replace(data, r"\.a\[\]" => ".a")
+    # SDL2 direct calls -> wasm glue calls.
+    data = rewrite_sdl_calls_to_glue(data)
+    # Common value-shape cleanup.
+    data = replace(data, r"let center_world\s*=\s*center_pixels\s*/\s*pixels_per_world_unit\(this\)" => "let center_world = {x: center_pixels.x / pixels_per_world_unit(this), y: center_pixels.y / pixels_per_world_unit(this)}")
+    data = replace(data, r"(?m)^(\s*)targetPos\s*=\s*" => s"\1let targetPos = ")
+    data = replace(data, r"(?m)^(\s*)targetScale\s*=\s*" => s"\1let targetScale = ")
+    data = replace(data, r"\bsetfield\(([^,]+),\s*([^,]+),\s*([^)]+)\)" => s"(\1 as any)[\2 as any] = \3")
     # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
     data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
     # error with string literal
     data = replace(data, r"@error\s+\"([^\"]*)\"" => s"console.error(\"\1\")")
     # debug with string literal
     data = replace(data, r"@debug\s+\"([^\"]*)\"" => s"console.debug(\"\1\")")
+    # macro invocation style: `@debug("...")`.
+    data = replace(data, r"@debug\(" => "console.debug(")
+    data = replace(data, r"\bprintln\(" => "console.log(")
     # info with string literal
     data = replace(data, r"@info\s+\"([^\"]*)\"" => s"console.info(\"\1\")")
     return data
+end
+
+function normalize_julgame_global_access(data::AbstractString)::String
+    s = String(data)
+    # Cleanup old alias-based rewrites from previous converter versions.
+    s = replace(s, r"(?m)^var JG = \(globalThis as any\)\.JulGame;\s*\n?" => "")
+    s = replace(s, "JG." => "(globalThis as any).JulGame.")
+    occursin("JulGame.", s) || return s
+    s = replace(s, "JulGame." => "(globalThis as any).JulGame.")
+    return s
+end
+
+function rewrite_sdl_calls_to_glue(data::AbstractString)::String
+    s = String(data)
+    # Base mapping: SDL2.SDL_Foo(...) -> JulGameSdl.glue_SDL_Foo(...)
+    s = replace(s, r"\bSDL2\.SDL_([A-Za-z0-9_]+)\(" => s"(globalThis as any).JulGameSdl.glue_SDL_\1(")
+    # Drop renderer ptr first-arg for calls now routed to glue.
+    s = replace(s, r"\b(glue_SDL_[A-Za-z0-9_]+)\(\s*(?:Renderer|\(globalThis as any\)\.JulGame\.Renderer)\s*,\s*" => s"\1(")
+    # Flatten SDL_FRect wrapper when used as arg.
+    s = replace(s, r"Ref\(SDL2\.SDL_FRect\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)\)" => s"\1, \2, \3, \4")
+    # Normalize Julia 1-based indexing to TS 0-based for any numeric index.
+    s = rewrite_one_based_indices(s)
+    # Remove temporary color snapshot logic.
+    s = replace(s, r"(?m)^\s*(?:\(globalThis as any\)\.JulGameSdl\.)?glue_SDL_GetRenderDrawColor\([^\n]*\)\s*$" => "")
+    s = replace(s, r"(?m)^\s*(?:\(globalThis as any\)\.JulGameSdl\.)?glue_SDL_SetRenderDrawColor\(\s*rgba\.r\s*,\s*rgba\.g\s*,\s*rgba\.b\s*,\s*rgba\.a\s*\)\s*;?\s*$" => "")
+    s = replace(s, r"(?m)^\s*let rgba = .*Ref\(UInt8\(.*\)\).*\s*$" => "")
+    # RenderDrawBlendMode variant currently modeled as blend-only glue.
+    s = replace(s, r"(?m)^\s*\(globalThis as any\)\.JulGameSdl\.glue_SDL_SetRenderDrawBlendMode\([^\n]*\)\s*$" => "(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawBlendMode_BLEND()")
+    return s
+end
+
+function replace_setfield_calls(data::AbstractString)::String
+    s = String(data)
+    s = replace(s, r"\bsetfield\(\s*this\s*,\s*([A-Za-z_]\w*)\s*,\s*([^)]+)\)" => s"(this as any)[\1 as any] = \2")
+    return s
+end
+
+function rewrite_one_based_indices(s::AbstractString)::String
+    text = String(s)
+    pat = r"\b([A-Za-z_][A-Za-z0-9_\.]*)\[(\d+)\]"
+    io = IOBuffer()
+    idx = firstindex(text)
+    n = lastindex(text)
+    while idx <= n
+        rg = findnext(pat, text, idx)
+        if rg === nothing
+            write(io, SubString(text, idx))
+            break
+        end
+        f = first(rg)
+        f > idx && write(io, SubString(text, idx, prevind(text, f)))
+        m = match(pat, text, f)
+        m === nothing && break
+        base = String(m[1])
+        parsed = tryparse(Int, String(m[2]))
+        if parsed === nothing || parsed < 1
+            write(io, String(m.match))
+        else
+            write(io, string(base, "[", parsed - 1, "]"))
+        end
+        idx = nextind(text, last(rg))
+    end
+    return String(take!(io))
 end
 
 # Avoid collision with DOM/Web Animation types in TS output.
@@ -394,6 +492,7 @@ function replace_types(data::AbstractString)
         "Float64" => "number",
         "String" => "string",
         "Bool" => "boolean",
+        "Symbol" => "symbol",
         "InternalAnimator" => "InternalAnimator",
         "InternalSprite" => "InternalSprite",
         "InternalShape" => "InternalShape",
@@ -405,6 +504,7 @@ function replace_types(data::AbstractString)
         "InternalSoundSource" => "InternalSoundSource",
         "Int" => "number",
         "Animation" => "JulGameAnimation",
+        "Transform" => "ITransform",
         "Any" => "any",
     )
     data = replace_union_annotations(data, scalar_map)
@@ -449,7 +549,7 @@ end
 # Uses `findnext` + `match` (no `replace(str, regex, f)` — that overload is newer Julia).
 function replace_function_declaration_dots(data::AbstractString)
     s = String(data)
-    pat = r"(?m)^(function\s+)([^\s(]+)(\()"
+    pat = r"(?m)^(\s*function\s+)([^\s(]+)(\()"
     io = IOBuffer()
     idx = firstindex(s)
     n = lastindex(s)

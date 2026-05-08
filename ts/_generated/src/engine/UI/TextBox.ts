@@ -1,10 +1,11 @@
+export {}
 
     // using ..UI.JulGame
-    // using ..UI.JulGame.Math
+    // using ..UI.(globalThis as any).JulGame.Math
     // import ..UI
-    // using JulGame.EffectsModule
-    // using JulGame.EffectRendererModule
-    // using JulGame.EffectCacheModule
+    // using (globalThis as any).JulGame.EffectsModule
+    // using (globalThis as any).JulGame.EffectRendererModule
+    // using (globalThis as any).JulGame.EffectCacheModule
 
     
     
@@ -13,12 +14,12 @@
     
     let DEFAULT_FONT = "Default"
     
-    // Helper to map JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
+    // Helper to map (globalThis as any).JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
     function get_scale_mode_from_quality() {
         return SDL2.SDL_ScaleModeBest
         // TODO: Add text scaling option?
         let q = try
-            string(JulGame.SCALE_QUALITY)
+            string((globalThis as any).JulGame.SCALE_QUALITY)
         catch
             "2"
         }
@@ -53,25 +54,25 @@
         effectCacheKey: String  // Content hash for caching
 
         function TextBox(text: string; 
-            id: string=JulGame.generate_uuid(), 
+            id: string=(globalThis as any).JulGame.generate_uuid(), 
             name: string = "TextBox", 
-            anchor::Symbol = :none,
-            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
+            anchor: symbol = :none,
+            anchorOffset = {x: 0, y: 0}, 
             isWorldEntity: boolean=false, 
             layer: number=0,
-            position::Math.Vector2 = Math.Vector2(0,0), 
+            position = {x: 0, y: 0}, 
             clickEvents: Function[] = Function[],
             hoverEnterEvents: Function[] = Function[],
             hoverExitEvents: Function[] = Function[],
             isActive: boolean=true,
             persistentBetweenScenes: boolean=false,
-            color::NTuple{4, Int}= [255, 255, 255, 255], 
+            color= [255, 255, 255, 255], 
             fontPath: string = "FiraCode-Regular.ttf", 
             fontSize: number = 16, 
             maxLineWidth: number=0, 
             wrapWords: boolean=true,
             isDynamic: boolean=false,
-            parent: UIElement | Nothing | IEntity | ISprite=nothing
+            parent: UIElement | null | IEntity | ISprite=null
         )
 
             
@@ -123,8 +124,8 @@
         }
     }
 
-    function UI.render(this: TextBox) {
-        if (!this.isActive || JulGame.IS_CHANGING_SCENE) {
+    function UI_render(this: TextBox) {
+        if (!this.isActive || (globalThis as any).JulGame.IS_CHANGING_SCENE) {
             return
         }
         
@@ -166,41 +167,40 @@
             UI.align_to_anchor(this)
         }
 
-        if (JulGame.IS_DEBUG) {
-            let rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
-            SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
-            SDL2.SDL_SetRenderDrawColor(Renderer, 0, 255, 0, 255);
-            SDL2.SDL_RenderDrawLines(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, [
-                SDL2.SDL_Point(this.position.x, this.position.y), 
-                SDL2.SDL_Point(this.position.x + this.size.x, this.position.y),
-                SDL2.SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
-                SDL2.SDL_Point(this.position.x, this.position.y + this.size.y), 
-                SDL2.SDL_Point(this.position.x, this.position.y)], 5)
-            SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
+        if ((globalThis as any).JulGame.IS_DEBUG) {
+
+            (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 0, 255);
+            (globalThis as any).JulGameSdl.glue_SDL_RenderDrawLines((globalThis as any).JulGame.Renderer, [
+                (globalThis as any).JulGameSdl.glue_SDL_Point(this.position.x, this.position.y), 
+                (globalThis as any).JulGameSdl.glue_SDL_Point(this.position.x + this.size.x, this.position.y),
+                (globalThis as any).JulGameSdl.glue_SDL_Point(this.position.x + this.size.x, this.position.y + this.size.y), 
+                (globalThis as any).JulGameSdl.glue_SDL_Point(this.position.x, this.position.y + this.size.y), 
+                (globalThis as any).JulGameSdl.glue_SDL_Point(this.position.x, this.position.y)], 5)
+            (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
         }
 
         let camera = MAIN.scene.camera
         
-        SDL2.SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
+        (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         // Handle world coordinates for world entities, similar to Sprite component
-        if (this.isWorldEntity && camera !== nothing) {
-            let S = JulGame.pixels_per_world_unit(camera)
+        if (this.isWorldEntity && camera !== null) {
+            let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
             let posX = (this.position.x - (camera.position.x + camera.offset.x)) * S
             let posY = (this.position.y - (camera.position.y + camera.offset.y)) * S
-            @assert SDL2.SDL_RenderCopyF(
-                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+            @assert (globalThis as any).JulGameSdl.glue_SDL_RenderCopyF(
+                (globalThis as any).JulGame.Renderer, 
                 texture_to_render, 
                 null, 
-                Ref(SDL2.SDL_FRect(
+                Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(
                     Float32(posX), 
                     Float32(posY), 
                     Float32(this.size.x * camera.zoom), 
                     Float32(this.size.y * camera.zoom)
                 ))
-            ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+            ) == 0 "error rendering textbox text: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))"
         else
             // Render with screen-space positioning (traditional UI)
-            let adjusted_position = Math.Vector2(0, 0)
+            let adjusted_position = {x: 0, y: 0}
             if (this.originalSize != this.size && this.anchor.current_state == :none) {
                 adjusted_position = Math.Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
                 // console.debug("difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)")
@@ -208,29 +208,29 @@
             else
                 adjusted_position = this.position
             }
-            @assert SDL2.SDL_RenderCopyF(
-                JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 
+            @assert (globalThis as any).JulGameSdl.glue_SDL_RenderCopyF(
+                (globalThis as any).JulGame.Renderer, 
                 texture_to_render, 
                 null, 
-                Ref(SDL2.SDL_FRect(
+                Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(
                     Float32(adjusted_position.x), 
                     Float32(adjusted_position.y), 
                     Float32(this.size.x), 
                     Float32(this.size.y)
                 ))
-            ) == 0 "error rendering textbox text: $(unsafe_string(SDL2.SDL_GetError()))"
+            ) == 0 "error rendering textbox text: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))"
         }
     }
 
-    function UI.load_font(this: TextBox,  fontPath: string) {
+    function UI_load_font(this: TextBox,  fontPath: string) {
         // Calculate the true font size based on window resolution
         //trueFontSize = get_true_font_size(this.fontSize)
         let trueFontSize = this.fontSize
 
         // If the font is already loaded, clean it up
         if (this.font != null) {
-            @debug("closing font")
-            //println(this.font)
+            console.debug("closing font")
+            //console.log(this.font)
             SDL2.TTF_CloseFont(this.font)
             this.font = null
         }
@@ -239,9 +239,9 @@
         
         this.font = load_font_sdl(fontPath, trueFontSize)
         if (this.font == null) {
-            error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError())), loading default font")
+            error("Failed to load font, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())), loading default font")
             this.fontPath = DEFAULT_FONT
-            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(JulGame.BUILT_IN_ASSETS["Font"]), JulGame.BUILT_IN_ASSETS["Font"].length), 1, fontSize)
+            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer((globalThis as any).JulGame.BUILT_IN_ASSETS["Font"]), (globalThis as any).JulGame.BUILT_IN_ASSETS["Font"].length), 1, fontSize)
         }
         if (fontPath != "Default") {
             this.fontPath = fontPath
@@ -253,22 +253,22 @@
         }
 
         // Use high-quality font rendering with or without effects
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3]))
         if (this.renderText == null) {
             error("Failed to render text for textbox $(this.name)")
             return
         }
         let surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
+        this.size = {x: surface[0].w, y: surface[0].h}
         this.originalSize = this.size
-        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+        this.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, (globalThis as any).JulGame.Renderer, this.renderText)
 
         if (!this.isWorldEntity) {
             UI.align_to_anchor(this)
         }
     }
 
-    function UI.initialize(this: TextBox) {
+    function UI_initialize(this: TextBox) {
         // Ensure font is properly scaled for the current window size
         UI.handle_window_resize(this)
         // Only center screen-space UI, not world entities
@@ -277,29 +277,29 @@
         }
     }
 
-    function UI.add_click_event(this: TextBox,  event) {
+    function UI_add_click_event(this: TextBox,  event) {
         this.clickEvents.push(event)
     }
 
     function load_font_sdl(fontPath: string,  fontSize: number) {
-        if (haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == "") {
+        if (haskey((globalThis as any).JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == "") {
             if (fontPath == "Default" || fontPath == "") {
-                let raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+                let raw_data = (globalThis as any).JulGame.BUILT_IN_ASSETS["Font"]
                 console.debug("loading default font")
             else
-                raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
+                raw_data = (globalThis as any).JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
                 console.debug("loading font from cache")
             }
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
+            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
-                @debug("loading font from cache")
-                @debug("comma separated path: ", get_comma_separated_path(fontPath))
+                console.debug("loading font from cache")
+                console.debug("comma separated path: ", get_comma_separated_path(fontPath))
                 return CallSDLFunction(SDL2.TTF_OpenFontRW, rw, 1, fontSize)
             }
         }
-        console.debug("Loading font from disk, there are $(JulGame.FONT_CACHE.length) fonts in cache")
+        console.debug("Loading font from disk, there are $((globalThis as any).JulGame.FONT_CACHE.length) fonts in cache")
         
-        let basePath = joinpath(JulGame.BasePath, "assets", "fonts")
+        let basePath = joinpath((globalThis as any).JulGame.BasePath, "assets", "fonts")
         return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), fontSize)
     }
 
@@ -316,17 +316,17 @@
     }
 
     /*
-        rerender_text(this::TextBox)
+        rerender_text(this)
 
     Recreates the font surface and texture. If the TextBox is not a world entity, it centers the text.
 
     // Arguments
-    - `this::TextBox`: The TextBox object to update.
+    - `this`: The TextBox object to update.
 
     // Examples
     */
-    function UI.rerender_text(this: TextBox) {
-        if (JulGame.IS_CHANGING_SCENE) {
+    function UI_rerender_text(this: TextBox) {
+        if ((globalThis as any).JulGame.IS_CHANGING_SCENE) {
             return
         }
         free_text_resources(this)
@@ -336,7 +336,7 @@
         }
 
         // Check if we need to wrap text
-        let color = SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4])
+        let color = (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3])
         this.renderText = if this.maxLineWidth > 0 && this.font != null && this.text != ""
             SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, this.maxLineWidth)
         elseif this.font != null && this.text != ""
@@ -345,13 +345,13 @@
             null
         }
         if (this.renderText == null) {
-            @debug("Failed to render text for textbox $(this.name)")
+            console.debug("Failed to render text for textbox $(this.name)")
             return
         }
         surface = unsafe_wrap(Array, this.renderText, 10; own = false)
-        this.size = Math.Vector2(surface[1].w, surface[1].h)
-        this.originalSize = Math.Vector2(this.size.x, this.size.y)
-        this.textTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, this.renderText)
+        this.size = {x: surface[0].w, y: surface[0].h}
+        this.originalSize = {x: this.size.x, y: this.size.y}
+        this.textTexture = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, this.renderText)
 
         if (!this.isWorldEntity) {
             UI.align_to_anchor(this)
@@ -365,20 +365,20 @@
 
     function free_text_resources(this: TextBox) {
         if (this.renderText != null) {
-            SDL2.SDL_FreeSurface(this.renderText)
+            (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(this.renderText)
             this.renderText = null
         }
         
         // DON'T destroy effect textures - they are managed by the cache
         // Just clear the reference
         if (this.effectTexture != null) {
-            @debug("Clearing effect texture reference for $(this.name)")
+            console.debug("Clearing effect texture reference for $(this.name)")
             this.effectTexture = null
         }
         
         // Handle regular text texture
-        @debug("Destroying text texture for $(this.name)")
-        SDL2.SDL_DestroyTexture(this.textTexture)
+        console.debug("Destroying text texture for $(this.name)")
+        (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(this.textTexture)
         this.textTexture = null
     }
 
@@ -438,7 +438,7 @@
         return join(lines, "\n")
     }
 
-    function UI.set_color(this: TextBox; r: number=255,  g: number=255,  b: number=255,  a: number=255) {
+    function UI_set_color(this: TextBox; r: number=255,  g: number=255,  b: number=255,  a: number=255) {
         this.color = [r%256, g%256, b%256, a%256]
         // Invalidate effects cache when color changes
         if (!isempty(this.effects)) {
@@ -447,7 +447,7 @@
         UI.rerender_text(this)
     }
     
-    function UI.update_font_size(this: TextBox,  newSize: Int; basePath: string = "") {
+    function UI_update_font_size(this: TextBox,  newSize: Int; basePath: string = "") {
         let applied_size = max(1, newSize)
         if (this.fontSize == applied_size && this.font != null) {
             return
@@ -480,8 +480,8 @@
     */
     function get_true_font_size(baseFontSize: number): number
         // Get current window size and base resolution
-        let windowSize = JulGame.get_window_size()
-        let baseResolution = JulGame.MAIN.windowManager.baseResolution
+        let windowSize = (globalThis as any).JulGame.get_window_size()
+        let baseResolution = (globalThis as any).JulGame.MAIN.windowManager.baseResolution
         
         // Calculate scaling factors
         let scaleX = windowSize.x / baseResolution.x
@@ -494,7 +494,7 @@
         return Math.TypeConversions.safe_int32_convert(round(baseFontSize * scale))
     }
 
-    function UI.destroy(this: TextBox) {
+    function UI_destroy(this: TextBox) {
         if (this.font != null) {
             SDL2.TTF_CloseFont(this.font)
             this.font = null
@@ -544,7 +544,7 @@
     }
     
     //  effects API
-    function UI.apply_effects(this: TextBox,  effects: Vector) {
+    function UI_apply_effects(this: TextBox,  effects: Vector) {
         this.effects = Any[effect for effect in effects]
         
         // Generate new cache key
@@ -565,14 +565,14 @@
     }
 
     /*
-        request_effects_refresh(this::TextBox)
+        request_effects_refresh(this)
 
     Recompute the effect texture after **in-place** edits to effect objects (e.g. inspector sliders).
     `apply_effects!` already bumps the cache key when the `effects` vector is replaced; mutating fields
     inside a `BevelEmbossEffect` does not, so callers that edit effects directly must call this.
     */
-    function UI.request_effects_refresh(this: TextBox) {
-        isempty(this.effects) && return this
+    function UI_request_effects_refresh(this: TextBox) {
+        if (isempty(this.effects)) { return this }
         this.effectCacheKey = generate_effect_cache_key(this)
         this.needsEffectUpdate = true
         update_effects(this)
@@ -592,13 +592,13 @@
         // Simple approach: just store the texture, let GC handle cleanup
         // Don't evict automatically to avoid destroying active textures
         EFFECT_CACHE[key] = texture
-        @debug("Cached effect texture for key: $key")
+        console.debug("Cached effect texture for key: $key")
     }
     
     function clear_effects_cache() {
         for (key, texture) in EFFECT_CACHE
             if (texture != null) {
-                SDL2.SDL_DestroyTexture(texture)
+                (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(texture)
             }
         }
         empty(EFFECT_CACHE)
@@ -614,7 +614,7 @@
                 let h = Ref{Cint}(0)
                 let fmt = Ref{UInt32}(0)
                 let access = Ref{Cint}(0)
-                if (SDL2.SDL_QueryTexture(texture, fmt, access, w, h) == 0) {
+                if ((globalThis as any).JulGameSdl.glue_SDL_QueryTexture(texture, fmt, access, w, h) == 0) {
                     width = Int(w[])
                     height = Int(h[])
                 }
@@ -637,7 +637,7 @@
         
         // Check if we have a cached version
         if (haskey(EFFECT_CACHE, this.effectCacheKey)) {
-            @debug("Using cached effect texture", name=this.name, key=this.effectCacheKey)
+            console.debug("Using cached effect texture", name=this.name, key=this.effectCacheKey)
             // Don't destroy the old texture, just replace the reference
             this.effectTexture = EFFECT_CACHE[this.effectCacheKey]
             
@@ -645,8 +645,8 @@
             if (this.effectTexture != null) {
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
-                SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                this.size = Math.Vector2(w[], h[])
+                (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                this.size = {x: w[], y: h[]}
                 console.debug("Cached effect texture size updated") name=this.name w=w[] h=h[]
             }
             
@@ -654,30 +654,30 @@
             return
         }
         
-        @debug("Computing new effect texture", name=this.name, key=this.effectCacheKey, effects=serialize_effects(this.effects))
+        console.debug("Computing new effect texture", name=this.name, key=this.effectCacheKey, effects=serialize_effects(this.effects))
         
         // Check if renderer is available
-        if (JulGame.Renderer == null) {
-            @debug("Renderer not available yet, deferring effects", name=this.name)
+        if ((globalThis as any).JulGame.Renderer == null) {
+            console.debug("Renderer not available yet, deferring effects", name=this.name)
             return
         }
         
         // Check if font is available
         if (this.font == null) {
-            @debug("Font not available for effects", name=this.name)
+            console.debug("Font not available for effects", name=this.name)
             return
         }
         
         // Create a fresh base surface for effects processing (like the old system does)
-        let baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(this.color[1], this.color[2], this.color[3], this.color[4]))
+        let baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3]))
         if (baseSurface == null) {
             @error("Failed to create base surface for effects", name=this.name)
             return
         }
-        try
+        try {
             let arr = unsafe_wrap(Array, baseSurface, 10; own=false)
-            console.debug("Base surface created") name=this.name w=arr[1].w h=arr[1].h
-        catch e
+            console.debug("Base surface created") name=this.name w=arr[0].w h=arr[0].h
+        } catch (e) {
             console.debug("Failed to log base surface dims") err=e
         }
         
@@ -685,13 +685,13 @@
         let target = EffectsModule.SurfaceTarget(baseSurface, this.color)
         
         // Apply effects
-        try
+        try {
             result = EffectRendererModule.apply_effects(target, this.effects)
             if (result isa EffectsModule.SurfaceTarget && result.surface != null) {
                 // Verify renderer is still valid before creating texture
-                if (JulGame.Renderer == null) {
+                if ((globalThis as any).JulGame.Renderer == null) {
                     @error("Renderer became null during effects processing for $(this.name)")
-                    SDL2.SDL_FreeSurface(result.surface)
+                    (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(result.surface)
                     return
                 }
                 
@@ -699,17 +699,17 @@
                 // Don't destroy old texture - it might be cached and used by other TextBoxes
                 
                 // Use CallSDLFunction like the old system for better error handling
-                this.effectTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, result.surface)
+                this.effectTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, (globalThis as any).JulGame.Renderer, result.surface)
                 
                 if (this.effectTexture != null) {
                     // Update size from the effect texture
                     w = Ref{Cint}(0); h = Ref{Cint}(0)
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
-                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.size = Math.Vector2(w[], h[])
+                    (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                    this.size = {x: w[], y: h[]}
                     console.debug("Effect texture created") name=this.name tex_ptr=this.effectTexture w=w[] h=h[]
-                    // Set scaling mode according to JulGame.SCALE_QUALITY
-                    SDL2.SDL_SetTextureScaleMode(this.effectTexture, get_scale_mode_from_quality())
+                    // Set scaling mode according to (globalThis as any).JulGame.SCALE_QUALITY
+                    (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(this.effectTexture, get_scale_mode_from_quality())
                     
                     // Cache the result
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
@@ -721,7 +721,7 @@
                 
                 // Clean up the result surface
                 if (result.surface != baseSurface) {
-                    SDL2.SDL_FreeSurface(result.surface)
+                    (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(result.surface)
                 }
             else
                 @error("Effects application returned invalid result", name=this.name)
@@ -729,31 +729,31 @@
             
             // Clean up base surface if it wasn't consumed by effects
             if (baseSurface != null && (!isdefined(result, :surface) || result.surface != baseSurface)) {
-                SDL2.SDL_FreeSurface(baseSurface)
+                (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(baseSurface)
             }
-        catch e
+        } catch (e) {
             @error("Failed to apply effects", name=this.name, err=e)
             Base.show_backtrace(stderr, catch_backtrace())
             // Clean up on error
             if (baseSurface != null) {
-                SDL2.SDL_FreeSurface(baseSurface)
+                (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(baseSurface)
             }
         }
     }
 //= 
-    function Base.setproperty(this: TextBox,  s: Symbol,  x) {
-        try
-            setfield(this, s, x)
+    function Base_setproperty(this: TextBox,  s: symbol,  x) {
+        try {
+            (this as any)[s as any] = x
             if (s == :text || s == :isActive || s == :textColor || s == :maxLineWidth || s == :wrapWords || s == :fontSize || s == :color) {
                 if (s == :text && x.length == 0) {
-                    setfield(this, s, " ")// prevents segfault when text is empty
+                    (this as any)[s as any] = " "// prevents segfault when text is empty
                 }
                 if (this.isConstructed) {
-                    @debug("rerendering text for $(this.name) because of $(s) = $(x)")
+                    console.debug("rerendering text for $(this.name) because of $(s) = $(x)")
                     UI.rerender_text(this) // this line MUST stay inside the if for specific fields as we can't call this on fields that are used in this function
                 }
             }
-        catch e
+        } catch (e) {
             error(e)
             Base.show_backtrace(stderr, catch_backtrace())
         }
@@ -780,18 +780,18 @@
     }
     
     /*
-        handle_window_resize(this::TextBox)
+        handle_window_resize(this)
 
     Handles window resize events by recalculating the font size and reloading the font.
     This ensures text appears at the correct size after window resizing.
 
     // Arguments
-    - `this::TextBox`: The TextBox object to update
+    - `this`: The TextBox object to update
     */
-    function UI.handle_window_resize(this: TextBox) {
+    function UI_handle_window_resize(this: TextBox) {
         if (this.font != null) {
             // Close the current font
-            @debug("closing font from handle_window_resize")
+            console.debug("closing font from handle_window_resize")
             SDL2.TTF_CloseFont(this.font)
             this.font = null
             // Reload the font with the new scaled size
@@ -802,7 +802,7 @@
         }
     }
 
-    function UI.duplicate(this: TextBox,  id: string = JulGame.generate_uuid())
+    function UI_duplicate(this: TextBox,  id: string = (globalThis as any).JulGame.generate_uuid())
         let newTextBox = TextBox(this.text; 
         id=id, 
         let name = this.name, 

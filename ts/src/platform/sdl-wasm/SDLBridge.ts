@@ -14,6 +14,9 @@ export type JulGameSdlApi = {
     glue_init: (width: number, height: number) => number;
     glue_render_square_frame: () => void;
     glue_poll_quit: () => number;
+    glue_SDL_SetRenderDrawBlendMode_BLEND: () => void;
+    glue_SDL_SetRenderDrawColor: (r: number, g: number, b: number, a: number) => void;
+    glue_SDL_RenderFillRectF: (x: number, y: number, w: number, h: number) => void;
 };
 
 export class SDLBridge {
@@ -34,6 +37,9 @@ export class SDLBridge {
             glue_init: cwrap("glue_init", "number", ["number", "number"]) as JulGameSdlApi["glue_init"],
             glue_render_square_frame: cwrap("glue_render_square_frame", null, []) as JulGameSdlApi["glue_render_square_frame"],
             glue_poll_quit: cwrap("glue_poll_quit", "number", []) as JulGameSdlApi["glue_poll_quit"],
+            glue_SDL_SetRenderDrawBlendMode_BLEND: cwrap("glue_SDL_SetRenderDrawBlendMode_BLEND", null, []) as JulGameSdlApi["glue_SDL_SetRenderDrawBlendMode_BLEND"],
+            glue_SDL_SetRenderDrawColor: cwrap("glue_SDL_SetRenderDrawColor", null, ["number", "number", "number", "number"]) as JulGameSdlApi["glue_SDL_SetRenderDrawColor"],
+            glue_SDL_RenderFillRectF: cwrap("glue_SDL_RenderFillRectF", null, ["number", "number", "number", "number"]) as JulGameSdlApi["glue_SDL_RenderFillRectF"],
         };
     }
 

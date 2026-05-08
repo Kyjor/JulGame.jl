@@ -19,6 +19,7 @@ export class SDLPlatform implements Platform {
             (text) => console.error(text),
         );
         const api = this.bridge.getApi();
+        (globalThis as any).JulGameSdl = api;
         const code = api.glue_init(this.canvas.width, this.canvas.height);
         if (code !== 0) {
             throw new Error(`glue_init failed (code ${code})`);

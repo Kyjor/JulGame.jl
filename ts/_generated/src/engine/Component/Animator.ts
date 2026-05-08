@@ -1,7 +1,8 @@
+export {}
 ﻿
     // using ..Component.AnimationModule
     // using ..Component.JulGame
-    // using ..Component.JulGame.Math
+    // using ..Component.(globalThis as any).JulGame.Math
     // using ..Component.SpriteModule
     // import ..Component
     
@@ -24,9 +25,9 @@
             
             
             this.animations = animations
-            this.currentAnimation = this.animations.length > 0 ? this.animations[1] : null
+            this.currentAnimation = this.animations.length > 0 ? this.animations[0] : null
             this.lastFrame = 0
-            this.lastUpdate = SDL2.SDL_GetTicks()
+            this.lastUpdate = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
             this.parent = parent
             this.sprite = null
             this.playOnce = false
@@ -35,7 +36,7 @@
     }
 
     function Component_update(this: InternalAnimator,  currentRenderTime,  deltaTime) {
-        if (this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == this.currentAnimation.frames.length) || this.sprite == null || this.sprite === nothing) {
+        if (this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == this.currentAnimation.frames.length) || this.sprite == null || this.sprite === null) {
             return
         }
         deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0

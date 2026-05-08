@@ -1,20 +1,21 @@
+export {}
 ﻿
     // using ..JulGame
     
     
     class Scene {
-        camera: Nothing | Camera
+        camera: null | Camera
         colliders: any[]
         entities: any[]
         rigidbodies: any[]
         uiElements: any[]
         name: string
-        batchedLayers::Dict{Int, Any}  // Static sprite batching: layer => BatchedLayer
+        batchedLayers  // Static sprite batching: layer => BatchedLayer
 
         constructor() {
             
 
-            this.camera = nothing
+            this.camera = null
             this.colliders = []
             this.entities = []
             this.rigidbodies = []
@@ -32,7 +33,7 @@
         }
 
         console.debug("No entity with name $name found")
-        return nothing
+        return null
     }
 
     function get_entity_by_name(name) {
@@ -65,7 +66,7 @@
         }
 
         console.debug("No entity with id $id found")
-        return nothing
+        return null
     }
 
     function get_entity_by_id(id: string) {
@@ -80,7 +81,7 @@
         }
 
         console.debug("No entity with name $name found")
-        return nothing
+        return null
     }
 
     function get_ui_element_by_name(name) {
@@ -95,7 +96,7 @@
         }
 
         console.debug("No ui element with id $id found")
-        return nothing
+        return null
     }
 
     function get_ui_element_by_id(id: string) {

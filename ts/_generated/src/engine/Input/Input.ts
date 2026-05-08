@@ -1,7 +1,8 @@
+export {}
 //todo: separate mouse, keyboard, gamepad, and window into their own files
 
     // using ..JulGame
-    // using ..JulGame.Math
+    // using ..(globalThis as any).JulGame.Math
     // using Dates
     // using Base64
 
@@ -14,7 +15,7 @@
         defaultCursor
         didMouseEventOccur: boolean
         didMouseMotionOccur: boolean
-        editorCallback: Function | Nothing
+        editorCallback: Function | null
         main
         mouseButtonsPressedDown: Vector
         mouseButtonsHeldDown: Vector
@@ -43,7 +44,7 @@
 
         // Testing
         isTestButtonClicked: boolean
-        simulatedClickPosition: Vector2 | Nothing
+        simulatedClickPosition: Vector2 | null
 
         // SDL events pulled while coalescing SDL_MOUSEMOTION (processed on following poll_input iterations)
         pending_sdl_events: SDL_Event[]
@@ -57,47 +58,47 @@
             this.debug = false
             this.didMouseEventOccur = false
             this.didMouseMotionOccur = false
-            this.editorCallback = nothing
+            this.editorCallback = null
             this.mouseButtonsPressedDown = []
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
             this.elementsBeingClickedDownOn = []
-            this.mousePosition = Math.Vector2(0,0)
-            this.mousePositionEditorGameWindowOffset = Math.Vector2(0,0)
+            this.mousePosition = {x: 0, y: 0}
+            this.mousePositionEditorGameWindowOffset = {x: 0, y: 0}
             this.mousePositionWorld = {x: 0, y: 0}
             this.quit = false
             this.scanCodes = []
             this.scanCodeStrings = String[]
             for (const m of instances(SDL2.SDL_Scancode)) {
                 let codeString = "$(m)"
-                code::SDL2.SDL_Scancode = m
+                code = m
                 if (codeString == "SDL_NUM_SCANCODES") {
                     continue
                 }
                 this.scanCodes.push([code, SubString(codeString, 14, codeString.length)])
             }
 
-            SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
-            if (SDL2.SDL_NumJoysticks() < 1) {
-                @debug("Warning: No joysticks connected!")
+            (globalThis as any).JulGameSdl.glue_SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
+            if ((globalThis as any).JulGameSdl.glue_SDL_NumJoysticks() < 1) {
+                console.debug("Warning: No joysticks connected!")
                 this.numAxes = 0
                 this.numButtons = 0
                 this.numHats = 0
             else
                 // Load joystick
-                this.joystick = SDL2.SDL_JoystickOpen(0)
+                this.joystick = (globalThis as any).JulGameSdl.glue_SDL_JoystickOpen(0)
                 if (this.joystick == null) {
-                    @debug("Warning: Unable to open game controller! SDL Error: ", unsafe_string(SDL2.SDL_GetError()))
+                    console.debug("Warning: Unable to open game controller! SDL Error: ", unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))
                 }
-                let name = SDL2.SDL_JoystickName(this.joystick)
-                this.numAxes = SDL2.SDL_JoystickNumAxes(this.joystick)
-                this.numButtons = SDL2.SDL_JoystickNumButtons(this.joystick)
-                this.numHats = SDL2.SDL_JoystickNumHats(this.joystick)
+                let name = (globalThis as any).JulGameSdl.glue_SDL_JoystickName(this.joystick)
+                this.numAxes = (globalThis as any).JulGameSdl.glue_SDL_JoystickNumAxes(this.joystick)
+                this.numButtons = (globalThis as any).JulGameSdl.glue_SDL_JoystickNumButtons(this.joystick)
+                this.numHats = (globalThis as any).JulGameSdl.glue_SDL_JoystickNumHats(this.joystick)
 
-                @debug("Now reading from joystick '$(unsafe_string(name))' with:")
-                @debug("$(this.numAxes) axes")
-                @debug("$(this.numButtons) buttons")
-                @debug("$(this.numHats) hats")
+                console.debug("Now reading from joystick '$(unsafe_string(name))' with:")
+                console.debug("$(this.numAxes) axes")
+                console.debug("$(this.numButtons) buttons")
+                console.debug("$(this.numHats) hats")
 
             }
             this.jaxis = null
@@ -110,38 +111,38 @@
             this.defaultCursor = this.cursorBank["arrow"]
 
             this.isTestButtonClicked = false
-            this.simulatedClickPosition = nothing
+            this.simulatedClickPosition = null
             this.pending_sdl_events = SDL2.SDL_Event[]
 
         }
     }
 
     function _refresh_logical_mouse(this: Input,  evt: SDL_Event) {
-        let x = Int32[1]
-        let y = Int32[1]
-        SDL2.SDL_GetMouseState(pointer(x), pointer(y))
+        let x = Int32[0]
+        let y = Int32[0]
+        (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(pointer(x), pointer(y))
 
         if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
             console.debug("Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)")
-            console.debug("mouse state: $(x[1]), $(y[1])")
-            let window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
+            console.debug("mouse state: $(x[0]), $(y[0])")
+            let window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
             console.debug("window focused: $window_focused")
             if (!window_focused) {
                 console.debug("// using event coordinates")
-                x[1] = Int32(evt.button.x)
-                y[1] = Int32(evt.button.y)
-                console.debug("event coordinates: $(x[1]), $(y[1])")
+                x[0] = Int32(evt.button.x)
+                y[0] = Int32(evt.button.y)
+                console.debug("event coordinates: $(x[0]), $(y[0])")
             }
         }
 
-        this.mousePosition = Math.Vector2(x[1], y[1])
+        this.mousePosition = {x: x[0], y: y[0]}
         console.debug("new mouse pos: $(this.mousePosition)")
 
-        if (!JulGame.IS_EDITOR) {
+        if ((globalThis as any).JulGame.IS_EDITOR) {
             let window_width = Ref{Cint}(0)
             let window_height = Ref{Cint}(0)
-            SDL2.SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
-            let logical_size = JulGame.WindowManagerModule.get_logical_size()
+            (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
+            let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
             let safe_window_width = max(window_width[], 1)
             let safe_window_height = max(window_height[], 1)
             let safe_logical_width = max(logical_size.x, 1)
@@ -153,51 +154,50 @@
             let content_height = safe_logical_height * scale
             let bar_x = (safe_window_width - content_width) / 2
             let bar_y = (safe_window_height - content_height) / 2
-            @debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
-            @debug("window_width: $window_width[], window_height: $window_height[]")
-            @debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
-            let scaled_x = (x[1] - bar_x) / scale
-            let scaled_y = (y[1] - bar_y) / scale
+            console.debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
+            console.debug("window_width: $window_width[], window_height: $window_height[]")
+            console.debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
+            let scaled_x = (x[0] - bar_x) / scale
+            let scaled_y = (y[0] - bar_y) / scale
             if (scaled_x == Inf || scaled_y == Inf) {
                 Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
                 scaled_x = 0
                 scaled_y = 0
             }
-            window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
+            window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
             this.mousePosition = Math.Vector2(
                 clamp(Math.floor(Int, scaled_x), 0, logical_size.x),
                 clamp(Math.floor(Int, scaled_y), 0, logical_size.y)
             )
-            console.debug("Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused")
+            console.debug("Scaled mouse position: window coords ($(x[0]), $(y[0])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused")
         else
-            let raw_mouse_x = x[1] - JulGame.EditorGameViewPosition.x
-            let raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
-            let clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
-            let clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
+            let raw_mouse_x = x[0] - (globalThis as any).JulGame.EditorGameViewPosition.x
+            let raw_mouse_y = y[0] - (globalThis as any).JulGame.EditorGameViewPosition.y
+            let clamped_mouse_x = clamp(raw_mouse_x, 0, (globalThis as any).JulGame.EditorGameViewSize.x)
+            let clamped_mouse_y = clamp(raw_mouse_y, 0, (globalThis as any).JulGame.EditorGameViewSize.y)
             let camera_size = MAIN.scene.camera.size
-            if (JulGame.EditorGameViewSize.x > 0 && JulGame.EditorGameViewSize.y > 0) {
-                scale_x = camera_size.x / JulGame.EditorGameViewSize.x
-                scale_y = camera_size.y / JulGame.EditorGameViewSize.y
+            if ((globalThis as any).JulGame.EditorGameViewSize.x > 0 && (globalThis as any).JulGame.EditorGameViewSize.y > 0) {
+                scale_x = camera_size.x / (globalThis as any).JulGame.EditorGameViewSize.x
+                scale_y = camera_size.y / (globalThis as any).JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
                 this.mousePosition = Math.Vector2(Math.floor(Int, scaled_x), Math.floor(Int, scaled_y))
             else
-                this.mousePosition = Math.Vector2(0, 0)
+                this.mousePosition = {x: 0, y: 0}
             }
         }
         return
     }
 
     function _input_latency_profiler() {
-        let m = JulGame.MAIN
-        (m !== nothing && m.latencyProfiler !== nothing && m.latencyProfiler.enabled) || return nothing
+        let m = (globalThis as any).JulGame.MAIN
+        (m !== null && m.latencyProfiler !== null && m.latencyProfiler.enabled) || return null
         return m.latencyProfiler
     }
 
-    function _input_poll_accumulate(prof, t0::Ref{UInt64}, key::Symbol) {
-        prof === nothing && return
-        let dt = (time_ns() - t0[]) / 1e6
-        JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
+    function _input_poll_accumulate(prof, t0, key: symbol) {
+        if (prof === null) { return let dt = (time_ns() - t0[]) / 1e6 }
+        (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
         t0[] = time_ns()
         return
     }
@@ -209,10 +209,10 @@
         return e in ("1", "true", "yes", "on")
     }
 
-    const _trace_input_ui_hit_iter_ref = Ref{Union{Nothing, Bool}}(nothing)
+    const _trace_input_ui_hit_iter_ref = Ref{Union{null, Bool}}(null)
     function _input_ui_hit_iter_stream_logs() {
         let v = _trace_input_ui_hit_iter_ref[]
-        if (v === nothing) {
+        if (v === null) {
             let s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_ITER", "0")))
             _trace_input_ui_hit_iter_ref[] = s == "1" || s in ("true", "yes", "on")
         }
@@ -223,8 +223,8 @@
         let t1 = time_ns()
         dt = (t1 - t_blk[]) / 1e6
         t_blk[] = t1
-        if (prof !== nothing) {
-            JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
+        if (prof !== null) {
+            (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
         if (_input_ui_hit_stream_logs()) {
             if (isempty(kvs)) {
@@ -238,8 +238,8 @@
 
     function _input_ui_hit_span(prof,  t0: number,  key: ) {
         dt = (time_ns() - t0) / 1e6
-        if (prof !== nothing) {
-            JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
+        if (prof !== null) {
+            (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
         if (_input_ui_hit_stream_logs() && _input_ui_hit_iter_stream_logs()) {
             if (isempty(kvs)) {
@@ -265,7 +265,7 @@
         while true
             if (!isempty(this.pending_sdl_events)) {
                 event_ref[] = popfirst(this.pending_sdl_events)
-            elseif !Bool(SDL2.SDL_PollEvent(event_ref))
+            elseif !Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))
                 break
             }
             _input_poll_accumulate(prof, t0, :sdl_PollEvent)
@@ -279,7 +279,7 @@
                 _refresh_logical_mouse(this, evt)
                 if (evt.type == SDL2.SDL_MOUSEMOTION) {
                     let coalesce_ref = Ref{SDL2.SDL_Event}()
-                    while Bool(SDL2.SDL_PollEvent(coalesce_ref))
+                    while Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(coalesce_ref))
                         let e2 = coalesce_ref[]
                         if (e2.type == SDL2.SDL_MOUSEMOTION) {
                             _refresh_logical_mouse(this, e2)
@@ -291,7 +291,7 @@
                 }
             }
 
-            if (this.editorCallback !== nothing) {
+            if (this.editorCallback !== null) {
                 this.editorCallback(evt)
             }
 
@@ -299,25 +299,25 @@
             let dropped_texts = "dropped_texts"
             if (evt.type == SDL2.SDL_DROPFILE) {
                 console.debug("Dropped file: $(unsafe_string(evt.drop.file))")
-                if (JulGame.IS_EDITOR) {
-                    if (get(JulGame.EditorState, dropped_files, nothing) === nothing) {
-                        JulGame.EditorState[dropped_files] = [unsafe_string(evt.drop.file)]
+                if ((globalThis as any).JulGame.IS_EDITOR) {
+                    if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
+                        (globalThis as any).JulGame.EditorState[dropped_files] = [unsafe_string(evt.drop.file)]
                     else
-                        JulGame.EditorState[dropped_files].push(unsafe_string(evt.drop.file))
+                        (globalThis as any).JulGame.EditorState[dropped_files].push(unsafe_string(evt.drop.file))
                     }
                 }
                 // TODO: Handle dropped file
-                SDL2.SDL_free(evt.drop.file)
+                (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
             elseif evt.type == SDL2.SDL_DROPTEXT
                 console.debug("Dropped text: $(unsafe_string(evt.drop.file))")
-                if (JulGame.IS_EDITOR) {
-                    if (get(JulGame.EditorState, dropped_texts, nothing) === nothing) {
-                        JulGame.EditorState[dropped_texts] = [unsafe_string(evt.drop.file)]
+                if ((globalThis as any).JulGame.IS_EDITOR) {
+                    if (get((globalThis as any).JulGame.EditorState, dropped_texts, null) === null) {
+                        (globalThis as any).JulGame.EditorState[dropped_texts] = [unsafe_string(evt.drop.file)]
                     else
-                        JulGame.EditorState[dropped_texts].push(unsafe_string(evt.drop.file))
+                        (globalThis as any).JulGame.EditorState[dropped_texts].push(unsafe_string(evt.drop.file))
                     }
                 }
-                SDL2.SDL_free(evt.drop.file)
+                (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
             elseif evt.type == SDL2.SDL_DROPBEGIN
                 console.debug("Drop begin")
             elseif evt.type == SDL2.SDL_DROPCOMPLETE
@@ -327,7 +327,7 @@
             }
 
             // Handle Ctrl+V for clipboard paste in editor
-            if (JulGame.IS_EDITOR && evt.type == SDL2.SDL_KEYDOWN) {
+            if ((globalThis as any).JulGame.IS_EDITOR && evt.type == SDL2.SDL_KEYDOWN) {
                 if (evt.key.keysym.sym == SDL2.LibSDL2.SDLK_v && (evt.key.keysym.mod & SDL2.LibSDL2.KMOD_CTRL) != 0) {
                     console.debug("Ctrl+V detected, checking clipboard for image")
                     handle_clipboard_paste()
@@ -343,16 +343,16 @@
                     this.didMouseMotionOccur = true
                 }
                 if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
-                    @debug("Mouse button down at $(this.mousePosition)")
+                    console.debug("Mouse button down at $(this.mousePosition)")
                 }
 
-                let ui_hit_active = MAIN.scene.uiElements !== nothing && (JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
+                let ui_hit_active = MAIN.scene.uiElements !== null && ((globalThis as any).JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
                 if (ui_hit_active) {
                     _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_preamble)
                     let t_ui_wall = time_ns()
                     let t_hit = Ref(time_ns())
                     _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = [this.mousePosition.x, this.mousePosition.y], n_ui = MAIN.scene.uiElements.length)
-                    if (MAIN.scene.camera === nothing) {
+                    if (MAIN.scene.camera === null) {
                         _input_ui_hit_step(prof, t_hit, :hit_ui_abort_camera)
                         @warn ("Camera is not set in the main scene.")
                         _input_poll_accumulate(prof, t0, :mouse_ui_aborted_no_camera)
@@ -360,7 +360,7 @@
                     }
                     _input_ui_hit_step(prof, t_hit, :hit_ui_camera_ok)
 
-                    let canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
+                    let canvases = filter(x -> isa(x, (globalThis as any).JulGame.ICanvas), MAIN.scene.uiElements)
                     _input_ui_hit_step(prof, t_hit, :hit_ui_filter_canvas; n_canvases = canvases.length)
 
                     // Use cached layer order instead of sorting every mouse event
@@ -369,14 +369,14 @@
                     let uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
                     _input_ui_hit_step(prof, t_hit, :hit_ui_sort_ui; n = uiElementsOrderedByLayerDescending.length)
 
-                    let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== null, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
+                    let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== null && entity.sprite !== null, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
                     _input_ui_hit_step(prof, t_hit, :hit_ui_sort_entities; n = entitiesWithSpritesOrderedByLayerDescending.length, n_entities = MAIN.scene.entities.length)
 
                     let elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
                     _input_ui_hit_step(prof, t_hit, :hit_ui_vcat; n_total = elementsOrderedByLayerDescending.length)
 
                     // TODO: add rest of entities without sprites in default order
-                    // restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === null, MAIN.scene.entities)
+                    // restOfEntities = filter(entity -> entity.sprite === null || entity.sprite === null, MAIN.scene.entities)
                     // append(elementsOrderedByLayerDescending, restOfEntities)
                     let clickedAnElementAlready = false
                     let hoveredAnElementAlready = false
@@ -404,7 +404,7 @@
                                 }
                             }
                         }
-                        if (isa(element, JulGame.IEntity) && element.ignoreInputEvents) {
+                        if (isa(element, (globalThis as any).JulGame.IEntity) && element.ignoreInputEvents) {
                             skipElement = true
                             if (element.isActive) {
                                 n_skipped_ignore += 1
@@ -412,7 +412,7 @@
                         }
 
                         if (skipElement) {
-                            console.debug("Skipping element $(element.name) - isActive: $(element.isActive), ignoreInputEvents: $(isa(element, JulGame.IEntity) ? element.ignoreInputEvents : ")N/A")"
+                            console.debug("Skipping element $(element.name) - isActive: $(element.isActive), ignoreInputEvents: $(isa(element, (globalThis as any).JulGame.IEntity) ? element.ignoreInputEvents : ")N/A")"
                             _input_ui_hit_span(prof, t_iter, :hit_ui_iter_skip_early)
                             continue
                         }
@@ -497,7 +497,7 @@
 
                             if (shouldHandleEvent) {
                                 console.debug("  -> Handling event for element '$(element.name)'")
-                                JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
+                                (globalThis as any).JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
                                 t_hi = time_ns()
                                 if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
                                    this.elementsBeingClickedDownOn.push(element)
@@ -555,9 +555,9 @@
                     this.jaxis = evt.jaxis
                 }
                 for (const i of 0:this.numAxes-1) {
-                    let axis = SDL2.SDL_JoystickGetAxis(this.joystick, i)
+                    let axis = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i)
                     if (i < 0) {
-                        @debug("Axis $i: $(SDL2.SDL_JoystickGetAxis(this.joystick, i))")
+                        console.debug("Axis $i: $((globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i))")
                     }
                     let JOYSTICK_DEAD_ZONE = 8000
 
@@ -582,12 +582,12 @@
                     }
 
                 }
-                // @debug("x:$(this.xDir), y:$(this.yDir)")
+                // console.debug("x:$(this.xDir), y:$(this.yDir)")
                 for (const i of 0:this.numButtons-1) {
-                    let button = SDL2.SDL_JoystickGetButton(this.joystick, i)
+                    let button = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetButton(this.joystick, i)
 
                     if (button != 0) {
-                        @debug("Button $i: $(button)")
+                        console.debug("Button $i: $(button)")
                     }
                     if (i == 0 && button == 1) {
                         this.button = 1
@@ -598,9 +598,9 @@
 
                 for (const i of 0:this.numHats-1) {
 
-                    let hat = SDL2.SDL_JoystickGetHat(this.joystick, i)
+                    let hat = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetHat(this.joystick, i)
                     if (hat != 0) {
-                        @debug("Hat $i: $(hat)")
+                        console.debug("Hat $i: $(hat)")
                     }
                 }
             if (evt.type == SDL2.SDL_QUIT) {
@@ -610,10 +610,10 @@
             }
             if (evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3) {
                 this.debug = !this.debug
-                JulGame.IS_DEBUG = !JulGame.IS_DEBUG
+                (globalThis as any).JulGame.IS_DEBUG = (globalThis as any).JulGame.IS_DEBUG
             }
 
-            let keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(null), 300; own = false)
+            let keyboardState = unsafe_wrap(Array, (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null), 300; own = false)
             handle_key_event(this, keyboardState)
 
             _input_poll_accumulate(prof, t0, :joystick_keyboard_state)
@@ -633,16 +633,16 @@
     }
 
     function get_element_position(element: IEntity) {
-        if (element.sprite === nothing || element.sprite === null) {
-            return Math.Vector2(0, 0)
+        if (element.sprite === null || element.sprite === null) {
+            return {x: 0, y: 0}
         }
-        let basePosition = element.sprite.lastRenderedScreenPosition === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
-        let baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+        let basePosition = element.sprite.lastRenderedScreenPosition === null ? {x: 0, y: 0} : element.sprite.lastRenderedScreenPosition
+        let baseSize = element.sprite.lastRenderedScreenSize === null ? {x: 0, y: 0} : element.sprite.lastRenderedScreenSize
         // Center the scaled hitbox over the original sprite position
         let interactionScale = try element.sprite.interactionScale catch; 1.0 }
         if (interactionScale < 1.0) {
             let sizeDiff = Math.Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
-            return Math.Vector2(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)
+            return {x: basePosition.x + sizeDiff.x / 2, y: basePosition.y + sizeDiff.y / 2}
         }
         return basePosition
     }
@@ -652,18 +652,18 @@
     }
 
     function get_element_size(element: IEntity) {
-        if (element.sprite === nothing || element.sprite === null) {
-            return Math.Vector2(0, 0)
+        if (element.sprite === null || element.sprite === null) {
+            return {x: 0, y: 0}
         }
-        baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+        baseSize = element.sprite.lastRenderedScreenSize === null ? {x: 0, y: 0} : element.sprite.lastRenderedScreenSize
         // Apply interaction scale to shrink/grow hitbox independently of visual size
         interactionScale = try element.sprite.interactionScale catch; 1.0 }
-        return Math.Vector2(baseSize.x * interactionScale, baseSize.y * interactionScale)
+        return {x: baseSize.x * interactionScale, y: baseSize.y * interactionScale}
     }
 
     function check_scan_code(this: Input,  keyboardState,  keyState,  scanCodes) {
         for (const scanCode of scanCodes) {
-            try
+            try {
                 if (keyboardState[Int32(scanCode) + 1] == keyState) {
                     return true
                 }
@@ -680,8 +680,8 @@
         }
 
         // If we have access to the WindowManager through MAIN, delegate window events to it
-        if (JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing) {
-            JulGame.WindowManagerModule.handle_window_event(event.window)
+        if ((globalThis as any).JulGame.MAIN !== null && (globalThis as any).JulGame.MAIN.windowManager !== null) {
+            (globalThis as any).JulGame.WindowManagerModule.handle_window_event(event.window)
         }
     }
 
@@ -690,11 +690,11 @@
 
         let count = 1
         for (const scanCode of this.scanCodes) {
-            button = scanCode[2]
-            if (check_scan_code(this, keyboardState, 1, [scanCode[1]]) && (button in this.buttonsHeldDown)) {
+            button = scanCode[1]
+            if (check_scan_code(this, keyboardState, 1, [scanCode[0]]) && (button in this.buttonsHeldDown)) {
                 buttonsPressedDown.push(button)
                 this.buttonsHeldDown.push(button)
-            elseif check_scan_code(this, keyboardState, 0, [scanCode[1]])
+            elseif check_scan_code(this, keyboardState, 0, [scanCode[0]])
                 if (button in this.buttonsHeldDown) {
                     deleteat(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
                 }
@@ -723,7 +723,7 @@
     Checks if clipboard contains image data and creates a temporary file for import.
     */
     function handle_clipboard_paste() {
-        try
+        try {
             // Try to get image data from platform-specific clipboard
             if (Sys.islinux()) {
                 console.debug("Linux detected, attempting to get image from X11 clipboard")
@@ -738,9 +738,9 @@
 
             // Only check text clipboard if SDL reports it has text data
             // and avoid errors when clipboard contains binary data
-            try
-                if (SDL2.SDL_HasClipboardText() == SDL2.SDL_TRUE) {
-                    let clipboard_text = unsafe_string(SDL2.SDL_GetClipboardText())
+            try {
+                if ((globalThis as any).JulGameSdl.glue_SDL_HasClipboardText() == SDL2.SDL_TRUE) {
+                    let clipboard_text = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetClipboardText())
 
                     // Skip if the text looks like an error message from xclip
                     if (occursin("xclip: Error:", clipboard_text) || occursin("ProcessFailedException", clipboard_text)) {
@@ -764,13 +764,13 @@
                         return
                     }
                 }
-            catch e
+            } catch (e) {
                 console.debug("Error reading text clipboard (likely contains binary data): $(e)")
             }
 
             // No additional fallback needed - platform-specific functions handle their own cases
 
-        catch e
+        } catch (e) {
             console.error("Error handling clipboard paste: $(e)")
         }
     }
@@ -781,13 +781,13 @@
     Try to get image data from X11 clipboard // using xclip command.
     */
     function handle_x11_clipboard_image() {
-        try
+        try {
             // Check if xclip is available
             if (success(`which xclip`)) {
                 console.debug("xclip found, attempting to get image from clipboard")
 
                 // Try to get PNG data from clipboard
-                try
+                try {
                     let png_data = read(`xclip -selection clipboard -t image/png -o`)
                     if (png_data.length > 0) {
                         console.debug("Found PNG data in clipboard")
@@ -799,12 +799,12 @@
                         add_clipboard_file_to_import_queue(temp_file)
                         return
                     }
-                catch e
+                } catch (e) {
                     console.debug("No PNG data in clipboard: $(e)")
                 }
 
                 // Try to get JPEG data from clipboard
-                try
+                try {
                     let jpeg_data = read(`xclip -selection clipboard -t image/jpeg -o`)
                     if (jpeg_data.length > 0) {
                         console.debug("Found JPEG data in clipboard")
@@ -816,7 +816,7 @@
                         add_clipboard_file_to_import_queue(temp_file)
                         return
                     }
-                catch e
+                } catch (e) {
                     console.debug("No JPEG data in clipboard: $(e)")
                 }
 
@@ -824,7 +824,7 @@
             else
                 console.debug("xclip not available, cannot access X11 clipboard")
             }
-        catch e
+        } catch (e) {
             console.warn("Error accessing X11 clipboard: $(e)")
         }
     }
@@ -835,13 +835,13 @@
     Try to get image data from macOS clipboard // using pbpaste command.
     */
     function handle_macos_clipboard_image() {
-        try
+        try {
             // Check if pbpaste is available (should be on all macOS systems)
             if (success(`which pbpaste`)) {
                 console.debug("pbpaste found, attempting to get image from clipboard")
 
                 // Try to get PNG data from clipboard
-                try
+                try {
                     png_data = read(`pbpaste -pboard general -Prefer png`)
                     if (png_data.length > 0) {
                         console.debug("Found PNG data in clipboard")
@@ -853,12 +853,12 @@
                         add_clipboard_file_to_import_queue(temp_file)
                         return
                     }
-                catch e
+                } catch (e) {
                     console.debug("No PNG data in clipboard: $(e)")
                 }
 
                 // Try to get TIFF data from clipboard (common on macOS)
-                try
+                try {
                     let tiff_data = read(`pbpaste -pboard general -Prefer tiff`)
                     if (tiff_data.length > 0) {
                         console.debug("Found TIFF data in clipboard")
@@ -870,12 +870,12 @@
                         add_clipboard_file_to_import_queue(temp_file)
                         return
                     }
-                catch e
+                } catch (e) {
                     console.debug("No TIFF data in clipboard: $(e)")
                 }
 
                 // Try to get JPEG data from clipboard
-                try
+                try {
                     jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
                     if (jpeg_data.length > 0) {
                         console.debug("Found JPEG data in clipboard")
@@ -887,7 +887,7 @@
                         add_clipboard_file_to_import_queue(temp_file)
                         return
                     }
-                catch e
+                } catch (e) {
                     console.debug("No JPEG data in clipboard: $(e)")
                 }
 
@@ -895,7 +895,7 @@
             else
                 console.debug("pbpaste not available, cannot access macOS clipboard")
             }
-        catch e
+        } catch (e) {
             console.warn("Error accessing macOS clipboard: $(e)")
         }
     }
@@ -906,22 +906,22 @@
     Try to get image data from Windows clipboard // using PowerShell.
     */
     function handle_windows_clipboard_image() {
-        try
+        try {
             console.debug("Attempting to get image from Windows clipboard // using PowerShell")
 
             // PowerShell script to get image from clipboard and save as PNG
             let powershell_script = /*
             Add-Type -AssemblyName System.Windows.Forms
             Add-Type -AssemblyName System.Drawing
-            \$clipboard = [System.Windows.Forms.Clipboard]::GetImage()
+            \$clipboard = [System.Windows.Forms.Clipboard]()
             if (\$clipboard -ne \$null) {
-                \$temp_file = [System.IO.Path]::GetTempFileName() + ".png"
-                \$clipboard.Save(\$temp_file, [System.Drawing.Imaging.ImageFormat]::Png)
+                \$temp_file = [System.IO.Path]() + ".png"
+                \$clipboard.Save(\$temp_file, [System.Drawing.Imaging.ImageFormat])
                 Write-Output \$temp_file
             }
             */
 
-            try
+            try {
                 // Run PowerShell script
                 let result = readchomp(`powershell -Command "$powershell_script"`)
                 if (!isempty(result) && isfile(result)) {
@@ -929,12 +929,12 @@
                     add_clipboard_file_to_import_queue(result)
                     return
                 }
-            catch e
+            } catch (e) {
                 console.debug("No image data in Windows clipboard: $(e)")
             }
 
             console.debug("No image data found in Windows clipboard")
-        catch e
+        } catch (e) {
             console.warn("Error accessing Windows clipboard: $(e)")
         }
     }
@@ -956,10 +956,10 @@
     */
     function add_clipboard_file_to_import_queue(filepath: string) {
         dropped_files = "dropped_files"
-        if (get(JulGame.EditorState, dropped_files, nothing) === nothing) {
-            JulGame.EditorState[dropped_files] = [filepath]
+        if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
+            (globalThis as any).JulGame.EditorState[dropped_files] = [filepath]
         else
-            JulGame.EditorState[dropped_files].push(filepath)
+            (globalThis as any).JulGame.EditorState[dropped_files].push(filepath)
         }
         console.debug("Added clipboard file to // import queue: $(basename(filepath))")
     }
@@ -971,7 +971,7 @@
     Creates a temporary file and adds it to the // import queue.
     */
     function handle_base64_image_data(data: string) {
-        try
+        try {
             // Parse the data URL format: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
             if (!occursin(";base64,", data)) {
                 console.warn("Invalid base64 image data format")
@@ -985,8 +985,8 @@
                 return
             }
 
-            let mime_part = parts[1]
-            let base64_data = parts[2]
+            let mime_part = parts[0]
+            let base64_data = parts[1]
 
             // Determine file extension from MIME type
             let extension = ".png"  // default
@@ -1017,7 +1017,7 @@
             // Add to // import queue
             add_clipboard_file_to_import_queue(temp_filepath)
 
-        catch e
+        } catch (e) {
             console.error("Error processing base64 image data: $(e)")
         }
     }
@@ -1109,22 +1109,22 @@
     }
 
     function create_cursor_bank(this: Input) {
-        this.cursorBank["arrow"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
-        this.cursorBank["ibeam"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
-        this.cursorBank["wait"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAIT)
-        this.cursorBank["crosshair"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_CROSSHAIR)
-        this.cursorBank["waitarrow"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAITARROW)
-        this.cursorBank["sizeall"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEALL)
-        this.cursorBank["sizenesw"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENESW)
-        this.cursorBank["sizenwse"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENWSE)
-        this.cursorBank["sizewe"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEWE)
-        this.cursorBank["sizens"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENS)
-        this.cursorBank["no"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_NO)
-        this.cursorBank["hand"] = SDL2.SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
+        this.cursorBank["arrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
+        this.cursorBank["ibeam"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
+        this.cursorBank["wait"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAIT)
+        this.cursorBank["crosshair"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_CROSSHAIR)
+        this.cursorBank["waitarrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAITARROW)
+        this.cursorBank["sizeall"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEALL)
+        this.cursorBank["sizenesw"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENESW)
+        this.cursorBank["sizenwse"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENWSE)
+        this.cursorBank["sizewe"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEWE)
+        this.cursorBank["sizens"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENS)
+        this.cursorBank["no"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_NO)
+        this.cursorBank["hand"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
     }
 
     // Initialize an SDL_Event instance
-    function init_sdl_event()::Ptr{SDL2.SDL_Event}
+    function init_sdl_event()
         // Create a vector of UInt8
         data = UInt8[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1141,16 +1141,16 @@
         let ptr_event = Ptr{SDL2.SDL_Event}(Libc.malloc(sizeof(SDL2.SDL_Event)))  // Allocate memory for SDL_Event struct
 
         // Now, initialize the data field of the struct // using unsafe_store!
-        unsafe_store(ptr_event, SDL2.SDL_Event(ntuple_data))
+        unsafe_store(ptr_event, (globalThis as any).JulGameSdl.glue_SDL_Event(ntuple_data))
 
         // Return the pointer to the class return { ptr_event
     }
 
-    function init_mouse_button_event()::Ptr{SDL2.SDL_MouseButtonEvent}
+    function init_mouse_button_event()
         // Allocate memory for SDL_MouseButtonEvent class ptr_event { = Ptr{SDL2.SDL_MouseButtonEvent}(Libc.malloc(sizeof(SDL2.SDL_MouseButtonEvent)))
 
         // Initialize the fields directly
-        unsafe_store(ptr_event, SDL2.SDL_MouseButtonEvent(
+        unsafe_store(ptr_event, (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
             0x0,             // type (just an example, you'll set this later)
             0x0,             // timestamp
             0x0,             // windowID
@@ -1170,10 +1170,10 @@
         // Get current window size
         window_width = Ref{Cint}(0)
         window_height = Ref{Cint}(0)
-        SDL2.SDL_GetWindowSize(window, window_width, window_height)
+        (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(window, window_width, window_height)
 
         // Get base resolution from WindowManager
-        logical_size = JulGame.WindowManagerModule.get_logical_size()
+        logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
 
         safe_window_width = max(window_width[], 1)
         safe_window_height = max(window_height[], 1)
@@ -1194,13 +1194,13 @@
         y = window_y
         // Move the mouse to the specified position
         console.debug("Moving mouse to $(x), $(y)")
-        SDL2.SDL_WarpMouseInWindow(window, x, y)
+        (globalThis as any).JulGameSdl.glue_SDL_WarpMouseInWindow(window, x, y)
 
         // Create a mouse button down event
-        mouse_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
+        mouse_event = init_sdl_event()
         mouse_event.type = SDL2.SDL_MOUSEBUTTONDOWN
 
-        mouse_event.button = SDL2.SDL_MouseButtonEvent(
+        mouse_event.button = (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
             SDL2.SDL_MOUSEBUTTONDOWN,  // Type of event
             0,                        // Timestamp (0 for automatic)
             0,                        // Window ID (0 for default window)
@@ -1212,13 +1212,13 @@
             x,                         // X position
             y                          // Y position
         )
-        SDL2.SDL_PushEvent(mouse_event)
+        (globalThis as any).JulGameSdl.glue_SDL_PushEvent(mouse_event)
         
         // Immediately push button up event as well so both are processed together
         // This is especially important when window isn't focused
-        mouse_up_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
+        mouse_up_event = init_sdl_event()
         mouse_up_event.type = SDL2.SDL_MOUSEBUTTONUP
-        mouse_up_event.button = SDL2.SDL_MouseButtonEvent(
+        mouse_up_event.button = (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
             SDL2.SDL_MOUSEBUTTONUP,  // Type of event
             0,                        // Timestamp (0 for automatic)
             0,                        // Window ID (0 for default window)
@@ -1230,10 +1230,10 @@
             x,                         // X position (same as button down)
             y                          // Y position (same as button down)
         )
-        SDL2.SDL_PushEvent(mouse_up_event)
+        (globalThis as any).JulGameSdl.glue_SDL_PushEvent(mouse_up_event)
         
         this.isTestButtonClicked = false  // No need to lift later since we pushed it immediately
-        this.simulatedClickPosition = nothing
+        this.simulatedClickPosition = null
     }
 
     function simulate_mouse_click(x: Number,  y: Number) {
@@ -1242,20 +1242,20 @@
 
     function lift_mouse_after_simulated_click(this) {
         // Use the stored click position, or current mouse position as fallback
-        if (this.simulatedClickPosition !== nothing) {
+        if (this.simulatedClickPosition !== null) {
             let click_x = Int32(this.simulatedClickPosition.x)
             let click_y = Int32(this.simulatedClickPosition.y)
         else
             // Fallback to current mouse position
             x_ref, y_ref = Ref{Cint}(0), Ref{Cint}(0)
-            SDL2.SDL_GetMouseState(x_ref, y_ref)
+            (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(x_ref, y_ref)
             click_x = Int32(x_ref[])
             click_y = Int32(y_ref[])
         }
         
-        mouse_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
+        mouse_event = init_sdl_event()
         mouse_event.type = SDL2.SDL_MOUSEBUTTONUP
-        mouse_event.button = SDL2.SDL_MouseButtonEvent(
+        mouse_event.button = (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
             SDL2.SDL_MOUSEBUTTONUP,  // Type of event
             0,                        // Timestamp (0 for automatic)
             0,                        // Window ID (0 for default window)
@@ -1267,9 +1267,9 @@
             click_x,                   // X position (same as button down)
             click_y                    // Y position (same as button down)
         )
-        SDL2.SDL_PushEvent(mouse_event)
+        (globalThis as any).JulGameSdl.glue_SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = false
-        this.simulatedClickPosition = nothing
+        this.simulatedClickPosition = null
     }
 
     function lift_mouse_after_simulated_click() {
@@ -1278,9 +1278,9 @@
 
     function simulate_key_press(this: Input,  key: string) {
         // Create a keyboard event
-        key_event::Ptr{SDL2.SDL_Event} = init_sdl_event()
+        key_event = init_sdl_event()
         key_event.type = SDL2.SDL_KEYDOWN
-        key_event.key = SDL2.SDL_KeyboardEvent(
+        key_event.key = (globalThis as any).JulGameSdl.glue_SDL_KeyboardEvent(
             SDL2.SDL_KEYDOWN,  // Type of event
             0,                 // Timestamp (0 for automatic)
             0,                 // Window ID (0 for default window)
@@ -1288,20 +1288,20 @@
             0,                 // Repeat (0 for no repeat)
             0,                 // Padding
             0,                 // Padding
-            SDL2.SDL_Keysym(   // Keysym structure
+            (globalThis as any).JulGameSdl.glue_SDL_Keysym(   // Keysym structure
                 SDL2.SDL_SCANCODE_SPACE, // Scancode
                 0,  // Keycode
                 0,                                   // Modifiers (none)
                 0                                    // Window ID (0 for default window)
             )
         )
-        // key_event.key.keysym.sym = SDL2.SDL_Keycode(uppercase(key))
-        // key_event.key.keysym.scancode = SDL2.SDL_Scancode(uppercase(key))
+        // key_event.key.keysym.sym = (globalThis as any).JulGameSdl.glue_SDL_Keycode(uppercase(key))
+        // key_event.key.keysym.scancode = (globalThis as any).JulGameSdl.glue_SDL_Scancode(uppercase(key))
         // key_event.key.keysym.mod = 0
         // key_event.key.keysym.windowID = 0
 
         // Push the event to the event queue
-        SDL2.SDL_PushEvent(key_event)
+        (globalThis as any).JulGameSdl.glue_SDL_PushEvent(key_event)
     }
 
     function simulate_key_press(key: string) {
@@ -1326,7 +1326,7 @@
         Loads an image as an SDL cursor, applies a scaling factor, and updates the hotspot position.
 
         // Arguments
-        - `this::Input`: The input object storing the cursor reference.
+        - `this`: The input object storing the cursor reference.
         - `imagePath: string`: Path to the image file.
         - `x: number, y: number`: Original hotspot position in the image.
         - `scale_factor: number`: Scaling factor for resizing the cursor (default = 1.0).
@@ -1335,23 +1335,23 @@
         set_cursor_with_image(this, "cursor.png", 10, 10, 2.0)  // Scales up by 2x
     */
     function set_cursor_with_image(this: Input,  imagePath: string,  x: number,  y: number,  scale_factor: number=1.0) {
-        let surface = nothing
-        if (haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))) {
-            let raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
+        let surface = null
+        if (haskey((globalThis as any).JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))) {
+            let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
+            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
-                @debug("loading cursor from cache")
-                @debug("comma separated path: ", get_comma_separated_path(imagePath))
+                console.debug("loading cursor from cache")
+                console.debug("comma separated path: ", get_comma_separated_path(imagePath))
                 surface = SDL2.IMG_Load_RW(rw, 1)
             }
         else
-            @debug("loading cursor from disk")
-            surface = SDL2.IMG_Load(pointer(joinpath(JulGame.BasePath, "assets", "images", imagePath)))
+            console.debug("loading cursor from disk")
+            surface = SDL2.IMG_Load(pointer(joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)))
         }
-        console.debug("Loading image from disk $(fullPath) for sprite, there are $(JulGame.IMAGE_CACHE.length) images in cache")
+        console.debug("Loading image from disk $(fullPath) for sprite, there are $((globalThis as any).JulGame.IMAGE_CACHE.length) images in cache")
 
         if (surface == null) {
-            console.error("Failed to load cursor image: $(unsafe_string(SDL2.SDL_GetError()))")
+            console.error("Failed to load cursor image: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
             return
         }
 
@@ -1368,31 +1368,31 @@
         let new_y = Int(round(y * scale_factor))
 
         // Create a new surface for the scaled image
-        let scaled_surface = SDL2.SDL_CreateRGBSurface(0, new_width, new_height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
+        let scaled_surface = (globalThis as any).JulGameSdl.glue_SDL_CreateRGBSurface(0, new_width, new_height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
 
         if (scaled_surface == null) {
-            console.error("Failed to create scaled surface: $(unsafe_string(SDL2.SDL_GetError()))")
-            SDL2.SDL_FreeSurface(surface)
+            console.error("Failed to create scaled surface: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+            (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(surface)
             return
         }
 
         // Scale the image onto the new surface
-        SDL2.SDL_BlitScaled(surface, null, scaled_surface, null)
+        (globalThis as any).JulGameSdl.glue_SDL_BlitScaled(surface, null, scaled_surface, null)
 
         // Create cursor from the scaled surface with adjusted hotspot
-        let cursor = SDL2.SDL_CreateColorCursor(scaled_surface, new_x, new_y)
+        let cursor = (globalThis as any).JulGameSdl.glue_SDL_CreateColorCursor(scaled_surface, new_x, new_y)
 
         if (cursor != null) {
             set_cursor(cursor)
             this.defaultCursor = cursor
             console.debug("Cursor set successfully! Scaled by $(scale_factor)x, Hotspot: ($new_x, $new_y)")
         else
-            console.error("Issue loading cursor: $(unsafe_string(SDL2.SDL_GetError()))")
+            console.error("Issue loading cursor: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
         }
 
         // Free surfaces to avoid memory leaks
-        SDL2.SDL_FreeSurface(surface)
-        SDL2.SDL_FreeSurface(scaled_surface)
+        (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(surface)
+        (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(scaled_surface)
 
         return cursor
     }
@@ -1402,15 +1402,15 @@
     }
 
     function set_cursor(cursor) {
-        SDL2.SDL_SetCursor(cursor)
+        (globalThis as any).JulGameSdl.glue_SDL_SetCursor(cursor)
     }
 
     /*
-    collect_canvas_children(canvas::UI.Canvas, allElements: UIElement[])
+    collect_canvas_children(canvas, allElements: UIElement[])
 
     Recursively collects all children of a canvas and its sub-canvases.
     */
-    // function collect_canvas_children(canvas::UI.Canvas, allElements: UIElement[])
+    // function collect_canvas_children(canvas, allElements: UIElement[])
     //     for child in canvas.children
     //         allElements.push(child)
     //         // If the child is also a canvas, collect its children recursively
