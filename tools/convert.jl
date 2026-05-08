@@ -147,6 +147,10 @@ end
 
 function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
+    # Drop redundant int32 conversion helper in generated TS.
+    data = replace(data, r"Math\.TypeConversions\.safe_int32_convert\(([^()]*)\)" => s"\1")
+    # Julia `length(x)` -> TS `x.length` for simple non-nested args.
+    data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
     data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
     # error with string literal
@@ -264,6 +268,68 @@ function vector_inner_to_ts(inner::AbstractString, scalar_map::Dict{String,Strin
     return string(get(scalar_map, inner, inner)) * "[]"
 end
 
+function julia_type_expr_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
+    t = String(strip(t))
+    t == "Ptr{Nothing}" && return "null"
+    t == "Nothing" && return "null"
+    startswith(t, "Vector{") && endswith(t, "}") && return vector_inner_to_ts(t[nextind(t, firstindex(t), 7):prevind(t, lastindex(t))], scalar_map)
+    if startswith(t, "Union{") && endswith(t, "}")
+        inner = t[nextind(t, firstindex(t), 6):prevind(t, lastindex(t))]
+        members = split_top_level_commas(inner)
+        return join(map(m -> julia_type_expr_to_ts(m, scalar_map), members), " | ")
+    end
+    if startswith(t, "NTuple{") && endswith(t, "}")
+        inner = t[nextind(t, firstindex(t), 7):prevind(t, lastindex(t))]
+        parts = split_top_level_commas(inner)
+        if length(parts) == 2
+            n = tryparse(Int, strip(parts[1]))
+            item_ts = julia_type_expr_to_ts(parts[2], scalar_map)
+            n !== nothing && n >= 1 && n <= 16 && return "[" * join(fill(item_ts, n), ", ") * "]"
+            return item_ts * "[]"
+        end
+    end
+    if haskey(scalar_map, t)
+        return scalar_map[t]
+    end
+    if occursin('.', t)
+        leaf = String(split(t, '.')[end])
+        return string(get(scalar_map, leaf, leaf))
+    end
+    return string(get(scalar_map, t, t))
+end
+
+function replace_struct_field_annotations(data::AbstractString, scalar_map::Dict{String,String})::String
+    lines = split(String(data), '\n'; keepempty = true)
+    pat = r"^(\s*[A-Za-z_]\w*)::\s*([^\n=]+?)\s*$"
+    out = map(lines) do line
+        m = match(pat, line)
+        m === nothing && return line
+        string(m[1], ": ", julia_type_expr_to_ts(String(m[2]), scalar_map))
+    end
+    return join(out, '\n')
+end
+
+function replace_header_param_annotations(data::AbstractString, scalar_map::Dict{String,String})::String
+    lines = split(String(data), '\n'; keepempty = true)
+    header_pat = r"^(\s*(?:function\s+[^\s(]+|constructor)\s*\()([^)]*)(\).*)$"
+    out = map(lines) do line
+        hm = match(header_pat, line)
+        hm === nothing && return line
+        params = split(String(hm[2]), ',')
+        rewritten = map(params) do p
+            pm = match(r"^(\s*[A-Za-z_]\w*)::\s*([^=]+?)(\s*=\s*.*)?\s*$", String(p))
+            pm === nothing && return p
+            name = String(pm[1])
+            typ = julia_type_expr_to_ts(String(pm[2]), scalar_map)
+            defaultv = pm[3] === nothing ? "" : String(pm[3])
+            defaultv = replace(defaultv, r"=\s*nothing\b" => "= null")
+            string(name, ": ", typ, defaultv)
+        end
+        string(hm[1], join(rewritten, ", "), hm[3])
+    end
+    return join(out, '\n')
+end
+
 # `::Vector{Inner}` → `: ts[]` using scalar_map for bare names and the last segment for `Mod.Type`.
 # Nested `Vector{Vector{Int}}` is not supported (single `[^}]+` capture).
 function replace_vector_annotations(data::AbstractString, scalar_map::Dict{String,String})
@@ -318,6 +384,8 @@ function replace_types(data::AbstractString)
     )
     data = replace_union_annotations(data, scalar_map)
     data = replace_vector_annotations(data, scalar_map)
+    data = replace_struct_field_annotations(data, scalar_map)
+    data = replace_header_param_annotations(data, scalar_map)
     # Longer keys first so `::Int` does not chew `::Int32` into `: number` + `32`.
     for k in sort(collect(keys(scalar_map)), by = length, rev = true)
         data = replace(data, "::$k" => ": $(scalar_map[k])")
@@ -337,8 +405,14 @@ function replace_constructor(data::AbstractString)
         pat = Regex("function\\s+" * string(name) * "\\s*\\(")
         data = replace(data, pat => "constructor(")
     end
-    # TS needs `{` before the body; Julia starts the block on the next line.
-    data = replace(data, r"(?m)^(\s*constructor\([^)]*\))\s*$" => s"\1 {")
+    # TS needs `{` before the body; do this line-wise so nested `)` in defaults do not break.
+    lines = split(String(data), '\n'; keepempty = true)
+    lines = map(lines) do line
+        startswith(strip(line), "constructor(") || return line
+        occursin('{', line) && return line
+        return line * " {"
+    end
+    data = join(lines, '\n')
 
     data = replace(data, "this = new()" => "")
     # Only the ctor idiom `return this` on its own line — not `return this.foo`.
@@ -649,8 +723,46 @@ function remove_!_from_function_names(data::AbstractString)
     return replace(data, "!(" => "(")
 end
 
+function source_files_from_manifest(; repo_root::AbstractString = REPO_ROOT)::Vector{String}
+    manifest = joinpath(repo_root, "ts", "files-needed.txt")
+    isfile(manifest) || return String[]
+    wanted = String[]
+    for raw in split(read(manifest, String), '\n')
+        name = strip(raw)
+        isempty(name) && continue
+        push!(wanted, endswith(name, ".jl") ? name : name * ".jl")
+    end
+
+    # Build basename -> absolute file map once from src/.
+    by_name = Dict{String, Vector{String}}()
+    src_root = joinpath(repo_root, "src")
+    for (dir, _, files) in walkdir(src_root)
+        for f in files
+            !endswith(f, ".jl") && continue
+            abs = joinpath(dir, f)
+            if haskey(by_name, f)
+                push!(by_name[f], abs)
+            else
+                by_name[f] = [abs]
+            end
+        end
+    end
+
+    selected = String[]
+    for name in wanted
+        matches = get(by_name, name, String[])
+        isempty(matches) && error("files-needed entry not found in src/: $name")
+        length(matches) > 1 && error("files-needed entry is ambiguous in src/: $name")
+        push!(selected, first(matches))
+    end
+    return selected
+end
+
 function main()
-    files = [joinpath(REPO_ROOT, "src", "MainLoop.jl")]#, "Component", "Animator.jl")]
+    files = source_files_from_manifest()
+    isempty(files) && (files = [joinpath(REPO_ROOT, "src", "MainLoop.jl")])
+    # Smallest-first helps us iterate patterns safely from simpler files upward.
+    sort!(files, by = f -> filesize(f))
     mkpath(default_out_dir())
     for f in files
         isfile(f) || error("not a file: $f")
