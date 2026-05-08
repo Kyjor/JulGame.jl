@@ -22,7 +22,7 @@
     }
 
     
-    class InternalSprite { <: JulGame.ISprite 
+    class InternalSprite extends JulGame.ISprite { 
         imagePath: string
         layer: number
         offset: Vector2f
@@ -51,7 +51,7 @@
         useEffectTexture: Bool  // Toggle to enable/disable effect texture rendering
         interactionScale: number  // Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
         
-        constructor( {
+        function InternalSprite(
             parent: IEntity,
             imagePath: String,
             crop: null | Vector4=null, 
@@ -473,7 +473,7 @@
     ]  // This is a 1x1 transparent PNG image.
 
     function load_fallback_image() {
-        let rwops = SDL2.SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), length(FALLBACK_IMAGE_BYTES))
+        let rwops = SDL2.SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), FALLBACK_IMAGE_BYTES.length)
         if (rwops == null) {
             @error("Failed to create SDL_RWops for fallback image.")
             return null
@@ -530,14 +530,14 @@
         let commaSeparatedPath = JulGame.get_comma_separated_path(imagePath)
         if (haskey(JulGame.IMAGE_CACHE, commaSeparatedPath)) {
             let raw_data = JulGame.IMAGE_CACHE[commaSeparatedPath]
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
                 @debug("loading image from cache")
                 @debug("comma separated path: ", commaSeparatedPath)
                 return SDL2.IMG_Load_RW(rw, 1)
             }
         }
-        console.debug("Loading image from disk $(fullPath) for sprite, there are $(length(JulGame.IMAGE_CACHE)) images in cache")
+        console.debug("Loading image from disk $(fullPath) for sprite, there are $(JulGame.IMAGE_CACHE.length) images in cache")
 
         return SDL2.IMG_Load(fullPath)
     }

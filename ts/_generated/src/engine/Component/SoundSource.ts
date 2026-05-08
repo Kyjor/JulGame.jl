@@ -28,14 +28,14 @@
 
             SDL2.SDL_ClearError()
             let fullPath = joinpath(BasePath, "assets", "sounds", path)
-            if (length(path) < 1) {
+            if (path.length < 1) {
                 let sound = null    
             else
                 sound = load_sound_sdl(path, isMusic)
             }
             let error = unsafe_string(SDL2.SDL_GetError())
 
-            if ((sound == null || !isempty(error)) && length(path) > 0) {
+            if ((sound == null || !isempty(error)) && path.length > 0) {
                 println(fullPath)
                 error("Error loading file at $path. SDL Error: $(error)")
                 SDL2.SDL_ClearError()
@@ -111,14 +111,14 @@
         @debug("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
         if (haskey(JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))) {
             let raw_data = JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
                 @debug("loading sound from cache")
                 @debug("comma separated path: ", get_comma_separated_path(soundPath))
                 return isMusic ? SDL2.Mix_LoadMUS_RW(rw, 1) : SDL2.Mix_LoadWAV_RW(rw, 1)
             }
         }
-        console.debug("load_sound_sdl: Loading sound from disk, there are $(length(JulGame.AUDIO_CACHE)) sounds in cache")
+        console.debug("load_sound_sdl: Loading sound from disk, there are $(JulGame.AUDIO_CACHE.length) sounds in cache")
 
         fullPath = joinpath(BasePath, "assets", "sounds", soundPath)
         return isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)

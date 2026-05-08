@@ -74,7 +74,7 @@
                 if (codeString == "SDL_NUM_SCANCODES") {
                     continue
                 }
-                this.scanCodes.push([code, SubString(codeString, 14, length(codeString))])
+                this.scanCodes.push([code, SubString(codeString, 14, codeString.length)])
             }
 
             SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
@@ -165,8 +165,8 @@
             }
             window_focused = (MAIN !== nothing && MAIN.windowManager !== nothing && MAIN.windowManager.isWindowFocused)
             this.mousePosition = Math.Vector2(
-                clamp(floor(Int, scaled_x), 0, logical_size.x),
-                clamp(floor(Int, scaled_y), 0, logical_size.y)
+                clamp(Math.floor(Int, scaled_x), 0, logical_size.x),
+                clamp(Math.floor(Int, scaled_y), 0, logical_size.y)
             )
             console.debug("Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused")
         else
@@ -180,7 +180,7 @@
                 scale_y = camera_size.y / JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                this.mousePosition = Math.Vector2(floor(Int, scaled_x), floor(Int, scaled_y))
+                this.mousePosition = Math.Vector2(Math.floor(Int, scaled_x), Math.floor(Int, scaled_y))
             else
                 this.mousePosition = Math.Vector2(0, 0)
             }
@@ -351,7 +351,7 @@
                     _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_preamble)
                     let t_ui_wall = time_ns()
                     let t_hit = Ref(time_ns())
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = length(MAIN.scene.uiElements))
+                    _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = MAIN.scene.uiElements.length)
                     if (MAIN.scene.camera === nothing) {
                         _input_ui_hit_step(prof, t_hit, :hit_ui_abort_camera)
                         @warn ("Camera is not set in the main scene.")
@@ -361,26 +361,26 @@
                     _input_ui_hit_step(prof, t_hit, :hit_ui_camera_ok)
 
                     let canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_filter_canvas; n_canvases = length(canvases))
+                    _input_ui_hit_step(prof, t_hit, :hit_ui_filter_canvas; n_canvases = canvases.length)
 
                     // Use cached layer order instead of sorting every mouse event
                     // This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
 
                     let uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
+                    _input_ui_hit_step(prof, t_hit, :hit_ui_sort_ui; n = uiElementsOrderedByLayerDescending.length)
 
                     let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== null, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_sort_entities; n = length(entitiesWithSpritesOrderedByLayerDescending), n_entities = length(MAIN.scene.entities))
+                    _input_ui_hit_step(prof, t_hit, :hit_ui_sort_entities; n = entitiesWithSpritesOrderedByLayerDescending.length, n_entities = MAIN.scene.entities.length)
 
                     let elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
+                    _input_ui_hit_step(prof, t_hit, :hit_ui_vcat; n_total = elementsOrderedByLayerDescending.length)
 
                     // TODO: add rest of entities without sprites in default order
                     // restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === null, MAIN.scene.entities)
                     // append(elementsOrderedByLayerDescending, restOfEntities)
                     let clickedAnElementAlready = false
                     let hoveredAnElementAlready = false
-                    console.debug("Checking $(length(elementsOrderedByLayerDescending)) elements for mouse event at $(this.mousePosition)")
+                    console.debug("Checking $(elementsOrderedByLayerDescending.length) elements for mouse event at $(this.mousePosition)")
                     let n_iter = 0
                     let n_skipped_inactive = 0
                     let n_skipped_canvas = 0
@@ -748,7 +748,7 @@
                         return
                     }
 
-                    console.debug("Clipboard text: $(clipboard_text[1:min(100, length(clipboard_text))])")
+                    console.debug("Clipboard text: $(clipboard_text[1:min(100, clipboard_text.length)])")
 
                     // Check if it's a file path to an image
                     if (isfile(clipboard_text) && is_image_file_by_extension(clipboard_text)) {
@@ -789,7 +789,7 @@
                 // Try to get PNG data from clipboard
                 try
                     let png_data = read(`xclip -selection clipboard -t image/png -o`)
-                    if (length(png_data) > 0) {
+                    if (png_data.length > 0) {
                         console.debug("Found PNG data in clipboard")
                         // Create temporary file for PNG data
                         let temp_file = tempname() * ".png"
@@ -806,7 +806,7 @@
                 // Try to get JPEG data from clipboard
                 try
                     let jpeg_data = read(`xclip -selection clipboard -t image/jpeg -o`)
-                    if (length(jpeg_data) > 0) {
+                    if (jpeg_data.length > 0) {
                         console.debug("Found JPEG data in clipboard")
                         // Create temporary file for JPEG data
                         temp_file = tempname() * ".jpg"
@@ -843,7 +843,7 @@
                 // Try to get PNG data from clipboard
                 try
                     png_data = read(`pbpaste -pboard general -Prefer png`)
-                    if (length(png_data) > 0) {
+                    if (png_data.length > 0) {
                         console.debug("Found PNG data in clipboard")
                         // Create temporary file for PNG data
                         temp_file = tempname() * ".png"
@@ -860,7 +860,7 @@
                 // Try to get TIFF data from clipboard (common on macOS)
                 try
                     let tiff_data = read(`pbpaste -pboard general -Prefer tiff`)
-                    if (length(tiff_data) > 0) {
+                    if (tiff_data.length > 0) {
                         console.debug("Found TIFF data in clipboard")
                         // Create temporary file for TIFF data
                         temp_file = tempname() * ".tiff"
@@ -877,7 +877,7 @@
                 // Try to get JPEG data from clipboard
                 try
                     jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
-                    if (length(jpeg_data) > 0) {
+                    if (jpeg_data.length > 0) {
                         console.debug("Found JPEG data in clipboard")
                         // Create temporary file for JPEG data
                         temp_file = tempname() * ".jpg"
@@ -980,7 +980,7 @@
 
             // Extract MIME type and base64 data
             let parts = split(data, ";base64,")
-            if (length(parts) != 2) {
+            if (parts.length != 2) {
                 console.warn("Invalid base64 image data format")
                 return
             }
@@ -1338,7 +1338,7 @@
         let surface = nothing
         if (haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))) {
             let raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
                 @debug("loading cursor from cache")
                 @debug("comma separated path: ", get_comma_separated_path(imagePath))
@@ -1348,7 +1348,7 @@
             @debug("loading cursor from disk")
             surface = SDL2.IMG_Load(pointer(joinpath(JulGame.BasePath, "assets", "images", imagePath)))
         }
-        console.debug("Loading image from disk $(fullPath) for sprite, there are $(length(JulGame.IMAGE_CACHE)) images in cache")
+        console.debug("Loading image from disk $(fullPath) for sprite, there are $(JulGame.IMAGE_CACHE.length) images in cache")
 
         if (surface == null) {
             console.error("Failed to load cursor image: $(unsafe_string(SDL2.SDL_GetError()))")

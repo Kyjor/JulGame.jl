@@ -20,11 +20,11 @@
         playOnce: boolean
         sprite: InternalSprite | null
 
-        constructor(parent: any,  animations: JulGameAnimation[] = Animation[]) {
+        constructor(parent: any,  animations: JulGameAnimation[] = JulGameAnimation[]) {
             
             
             this.animations = animations
-            this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : null
+            this.currentAnimation = this.animations.length > 0 ? this.animations[1] : null
             this.lastFrame = 0
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent
@@ -35,21 +35,21 @@
     }
 
     function Component_update(this: InternalAnimator,  currentRenderTime,  deltaTime) {
-        if (this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames)) || this.sprite == null || this.sprite === nothing) {
+        if (this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == this.currentAnimation.frames.length) || this.sprite == null || this.sprite === nothing) {
             return
         }
         deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
-        let framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
+        let framesToUpdate = Math.floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
         if (framesToUpdate > 0) {
             this.lastFrame = this.lastFrame + framesToUpdate
             this.lastUpdate = currentRenderTime
         }
-        this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
+        this.sprite.crop = this.currentAnimation.frames[this.lastFrame > this.currentAnimation.frames.length ? (1; this.lastFrame = 1) : this.lastFrame]
     }
 
     
     function Component_play_animation_once(this: InternalAnimator,  animationIndex: number) {
-        if (animationIndex > 0 && animationIndex <= length(this.animations)) {
+        if (animationIndex > 0 && animationIndex <= this.animations.length) {
             this.currentAnimation = this.animations[animationIndex]
             this.playOnce = true
             this.lastFrame = 1
@@ -83,7 +83,7 @@
     
     // Example
     ```
-    let animator = Animator([Animation([Math.Vector4(0,0,0,0)], 60)])
+    let animator = Animator([JulGameAnimation([Math.Vector4(0,0,0,0)], 60)])
     force_frame_update(animator, 1)
     ```
     */

@@ -47,7 +47,7 @@
             }
         }
 
-        if (length(entities) == 0) {
+        if (entities.length == 0) {
             console.debug("No entity with name $name found")
         }
         return entities

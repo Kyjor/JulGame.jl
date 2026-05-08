@@ -16,7 +16,7 @@
     // import ..JulGame
 
     
-    class Entity { <: JulGame.IEntity
+    class Entity extends JulGame.IEntity {
         id: string
         name: string
         isActive: boolean
@@ -41,7 +41,7 @@
         forceClickCheck: boolean
         ignoreInputEvents: boolean
 
-        constructor(name: string = "New entity",  id: string = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
+        function Entity(name: string = "New entity",  id: string = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false)
             
 
             this.id = id
@@ -101,7 +101,7 @@
         }
     }
 
-    function JulGame.add_animator(this: Entity,  animator: Animator = Animator(Animation[Animation(Vector4[Vector4(0, 0, 0, 0)], 60)]))
+    function JulGame.add_animator(this: Entity,  animator: Animator = Animator(Animation[JulGameAnimation(Vector4[Vector4(0, 0, 0, 0)], 60)]))
         if (this.animator != null) {
             println("Animator already exists on entity named ", this.name)
             return

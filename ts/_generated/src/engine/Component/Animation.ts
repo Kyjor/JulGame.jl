@@ -2,7 +2,7 @@
     // using ..Component.JulGame
     // import ..Component
     
-    class Animation {
+    class JulGameAnimation {
         animatedFPS: number
         frames: Vector4[]
 

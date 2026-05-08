@@ -77,6 +77,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
+    data = replace_animation_symbol(data)
     data = custom_function_removal(data)
     data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
@@ -151,6 +152,8 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"Math\.TypeConversions\.safe_int32_convert\(([^()]*)\)" => s"\1")
     # Julia `length(x)` -> TS `x.length` for simple non-nested args.
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
+    # Julia `floor(...)` -> JS `Math.floor(...)`.
+    data = replace(data, r"\bfloor\(" => "Math.floor(")
     # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
     data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
     # error with string literal
@@ -162,6 +165,15 @@ function replace_julia_ts_literals(data::AbstractString)
     return data
 end
 
+# Avoid collision with DOM/Web Animation types in TS output.
+function replace_animation_symbol(data::AbstractString)::String
+    s = String(data)
+    s = replace(s, r"\bclass\s+Animation\b" => "class JulGameAnimation")
+    s = replace(s, r"\bAnimation\[\]" => "JulGameAnimation[]")
+    s = replace(s, r"\bAnimation\(" => "JulGameAnimation(")
+    return s
+end
+
 function replace_imports_usings_includes(data::AbstractString)
     # Comment-out `using` lines; `\1` is the captured match (SubstitutionString).
     data = replace(data, r"(using .*)" => s"// \1")
@@ -170,13 +182,21 @@ function replace_imports_usings_includes(data::AbstractString)
 end
 
 function replace_mutable_structs(data::AbstractString)
-    # `mutable struct Name` → `class Name {` (must capture `\1` in the regex)
+    # `mutable struct Name` / `mutable struct Name <: Base` -> TS class (+ optional extends)
+    data = replace(
+        data,
+        r"mutable struct\s+(\w+)\s*<:\s*([A-Za-z_][\w\.]*)" => s"class \1 extends \2 {",
+    )
     data = replace(data, r"mutable struct\s+(\w+)" => s"class \1 {")
     return data
 end
 
 function replace_structs(data::AbstractString)
-    # replace the line with struct with empty string
+    # `struct Name` / `struct Name <: Base` -> TS class (+ optional extends)
+    data = replace(
+        data,
+        r"struct\s+(\w+)\s*<:\s*([A-Za-z_][\w\.]*)" => s"class \1 extends \2 {",
+    )
     data = replace(data, r"struct\s+(\w+)" => s"class \1 {")
     return data
 end

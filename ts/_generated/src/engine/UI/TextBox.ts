@@ -35,7 +35,7 @@
             return SDL2.SDL_ScaleModeLinear
         }
     }
-    class TextBox { <: UI.UIElement
+    class TextBox extends UI.UIElement {
         font: TTF_Font} | null
         fontPath: string
         fontSize: number
@@ -52,7 +52,7 @@
         needsEffectUpdate: boolean
         effectCacheKey: String  // Content hash for caching
 
-        constructor(text: string;  {
+        function TextBox(text: string; 
             id: string=JulGame.generate_uuid(), 
             name: string = "TextBox", 
             anchor::Symbol = :none,
@@ -241,7 +241,7 @@
         if (this.font == null) {
             error("Failed to load font, $(unsafe_string(SDL2.SDL_GetError())), loading default font")
             this.fontPath = DEFAULT_FONT
-            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(JulGame.BUILT_IN_ASSETS["Font"]), length(JulGame.BUILT_IN_ASSETS["Font"])), 1, fontSize)
+            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, SDL2.SDL_RWFromConstMem(pointer(JulGame.BUILT_IN_ASSETS["Font"]), JulGame.BUILT_IN_ASSETS["Font"].length), 1, fontSize)
         }
         if (fontPath != "Default") {
             this.fontPath = fontPath
@@ -290,14 +290,14 @@
                 raw_data = JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
                 console.debug("loading font from cache")
             }
-            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            let rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
             if (rw != null) {
                 @debug("loading font from cache")
                 @debug("comma separated path: ", get_comma_separated_path(fontPath))
                 return CallSDLFunction(SDL2.TTF_OpenFontRW, rw, 1, fontSize)
             }
         }
-        console.debug("Loading font from disk, there are $(length(JulGame.FONT_CACHE)) fonts in cache")
+        console.debug("Loading font from disk, there are $(JulGame.FONT_CACHE.length) fonts in cache")
         
         let basePath = joinpath(JulGame.BasePath, "assets", "fonts")
         return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), fontSize)
@@ -549,7 +549,7 @@
         
         // Generate new cache key
         let newCacheKey = generate_effect_cache_key(this)
-        console.debug("TextBox.apply_effects!: effects updated") name=this.name key=newCacheKey effects_count=length(this.effects)
+        console.debug("TextBox.apply_effects!: effects updated") name=this.name key=newCacheKey effects_count=this.effects.length
         
         // Only update if cache key changed
         if (this.effectCacheKey != newCacheKey) {
@@ -745,7 +745,7 @@
         try
             setfield(this, s, x)
             if (s == :text || s == :isActive || s == :textColor || s == :maxLineWidth || s == :wrapWords || s == :fontSize || s == :color) {
-                if (s == :text && length(x) == 0) {
+                if (s == :text && x.length == 0) {
                     setfield(this, s, " ")// prevents segfault when text is empty
                 }
                 if (this.isConstructed) {

@@ -175,7 +175,7 @@
 			let v = this.scriptTimings[script_type]
 			v.push(elapsed)
 			// Cap growth when profiling stays on for long sessions (avoids unbounded vectors / GC pressure).
-			if (length(v) > 25_000) {
+			if (v.length > 25_000) {
 				deleteat(v, 1:10_000)
 			}
 		else
@@ -230,7 +230,7 @@
 			let max_time = maximum(timings)
 			
 			println("\n📜 $(script_type)")
-			println("  ├─ Calls: $(length(timings))")
+			println("  ├─ Calls: $(timings.length)")
 			println("  ├─ Mean:  $(round(mean_time, digits=3)) ms")
 			println("  ├─ P95:   $(round(p95, digits=3)) ms")
 			println("  ├─ P99:   $(round(p99, digits=3)) ms")
@@ -476,7 +476,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	cleanup_coroutines()
 	
 	//destroy current scene 
-	console.debug("Entity count before destroying: $(length(this.scene.entities))") 
+	console.debug("Entity count before destroying: $(this.scene.entities.length)") 
 	let count = 0
 	let skipcount = 0
 	let persistentEntities = []	
@@ -519,7 +519,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	console.debug("Destroyed $count entities while changing scenes")
 	console.debug("Skipped $skipcount entities while changing scenes")
 
-	console.debug("Entities left after destroying while changing scenes (persistent): $(length(persistentEntities)) ")
+	console.debug("Entities left after destroying while changing scenes (persistent): $(persistentEntities.length) ")
 
 	let persistentUIElements = []
 	// delete all UIElements
@@ -1021,10 +1021,10 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 				SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
 				let currentColor = (r = rgba.r[], g = rgba.g[], b = rgba.b[], a = rgba.a[])
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 100, 100, 100, 255)
-				SDL2.SDL_RenderFillRect(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(0, 35, 400, 35 * length(statTexts))))
+				SDL2.SDL_RenderFillRect(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(SDL2.SDL_Rect(0, 35, 400, 35 * statTexts.length)))
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, currentColor[1], currentColor[2], currentColor[3], currentColor[4])
 
-				if (length(this.debugTextBoxes) == 0) {
+				if (this.debugTextBoxes.length == 0) {
 					for i = eachindex(statTexts)
 				 		let textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 24, position = Math.Vector2(0, 35 * i))
 				 		this.debugTextBoxes.push(textBox)
