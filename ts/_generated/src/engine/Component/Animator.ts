@@ -45,7 +45,11 @@ export {}
             this.lastFrame = this.lastFrame + framesToUpdate
             this.lastUpdate = currentRenderTime
         }
-        this.sprite.crop = this.currentAnimation.frames[this.lastFrame > this.currentAnimation.frames.length ? (1; this.lastFrame = 1) : this.lastFrame]
+        let frameCount = this.currentAnimation.frames.length
+        if (this.lastFrame > frameCount) {
+            this.lastFrame = 1
+        }
+        this.sprite.crop = this.currentAnimation.frames[this.lastFrame]
     }
 
     
@@ -89,6 +93,9 @@ export {}
     ```
     */
     function force_frame_update(this: InternalAnimator,  frameIndex: number) {
+        if (this.currentAnimation === null || this.sprite === null) {
+            return
+        }
         frameIndex = frameIndex
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     }

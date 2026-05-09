@@ -45,7 +45,11 @@
             this.lastFrame = this.lastFrame + framesToUpdate
             this.lastUpdate = currentRenderTime
         end
-        this.sprite.crop = this.currentAnimation.frames[this.lastFrame > length(this.currentAnimation.frames) ? (1; this.lastFrame = 1) : this.lastFrame]
+        frameCount = length(this.currentAnimation.frames)
+        if this.lastFrame > frameCount
+            this.lastFrame = 1
+        end
+        this.sprite.crop = this.currentAnimation.frames[this.lastFrame]
     end
 
     function Component.append_array(this::InternalAnimator)
@@ -92,6 +96,9 @@
     ```
     """
     function force_frame_update(this::InternalAnimator, frameIndex::Int)
+        if this.currentAnimation === nothing || this.sprite === nothing
+            return
+        end
         frameIndex = frameIndex
         this.sprite.crop = this.currentAnimation.frames[frameIndex]
     end

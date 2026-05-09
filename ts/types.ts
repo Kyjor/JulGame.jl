@@ -15,17 +15,20 @@ declare global {
   }
   interface IShape {}
   interface ISoundSource {}
-  interface ISprite {}
+  interface ISprite {
+    crop: any;
+    [key: string]: any;
+  }
   interface IAnimator {}
   interface ICollider {}
   interface ICircleCollider {}
-  type InternalSprite = ISprite;
-  type InternalAnimator = IAnimator;
-  type InternalCollider = ICollider;
-  type InternalCircleCollider = ICircleCollider;
+  type InternalSprite = any;
+  type InternalAnimator = any;
+  type InternalCollider = any;
+  type InternalCircleCollider = any;
   type InternalRigidbody = any;
-  type InternalShape = IShape;
-  type InternalSoundSource = ISoundSource;
+  type InternalShape = any;
+  type InternalSoundSource = any;
   interface IMesh3D {}
   interface ISoftwareRenderer3D {}
   interface IObserver {}
