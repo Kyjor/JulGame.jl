@@ -92,7 +92,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             
             if (this != collider) {
                 // check if other collider is within range of this collider, if it isn't then skip it
-                if (collider.parent.transform.position.x > this.parent.transform.position.x + Component_get_size(this).x || collider.parent.transform.position.x + Component_get_size(collider).x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering) {
+                if (collider.parent.transform.position.x > this.parent.transform.position.x + this.size.x || collider.parent.transform.position.x + collider.size.x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering) {
                     colliderSkipCount += 1
                     continue
                 }
@@ -188,7 +188,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let camera = MAIN.scene.camera
         let camS = (globalThis as any).JulGame.pixels_per_world_unit(camera)
         let cameraDiff = camera !== null ? 
-        Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 
+        {x: (camera.position.x + camera.offset.x) * camS, y: (camera.position.y + camera.offset.y) * camS} : 
         {x: 0, y: 0}
         let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, Math.round(posA.x), Math.round(posA.y + 32), Math.round(posA.x), Math.round(posA.y + 80))
         //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 80 - cameraDiff.y))
@@ -236,7 +236,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 if (colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== null) {
                     // If moving upward (negative velocity in SDL coords), ignore collision
                     if (colliderA.parent.rigidbody.velocity.y < 0) {
-                        return (None, 0.0, isLineIntersectionL || isLineIntersectionR)
+                        return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
                     }
                 }
                 verticalCollisionDir = Bottom
@@ -244,21 +244,21 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 console.debug("colliding from bottom at depth $(depthVertical)") 
                 // Platformer colliders allow pass-through from below
                 if (colliderB.isPlatformerCollider) {
-                    return (None, 0.0, isLineIntersectionL || isLineIntersectionR)
+                    return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
                 }
                 verticalCollisionDir = Top
             }
             
-            if (min(depthHorizontal, depthVertical) == depthHorizontal) {
-                return (horizontalCollisionDir, -depthHorizontal/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+            if (Math.min(depthHorizontal, depthVertical) == depthHorizontal) {
+                return [horizontalCollisionDir, -depthHorizontal/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR]
             } else {
-                return (verticalCollisionDir, depthVertical/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return [verticalCollisionDir, depthVertical/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR]
             }
         }
 
         //(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 
-        return (None, 0.0, isLineIntersectionL || isLineIntersectionR)
+        return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
     }
 
     function Component_duplicate(this: InternalCollider,  parent: any) {

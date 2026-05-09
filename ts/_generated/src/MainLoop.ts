@@ -579,7 +579,7 @@ function build_sprite_layers() {
 	}
 	sort(sortedLayers)
 	
-	return (layers = layerDict, sorted = sortedLayers)  // Return named tuple
+	return [layers = layerDict, sorted = sortedLayers]  // Return named tuple
 }
 
 function JulGame_initialize(this: any) {
@@ -1004,8 +1004,8 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 			
 			pos1 = windowPos !== null ? windowPos : {x: 0, y: 0}
 			let S_mouse = (globalThis as any).JulGame.pixels_per_world_unit(this.scene.camera)
-			this.input.mousePositionWorld = Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse)
-			let rawMousePos = {x: this.input.mousePosition.x - pos1.x , y: this.input.mousePosition.y - pos1.y}
+			this.input.mousePositionWorld = {x: (this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, y: (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse}
+			let rawMousePos = {x: this.input.mousePosition.x - pos1.x, y: this.input.mousePosition.y - pos1.y}
 			//region Debug
 			if ((globalThis as any).JulGame.IS_DEBUG) {
 				// Stats to display

@@ -156,7 +156,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
         // Calculate camera difference
         let cameraDiff = camera !== null ? 
-            Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
+            {x: (camera.position.x + camera.offset.x) * S, y: (camera.position.y + camera.offset.y) * S} : 
             {x: 0, y: 0}
     
         // Calculate position
@@ -259,13 +259,13 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     
         // Calculate center for rotation
-        let calculatedCenter = Vector2(dstRect.w * (this.center.x % 1), dstRect.h * (this.center.y % 1))
+        let calculatedCenter = {x: dstRect.w * (this.center.x % 1), y: dstRect.h * (this.center.y % 1)}
         let rotationCenter = !this.isFloatPrecision ? 
             (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y)) :
             (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
     
-        this.lastRenderedScreenPosition = Vector2f(convert(Float64, dstRect.x), convert(Float64, dstRect.y))
-        this.lastRenderedScreenSize = Vector2f(convert(Float64, dstRect.w), convert(Float64, dstRect.h))
+        this.lastRenderedScreenPosition = {x: convert(Float64, dstRect.x), y: convert(Float64, dstRect.y)}
+        this.lastRenderedScreenSize = {x: convert(Float64, dstRect.w), y: convert(Float64, dstRect.h)}
         // Render with appropriate precision
         let renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if (renderFn() {

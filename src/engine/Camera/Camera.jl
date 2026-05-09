@@ -59,11 +59,7 @@ module CameraModule
         inv_delta = inv(S_old) - inv(S_new)
         dx = half_w * inv_delta
         dy = half_h * inv_delta
-        camera.position = Vector3f(
-            camera.position.x + dx,
-            camera.position.y + dy,
-            camera.position.z,
-        )
+        camera.position = Vector3f(camera.position.x + dx, camera.position.y + dy, camera.position.z)
         camera.zoom = new_zoom
         return camera
     end

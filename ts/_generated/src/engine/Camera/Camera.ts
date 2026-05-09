@@ -56,8 +56,7 @@ export {}
         let inv_delta = (1 / (S_old)) - (1 / (S_new))
         let dx = half_w * inv_delta
         let dy = half_h * inv_delta
-        camera.position = {x: camera.position.x + dx, y: camera.position.y + dy, z: camera.position.z,
-        }
+        camera.position = {x: camera.position.x + dx, y: camera.position.y + dy, z: camera.position.z}
         camera.zoom = new_zoom
         return camera
     }

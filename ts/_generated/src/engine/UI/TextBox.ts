@@ -204,7 +204,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             // Render with screen-space positioning (traditional UI)
             let adjusted_position = {x: 0, y: 0}
             if (this.originalSize != this.size && this.anchor.current_state == :none) {
-                adjusted_position = Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
+                adjusted_position = {x: this.position.x - (this.size.x - this.originalSize.x)/2, y: this.position.y - (this.size.y - this.originalSize.y)/2}
                 // console.debug("difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)")
                 // console.debug("adjusted position: $(adjusted_position.x), $(adjusted_position.y)")
             } else {
@@ -490,7 +490,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let scaleY = windowSize.y / baseResolution.y
         
         // Use the smaller scaling factor to ensure text fits in both dimensions
-        let scale = min(scaleX, scaleY)
+        let scale = Math.min(scaleX, scaleY)
         
         // Calculate and return the scaled font size
         return Math.round(baseFontSize * scale)

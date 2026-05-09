@@ -660,6 +660,98 @@ function strip_uint32_constructor_calls(data::AbstractString)::String
     return s
 end
 
+# Julia `return (a, b, ...)` tuple → TS `return [a, b, ...]` (comma operator is not tuple semantics).
+function replace_return_parenthesized_tuples(data::AbstractString)::String
+    s = String(data)
+    rx = r"return\s+\("
+    i = firstindex(s)
+    n = lastindex(s)
+    io = IOBuffer()
+    while i <= n
+        rg = findnext(rx, s, i)
+        if rg === nothing
+            write(io, SubString(s, i))
+            break
+        end
+        lo = first(rg)
+        lo > i && write(io, SubString(s, i, prevind(s, lo)))
+        open_at = last(rg)
+        inner_start = nextind(s, open_at)
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(io, SubString(s, lo))
+            break
+        end
+        inner = s[inner_start:prevind(s, close_idx)]
+        parts = split_top_level_commas_general(inner)
+        if length(parts) < 2 || any(isempty(strip(p)) for p in parts)
+            write(io, SubString(s, lo, close_idx))
+        else
+            write(io, "return [", join(parts, ", "), "]")
+        end
+        i = nextind(s, close_idx)
+    end
+    return String(take!(io))
+end
+
+# `Math.Vector2(a, b)` / `Vector2f(...)` — regex-only rewrite misses args that contain `(...)`; use balanced parens + top-level comma split.
+function replace_math_vector_constructor_calls(data::AbstractString)::String
+    needles_meta = (
+        ("JulGame.Math.Vector3f(", 3),
+        ("JulGame.Math.Vector2f(", 2),
+        ("JulGame.Math.Vector2(", 2),
+        ("Math.Vector3f(", 3),
+        ("Math.Vector2f(", 2),
+        ("Math.Vector2(", 2),
+        ("Vector3f(", 3),
+        ("Vector2f(", 2),
+        ("Vector2(", 2),
+    )
+    s = String(data)
+    io = IOBuffer()
+    fi = firstindex(s)
+    n = lastindex(s)
+    while fi <= n
+        best_lo = nothing
+        best_hi = nothing
+        best_arity = 2
+        for (needle, arity) in needles_meta
+            rg = findnext(needle, s, fi)
+            rg === nothing && continue
+            lo = first(rg)
+            if best_lo === nothing || lo < best_lo
+                best_lo = lo
+                best_hi = last(rg)
+                best_arity = arity
+            end
+        end
+        if best_lo === nothing
+            write(io, SubString(s, fi))
+            break
+        end
+        best_lo > fi && write(io, SubString(s, fi, prevind(s, best_lo)))
+        inner_start = nextind(s, best_hi)
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(io, SubString(s, best_lo))
+            break
+        end
+        inner = s[inner_start:prevind(s, close_idx)]
+        parts = split_top_level_commas_general(inner)
+        if length(parts) == best_arity
+            if best_arity == 2
+                write(io, "{x: ", parts[1], ", y: ", parts[2], "}")
+            else
+                write(io, "{x: ", parts[1], ", y: ", parts[2], ", z: ", parts[3], "}")
+            end
+        else
+            write(io, SubString(s, best_lo, close_idx))
+        end
+        fi = nextind(s, close_idx)
+    end
+    return String(take!(io))
+end
+
 function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
     data = replace(data, r"\bnothing\b" => "null")
@@ -674,6 +766,8 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
     data = replace(data, r"\bfloor\(" => "Math.floor(")
+    # Julia `min(...)` -> JS `Math.min(...)` (not `Math.Math.min` — exclude already-prefixed).
+    data = replace(data, r"(?<!\bMath\.)\bmin\s*\(" => "Math.min(")
     # Bare `round(...)` -> `Math.round(...)` (word + call only; not `Math.round`, `surround`, etc.).
     data = replace(data, r"(?<!\bMath\.)\bround\s*\(" => "Math.round(")
     # `clamp(...)` stays as `clamp(...)`; generated files import it from `juliaHelpers.ts`.
@@ -683,10 +777,8 @@ function replace_julia_ts_literals(data::AbstractString)
     # Julia tuple literals in value position: `(a, b, c)` -> `[a, b, c]`.
     data = replace(data, r"=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s"= [\1]")
     data = replace(data, r":\s*([A-Za-z_]\w*)\s*=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s": \1 = [\2]")
-    # Vector2f constructor calls -> plain object literals for TS compatibility.
-    data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2f\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
-    data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
-    data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector3f\(\s*([^,()]+)\s*,\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2, z: \3}")
+    # Vector2 / Vector2f / Vector3f constructor calls -> `{ x, y [, z] }` (handles nested parens in arguments).
+    data = replace_math_vector_constructor_calls(data)
     # Rigidbody: grounded snap keeps `z` from the integrated position (Julia `Vector2f(x,y)` drops `z` on the Julia side).
     data = replace(
         data,
@@ -695,6 +787,7 @@ function replace_julia_ts_literals(data::AbstractString)
     )
     # `a && return b` is valid Julia shorthand; TS needs an explicit if.
     data = replace(data, r"(?m)^(\s*)(.+?)\s*&&\s*return\s+(.+)$" => s"\1if (\2) { return \3 }")
+    data = replace_return_parenthesized_tuples(data)
     # Julia try/catch forms.
     data = replace(data, r"(?m)^(\s*)try\s*$" => s"\1try {")
     data = replace(data, r"(?m)^(\s*)catch\s+([A-Za-z_]\w*)\s*$" => s"\1} catch (\2) {")

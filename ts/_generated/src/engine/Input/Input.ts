@@ -151,7 +151,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let safe_logical_height = max(logical_size.y, 1)
             let scale_x = safe_window_width / safe_logical_width
             let scale_y = safe_window_height / safe_logical_height
-            let scale = min(scale_x, scale_y)
+            let scale = Math.min(scale_x, scale_y)
             let content_width = safe_logical_width * scale
             let content_height = safe_logical_height * scale
             let bar_x = (safe_window_width - content_width) / 2
@@ -167,10 +167,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 scaled_y = 0
             }
             window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
-            this.mousePosition = Vector2(
-                clamp(Math.floor(Int, scaled_x), 0, logical_size.x),
-                clamp(Math.floor(Int, scaled_y), 0, logical_size.y)
-            )
+            this.mousePosition = {x: clamp(Math.floor(Int, scaled_x), 0, logical_size.x), y: clamp(Math.floor(Int, scaled_y), 0, logical_size.y)}
             console.debug("Scaled mouse position: window coords ($(x[0]), $(y[0])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused")
         } else {
             let raw_mouse_x = x[0] - (globalThis as any).JulGame.EditorGameViewPosition.x
@@ -183,7 +180,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 scale_y = camera_size.y / (globalThis as any).JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                this.mousePosition = Vector2(Math.floor(Int, scaled_x), Math.floor(Int, scaled_y))
+                this.mousePosition = {x: Math.floor(Int, scaled_x), y: Math.floor(Int, scaled_y)}
             } else {
                 this.mousePosition = {x: 0, y: 0}
             }
@@ -643,7 +640,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         // Center the scaled hitbox over the original sprite position
         let interactionScale = try element.sprite.interactionScale catch; 1.0 }
         if (interactionScale < 1.0) {
-            let sizeDiff = Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
+            let sizeDiff = {x: baseSize.x * (1.0 - interactionScale), y: baseSize.y * (1.0 - interactionScale)}
             return {x: basePosition.x + sizeDiff.x / 2, y: basePosition.y + sizeDiff.y / 2}
         }
         return basePosition
@@ -750,7 +747,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
 
-                    console.debug("Clipboard text: $(clipboard_text[1:min(100, clipboard_text.length)])")
+                    console.debug("Clipboard text: $(clipboard_text[1:Math.min(100, clipboard_text.length)])")
 
                     // Check if it's a file path to an image
                     if (isfile(clipboard_text) && is_image_file_by_extension(clipboard_text)) {
@@ -1183,7 +1180,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         safe_logical_height = max(logical_size.y, 1)
         scale_x = safe_window_width / safe_logical_width
         scale_y = safe_window_height / safe_logical_height
-        scale = min(scale_x, scale_y)
+        scale = Math.min(scale_x, scale_y)
         content_width = safe_logical_width * scale
         content_height = safe_logical_height * scale
         bar_x = (safe_window_width - content_width) / 2

@@ -90,7 +90,7 @@ module ColliderModule
             
             if this != collider
                 # check if other collider is within range of this collider, if it isn't then skip it
-                if collider.parent.transform.position.x > this.parent.transform.position.x + Component.get_size(this).x || collider.parent.transform.position.x + Component.get_size(collider).x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering
+                if collider.parent.transform.position.x > this.parent.transform.position.x + this.size.x || collider.parent.transform.position.x + collider.size.x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering
                     colliderSkipCount += 1
                     continue
                 end
