@@ -145,8 +145,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let window_height = Ref{Cint}(0)
             (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
             let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
-            let safe_window_width = max(window_width[], 1)
-            let safe_window_height = max(window_height[], 1)
+            let safe_window_width = max(window_width, 1)
+            let safe_window_height = max(window_height, 1)
             let safe_logical_width = max(logical_size.x, 1)
             let safe_logical_height = max(logical_size.y, 1)
             let scale_x = safe_window_width / safe_logical_width
@@ -157,7 +157,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let bar_x = (safe_window_width - content_width) / 2
             let bar_y = (safe_window_height - content_height) / 2
             console.debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
-            console.debug("window_width: $window_width[], window_height: $window_height[]")
+            console.debug("window_width: $window_width, window_height: $window_height")
             console.debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
             let scaled_x = (x[0] - bar_x) / scale
             let scaled_y = (y[0] - bar_y) / scale
@@ -198,9 +198,9 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
     }
 
     function _input_poll_accumulate(prof, t0, key: symbol)
-        if (prof === null) { return let dt = (time_ns() - t0[]) / 1e6 }
+        if (prof === null) { return let dt = (time_ns() - t0) / 1e6 }
         (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
-        t0[] = time_ns()
+        t0 = time_ns()
         return
     }
 
@@ -213,18 +213,18 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
     const _trace_input_ui_hit_iter_ref = Ref{Union{null, Bool}}(null)
     function _input_ui_hit_iter_stream_logs() {
-        let v = []
+        let v = _trace_input_ui_hit_iter_ref
         if (v === null) {
             let s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_ITER", "0")))
-            _trace_input_ui_hit_iter_ref[] = s == "1" || s in ("true", "yes", "on")
+            _trace_input_ui_hit_iter_ref = s == "1" || s in ("true", "yes", "on")
         }
-        return _trace_input_ui_hit_iter_ref[]: boolean
+        return _trace_input_ui_hit_iter_ref: boolean
     }
 
     function _input_ui_hit_step(prof,  t_blk: Ref{UInt64},  key: )
         let t1 = time_ns()
-        dt = (t1 - t_blk[]) / 1e6
-        t_blk[] = t1
+        dt = (t1 - t_blk) / 1e6
+        t_blk = t1
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
@@ -255,7 +255,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
     function poll_input(this: Input) {
         prof = _input_latency_profiler()
-        t0 = Ref(time_ns())
+        t0 = time_ns()
 
         this.buttonsPressedDown = []
         this.mouseButtonsPressedDown = []
@@ -266,13 +266,13 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
         while true
             if (!isempty(this.pending_sdl_events)) {
-                event_ref[] = popfirst(this.pending_sdl_events)
+                event_ref = popfirst(this.pending_sdl_events)
             elseif !Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))
                 break
             }
             _input_poll_accumulate(prof, t0, :sdl_PollEvent)
 
-            evt = []
+            evt = event_ref
             handle_window_events(this, evt)
 
             // console.debug("polling input")
@@ -282,7 +282,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 if (evt.type == SDL2.SDL_MOUSEMOTION) {
                     let coalesce_ref = Ref{SDL2.SDL_Event}()
                     while Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(coalesce_ref))
-                        let e2 = []
+                        let e2 = coalesce_ref
                         if (e2.type == SDL2.SDL_MOUSEMOTION) {
                             _refresh_logical_mouse(this, e2)
                             this.didMouseMotionOccur = true
@@ -352,7 +352,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 if (ui_hit_active) {
                     _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_preamble)
                     let t_ui_wall = time_ns()
-                    let t_hit = Ref(time_ns())
+                    let t_hit = time_ns()
                     _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = [this.mousePosition.x, this.mousePosition.y], n_ui = MAIN.scene.uiElements.length)
                     if (MAIN.scene.camera === null) {
                         _input_ui_hit_step(prof, t_hit, :hit_ui_abort_camera)
@@ -534,7 +534,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         }
                         _input_ui_hit_span(prof, t_hi, :hit_inside_7_mouse_btn_tail)
                     }
-                    let t_tail = Ref(time_ns())
+                    let t_tail = time_ns()
                     if (evt.type == SDL2.SDL_MOUSEBUTTONUP) {
                         this.elementsBeingClickedDownOn = []
                         _input_ui_hit_step(prof, t_tail, :hit_ui_clear_click_state)
@@ -1177,8 +1177,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         // Get base resolution from WindowManager
         logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
 
-        safe_window_width = max(window_width[], 1)
-        safe_window_height = max(window_height[], 1)
+        safe_window_width = max(window_width, 1)
+        safe_window_height = max(window_height, 1)
         safe_logical_width = max(logical_size.x, 1)
         safe_logical_height = max(logical_size.y, 1)
         scale_x = safe_window_width / safe_logical_width
@@ -1251,8 +1251,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             // Fallback to current mouse position
             x_ref, y_ref = Ref{Cint}(0), Ref{Cint}(0)
             (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(x_ref, y_ref)
-            click_x = Int32(x_ref[])
-            click_y = Int32(y_ref[])
+            click_x = Int32(x_ref)
+            click_y = Int32(y_ref)
         }
         
         mouse_event = init_sdl_event()

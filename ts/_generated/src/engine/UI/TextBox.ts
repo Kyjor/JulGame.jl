@@ -191,12 +191,12 @@ export {}
                 (globalThis as any).JulGame.Renderer, 
                 texture_to_render, 
                 null, 
-                Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(
+                (globalThis as any).JulGameSdl.glue_SDL_FRect(
                     Float32(posX), 
                     Float32(posY), 
                     Float32(this.size.x * camera.zoom), 
                     Float32(this.size.y * camera.zoom)
-                ))
+                )
             ) == 0 "error rendering textbox text: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))"
         else
             // Render with screen-space positioning (traditional UI)
@@ -212,12 +212,12 @@ export {}
                 (globalThis as any).JulGame.Renderer, 
                 texture_to_render, 
                 null, 
-                Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(
+                (globalThis as any).JulGameSdl.glue_SDL_FRect(
                     Float32(adjusted_position.x), 
                     Float32(adjusted_position.y), 
                     Float32(this.size.x), 
                     Float32(this.size.y)
-                ))
+                )
             ) == 0 "error rendering textbox text: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))"
         }
     }
@@ -400,13 +400,13 @@ export {}
                 let word_with_space = word * " "
                 SDL2.TTF_SizeUTF8(font, word_with_space, w, h)
                 
-                if (current_width + w[] > maxWidth && !isempty(current_line)) {
+                if (current_width + w > maxWidth && !isempty(current_line)) {
                     lines.push(rstrip(current_line))
                     current_line = word * " "
-                    current_width = []
+                    current_width = w
                 else
                     current_line *= word * " "
-                    current_width += []
+                    current_width += w
                 }
             }
             
@@ -420,13 +420,13 @@ export {}
                 w, h = Ref{Cint}(0), Ref{Cint}(0)
                 SDL2.TTF_SizeUTF8(font, char_str, w, h)
                 
-                if (current_width + w[] > maxWidth && !isempty(current_line)) {
+                if (current_width + w > maxWidth && !isempty(current_line)) {
                     lines.push(current_line)
                     current_line = char_str
-                    current_width = []
+                    current_width = w
                 else
                     current_line *= char_str
-                    current_width += []
+                    current_width += w
                 }
             }
             
@@ -615,8 +615,8 @@ export {}
                 let fmt = Ref{UInt32}(0)
                 let access = Ref{Cint}(0)
                 if ((globalThis as any).JulGameSdl.glue_SDL_QueryTexture(texture, fmt, access, w, h) == 0) {
-                    width = Int(w[])
-                    height = Int(h[])
+                    width = Int(w)
+                    height = Int(h)
                 }
             }
             snapshot.push((
@@ -646,8 +646,8 @@ export {}
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                 (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                this.size = {x: w[], y: h[]}
-                console.debug("Cached effect texture size updated") name=this.name w=w[] h= []
+                this.size = {x: w, y: h}
+                console.debug("Cached effect texture size updated") name=this.name w=w h=h
             }
             
             this.needsEffectUpdate = false
@@ -706,8 +706,8 @@ export {}
                     w = Ref{Cint}(0); h = Ref{Cint}(0)
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.size = {x: w[], y: h[]}
-                    console.debug("Effect texture created") name=this.name tex_ptr=this.effectTexture w=w[] h= []
+                    this.size = {x: w, y: h}
+                    console.debug("Effect texture created") name=this.name tex_ptr=this.effectTexture w=w h=h
                     // Set scaling mode according to (globalThis as any).JulGame.SCALE_QUALITY
                     (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(this.effectTexture, get_scale_mode_from_quality())
                     

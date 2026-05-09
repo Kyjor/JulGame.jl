@@ -69,7 +69,7 @@ export {}
         }
 (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawBlendMode_BLEND()
         (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(this.backgroundColor[0], this.backgroundColor[1], this.backgroundColor[2], this.backgroundColor[3]);
-        (globalThis as any).JulGameSdl.glue_SDL_RenderFillRectF(Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y)))
+        (globalThis as any).JulGameSdl.glue_SDL_RenderFillRectF((globalThis as any).JulGameSdl.glue_SDL_FRect(this.windowPos.x, this.windowPos.y, this.size.x, this.size.y))
         (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
         
         let center_pixels = {x: this.size.x / 2, y: this.size.y / 2}

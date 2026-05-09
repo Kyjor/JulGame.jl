@@ -143,11 +143,11 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
     
         // Check and set color if necessary (for both regular and effect textures)
-        let colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
-        let alphaRef = Ref(UInt8(0))
+        let colorRefs = (UInt8(0), UInt8(0), UInt8(0))
+        let alphaRef = UInt8(0)
         (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, colorRefs...)
         (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
-        if (colorRefs[0][] != this.color[0] || colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || this.color[3] != []) {
+        if (colorRefs[0][] != this.color[0] || colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || this.color[3] != alphaRef) {
             (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, UInt8(clamp(this.color[0], 0, 255)), UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)))
             (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, UInt8(clamp(this.color[3], 0, 255)))
         }
@@ -162,7 +162,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         let position = this.parent.transform.position
     
         // Calculate source rectangle
-        let srcRect = (this.crop == Vector4(0, 0, 0, 0) || this.crop == null) ? null : Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
+        let srcRect = (this.crop == Vector4(0, 0, 0, 0) || this.crop == null) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t)
     
         // Calculate pixels per unit
         let ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -247,24 +247,24 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
     
         // Select float or integer precision
         if (this.isFloatPrecision) {
-            let dstRect = Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
+            let dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
         else
-            dstRect = Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(
+            dstRect = (globalThis as any).JulGameSdl.glue_SDL_Rect(
                 TypeConversions.safe_int32_convert(Math.round(centeredX)),
                 TypeConversions.safe_int32_convert(Math.round(centeredY)),
                 TypeConversions.safe_int32_convert(Math.round(scaledWidth)),
                 TypeConversions.safe_int32_convert(Math.round(scaledHeight))
-            ))
+            )
         }
     
         // Calculate center for rotation
-        let calculatedCenter = Vector2(dstRect[].w * (this.center.x % 1), dstRect[].h * (this.center.y % 1))
+        let calculatedCenter = Vector2(dstRect.w * (this.center.x % 1), dstRect.h * (this.center.y % 1))
         let rotationCenter = !this.isFloatPrecision ? 
-            Ref((globalThis as any).JulGameSdl.glue_SDL_Point(TypeConversions.safe_int32_convert(Math.round(calculatedCenter.x)), TypeConversions.safe_int32_convert(Math.round(calculatedCenter.y)))) :
-            Ref((globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
+            (globalThis as any).JulGameSdl.glue_SDL_Point(TypeConversions.safe_int32_convert(Math.round(calculatedCenter.x)), TypeConversions.safe_int32_convert(Math.round(calculatedCenter.y))) :
+            (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
     
-        this.lastRenderedScreenPosition = Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
-        this.lastRenderedScreenSize = Vector2f(convert(Float64, dstRect[].w), convert(Float64, dstRect[].h))
+        this.lastRenderedScreenPosition = Vector2f(convert(Float64, dstRect.x), convert(Float64, dstRect.y))
+        this.lastRenderedScreenSize = Vector2f(convert(Float64, dstRect.w), convert(Float64, dstRect.h))
         // Render with appropriate precision
         let renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if (renderFn() {
@@ -396,7 +396,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     let w = Ref{Cint}(0); h = Ref{Cint}(0)
                     let fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.effectSize = {x: w[], y: h[]}
+                    this.effectSize = {x: w, y: h}
                     
                     // Cache the result for other sprites with same visuals
                     SPRITE_EFFECT_CACHE[this.effectCacheKey] = [this.effectTexture, this.effectSize]
@@ -431,8 +431,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 fmt = Ref{UInt32}(0)
                 let access = Ref{Cint}(0)
                 if ((globalThis as any).JulGameSdl.glue_SDL_QueryTexture(texture, fmt, access, w, h) == 0) {
-                    width = Int(w[])
-                    height = Int(h[])
+                    width = Int(w)
+                    height = Int(h)
                 }
             }
             snapshot.push((

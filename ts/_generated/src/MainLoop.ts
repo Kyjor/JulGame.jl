@@ -294,8 +294,8 @@ export {}
     function full_loop(this: MainLoop) {
         try {
 			this.close = false
-            let startTime = Ref(UInt64(0))
-            let lastPhysicsTime = Ref(UInt64((globalThis as any).JulGameSdl.glue_SDL_GetTicks()))
+            let startTime = UInt64(0)
+            let lastPhysicsTime = UInt64((globalThis as any).JulGameSdl.glue_SDL_GetTicks())
             while !this.close
                 try {
                     game_loop(this, startTime, lastPhysicsTime)
@@ -720,7 +720,7 @@ function JulGame_create_entity(entity) {
 }
 
 /*
-game_loop(this, startTime = Ref(UInt64(0)), lastPhysicsTime = Ref(UInt64(0)), close = Ref(Bool(false)), Vector{Any}} = null)
+game_loop(this, startTime = UInt64(0), lastPhysicsTime = UInt64(0), close = Bool(false), Vector{Any}} = null)
 
 Runs the game loop.
 
@@ -731,12 +731,12 @@ Parameters:
 */
 function _accum_ui_render_breakdown_ms(prof, t0, key: symbol)
 	if (prof === null) { return let t1 = time_ns() }
-	(globalThis as any).JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0[]) / 1e6)
-	t0[] = t1
+	(globalThis as any).JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0) / 1e6)
+	t0 = t1
 	return
 }
 
-function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime = Ref(UInt64(0)), windowPos = {x: 0, y: 0}, windowSize = {x: 0, y: 0})
+function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhysicsTime = UInt64(0), windowPos = {x: 0, y: 0}, windowSize = {x: 0, y: 0})
 	// Start frame profiling
 	if (this.latencyProfiler !== null) {
 		(globalThis as any).JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
@@ -749,8 +749,8 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 		return
 	}
 	try {
-			let lastStartTime = []
-			startTime[] = (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceCounter()
+			let lastStartTime = startTime
+			startTime = (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceCounter()
 
 			let DEBUG = false
 			//region Input
@@ -804,13 +804,13 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 				}
 				
 				let currentPhysicsTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
-				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
+				deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
 				(globalThis as any).JulGame.DELTA_TIME = deltaTime
 				if (this.testMode) {
 					this.currentTestTime += deltaTime
 				}
 				if (deltaTime > .25) {
-					lastPhysicsTime[] =  (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
+					lastPhysicsTime =  (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
 					// TODO: pause simulation
 					//return
 				}
@@ -827,7 +827,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 						}
 					}
 				}
-				lastPhysicsTime[] =  currentPhysicsTime
+				lastPhysicsTime =  currentPhysicsTime
 				
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
@@ -926,7 +926,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			// Sort UI elements by layer before rendering
 			let uiRenderingOrder = []
 			let prof_ui = this.latencyProfiler
-			let t_ui = Ref(time_ns())
+			let t_ui = time_ns()
 			let canvases = filter(x -> isa(x, (globalThis as any).JulGame.ICanvas), this.scene.uiElements)
 			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_filter_canvases)
 			let immediate_scene_skip = UI.ImmediateUIModule.immediate_ui_managed_scene_skip_ids()
@@ -1010,8 +1010,8 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			if ((globalThis as any).JulGame.IS_DEBUG) {
 				// Stats to display
 				let statTexts = [
-					"FPS: $(Math.round(1000 / Math.round((startTime[] - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)))",
-					"Frame time: $(Math.round((startTime[] - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)) ms",
+					"FPS: $(Math.round(1000 / Math.round((startTime - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)))",
+					"Frame time: $(Math.round((startTime - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)) ms",
 					"Raw Mouse pos: $(rawMousePos.x),$(rawMousePos.y)",
 					"Mouse pos world: $(this.input.mousePositionWorld.x),$(this.input.mousePositionWorld.y)"
 				]
@@ -1020,7 +1020,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 
 				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a]
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255)
-				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length)))
+				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, (globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length))
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, currentColor[0], currentColor[1], currentColor[2], currentColor[3])
 
 				if (this.debugTextBoxes.length == 0) {
@@ -1219,7 +1219,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			}
 	
 			if (entity.collider != null) {
-				rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
+				rgba = (r = UInt8(0), g = UInt8(0), b = UInt8(0), a = UInt8(255))
 
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
@@ -1239,10 +1239,10 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 				colOffset = {x: colOffset.x, y: colOffset.y}
 						
 				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, 
-				Ref((globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
+				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
 				(pos.y + colOffset.y - cameraPosition.y) * S, 
 				entity.transform.scale.x * colSize.x * S, 
-				entity.transform.scale.y * colSize.y * S)))
+				entity.transform.scale.y * colSize.y * S))
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 			}
 		}

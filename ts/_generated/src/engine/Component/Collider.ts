@@ -180,18 +180,18 @@ export {}
         // (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
         // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, SDL2.SDL_ALPHA_OPAQUE)
         
-        let result = Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(0,0,0,0))
-        let isIntersection = (globalThis as any).JulGameSdl.glue_SDL_IntersectRect(Ref(a), Ref(b), result)
+        let result = (globalThis as any).JulGameSdl.glue_SDL_Rect(0,0,0,0)
+        let isIntersection = (globalThis as any).JulGameSdl.glue_SDL_IntersectRect(a, b, result)
 
         let camera = MAIN.scene.camera
         let camS = (globalThis as any).JulGame.pixels_per_world_unit(camera)
         let cameraDiff = camera !== null ? 
         Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 
         {x: 0, y: 0}
-        let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(Ref(b), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 32))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 80))))
+        let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, TypeConversions.safe_int32_convert(Math.round(posA.x)), TypeConversions.safe_int32_convert(Math.round(posA.y + 32)), TypeConversions.safe_int32_convert(Math.round(posA.x)), TypeConversions.safe_int32_convert(Math.round(posA.y + 80)))
         //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 80 - cameraDiff.y))
 
-        let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(Ref(b), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 32))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 80))))
+        let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize)), TypeConversions.safe_int32_convert(Math.round(posA.y + 32)), TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize)), TypeConversions.safe_int32_convert(Math.round(posA.y + 80)))
         //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 80 - cameraDiff.y))
         if (isLineIntersectionL == SDL2.SDL_TRUE) {
             isLineIntersectionL = true
@@ -208,8 +208,8 @@ export {}
         if (isIntersection == SDL2.SDL_TRUE) {
             let a1 = (globalThis as any).JulGameSdl.glue_SDL_FRect(posA.x, posA.y, colliderAXSize, colliderAYSize)
             let b1 = (globalThis as any).JulGameSdl.glue_SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
-            // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, Ref(a1))
-            // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, Ref(b1))
+            // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, a1)
+            // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, b1)
             // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 
             // console.log("col a (me): $(a)")
@@ -217,18 +217,18 @@ export {}
             // console.log("result: $(result)")
             // console.log("$(colliderA.parent.name) is colliding with $(colliderB.parent.name)")
 
-            let depthHorizontal = result[].w
-            let depthVertical = result[].h
+            let depthHorizontal = result.w
+            let depthVertical = result.h
             let horizontalCollisionDir = None
             let verticalCollisionDir = None
-            if (result[].x == b.x && !colliderB.isPlatformerCollider) {
+            if (result.x == b.x && !colliderB.isPlatformerCollider) {
                 console.debug("colliding from left at depth $(depthHorizontal)")
                 horizontalCollisionDir = Left
-            elseif result[].x == a.x && !colliderB.isPlatformerCollider
+            elseif result.x == a.x && !colliderB.isPlatformerCollider
                 console.debug("colliding from right at depth $(depthHorizontal)")
                 horizontalCollisionDir = Right
             }
-            if (result[].y == b.y) {
+            if (result.y == b.y) {
                 console.debug("colliding from top at depth $(depthVertical)")
                 // Check if moving upward through a platformer - if so, ignore to prevent snap-to-top
                 if (colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== null) {
@@ -238,7 +238,7 @@ export {}
                     }
                 }
                 verticalCollisionDir = Bottom
-            elseif result[].y == a.y
+            elseif result.y == a.y
                 console.debug("colliding from bottom at depth $(depthVertical)") 
                 // Platformer colliders allow pass-through from below
                 if (colliderB.isPlatformerCollider) {

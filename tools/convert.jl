@@ -9,6 +9,20 @@ const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
 
 # Generated TS calls Julia-style `InternalFoo(args)` on classes — emit `new InternalFoo(args)`.
 # Start with engine `Internal*` component types; append more names as other modules gain classes.
+# Do not turn `string[]`, `number[]`, etc. in type positions into ref-cell reads.
+const TS_ARRAY_PRIMITIVE_TYPE_NAMES = Set{String}([
+    "string",
+    "number",
+    "boolean",
+    "any",
+    "void",
+    "unknown",
+    "never",
+    "object",
+    "symbol",
+    "bigint",
+])
+
 const TS_CLASS_NAMES_NEEDING_NEW = String[
     "InternalAnimator",
     "InternalCircleCollider",
@@ -92,6 +106,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
+    data = normalize_julia_ref_for_ts(data)
     data = replace_invokelatest_calls(data)
     data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
@@ -635,6 +650,64 @@ function replace_julia_ts_literals(data::AbstractString)
     # info with string literal
     data = replace(data, r"@info\s+\"([^\"]*)\"" => s"console.info(\"\1\")")
     return data
+end
+
+# `Ref(x)` (Julia box / pointer-ish arg) -> `x`. Out-params and glue calls mutate plain objects in TS.
+function strip_ref_wrappers(data::AbstractString)::String
+    s = String(data)
+    needle = "Ref("
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner = s[inner_start:prevind(s, close_idx)]
+        write(buf, inner)
+        seg_start = nextind(s, close_idx)
+    end
+    return String(take!(buf))
+end
+
+# Julia `x[]` on a Ref -> TS `x`. Skip lowercase names that are TS array element types (`string[]`, …).
+function replace_julia_ref_cell_reads(data::AbstractString)::String
+    s = String(data)
+    pat = r"\b([a-z_$][\w.]*)\[\]"
+    io = IOBuffer()
+    idx = firstindex(s)
+    n = lastindex(s)
+    while idx <= n
+        rg = findnext(pat, s, idx)
+        if rg === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        f = first(rg)
+        f > idx && write(io, SubString(s, idx, prevind(s, f)))
+        m = match(pat, s, f)
+        m === nothing && break
+        name = String(m.captures[1])
+        write(io, name in TS_ARRAY_PRIMITIVE_TYPE_NAMES ? m.match : name)
+        idx = nextind(s, last(rg))
+    end
+    return String(take!(io))
+end
+
+function normalize_julia_ref_for_ts(data::AbstractString)::String
+    s = strip_ref_wrappers(data)
+    s = replace_julia_ref_cell_reads(s)
+    return s
 end
 
 function normalize_julgame_global_access(data::AbstractString)::String
