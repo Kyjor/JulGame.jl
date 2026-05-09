@@ -167,12 +167,12 @@ module ColliderModule
     end        
 
     function check_collision(colliderA::InternalCollider, colliderB::InternalCollider)
-        posA = (colliderA.parent.transform.position + colliderA.offset) * SCALE_UNITS
-        posB = (colliderB.parent.transform.position + colliderB.offset) * SCALE_UNITS
-        colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * SCALE_UNITS
-        colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * SCALE_UNITS
-        colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * SCALE_UNITS
-        colliderBYSize = colliderB.parent.transform.scale.y * colliderB.size.y * SCALE_UNITS
+        posA = (colliderA.parent.transform.position + colliderA.offset) * JulGame.SCALE_UNITS
+        posB = (colliderB.parent.transform.position + colliderB.offset) * JulGame.SCALE_UNITS
+        colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * JulGame.SCALE_UNITS
+        colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * JulGame.SCALE_UNITS
+        colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * JulGame.SCALE_UNITS
+        colliderBYSize = colliderB.parent.transform.scale.y * colliderB.size.y * JulGame.SCALE_UNITS
 
         a = SDL2.SDL_Rect(round(posA.x), round(posA.y), round(colliderAXSize), round(colliderAYSize))
         b = SDL2.SDL_Rect(round(posB.x), round(posB.y), round(colliderBXSize), round(colliderBYSize))
@@ -249,9 +249,9 @@ module ColliderModule
             end
             
             if min(depthHorizontal, depthVertical) == depthHorizontal
-                return (horizontalCollisionDir, -depthHorizontal/SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return (horizontalCollisionDir, -depthHorizontal/JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             else
-                return (verticalCollisionDir, depthVertical/SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return (verticalCollisionDir, depthVertical/JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             end
         end
 

@@ -232,10 +232,10 @@ export {}
 			
 			console.log("\n📜 $(script_type)")
 			console.log("  ├─ Calls: $(timings.length)")
-			console.log("  ├─ Mean:  $(round(mean_time, digits=3)) ms")
-			console.log("  ├─ P95:   $(round(p95, digits=3)) ms")
-			console.log("  ├─ P99:   $(round(p99, digits=3)) ms")
-			console.log("  └─ Max:   $(round(max_time, digits=3)) ms")
+			console.log("  ├─ Mean:  $(Math.round(mean_time, digits=3)) ms")
+			console.log("  ├─ P95:   $(Math.round(p95, digits=3)) ms")
+			console.log("  ├─ P99:   $(Math.round(p99, digits=3)) ms")
+			console.log("  └─ Max:   $(Math.round(max_time, digits=3)) ms")
 		}
 		
 		console.log("\n" * "="^80)
@@ -1010,8 +1010,8 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			if ((globalThis as any).JulGame.IS_DEBUG) {
 				// Stats to display
 				let statTexts = [
-					"FPS: $(round(1000 / round((startTime[] - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)))",
-					"Frame time: $(round((startTime[] - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)) ms",
+					"FPS: $(Math.round(1000 / Math.round((startTime[] - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)))",
+					"Frame time: $(Math.round((startTime[] - lastStartTime) / (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceFrequency() * 1000.0)) ms",
 					"Raw Mouse pos: $(rawMousePos.x),$(rawMousePos.y)",
 					"Mouse pos world: $(this.input.mousePositionWorld.x),$(this.input.mousePositionWorld.y)"
 				]

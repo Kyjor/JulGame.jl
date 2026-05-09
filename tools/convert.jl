@@ -7,6 +7,19 @@
 
 const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
 
+# Generated TS calls Julia-style `InternalFoo(args)` on classes — emit `new InternalFoo(args)`.
+# Start with engine `Internal*` component types; append more names as other modules gain classes.
+const TS_CLASS_NAMES_NEEDING_NEW = String[
+    "InternalAnimator",
+    "InternalCircleCollider",
+    "InternalCollider",
+    "InternalRigidbody",
+    "InternalShape",
+    "InternalSoundSource",
+    "InternalSprite",
+    "Transform",
+]
+
 default_out_dir() = joinpath(REPO_ROOT, "ts", "_generated")
 
 """
@@ -86,12 +99,34 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_setfield_calls(data)
     data = replace_empty_vector_literals(data)
     data = rewrite_rhs_vector_arithmetic(data)
+    data = prefix_new_for_listed_class_constructors(data)
     data = prepend_generated_ts_imports(data, path_ts)
+    data = replace_entire_line_if_matches(data)
     data = "export {}\n" * data
     open(path_ts, "w") do io
         print(io, data)
     end
     path_ts
+end
+
+function _line_is_julia_style_internal_ctor_decl(line::AbstractString)::Bool
+    m = match(r"^\s*function\s+(\w+)\s*\(", line)
+    m === nothing && return false
+    return String(m[1]) in TS_CLASS_NAMES_NEEDING_NEW
+end
+
+function prefix_new_for_listed_class_constructors(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    out = map(lines) do line
+        _line_is_julia_style_internal_ctor_decl(line) && return line
+        sline = String(line)
+        for t in TS_CLASS_NAMES_NEEDING_NEW
+            pat = Regex("(?<!\\bnew\\s)(?<!\\.)\\b" * t * "\\s*\\(")
+            sline = replace(sline, pat => "new $(t)(")
+        end
+        return sline
+    end
+    return join(out, '\n')
 end
 
 function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractString)::String
@@ -548,6 +583,8 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
     data = replace(data, r"\bfloor\(" => "Math.floor(")
+    # Bare `round(...)` -> `Math.round(...)` (word + call only; not `Math.round`, `surround`, etc.).
+    data = replace(data, r"(?<!\bMath\.)\bround\s*\(" => "Math.round(")
     # `clamp(...)` stays as `clamp(...)`; generated files import it from `juliaHelpers.ts`.
     # Numeric helpers.
     data = replace(data, r"\bFloat64\(" => "Number(")
@@ -1153,7 +1190,11 @@ function custom_function_removal(data::AbstractString)
         "Component_get_type",
 
         # MainLoop
-        
+
+        # Transform
+        "on_notify",
+
+        "Base.setproperty!",
     ]
     s = String(data)
     for func in functions_to_remove
@@ -1433,6 +1474,22 @@ function source_files_from_manifest(; repo_root::AbstractString = REPO_ROOT)::Ve
         push!(selected, first(matches))
     end
     return selected
+end
+
+function replace_entire_line_if_matches(data::AbstractString)::String
+    # Ordered rules: first match wins. If `needle` appears anywhere on a line, the whole line becomes `replacement`.
+    # Use a substring needle for literals; switch to `needle isa Regex` + `occursin(needle, line)` if you need `\b` word boundaries.
+    line_rules = Pair{Union{String, Regex}, String}[
+        "add_observer" => "",
+    ]
+    lines = split(String(data), '\n'; keepempty = true)
+    out = map(lines) do line
+        for (needle, replacement) in line_rules
+            occursin(needle, line) && return String(replacement)
+        end
+        line
+    end
+    return join(out, '\n')
 end
 
 function main()

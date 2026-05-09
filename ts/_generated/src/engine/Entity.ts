@@ -42,7 +42,7 @@ export {}
         forceClickCheck: boolean
         ignoreInputEvents: boolean
 
-        function Entity(name: string = "New entity",  id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = Transform(), scripts = []; clickEvents = Function[], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
+        function Entity(name: string = "New entity",  id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = []; clickEvents = Function[], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
             
 
             this.id = id
@@ -108,7 +108,7 @@ export {}
             return
         }
 
-        this.animator = InternalAnimator(this, animator.animations)
+        this.animator = new InternalAnimator(this, animator.animations)
         if (this.sprite != null) {
             this.animator.sprite = this.sprite
         }
@@ -122,7 +122,7 @@ export {}
             return
         }
             
-        this.collider = InternalCollider(this, collider.size, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.isPlatformerCollider: boolean, collider.enabled: boolean)
+        this.collider = new InternalCollider(this, collider.size, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.isPlatformerCollider: boolean, collider.enabled: boolean)
 
         return this.collider
     }
@@ -133,7 +133,7 @@ export {}
             return
         }
 
-        this.circleCollider = InternalCircleCollider(this, collider.diameter, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.enabled: boolean)
+        this.circleCollider = new InternalCircleCollider(this, collider.diameter, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.enabled: boolean)
 
         return this.circleCollider
     }
@@ -144,7 +144,7 @@ export {}
             return
         }
 
-        this.rigidbody = InternalRigidbody(this; rigidbody.mass, rigidbody.useGravity)
+        this.rigidbody = new InternalRigidbody(this; rigidbody.mass, rigidbody.useGravity)
         
         return this.rigidbody
     }
@@ -155,13 +155,13 @@ export {}
             return
         }
 
-        this.soundSource = InternalSoundSource(this, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
+        this.soundSource = new InternalSoundSource(this, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
 
         return this.soundSource
     }
 
     function JulGame_create_sound_source(this: Entity,  soundSource: SoundSource = SoundSource(-1,  false,  "",  false,  50)) {
-        newSoundSource: InternalSoundSource = InternalSoundSource(this, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
+        newSoundSource: InternalSoundSource = new InternalSoundSource(this, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
         return newSoundSource
     }
 
@@ -171,7 +171,7 @@ export {}
             return
         }
 
-        this.sprite = InternalSprite(this, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
+        this.sprite = new InternalSprite(this, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
         if (this.animator != null) {
             this.animator.sprite = this.sprite
         }
@@ -186,7 +186,7 @@ export {}
             return
         }
 
-        this.shape = InternalShape(this, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
+        this.shape = new InternalShape(this, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
         
         return this.shape
     }

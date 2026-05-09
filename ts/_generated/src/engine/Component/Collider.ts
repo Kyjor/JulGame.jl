@@ -1,6 +1,4 @@
 export {}
-import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
-
 
     include("../../utils/Enums.jl")
     // using ..Component.JulGame
@@ -169,15 +167,15 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }        
 
     function check_collision(colliderA: InternalCollider,  colliderB: InternalCollider) {
-        let posA = vecMul(vecAdd(colliderA.parent.transform.position, colliderA.offset), SCALE_UNITS)
-        let posB = vecMul(vecAdd(colliderB.parent.transform.position, colliderB.offset), SCALE_UNITS)
-        let colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * SCALE_UNITS
-        let colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * SCALE_UNITS
-        let colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * SCALE_UNITS
-        let colliderBYSize = colliderB.parent.transform.scale.y * colliderB.size.y * SCALE_UNITS
+        let posA = (colliderA.parent.transform.position + colliderA.offset) * (globalThis as any).JulGame.SCALE_UNITS
+        let posB = (colliderB.parent.transform.position + colliderB.offset) * (globalThis as any).JulGame.SCALE_UNITS
+        let colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * (globalThis as any).JulGame.SCALE_UNITS
+        let colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * (globalThis as any).JulGame.SCALE_UNITS
+        let colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * (globalThis as any).JulGame.SCALE_UNITS
+        let colliderBYSize = colliderB.parent.transform.scale.y * colliderB.size.y * (globalThis as any).JulGame.SCALE_UNITS
 
-        let a = (globalThis as any).JulGameSdl.glue_SDL_Rect(round(posA.x), round(posA.y), round(colliderAXSize), round(colliderAYSize))
-        let b = (globalThis as any).JulGameSdl.glue_SDL_Rect(round(posB.x), round(posB.y), round(colliderBXSize), round(colliderBYSize))
+        let a = (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.round(posA.x), Math.round(posA.y), Math.round(colliderAXSize), Math.round(colliderAYSize))
+        let b = (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.round(posB.x), Math.round(posB.y), Math.round(colliderBXSize), Math.round(colliderBYSize))
 
         // (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
         // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, SDL2.SDL_ALPHA_OPAQUE)
@@ -190,11 +188,11 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let cameraDiff = camera !== null ? 
         Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 
         {x: 0, y: 0}
-        let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(Ref(b), Ref(TypeConversions.safe_int32_convert(round(posA.x))), Ref(TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(TypeConversions.safe_int32_convert(round(posA.x))), Ref(TypeConversions.safe_int32_convert(round(posA.y + 80))))
-        //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, round(posA.x - cameraDiff.x), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x), round(posA.y + 80 - cameraDiff.y))
+        let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(Ref(b), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 32))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 80))))
+        //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 80 - cameraDiff.y))
 
-        let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(Ref(b), Ref(TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(TypeConversions.safe_int32_convert(round(posA.y + 80))))
-        //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
+        let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(Ref(b), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 32))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize))), Ref(TypeConversions.safe_int32_convert(Math.round(posA.y + 80))))
+        //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 80 - cameraDiff.y))
         if (isLineIntersectionL == SDL2.SDL_TRUE) {
             isLineIntersectionL = true
         else
@@ -250,9 +248,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             }
             
             if (min(depthHorizontal, depthVertical) == depthHorizontal) {
-                return (horizontalCollisionDir, -depthHorizontal/SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return (horizontalCollisionDir, -depthHorizontal/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             else
-                return (verticalCollisionDir, depthVertical/SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return (verticalCollisionDir, depthVertical/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             }
         }
 
@@ -262,7 +260,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
 
     function Component_duplicate(this: InternalCollider,  parent: any) {
-        let newCollider = InternalCollider(parent, this.size, this.offset, this.tag, this.isTrigger, this.isPlatformerCollider, this.enabled)
+        let newCollider = new InternalCollider(parent, this.size, this.offset, this.tag, this.isTrigger, this.isPlatformerCollider, this.enabled)
         newCollider.collisionEvents = this.collisionEvents
         return newCollider
     }

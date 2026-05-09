@@ -179,7 +179,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
     function Component_duplicate(this: InternalSoundSource,  parent: any) {
         console.debug("duplicate: Duplicating sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), volume: $(this.volume), playOnStart: $(this.playOnStart)")
-        let newSoundSource = InternalSoundSource(parent, this.path, this.channel, this.volume, this.isMusic, this.playOnStart)
+        let newSoundSource = new InternalSoundSource(parent, this.path, this.channel, this.volume, this.isMusic, this.playOnStart)
         newSoundSource.isPlaying = this.isPlaying
         return newSoundSource
     }

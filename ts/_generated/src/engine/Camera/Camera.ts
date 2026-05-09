@@ -88,11 +88,4 @@ export {}
     }
 
     // making set property observable
-    function Base_setproperty(this: Camera,  s: symbol,  x) {
-        console.debug("setting camera property $(s) to: $(x)")
-        try {
-            (this as any)[s as any] = x
-        } catch (e) {
-            console.log(e)
-        }
-    }
+

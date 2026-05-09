@@ -491,7 +491,7 @@ export {}
         let scale = min(scaleX, scaleY)
         
         // Calculate and return the scaled font size
-        return TypeConversions.safe_int32_convert(round(baseFontSize * scale))
+        return TypeConversions.safe_int32_convert(Math.round(baseFontSize * scale))
     }
 
     function UI_destroy(this: TextBox) {
@@ -741,23 +741,7 @@ export {}
         }
     }
 //= 
-    function Base_setproperty(this: TextBox,  s: symbol,  x) {
-        try {
-            (this as any)[s as any] = x
-            if (s == :text || s == :isActive || s == :textColor || s == :maxLineWidth || s == :wrapWords || s == :fontSize || s == :color) {
-                if (s == :text && x.length == 0) {
-                    (this as any)[s as any] = " "// prevents segfault when text is empty
-                }
-                if (this.isConstructed) {
-                    console.debug("rerendering text for $(this.name) because of $(s) = $(x)")
-                    UI.rerender_text(this) // this line MUST stay inside the if for specific fields as we can't call this on fields that are used in this function
-                }
-            }
-        } catch (e) {
-            error(e)
-            Base.show_backtrace(stderr, catch_backtrace())
-        }
-    } =//
+ =//
 
     // Add methods to set and get the maximum line width
     function set_max_line_width(this: TextBox,  maxWidth: number) {

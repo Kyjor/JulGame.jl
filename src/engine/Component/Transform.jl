@@ -11,7 +11,7 @@ module TransformModule
         screenRotation::Math.Vector2
         parent
 
-        function Transform(position::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), scale::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(1.0, 1.0, 1.0), rotation::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
+        function Transform(position::Math.Vector3f = Math.Vector3f(0.0, 0.0, 0.0), scale::Math.Vector3f = Math.Vector3f(1.0, 1.0, 1.0), rotation::Math.Vector3f = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
             this = new()
             
             this.position = position

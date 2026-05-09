@@ -58,7 +58,7 @@
     end
 
     function Component.apply_forces(this::InternalRigidbody)
-        gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? GRAVITY : 0.0)
+        gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? JulGame.GRAVITY : 0.0)
         dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
         dragAcceleration = dragForce / this.mass
         return gravityAcceleration - dragAcceleration

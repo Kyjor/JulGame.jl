@@ -62,7 +62,7 @@ export {}
     }
 
     function Component_duplicate(this: InternalAnimator,  parent: any) {
-        let newAnimator = InternalAnimator(parent, this.animations)
+        let newAnimator = new InternalAnimator(parent, this.animations)
         newAnimator.currentAnimation = this.currentAnimation
         newAnimator.lastFrame = this.lastFrame
         newAnimator.lastUpdate = this.lastUpdate

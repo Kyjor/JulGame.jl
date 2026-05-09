@@ -250,17 +250,17 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let dstRect = Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
         else
             dstRect = Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(
-                TypeConversions.safe_int32_convert(round(centeredX)),
-                TypeConversions.safe_int32_convert(round(centeredY)),
-                TypeConversions.safe_int32_convert(round(scaledWidth)),
-                TypeConversions.safe_int32_convert(round(scaledHeight))
+                TypeConversions.safe_int32_convert(Math.round(centeredX)),
+                TypeConversions.safe_int32_convert(Math.round(centeredY)),
+                TypeConversions.safe_int32_convert(Math.round(scaledWidth)),
+                TypeConversions.safe_int32_convert(Math.round(scaledHeight))
             ))
         }
     
         // Calculate center for rotation
         let calculatedCenter = Vector2(dstRect[].w * (this.center.x % 1), dstRect[].h * (this.center.y % 1))
         let rotationCenter = !this.isFloatPrecision ? 
-            Ref((globalThis as any).JulGameSdl.glue_SDL_Point(TypeConversions.safe_int32_convert(round(calculatedCenter.x)), TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
+            Ref((globalThis as any).JulGameSdl.glue_SDL_Point(TypeConversions.safe_int32_convert(Math.round(calculatedCenter.x)), TypeConversions.safe_int32_convert(Math.round(calculatedCenter.y)))) :
             Ref((globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
     
         this.lastRenderedScreenPosition = Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
@@ -423,8 +423,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         for (key, cached) in SPRITE_EFFECT_CACHE
             let texture = cached[0]
             let size = cached[1]
-            let width = Int(round(size.x))
-            let height = Int(round(size.y))
+            let width = Int(Math.round(size.x))
+            let height = Int(Math.round(size.y))
             if ((width <= 0 || height <= 0) && texture != null) {
                 w = Ref{Cint}(0)
                 let h = Ref{Cint}(0)
@@ -564,7 +564,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
     }
 
     function Component_duplicate(this: InternalSprite,  parent: any) {
-        let newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset, isStatic=this.isStatic)
+        let newSprite = new InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset, isStatic=this.isStatic)
         newSprite.interactionScale = this.interactionScale
         Component_initialize(newSprite)
         return newSprite
@@ -575,40 +575,3 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
        return false
     }
 
-    function Base_setproperty(this: InternalSprite,  s: symbol,  x) {
-        console.debug("setting sprite property $(s) to: $(x)")
-        try {
-            // Track if this is a static sprite property change that requires rebatching
-            let needs_rebatch = false
-            
-            if (s == :imagePath) {
-                console.debug("setting imagePath to: $(x)")
-                if (!isdefined(this, :imagePath) || (this.imagePath != x && !isempty(x))) {
-                    // Reload the image, cleaning up the old one first
-                    (this as any)[s as any] = String(x)
-                    Component_load_image(this, String(x))
-                    needs_rebatch = isdefined(this, :isStatic) && this.isStatic
-                }
-                if (needs_rebatch && (globalThis as any).JulGame.MAIN !== null && (globalThis as any).JulGame.MAIN.scene !== null) {
-                    (globalThis as any).JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch((globalThis as any).JulGame.MAIN.scene, this.layer)
-                }
-                return
-            }
-            
-            // Check if property affects rendering and sprite is static
-            if (isdefined(this, :isStatic) && this.isStatic && s in [:position, :rotation, :color, :crop, :isFlipped, :offset, :layer, :pixelsPerUnit]) {
-                needs_rebatch = true
-            }
-            
-            (this as any)[s as any] = x
-            
-            // Mark layer for rebatch if needed
-            if (needs_rebatch && (globalThis as any).JulGame.MAIN !== null && (globalThis as any).JulGame.MAIN.scene !== null) {
-                (globalThis as any).JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch((globalThis as any).JulGame.MAIN.scene, this.layer)
-            }
-        } catch (e) {
-            console.error("Error setting sprite property $(s) to: $(x)")
-            console.error("Error: $e")
-            Base.show_backtrace(stderr, catch_backtrace())
-        }
-    }

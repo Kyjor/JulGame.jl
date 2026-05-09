@@ -61,7 +61,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
 
     function Component_apply_forces(this: InternalRigidbody) {
-        let gravityAcceleration = {x: 0.0, y: this.useGravity ? GRAVITY : 0.0}
+        let gravityAcceleration = {x: 0.0, y: this.useGravity ? (globalThis as any).JulGame.GRAVITY : 0.0}
         let dragForce = vecMul(vecMul(0.5, this.drag), vecMul(this.velocity, this.velocity)) as Vector2f
         let dragAcceleration = vecDiv(dragForce, this.mass) as Vector2f
         return vecSub(gravityAcceleration, dragAcceleration) as Vector2f
@@ -92,7 +92,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     
 
     function Component_duplicate(this: InternalRigidbody,  parent: any) {
-        let newRigidbody = InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)
+        let newRigidbody = new InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)
         newRigidbody.acceleration = this.acceleration
         newRigidbody.drag = this.drag
         newRigidbody.grounded = this.grounded

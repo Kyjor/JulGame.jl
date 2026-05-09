@@ -230,9 +230,9 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
         if (_input_ui_hit_stream_logs()) {
             if (isempty(kvs)) {
-                console.info("[JulGame input/ui hit-test · stream]") key ms = round(dt, digits = 3)
+                console.info("[JulGame input/ui hit-test · stream]") key ms = Math.round(dt, digits = 3)
             else
-                console.info("[JulGame input/ui hit-test · stream]") key ms = round(dt, digits = 3) (; kvs...)
+                console.info("[JulGame input/ui hit-test · stream]") key ms = Math.round(dt, digits = 3) (; kvs...)
             }
         }
         return
@@ -245,9 +245,9 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
         if (_input_ui_hit_stream_logs() && _input_ui_hit_iter_stream_logs()) {
             if (isempty(kvs)) {
-                console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = round(dt, digits = 3)
+                console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = Math.round(dt, digits = 3)
             else
-                console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = round(dt, digits = 3) (; kvs...)
+                console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = Math.round(dt, digits = 3) (; kvs...)
             }
         }
         return
@@ -1190,8 +1190,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         bar_y = (safe_window_height - content_height) / 2
 
         // Convert logical coordinates to window coordinates (inverse of poll_input mapping)
-        let window_x = round(Int, (x * scale) + bar_x)
-        let window_y = round(Int, (y * scale) + bar_y)
+        let window_x = Math.round(Int, (x * scale) + bar_x)
+        let window_y = Math.round(Int, (y * scale) + bar_y)
         x = TypeConversions.safe_int32_convert(window_x)
         y = TypeConversions.safe_int32_convert(window_y)
         // Move the mouse to the specified position
@@ -1362,12 +1362,12 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         let original_height = unsafe_load(surface).h
 
         // Calculate new dimensions
-        let new_width = Int(round(original_width * scale_factor))
-        let new_height = Int(round(original_height * scale_factor))
+        let new_width = Int(Math.round(original_width * scale_factor))
+        let new_height = Int(Math.round(original_height * scale_factor))
 
         // Scale the hotspot position
-        let new_x = Int(round(x * scale_factor))
-        let new_y = Int(round(y * scale_factor))
+        let new_x = Int(Math.round(x * scale_factor))
+        let new_y = Int(Math.round(y * scale_factor))
 
         // Create a new surface for the scaled image
         let scaled_surface = (globalThis as any).JulGameSdl.glue_SDL_CreateRGBSurface(0, new_width, new_height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
