@@ -32,9 +32,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
         if (val == 0) {
             return SDL2.SDL_ScaleModeNearest
-        elseif val == 2
+        } else if (val == 2) {
             return SDL2.SDL_ScaleModeBest
-        else
+        } else {
             return SDL2.SDL_ScaleModeLinear
         }
     }
@@ -145,22 +145,22 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             if (this.effectTexture != null) {
                 console.debug("Using effect texture") name=this.name
                 let texture_to_render = this.effectTexture
-            else
+            } else {
                 console.debug("Effects exist but no effect texture - forcing update") name=this.name
                 this.needsEffectUpdate = true
                 update_effects(this)
                 if (this.effectTexture != null) {
                     console.debug("Using effect texture after forced update") name=this.name
                     texture_to_render = this.effectTexture
-                else
+                } else {
                     console.debug("No effect texture available, // using regular texture") name=this.name
                     texture_to_render = this.textTexture
                 }
             }
-        elseif this.textTexture != null
+        } else if (this.textTexture != null) {
             console.debug("Using regular texture") name=this.name
             texture_to_render = this.textTexture
-        else
+        } else {
             console.debug("No texture to render") name=this.name
             return  // No texture to render
         }
@@ -200,14 +200,14 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                     Float32(this.size.y * camera.zoom)
                 )
             ) == 0 "error rendering textbox text: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))"
-        else
+        } else {
             // Render with screen-space positioning (traditional UI)
             let adjusted_position = {x: 0, y: 0}
             if (this.originalSize != this.size && this.anchor.current_state == :none) {
                 adjusted_position = Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
                 // console.debug("difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)")
                 // console.debug("adjusted position: $(adjusted_position.x), $(adjusted_position.y)")
-            else
+            } else {
                 adjusted_position = this.position
             }
             @assert (globalThis as any).JulGameSdl.glue_SDL_RenderCopyF(
@@ -288,7 +288,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             if (fontPath == "Default" || fontPath == "") {
                 let raw_data = (globalThis as any).JulGame.BUILT_IN_ASSETS["Font"]
                 console.debug("loading default font")
-            else
+            } else {
                 raw_data = (globalThis as any).JulGame.FONT_CACHE[get_comma_separated_path(fontPath)]
                 console.debug("loading font from cache")
             }
@@ -341,9 +341,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let color = (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3])
         this.renderText = if this.maxLineWidth > 0 && this.font != null && this.text != ""
             SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, this.maxLineWidth)
-        elseif this.font != null && this.text != ""
+        } else if (this.font != null && this.text != "") {
             this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
-        else
+        } else {
             null
         }
         if (this.renderText == null) {
@@ -406,7 +406,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                     lines.push(rstrip(current_line))
                     current_line = word * " "
                     current_width = w
-                else
+                } else {
                     current_line *= word * " "
                     current_width += w
                 }
@@ -415,7 +415,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             if (!isempty(current_line)) {
                 lines.push(rstrip(current_line))
             }
-        else
+        } else {
             // Character by character wrapping
             for (const c of text) {
                 let char_str = string(c)
@@ -426,7 +426,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                     lines.push(current_line)
                     current_line = char_str
                     current_width = w
-                else
+                } else {
                     current_line *= char_str
                     current_width += w
                 }
@@ -522,7 +522,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 let v = getfield(eff, f)
                 if (v isa Ptr) {
                     vals.push(string(f, "=Ptr"))
-                else
+                } else {
                     vals.push(string(f, "=", v))
                 }
             }
@@ -557,7 +557,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         if (this.effectCacheKey != newCacheKey) {
             this.effectCacheKey = newCacheKey
             this.needsEffectUpdate = true
-        else
+        } else {
             console.debug("apply_effects!: cache key unchanged; skipping recompute") name=this.name
         }
         
@@ -717,7 +717,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                     cache_effect_texture(this.effectCacheKey, this.effectTexture)
                     
                     this.needsEffectUpdate = false
-                else
+                } else {
                     @error("Failed to create texture from effect surface", name=this.name)
                 }
                 
@@ -725,7 +725,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 if (result.surface != baseSurface) {
                     (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(result.surface)
                 }
-            else
+            } else {
                 @error("Effects application returned invalid result", name=this.name)
             }
             

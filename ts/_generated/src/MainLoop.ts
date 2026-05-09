@@ -179,7 +179,7 @@ export {}
 			if (v.length > 25_000) {
 				deleteat(v, 1:10_000)
 			}
-		else
+		} else {
 			(globalThis as any).JulGame.update(script, deltaTime)
 		}
 	}
@@ -302,10 +302,10 @@ export {}
                 } catch (e) {
                     if (this.testMode) {
                         throw(e)
-                    else
+                    } else {
 						if (this.testMode) {
 							rethrow(e)
-						else
+						} else {
 							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
@@ -324,7 +324,7 @@ export {}
                     } catch (e) {
 						if (this.testMode) {
 							rethrow(e)
-						else
+						} else {
 							if (typeof(e) != ErrorException) {
 								console.log("Error shutting down script: $(typeof(script))")
 								Base.show_backtrace(stdout, catch_backtrace())
@@ -344,7 +344,7 @@ export {}
 				console.debug("Cleaning up immediate UI components")
 				(globalThis as any).JulGame.cleanup_sdl_resources()
 				return
-            else
+            } else {
 				console.debug("Changing scene")
                 this.shouldChangeScene = false
                 initialize_new_scene(this)
@@ -413,7 +413,7 @@ export {}
 				} catch (e) {
 					if (this.testMode) {
 						rethrow(e)
-					else
+					} else {
 						@error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 					}
@@ -499,7 +499,7 @@ function JulGame_change_scene(sceneFileName: string) {
 				} catch (e) {
 					if (this.testMode) {
 						rethrow(e)
-					else
+					} else {
 						if (typeof(e) != ErrorException) {
 							console.log("Error shutting down script: $(typeof(script))")
 							@error string(e)
@@ -569,10 +569,10 @@ function build_sprite_layers() {
 		let entitySprite = entity.sprite
 		if (entitySprite != null) {
 			let layer = entitySprite.layer
-			if (!haskey(layerDict, layer)  // No string interpolation!) {
+			if (!haskey(layerDict, layer)) { // No string interpolation!
 				sortedLayers.push(layer)
 				layerDict[layer] = [entitySprite]
-			else
+			} else {
 				layerDict[layer].push(entitySprite)
 			}
 		}
@@ -645,7 +645,7 @@ function destroy_entity_components(this: MainLoop,  entity) {
 	entitySprite = entity.sprite
 	if (entitySprite != null) {
 		layer = entitySprite.layer
-		if (haskey(this.spriteLayers.layers, layer)  // No string interpolation!) {
+		if (haskey(this.spriteLayers.layers, layer)) { // No string interpolation!
 			for j = eachindex(this.spriteLayers.layers[layer])
 				if (this.spriteLayers.layers[layer][j] == entitySprite) {
 					Component_destroy(entitySprite)
@@ -697,11 +697,11 @@ function JulGame_create_entity(entity) {
 	this.scene.entities.push(entity)
 	if (entity.sprite != null) {
 		layer = entity.sprite.layer
-		if (!haskey(this.spriteLayers.layers, layer)  // No string interpolation!) {
+		if (!haskey(this.spriteLayers.layers, layer)) { // No string interpolation!
 			this.spriteLayers.sorted.push(layer)
 			this.spriteLayers.layers[layer] = [entity.sprite]
 			sort(this.spriteLayers.sorted)
-		else
+		} else {
 			this.spriteLayers.layers[layer].push(entity.sprite)
 		}
 	}
@@ -787,13 +787,13 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 			let y = 0
 			if ((globalThis as any).JulGame.InputModule.get_button_held_down(this.input, "Right")) {
 				x = 1
-			elseif (globalThis as any).JulGame.InputModule.get_button_held_down(this.input, "Left")
+			} else if ((globalThis as any).JulGame.InputModule.get_button_held_down(this.input, "Left")) {
 				x = -1
 			}
 
 			if ((globalThis as any).JulGame.InputModule.get_button_held_down(this.input, "Up")) {
 				y = 1
-			elseif (globalThis as any).JulGame.InputModule.get_button_held_down(this.input, "Down")
+			} else if ((globalThis as any).JulGame.InputModule.get_button_held_down(this.input, "Down")) {
 				y = -1
 			}
 			
@@ -820,7 +820,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 					} catch (e) {
 						if (this.testMode) {
 							rethrow(e)
-						else
+						} else {
 							console.log(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
 							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
@@ -869,7 +869,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 					} catch (e) {
 						if (this.testMode) {
 							rethrow(e)
-						else
+						} else {
 							console.log(entity.name, " with id: ", entity.id, " has a problem with it's update")
 							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
@@ -974,7 +974,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 					if (tgt isa NamedTuple) {
 						let func = tgt.function_to_call
 						func()
-					else
+					} else {
 						(globalThis as any).JulGame.render(tgt)
 					}
 					if (prof_ui !== null) {
@@ -983,11 +983,11 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 				} catch (e) {
 					if (this.testMode) {
 						rethrow(e)
-					else
+					} else {
 						let parent_info = ""
 						if (isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)) {
 							parent_info = "a queued render function ($(uiRenderingOrder[i][2].function_to_call))"
-						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
+						} else if (isa(uiRenderingOrder[i][2], UI.UIElement)) {
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						}
 						console.log(parent_info, " has a problem with it's render function")
@@ -1029,7 +1029,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 				 		this.debugTextBoxes.push(textBox)
                          (globalThis as any).JulGame.initialize(textBox)
 				 	}
-				 else
+				 } else {
 				 	for i = eachindex(this.debugTextBoxes)
                          let db_textbox = this.debugTextBoxes[i]
                          db_textbox.text = statTexts[i]
@@ -1058,7 +1058,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		} catch (e) {
 			if (this.testMode) {
 				rethrow(e)
-			else
+			} else {
 				@error string(e)
 				Base.show_backtrace(stdout, catch_backtrace())
 			}
@@ -1153,30 +1153,30 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 				rendercount += 1
 			if (renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D) {
 				Component_render(renderOrder[i][2], this)
-			elseif renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
+			} else if (renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D) {
 				Component_render(renderOrder[i][2], this)
-			elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
+			} else if (renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape) {
 				Component_draw(renderOrder[i][2], camera)
-			elseif renderOrder[i][2] isa NamedTuple
+			} else if (renderOrder[i][2] isa NamedTuple) {
 				// get the params	
 				func = renderOrder[i][2].function_to_call
 				func()
-			elseif hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)
+			} else if (hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)) {
 				// Render batched static sprite layer
 				(globalThis as any).JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
-			else
+			} else {
 				console.log("Unknown item type: ", typeof(renderOrder[i][2]))
 			}
 			} catch (e) {
 				if (this.testMode) {
 					rethrow(e)
-				else
+				} else {
 					parent_info = ""
 					if (isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)) {
 						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
-					elseif hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== null && isa(renderOrder[i][2].parent, (globalThis as any).JulGame.EntityModule.Entity)
+					} else if (hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== null && isa(renderOrder[i][2].parent, (globalThis as any).JulGame.EntityModule.Entity)) {
 						parent_info = "$(renderOrder[i][2].parent.name) with id: $(renderOrder[i][2].parent.id)"
-					else 
+					} else { 
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					}
 					console.log(parent_info, " has a problem with rendering")
@@ -1258,7 +1258,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 				console.error("Failed to destroy renderer, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
 			}
 			(globalThis as any).JulGame.Renderer = null
-		else
+		} else {
 			console.debug("Renderer is already destroyed")
 			return
 		}

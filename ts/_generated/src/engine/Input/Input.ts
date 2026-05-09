@@ -86,7 +86,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 this.numAxes = 0
                 this.numButtons = 0
                 this.numHats = 0
-            else
+            } else {
                 // Load joystick
                 this.joystick = (globalThis as any).JulGameSdl.glue_SDL_JoystickOpen(0)
                 if (this.joystick == null) {
@@ -172,7 +172,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 clamp(Math.floor(Int, scaled_y), 0, logical_size.y)
             )
             console.debug("Scaled mouse position: window coords ($(x[0]), $(y[0])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused")
-        else
+        } else {
             let raw_mouse_x = x[0] - (globalThis as any).JulGame.EditorGameViewPosition.x
             let raw_mouse_y = y[0] - (globalThis as any).JulGame.EditorGameViewPosition.y
             let clamped_mouse_x = clamp(raw_mouse_x, 0, (globalThis as any).JulGame.EditorGameViewSize.x)
@@ -184,7 +184,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
                 this.mousePosition = Vector2(Math.floor(Int, scaled_x), Math.floor(Int, scaled_y))
-            else
+            } else {
                 this.mousePosition = {x: 0, y: 0}
             }
         }
@@ -231,7 +231,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         if (_input_ui_hit_stream_logs()) {
             if (isempty(kvs)) {
                 console.info("[JulGame input/ui hit-test · stream]") key ms = Math.round(dt, digits = 3)
-            else
+            } else {
                 console.info("[JulGame input/ui hit-test · stream]") key ms = Math.round(dt, digits = 3) (; kvs...)
             }
         }
@@ -246,7 +246,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         if (_input_ui_hit_stream_logs() && _input_ui_hit_iter_stream_logs()) {
             if (isempty(kvs)) {
                 console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = Math.round(dt, digits = 3)
-            else
+            } else {
                 console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = Math.round(dt, digits = 3) (; kvs...)
             }
         }
@@ -267,7 +267,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         while true
             if (!isempty(this.pending_sdl_events)) {
                 event_ref = popfirst(this.pending_sdl_events)
-            elseif !Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))
+            } else if (!Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))) {
                 break
             }
             _input_poll_accumulate(prof, t0, :sdl_PollEvent)
@@ -286,7 +286,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         if (e2.type == SDL2.SDL_MOUSEMOTION) {
                             _refresh_logical_mouse(this, e2)
                             this.didMouseMotionOccur = true
-                        else
+                        } else {
                             this.pending_sdl_events.push(e2)
                         }
                     }
@@ -304,27 +304,27 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 if ((globalThis as any).JulGame.IS_EDITOR) {
                     if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
                         (globalThis as any).JulGame.EditorState[dropped_files] = [unsafe_string(evt.drop.file)]
-                    else
+                    } else {
                         (globalThis as any).JulGame.EditorState[dropped_files].push(unsafe_string(evt.drop.file))
                     }
                 }
                 // TODO: Handle dropped file
                 (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
-            elseif evt.type == SDL2.SDL_DROPTEXT
+            } else if (evt.type == SDL2.SDL_DROPTEXT) {
                 console.debug("Dropped text: $(unsafe_string(evt.drop.file))")
                 if ((globalThis as any).JulGame.IS_EDITOR) {
                     if (get((globalThis as any).JulGame.EditorState, dropped_texts, null) === null) {
                         (globalThis as any).JulGame.EditorState[dropped_texts] = [unsafe_string(evt.drop.file)]
-                    else
+                    } else {
                         (globalThis as any).JulGame.EditorState[dropped_texts].push(unsafe_string(evt.drop.file))
                     }
                 }
                 (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
-            elseif evt.type == SDL2.SDL_DROPBEGIN
+            } else if (evt.type == SDL2.SDL_DROPBEGIN) {
                 console.debug("Drop begin")
-            elseif evt.type == SDL2.SDL_DROPCOMPLETE
+            } else if (evt.type == SDL2.SDL_DROPCOMPLETE) {
                 console.debug("Drop complete")
-            elseif evt.type == SDL2.SDL_CLIPBOARDUPDATE
+            } else if (evt.type == SDL2.SDL_CLIPBOARDUPDATE) {
                 console.debug("Clipboard update")
             }
 
@@ -453,13 +453,13 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         if (mouseX < screenElementX) {
                             eventWasInsideThisElement = false
                             console.debug("  -> Mouse X ($mouseX) < element X ($screenElementX)")
-                        elseif mouseX > screenElementX + screenElementWidth
+                        } else if (mouseX > screenElementX + screenElementWidth) {
                             eventWasInsideThisElement = false
                             console.debug("  -> Mouse X ($mouseX) > element right ($(screenElementX + screenElementWidth))")
-                        elseif mouseY < screenElementY
+                        } else if (mouseY < screenElementY) {
                             eventWasInsideThisElement = false
                             console.debug("  -> Mouse Y ($mouseY) < element Y ($screenElementY)")
-                        elseif mouseY > screenElementY + screenElementHeight
+                        } else if (mouseY > screenElementY + screenElementHeight) {
                             eventWasInsideThisElement = false
                             console.debug("  -> Mouse Y ($mouseY) > element bottom ($(screenElementY + screenElementHeight))")
                         }
@@ -507,7 +507,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                                 }
                                 _input_ui_hit_span(prof, t_hi, :hit_inside_5_push_clicked_down_optional)
                                 t_hi = time_ns()
-                            else
+                            } else {
                                 _input_ui_hit_span(prof, t_hi, :hit_inside_4_skip_should_handle_false)
                                 t_hi = time_ns()
                             }
@@ -516,18 +516,18 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                             }
                             _input_ui_hit_span(prof, t_hi, :hit_inside_6_hover_an_element_already)
                             t_hi = time_ns()
-                        else
+                        } else {
                             _input_ui_hit_span(prof, t_hi, :hit_inside_3b_skip_clicked_guard)
                             t_hi = time_ns()
                         }
 
                         if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
                             console.debug("Mouse button down at $(this.mousePosition) on element '$(element.name)'")
-                        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
+                        } else if (evt.type == SDL2.SDL_MOUSEBUTTONUP) {
                             console.debug("Mouse button up at $(this.mousePosition) on element '$(element.name)'")
                             if (canClickOnThisElement) {
                                 console.debug("CLICKED on '$(element.name)' at $(this.mousePosition), skipping rest of event loop")
-                            else
+                            } else {
                                 console.debug("  -> Button up on '$(element.name)' but canClickOnThisElement is false")
                             }
                             clickedAnElementAlready = true
@@ -541,7 +541,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     }
                     _input_ui_hit_step(prof, t_tail, :hit_ui_block_end)
                     _input_ui_hit_span(prof, t_ui_wall, :hit_ui_block_wall_clock)
-                else
+                } else {
                     _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_skip_ui_hit_path)
                 }
 
@@ -567,18 +567,18 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         if (axis < -JOYSTICK_DEAD_ZONE) {
                             this.xDir = -1
                         // Right of dead zone
-                        elseif axis > JOYSTICK_DEAD_ZONE
+                        } else if (axis > JOYSTICK_DEAD_ZONE) {
                             this.xDir = 1
-                        else
+                        } else {
                             this.xDir = 0
                         }
-                    elseif i == 1
+                    } else if (i == 1) {
                         if (axis < -JOYSTICK_DEAD_ZONE) {
                             this.yDir = -1
                         // Right of dead zone
-                        elseif axis > JOYSTICK_DEAD_ZONE
+                        } else if (axis > JOYSTICK_DEAD_ZONE) {
                             this.yDir = 1
-                        else
+                        } else {
                             this.yDir = 0
                         }
                     }
@@ -593,7 +593,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     }
                     if (i == 0 && button == 1) {
                         this.button = 1
-                    elseif i == 0
+                    } else if (i == 0) {
                         this.button = 0
                     }
                 }
@@ -696,7 +696,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             if (check_scan_code(this, keyboardState, 1, [scanCode[0]]) && (button in this.buttonsHeldDown)) {
                 buttonsPressedDown.push(button)
                 this.buttonsHeldDown.push(button)
-            elseif check_scan_code(this, keyboardState, 0, [scanCode[0]])
+            } else if (check_scan_code(this, keyboardState, 0, [scanCode[0]])) {
                 if (button in this.buttonsHeldDown) {
                     deleteat(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
                 }
@@ -711,7 +711,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             if (event.type == SDL2.SDL_MOUSEBUTTONDOWN && (button in this.mouseButtonsHeldDown)) {
                 this.mouseButtonsPressedDown.push(button)
                 this.mouseButtonsHeldDown.push(button)
-            elseif event.type == SDL2.SDL_MOUSEBUTTONUP && (button in this.mouseButtonsHeldDown)
+            } else if (event.type == SDL2.SDL_MOUSEBUTTONUP && (button in this.mouseButtonsHeldDown)) {
                 this.mouseButtonsReleased.push(button)
                 deleteat(this.mouseButtonsHeldDown, findfirst(x -> x == button, this.mouseButtonsHeldDown))
             }
@@ -730,10 +730,10 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             if (Sys.islinux()) {
                 console.debug("Linux detected, attempting to get image from X11 clipboard")
                 handle_x11_clipboard_image()
-            elseif Sys.isapple()
+            } else if (Sys.isapple()) {
                 console.debug("macOS detected, attempting to get image from clipboard")
                 handle_macos_clipboard_image()
-            elseif Sys.iswindows()
+            } else if (Sys.iswindows()) {
                 console.debug("Windows detected, attempting to get image from clipboard")
                 handle_windows_clipboard_image()
             }
@@ -823,7 +823,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 }
 
                 console.debug("No image data found in X11 clipboard")
-            else
+            } else {
                 console.debug("xclip not available, cannot access X11 clipboard")
             }
         } catch (e) {
@@ -894,7 +894,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 }
 
                 console.debug("No image data found in macOS clipboard")
-            else
+            } else {
                 console.debug("pbpaste not available, cannot access macOS clipboard")
             }
         } catch (e) {
@@ -960,7 +960,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         dropped_files = "dropped_files"
         if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
             (globalThis as any).JulGame.EditorState[dropped_files] = [filepath]
-        else
+        } else {
             (globalThis as any).JulGame.EditorState[dropped_files].push(filepath)
         }
         console.debug("Added clipboard file to // import queue: $(basename(filepath))")
@@ -994,13 +994,13 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let extension = ".png"  // default
             if (occursin("image/jpeg", mime_part) || occursin("image/jpg", mime_part)) {
                 extension = ".jpg"
-            elseif occursin("image/png", mime_part)
+            } else if (occursin("image/png", mime_part)) {
                 extension = ".png"
-            elseif occursin("image/gif", mime_part)
+            } else if (occursin("image/gif", mime_part)) {
                 extension = ".gif"
-            elseif occursin("image/bmp", mime_part)
+            } else if (occursin("image/bmp", mime_part)) {
                 extension = ".bmp"
-            elseif occursin("image/webp", mime_part)
+            } else if (occursin("image/webp", mime_part)) {
                 extension = ".webp"
             }
 
@@ -1247,7 +1247,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         if (this.simulatedClickPosition !== null) {
             let click_x = Int32(this.simulatedClickPosition.x)
             let click_y = Int32(this.simulatedClickPosition.y)
-        else
+        } else {
             // Fallback to current mouse position
             x_ref, y_ref = Ref{Cint}(0), Ref{Cint}(0)
             (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(x_ref, y_ref)
@@ -1346,7 +1346,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 console.debug("comma separated path: ", get_comma_separated_path(imagePath))
                 surface = SDL2.IMG_Load_RW(rw, 1)
             }
-        else
+        } else {
             console.debug("loading cursor from disk")
             surface = SDL2.IMG_Load(pointer(joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)))
         }
@@ -1388,7 +1388,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             set_cursor(cursor)
             this.defaultCursor = cursor
             console.debug("Cursor set successfully! Scaled by $(scale_factor)x, Hotspot: ($new_x, $new_y)")
-        else
+        } else {
             console.error("Issue loading cursor: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
         }
 

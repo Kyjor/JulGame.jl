@@ -103,6 +103,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_component_qualified_calls(data)
     data = replace_function_definitions(data)
     data = replace_if_statements(data)
+    data = replace_else_elseif_blocks(data)
     data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
@@ -630,6 +631,35 @@ function strip_safe_int32_convert_calls(data::AbstractString)::String
     return s
 end
 
+# `UInt32(expr)` -> `expr` when `expr` is a numeric literal; otherwise `((expr) >>> 0)` (unsigned 32-bit in JS).
+function strip_uint32_constructor_calls(data::AbstractString)::String
+    s = String(data)
+    needle = "UInt32("
+    changed = true
+    while changed
+        changed = false
+        fi = firstindex(s)
+        n = lastindex(s)
+        rg = findnext(needle, s, fi)
+        rg === nothing && break
+        lo = first(rg)
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        close_idx === nothing && break
+        inner = strip(s[inner_start:prevind(s, close_idx)])
+        replacement = if occursin(r"^\d+\s*$", inner)
+            inner
+        else
+            string("((", inner, ") >>> 0)")
+        end
+        pre = s[fi:prevind(s, lo)]
+        post = s[nextind(s, close_idx):n]
+        s = string(pre, replacement, post)
+        changed = true
+    end
+    return s
+end
+
 function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
     data = replace(data, r"\bnothing\b" => "null")
@@ -639,6 +669,7 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"::[A-Za-z_][A-Za-z0-9_\.]*(?:\{[^}]*\})?" => "")
     # Drop redundant int32 conversion helper in generated TS (any nesting).
     data = strip_safe_int32_convert_calls(data)
+    data = strip_uint32_constructor_calls(data)
     # Julia `length(x)` -> TS `x.length` for simple non-nested args.
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
@@ -1241,6 +1272,50 @@ function add_brace_to_function_line(line::AbstractString)::String
     return s
 end
 
+# Trailing `// ...` on the same line as a condition (from Julia `# ...` after `replace_comments`).
+function _split_trailing_ts_comment(s::AbstractString)::Tuple{String, String}
+    t = String(s)
+    r = findlast(" // ", t)
+    if r === nothing
+        return String(strip(t)), ""
+    end
+    lo = first(r)
+    pre = lo <= 1 ? "" : String(strip(t[1:prevind(t, lo)]))
+    suf = String(t[lo:end])
+    return pre, suf
+end
+
+# Julia `else` / `elseif` — close the previous `if` arm and open the next (after `replace_if_statements` added `{`).
+function replace_else_elseif_blocks(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    already = r"^\s*\}\s*else\b"
+    pat_else = r"^(\s*)else\b(.*)$"
+    pat_elseif = r"^(\s*)elseif\b\s+(.+)$"
+    return join(
+        map(lines) do line
+            occursin(already, line) && return line
+            m = match(pat_else, line)
+            if m !== nothing
+                tail = String(m[2])
+                occursin(r"^\s*(?://[^\n]*)?\s*$", tail) || return line
+                return string(m[1], "} else {", tail)
+            end
+            m = match(pat_elseif, line)
+            if m !== nothing
+                raw = String(m[2])
+                cond, cmt = _split_trailing_ts_comment(raw)
+                cond = String(strip(cond))
+                if startswith(cond, "(") && endswith(cond, ")")
+                    cond = String(strip(chop(cond, head = 1, tail = 1)))
+                end
+                return string(m[1], "} else if (", cond, ") {", cmt)
+            end
+            return line
+        end,
+        '\n',
+    )
+end
+
 # `for x in xs` → `for (const x of xs) {` (line-wise; body closing stays `}` from Julia `end`).
 function replace_for_in_loops(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty = true)
@@ -1254,7 +1329,7 @@ function replace_for_in_loops(data::AbstractString)::String
 end
 
 function replace_if_statements(data::AbstractString)
-    # Julia: `if cond` / `if(cond)` then newline — TS: `if (cond) {`. Single-line condition only; else/elseif later.
+    # Julia: `if cond` / `if(cond)` — TS: `if (cond) {`. Trailing line comment preserved after `{`.
     s = String(data)
     lines = split(s, '\n'; keepempty = true)
     done_line = r"^\s*if\s*\([^)]*\)\s*\{\s*$"
@@ -1266,11 +1341,13 @@ function replace_if_statements(data::AbstractString)
             if m === nothing
                 line
             else
-                cond = String(strip(m[2]))
+                raw = String(m[2])
+                cond, cmt = _split_trailing_ts_comment(raw)
+                cond = String(strip(cond))
                 if startswith(cond, "(") && endswith(cond, ")")
                     cond = String(strip(chop(cond, head = 1, tail = 1)))
                 end
-                string(m[1], "if (", cond, ") {")
+                string(m[1], "if (", cond, ") {", cmt)
             end
         end,
         '\n',

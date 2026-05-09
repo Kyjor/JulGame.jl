@@ -134,7 +134,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         // Use effect texture if available and enabled, otherwise use regular texture
         let texture_to_render = if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != null
             this.effectTexture
-        else
+        } else {
             // Create or get cached texture if it doesn't exist
             if (this.texture == null && this.image != null) {
                 this.texture = get_or_create_texture(this.imagePath, this.image)
@@ -185,7 +185,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         if (this.pixelsPerUnit == 0) {
             let scaledWidth = cropWidth * scaleX * S / 64.0
             let scaledHeight = cropHeight * scaleY * S / 64.0
-        else
+        } else {
             // Use pixelsPerUnit or default PIXELS_PER_UNIT for scaling
             ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
             let scaleFactor = S / ppu
@@ -202,32 +202,32 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             // Center anchor (default behavior)
             centeredX -= (scaledWidth - S * scaleX) / 2
             centeredY -= (scaledHeight - S * scaleY) / 2
-        elseif this.anchor == :top
+        } else if (this.anchor == :top) {
             // Top anchor
             centeredX -= (scaledWidth - S * scaleX) / 2
             // No adjustment for Y
-        elseif this.anchor == :bottom
+        } else if (this.anchor == :bottom) {
             // Bottom anchor
             centeredX -= (scaledWidth - S * scaleX) / 2
             centeredY -= (scaledHeight - S * scaleY)
-        elseif this.anchor == :left
+        } else if (this.anchor == :left) {
             // Left anchor
             centeredY -= (scaledHeight - S * scaleY) / 2
             // No adjustment for X
-        elseif this.anchor == :right
+        } else if (this.anchor == :right) {
             // Right anchor
             centeredX -= (scaledWidth - S * scaleX)
             centeredY -= (scaledHeight - S * scaleY) / 2
-        elseif this.anchor == :topleft
+        } else if (this.anchor == :topleft) {
             // Top-left anchor
             // No adjustment needed
-        elseif this.anchor == :topright
+        } else if (this.anchor == :topright) {
             // Top-right anchor
             centeredX -= (scaledWidth - S * scaleX)
-        elseif this.anchor == :bottomleft
+        } else if (this.anchor == :bottomleft) {
             // Bottom-left anchor
             centeredY -= (scaledHeight - S * scaleY)
-        elseif this.anchor == :bottomright
+        } else if (this.anchor == :bottomright) {
             // Bottom-right anchor
             centeredX -= (scaledWidth - S * scaleX)
             centeredY -= (scaledHeight - S * scaleY)
@@ -249,7 +249,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         // Select float or integer precision
         if (this.isFloatPrecision) {
             let dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
-        else
+        } else {
             dstRect = (globalThis as any).JulGameSdl.glue_SDL_Rect(
                 Math.round(centeredX),
                 Math.round(centeredY),
@@ -308,7 +308,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         if (tex != null) {
             TEXTURE_CACHE[imagePath] = tex
             console.debug("Created and cached texture for: $(imagePath)")
-        else
+        } else {
             @error("Failed to create texture for: $(imagePath)")
         }
         return tex
@@ -327,7 +327,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 let v = getfield(eff, f)
                 if (v isa Ptr) {
                     vals.push(string(f, "=Ptr"))
-                else
+                } else {
                     vals.push(string(f, "=", v))
                 }
             }
@@ -510,7 +510,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 @error("Fallback image also failed to load! $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
                 return
             }
-        elseif this.imagePath != imagePath
+        } else if (this.imagePath != imagePath) {
             this.imagePath = imagePath
         }
     

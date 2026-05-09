@@ -195,19 +195,19 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
 
         let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, Math.round(posA.x + colliderAXSize), Math.round(posA.y + 32), Math.round(posA.x + colliderAXSize), Math.round(posA.y + 80))
         //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 80 - cameraDiff.y))
-        if (isLineIntersectionL == SDL2.SDL_TRUE) {
+        if (isLineIntersectionL == 1) {
             isLineIntersectionL = true
-        else
+        } else {
             isLineIntersectionL = false
         }
 
-        if (isLineIntersectionR == SDL2.SDL_TRUE) {
+        if (isLineIntersectionR == 1) {
             isLineIntersectionR = true
-        else
+        } else {
             isLineIntersectionR = false
         }
 
-        if (isIntersection == SDL2.SDL_TRUE) {
+        if (isIntersection == 1) {
             let a1 = (globalThis as any).JulGameSdl.glue_SDL_FRect(posA.x, posA.y, colliderAXSize, colliderAYSize)
             let b1 = (globalThis as any).JulGameSdl.glue_SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
             // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, a1)
@@ -226,7 +226,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             if (result.x == b.x && !colliderB.isPlatformerCollider) {
                 console.debug("colliding from left at depth $(depthHorizontal)")
                 horizontalCollisionDir = Left
-            elseif result.x == a.x && !colliderB.isPlatformerCollider
+            } else if (result.x == a.x && !colliderB.isPlatformerCollider) {
                 console.debug("colliding from right at depth $(depthHorizontal)")
                 horizontalCollisionDir = Right
             }
@@ -240,7 +240,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                     }
                 }
                 verticalCollisionDir = Bottom
-            elseif result.y == a.y
+            } else if (result.y == a.y) {
                 console.debug("colliding from bottom at depth $(depthVertical)") 
                 // Platformer colliders allow pass-through from below
                 if (colliderB.isPlatformerCollider) {
@@ -251,7 +251,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             
             if (min(depthHorizontal, depthVertical) == depthHorizontal) {
                 return (horizontalCollisionDir, -depthHorizontal/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
-            else
+            } else {
                 return (verticalCollisionDir, depthVertical/(globalThis as any).JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             }
         }

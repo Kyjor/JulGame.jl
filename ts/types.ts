@@ -48,13 +48,16 @@ declare global {
   function schedule(task: any, ex?: any, opts?: any): void;
 
   /** @see src/utils/Enums.jl — assigned in globalConstants.ts */
-  const None: -1;
-  const Top: 1;
-  const Bottom: 2;
-  const Left: 3;
-  const Right: 4;
-  const Above: 1;
-  const Below: 2;
-  const LeftSide: 3;
-  const RightSide: 4;
+  type CollisionDirection = -1 | 1 | 2 | 3 | 4;
+  type ColliderLocation = 1 | 2 | 3 | 4;
+
+  const None: CollisionDirection;
+  const Top: CollisionDirection;
+  const Bottom: CollisionDirection;
+  const Left: CollisionDirection;
+  const Right: CollisionDirection;
+  const Above: ColliderLocation;
+  const Below: ColliderLocation;
+  const LeftSide: ColliderLocation;
+  const RightSide: ColliderLocation;
 }

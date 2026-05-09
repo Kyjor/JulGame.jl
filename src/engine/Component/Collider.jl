@@ -194,19 +194,19 @@ module ColliderModule
 
         isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
-        if isLineIntersectionL == SDL2.SDL_TRUE
+        if isLineIntersectionL == UInt32(1)
             isLineIntersectionL = true
         else
             isLineIntersectionL = false
         end
 
-        if isLineIntersectionR == SDL2.SDL_TRUE
+        if isLineIntersectionR == UInt32(1)
             isLineIntersectionR = true
         else
             isLineIntersectionR = false
         end
 
-        if isIntersection == SDL2.SDL_TRUE
+        if isIntersection == UInt32(1)
             a1 = SDL2.SDL_FRect(posA.x, posA.y, colliderAXSize, colliderAYSize)
             b1 = SDL2.SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
             # SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(a1))

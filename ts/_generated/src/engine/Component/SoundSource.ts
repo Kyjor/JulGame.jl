@@ -33,7 +33,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let fullPath = joinpath(BasePath, "assets", "sounds", path)
             if (path.length < 1) {
                 let sound = null    
-            else
+            } else {
                 sound = load_sound_sdl(path, isMusic)
             }
             let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
@@ -70,16 +70,16 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 if (SDL2.Mix_PlayingMusic() == 0) {
                     SDL2.Mix_PlayMusic( this.sound, -1 )
                     this.isPlaying = true
-                else
+                } else {
                     if (SDL2.Mix_PausedMusic() == 1) {
                         SDL2.Mix_ResumeMusic()
                         this.isPlaying = true
-                    else
+                    } else {
                         SDL2.Mix_PauseMusic()
                         this.isPlaying = false
                     }
                 }
-            else
+            } else {
                 if (SDL2.Mix_PlayChannel(this.channel, this.sound, loops) == -1) {
                     console.error("toggle_sound: Error playing channel $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
                     throw(e)
@@ -143,7 +143,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         console.debug("unload_sound: Unloading sound from $(this.path), isMusic: $(this.isMusic)")
         if (this.isMusic) {
             SDL2.Mix_FreeMusic(this.sound)
-        else
+        } else {
             SDL2.Mix_FreeChunk(this.sound)
         }
         this.sound = null
@@ -165,7 +165,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         console.debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
         if (this.isMusic) {
             SDL2.Mix_PlayMusic(this.sound, -1)
-        else
+        } else {
             SDL2.Mix_PlayChannel(this.channel, this.sound, loops)
         }
     }
