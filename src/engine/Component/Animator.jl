@@ -13,22 +13,22 @@
     export InternalAnimator
     mutable struct InternalAnimator
         animations::Vector{Animation}
-        currentAnimation::Animation
+        currentAnimation::Union{Animation, Nothing}
         lastFrame::Int
         lastUpdate::UInt64
         parent::Any
         playOnce::Bool
-        sprite::Union{InternalSprite, Ptr{Nothing}}
+        sprite::Union{InternalSprite, Nothing}
 
         function InternalAnimator(parent::Any, animations::Vector{Animation} = Animation[])
             this = new()
             
             this.animations = animations
-            this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : C_NULL
+            this.currentAnimation = length(this.animations) > 0 ? this.animations[1] : nothing
             this.lastFrame = 0
             this.lastUpdate = SDL2.SDL_GetTicks()
             this.parent = parent
-            this.sprite = C_NULL
+            this.sprite = nothing
             this.playOnce = false
 
             return this
@@ -36,7 +36,7 @@
     end
 
     function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
-        if this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames)) || this.sprite == C_NULL || this.sprite === nothing
+        if this.currentAnimation === nothing || this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames)) || this.sprite == nothing
             return
         end
         deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0

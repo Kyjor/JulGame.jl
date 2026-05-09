@@ -61,9 +61,9 @@ export {}
             isWorldEntity: boolean=false, 
             layer: number=0,
             position = {x: 0, y: 0}, 
-            clickEvents: Function[] = Function[],
-            hoverEnterEvents: Function[] = Function[],
-            hoverExitEvents: Function[] = Function[],
+            clickEvents: Function[] = [],
+            hoverEnterEvents: Function[] = [],
+            hoverExitEvents: Function[] = [],
             isActive: boolean=true,
             persistentBetweenScenes: boolean=false,
             color= [255, 255, 255, 255], 
@@ -108,7 +108,7 @@ export {}
             this.renderText = null
             this.parent = parent
             // Initialize effects
-            this.effects = Any[]
+            this.effects = []
             this.effectTexture = null
             this.needsEffectUpdate = false
             this.effectCacheKey = ""
@@ -388,7 +388,7 @@ export {}
             return text
         }
 
-        let lines = String[]
+        let lines = []
         let current_line = ""
         let current_width = 0
         
@@ -403,10 +403,10 @@ export {}
                 if (current_width + w[] > maxWidth && !isempty(current_line)) {
                     lines.push(rstrip(current_line))
                     current_line = word * " "
-                    current_width = w[]
+                    current_width = []
                 else
                     current_line *= word * " "
-                    current_width += w[]
+                    current_width += []
                 }
             }
             
@@ -423,10 +423,10 @@ export {}
                 if (current_width + w[] > maxWidth && !isempty(current_line)) {
                     lines.push(current_line)
                     current_line = char_str
-                    current_width = w[]
+                    current_width = []
                 else
                     current_line *= char_str
-                    current_width += w[]
+                    current_width += []
                 }
             }
             
@@ -510,11 +510,11 @@ export {}
         if (isempty(effects)) {
             return "[]"
         }
-        parts = String[]
+        parts = []
         for (const eff of effects) {
             let T = typeof(eff)
             let fnames = fieldnames(T)
-            let vals = String[]
+            let vals = []
             for (const f of fnames) {
                 // Avoid dumping huge pointers; just tag Ptr fields
                 let v = getfield(eff, f)
@@ -605,7 +605,7 @@ export {}
     }
 
     function get_effect_cache_snapshot() {
-        let snapshot = NamedTuple[]
+        let snapshot = []
         for (key, texture) in EFFECT_CACHE
             let width = 0
             let height = 0
@@ -647,7 +647,7 @@ export {}
                 fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                 (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
                 this.size = {x: w[], y: h[]}
-                console.debug("Cached effect texture size updated") name=this.name w=w[] h=h[]
+                console.debug("Cached effect texture size updated") name=this.name w=w[] h= []
             }
             
             this.needsEffectUpdate = false
@@ -707,7 +707,7 @@ export {}
                     fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
                     (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
                     this.size = {x: w[], y: h[]}
-                    console.debug("Effect texture created") name=this.name tex_ptr=this.effectTexture w=w[] h=h[]
+                    console.debug("Effect texture created") name=this.name tex_ptr=this.effectTexture w=w[] h= []
                     // Set scaling mode according to (globalThis as any).JulGame.SCALE_QUALITY
                     (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(this.effectTexture, get_scale_mode_from_quality())
                     

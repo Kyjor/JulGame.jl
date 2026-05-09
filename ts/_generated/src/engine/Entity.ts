@@ -42,7 +42,7 @@ export {}
         forceClickCheck: boolean
         ignoreInputEvents: boolean
 
-        function Entity(name: string = "New entity",  id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = []; clickEvents = Function[], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
+        function Entity(name: string = "New entity",  id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = []; clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
             
 
             this.id = id
@@ -67,8 +67,8 @@ export {}
             this.parent = null
             this.isHovered = false
             this.clickEvents = clickEvents
-            this.hoverEnterEvents = Function[]
-            this.hoverExitEvents = Function[]
+            this.hoverEnterEvents = []
+            this.hoverExitEvents = []
             this.forceClickCheck = forceClickCheck
             this.ignoreInputEvents = ignoreInputEvents
 

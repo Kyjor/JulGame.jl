@@ -2,6 +2,7 @@ export {};
 
 declare global {
   type AnyValue = any;
+  type JulGameAnimation = { animatedFPS: number; frames: Vector4[] };
   type Vector2 = { x: number; y: number };
   type Vector2f = { x: number; y: number };
   type Vector3f = { x: number; y: number; z: number };
@@ -18,6 +19,13 @@ declare global {
   interface IAnimator {}
   interface ICollider {}
   interface ICircleCollider {}
+  type InternalSprite = ISprite;
+  type InternalAnimator = IAnimator;
+  type InternalCollider = ICollider;
+  type InternalCircleCollider = ICircleCollider;
+  type InternalRigidbody = any;
+  type InternalShape = IShape;
+  type InternalSoundSource = ISoundSource;
   interface IMesh3D {}
   interface ISoftwareRenderer3D {}
   interface IObserver {}

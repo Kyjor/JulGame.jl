@@ -1,5 +1,5 @@
 export {}
-﻿
+
     // using ..Component.AnimationModule
     // using ..Component.JulGame
     // using ..Component.(globalThis as any).JulGame.Math
@@ -14,14 +14,14 @@ export {}
     
     class InternalAnimator {
         animations: JulGameAnimation[]
-        currentAnimation: JulGameAnimation
+        currentAnimation: JulGameAnimation | null
         lastFrame: number
         lastUpdate: number
         parent: any
         playOnce: boolean
         sprite: InternalSprite | null
 
-        constructor(parent: any,  animations: JulGameAnimation[] = JulGameAnimation[]) {
+        constructor(parent: any,  animations: JulGameAnimation[] = []) {
             
             
             this.animations = animations
@@ -36,7 +36,7 @@ export {}
     }
 
     function Component_update(this: InternalAnimator,  currentRenderTime,  deltaTime) {
-        if (this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == this.currentAnimation.frames.length) || this.sprite == null || this.sprite === null) {
+        if (this.currentAnimation === null || this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == this.currentAnimation.frames.length) || this.sprite == null) {
             return
         }
         deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0

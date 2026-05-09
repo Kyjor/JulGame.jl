@@ -73,6 +73,8 @@ end
 function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     mkpath(dirname(path_ts))
     data = read(path_jl, String)
+    # Drop UTF-8 BOMs copied from source files so generated TS starts cleanly.
+    data = replace(data, "\ufeff" => "")
     data = replace_module(data)
     data = replace_end(data)
     data = replace_exports(data)
@@ -886,6 +888,10 @@ function replace_empty_vector_literals(data::AbstractString)::String
     s = replace(s, "Vector2()" => "{x: 0, y: 0}")
     s = replace(s, "Vector3()" => "{x: 0, y: 0, z: 0}")
     s = replace(s, "Vector4()" => "{x: 0, y: 0, z: 0, t: 0}")
+    # Value-position typed empty array default (`foo: Bar[] = Bar[]`) -> `foo: Bar[] = []`.
+    # Keep type annotations intact; only rewrite RHS when the value ends there (param/list terminator),
+    # so ref reads like `result[].w` are untouched.
+    s = replace(s, r"=\s*[A-Za-z_][A-Za-z0-9_\.]*\[\](?=\s*(?:[,)\n]|$))" => "= []")
     return s
 end
 

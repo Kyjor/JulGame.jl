@@ -70,7 +70,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             this.mousePositionWorld = {x: 0, y: 0}
             this.quit = false
             this.scanCodes = []
-            this.scanCodeStrings = String[]
+            this.scanCodeStrings = []
             for (const m of instances(SDL2.SDL_Scancode)) {
                 let codeString = "$(m)"
                 code = m
@@ -114,7 +114,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
             this.isTestButtonClicked = false
             this.simulatedClickPosition = null
-            this.pending_sdl_events = SDL2.SDL_Event[]
+            this.pending_sdl_events = []
 
         }
     }
@@ -213,7 +213,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
     const _trace_input_ui_hit_iter_ref = Ref{Union{null, Bool}}(null)
     function _input_ui_hit_iter_stream_logs() {
-        let v = _trace_input_ui_hit_iter_ref[]
+        let v = []
         if (v === null) {
             let s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_ITER", "0")))
             _trace_input_ui_hit_iter_ref[] = s == "1" || s in ("true", "yes", "on")
@@ -272,7 +272,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             }
             _input_poll_accumulate(prof, t0, :sdl_PollEvent)
 
-            evt = event_ref[]
+            evt = []
             handle_window_events(this, evt)
 
             // console.debug("polling input")
@@ -282,7 +282,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 if (evt.type == SDL2.SDL_MOUSEMOTION) {
                     let coalesce_ref = Ref{SDL2.SDL_Event}()
                     while Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(coalesce_ref))
-                        let e2 = coalesce_ref[]
+                        let e2 = []
                         if (e2.type == SDL2.SDL_MOUSEMOTION) {
                             _refresh_logical_mouse(this, e2)
                             this.didMouseMotionOccur = true

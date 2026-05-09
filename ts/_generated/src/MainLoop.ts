@@ -83,7 +83,7 @@ export {}
 			this.input = Input()
 
 			this.close = false
-			this.debugTextBoxes = UI.TextBoxModule.TextBox[]
+			this.debugTextBoxes = []
 			this.optimizeSpriteRendering = false
 			this.selectedEntities = []
 			this.shouldChangeScene = false
@@ -95,7 +95,7 @@ export {}
 			this.testLength = 0.0
 			this.coroutine_condition = Condition()
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
-			this.spriteLayers = (layers = Dict{Int, Vector{Any}}(), sorted = Int[])
+			this.spriteLayers = (layers = Dict{Int, Vector{Any}}(), sorted = [])
 			this.latencyProfiler = null  // Disabled by default, enable with enable_profiling()
 
 			this.windowManager = WindowManager()
@@ -143,7 +143,7 @@ export {}
 			// First time: JIT compiles the method (slow but only once)
 			console.debug("First initialize call for $(script_type) - compiling...")
 			this.knownScriptTypes.push(script_type)
-			this.scriptTimings[script_type] = Float64[]
+			this.scriptTimings[script_type] = []
 		}
 		
 		(globalThis as any).JulGame.initialize(script)
@@ -162,7 +162,7 @@ export {}
 			// First call: register type (compilation happens here)
 			console.debug("First update call for $(script_type) - compiling...")
 			this.knownScriptTypes.push(script_type)
-			this.scriptTimings[script_type] = Float64[]
+			this.scriptTimings[script_type] = []
 		}
 		
 		// Profile if requested
@@ -563,7 +563,7 @@ Returns a named tuple with (layers = Dict{Int, Vector}, sorted = Vector{Int})
 function build_sprite_layers() {
 	console.debug("Building sprite layers")
 	let layerDict = Dict{Int, Vector{Any}}()  // Int keys instead of String - no allocations!
-	let sortedLayers = Int[]
+	let sortedLayers = []
 	
 	for (const entity of MAIN.scene.entities) {
 		let entitySprite = entity.sprite
@@ -749,7 +749,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 		return
 	}
 	try {
-			let lastStartTime = startTime[]
+			let lastStartTime = []
 			startTime[] = (globalThis as any).JulGameSdl.glue_SDL_GetPerformanceCounter()
 
 			let DEBUG = false

@@ -2,7 +2,7 @@ export {}
 import { clamp } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
 
-﻿
+
     // using ..Component.JulGame
     // import ..Component
     

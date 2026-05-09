@@ -94,7 +94,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             this.isStatic = isStatic
             
             // Initialize effects
-            this.effects = Any[]
+            this.effects = []
             this.effectTexture = null
             this.effectSize = {x: 0, y: 0}
             this.effectCacheKey = ""
@@ -147,7 +147,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         let alphaRef = Ref(UInt8(0))
         (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, colorRefs...)
         (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
-        if (colorRefs[0][] != this.color[0] || colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || this.color[3] != alphaRef[]) {
+        if (colorRefs[0][] != this.color[0] || colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || this.color[3] != []) {
             (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, UInt8(clamp(this.color[0], 0, 255)), UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)))
             (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, UInt8(clamp(this.color[3], 0, 255)))
         }
@@ -317,11 +317,11 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         if (isempty(effects)) {
             return "[]"
         }
-        let parts = String[]
+        let parts = []
         for (const eff of effects) {
             let T = typeof(eff)
             let fnames = fieldnames(T)
-            let vals = String[]
+            let vals = []
             for (const f of fnames) {
                 let v = getfield(eff, f)
                 if (v isa Ptr) {
@@ -419,7 +419,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
     }
 
     function get_effect_cache_snapshot() {
-        let snapshot = NamedTuple[]
+        let snapshot = []
         for (key, cached) in SPRITE_EFFECT_CACHE
             let texture = cached[0]
             let size = cached[1]
