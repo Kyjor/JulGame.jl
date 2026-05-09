@@ -77,17 +77,403 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
+    data = replace_invokelatest_calls(data)
     data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
     data = custom_function_removal(data)
     data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
     data = replace_setfield_calls(data)
+    data = replace_empty_vector_literals(data)
+    data = rewrite_rhs_vector_arithmetic(data)
+    data = prepend_generated_ts_imports(data, path_ts)
     data = "export {}\n" * data
     open(path_ts, "w") do io
         print(io, data)
     end
     path_ts
+end
+
+function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractString)::String
+    need_clamp = occursin(r"\bclamp\s*\(", data)
+    need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
+    (!need_clamp && !need_vec) && return data
+    ts_dir = dirname(abspath(path_ts))
+    lines = String[]
+    if need_clamp
+        h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
+        if isfile(h)
+            rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
+            rel = replace(rel, r"\.ts$" => "")
+            push!(lines, string("import { clamp } from \"", rel, "\";"))
+        end
+    end
+    if need_vec
+        v = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "vectorOps.ts"))
+        if isfile(v)
+            relv = replace(String(relpath(v, ts_dir)), '\\' => '/')
+            relv = replace(relv, r"\.ts$" => "")
+            push!(lines, string("import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from \"", relv, "\";"))
+        end
+    end
+    isempty(lines) && return data
+    return string(join(lines, "\n"), "\n\n", data)
+end
+
+# --- Julia-style vector `+ - * /` on plain `{x,y}` / `{x,y,z}` objects (see `src/Math/Vector2.jl`, `Math.jl`) ---
+
+abstract type _VecAst end
+
+struct _Leaf <: _VecAst
+    text::String
+end
+
+struct _Neg <: _VecAst
+    child::_VecAst
+end
+
+struct _Bin <: _VecAst
+    op::Char
+    left::_VecAst
+    right::_VecAst
+end
+
+struct _Call <: _VecAst
+    name::String
+    args::Vector{_VecAst}
+end
+
+struct _Idx <: _VecAst
+    base::_VecAst
+    inner::_VecAst
+end
+
+mutable struct _Ps
+    s::String
+    i::Int
+    n::Int
+end
+
+function _skip_ws!(ps::_Ps)
+    while ps.i <= ps.n
+        c = ps.s[ps.i]
+        (c == ' ' || c == '\t') || break
+        ps.i = nextind(ps.s, ps.i)
+    end
+end
+
+function _peekc(ps::_Ps)::Union{Nothing, Char}
+    _skip_ws!(ps)
+    ps.i > ps.n && return nothing
+    return ps.s[ps.i]
+end
+
+function _vec_ts_cast_suffix(lhs::AbstractString)::String
+    ls = String(strip(lhs))
+    # Narrow names so we do not cast e.g. `screenPosition` (Vector2) to Vector3f.
+    if ls in ("newPosition", "currentPosition", "targetPos")
+        return " as Vector3f"
+    end
+    if ls in (
+        "newVelocity",
+        "this.velocity",
+        "this.acceleration",
+        "velocityMultiplier",
+        "newAcceleration",
+        "gravityAcceleration",
+        "dragAcceleration",
+        "dragForce",
+    )
+        return " as Vector2f"
+    end
+    return ""
+end
+
+function _rhs_hints_vector_math(rhs::AbstractString)::Bool
+    occursin(r"[+\-*/]", rhs) || return false
+    occursin("velocity", rhs) ||
+        occursin("acceleration", rhs) ||
+        occursin("transform.position", rhs) ||
+        occursin("gravityAcceleration", rhs) ||
+        occursin("dragAcceleration", rhs) ||
+        occursin("dragForce", rhs) ||
+        occursin("velocityMultiplier", rhs) ||
+        occursin("newVelocity", rhs) ||
+        occursin("newPosition", rhs) ||
+        occursin("newAcceleration", rhs) ||
+        occursin("currentPosition", rhs)
+end
+
+function _emit_vec_ast(node::_VecAst)::String
+    if node isa _Leaf
+        return node.text
+    elseif node isa _Neg
+        return string("vecNeg(", _emit_vec_ast(node.child), ")")
+    elseif node isa _Bin
+        fn = node.op == '+' ? "vecAdd" :
+             node.op == '-' ? "vecSub" :
+             node.op == '*' ? "vecMul" : "vecDiv"
+        return string(fn, "(", _emit_vec_ast(node.left), ", ", _emit_vec_ast(node.right), ")")
+    elseif node isa _Call
+        parts = map(_emit_vec_ast, node.args)
+        return string(node.name, "(", join(parts, ", "), ")")
+    elseif node isa _Idx
+        return string(_emit_vec_ast(node.base), "[", _emit_vec_ast(node.inner), "]")
+    else
+        return ""
+    end
+end
+
+function _read_atom_token!(ps::_Ps)::Union{Nothing, String}
+    _skip_ws!(ps)
+    ps.i > ps.n && return nothing
+    i0 = ps.i
+    c = ps.s[ps.i]
+    if isdigit(c) ||
+        (c == '.' && ps.i < ps.n && isdigit(ps.s[nextind(ps.s, ps.i)]))
+        while ps.i <= ps.n
+            cc = ps.s[ps.i]
+            if isdigit(cc) || cc == '.' || cc in ('e', 'E', '+', '-')
+                ps.i = nextind(ps.s, ps.i)
+            else
+                break
+            end
+        end
+        return String(SubString(ps.s, i0, prevind(ps.s, ps.i)))
+    end
+    if isletter(c) || c == '_' || c == '$'
+        while ps.i <= ps.n
+            cc = ps.s[ps.i]
+            if isletter(cc) || isdigit(cc) || cc in ('_', '$', '.')
+                ps.i = nextind(ps.s, ps.i)
+            else
+                break
+            end
+        end
+        return String(SubString(ps.s, i0, prevind(ps.s, ps.i)))
+    end
+    return nothing
+end
+
+function _parse_postfix!(ps::_Ps)::Union{Nothing, _VecAst}
+    c0 = _peekc(ps)
+    c0 === nothing && return nothing
+    local node::_VecAst
+    if c0 == '('
+        ps.i = nextind(ps.s, ps.i)
+        inner = _parse_addsub!(ps)
+        inner === nothing && return nothing
+        _skip_ws!(ps)
+        (ps.i > ps.n || ps.s[ps.i] != ')') && return nothing
+        ps.i = nextind(ps.s, ps.i)
+        node = inner
+    else
+        tok = _read_atom_token!(ps)
+        tok === nothing && return nothing
+        node = _Leaf(tok)
+    end
+    while true
+        c = _peekc(ps)
+        c === nothing && break
+        if c == '['
+            ps.i = nextind(ps.s, ps.i)
+            ix = _parse_addsub!(ps)
+            ix === nothing && return nothing
+            _skip_ws!(ps)
+            (ps.i > ps.n || ps.s[ps.i] != ']') && return nothing
+            ps.i = nextind(ps.s, ps.i)
+            node = _Idx(node, ix)
+        elseif c == '('
+            node isa _Leaf || return nothing
+            name = node.text
+            ps.i = nextind(ps.s, ps.i)
+            args = _VecAst[]
+            c2 = _peekc(ps)
+            if c2 == ')'
+                ps.i = nextind(ps.s, ps.i)
+                node = _Call(name, args)
+                continue
+            end
+            while true
+                arg = _parse_addsub!(ps)
+                arg === nothing && return nothing
+                push!(args, arg)
+                c3 = _peekc(ps)
+                c3 === nothing && return nothing
+                if c3 == ','
+                    ps.i = nextind(ps.s, ps.i)
+                    continue
+                elseif c3 == ')'
+                    ps.i = nextind(ps.s, ps.i)
+                    break
+                else
+                    return nothing
+                end
+            end
+            node = _Call(name, args)
+        else
+            break
+        end
+    end
+    return node
+end
+
+function _parse_unary!(ps::_Ps)::Union{Nothing, _VecAst}
+    c = _peekc(ps)
+    if c == '-'
+        ps.i = nextind(ps.s, ps.i)
+        ch = _parse_unary!(ps)
+        ch === nothing && return nothing
+        return _Neg(ch)
+    end
+    return _parse_postfix!(ps)
+end
+
+function _parse_muldiv!(ps::_Ps)::Union{Nothing, _VecAst}
+    left = _parse_unary!(ps)
+    left === nothing && return nothing
+    while true
+        c = _peekc(ps)
+        c === nothing && break
+        if c == '*' || c == '/'
+            ps.i = nextind(ps.s, ps.i)
+            right = _parse_unary!(ps)
+            right === nothing && return nothing
+            left = _Bin(c, left, right)
+        else
+            break
+        end
+    end
+    return left
+end
+
+function _parse_addsub!(ps::_Ps)::Union{Nothing, _VecAst}
+    left = _parse_muldiv!(ps)
+    left === nothing && return nothing
+    while true
+        c = _peekc(ps)
+        c === nothing && break
+        if c == '+' || c == '-'
+            ps.i = nextind(ps.s, ps.i)
+            right = _parse_muldiv!(ps)
+            right === nothing && return nothing
+            left = _Bin(c, left, right)
+        else
+            break
+        end
+    end
+    return left
+end
+
+function _try_rewrite_rhs_vector_expr(rhs::AbstractString)::Union{Nothing, String}
+    r = String(strip(rhs))
+    isempty(r) && return nothing
+    occursin('"', r) && return nothing
+    occursin('\'', r) && return nothing
+    ps = _Ps(r, firstindex(r), lastindex(r))
+    tree = _parse_addsub!(ps)
+    tree === nothing && return nothing
+    _skip_ws!(ps)
+    while ps.i <= ps.n && ps.s[ps.i] == ';'
+        ps.i = nextind(ps.s, ps.i)
+    end
+    _skip_ws!(ps)
+    ps.i <= ps.n && return nothing
+    return _emit_vec_ast(tree)
+end
+
+function _matching_paren_close(s::String, open_at::Int)::Union{Nothing, Int}
+    depth = 0
+    i = open_at
+    n = lastindex(s)
+    while i <= n
+        c = s[i]
+        if c == '"'
+            j = i
+            i = nextind(s, i)
+            while i <= n
+                cc = s[i]
+                if cc == '\\'
+                    i = nextind(s, i, 2)
+                    continue
+                end
+                if cc == '"'
+                    break
+                end
+                i = nextind(s, i)
+            end
+        elseif c == '('
+            depth += 1
+        elseif c == ')'
+            depth -= 1
+            depth == 0 && return i
+        end
+        i = nextind(s, i)
+    end
+    return nothing
+end
+
+function _try_rewrite_set_velocity_line(line::String)::Union{Nothing, String}
+    f = findfirst("set_velocity", line)
+    f === nothing && return nothing
+    i0 = first(f)
+    i = last(f)
+    while i <= lastindex(line) && line[i] != '('
+        i = nextind(line, i)
+    end
+    i > lastindex(line) && return nothing
+    close_i = _matching_paren_close(line, i)
+    close_i === nothing && return nothing
+    inner = String(SubString(line, nextind(line, i), prevind(line, close_i)))
+    parts = split_top_level_commas_general(inner)
+    length(parts) < 2 && return nothing
+    arg2 = String(strip(parts[2]))
+    !_rhs_hints_vector_math(arg2) && return nothing
+        rew = _try_rewrite_rhs_vector_expr(arg2)
+        rew === nothing && return nothing
+        new_inner = string(strip(parts[1]), ", ", rew, " as Vector2f")
+    prefix = String(SubString(line, 1, prevind(line, i)))
+    suffix = String(SubString(line, nextind(line, close_i)))
+    return string(prefix, "(", new_inner, ")", suffix)
+end
+
+function _rewrite_vector_arithmetic_line(line::AbstractString)::String
+    s = String(rstrip(line, '\r'))
+    if occursin("set_velocity", s)
+        rw = _try_rewrite_set_velocity_line(s)
+        rw !== nothing && return rw
+    end
+    m = match(r"^(\s*(?:let\s+)?)([A-Za-z_$][\w$.]*)\s*=\s*(.+)$", s)
+    if m !== nothing
+        rhs = String(strip(m[3]))
+        (startswith(rhs, "{") || startswith(rhs, "[") || startswith(rhs, "`")) && return line
+        occursin('"', rhs) && return line
+        !_rhs_hints_vector_math(rhs) && return line
+        rhs0 = rstrip(rhs, ';')
+        rew = _try_rewrite_rhs_vector_expr(rhs0)
+        if rew !== nothing
+            cast = _vec_ts_cast_suffix(String(m[2]))
+            return string(m[1], m[2], " = ", rew, cast)
+        end
+    end
+    m2 = match(r"^(\s*return\s+)(.+)$", s)
+    if m2 !== nothing
+        rhs = String(strip(m2[2]))
+        occursin('"', rhs) && return line
+        !_rhs_hints_vector_math(rhs) && return line
+        rhs0 = rstrip(rhs, ';')
+        rew = _try_rewrite_rhs_vector_expr(rhs0)
+        if rew !== nothing
+            return string(m2[1], rew, " as Vector2f")
+        end
+    end
+    return line
+end
+
+function rewrite_rhs_vector_arithmetic(data::AbstractString)::String
+    s = String(data)
+    parts = split(s, '\n')
+    return join(map(_rewrite_vector_arithmetic_line, parts), '\n')
 end
 
 function replace_module(data::AbstractString)
@@ -162,6 +548,7 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
     data = replace(data, r"\bfloor\(" => "Math.floor(")
+    # `clamp(...)` stays as `clamp(...)`; generated files import it from `juliaHelpers.ts`.
     # Numeric helpers.
     data = replace(data, r"\bFloat64\(" => "Number(")
     data = replace(data, r"\binv\(([^()]+)\)" => s"(1 / (\1))")
@@ -172,6 +559,12 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2f\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
     data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector2\(\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2}")
     data = replace(data, r"\b(?:JulGame\.Math\.|Math\.)?Vector3f\(\s*([^,()]+)\s*,\s*([^,()]+)\s*,\s*([^()]+)\s*\)" => s"{x: \1, y: \2, z: \3}")
+    # Rigidbody: grounded snap keeps `z` from the integrated position (Julia `Vector2f(x,y)` drops `z` on the Julia side).
+    data = replace(
+        data,
+        "newPosition = {x: newPosition.x, y: currentPosition.y}" =>
+            "newPosition = {x: newPosition.x, y: currentPosition.y, z: newPosition.z}",
+    )
     # `a && return b` is valid Julia shorthand; TS needs an explicit if.
     data = replace(data, r"(?m)^(\s*)(.+?)\s*&&\s*return\s+(.+)$" => s"\1if (\2) { return \3 }")
     # Julia try/catch forms.
@@ -326,6 +719,63 @@ function split_top_level_commas(s::AbstractString)::Vector{String}
     return out
 end
 
+# Split by commas at depth 0; respects `()`, `[]`, `{}`, and `"..."`.
+function split_top_level_commas_general(s::AbstractString)::Vector{String}
+    s = String(s)
+    out = String[]
+    part = IOBuffer()
+    paren = 0
+    bracket = 0
+    brace = 0
+    i = firstindex(s)
+    n = lastindex(s)
+    while i <= n
+        c = s[i]
+        if c == '"'
+            endq = _skip_double_quoted_string(s, i, n)
+            write(part, SubString(s, i:endq))
+            i = nextind(s, endq)
+            continue
+        end
+        if c == '('
+            paren += 1
+            write(part, c)
+        elseif c == ')'
+            paren -= 1
+            write(part, c)
+        elseif c == '['
+            bracket += 1
+            write(part, c)
+        elseif c == ']'
+            bracket -= 1
+            write(part, c)
+        elseif c == '{'
+            brace += 1
+            write(part, c)
+        elseif c == '}'
+            brace -= 1
+            write(part, c)
+        elseif c == ',' && paren == 0 && bracket == 0 && brace == 0
+            push!(out, strip(String(take!(part))))
+        else
+            write(part, c)
+        end
+        i = nextind(s, i)
+    end
+    push!(out, strip(String(take!(part))))
+    return out
+end
+
+function _strip_one_outer_paren_pair(r::AbstractString)::Union{Nothing,String}
+    t = strip(String(r))
+    fi = firstindex(t)
+    li = lastindex(t)
+    t[fi] != '(' && return nothing
+    t[li] != ')' && return nothing
+    inner = t[nextind(t, fi):prevind(t, li)]
+    return String(strip(inner))
+end
+
 function scalar_type_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
     t = String(strip(t))
     t == "Ptr{Nothing}" && return "null"
@@ -389,6 +839,17 @@ function vector_inner_to_ts(inner::AbstractString, scalar_map::Dict{String,Strin
         return string(get(scalar_map, leaf, leaf)) * "[]"
     end
     return string(get(scalar_map, inner, inner)) * "[]"
+end
+
+function replace_empty_vector_literals(data::AbstractString)::String
+    s = String(data)
+    s = replace(s, "Vector2f()" => "{x: 0, y: 0}")
+    s = replace(s, "Vector3f()" => "{x: 0, y: 0, z: 0}")
+    s = replace(s, "Vector4()" => "{x: 0, y: 0, z: 0, t: 0}")
+    s = replace(s, "Vector2()" => "{x: 0, y: 0}")
+    s = replace(s, "Vector3()" => "{x: 0, y: 0, z: 0}")
+    s = replace(s, "Vector4()" => "{x: 0, y: 0, z: 0, t: 0}")
+    return s
 end
 
 function julia_type_expr_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
@@ -479,6 +940,7 @@ function replace_vector_annotations(data::AbstractString, scalar_map::Dict{Strin
 end
 
 function replace_types(data::AbstractString)
+    data = replace(data, "Math." => "")
     scalar_map = Dict{String,String}(
         "Int32" => "number",
         "UInt64" => "number",
@@ -576,10 +1038,41 @@ end
 
 function replace_function_definitions(data::AbstractString)
     data = replace(data, r"@inline\s+" => "")
-    # Julia: `function qual_name(args)` then newline — no `{`. TS needs `{` on the same line.
-    # Name is `[^\s(]+`; `constructor(...)` is unchanged.
-    data = replace(data, r"(?m)^(\s*function\s+[^\s(]+\([^)]*\))\s*$" => s"\1 {")
-    return data
+    # Julia: `function name(args)` then newline — TS needs `{`. Must balance `()` so defaults like
+    # `f = g(...)` do not terminate the match early (the old `[^)]*` broke nested parens).
+    lines = split(String(data), '\n'; keepempty = true)
+    out = map(add_brace_to_function_line, lines)
+    return join(out, '\n')
+end
+
+function add_brace_to_function_line(line::AbstractString)::String
+    occursin('{', line) && return String(line)
+    s = String(line)
+    startswith(strip(s), "constructor(") && return s
+    occursin(r"^\s*function\s+", s) || return s
+    open_paren = findfirst('(', s)
+    open_paren === nothing && return s
+    depth = 0
+    i = first(open_paren)
+    n = lastindex(s)
+    while i <= n
+        c = s[i]
+        if c == '('
+            depth += 1
+        elseif c == ')'
+            depth -= 1
+            if depth == 0
+                tail = String(SubString(s, nextind(s, i)))
+                t = strip(tail)
+                if isempty(t) || startswith(t, "//") || startswith(t, "#")
+                    return string(SubString(s, 1, i), " {")
+                end
+                return s
+            end
+        end
+        i = nextind(s, i)
+    end
+    return s
 end
 
 # `for x in xs` → `for (const x of xs) {` (line-wise; body closing stays `}` from Julia `end`).
@@ -595,16 +1088,24 @@ function replace_for_in_loops(data::AbstractString)::String
 end
 
 function replace_if_statements(data::AbstractString)
-    # Julia: `if cond` then newline — TS: `if (cond) {`. Single-line condition only; else/elseif later.
+    # Julia: `if cond` / `if(cond)` then newline — TS: `if (cond) {`. Single-line condition only; else/elseif later.
     s = String(data)
     lines = split(s, '\n'; keepempty = true)
     done_line = r"^\s*if\s*\([^)]*\)\s*\{\s*$"
-    pat = r"^(\s*)if\b\s+(.+)$"
+    pat = r"^(\s*)if\b\s*(.+)$"
     return join(
         map(lines) do line
             occursin(done_line, line) && return line
             m = match(pat, line)
-            m === nothing ? line : string(m[1], "if (", strip(m[2]), ") {")
+            if m === nothing
+                line
+            else
+                cond = String(strip(m[2]))
+                if startswith(cond, "(") && endswith(cond, ")")
+                    cond = String(strip(chop(cond, head = 1, tail = 1)))
+                end
+                string(m[1], "if (", cond, ") {")
+            end
         end,
         '\n',
     )
@@ -688,6 +1189,56 @@ function remove_ts_function_block(s::String, func::AbstractString)::String
         suffix = p <= n ? s[p:n] : ""
         s = string(prefix, suffix)
     end
+end
+
+# `Base.invokelatest(f)` → `f()`; `Base.invokelatest(f, a, b)` → `f(a, b)`;
+# `Base.invokelatest(f, (kw=...))` → `f(kw=...)` (unwrap one trailing named-tuple-style group).
+function replace_invokelatest_calls(data::AbstractString)::String
+    s = String(data)
+    needle = "Base.invokelatest("
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner = s[inner_start:prevind(s, close_idx)]
+        parts = split_top_level_commas_general(inner)
+        callee = isempty(parts) ? "" : strip(parts[1])
+        if isempty(callee)
+            write(buf, SubString(s, lo:close_idx))
+            seg_start = nextind(s, close_idx)
+            continue
+        end
+        replacement =
+            if length(parts) == 1
+                string(callee, "()")
+            else
+                rest = map(strip, parts[2:end])
+                arg_inner =
+                    if length(rest) == 1
+                        u = _strip_one_outer_paren_pair(rest[1])
+                        u === nothing ? rest[1] : u
+                    else
+                        join(rest, ", ")
+                    end
+                string(callee, "(", arg_inner, ")")
+            end
+        write(buf, replacement)
+        seg_start = nextind(s, close_idx)
+    end
+    return String(take!(buf))
 end
 
 # `push!(collection, item)` → `collection.push(item)` (balanced parens/brackets; skips `"..."` segments).

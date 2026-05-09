@@ -146,7 +146,7 @@ export {}
 			this.scriptTimings[script_type] = Float64[]
 		}
 		
-		Base.invokelatest((globalThis as any).JulGame.initialize, script)
+		(globalThis as any).JulGame.initialize(script)
 	}
 	
 	/*
@@ -168,7 +168,7 @@ export {}
 		// Profile if requested
 		if (profile && haskey(this.scriptTimings, script_type)) {
 			let start_time = time_ns()
-			Base.invokelatest((globalThis as any).JulGame.update, script, deltaTime)
+			(globalThis as any).JulGame.update(script, deltaTime)
 			let elapsed = (time_ns() - start_time) / 1e6
 			if (this.latencyProfiler !== null) {
 				(globalThis as any).JulGame.LatencyProfilerModule.accumulate_script_update_ms(this.latencyProfiler, script_type, elapsed)
@@ -180,7 +180,7 @@ export {}
 				deleteat(v, 1:10_000)
 			}
 		else
-			Base.invokelatest((globalThis as any).JulGame.update, script, deltaTime)
+			(globalThis as any).JulGame.update(script, deltaTime)
 		}
 	}
 	
@@ -198,7 +198,7 @@ export {}
 		}
 		
 		// Always use invokelatest (fast after first compilation)
-		Base.invokelatest((globalThis as any).JulGame.on_shutdown, script)
+		(globalThis as any).JulGame.on_shutdown(script)
 	}
 	
 	
@@ -729,7 +729,7 @@ Parameters:
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 */
-function _accum_ui_render_breakdown_ms(prof, t0, key: symbol) {
+function _accum_ui_render_breakdown_ms(prof, t0, key: symbol)
 	if (prof === null) { return let t1 = time_ns() }
 	(globalThis as any).JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0[]) / 1e6)
 	t0[] = t1
@@ -816,7 +816,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 				}
 				for (const rigidbody of this.scene.rigidbodies) {
 					try {
-						Base.invokelatest((globalThis as any).JulGame.update, rigidbody, deltaTime)
+						(globalThis as any).JulGame.update(rigidbody, deltaTime)
 					} catch (e) {
 						if (this.testMode) {
 							rethrow(e)
@@ -877,7 +877,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 					}
 					let entityAnimator = entity.animator
 					if (entityAnimator != null) {
-                        Base.invokelatest((globalThis as any).JulGame.update, entityAnimator, currentRenderTime, deltaTime)
+                        (globalThis as any).JulGame.update(entityAnimator, currentRenderTime, deltaTime)
 					}
 				}
 			}
@@ -973,7 +973,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 					let t_r = prof_ui === null ? UInt64(0) : time_ns()
 					if (tgt isa NamedTuple) {
 						let func = tgt.function_to_call
-						Base.invokelatest(func)
+						func()
 					else
 						(globalThis as any).JulGame.render(tgt)
 					}
@@ -1004,7 +1004,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			
 			pos1 = windowPos !== null ? windowPos : {x: 0, y: 0}
 			let S_mouse = (globalThis as any).JulGame.pixels_per_world_unit(this.scene.camera)
-			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse)
+			this.input.mousePositionWorld = Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse)) / S_mouse, (this.input.mousePosition.y + (cameraPosition.y * S_mouse)) / S_mouse)
 			let rawMousePos = {x: this.input.mousePosition.x - pos1.x , y: this.input.mousePosition.y - pos1.y}
 			//region Debug
 			if ((globalThis as any).JulGame.IS_DEBUG) {
@@ -1160,7 +1160,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = Ref(UInt64(0)), las
 			elseif renderOrder[i][2] isa NamedTuple
 				// get the params	
 				func = renderOrder[i][2].function_to_call
-				Base.invokelatest(func)
+				func()
 			elseif hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)
 				// Render batched static sprite layer
 				(globalThis as any).JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)

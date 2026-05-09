@@ -9,3 +9,5 @@ TextBox.jl
 Entity.jl
 Scene.jl
 MainLoop.jl
+Collider.jl
+Rigidbody.jl

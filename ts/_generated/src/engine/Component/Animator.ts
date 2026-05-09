@@ -84,7 +84,7 @@ export {}
     
     // Example
     ```
-    let animator = Animator([JulGameAnimation([Math.Vector4(0,0,0,0)], 60)])
+    let animator = Animator([JulGameAnimation([Vector4(0,0,0,0)], 60)])
     force_frame_update(animator, 1)
     ```
     */

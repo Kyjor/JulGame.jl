@@ -5,10 +5,6 @@
     struct Rigidbody
         mass::Float64
         useGravity::Bool
-
-        function Rigidbody(;mass::Float64 = 1.0, useGravity::Bool = true)
-            return new(mass, useGravity)
-        end
     end
 
     export InternalRigidbody
@@ -52,8 +48,8 @@
         newAcceleration = Component.apply_forces(this)
         newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
-        Component.set_position(transform, newPosition)
-        set_velocity(this, newVelocity * velocityMultiplier)
+        transform.position = newPosition
+        this.velocity = newVelocity * velocityMultiplier
         this.acceleration = newAcceleration
 
         if this.parent.collider != C_NULL
@@ -91,23 +87,6 @@
         end
     end
     export add_velocity
-    
-    """
-    set_velocity(this::Rigidbody, velocity::Math.Vector2f)
-
-    Set the velocity of the Rigidbody component.
-
-    # Arguments
-    - `this::Rigidbody`: The Rigidbody component to set the velocity for.
-    - `velocity::Vector2f`: The velocity to set.
-    """
-    function set_velocity(this::InternalRigidbody, velocity::Math.Vector2f)
-        this.velocity = velocity
-        if(velocity.y < 0)
-            #this.grounded = false
-        end
-    end
-    export set_velocity
 
     function Component.duplicate(this::InternalRigidbody, parent::Any)
         newRigidbody = InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)

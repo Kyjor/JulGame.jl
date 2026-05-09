@@ -1,4 +1,6 @@
 export {}
+import { clamp } from "../../../../src/engine/core/juliaHelpers";
+
 
     // using ..Component.JulGame
     // using ..Component.(globalThis as any).JulGame.ResourceModule
@@ -153,14 +155,14 @@ export {}
         let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
         // Calculate camera difference
         let cameraDiff = camera !== null ? 
-            Math.Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
+            Vector2((camera.position.x + camera.offset.x) * S, (camera.position.y + camera.offset.y) * S) : 
             {x: 0, y: 0}
     
         // Calculate position
         let position = this.parent.transform.position
     
         // Calculate source rectangle
-        let srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == null) ? null : Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
+        let srcRect = (this.crop == Vector4(0, 0, 0, 0) || this.crop == null) ? null : Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
         // Calculate pixels per unit
         let ppu = this.pixelsPerUnit > 0 ? this.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -248,21 +250,21 @@ export {}
             let dstRect = Ref((globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
         else
             dstRect = Ref((globalThis as any).JulGameSdl.glue_SDL_Rect(
-                Math.TypeConversions.safe_int32_convert(round(centeredX)),
-                Math.TypeConversions.safe_int32_convert(round(centeredY)),
-                Math.TypeConversions.safe_int32_convert(round(scaledWidth)),
-                Math.TypeConversions.safe_int32_convert(round(scaledHeight))
+                TypeConversions.safe_int32_convert(round(centeredX)),
+                TypeConversions.safe_int32_convert(round(centeredY)),
+                TypeConversions.safe_int32_convert(round(scaledWidth)),
+                TypeConversions.safe_int32_convert(round(scaledHeight))
             ))
         }
     
         // Calculate center for rotation
-        let calculatedCenter = Math.Vector2(dstRect[].w * (this.center.x % 1), dstRect[].h * (this.center.y % 1))
+        let calculatedCenter = Vector2(dstRect[].w * (this.center.x % 1), dstRect[].h * (this.center.y % 1))
         let rotationCenter = !this.isFloatPrecision ? 
-            Ref((globalThis as any).JulGameSdl.glue_SDL_Point(Math.TypeConversions.safe_int32_convert(round(calculatedCenter.x)), Math.TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
+            Ref((globalThis as any).JulGameSdl.glue_SDL_Point(TypeConversions.safe_int32_convert(round(calculatedCenter.x)), TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
             Ref((globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
     
-        this.lastRenderedScreenPosition = Math.Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
-        this.lastRenderedScreenSize = Math.Vector2f(convert(Float64, dstRect[].w), convert(Float64, dstRect[].h))
+        this.lastRenderedScreenPosition = Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
+        this.lastRenderedScreenSize = Vector2f(convert(Float64, dstRect[].w), convert(Float64, dstRect[].h))
         // Render with appropriate precision
         let renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if (renderFn() {
@@ -291,7 +293,7 @@ export {}
     }
     
     // Shared effect texture cache for sprites (keyed by image+size+effects, not instance)
-    const SPRITE_EFFECT_CACHE = Dict{String, Tuple{Ptr{SDL2.SDL_Texture}, Math.Vector2}}()
+    const SPRITE_EFFECT_CACHE = Dict{String, Tuple{Ptr{SDL2.SDL_Texture}, Vector2}}()
 
     // Shared texture cache for base images (keyed by image path)
     const TEXTURE_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()

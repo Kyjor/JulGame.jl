@@ -1,4 +1,6 @@
 export {}
+import { clamp } from "../../../../src/engine/core/juliaHelpers";
+
 
     // using ..Component.JulGame
     // import ..Component
@@ -43,7 +45,7 @@ export {}
             }
             
             // Convert channel and volume to Int32
-            isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))) : SDL2.Mix_Volume(channel, Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128)))
+            isMusic ? SDL2.Mix_VolumeMusic(TypeConversions.safe_int32_convert(clamp(volume, 0, 128))) : SDL2.Mix_Volume(channel, TypeConversions.safe_int32_convert(clamp(volume, 0, 128)))
 
             this.channel = channel
             this.isMusic = isMusic
@@ -66,7 +68,7 @@ export {}
         try {
             if (this.isMusic) {
                 if (SDL2.Mix_PlayingMusic() == 0) {
-                    SDL2.Mix_PlayMusic( this.sound, -1 )
+                    SDL2.Mix_PlayMusic( this.sound, TypeConversions.safe_int32_convert(-1) )
                     this.isPlaying = true
                 else
                     if (SDL2.Mix_PausedMusic() == 1) {
@@ -78,7 +80,7 @@ export {}
                     }
                 }
             else
-                if (SDL2.Mix_PlayChannel(this.channel, this.sound, loops) == -1) {
+                if (SDL2.Mix_PlayChannel(TypeConversions.safe_int32_convert(this.channel), this.sound, TypeConversions.safe_int32_convert(loops)) == -1) {
                     console.error("toggle_sound: Error playing channel $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
                     throw(e)
                 }
@@ -153,12 +155,12 @@ export {}
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
         console.debug("set_volume: Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)")
-        this.isMusic ? SDL2.Mix_VolumeMusic(this.volume) : SDL2.Mix_Volume(this.channel, this.volume)
+        this.isMusic ? SDL2.Mix_VolumeMusic(TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, TypeConversions.safe_int32_convert(this.volume))
     }
 
     function Component_play(this: InternalSoundSource,  loops: number = 0) {
         // Convert loops to Int32
-        loops = loops
+        loops = TypeConversions.safe_int32_convert(loops)
         
         console.debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
         if (this.isMusic) {
@@ -171,7 +173,7 @@ export {}
     function set_master_volume(volume: number) {
         // Convert volume to Int32 and clamp between 0 and 128
         console.debug("set_master_volume: Setting master volume to $(volume)")
-        volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
+        volume = TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
         SDL2.Mix_MasterVolume(volume)
     }
 

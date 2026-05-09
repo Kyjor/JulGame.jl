@@ -31,10 +31,6 @@ module TransformModule
         return newTransform
     end
 
-    function Component.set_position(this::Transform, position::Union{Math.Vector3f, Math.Vector2f})
-        this.position = position
-    end
-
     function Component.is_mouse_hovering(this::Transform)
         mousePosition = JulGame.InputModule.get_mouse_position_in_world_space()
         if mousePosition.x >= this.position.x && mousePosition.x <= this.position.x + this.scale.x && mousePosition.y >= this.position.y && mousePosition.y <= this.position.y + this.scale.y

@@ -202,7 +202,7 @@ export {}
             // Render with screen-space positioning (traditional UI)
             let adjusted_position = {x: 0, y: 0}
             if (this.originalSize != this.size && this.anchor.current_state == :none) {
-                adjusted_position = Math.Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
+                adjusted_position = Vector2(this.position.x - (this.size.x - this.originalSize.x)/2, this.position.y - (this.size.y - this.originalSize.y)/2)
                 // console.debug("difference in size: $(this.size.x - this.originalSize.x), $(this.size.y - this.originalSize.y)")
                 // console.debug("adjusted position: $(adjusted_position.x), $(adjusted_position.y)")
             else
@@ -241,7 +241,7 @@ export {}
         if (this.font == null) {
             error("Failed to load font, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())), loading default font")
             this.fontPath = DEFAULT_FONT
-            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer((globalThis as any).JulGame.BUILT_IN_ASSETS["Font"]), (globalThis as any).JulGame.BUILT_IN_ASSETS["Font"].length), 1, fontSize)
+            this.font = CallSDLFunction(SDL2.TTF_OpenFontRW, (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer((globalThis as any).JulGame.BUILT_IN_ASSETS["Font"]), (globalThis as any).JulGame.BUILT_IN_ASSETS["Font"].length), 1, TypeConversions.safe_int32_convert(fontSize))
         }
         if (fontPath != "Default") {
             this.fontPath = fontPath
@@ -253,7 +253,7 @@ export {}
         }
 
         // Use high-quality font rendering with or without effects
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3]))
+        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, (globalThis as any).JulGameSdl.glue_SDL_Color(TypeConversions.safe_int32_convert(this.color[0]), TypeConversions.safe_int32_convert(this.color[1]), TypeConversions.safe_int32_convert(this.color[2]), TypeConversions.safe_int32_convert(this.color[3])))
         if (this.renderText == null) {
             error("Failed to render text for textbox $(this.name)")
             return
@@ -294,13 +294,13 @@ export {}
             if (rw != null) {
                 console.debug("loading font from cache")
                 console.debug("comma separated path: ", get_comma_separated_path(fontPath))
-                return CallSDLFunction(SDL2.TTF_OpenFontRW, rw, 1, fontSize)
+                return CallSDLFunction(SDL2.TTF_OpenFontRW, rw, 1, TypeConversions.safe_int32_convert(fontSize))
             }
         }
         console.debug("Loading font from disk, there are $((globalThis as any).JulGame.FONT_CACHE.length) fonts in cache")
         
         let basePath = joinpath((globalThis as any).JulGame.BasePath, "assets", "fonts")
-        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), fontSize)
+        return CallSDLFunction(SDL2.TTF_OpenFont, joinpath(basePath, fontPath), TypeConversions.safe_int32_convert(fontSize))
     }
 
     function get_comma_separated_path(path: string) {
@@ -336,9 +336,9 @@ export {}
         }
 
         // Check if we need to wrap text
-        let color = (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3])
+        let color = (globalThis as any).JulGameSdl.glue_SDL_Color(TypeConversions.safe_int32_convert(this.color[0]), TypeConversions.safe_int32_convert(this.color[1]), TypeConversions.safe_int32_convert(this.color[2]), TypeConversions.safe_int32_convert(this.color[3]))
         this.renderText = if this.maxLineWidth > 0 && this.font != null && this.text != ""
-            SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, this.maxLineWidth)
+            SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, TypeConversions.safe_int32_convert(this.maxLineWidth))
         elseif this.font != null && this.text != ""
             this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
         else
@@ -491,7 +491,7 @@ export {}
         let scale = min(scaleX, scaleY)
         
         // Calculate and return the scaled font size
-        return Math.TypeConversions.safe_int32_convert(round(baseFontSize * scale))
+        return TypeConversions.safe_int32_convert(round(baseFontSize * scale))
     }
 
     function UI_destroy(this: TextBox) {
@@ -669,7 +669,7 @@ export {}
         }
         
         // Create a fresh base surface for effects processing (like the old system does)
-        let baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, (globalThis as any).JulGameSdl.glue_SDL_Color(this.color[0], this.color[1], this.color[2], this.color[3]))
+        let baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, (globalThis as any).JulGameSdl.glue_SDL_Color(TypeConversions.safe_int32_convert(this.color[0]), TypeConversions.safe_int32_convert(this.color[1]), TypeConversions.safe_int32_convert(this.color[2]), TypeConversions.safe_int32_convert(this.color[3])))
         if (baseSurface == null) {
             @error("Failed to create base surface for effects", name=this.name)
             return
@@ -761,7 +761,7 @@ export {}
 
     // Add methods to set and get the maximum line width
     function set_max_line_width(this: TextBox,  maxWidth: number) {
-        this.maxLineWidth = maxWidth
+        this.maxLineWidth = TypeConversions.safe_int32_convert(maxWidth)
         UI.rerender_text(this)
     }
     
@@ -802,7 +802,7 @@ export {}
         }
     }
 
-    function UI_duplicate(this: TextBox,  id: string = (globalThis as any).JulGame.generate_uuid())
+    function UI_duplicate(this: TextBox,  id: string = (globalThis as any).JulGame.generate_uuid()) {
         let newTextBox = TextBox(this.text; 
         id=id, 
         let name = this.name, 

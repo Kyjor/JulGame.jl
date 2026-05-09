@@ -1,4 +1,6 @@
 export {}
+import { clamp } from "../../../../src/engine/core/juliaHelpers";
+
 //todo: separate mouse, keyboard, gamepad, and window into their own files
 
     // using ..JulGame
@@ -165,7 +167,7 @@ export {}
                 scaled_y = 0
             }
             window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
-            this.mousePosition = Math.Vector2(
+            this.mousePosition = Vector2(
                 clamp(Math.floor(Int, scaled_x), 0, logical_size.x),
                 clamp(Math.floor(Int, scaled_y), 0, logical_size.y)
             )
@@ -181,7 +183,7 @@ export {}
                 scale_y = camera_size.y / (globalThis as any).JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                this.mousePosition = Math.Vector2(Math.floor(Int, scaled_x), Math.floor(Int, scaled_y))
+                this.mousePosition = Vector2(Math.floor(Int, scaled_x), Math.floor(Int, scaled_y))
             else
                 this.mousePosition = {x: 0, y: 0}
             }
@@ -195,7 +197,7 @@ export {}
         return m.latencyProfiler
     }
 
-    function _input_poll_accumulate(prof, t0, key: symbol) {
+    function _input_poll_accumulate(prof, t0, key: symbol)
         if (prof === null) { return let dt = (time_ns() - t0[]) / 1e6 }
         (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
         t0[] = time_ns()
@@ -219,7 +221,7 @@ export {}
         return _trace_input_ui_hit_iter_ref[]: boolean
     }
 
-    function _input_ui_hit_step(prof,  t_blk: Ref{UInt64},  key: ) {
+    function _input_ui_hit_step(prof,  t_blk: Ref{UInt64},  key: )
         let t1 = time_ns()
         dt = (t1 - t_blk[]) / 1e6
         t_blk[] = t1
@@ -641,7 +643,7 @@ export {}
         // Center the scaled hitbox over the original sprite position
         let interactionScale = try element.sprite.interactionScale catch; 1.0 }
         if (interactionScale < 1.0) {
-            let sizeDiff = Math.Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
+            let sizeDiff = Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
             return {x: basePosition.x + sizeDiff.x / 2, y: basePosition.y + sizeDiff.y / 2}
         }
         return basePosition
@@ -1022,7 +1024,7 @@ export {}
         }
     }
 
-    function update_input_state(this: Input,  data: Dict{String,  Any}) {
+    function update_input_state(this: Input,  data: Dict{String,  Any})
         this.buttonsHeldDown = [key for (key, value) in data if value]
     }
 
@@ -1190,8 +1192,8 @@ export {}
         // Convert logical coordinates to window coordinates (inverse of poll_input mapping)
         let window_x = round(Int, (x * scale) + bar_x)
         let window_y = round(Int, (y * scale) + bar_y)
-        x = window_x
-        y = window_y
+        x = TypeConversions.safe_int32_convert(window_x)
+        y = TypeConversions.safe_int32_convert(window_y)
         // Move the mouse to the specified position
         console.debug("Moving mouse to $(x), $(y)")
         (globalThis as any).JulGameSdl.glue_SDL_WarpMouseInWindow(window, x, y)

@@ -31,10 +31,6 @@ export {}
         return newTransform
     }
 
-    function Component_set_position(this: ITransform,  position: Vector3f | Vector2f) {
-        this.position = position
-    }
-
     function Component_is_mouse_hovering(this: ITransform) {
         let mousePosition = (globalThis as any).JulGame.InputModule.get_mouse_position_in_world_space()
         if (mousePosition.x >= this.position.x && mousePosition.x <= this.position.x + this.scale.x && mousePosition.y >= this.position.y && mousePosition.y <= this.position.y + this.scale.y) {
