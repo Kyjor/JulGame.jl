@@ -8,8 +8,8 @@ export {}
 	// import ..JulGame
 	// using Statistics
 
-	include("utils/Enums.jl")
-	include("utils/Constants.jl")
+	// include("utils/Enums.jl")
+	// include("utils/Constants.jl")
 
 	/*
 		cleanup_coroutines()
@@ -31,7 +31,7 @@ export {}
 		empty((globalThis as any).JulGame.Coroutines)
 	}
 
-	include("profiling/profiling_functions.jl")
+	// include("profiling/profiling_functions.jl")
 
 	
 	class MainLoop {

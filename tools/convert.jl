@@ -108,6 +108,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_julia_ts_literals(data)
     data = normalize_julia_ref_for_ts(data)
     data = replace_invokelatest_calls(data)
+    data = replace_keyword_style_calls_to_object_args(data)
     data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
     data = custom_function_removal(data)
@@ -220,6 +221,8 @@ function _peekc(ps::_Ps)::Union{Nothing, Char}
     return ps.s[ps.i]
 end
 
+const _VECTOR_RHS_GTA_PLACEHOLDER = "__JulGame_GlobalThisJulGame__"
+
 function _vec_ts_cast_suffix(lhs::AbstractString)::String
     ls = String(strip(lhs))
     # Narrow names so we do not cast e.g. `screenPosition` (Vector2) to Vector3f.
@@ -235,6 +238,8 @@ function _vec_ts_cast_suffix(lhs::AbstractString)::String
         "gravityAcceleration",
         "dragAcceleration",
         "dragForce",
+        "posA",
+        "posB",
     )
         return " as Vector2f"
     end
@@ -253,7 +258,17 @@ function _rhs_hints_vector_math(rhs::AbstractString)::Bool
         occursin("newVelocity", rhs) ||
         occursin("newPosition", rhs) ||
         occursin("newAcceleration", rhs) ||
-        occursin("currentPosition", rhs)
+        occursin("currentPosition", rhs) ||
+        (occursin(".offset", rhs) && occursin("position", rhs))
+    # Do not key off `SCALE_UNITS` alone — scalar chains like `scale.x * size.x * SCALE_UNITS` must stay numeric.
+end
+
+function _normalize_ts_casts_for_vec_parse(rhs::AbstractString)::String
+    replace(String(rhs), r"\(\s*globalThis\s+as\s+any\s*\)" => _VECTOR_RHS_GTA_PLACEHOLDER)
+end
+
+function _restore_ts_casts_after_vec_emit(emitted::AbstractString)::String
+    replace(String(emitted), _VECTOR_RHS_GTA_PLACEHOLDER => "(globalThis as any)")
 end
 
 function _emit_vec_ast(node::_VecAst)::String
@@ -422,6 +437,7 @@ function _try_rewrite_rhs_vector_expr(rhs::AbstractString)::Union{Nothing, Strin
     isempty(r) && return nothing
     occursin('"', r) && return nothing
     occursin('\'', r) && return nothing
+    r = _normalize_ts_casts_for_vec_parse(r)
     ps = _Ps(r, firstindex(r), lastindex(r))
     tree = _parse_addsub!(ps)
     tree === nothing && return nothing
@@ -431,7 +447,7 @@ function _try_rewrite_rhs_vector_expr(rhs::AbstractString)::Union{Nothing, Strin
     end
     _skip_ws!(ps)
     ps.i <= ps.n && return nothing
-    return _emit_vec_ast(tree)
+    return _restore_ts_casts_after_vec_emit(_emit_vec_ast(tree))
 end
 
 function _matching_paren_close(s::String, open_at::Int)::Union{Nothing, Int}
@@ -587,6 +603,33 @@ function replace_docstrings(data::AbstractString)::String
     return String(take!(io))
 end
 
+# `TypeConversions.safe_int32_convert(expr)` / `Math.TypeConversions...` -> `expr` (balanced parens for nested calls).
+function strip_safe_int32_convert_calls(data::AbstractString)::String
+    s = String(data)
+    needles = ("Math.TypeConversions.safe_int32_convert(", "TypeConversions.safe_int32_convert(")
+    changed = true
+    while changed
+        changed = false
+        fi = firstindex(s)
+        n = lastindex(s)
+        for needle in needles
+            rg = findnext(needle, s, fi)
+            rg === nothing && continue
+            lo = first(rg)
+            inner_start = nextind(s, last(rg))
+            close_idx = _find_outer_push_close(s, inner_start, n)
+            close_idx === nothing && continue
+            inner = s[inner_start:prevind(s, close_idx)]
+            pre = s[fi:prevind(s, lo)]
+            post = s[nextind(s, close_idx):n]
+            s = string(pre, inner, post)
+            changed = true
+            break
+        end
+    end
+    return s
+end
+
 function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
     data = replace(data, r"\bnothing\b" => "null")
@@ -594,8 +637,8 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, ": null | Transform" => ": null | ITransform")
     # Drop leftover Julia type assertions in expressions, e.g. `x::Ptr{...}`.
     data = replace(data, r"::[A-Za-z_][A-Za-z0-9_\.]*(?:\{[^}]*\})?" => "")
-    # Drop redundant int32 conversion helper in generated TS.
-    data = replace(data, r"Math\.TypeConversions\.safe_int32_convert\(([^()]*)\)" => s"\1")
+    # Drop redundant int32 conversion helper in generated TS (any nesting).
+    data = strip_safe_int32_convert_calls(data)
     # Julia `length(x)` -> TS `x.length` for simple non-nested args.
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
@@ -786,6 +829,13 @@ function replace_imports_usings_includes(data::AbstractString)
     # Comment-out `using` lines; `\1` is the captured match (SubstitutionString).
     data = replace(data, r"(using .*)" => s"// \1")
     data = replace(data, r"(import .*)" => s"// \1")
+    lines = split(String(data), '\n'; keepempty = true)
+    data = join(
+        map(lines) do line
+            occursin(r"^\s*include\s*\(", line) ? replace(line, r"^(\s*)" => s"\1// ") : line
+        end,
+        '\n',
+    )
     return data
 end
 
@@ -1311,8 +1361,69 @@ function remove_ts_function_block(s::String, func::AbstractString)::String
     end
 end
 
+# Julia named-tuple / kwargs call shape `a=x, b=y` → TS single-arg object `{ a: x, b: y }` (shorthand when `a==x`).
+function _named_julia_kwargs_to_ts_object(inner::AbstractString)::Union{Nothing,String}
+    t = String(strip(inner))
+    isempty(t) && return nothing
+    occursin('=', t) || return nothing
+    parts = split_top_level_commas_general(t)
+    props = String[]
+    for p in parts
+        pt = String(strip(p))
+        pm = match(r"^([A-Za-z_]\w*)\s*=\s*(.+)$", pt)
+        pm === nothing && return nothing
+        k = String(pm[1])
+        v = String(strip(String(pm[2])))
+        if v == k
+            push!(props, k)
+        else
+            push!(props, string(k, ": ", v))
+        end
+    end
+    isempty(props) && return nothing
+    return string("{ ", join(props, ", "), " }")
+end
+
+# Convert calls whose entire argument list is `name=value` pairs (no positional args).
+function replace_keyword_style_calls_to_object_args(data::AbstractString)::String
+    s = String(data)
+    out = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    pat_call = r"\b([A-Za-z_]\w*)\("
+    while i <= n
+        rg = findnext(pat_call, s, i)
+        if rg === nothing
+            write(out, SubString(s, i:n))
+            break
+        end
+        lo = first(rg)
+        lo > i && write(out, SubString(s, i, prevind(s, lo)))
+        m = match(pat_call, s, lo)
+        m === nothing && (write(out, s[lo]); i = nextind(s, lo); continue)
+        fname = String(m.captures[1])
+        open_paren = last(rg)
+        close_idx = _find_outer_push_close(s, open_paren, n)
+        if close_idx === nothing
+            write(out, SubString(s, lo:lo))
+            i = nextind(s, lo)
+            continue
+        end
+        inner = s[nextind(s, open_paren):prevind(s, close_idx)]
+        obj = _named_julia_kwargs_to_ts_object(inner)
+        if obj !== nothing
+            write(out, fname, "(", obj, ")")
+            i = nextind(s, close_idx)
+        else
+            write(out, SubString(s, lo:close_idx))
+            i = nextind(s, close_idx)
+        end
+    end
+    return String(take!(out))
+end
+
 # `Base.invokelatest(f)` → `f()`; `Base.invokelatest(f, a, b)` → `f(a, b)`;
-# `Base.invokelatest(f, (kw=...))` → `f(kw=...)` (unwrap one trailing named-tuple-style group).
+# `Base.invokelatest(f, (a=x, b=y))` → `f({ a: x, b: y })` (TS options object, not fake keyword args).
 function replace_invokelatest_calls(data::AbstractString)::String
     s = String(data)
     needle = "Base.invokelatest("
@@ -1349,9 +1460,18 @@ function replace_invokelatest_calls(data::AbstractString)::String
                 arg_inner =
                     if length(rest) == 1
                         u = _strip_one_outer_paren_pair(rest[1])
-                        u === nothing ? rest[1] : u
+                        core = u === nothing ? rest[1] : u
+                        obj = _named_julia_kwargs_to_ts_object(core)
+                        obj === nothing ? core : obj
                     else
-                        join(rest, ", ")
+                        mapped = map(rest) do seg
+                            seg = String(strip(seg))
+                            u = _strip_one_outer_paren_pair(seg)
+                            core = u === nothing ? seg : u
+                            obj = _named_julia_kwargs_to_ts_object(core)
+                            obj === nothing ? seg : obj
+                        end
+                        join(mapped, ", ")
                     end
                 string(callee, "(", arg_inner, ")")
             end

@@ -1,6 +1,8 @@
 export {}
+import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
 
-    include("../../utils/Enums.jl")
+
+    // include("../../utils/Enums.jl")
     // using ..Component.JulGame
     // import ..Component 
 
@@ -44,7 +46,7 @@ export {}
 
             if (this.size.x < 0 || this.size.y < 0) {
                 console.log("Collider size cannot be negative")
-                return null
+                this.size = {x: 1, y: 1}
             }
 
         }
@@ -102,7 +104,7 @@ export {}
                     if (collision[0] == Top) {
                         this.currentCollisions.push(collider)
                         for (const eventToCall of this.collisionEvents) {
-                            eventToCall(collider=collider, direction=collision[0])
+                            eventToCall({ collider, direction: collision[0] })
                         }
                         //Begin to overlap, correct position
                         if (!collider.isTrigger && !this.isTrigger) {
@@ -112,7 +114,7 @@ export {}
                     if (collision[0] == Left) {
                         this.currentCollisions.push(collider)
                         for (const eventToCall of this.collisionEvents) {
-                            eventToCall(collider=collider, direction=collision[0])
+                            eventToCall({ collider, direction: collision[0] })
                         }
                         
                         if (!collider.isTrigger && !this.isTrigger) {
@@ -123,7 +125,7 @@ export {}
                     if (collision[0] == Right) {
                         this.currentCollisions.push(collider)
                         for (const eventToCall of this.collisionEvents) {
-                            eventToCall(collider=collider, direction=collision[0])
+                            eventToCall({ collider, direction: collision[0] })
                         }
                         //Begin to overlap, correct position
                         if (!collider.isTrigger && !this.isTrigger) {
@@ -133,7 +135,7 @@ export {}
                     if (collision[0] == Bottom) {
                         this.currentCollisions.push(collider)
                         for (const eventToCall of this.collisionEvents) {
-                            eventToCall(collider=collider, direction=collision[0])
+                            eventToCall({ collider, direction: collision[0] })
                         }
                         //Begin to overlap, correct position
                         
@@ -147,7 +149,7 @@ export {}
                     if (collision[0] == Below) {
                         this.currentCollisions.push(collider)
                         for (const eventToCall of this.collisionEvents) {
-                            eventToCall(collider=collider, direction=collision[0])
+                            eventToCall({ collider, direction: collision[0] })
                         }
                     }
                     if (collision[2] && this.parent.rigidbody.grounded) {
@@ -167,8 +169,8 @@ export {}
     }        
 
     function check_collision(colliderA: InternalCollider,  colliderB: InternalCollider) {
-        let posA = (colliderA.parent.transform.position + colliderA.offset) * (globalThis as any).JulGame.SCALE_UNITS
-        let posB = (colliderB.parent.transform.position + colliderB.offset) * (globalThis as any).JulGame.SCALE_UNITS
+        let posA = vecMul(vecAdd(colliderA.parent.transform.position, colliderA.offset), (globalThis as any).JulGame.SCALE_UNITS) as Vector2f
+        let posB = vecMul(vecAdd(colliderB.parent.transform.position, colliderB.offset), (globalThis as any).JulGame.SCALE_UNITS) as Vector2f
         let colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * (globalThis as any).JulGame.SCALE_UNITS
         let colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * (globalThis as any).JulGame.SCALE_UNITS
         let colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * (globalThis as any).JulGame.SCALE_UNITS
@@ -188,10 +190,10 @@ export {}
         let cameraDiff = camera !== null ? 
         Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 
         {x: 0, y: 0}
-        let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, TypeConversions.safe_int32_convert(Math.round(posA.x)), TypeConversions.safe_int32_convert(Math.round(posA.y + 32)), TypeConversions.safe_int32_convert(Math.round(posA.x)), TypeConversions.safe_int32_convert(Math.round(posA.y + 80)))
+        let isLineIntersectionL = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, Math.round(posA.x), Math.round(posA.y + 32), Math.round(posA.x), Math.round(posA.y + 80))
         //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x), Math.round(posA.y + 80 - cameraDiff.y))
 
-        let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize)), TypeConversions.safe_int32_convert(Math.round(posA.y + 32)), TypeConversions.safe_int32_convert(Math.round(posA.x + colliderAXSize)), TypeConversions.safe_int32_convert(Math.round(posA.y + 80)))
+        let isLineIntersectionR = (globalThis as any).JulGameSdl.glue_SDL_IntersectRectAndLine(b, Math.round(posA.x + colliderAXSize), Math.round(posA.y + 32), Math.round(posA.x + colliderAXSize), Math.round(posA.y + 80))
         //(globalThis as any).JulGameSdl.glue_SDL_RenderDrawLine((globalThis as any).JulGame.Renderer, Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 32 - cameraDiff.y), Math.round(posA.x - cameraDiff.x + colliderAXSize), Math.round(posA.y + 80 - cameraDiff.y))
         if (isLineIntersectionL == SDL2.SDL_TRUE) {
             isLineIntersectionL = true

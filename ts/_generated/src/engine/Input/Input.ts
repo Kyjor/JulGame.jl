@@ -1192,8 +1192,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         // Convert logical coordinates to window coordinates (inverse of poll_input mapping)
         let window_x = Math.round(Int, (x * scale) + bar_x)
         let window_y = Math.round(Int, (y * scale) + bar_y)
-        x = TypeConversions.safe_int32_convert(window_x)
-        y = TypeConversions.safe_int32_convert(window_y)
+        x = window_x
+        y = window_y
         // Move the mouse to the specified position
         console.debug("Moving mouse to $(x), $(y)")
         (globalThis as any).JulGameSdl.glue_SDL_WarpMouseInWindow(window, x, y)

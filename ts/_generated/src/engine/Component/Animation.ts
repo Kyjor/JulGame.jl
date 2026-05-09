@@ -9,7 +9,7 @@ export {}
 
         constructor(frames: Vector4[],  animatedFPS: number) {
             // Convert animatedFPS to Int32
-            animatedFPS = TypeConversions.safe_int32_convert(animatedFPS)
+            animatedFPS = animatedFPS
             
             
             this.animatedFPS = animatedFPS

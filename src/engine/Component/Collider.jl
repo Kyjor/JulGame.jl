@@ -43,7 +43,7 @@ module ColliderModule
 
             if this.size.x < 0 || this.size.y < 0
                 println("Collider size cannot be negative")
-                return nothing
+                this.size = Math.Vector2f(1, 1)
             end
 
             return this

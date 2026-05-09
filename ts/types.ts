@@ -10,8 +10,7 @@ declare global {
   interface IEntity {}
   interface IUIElement {}
   interface ITransform {
-    position: Vector3f;
-    scale: Vector2f;
+    [key: string]: any;
   }
   interface IShape {}
   interface ISoundSource {}
@@ -47,4 +46,15 @@ declare global {
   function setfield(target: any, key: any, value: any): void;
   function istaskdone(task: any): boolean;
   function schedule(task: any, ex?: any, opts?: any): void;
+
+  /** @see src/utils/Enums.jl — assigned in globalConstants.ts */
+  const None: -1;
+  const Top: 1;
+  const Bottom: 2;
+  const Left: 3;
+  const Right: 4;
+  const Above: 1;
+  const Below: 2;
+  const LeftSide: 3;
+  const RightSide: 4;
 }

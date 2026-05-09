@@ -1,5 +1,6 @@
 export {}
 import { clamp } from "../../../../src/engine/core/juliaHelpers";
+import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
 
 
     // using ..Component.JulGame
@@ -177,8 +178,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         let scaleY = this.parent.transform.scale.y
     
         // Compute position adjustment
-        let adjustedX = (position.x + this.offset.x) * S - cameraDiff.x
-        let adjustedY = (position.y + this.offset.y) * S - cameraDiff.y
+        let adjustedX = vecSub(vecMul(vecAdd(position.x, this.offset.x), S), cameraDiff.x)
+        let adjustedY = vecSub(vecMul(vecAdd(position.y, this.offset.y), S), cameraDiff.y)
     
         // Handle pixelsPerUnit == 0 (use true size without scaling)
         if (this.pixelsPerUnit == 0) {
@@ -250,17 +251,17 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
         else
             dstRect = (globalThis as any).JulGameSdl.glue_SDL_Rect(
-                TypeConversions.safe_int32_convert(Math.round(centeredX)),
-                TypeConversions.safe_int32_convert(Math.round(centeredY)),
-                TypeConversions.safe_int32_convert(Math.round(scaledWidth)),
-                TypeConversions.safe_int32_convert(Math.round(scaledHeight))
+                Math.round(centeredX),
+                Math.round(centeredY),
+                Math.round(scaledWidth),
+                Math.round(scaledHeight)
             )
         }
     
         // Calculate center for rotation
         let calculatedCenter = Vector2(dstRect.w * (this.center.x % 1), dstRect.h * (this.center.y % 1))
         let rotationCenter = !this.isFloatPrecision ? 
-            (globalThis as any).JulGameSdl.glue_SDL_Point(TypeConversions.safe_int32_convert(Math.round(calculatedCenter.x)), TypeConversions.safe_int32_convert(Math.round(calculatedCenter.y))) :
+            (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y)) :
             (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
     
         this.lastRenderedScreenPosition = Vector2f(convert(Float64, dstRect.x), convert(Float64, dstRect.y))
