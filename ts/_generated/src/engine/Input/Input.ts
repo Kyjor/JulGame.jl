@@ -612,7 +612,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 (globalThis as any).JulGame.IS_DEBUG = (globalThis as any).JulGame.IS_DEBUG
             }
 
-            let keyboardState = unsafe_wrap(Array, (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null), 300; own = false)
+            let keyboardState = unsafe_wrap(Array, (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null), 300, false)
             handle_key_event(this, keyboardState)
 
             _input_poll_accumulate(prof, t0, "joystick_keyboard_state")

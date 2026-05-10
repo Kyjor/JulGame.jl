@@ -262,7 +262,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             error("Failed to render text for textbox $(self.name)")
             return
         }
-        let surface = unsafe_wrap(Array, self.renderText, 10; own = false)
+        let surface = unsafe_wrap(Array, self.renderText, 10, false)
         self.size = {x: surface[0].w, y: surface[0].h}
         self.originalSize = self.size
         self.textTexture = CallSDLFunction((globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface, (globalThis as any).JulGame.Renderer, self.renderText)
@@ -352,7 +352,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             console.debug(`Failed to render text for textbox ${this.name}`)
             return
         }
-        let surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+        let surface = unsafe_wrap(Array, this.renderText, 10, false)
         this.size = {x: surface[0].w, y: surface[0].h}
         this.originalSize = {x: this.size.x, y: this.size.y}
         this.textTexture = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, this.renderText)

@@ -101,7 +101,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                 return
             }
-            let surface = unsafe_wrap(Array, this.image, 10; own = false)
+            let surface = unsafe_wrap(Array, this.image, 10, false)
             this.size = {x: surface[0].w, y: surface[0].h}
 
         }
@@ -321,7 +321,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         }
     
         // Get image size
-        let surface = unsafe_wrap(Array, self.image, 10; own = false)
+        let surface = unsafe_wrap(Array, self.image, 10, false)
         self.size = {x: surface[0].w, y: surface[0].h}
 
         // Create or get cached texture
@@ -349,9 +349,6 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         }
 
         // Only destroy texture if it's not in the shared cache
-        if (self.texture != null && !haskey(TEXTURE_CACHE, self.imagePath)) {
-            (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(self.texture)
-        }
         self.image = null
         self.texture = null
     }
@@ -362,7 +359,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     }
 
     function Component_duplicate(self: InternalSprite, parent: any) {
-        let newSprite = new InternalSprite(parent, self.imagePath, self.crop, self.isFlipped, self.color, false; pixelsPerUnit=self.pixelsPerUnit, position=self.position, rotation=self.rotation, layer=self.layer, center=self.center, anchor=self.anchor, offset=self.offset, isStatic=self.isStatic)
+        let newSprite = new InternalSprite(parent, self.imagePath, self.crop, self.isFlipped, self.color, false, self.pixelsPerUnit, self.position, self.rotation, self.layer, self.center, self.anchor, self.offset, self.isStatic)
         newSprite.interactionScale = self.interactionScale
         Component_initialize(newSprite)
         return newSprite

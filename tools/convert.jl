@@ -110,6 +110,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = normalize_julia_ref_for_ts(data)
     data = replace_let_named_tuple_rhs_to_object(data)
     data = replace_invokelatest_calls(data)
+    data = replace_julia_semicolon_kw_calls_to_commas(data)
     data = replace_keyword_style_calls_to_object_args(data)
     data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
@@ -1758,6 +1759,105 @@ function split_top_level_commas_general(s::AbstractString)::Vector{String}
     return out
 end
 
+# First top-level `;` (depth 0 in `()`, `[]`, `{}`) — Julia kwargs separator `f(pos…; kw…)` only.
+function split_first_top_level_semicolon(s::AbstractString)::Union{Nothing,Tuple{String,String}}
+    s = String(s)
+    paren = 0
+    bracket = 0
+    brace = 0
+    i = firstindex(s)
+    n = lastindex(s)
+    while i <= n
+        c = s[i]
+        if c == '"'
+            endq = _skip_double_quoted_string(s, i, n)
+            i = nextind(s, endq)
+            continue
+        end
+        if c == '('
+            paren += 1
+        elseif c == ')'
+            paren -= 1
+        elseif c == '['
+            bracket += 1
+        elseif c == ']'
+            bracket -= 1
+        elseif c == '{'
+            brace += 1
+        elseif c == '}'
+            brace = max(0, brace - 1)
+        elseif c == ';' && paren == 0 && bracket == 0 && brace == 0
+            left = String(strip(SubString(s, firstindex(s), prevind(s, i))))
+            right = String(strip(SubString(s, nextind(s, i), n)))
+            return (left, right)
+        end
+        i = nextind(s, i)
+    end
+    return nothing
+end
+
+function _julia_kw_only_tail_to_positional_exprs(kw_tail::AbstractString)::Union{Nothing,Vector{String}}
+    parts = split_top_level_commas_general(kw_tail)
+    out = String[]
+    for p in parts
+        pt = String(strip(p))
+        isempty(pt) && return nothing
+        pm = match(r"^[A-Za-z_]\w*\s*=\s*(.+)$", pt)
+        pm === nothing && return nothing
+        push!(out, String(strip(String(pm[1]))))
+    end
+    return out
+end
+
+# `Foo(a, b; x=c, y=d)` → `Foo(a, b, c, d)` (TS has no `;` kwargs).
+function replace_julia_semicolon_kw_calls_to_commas(data::AbstractString)::String
+    s = String(data)
+    out = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    pat_call = r"\b([A-Za-z_]\w*)\("
+    while i <= n
+        rg = findnext(pat_call, s, i)
+        if rg === nothing
+            write(out, SubString(s, i:n))
+            break
+        end
+        lo = first(rg)
+        lo > i && write(out, SubString(s, i, prevind(s, lo)))
+        m = match(pat_call, s, lo)
+        m === nothing && (write(out, s[lo]); i = nextind(s, lo); continue)
+        fname = String(m.captures[1])
+        open_paren = last(rg)
+        inner_start = nextind(s, open_paren)
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(out, SubString(s, lo:lo))
+            i = nextind(s, lo)
+            continue
+        end
+        inner = String(SubString(s, inner_start, prevind(s, close_idx)))
+        sp = split_first_top_level_semicolon(inner)
+        if sp === nothing
+            write(out, SubString(s, lo:close_idx))
+            i = nextind(s, close_idx)
+            continue
+        end
+        pos_part, kw_part = sp
+        vals = _julia_kw_only_tail_to_positional_exprs(kw_part)
+        if vals === nothing
+            write(out, SubString(s, lo:close_idx))
+            i = nextind(s, close_idx)
+            continue
+        end
+        pos_st = strip(pos_part)
+        new_inner =
+            isempty(pos_st) ? join(vals, ", ") : string(pos_st, ", ", join(vals, ", "))
+        write(out, fname, "(", new_inner, ")")
+        i = nextind(s, close_idx)
+    end
+    return String(take!(out))
+end
+
 function _strip_one_outer_paren_pair(r::AbstractString)::Union{Nothing,String}
     t = strip(String(r))
     fi = firstindex(t)
@@ -2415,13 +2515,14 @@ function replace_keyword_style_calls_to_object_args(data::AbstractString)::Strin
         m === nothing && (write(out, s[lo]); i = nextind(s, lo); continue)
         fname = String(m.captures[1])
         open_paren = last(rg)
-        close_idx = _find_outer_push_close(s, open_paren, n)
+        inner_start = nextind(s, open_paren)
+        close_idx = _find_outer_push_close(s, inner_start, n)
         if close_idx === nothing
             write(out, SubString(s, lo:lo))
             i = nextind(s, lo)
             continue
         end
-        inner = s[nextind(s, open_paren):prevind(s, close_idx)]
+        inner = s[inner_start:prevind(s, close_idx)]
         obj = _named_julia_kwargs_to_ts_object(inner)
         if obj !== nothing
             write(out, fname, "(", obj, ")")
@@ -2695,6 +2796,7 @@ const TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS = Dict{String,String}(
     "haskey((globalThis as any).JulGame.IMAGE_CACHE" => "",
     "usingEffectTex" => "",
     "haskey(TEXTURE_CACHE, imagePath)" => "",
+    "self.texture != null && !haskey(TEXTURE_CACHE, self.imagePath)" => "",
 )
 
 function _find_ts_if_opening_brace_on_line(ln::AbstractString, cond_paren_inner_start::Int)::Union{Nothing, Int}

@@ -171,7 +171,7 @@ export {}
             return
         }
 
-        self.sprite = new InternalSprite(self, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
+        self.sprite = new InternalSprite(self, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor, sprite.pixelsPerUnit, sprite.position, sprite.rotation, sprite.layer, sprite.center, sprite.anchor, sprite.offset, sprite.isStatic)
         if (self.animator != null) {
             self.animator.sprite = self.sprite
         }
@@ -186,7 +186,7 @@ export {}
             return
         }
 
-        self.shape = new InternalShape(self, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
+        self.shape = new InternalShape(self, shape.color, shape.isFilled, shape.offset, shape.size, shape.isWorldEntity, shape.position, shape.layer, shape.alpha)
         
         return self.shape
     }

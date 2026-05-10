@@ -1028,7 +1028,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 				if (this.debugTextBoxes.length == 0) {
 					for i = eachindex(statTexts)
-				 		let textBox = UI.TextBoxModule.TextBox(statTexts[i]; fontSize = 24, position = {x: 0, y: 35 * i})
+				 		let textBox = UI.TextBoxModule.TextBox(statTexts[i], 24, {x: 0, y: 35 * i})
 				 		this.debugTextBoxes.push(textBox)
                          (globalThis as any).JulGame.initialize(textBox)
 				 	}
