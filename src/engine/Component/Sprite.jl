@@ -51,22 +51,7 @@ module SpriteModule
         useEffectTexture::Bool  # Toggle to enable/disable effect texture rendering
         interactionScale::Float64  # Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
         
-        function InternalSprite(
-            parent::JulGame.IEntity, 
-            imagePath::String, 
-            crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, 
-            isFlipped::Bool=false, 
-            color::NTuple{4, Int} = (255,255,255,255), 
-            isCreatedInEditor::Bool=false; 
-            pixelsPerUnit::Int=0, 
-            position::Math.Vector2f = Math.Vector2f(0,0), 
-            rotation::Float64 = 0.0, 
-            layer::Int = 0, 
-            center::Math.Vector2f = Math.Vector2f(0.5,0.5), 
-            anchor::Symbol = :center, 
-            offset::Math.Vector2f = Math.Vector2f(0,0), 
-            isStatic::Bool = false
-        )
+        function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0), isStatic::Bool = false)
             this = new()
 
             this.offset = offset

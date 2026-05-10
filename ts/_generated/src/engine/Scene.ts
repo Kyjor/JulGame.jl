@@ -10,7 +10,7 @@ export {}
         rigidbodies: any[]
         uiElements: any[]
         name: string
-        batchedLayers  // Static sprite batching: layer => BatchedLayer
+        batchedLayers: Dict{Int, Any}  // Static sprite batching: layer => BatchedLayer
 
         constructor() {
             

@@ -1312,6 +1312,11 @@ function replace_imports_usings_includes(data::AbstractString)
 end
 
 function replace_mutable_structs(data::AbstractString)
+    # Interface-like Julia supertypes (`JulGame.I*`) should not become JS `extends`.
+    data = replace(
+        data,
+        r"mutable struct\s+(\w+)\s*<:\s*JulGame\.I[A-Za-z_][\w\.]*" => s"class \1 {",
+    )
     # `mutable struct Name` / `mutable struct Name <: Base` -> TS class (+ optional extends)
     data = replace(
         data,
@@ -1322,6 +1327,11 @@ function replace_mutable_structs(data::AbstractString)
 end
 
 function replace_structs(data::AbstractString)
+    # Interface-like Julia supertypes (`JulGame.I*`) should not become JS `extends`.
+    data = replace(
+        data,
+        r"struct\s+(\w+)\s*<:\s*JulGame\.I[A-Za-z_][\w\.]*" => s"class \1 {",
+    )
     # `struct Name` / `struct Name <: Base` -> TS class (+ optional extends)
     data = replace(
         data,
@@ -1532,11 +1542,13 @@ end
 
 function replace_struct_field_annotations(data::AbstractString, scalar_map::Dict{String,String})::String
     lines = split(String(data), '\n'; keepempty = true)
-    pat = r"^(\s*[A-Za-z_]\w*)::\s*([^\n=]+?)\s*$"
+    # Allow trailing inline comments so `field::Bool  // ...` still rewrites to `field: boolean  // ...`.
+    pat = r"^(\s*[A-Za-z_]\w*)::\s*([^/\n=]+?)(\s*//.*)?\s*$"
     out = map(lines) do line
         m = match(pat, line)
         m === nothing && return line
-        string(m[1], ": ", julia_type_expr_to_ts(String(m[2]), scalar_map))
+        trailing = m[3] === nothing ? "" : String(m[3])
+        string(m[1], ": ", julia_type_expr_to_ts(String(m[2]), scalar_map), trailing)
     end
     return join(out, '\n')
 end
@@ -1656,6 +1668,30 @@ function replace_constructor_param_list_semicolons_to_commas(data::AbstractStrin
     )
 end
 
+# Some constructor headers can lose the final `)` during earlier regex rewrites.
+# If we see `constructor(... {` with no parsable matching `)`, patch it to `constructor(...) {`.
+function repair_constructor_headers_missing_close_paren(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    out = map(lines) do raw
+        line = String(raw)
+        startswith(strip(line), "constructor(") || return line
+        oi_rg = findfirst("constructor(", line)
+        oi_rg === nothing && return line
+        oi = last(oi_rg)
+        inner_start = nextind(line, oi)
+        n = lastindex(line)
+        close_idx = _find_outer_push_close(line, inner_start, n)
+        close_idx !== nothing && return line
+        bi = findfirst('{', line)
+        bi === nothing && return line
+        head = String(rstrip(SubString(line, 1, prevind(line, bi))))
+        endswith(head, ")") && return line
+        tail = String(SubString(line, bi, n))
+        return string(head, ") ", tail)
+    end
+    return join(out, '\n')
+end
+
 # Julia instance param `this::T` becomes TS `this: T`, but TS treats `this` as a fake parameter (not a real
 # argument, and `this` in body is often `void`). Rename to `self` in decl + matching function body.
 function rename_julia_this_receiver_to_self(data::AbstractString)::String
@@ -1719,6 +1755,7 @@ function replace_constructor(data::AbstractString)
     # Only the ctor idiom `return this` on its own line — not `return this.foo`.
     data = replace(data, r"(?m)^\s*return this\s*$" => "")
     data = replace_constructor_param_list_semicolons_to_commas(data)
+    data = repair_constructor_headers_missing_close_paren(data)
     return data
 end
 
@@ -2393,6 +2430,8 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     line_rules = Pair{Union{String, Regex}, String}[]
     push!(line_rules, "add_observer" => "")
     push!(line_rules, "throw(" => "")
+    push!(line_rules, "update_effects(" => "")
+    push!(line_rules, "texture_to_render = self.effectTexture" => "")
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line
         for (needle, replacement) in line_rules

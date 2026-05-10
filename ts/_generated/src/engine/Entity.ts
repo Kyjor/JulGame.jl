@@ -17,7 +17,7 @@ export {}
     // import ..JulGame
 
     
-    class Entity extends (globalThis as any).JulGame.IEntity {
+    class Entity {
         id: string
         name: string
         isActive: boolean
@@ -42,7 +42,7 @@ export {}
         forceClickCheck: boolean
         ignoreInputEvents: boolean
 
-        function Entity(name: string = "New entity", id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = []; clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
+        constructor(name: string = "New entity", id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = [], clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
             
 
             this.id = id

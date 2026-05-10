@@ -54,7 +54,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         effects: any[]  // Will hold Effect objects
         effectTexture: any | null
         needsEffectUpdate: boolean
-        effectCacheKey: String  // Content hash for caching
+        effectCacheKey: string  // Content hash for caching
 
         function TextBox(text: string; 
             id: string=(globalThis as any).JulGame.generate_uuid(), 
@@ -135,7 +135,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         // Only apply effects if they're pending and renderer is available
         // This should be rare after initial setup due to caching
         if (!isempty(self.effects) && self.needsEffectUpdate) {
-            update_effects(self)
+
         }
         
         // Use effect texture if available, otherwise use regular texture
@@ -145,14 +145,14 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         if (!isempty(self.effects)) {
             if (self.effectTexture != null) {
                 console.debug("Using effect texture") name=self.name
-                let texture_to_render = self.effectTexture
+
             } else {
                 console.debug("Effects exist but no effect texture - forcing update") name=self.name
                 self.needsEffectUpdate = true
-                update_effects(self)
+
                 if (self.effectTexture != null) {
                     console.debug("Using effect texture after forced update") name=self.name
-                    texture_to_render = self.effectTexture
+
                 } else {
                     console.debug("No effect texture available, // using regular texture") name=self.name
                     texture_to_render = self.textTexture
@@ -363,7 +363,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         
         // Update effects if needed
         if (!isempty(this.effects)) {
-            update_effects(this)
+
         }
     }
 
@@ -557,7 +557,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
         
         // Try to apply effects now, but don't fail if renderer isn't ready
-        update_effects(self)
+
 
     }
 
@@ -572,7 +572,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         if (isempty(self.effects)) { return self }
         self.effectCacheKey = generate_effect_cache_key(self)
         self.needsEffectUpdate = true
-        update_effects(self)
+
 
     }
     

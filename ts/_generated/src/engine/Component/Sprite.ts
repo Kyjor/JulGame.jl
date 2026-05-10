@@ -26,7 +26,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
 
     
-    class InternalSprite extends (globalThis as any).JulGame.ISprite { 
+    class InternalSprite { 
         imagePath: string
         layer: number
         offset: Vector2f
@@ -50,27 +50,12 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         effects: any[]  // Will hold Effect objects
         effectTexture: null | any
         effectSize: Vector2  // Size of effect texture (may be larger due to glow padding)
-        effectCacheKey: String  // Cache key for sharing effect textures
+        effectCacheKey: string  // Cache key for sharing effect textures
         needsEffectUpdate: boolean
-        useEffectTexture: Bool  // Toggle to enable/disable effect texture rendering
+        useEffectTexture: boolean  // Toggle to enable/disable effect texture rendering
         interactionScale: number  // Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
         
-        function InternalSprite(
-            parent: IEntity,
-            imagePath: String,
-            crop: null | Vector4=null, 
-            isFlipped: boolean=false, 
-            color = [255,255,255,255], 
-            isCreatedInEditor: boolean=false; 
-            pixelsPerUnit: number=0, 
-            position = {x: 0, y: 0}, 
-            rotation: number = 0.0, 
-            layer: number = 0, 
-            center = {x: 0.5, y: 0.5}, 
-            anchor: symbol = :center, 
-            offset = {x: 0, y: 0}, 
-            isStatic: boolean = false
-        )
+        constructor(parent: IEntity, imagePath: string, crop: null | Vector4=null, isFlipped: boolean=false, color: [number, number, number, number] = [255,255,255,255], isCreatedInEditor: boolean=false, pixelsPerUnit: number=0, position = {x: 0, y: 0}, rotation: number = 0.0, layer: number = 0, center = {x: 0.5, y: 0.5}, anchor: symbol = :center, offset = {x: 0, y: 0}, isStatic: boolean = false) {
             
 
             this.offset = offset
@@ -128,13 +113,13 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         
         // Update effects if needed
         if (!isempty(self.effects) && self.needsEffectUpdate) {
-            update_effects(self)
+
         }
     
         // Use effect texture if available and enabled, otherwise use regular texture
         let texture_to_render = null
         if (self.useEffectTexture && !isempty(self.effects) && self.effectTexture != null) {
-            texture_to_render = self.effectTexture
+
         } else {
             // Create or get cached texture if it doesn't exist
             if (self.texture == null && self.image != null) {
@@ -358,7 +343,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         
         self.effectCacheKey = newKey
         self.needsEffectUpdate = true
-        update_effects(self)
+
 
     }
     
