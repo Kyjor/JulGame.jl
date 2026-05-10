@@ -1,6 +1,5 @@
 export {}
 import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
-import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
 
 
     // using ..Component.JulGame
@@ -107,19 +106,19 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     }
     
-    function Component_draw(self: InternalSprite, camera = null) {
+    function Component_draw(self: InternalSprite, camera: any = null) {
         if (self.image == null || (globalThis as any).JulGame.Renderer == null) {
             return
         }
         
         // Update effects if needed
-        if (!isempty(self.effects) && self.needsEffectUpdate) {
+        if (self.effects.length > 0 && self.needsEffectUpdate) {
 
         }
     
         // Use effect texture if available and enabled, otherwise use regular texture
         let texture_to_render = null
-        if (self.useEffectTexture && !isempty(self.effects) && self.effectTexture != null) {
+        if (self.useEffectTexture && self.effects.length > 0 && self.effectTexture != null) {
 
         } else {
             // Create or get cached texture if it doesn't exist
@@ -131,11 +130,11 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     
         // Check and set color if necessary (for both regular and effect textures)
-        let colorRefs = (0, 0, 0)
+        let colorRefs = [0, 0, 0]
         let alphaRef = 0;
-        (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, colorRefs...);
+        (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, ...colorRefs);
         (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
-        if (colorRefs[0][] != self.color[0] || colorRefs[1][] != self.color[1] || colorRefs[2][] != self.color[2] || self.color[3] != alphaRef) {
+        if (colorRefs[0] != self.color[0] || colorRefs[1] != self.color[1] || colorRefs[2] != self.color[2] || self.color[3] != alphaRef) {
             (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, Number(clamp(self.color[0], 0, 255)), Number(clamp(self.color[1], 0, 255)), Number(clamp(self.color[2], 0, 255)));
             (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, Number(clamp(self.color[3], 0, 255)))
         }
@@ -150,28 +149,38 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let position = self.parent.transform.position
     
         // Calculate source rectangle
-        let srcRect = (self.crop == Vector4(0, 0, 0, 0) || self.crop == null) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(self.crop.x, self.crop.y, self.crop.z, self.crop.t)
+        let srcRect = (self.crop === null || (self.crop.x === 0 && self.crop.y === 0 && self.crop.z === 0 && self.crop.t === 0)) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(self.crop.x, self.crop.y, self.crop.z, self.crop.t)
     
         // Calculate pixels per unit
         let ppu = self.pixelsPerUnit > 0 ? self.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
     
         // Check if // using effect texture
-        let usingEffectTex = texture_to_render == self.effectTexture && self.effectSize != {x: 0, y: 0}
+        let usingEffectTex = texture_to_render == self.effectTexture && (self.effectSize == null || self.effectSize.x !== 0 || self.effectSize.y !== 0)
         
         // Always use original sprite size for positioning calculations
-        let cropWidth = srcRect == null ? self.size.x : self.crop.z
-        let cropHeight = srcRect == null ? self.size.y : self.crop.t
+        let crop = self.crop == null ? {x: 0, y: 0, z: 0, t: 0} : self.crop
+        let cropWidth = srcRect == null ? self.size.x : crop.z
+        let cropHeight = srcRect == null ? self.size.y : crop.t
         let scaleX = self.parent.transform.scale.x
         let scaleY = self.parent.transform.scale.y
     
         // Compute position adjustment
-        let adjustedX = vecSub(vecMul(vecAdd(position.x, self.offset.x), S), cameraDiff.x)
-        let adjustedY = vecSub(vecMul(vecAdd(position.y, self.offset.y), S), cameraDiff.y)
+        // VERBOSE because of transpiler 
+        let adjustedX = position.x
+        adjustedX += self.offset.x
+        adjustedX *= S
+        adjustedX -= cameraDiff.x
+        let adjustedY = position.y
+        adjustedY += self.offset.y
+        adjustedY *= S
+        adjustedY -= cameraDiff.y
     
         // Handle pixelsPerUnit == 0 (use true size without scaling)
+        let scaledWidth = 0.0
+        let scaledHeight = 0.0
         if (self.pixelsPerUnit == 0) {
-            let scaledWidth = cropWidth * scaleX * S / 64.0
-            let scaledHeight = cropHeight * scaleY * S / 64.0
+            scaledWidth = cropWidth * scaleX * S / 64.0
+            scaledHeight = cropHeight * scaleY * S / 64.0
         } else {
             // Use pixelsPerUnit or default PIXELS_PER_UNIT for scaling
             ppu = self.pixelsPerUnit > 0 ? self.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -185,57 +194,47 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let centeredY = adjustedY
         
         // Apply anchor positioning
-        if (self.anchor == :center) {
+        if (self.anchor == "center") {
             // Center anchor (default behavior)
             centeredX -= (scaledWidth - S * scaleX) / 2
             centeredY -= (scaledHeight - S * scaleY) / 2
-        } else if (self.anchor == :top) {
+        } else if (self.anchor == "top") {
             // Top anchor
             centeredX -= (scaledWidth - S * scaleX) / 2
             // No adjustment for Y
-        } else if (self.anchor == :bottom) {
+        } else if (self.anchor == "bottom") {
             // Bottom anchor
             centeredX -= (scaledWidth - S * scaleX) / 2
             centeredY -= (scaledHeight - S * scaleY)
-        } else if (self.anchor == :left) {
+        } else if (self.anchor == "left") {
             // Left anchor
             centeredY -= (scaledHeight - S * scaleY) / 2
             // No adjustment for X
-        } else if (self.anchor == :right) {
+        } else if (self.anchor == "right") {
             // Right anchor
             centeredX -= (scaledWidth - S * scaleX)
             centeredY -= (scaledHeight - S * scaleY) / 2
-        } else if (self.anchor == :topleft) {
+        } else if (self.anchor == "topleft") {
             // Top-left anchor
             // No adjustment needed
-        } else if (self.anchor == :topright) {
+        } else if (self.anchor == "topright") {
             // Top-right anchor
             centeredX -= (scaledWidth - S * scaleX)
-        } else if (self.anchor == :bottomleft) {
+        } else if (self.anchor == "bottomleft") {
             // Bottom-left anchor
             centeredY -= (scaledHeight - S * scaleY)
-        } else if (self.anchor == :bottomright) {
+        } else if (self.anchor == "bottomright") {
             // Bottom-right anchor
             centeredX -= (scaledWidth - S * scaleX)
             centeredY -= (scaledHeight - S * scaleY)
         }
         
         // AFTER anchor positioning: expand render size for effect texture and offset to center it
-        if (usingEffectTex) {
-            scaleFactor = self.pixelsPerUnit == 0 ? (S / 64.0) : (S / ppu)
-            let effectScaledWidth = self.effectSize.x * scaleFactor * scaleX
-            let effectScaledHeight = self.effectSize.y * scaleFactor * scaleY
-            // Offset to center the larger effect texture over the original sprite position
-            centeredX -= (effectScaledWidth - scaledWidth) / 2
-            centeredY -= (effectScaledHeight - scaledHeight) / 2
-            // Use effect dimensions for rendering
-            scaledWidth = effectScaledWidth
-            scaledHeight = effectScaledHeight
-        }
     
         // Select float or integer precision
+        let dstRect = null
         if (self.isFloatPrecision) {
-            let dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
+            dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
         } else {
             dstRect = (globalThis as any).JulGameSdl.glue_SDL_Rect(
                 Math.round(centeredX),
@@ -296,7 +295,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
     
     function serialize_effects(effects: any[]): string
-        if (isempty(effects)) {
+        if (effects.length < 1) {
             return "[]"
         }
         let parts = []
@@ -373,7 +372,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         self.image = load_image_sdl(fullPath, imagePath)
         let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
     
-        if (!isempty(error) || self.image == null) {
+        if (error.length > 0 || self.image == null) {
             try {
 
             } catch (e) {
@@ -384,7 +383,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     
             // Load from byte array
             self.image = load_fallback_image()
-            setfield(self, :imagePath, "fallback.png")
+            setfield(self, "imagePath", "fallback.png")
             self.pixelsPerUnit = 0
             if (self.image == null) {
 

@@ -205,7 +205,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         } else {
             // Render with screen-space positioning (traditional UI)
             let adjusted_position = {x: 0, y: 0}
-            if (self.originalSize != self.size && self.anchor.current_state == :none) {
+            if (self.originalSize != self.size && self.anchor.current_state == "none") {
                 adjusted_position = {x: self.position.x - (self.size.x - self.originalSize.x)/2, y: self.position.y - (self.size.y - self.originalSize.y)/2}
                 // console.debug("difference in size: $(self.size.x - self.originalSize.x), $(self.size.y - self.originalSize.y)")
                 // console.debug("adjusted position: $(adjusted_position.x), $(adjusted_position.y)")
@@ -569,7 +569,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     inside a `BevelEmbossEffect` does not, so callers that edit effects directly must call this.
     */
     function UI_request_effects_refresh(self: TextBox) {
-        if (isempty(self.effects)) { return self }
+        if (self.effects.length < 1) { return self }
         self.effectCacheKey = generate_effect_cache_key(self)
         self.needsEffectUpdate = true
 

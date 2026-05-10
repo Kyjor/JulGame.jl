@@ -110,13 +110,13 @@ module SpriteModule
         end
         
         # Update effects if needed
-        if !isempty(this.effects) && this.needsEffectUpdate
+        if length(this.effects) > 0 && this.needsEffectUpdate
             update_effects(this)
         end
     
         # Use effect texture if available and enabled, otherwise use regular texture
         texture_to_render = nothing
-        if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
+        if this.useEffectTexture && length(this.effects) > 0 && this.effectTexture != C_NULL
             texture_to_render = this.effectTexture
         else
             # Create or get cached texture if it doesn't exist
@@ -156,16 +156,26 @@ module SpriteModule
         usingEffectTex = texture_to_render == this.effectTexture && this.effectSize != Math.Vector2(0, 0)
         
         # Always use original sprite size for positioning calculations
-        cropWidth = srcRect == C_NULL ? this.size.x : this.crop.z
-        cropHeight = srcRect == C_NULL ? this.size.y : this.crop.t
+        crop = this.crop == C_NULL ? Math.Vector4(0, 0, 0, 0) : this.crop
+        cropWidth = srcRect == C_NULL ? this.size.x : crop.z
+        cropHeight = srcRect == C_NULL ? this.size.y : crop.t
         scaleX = this.parent.transform.scale.x
         scaleY = this.parent.transform.scale.y
     
         # Compute position adjustment
-        adjustedX = (position.x + this.offset.x) * S - cameraDiff.x
-        adjustedY = (position.y + this.offset.y) * S - cameraDiff.y
+        # VERBOSE because of transpiler 
+        adjustedX = position.x
+        adjustedX += this.offset.x
+        adjustedX *= S
+        adjustedX -= cameraDiff.x
+        adjustedY = position.y
+        adjustedY += this.offset.y
+        adjustedY *= S
+        adjustedY -= cameraDiff.y
     
         # Handle pixelsPerUnit == 0 (use true size without scaling)
+        scaledWidth = 0.0
+        scaledHeight = 0.0
         if this.pixelsPerUnit == 0
             scaledWidth = cropWidth * scaleX * S / 64.0
             scaledHeight = cropHeight * scaleY * S / 64.0
@@ -231,6 +241,7 @@ module SpriteModule
         end
     
         # Select float or integer precision
+        dstRect = nothing
         if this.isFloatPrecision
             dstRect = Ref(SDL2.SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight))
         else
@@ -293,7 +304,7 @@ module SpriteModule
     end
     
     function serialize_effects(effects::Vector{Any})::String
-        if isempty(effects)
+        if length(effects) < 1
             return "[]"
         end
         parts = String[]
@@ -348,7 +359,7 @@ module SpriteModule
     end
     
     function update_effects(this::InternalSprite)
-        if isempty(this.effects) || !this.needsEffectUpdate
+        if length(this.effects) < 1 || !this.needsEffectUpdate
             return
         end
         
@@ -451,7 +462,7 @@ module SpriteModule
         this.image = load_image_sdl(fullPath, imagePath)
         error = unsafe_string(SDL2.SDL_GetError())
     
-        if !isempty(error) || this.image == C_NULL
+        if length(error) > 0 || this.image == C_NULL
             try
                 throw(error)
             catch e
@@ -542,7 +553,7 @@ module SpriteModule
             
             if s == :imagePath
                 @debug("setting imagePath to: $(x)")
-                if !isdefined(this, :imagePath) || (this.imagePath != x && !isempty(x))
+                if !isdefined(this, :imagePath) || (this.imagePath != x && length(x) > 0)
                     # Reload the image, cleaning up the old one first
                     setfield!(this, s, String(x))
                     Component.load_image(this, String(x))

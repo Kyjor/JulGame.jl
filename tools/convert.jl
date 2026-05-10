@@ -704,15 +704,18 @@ function replace_return_parenthesized_tuples(data::AbstractString)::String
     return String(take!(io))
 end
 
-# `Math.Vector2(a, b)` / `Vector2f(...)` — regex-only rewrite misses args that contain `(...)`; use balanced parens + top-level comma split.
+# `Math.Vector2(a, b)` / `Vector3f` / `Math.Vector4(...)` — regex-only rewrite misses args that contain `(...)`; use balanced parens + top-level comma split.
 function replace_math_vector_constructor_calls(data::AbstractString)::String
     needles_meta = (
+        ("JulGame.Math.Vector4(", 4),
         ("JulGame.Math.Vector3f(", 3),
         ("JulGame.Math.Vector2f(", 2),
         ("JulGame.Math.Vector2(", 2),
+        ("Math.Vector4(", 4),
         ("Math.Vector3f(", 3),
         ("Math.Vector2f(", 2),
         ("Math.Vector2(", 2),
+        ("Vector4(", 4),
         ("Vector3f(", 3),
         ("Vector2f(", 2),
         ("Vector2(", 2),
@@ -751,13 +754,212 @@ function replace_math_vector_constructor_calls(data::AbstractString)::String
         if length(parts) == best_arity
             if best_arity == 2
                 write(io, "{x: ", parts[1], ", y: ", parts[2], "}")
-            else
+            elseif best_arity == 3
                 write(io, "{x: ", parts[1], ", y: ", parts[2], ", z: ", parts[3], "}")
+            else
+                write(io, "{x: ", parts[1], ", y: ", parts[2], ", z: ", parts[3], ", t: ", parts[4], "}")
             end
         else
             write(io, SubString(s, best_lo, close_idx))
         end
         fi = nextind(s, close_idx)
+    end
+    return String(take!(io))
+end
+
+# `{` at `open_brace_at` must be the opening `{` of an object literal.
+function _find_matching_brace_close(s::String, open_brace_at::Int, n::Int)::Union{Nothing, Int}
+    depth = 0
+    i = open_brace_at
+    while i <= n
+        c = s[i]
+        if c == '"'
+            i = _skip_double_quoted_string(s, i, n)
+            i > n && return nothing
+            i = nextind(s, i)
+            continue
+        end
+        if c == '{'
+            depth += 1
+        elseif c == '}'
+            depth -= 1
+            if depth == 0
+                return i
+            end
+        end
+        i = nextind(s, i)
+    end
+    return nothing
+end
+
+function _parse_ts_vector_object_key_vals(inner::AbstractString)::Union{Nothing,Dict{String,String}}
+    parts = split_top_level_commas_general(inner)
+    d = Dict{String,String}()
+    for p in parts
+        m = match(r"^\s*([A-Za-z_]\w*)\s*:\s*(.+)$"s, strip(String(p)))
+        m === nothing && return nothing
+        d[String(m[1])] = String(strip(String(m[2])))
+    end
+    return d
+end
+
+# Recognizes `{x,y}`, `{x,y,z}`, `{x,y,z,t}` from emitted vector ctor literals (exact key sets).
+function _parse_vector234_object_fields(inner::AbstractString)::Union{Nothing,Tuple{Int,Vector{String}}}
+    d = _parse_ts_vector_object_key_vals(inner)
+    d === nothing && return nothing
+    nkeys = length(d)
+    if haskey(d, "t")
+        if nkeys == 4 && haskey(d, "x") && haskey(d, "y") && haskey(d, "z")
+            return (4, [d["x"], d["y"], d["z"], d["t"]])
+        end
+        return nothing
+    elseif haskey(d, "z")
+        if nkeys == 3 && haskey(d, "x") && haskey(d, "y")
+            return (3, [d["x"], d["y"], d["z"]])
+        end
+        return nothing
+    elseif haskey(d, "y")
+        if nkeys == 2 && haskey(d, "x")
+            return (2, [d["x"], d["y"]])
+        end
+        return nothing
+    end
+    return nothing
+end
+
+function _ts_vector_literal_field_eq_checks(lhs::AbstractString, vals::Vector{String}, arity::Int)::String
+    if arity == 2
+        return "$(lhs).x === $(vals[1]) && $(lhs).y === $(vals[2])"
+    elseif arity == 3
+        return "$(lhs).x === $(vals[1]) && $(lhs).y === $(vals[2]) && $(lhs).z === $(vals[3])"
+    else
+        return "$(lhs).x === $(vals[1]) && $(lhs).y === $(vals[2]) && $(lhs).z === $(vals[3]) && $(lhs).t === $(vals[4])"
+    end
+end
+
+function _ts_vector_literal_eq_replacement(lhs::AbstractString, vals::Vector{String}, arity::Int)::String
+    checks = _ts_vector_literal_field_eq_checks(lhs, vals, arity)
+    return "$(lhs) != null && $(checks)"
+end
+
+function _ts_vector_literal_eq_or_null_replacement(lhs::AbstractString, vals::Vector{String}, arity::Int)::String
+    checks = _ts_vector_literal_field_eq_checks(lhs, vals, arity)
+    return "$(lhs) === null || ($(checks))"
+end
+
+function _ts_vector_literal_ne_replacement(lhs::AbstractString, vals::Vector{String}, arity::Int)::String
+    parts = String["$(lhs) == null"]
+    if arity == 2
+        push!(parts, "$(lhs).x !== $(vals[1])", "$(lhs).y !== $(vals[2])")
+    elseif arity == 3
+        push!(parts, "$(lhs).x !== $(vals[1])", "$(lhs).y !== $(vals[2])", "$(lhs).z !== $(vals[3])")
+    else
+        push!(
+            parts,
+            "$(lhs).x !== $(vals[1])",
+            "$(lhs).y !== $(vals[2])",
+            "$(lhs).z !== $(vals[3])",
+            "$(lhs).t !== $(vals[4])",
+        )
+    end
+    return "(" * join(parts, " || ") * ")"
+end
+
+# Slice `[lhs_start:lhs_end]` for `foo.bar` / `self.crop` immediately before `\s*==\s*\{` / `\s*!=\s*\{`.
+function _ts_simple_lhs_span(s::String, i::Int, eq_ne_match_lo::Int)::Union{Nothing,Tuple{Int,Int}}
+    j = prevind(s, eq_ne_match_lo)
+    while j >= i && isspace(s[j])
+        j = prevind(s, j)
+    end
+    j < i && return nothing
+    lhs_end = j
+    k = lhs_end
+    while k >= i
+        c = s[k]
+        if isletter(c) || isdigit(c) || c == '_' || c == '.'
+            k = prevind(s, k)
+            continue
+        end
+        break
+    end
+    lhs_start = nextind(s, k)
+    lhs_start > lhs_end && return nothing
+    return (lhs_start, lhs_end)
+end
+
+# JS compares objects by reference — `{x:0,...}` literals never `==` or `!=` an existing object sensibly.
+# Rewrite comparisons against emitted `{x,y(,z(,t))}` literals to field-wise checks (after vector ctor rewrite).
+function replace_ts_vector_object_literal_equality(data::AbstractString)::String
+    s = String(data)
+    i = firstindex(s)
+    n = lastindex(s)
+    io = IOBuffer()
+    while i <= n
+        r_eq = findnext(" == {", s, i)
+        r_ne = findnext(" != {", s, i)
+        r = nothing
+        op_is_ne = false
+        if r_eq !== nothing && r_ne !== nothing
+            if first(r_eq) <= first(r_ne)
+                r = r_eq
+                op_is_ne = false
+            else
+                r = r_ne
+                op_is_ne = true
+            end
+        elseif r_eq !== nothing
+            r = r_eq
+            op_is_ne = false
+        elseif r_ne !== nothing
+            r = r_ne
+            op_is_ne = true
+        else
+            write(io, SubString(s, i))
+            break
+        end
+        lo = first(r)
+        open_brace = last(r)
+        close_idx = _find_matching_brace_close(s, open_brace, n)
+        if close_idx === nothing
+            write(io, SubString(s, i, lo))
+            i = nextind(s, lo)
+            continue
+        end
+        inner = String(SubString(s, nextind(s, open_brace), prevind(s, close_idx)))
+        parsed = _parse_vector234_object_fields(inner)
+        span = _ts_simple_lhs_span(s, i, lo)
+        if parsed === nothing || span === nothing
+            write(io, SubString(s, i, close_idx))
+            i = nextind(s, close_idx)
+            continue
+        end
+        lhs_start, lhs_end = span
+        lhs = String(SubString(s, lhs_start, lhs_end))
+        arity, vals = parsed
+        m_or = nothing
+        repl =
+            if op_is_ne
+                _ts_vector_literal_ne_replacement(lhs, vals, arity)
+            else
+                tail_str = String(SubString(s, nextind(s, close_idx), n))
+                m_or = match(r"^\s*\|\|\s*(.+?)\s*===?\s*null\b", tail_str)
+                if m_or !== nothing && strip(String(m_or[1])) == lhs
+                    _ts_vector_literal_eq_or_null_replacement(lhs, vals, arity)
+                else
+                    _ts_vector_literal_eq_replacement(lhs, vals, arity)
+                end
+            end
+        write(io, SubString(s, i, prevind(s, lhs_start)))
+        write(io, repl)
+        if !op_is_ne && m_or !== nothing && strip(String(m_or[1])) == lhs
+            pos = nextind(s, close_idx)
+            for _ in m_or.match
+                pos = nextind(s, pos)
+            end
+            i = pos
+        else
+            i = nextind(s, close_idx)
+        end
     end
     return String(take!(io))
 end
@@ -790,7 +992,7 @@ function replace_julia_ts_literals(data::AbstractString)
     # Julia tuple literals in value position: `(a, b, c)` -> `[a, b, c]`.
     data = replace(data, r"=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s"= [\1]")
     data = replace(data, r":\s*([A-Za-z_]\w*)\s*=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s": \1 = [\2]")
-    # Vector2 / Vector2f / Vector3f constructor calls -> `{ x, y [, z] }` (handles nested parens in arguments).
+    # Vector2 / Vector2f / Vector3f / Vector4 constructor calls -> `{ x, y [, z [, t]] }` (handles nested parens in arguments).
     data = replace_math_vector_constructor_calls(data)
     # Rigidbody: grounded snap keeps `z` from the integrated position (Julia `Vector2f(x,y)` drops `z` on the Julia side).
     data = replace(
@@ -833,6 +1035,7 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace_julia_stdlib_string_ops(data)
     data = insert_semicolon_before_line_starting_with_open_paren(data)
     data = replace_julia_string_calls_to_ts(data)
+    data = replace_ts_vector_object_literal_equality(data)
     return data
 end
 
@@ -869,6 +1072,49 @@ function replace_julia_symbol_literals_to_ts_strings(data::AbstractString)::Stri
             end
             i = j
             continue
+        end
+        # `//` / `/* */` comments often contain apostrophes (`doesn't`). Treating `'` as a string opener
+        # would leave the scanner "inside" a fake string and skip `:symbol` rewrites for the rest of the file.
+        if c == '/' && i < n
+            ni = nextind(s, i)
+            if s[ni] == '/'
+                while i <= n
+                    ch = s[i]
+                    write(io, ch)
+                    if ch == '\n'
+                        i = nextind(s, i)
+                        break
+                    elseif ch == '\r'
+                        i2 = nextind(s, i)
+                        if i2 <= n && s[i2] == '\n'
+                            write(io, s[i2])
+                            i = nextind(s, i2)
+                        else
+                            i = i2
+                        end
+                        break
+                    end
+                    i = nextind(s, i)
+                end
+                continue
+            elseif s[ni] == '*'
+                write(io, '/', '*')
+                i = nextind(s, ni)
+                while i <= n
+                    ch = s[i]
+                    write(io, ch)
+                    if ch == '*'
+                        i2 = nextind(s, i)
+                        if i2 <= n && s[i2] == '/'
+                            write(io, '/')
+                            i = nextind(s, i2)
+                            break
+                        end
+                    end
+                    i = nextind(s, i)
+                end
+                continue
+            end
         end
         if c == ':'
             prev_ok = false
@@ -1252,9 +1498,39 @@ function replace_julia_ref_cell_reads(data::AbstractString)::String
     return String(take!(io))
 end
 
+"""`colorRefs[1][]` (Ref read after index) → `colorRefs[0]` after index rewrite; drop trailing `[]`."""
+function replace_indexed_julia_ref_cell_reads(data::AbstractString)::String
+    s = String(data)
+    changed = true
+    while changed
+        s2 = replace(s, r"([A-Za-z_][\w.]*\[\d+\])\[\]" => s"\1")
+        changed = s2 != s
+        s = s2
+    end
+    return s
+end
+
+# After `Ref` stripping, `(0, 0, 0)` is the JS comma operator — use `[0, 0, 0]` (only digit tuples).
+function replace_numeric_paren_tuple_assign_or_return(data::AbstractString)::String
+    s = String(data)
+    s = replace(s, r"(=\s*)\(\s*((?:\d+\s*,\s*)+\d+)\s*\)" => s"\1[\2]")
+    s = replace(s, r"(\breturn\s+)\(\s*((?:\d+\s*,\s*)+\d+)\s*\)" => s"\1[\2]")
+    return s
+end
+
+# Julia call splat `args...` → TS spread `...args`.
+# Use `s"...\1"`: the `Pair(regex => function)` form passes a `SubString` match, so `m[1]` is the first *character*.
+function replace_julia_call_splat_suffix(data::AbstractString)::String
+    s = String(data)
+    replace(s, r"\b([A-Za-z_]\w*)\.\.\." => s"...\1")
+end
+
 function normalize_julia_ref_for_ts(data::AbstractString)::String
     s = strip_ref_wrappers(data)
+    s = replace_indexed_julia_ref_cell_reads(s)
     s = replace_julia_ref_cell_reads(s)
+    s = replace_numeric_paren_tuple_assign_or_return(s)
+    s = replace_julia_call_splat_suffix(s)
     return s
 end
 
@@ -1628,13 +1904,25 @@ function replace_header_param_annotations(data::AbstractString, scalar_map::Dict
         raw_parts = split_top_level_commas_general(params_str)
         params = [String(strip(p)) for p in raw_parts if !isempty(strip(String(p)))]
         rewritten = map(params) do p
-            pm = match(r"^(\s*[A-Za-z_]\w*)::\s*([^=]+?)(\s*=\s*.*)?\s*$", String(p))
-            pm === nothing && return p
-            name = String(pm[1])
-            typ = julia_type_expr_to_ts(String(pm[2]), scalar_map)
-            defaultv = pm[3] === nothing ? "" : String(pm[3])
-            defaultv = replace(defaultv, r"=\s*nothing\b" => "= null")
-            string(name, ": ", typ, defaultv)
+            ps = String(strip(String(p)))
+            pm = match(r"^(\s*[A-Za-z_]\w*)::\s*([^=]+?)(\s*=\s*.*)?\s*$", ps)
+            if pm !== nothing
+                name = String(pm[1])
+                typ = julia_type_expr_to_ts(String(pm[2]), scalar_map)
+                defaultv = pm[3] === nothing ? "" : String(pm[3])
+                defaultv = replace(defaultv, r"=\s*nothing\b" => "= null")
+                return string(name, ": ", typ, defaultv)
+            end
+            # Untyped `name = nothing` / `name = null` — TS otherwise infers param as literal `null`
+            # and `param !== null` narrows to `never` in the true branch (TS2339 on `.position`, etc.).
+            pm2 = match(r"^(\s*[A-Za-z_]\w*)\s*=\s*(.+)$", ps)
+            if pm2 !== nothing
+                defaultv = String(strip(String(pm2[2])))
+                if defaultv == "nothing" || defaultv == "null"
+                    return string(String(pm2[1]), ": any = null")
+                end
+            end
+            return p
         end
         string(hm[1], join(rewritten, ", "), hm[3])
     end
@@ -2389,6 +2677,7 @@ end
 const TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS = Dict{String,String}(
     "haskey((globalThis as any).JulGame.AUDIO_CACHE" => "",
     "haskey((globalThis as any).JulGame.IMAGE_CACHE" => "",
+    "usingEffectTex" => "",
 )
 
 function _find_ts_if_opening_brace_on_line(ln::AbstractString, cond_paren_inner_start::Int)::Union{Nothing, Int}

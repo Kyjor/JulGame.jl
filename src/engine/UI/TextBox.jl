@@ -573,7 +573,7 @@ module TextBoxModule
     inside a `BevelEmbossEffect` does not, so callers that edit effects directly must call this.
     """
     function UI.request_effects_refresh!(this::TextBox)
-        isempty(this.effects) && return this
+        length(this.effects) < 1 && return this
         this.effectCacheKey = generate_effect_cache_key(this)
         this.needsEffectUpdate = true
         update_effects(this)

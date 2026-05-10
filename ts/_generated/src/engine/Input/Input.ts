@@ -218,7 +218,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return _trace_input_ui_hit_iter_ref: boolean
     }
 
-    function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: string, kvs...)
+    function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: string, ...kvs)
         let t1 = time_ns()
         let dt = (t1 - t_blk) / 1e6
         t_blk = t1
@@ -235,7 +235,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return
     }
 
-    function _input_ui_hit_span(prof, t0: number, key: string, kvs...) {
+    function _input_ui_hit_span(prof, t0: number, key: string, ...kvs) {
         let dt = (time_ns() - t0) / 1e6
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
@@ -971,7 +971,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     */
     function handle_base64_image_data(data: string) {
         try {
-            // Parse the data URL format: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+            // Parse the data URL format: data:image/png;base64,...iVBORw0KGgoAAAANSUhEUgAA
             if (!occursin(";base64,", data)) {
                 console.warn("Invalid base64 image data format")
                 return

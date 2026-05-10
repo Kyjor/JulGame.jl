@@ -102,7 +102,7 @@ export {}
         }
     }
 
-    function JulGame_add_animator(self: Entity, animator: Animator = Animator(Animation[JulGameAnimation(Vector4[Vector4(0,0,0,0)], 60)])) {
+    function JulGame_add_animator(self: Entity, animator: Animator = Animator(Animation[JulGameAnimation(Vector4[{x: 0, y: 0, z: 0, t: 0}], 60)])) {
         if (self.animator != null) {
             console.log("Animator already exists on entity named ", self.name)
             return

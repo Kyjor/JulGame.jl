@@ -7,20 +7,34 @@ declare global {
   type Vector2f = { x: number; y: number };
   type Vector3f = { x: number; y: number; z: number };
   type Vector4 = { x: number; y: number; z: number; t: number };
-  interface IEntity {}
-  interface IUIElement {}
+  interface IEntity {
+    [key: string]: any
+  }
+  interface IUIElement {
+    [key: string]: any
+  }
   interface ITransform {
     [key: string]: any;
   }
-  interface IShape {}
-  interface ISoundSource {}
+  interface IShape {
+    [key: string]: any
+  }
+  interface ISoundSource {
+    [key: string]: any
+  }
   interface ISprite {
     crop: any;
     [key: string]: any;
   }
-  interface IAnimator {}
-  interface ICollider {}
-  interface ICircleCollider {}
+  interface IAnimator {
+    [key: string]: any
+  }
+  interface ICollider {
+    [key: string]: any
+  }
+  interface ICircleCollider {
+    [key: string]: any
+  }
   type InternalSprite = any;
   type InternalAnimator = any;
   type InternalCollider = any;

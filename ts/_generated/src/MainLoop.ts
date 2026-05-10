@@ -143,7 +143,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 		
 		if ((script_type in this.knownScriptTypes)) {
 			// First time: JIT compiles the method (slow but only once)
-			console.debug(`First initialize call for ${script_type} - compiling...`)
+			console.debug(`First initialize call for ${script_type} - ...compiling`)
 			this.knownScriptTypes.push(script_type)
 			this.scriptTimings[script_type] = []
 		}
@@ -162,7 +162,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 		
 		if ((script_type in this.knownScriptTypes)) {
 			// First call: register type (compilation happens here)
-			console.debug(`First update call for ${script_type} - compiling...`)
+			console.debug(`First update call for ${script_type} - ...compiling`)
 			this.knownScriptTypes.push(script_type)
 			this.scriptTimings[script_type] = []
 		}
@@ -196,7 +196,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 		
 		if ((script_type in this.knownScriptTypes)) {
 			this.knownScriptTypes.push(script_type)
-			console.debug(`First shutdown call for ${script_type} - compiling...`)
+			console.debug(`First shutdown call for ${script_type} - ...compiling`)
 		}
 		
 		// Always use invokelatest (fast after first compilation)
@@ -758,7 +758,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			//region Input
 			if ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.IS_WEB) {
 				if (this.latencyProfiler !== null) {
-					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :input_poll)
+					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "input_poll")
 				}
 
 				(globalThis as any).JulGame.InputModule.poll_input(this.input)
@@ -769,11 +769,11 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 				this.close = this.input.quit
 				if (this.close) {
-					(globalThis as any).JulGame.engine_states.current_state = :quit
+					(globalThis as any).JulGame.engine_states.current_state = "quit"
 				}
 
 				if (this.latencyProfiler !== null) {
-					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :render_clear)
+					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "render_clear")
 				}
 				(globalThis as any).JulGameSdl.glue_SDL_RenderClear((globalThis as any).JulGame.Renderer)
 				if (this.latencyProfiler !== null) {
@@ -802,7 +802,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			//region Physics
 			if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 				if (this.latencyProfiler !== null) {
-					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :physics)
+					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "physics")
 				}
 				
 				let currentPhysicsTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
@@ -838,7 +838,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 		//region Rendering
 		if (this.latencyProfiler !== null) {
-			(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :entity_updates)
+			(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "entity_updates")
 		}
 		
 		let currentRenderTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
@@ -865,7 +865,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 						}
 						if (this.close && !this.isGameModeRunningInEditor) {
 							console.debug("Closing game")
-							(globalThis as any).JulGame.engine_states.current_state = :quit
+							(globalThis as any).JulGame.engine_states.current_state = "quit"
 							return
 						}
 					} catch (e) {
@@ -906,7 +906,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			
 			if ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.IS_WEB) {
 				if (this.latencyProfiler !== null) {
-					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :sprite_rendering)
+					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "sprite_rendering")
 				}
 				
 				render_scene_sprites_and_shapes(this, this.scene.camera)
@@ -922,7 +922,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 			//region UI
 			if (this.latencyProfiler !== null) {
-				(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :ui_rendering)
+				(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "ui_rendering")
 			}
 			
 			// Sort UI elements by layer before rendering
@@ -930,9 +930,9 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			let prof_ui = this.latencyProfiler
 			let t_ui = time_ns()
 			let canvases = filter(x -> isa(x, (globalThis as any).JulGame.ICanvas), this.scene.uiElements)
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_filter_canvases)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_filter_canvases")
 			let immediate_scene_skip = UI.ImmediateUIModule.immediate_ui_managed_scene_skip_ids()
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_immediate_skip_ids_build)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_immediate_skip_ids_build")
 			for (const uiElement of this.scene.uiElements) {
 				if (Base.objectid(uiElement) in immediate_scene_skip) {
 					continue
@@ -943,22 +943,22 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 					uiRenderingOrder.push((uiElement.layer, uiElement))
 				//}
 			}
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_scene_elements_scan)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_scene_elements_scan")
 			let render_functions_to_call = filter(x -> !x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
 			filter(x -> x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
 			for (const render_function of render_functions_to_call) {
 				uiRenderingOrder.push((render_function.layer, render_function))
 			}
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_render_functions_push)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_render_functions_push")
 			let immediateUIComponents = UI.ImmediateUIModule.manage_all_immediate_components()
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_immediate_manage_all)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_immediate_manage_all")
 			for (const immediateUIComponent of immediateUIComponents) {
 				uiRenderingOrder.push((immediateUIComponent.layer, immediateUIComponent))
 			}
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_immediate_append_order)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_immediate_append_order")
 
 			sort(uiRenderingOrder, by = x -> x[0])
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_sort_render_order)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_sort_render_order")
 			for i = eachindex(uiRenderingOrder)
 				try {
 					let skipCanvasChild = false
@@ -987,7 +987,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 					} else {
 						let parent_info = ""
-						if (isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)) {
+						if (isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), "function_to_call")) {
 							parent_info = "a queued render function ($(uiRenderingOrder[i][2].function_to_call))"
 						} else if (isa(uiRenderingOrder[i][2], UI.UIElement)) {
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
@@ -998,7 +998,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 					}
 				}
 			}
-			_accum_ui_render_breakdown_ms(prof_ui, t_ui, :ui_invoke_render_loop)
+			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_invoke_render_loop")
 			
 			if (this.latencyProfiler !== null) {
 				(globalThis as any).JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
@@ -1048,7 +1048,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 			if ((globalThis as any).JulGame.IS_EDITOR) {
 				if (this.latencyProfiler !== null) {
-					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :present_and_delay)
+					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "present_and_delay")
 				}
 				
 				(globalThis as any).JulGameSdl.glue_SDL_RenderPresent((globalThis as any).JulGame.Renderer);
@@ -1164,7 +1164,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				// get the params	
 				let func = renderOrder[i][2].function_to_call
 				func()
-			} else if (hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)) {
+			} else if (hasproperty(renderOrder[i][2], "textures") && hasproperty(renderOrder[i][2], "layer")) {
 				// Render batched static sprite layer
 				(globalThis as any).JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
 			} else {
@@ -1175,9 +1175,9 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 				} else {
 					let parent_info = ""
-					if (isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)) {
+					if (isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), "function_to_call")) {
 						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
-					} else if (hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== null && isa(renderOrder[i][2].parent, (globalThis as any).JulGame.EntityModule.Entity)) {
+					} else if (hasproperty(renderOrder[i][2], "parent") && renderOrder[i][2].parent !== null && isa(renderOrder[i][2].parent, (globalThis as any).JulGame.EntityModule.Entity)) {
 						parent_info = "$(renderOrder[i][2].parent.name) with id: $(renderOrder[i][2].parent.id)"
 					} else { 
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
