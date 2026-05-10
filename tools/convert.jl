@@ -878,19 +878,67 @@ function replace_julia_replace_backslash_with_slash_calls(data::AbstractString):
     return s
 end
 
-function replace_join_slice_end_calls(data::AbstractString)::String
+"""Map Julia first arg of `join(first, "delim")` → TS receiver before `.join(...)` (supports `[N:end]` and malformed `parts[1:]}` from partial transpile)."""
+function _julia_join_first_arg_to_ts_receiver(a1::AbstractString)::Union{Nothing,String}
+    t = strip(String(a1))
+    m = match(r"^([A-Za-z_][\w.]*)$", t)
+    m !== nothing && return String(m[1])
+    m = match(r"^([A-Za-z_][\w.]*)\s*\[\s*(\d+)\s*:\s*end\s*\]$", t)
+    if m !== nothing
+        name = String(m[1])
+        n = parse(Int, String(m[2]))
+        return n <= 1 ? name : string(name, ".slice(", n - 1, ")")
+    end
+    # After `length(x)` -> `x.length`, support `x[1:x.length]` (and general N).
+    m = match(r"^([A-Za-z_][\w.]*)\s*\[\s*(\d+)\s*:\s*\1\.length\s*\]$", t)
+    if m !== nothing
+        name = String(m[1])
+        n = parse(Int, String(m[2]))
+        return n <= 1 ? name : string(name, ".slice(", n - 1, ", ", name, ".length)")
+    end
+    # Partial transpile typo: `parts[1:]}` instead of `parts[1:end]`
+    m = match(r"^([A-Za-z_][\w.]*)\s*\[\s*(\d+)\s*:\s*\]\s*\}$", t)
+    if m !== nothing
+        name = String(m[1])
+        n = parse(Int, String(m[2]))
+        return n <= 1 ? name : string(name, ".slice(", n - 1, ")")
+    end
+    return nothing
+end
+
+"""Julia `join(arr, "delim")` / `join(arr[N:end], "delim")` → TS `arr.join("delim")` (parsed args; no brittle full-line regex)."""
+function replace_julia_join_two_arg_calls(data::AbstractString)::String
     s = String(data)
-    pat = r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*\[\s*(\d+)\s*:\s*end\s*\]\s*,\s*\"([^\"]*)\"\s*\)"
-    while true
-        m = match(pat, s)
-        m === nothing && break
-        name = m[1]::AbstractString
-        n = parse(Int, m[2]::AbstractString)
-        delim = m[3]::AbstractString
-        replacement =
-            n <= 1 ? string(name, ".join(\"", delim, "\")") :
-            string(name, ".slice(", n - 1, ").join(\"", delim, "\")")
-        s = replace(s, m.match => replacement, count = 1)
+    fi = firstindex(s)
+    changed = true
+    while changed
+        changed = false
+        i = fi
+        n = lastindex(s)
+        while i <= n
+            rg = findnext(r"\bjoin\s*\(", s, i)
+            rg === nothing && break
+            lo = first(rg)
+            inner_start = nextind(s, last(rg))
+            close_idx = _find_outer_push_close(s, inner_start, n)
+            close_idx === nothing && break
+            inner = s[inner_start:prevind(s, close_idx)]
+            args = split_top_level_commas_general(inner)
+            if length(args) != 2
+                i = nextind(s, lo)
+                continue
+            end
+            a1 = strip(String(args[1]))
+            a2 = strip(String(args[2]))
+            recv = _julia_join_first_arg_to_ts_receiver(a1)
+            recv === nothing && (i = nextind(s, lo); continue)
+            replacement = string(recv, ".join(", a2, ")")
+            pre = s[fi:prevind(s, lo)]
+            post = s[nextind(s, close_idx):n]
+            s = string(pre, replacement, post)
+            changed = true
+            break
+        end
     end
     return s
 end
@@ -911,19 +959,21 @@ end
 
 function replace_julia_stdlib_string_ops(data::AbstractString)::String
     s = String(data)
-    # `join(vec[N:end], "d")` before bare `join(vec, ...)` (Julia slice is 1-based).
-    s = replace_join_slice_end_calls(s)
-    # Bad bracket from partial transpile: `join(parts[1:]}, ",")` (`]`/`}` swapped vs Julia `[1:end]`).
-    s = replace(
-        s,
-        r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*\[\s*1\s*:\s*\]\s*\}\s*,\s*\"([^\"]*)\"\s*\)" =>
-            s"\1.join(\"\2\")",
-    )
-    # `join(arr, delim)` → `arr.join(delim)` (Julia argument order matches TS receiver + arg).
-    s = replace(
-        s,
-        r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*,\s*\"([^\"]*)\"\s*\)" => s"\1.join(\"\2\")",
-    )
+    # Two-arg `join` (plain, `[N:end]`, or bad `[N:]}`) — single scanner.
+    s = replace_julia_join_two_arg_calls(s)
+    # Fallback: exact malformed `join(parts[1:]}, "x")` if comma-split still failed.
+    bad_join = r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*\[\s*(\d+)\s*:\s*\]\s*\}\s*,\s*\"([^\"]*)\"\s*\)"
+    while true
+        m = match(bad_join, s)
+        m === nothing && break
+        name = String(m[1])
+        n = parse(Int, String(m[2]))
+        d = String(m[3])
+        rep =
+            n <= 1 ? string(name, ".join(\"", d, "\")") :
+            string(name, ".slice(", n - 1, ").join(\"", d, "\")")
+        s = replace(s, m.match => rep, count = 1)
+    end
     # `replace(str, '\\' => '/')` path normalization (scanner — not fragile `[^,]+?`).
     s = replace_julia_replace_backslash_with_slash_calls(s)
     # `split(str, delim)` — common generated shapes only (extend as needed).
@@ -1337,7 +1387,8 @@ function split_top_level_commas_general(s::AbstractString)::Vector{String}
             brace += 1
             write(part, c)
         elseif c == '}'
-            brace -= 1
+            # Stray `}` (e.g. malformed `parts[1:]}`) must not make `brace` negative or commas won't split.
+            brace = max(0, brace - 1)
             write(part, c)
         elseif c == ',' && paren == 0 && bracket == 0 && brace == 0
             push!(out, strip(String(take!(part))))

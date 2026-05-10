@@ -124,7 +124,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         // Split the path into components
         let parts = normalized_path.split('/')
         
-        let result = "t"
+        let result = parts.join(",")
     
         return result  
     }

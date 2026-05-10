@@ -131,7 +131,7 @@ module SoundSourceModule
         # Split the path into components
         parts = split(normalized_path, '/')
         
-        result = join(parts[1:end], ",")
+        result = join(parts[1:length(parts)], ",")
     
         return result  
     end
