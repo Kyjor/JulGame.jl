@@ -19,7 +19,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     
     // Helper to map (globalThis as any).JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
     function get_scale_mode_from_quality() {
-        return SDL2.SDL_ScaleModeBest
+        return (globalThis as any).JulGameSdl.glue_SDL_ScaleModeBest
         // TODO: Add text scaling option?
         let q = try
             String((globalThis as any).JulGame.SCALE_QUALITY)
@@ -32,11 +32,11 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             2
         }
         if (val == 0) {
-            return SDL2.SDL_ScaleModeNearest
+            return (globalThis as any).JulGameSdl.glue_SDL_ScaleModeNearest
         } else if (val == 2) {
-            return SDL2.SDL_ScaleModeBest
+            return (globalThis as any).JulGameSdl.glue_SDL_ScaleModeBest
         } else {
-            return SDL2.SDL_ScaleModeLinear
+            return (globalThis as any).JulGameSdl.glue_SDL_ScaleModeLinear
         }
     }
     class TextBox extends UI.UIElement {
@@ -265,7 +265,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let surface = unsafe_wrap(Array, self.renderText, 10; own = false)
         self.size = {x: surface[0].w, y: surface[0].h}
         self.originalSize = self.size
-        self.textTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, (globalThis as any).JulGame.Renderer, self.renderText)
+        self.textTexture = CallSDLFunction((globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface, (globalThis as any).JulGame.Renderer, self.renderText)
 
         if (!self.isWorldEntity) {
             UI.align_to_anchor(self)
@@ -581,7 +581,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
     
     // Global effects cache
-    const EFFECT_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
+    const EFFECT_CACHE = Dict{String, Ptr{(globalThis as any).JulGameSdl.glue_SDL_Texture}}()
     const MAX_CACHE_SIZE = 100
     
     // Cache management functions

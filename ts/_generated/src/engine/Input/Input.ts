@@ -71,7 +71,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             this.quit = false
             this.scanCodes = []
             this.scanCodeStrings = []
-            for (const m of instances(SDL2.SDL_Scancode)) {
+            for (const m of instances((globalThis as any).JulGameSdl.glue_SDL_Scancode)) {
                 let codeString = "$(m)"
                 code = m
                 if (codeString == "SDL_NUM_SCANCODES") {
@@ -80,7 +80,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 this.scanCodes.push([code, SubString(codeString, 14, codeString.length)])
             }
 
-            (globalThis as any).JulGameSdl.glue_SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
+            (globalThis as any).JulGameSdl.glue_SDL_Init(UInt64((globalThis as any).JulGameSdl.glue_SDL_INIT_JOYSTICK))
             if ((globalThis as any).JulGameSdl.glue_SDL_NumJoysticks() < 1) {
                 console.debug("Warning: No joysticks connected!")
                 this.numAxes = 0
@@ -108,13 +108,13 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             this.yDir = 0
             this.button = 0
 
-            this.cursorBank = Dict{String, SDL2.SDL_SystemCursor}()
+            this.cursorBank = Dict{String, (globalThis as any).JulGameSdl.glue_SDL_SystemCursor}()
             create_cursor_bank(this)
             this.defaultCursor = this.cursorBank["arrow"]
 
             this.isTestButtonClicked = false
             this.simulatedClickPosition = null
-            this.pending_sdl_events = []
+            this.pending_sdl_events = (globalThis as any).JulGameSdl.glue_SDL_Event
 
         }
     }
@@ -124,8 +124,8 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let y = Int32[0];
         (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(pointer(x), pointer(y))
 
-        if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
-            console.debug(`Mouse down: ${evt.type == SDL2.SDL_MOUSEBUTTONDOWN}`)
+        if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
+            console.debug(`Mouse down: ${evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN}`)
             console.debug(`mouse state: ${x[0]}, ${y[0]}`)
             let window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
             console.debug(`window focused: ${window_focused}`)
@@ -259,7 +259,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         self.mouseButtonsReleased = []  // Clear the released buttons each frame
         self.didMouseEventOccur = false
         self.didMouseMotionOccur = false
-        let event_ref = Ref{SDL2.SDL_Event}()
+        let event_ref = Ref{(globalThis as any).JulGameSdl.glue_SDL_Event}()
 
         while true
             if (!isempty(self.pending_sdl_events)) {
@@ -274,13 +274,13 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
             // console.debug("polling input")
             // Only update mouse position for mouse-related events
-            if (evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
+            if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                 _refresh_logical_mouse(self, evt)
-                if (evt.type == SDL2.SDL_MOUSEMOTION) {
-                    let coalesce_ref = Ref{SDL2.SDL_Event}()
+                if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) {
+                    let coalesce_ref = Ref{(globalThis as any).JulGameSdl.glue_SDL_Event}()
                     while Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(coalesce_ref))
                         let e2 = coalesce_ref
-                        if (e2.type == SDL2.SDL_MOUSEMOTION) {
+                        if (e2.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) {
                             _refresh_logical_mouse(self, e2)
                             self.didMouseMotionOccur = true
                         } else {
@@ -296,7 +296,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
             let dropped_files = "dropped_files"
             let dropped_texts = "dropped_texts"
-            if (evt.type == SDL2.SDL_DROPFILE) {
+            if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_DROPFILE) {
                 console.debug(`Dropped file: ${unsafe_string(evt.drop.file)}`)
                 if ((globalThis as any).JulGame.IS_EDITOR) {
                     if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
@@ -307,7 +307,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 }
                 // TODO: Handle dropped file
                 (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
-            } else if (evt.type == SDL2.SDL_DROPTEXT) {
+            } else if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_DROPTEXT) {
                 console.debug(`Dropped text: ${unsafe_string(evt.drop.file)}`)
                 if ((globalThis as any).JulGame.IS_EDITOR) {
                     if (get((globalThis as any).JulGame.EditorState, dropped_texts, null) === null) {
@@ -317,16 +317,16 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                     }
                 }
                 (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
-            } else if (evt.type == SDL2.SDL_DROPBEGIN) {
+            } else if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_DROPBEGIN) {
                 console.debug("Drop begin")
-            } else if (evt.type == SDL2.SDL_DROPCOMPLETE) {
+            } else if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_DROPCOMPLETE) {
                 console.debug("Drop complete")
-            } else if (evt.type == SDL2.SDL_CLIPBOARDUPDATE) {
+            } else if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_CLIPBOARDUPDATE) {
                 console.debug("Clipboard update")
             }
 
             // Handle Ctrl+V for clipboard paste in editor
-            if ((globalThis as any).JulGame.IS_EDITOR && evt.type == SDL2.SDL_KEYDOWN) {
+            if ((globalThis as any).JulGame.IS_EDITOR && evt.type == (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN) {
                 if (evt.key.keysym.sym == SDL2.LibSDL2.SDLK_v && (evt.key.keysym.mod & SDL2.LibSDL2.KMOD_CTRL) != 0) {
                     console.debug("Ctrl+V detected, checking clipboard for image")
                     handle_clipboard_paste()
@@ -335,13 +335,13 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
             _input_poll_accumulate(prof, t0, "window_routing")
 
-            if (evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
+            if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                 let t_ms_blk = time_ns()
                 this.didMouseEventOccur = true
-                if (evt.type == SDL2.SDL_MOUSEMOTION) {
+                if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) {
                     this.didMouseMotionOccur = true
                 }
-                if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
+                if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN) {
                     console.debug(`Mouse button down at ${this.mousePosition}`)
                 }
 
@@ -484,11 +484,11 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         t_hi = time_ns()
 
                         if (!clickedAnElementAlready || element.forceClickCheck) {
-                            let shouldHandleEvent = (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||;
-                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) ||;
-                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||;
-                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||;
-                                (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
+                            let shouldHandleEvent = (!hoveredAnElementAlready && evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) ||;
+                                (element.forceClickCheck && evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) ||;
+                                (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||;
+                                (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||;
+                                (canClickOnThisElement && evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP)
 
                             console.debug(`  -> shouldHandleEvent: ${shouldHandleEvent} (event type: ${evt.type}, hoveredAnElementAlready: ${hoveredAnElementAlready})`)
                             _input_ui_hit_span(prof, t_hi, "hit_inside_3a_should_handle_expr")
@@ -498,7 +498,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                                 console.debug(`  -> Handling event for element '${element.name}'`)
                                 (globalThis as any).JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
                                 t_hi = time_ns()
-                                if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
+                                if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN) {
                                    this.elementsBeingClickedDownOn.push(element)
                                    console.debug(`  -> Added '${element.name}' to elementsBeingClickedDownOn`)
                                 }
@@ -518,9 +518,9 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                             t_hi = time_ns()
                         }
 
-                        if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
+                        if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN) {
                             console.debug(`Mouse button down at ${this.mousePosition} on element '${element.name}'`)
-                        } else if (evt.type == SDL2.SDL_MOUSEBUTTONUP) {
+                        } else if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                             console.debug(`Mouse button up at ${this.mousePosition} on element '${element.name}'`)
                             if (canClickOnThisElement) {
                                 console.debug(`CLICKED on '${element.name}' at ${this.mousePosition}, skipping rest of event loop`)
@@ -532,7 +532,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         _input_ui_hit_span(prof, t_hi, "hit_inside_7_mouse_btn_tail")
                     }
                     let t_tail = time_ns()
-                    if (evt.type == SDL2.SDL_MOUSEBUTTONUP) {
+                    if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                         this.elementsBeingClickedDownOn = []
                         _input_ui_hit_step(prof, t_tail, "hit_ui_clear_click_state")
                     }
@@ -549,7 +549,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
             _input_poll_accumulate(prof, t0, "mouse_ui_hit_test_dispatch")
 
-            //if evt.type == SDL2.SDL_JOYAXISMOTION
+            //if evt.type == (globalThis as any).JulGameSdl.glue_SDL_JOYAXISMOTION
                 if (evt.jaxis.which == 0) {
                     this.jaxis = evt.jaxis
                 }
@@ -602,12 +602,12 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         console.debug(`Hat ${i}: ${hat}`)
                     }
                 }
-            if (evt.type == SDL2.SDL_QUIT) {
+            if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_QUIT) {
                 this.quit = true
                 _input_poll_accumulate(prof, t0, "joystick_keyboard_state")
                 return -1
             }
-            if (evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3) {
+            if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN && evt.key.keysym.scancode == (globalThis as any).JulGameSdl.glue_SDL_SCANCODE_F3) {
                 this.debug = !this.debug
                 (globalThis as any).JulGame.IS_DEBUG = (globalThis as any).JulGame.IS_DEBUG
             }
@@ -674,7 +674,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     }
 
     function handle_window_events(self: Input, event: SDL_Event) {
-        if (event.type != SDL2.SDL_WINDOWEVENT) {
+        if (event.type != (globalThis as any).JulGameSdl.glue_SDL_WINDOWEVENT) {
             return
         }
 
@@ -703,12 +703,12 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     }
 
     function handle_mouse_event(self: Input, event) {
-        if (event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT) {
+        if (event.button.button == (globalThis as any).JulGameSdl.glue_SDL_BUTTON_LEFT || event.button.button == (globalThis as any).JulGameSdl.glue_SDL_BUTTON_MIDDLE || event.button.button == (globalThis as any).JulGameSdl.glue_SDL_BUTTON_RIGHT) {
             let button = event.button.button
-            if (event.type == SDL2.SDL_MOUSEBUTTONDOWN && (button in self.mouseButtonsHeldDown)) {
+            if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN && (button in self.mouseButtonsHeldDown)) {
                 self.mouseButtonsPressedDown.push(button)
                 self.mouseButtonsHeldDown.push(button)
-            } else if (event.type == SDL2.SDL_MOUSEBUTTONUP && (button in self.mouseButtonsHeldDown)) {
+            } else if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP && (button in self.mouseButtonsHeldDown)) {
                 self.mouseButtonsReleased.push(button)
                 deleteat(self.mouseButtonsHeldDown, findfirst(x -> x == button, self.mouseButtonsHeldDown))
             }
@@ -738,7 +738,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             // Only check text clipboard if SDL reports it has text data
             // and avoid errors when clipboard contains binary data
             try {
-                if ((globalThis as any).JulGameSdl.glue_SDL_HasClipboardText() == SDL2.SDL_TRUE) {
+                if ((globalThis as any).JulGameSdl.glue_SDL_HasClipboardText() == (globalThis as any).JulGameSdl.glue_SDL_TRUE) {
                     let clipboard_text = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetClipboardText())
 
                     // Skip if the text looks like an error message from xclip
@@ -779,48 +779,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
     Try to get image data from X11 clipboard // using xclip command.
     */
-    function handle_x11_clipboard_image() {
-        try {
-            // Check if xclip is available
-            if (success(`which xclip`)) {
-                console.debug("xclip found, attempting to get image from clipboard")
-
-                // Try to get PNG data from clipboard
-                try {
-                    let png_data = read(`xclip -selection clipboard -t image/png -o`)
-                    if (png_data.length > 0) {
-                        console.debug("Found PNG data in clipboard")
-                        // Create temporary file for PNG data
-                        let temp_file = tempname() * ".png"
-                        open(temp_file, "w") do file
-                            write(file, png_data)
-                        }
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    }
-                } catch (e) {
-                    console.debug(`No PNG data in clipboard: ${e}`)
-                }
-
-                // Try to get JPEG data from clipboard
-                try {
-                    let jpeg_data = read(`xclip -selection clipboard -t image/jpeg -o`)
-                    if (jpeg_data.length > 0) {
-                        console.debug("Found JPEG data in clipboard")
-                        // Create temporary file for JPEG data
-                        temp_file = tempname() * ".jpg"
-                        open(temp_file, "w") do file
-                            write(file, jpeg_data)
-                        }
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    }
-                } catch (e) {
-                    console.debug(`No JPEG data in clipboard: ${e}`)
-                }
-
-                console.debug("No image data found in X11 clipboard")
-            } else {
+ else {
                 console.debug("xclip not available, cannot access X11 clipboard")
             }
         } catch (e) {
@@ -833,60 +792,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
     Try to get image data from macOS clipboard // using pbpaste command.
     */
-    function handle_macos_clipboard_image() {
-        try {
-            // Check if pbpaste is available (should be on all macOS systems)
-            if (success(`which pbpaste`)) {
-                console.debug("pbpaste found, attempting to get image from clipboard")
-
-                // Try to get PNG data from clipboard
-                try {
-                    let png_data = read(`pbpaste -pboard general -Prefer png`)
-                    if (png_data.length > 0) {
-                        console.debug("Found PNG data in clipboard")
-                        // Create temporary file for PNG data
-                        let temp_file = tempname() * ".png"
-                        open(temp_file, "w") do file
-                            write(file, png_data)
-                        }
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    }
-                } catch (e) {
-                    console.debug(`No PNG data in clipboard: ${e}`)
-                }
-
-                // Try to get TIFF data from clipboard (common on macOS)
-                try {
-                    let tiff_data = read(`pbpaste -pboard general -Prefer tiff`)
-                    if (tiff_data.length > 0) {
-                        console.debug("Found TIFF data in clipboard")
-                        // Create temporary file for TIFF data
-                        temp_file = tempname() * ".tiff"
-                        open(temp_file, "w") do file
-                            write(file, tiff_data)
-                        }
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    }
-                } catch (e) {
-                    console.debug(`No TIFF data in clipboard: ${e}`)
-                }
-
-                // Try to get JPEG data from clipboard
-                try {
-                    let jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
-                    if (jpeg_data.length > 0) {
-                        console.debug("Found JPEG data in clipboard")
-                        // Create temporary file for JPEG data
-                        temp_file = tempname() * ".jpg"
-                        open(temp_file, "w") do file
-                            write(file, jpeg_data)
-                        }
-                        add_clipboard_file_to_import_queue(temp_file)
-                        return
-                    }
-                } catch (e) {
+ catch (e) {
                     console.debug(`No JPEG data in clipboard: ${e}`)
                 }
 
@@ -904,64 +810,21 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
     Try to get image data from Windows clipboard // using PowerShell.
     */
-    function handle_windows_clipboard_image() {
-        try {
-            console.debug("Attempting to get image from Windows clipboard // using PowerShell")
 
-            // PowerShell script to get image from clipboard and save as PNG
-            let powershell_script = /*
-            Add-Type -AssemblyName System.Windows.Forms
-            Add-Type -AssemblyName System.Drawing
-            \$clipboard = [System.Windows.Forms.Clipboard]()
-            if (\$clipboard -ne \$null) {
-                \$temp_file = [System.IO.Path]() + ".png"
-                \$clipboard.Save(\$temp_file, [System.Drawing.Imaging.ImageFormat])
-                Write-Output \$temp_file
-            }
-            */
-
-            try {
-                // Run PowerShell script
-                let result = readchomp(`powershell -Command "$powershell_script"`)
-                if (!isempty(result) && isfile(result)) {
-                    console.debug(`Found image data in Windows clipboard, saved to: ${result}`)
-                    add_clipboard_file_to_import_queue(result)
-                    return
-                }
-            } catch (e) {
-                console.debug(`No image data in Windows clipboard: ${e}`)
-            }
-
-            console.debug("No image data found in Windows clipboard")
-        } catch (e) {
-            console.warn(`Error accessing Windows clipboard: ${e}`)
-        }
-    }
 
     /*
         is_image_file_by_extension(filepath: string) -> Bool
 
     Check if file has an image extension.
     */
-    function is_image_file_by_extension(filepath: string) {
-        let ext = lowercase(splitext(filepath)[2])
-        return ext in [".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".webp"]
-    }
+
 
     /*
         add_clipboard_file_to_import_queue(filepath: string)
 
     Add a clipboard file path to the // import queue.
     */
-    function add_clipboard_file_to_import_queue(filepath: string) {
-        let dropped_files = "dropped_files"
-        if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
-            (globalThis as any).JulGame.EditorState[dropped_files] = [filepath]
-        } else {
-            (globalThis as any).JulGame.EditorState[dropped_files].push(filepath)
-        }
-        console.debug(`Added clipboard file to // import queue: ${basename(filepath)}`)
-    }
+
 
     /*
         handle_base64_image_data(data: string)
@@ -969,57 +832,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     Handle base64 encoded image data from clipboard.
     Creates a temporary file and adds it to the // import queue.
     */
-    function handle_base64_image_data(data: string) {
-        try {
-            // Parse the data URL format: data:image/png;base64,...iVBORw0KGgoAAAANSUhEUgAA
-            if (!occursin(";base64,", data)) {
-                console.warn("Invalid base64 image data format")
-                return
-            }
 
-            // Extract MIME type and base64 data
-            let parts = data.split(";base64,")
-            if (parts.length != 2) {
-                console.warn("Invalid base64 image data format")
-                return
-            }
-
-            let mime_part = parts[0]
-            let base64_data = parts[1]
-
-            // Determine file extension from MIME type
-            let extension = ".png"  // default
-            if (occursin("image/jpeg", mime_part) || occursin("image/jpg", mime_part)) {
-                extension = ".jpg"
-            } else if (occursin("image/png", mime_part)) {
-                extension = ".png"
-            } else if (occursin("image/gif", mime_part)) {
-                extension = ".gif"
-            } else if (occursin("image/bmp", mime_part)) {
-                extension = ".bmp"
-            } else if (occursin("image/webp", mime_part)) {
-                extension = ".webp"
-            }
-
-            // Create temporary file
-            let temp_dir = mktempdir()
-            let timestamp = Dates.format(Dates.now(), "yyyymmdd_HHMMSS")
-            let temp_filename = "clipboard_image_$(timestamp)$(extension)"
-            let temp_filepath = joinpath(temp_dir, temp_filename)
-
-            // Decode base64 and write to file
-            let image_data = Base64.base64decode(base64_data)
-            write(temp_filepath, image_data)
-
-            console.debug(`Created temporary image file from clipboard: ${temp_filepath}`)
-
-            // Add to // import queue
-            add_clipboard_file_to_import_queue(temp_filepath)
-
-        } catch (e) {
-            console.error(`Error processing base64 image data: ${e}`)
-        }
-    }
 
     function update_input_state(self: Input, data: Dict{String, Any})
         this.buttonsHeldDown = [key for (key, value) in data if value]
@@ -1108,18 +921,18 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     }
 
     function create_cursor_bank(self: Input) {
-        self.cursorBank["arrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
-        self.cursorBank["ibeam"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
-        self.cursorBank["wait"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAIT)
-        self.cursorBank["crosshair"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_CROSSHAIR)
-        self.cursorBank["waitarrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAITARROW)
-        self.cursorBank["sizeall"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEALL)
-        self.cursorBank["sizenesw"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENESW)
-        self.cursorBank["sizenwse"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENWSE)
-        self.cursorBank["sizewe"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEWE)
-        self.cursorBank["sizens"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENS)
-        self.cursorBank["no"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_NO)
-        self.cursorBank["hand"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
+        self.cursorBank["arrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_ARROW)
+        self.cursorBank["ibeam"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_IBEAM)
+        self.cursorBank["wait"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_WAIT)
+        self.cursorBank["crosshair"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_CROSSHAIR)
+        self.cursorBank["waitarrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_WAITARROW)
+        self.cursorBank["sizeall"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_SIZEALL)
+        self.cursorBank["sizenesw"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_SIZENESW)
+        self.cursorBank["sizenwse"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_SIZENWSE)
+        self.cursorBank["sizewe"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_SIZEWE)
+        self.cursorBank["sizens"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_SIZENS)
+        self.cursorBank["no"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_NO)
+        self.cursorBank["hand"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor((globalThis as any).JulGameSdl.glue_SDL_SYSTEM_CURSOR_HAND)
     }
 
     // Initialize an SDL_Event instance
@@ -1137,7 +950,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let ntuple_data = Tuple(data)
 
         // Allocate memory for the SDL_Event class itself {
-        let ptr_event = Ptr{SDL2.SDL_Event}(Libc.malloc(sizeof(SDL2.SDL_Event)))  // Allocate memory for SDL_Event struct
+        let ptr_event = Ptr{(globalThis as any).JulGameSdl.glue_SDL_Event}(Libc.malloc(sizeof((globalThis as any).JulGameSdl.glue_SDL_Event)))  // Allocate memory for SDL_Event struct
 
         // Now, initialize the data field of the struct // using unsafe_store!
         unsafe_store(ptr_event, (globalThis as any).JulGameSdl.glue_SDL_Event(ntuple_data))
@@ -1146,7 +959,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     }
 
     function init_mouse_button_event()
-        // Allocate memory for SDL_MouseButtonEvent class ptr_event { = Ptr{SDL2.SDL_MouseButtonEvent}(Libc.malloc(sizeof(SDL2.SDL_MouseButtonEvent)))
+        // Allocate memory for SDL_MouseButtonEvent class ptr_event { = Ptr{(globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent}(Libc.malloc(sizeof((globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent)))
 
         // Initialize the fields directly
         unsafe_store(ptr_event, (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
@@ -1197,15 +1010,15 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
         // Create a mouse button down event
         mouse_event = init_sdl_event()
-        mouse_event.type = SDL2.SDL_MOUSEBUTTONDOWN
+        mouse_event.type = (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN
 
         mouse_event.button = (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
-            SDL2.SDL_MOUSEBUTTONDOWN,  // Type of event
+            (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN,  // Type of event
             0,                        // Timestamp (0 for automatic)
             0,                        // Window ID (0 for default window)
-            0,                        // Which mouse (0 for the primary mouse)
-            SDL2.SDL_BUTTON_LEFT,      // Button being pressed
-            SDL2.SDL_PRESSED,          // Button state (pressed)
+            0,                        // Which mouse (0 for the primary mouse);
+            (globalThis as any).JulGameSdl.glue_SDL_BUTTON_LEFT,      // Button being pressed;
+            (globalThis as any).JulGameSdl.glue_SDL_PRESSED,          // Button state (pressed)
             1,                         // Clicks (1 for single click)
             0,                         // Padding (unused, set to 0)
             x,                         // X position
@@ -1216,14 +1029,14 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         // Immediately push button up event as well so both are processed together
         // This is especially important when window isn't focused
         mouse_up_event = init_sdl_event()
-        mouse_up_event.type = SDL2.SDL_MOUSEBUTTONUP
+        mouse_up_event.type = (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP
         mouse_up_event.button = (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
-            SDL2.SDL_MOUSEBUTTONUP,  // Type of event
+            (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP,  // Type of event
             0,                        // Timestamp (0 for automatic)
             0,                        // Window ID (0 for default window)
-            0,                        // Which mouse (0 for the primary mouse)
-            SDL2.SDL_BUTTON_LEFT,      // Button being pressed
-            SDL2.SDL_RELEASED,         // Button state (released)
+            0,                        // Which mouse (0 for the primary mouse);
+            (globalThis as any).JulGameSdl.glue_SDL_BUTTON_LEFT,      // Button being pressed;
+            (globalThis as any).JulGameSdl.glue_SDL_RELEASED,         // Button state (released)
             1,                         // Clicks (1 for single click)
             0,                         // Padding (unused, set to 0)
             x,                         // X position (same as button down)
@@ -1253,14 +1066,14 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         }
         
         mouse_event = init_sdl_event()
-        mouse_event.type = SDL2.SDL_MOUSEBUTTONUP
+        mouse_event.type = (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP
         mouse_event.button = (globalThis as any).JulGameSdl.glue_SDL_MouseButtonEvent(
-            SDL2.SDL_MOUSEBUTTONUP,  // Type of event
+            (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP,  // Type of event
             0,                        // Timestamp (0 for automatic)
             0,                        // Window ID (0 for default window)
-            0,                        // Which mouse (0 for the primary mouse)
-            SDL2.SDL_BUTTON_LEFT,      // Button being pressed
-            SDL2.SDL_RELEASED,          // Button state (released)
+            0,                        // Which mouse (0 for the primary mouse);
+            (globalThis as any).JulGameSdl.glue_SDL_BUTTON_LEFT,      // Button being pressed;
+            (globalThis as any).JulGameSdl.glue_SDL_RELEASED,          // Button state (released)
             1,                         // Clicks (1 for single click)
             0,                         // Padding (unused, set to 0)
             click_x,                   // X position (same as button down)
@@ -1278,17 +1091,17 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     function simulate_key_press(self: Input, key: string) {
         // Create a keyboard event
         key_event = init_sdl_event()
-        key_event.type = SDL2.SDL_KEYDOWN
+        key_event.type = (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN
         key_event.key = (globalThis as any).JulGameSdl.glue_SDL_KeyboardEvent(
-            SDL2.SDL_KEYDOWN,  // Type of event
+            (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN,  // Type of event
             0,                 // Timestamp (0 for automatic)
             0,                 // Window ID (0 for default window)
             0,                 // State (pressed)
             0,                 // Repeat (0 for no repeat)
             0,                 // Padding
             0,                 // Padding;
-            (globalThis as any).JulGameSdl.glue_SDL_Keysym(   // Keysym structure
-                SDL2.SDL_SCANCODE_SPACE, // Scancode
+            (globalThis as any).JulGameSdl.glue_SDL_Keysym(   // Keysym structure;
+                (globalThis as any).JulGameSdl.glue_SDL_SCANCODE_SPACE, // Scancode
                 0,  // Keycode
                 0,                                   // Modifiers (none)
                 0                                    // Window ID (0 for default window)
@@ -1336,7 +1149,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     function set_cursor_with_image(self: Input, imagePath: string, x: number, y: number, scale_factor: number=1.0) {
         let surface = null
             console.debug("loading cursor from disk")
-            surface = SDL2.IMG_Load(pointer(joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)))
+            surface = (globalThis as any).JulGameSdl.glue_IMG_Load(pointer(joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)))
         }
         console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 

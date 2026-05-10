@@ -70,7 +70,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 			this = new()
 
 			console.debug("Initializing SDL")
-			if ((globalThis as any).JulGameSdl.glue_SDL_Init(SDL2.SDL_INIT_EVERYTHING) != 0) {
+			if ((globalThis as any).JulGameSdl.glue_SDL_Init((globalThis as any).JulGameSdl.glue_SDL_INIT_EVERYTHING) != 0) {
 				console.error(`Failed to initialize SDL, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 			}
 			if (SDL2.TTF_Init() != 0) {
@@ -1224,7 +1224,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			if (entity.collider != null) {
 				let rgba = { r: 0, g: 0, b: 0, a: 255 }
         		(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
 				let scale = entity.transform.scale
 	
@@ -1241,11 +1241,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				let colOffset = collider.offset
 				colOffset = {x: colOffset.x, y: colOffset.y}
 						
-				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, 
-				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S,;
-				(pos.y + colOffset.y - cameraPosition.y) * S, 
-				entity.transform.scale.x * colSize.x * S, 
-				entity.transform.scale.y * colSize.y * S));
+				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer,;
+				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, (pos.y + colOffset.y - cameraPosition.y) * S, entity.transform.scale.x * colSize.x * S, entity.transform.scale.y * colSize.y * S));
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 			}
 		}
@@ -1254,7 +1251,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 	function JulGame_cleanup_sdl_resources() {
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Closing window")
-		if ((globalThis as any).JulGame.Renderer != Ptr{SDL2.SDL_Renderer}(null) && (globalThis as any).JulGame.Renderer != null) {
+		if ((globalThis as any).JulGame.Renderer != Ptr{(globalThis as any).JulGameSdl.glue_SDL_Renderer}(null) && (globalThis as any).JulGame.Renderer != null) {
 			console.debug(`Destroying renderer: ${(globalThis as any).JulGame.Renderer}`);
 			(globalThis as any).JulGameSdl.glue_SDL_DestroyRenderer((globalThis as any).JulGame.Renderer)
 			if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {

@@ -8,6 +8,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     // Effects imports - will be available after Effects 
     // import ..Component.JulGame as JG
     // include(joinpath(@__DIR__, "Sprite", "constants.jl"))
+    // include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
 
     
     class Sprite {
@@ -232,10 +233,8 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         // AFTER anchor positioning: expand render size for effect texture and offset to center it
     
         // Select float or integer precision
-        let dstRect = null
-        if (self.isFloatPrecision) {
-            dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
-        } else {
+        let dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
+        if (!self.isFloatPrecision) {
             dstRect = (globalThis as any).JulGameSdl.glue_SDL_Rect(
                 Math.round(centeredX),
                 Math.round(centeredY),
@@ -250,20 +249,13 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y)) :
             (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
     
-        self.lastRenderedScreenPosition = {x: convert(Float64, dstRect.x), y: convert(Float64, dstRect.y)}
-        self.lastRenderedScreenSize = {x: convert(Float64, dstRect.w), y: convert(Float64, dstRect.h)}
+        self.lastRenderedScreenPosition = {x: Number(dstRect.x), y: Number(dstRect.y)}
+        self.lastRenderedScreenSize = {x: Number(dstRect.w), y: Number(dstRect.h)}
         // Render with appropriate precision
-        let renderFn = self.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
-        if (renderFn() {
-            (globalThis as any).JulGame.Renderer, 
-            texture_to_render, 
-            srcRect, 
-            dstRect,
-            self.rotation, 
-            rotationCenter, 
-            self.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
-        ) != 0
+        let renderFn = self.isFloatPrecision ? (globalThis as any).JulGameSdl.glue_SDL_RenderCopyExF : (globalThis as any).JulGameSdl.glue_SDL_RenderCopyEx
+        if (renderFn((globalThis as any).JulGame.Renderer, texture_to_render, srcRect, dstRect, self.rotation, rotationCenter, self.isFlipped ? 1 : 0) != 0) {
             let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
+
         }
     }
 
@@ -280,13 +272,9 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     }
 
     function get_or_create_texture(imagePath: string, surface: any) {
-        if (haskey(TEXTURE_CACHE, imagePath)) {
-            console.debug(`Using cached texture for: ${imagePath}`)
-            return TEXTURE_CACHE[imagePath]
-        }
         let tex = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, surface)
         if (tex != null) {
-            TEXTURE_CACHE[imagePath] = tex
+
             console.debug(`Created and cached texture for: ${imagePath}`)
         } else {
 
@@ -294,81 +282,20 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return tex
     }
     
-    function serialize_effects(effects: any[]): string
-        if (effects.length < 1) {
-            return "[]"
-        }
-        let parts = []
-        for (const eff of effects) {
-            let T = typeof(eff)
-            let fnames = fieldnames(T)
-            let vals = []
-            for (const f of fnames) {
-                let v = getfield(eff, f)
-                if (v isa Ptr) {
-                    vals.push([f, "=Ptr"].join(""))
-                } else {
-                    vals.push([f, "=", v].join(""))
-                }
-            }
-            parts.push([nameof(T), "(", vals.join(","), ")"].join(""))
-        }
-        return "[" * parts.join(";") * "]"
-    }
-    
-    function generate_effect_cache_key(self: InternalSprite): string
-        // Cache key based on image path, size, and effects - NOT instance ID
-        // This allows sharing effect textures across sprites with same visuals
-        let content = [this.imagePath, "|", this.size.x, "x", this.size.y, "|", serialize_effects(this.effects)].join("")
-        return String(hash(content))
-    }
-    
-    //  effects API
-    function Component_apply_effects(self: InternalSprite, effects: Vector) {
-        self.effects = Any[effect for effect in effects]  // Convert to Vector{Any}
-        
-        // Generate cache key and check if we need to recompute
-        let newKey = generate_effect_cache_key(self)
-        if (self.effectCacheKey == newKey && self.effectTexture != null) {
-            // Already have self effect cached on self sprite
-            console.debug("Sprite.apply_effects!: cache key unchanged; skipping recompute") path=self.imagePath
-
-        }
-        
-        self.effectCacheKey = newKey
-        self.needsEffectUpdate = true
-
-
-    }
-    
-    function apply_style(self: InternalSprite, style) {
-        return apply_effects(self, style.effects)
-    }
-
-
-        empty(SPRITE_EFFECT_CACHE)
-    }
-
-        return snapshot
-    }
-
-        empty(TEXTURE_CACHE)
-    }
-
     function load_fallback_image() {
         let rwops = (globalThis as any).JulGameSdl.glue_SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), FALLBACK_IMAGE_BYTES.length)
         if (rwops == null) {
 
             return null
         }
-        let image = SDL2.IMG_Load_RW(rwops, 1)  // Load directly from memory and free rwops after use
+        let image = (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rwops, 1)  // Load directly from memory and free rwops after use
         return image
     }
 
     function Component_load_image(self: InternalSprite, imagePath: string) {
         (globalThis as any).JulGameSdl.glue_SDL_ClearError()
 
-        let fullPath = joinpath(BasePath, "assets", "images", imagePath)
+        let fullPath = joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)
         self.image = load_image_sdl(fullPath, imagePath)
         let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
     
@@ -413,7 +340,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let commaSeparatedPath = (globalThis as any).JulGame.get_comma_separated_path(imagePath)
         console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 
-        return SDL2.IMG_Load(fullPath)
+        return (globalThis as any).JulGameSdl.glue_IMG_Load(fullPath)
     }
 
     function Component_destroy(self: InternalSprite) {

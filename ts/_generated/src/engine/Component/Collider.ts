@@ -181,7 +181,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
 
         let rgba = { r: 0, g: 0, b: 0, a: 255 }
         // (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
-        // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, SDL2.SDL_ALPHA_OPAQUE)
+        // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
         
         let result = (globalThis as any).JulGameSdl.glue_SDL_Rect(0,0,0,0)
         let isIntersection = (globalThis as any).JulGameSdl.glue_SDL_IntersectRect(a, b, result)

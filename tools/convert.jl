@@ -988,6 +988,8 @@ function replace_julia_ts_literals(data::AbstractString)
     # `clamp(...)` stays as `clamp(...)`; generated files import it from `juliaHelpers.ts`.
     # Numeric helpers.
     data = replace(data, r"\bFloat64\(" => "Number(")
+    # `convert(Float64, x)` (no global `convert` in JS) — same intent as `Float64(x)`.
+    data = replace(data, r"\bconvert\s*\(\s*Float64\s*,\s*" => "Number(")
     data = replace(data, r"\binv\(([^()]+)\)" => s"(1 / (\1))")
     # Julia tuple literals in value position: `(a, b, c)` -> `[a, b, c]`.
     data = replace(data, r"=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s"= [\1]")
@@ -1578,14 +1580,20 @@ end
 
 function rewrite_sdl_calls_to_glue(data::AbstractString)::String
     s = String(data)
-    # Base mapping: SDL2.SDL_Foo(...) -> JulGameSdl.glue_SDL_Foo(...)
-    s = replace(s, r"\bSDL2\.SDL_([A-Za-z0-9_]+)\(" => s"(globalThis as any).JulGameSdl.glue_SDL_\1(")
-    # SDL_mixer: SDL2.Mix_Foo(...) -> JulGameSdl.glue_Mix_Foo(...)
-    s = replace(s, r"\bSDL2\.Mix_([A-Za-z0-9_]+)\(" => s"(globalThis as any).JulGameSdl.glue_Mix_\1(")
+    # `Ref(SDL2.SDL_FRect(...))` → glue ctor (must **not** flatten to `a, b, c, d` — breaks `let dstRect = ...`).
+    s = replace(s, r"Ref\(SDL2\.SDL_FRect\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)\)" => s"(globalThis as any).JulGameSdl.glue_SDL_FRect(\1, \2, \3, \4)")
+    # SDL_RendererFlip — use numeric values (no `SDL2` namespace in generated TS).
+    s = replace(s, r"\bSDL2\.SDL_FLIP_NONE\b" => "0")
+    s = replace(s, r"\bSDL2\.SDL_FLIP_HORIZONTAL\b" => "1")
+    s = replace(s, r"\bSDL2\.SDL_FLIP_VERTICAL\b" => "2")
+    # SDL2.SDL_* — calls **and** value refs (`renderFn = SDL2.SDL_RenderCopyExF`).
+    s = replace(s, r"\bSDL2\.SDL_([A-Za-z0-9_]+)\b" => s"(globalThis as any).JulGameSdl.glue_SDL_\1")
+    # SDL_mixer
+    s = replace(s, r"\bSDL2\.Mix_([A-Za-z0-9_]+)\b" => s"(globalThis as any).JulGameSdl.glue_Mix_\1")
+    # SDL_image
+    s = replace(s, r"\bSDL2\.IMG_([A-Za-z0-9_]+)\b" => s"(globalThis as any).JulGameSdl.glue_IMG_\1")
     # Drop renderer ptr first-arg for calls now routed to glue.
     s = replace(s, r"\b(glue_SDL_[A-Za-z0-9_]+)\(\s*(?:Renderer|\(globalThis as any\)\.JulGame\.Renderer)\s*,\s*" => s"\1(")
-    # Flatten SDL_FRect wrapper when used as arg.
-    s = replace(s, r"Ref\(SDL2\.SDL_FRect\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)\)" => s"\1, \2, \3, \4")
     # Normalize Julia 1-based indexing to TS 0-based for any numeric index.
     s = rewrite_one_based_indices(s)
     # RenderDrawBlendMode variant currently modeled as blend-only glue.
@@ -2320,6 +2328,14 @@ function custom_function_removal(data::AbstractString)
         "serialize_effects",
         "clear_texture_cache",
 
+        # Input
+        "handle_x11_clipboard_image",   
+        "handle_macos_clipboard_image",
+        "handle_windows_clipboard_image",
+        "is_image_file_by_extension",
+        "add_clipboard_file_to_import_queue",
+        "handle_base64_image_data",
+        
     ]
     s = String(data)
     for func in functions_to_remove
@@ -2678,6 +2694,7 @@ const TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS = Dict{String,String}(
     "haskey((globalThis as any).JulGame.AUDIO_CACHE" => "",
     "haskey((globalThis as any).JulGame.IMAGE_CACHE" => "",
     "usingEffectTex" => "",
+    "haskey(TEXTURE_CACHE, imagePath)" => "",
 )
 
 function _find_ts_if_opening_brace_on_line(ln::AbstractString, cond_paren_inner_start::Int)::Union{Nothing, Int}
@@ -2789,6 +2806,7 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     push!(line_rules, "texture_to_render = self.effectTexture" => "")
     push!(line_rules, "show_backtrace" => "")
     push!(line_rules, "@error" => "")
+    push!(line_rules, "TEXTURE_CACHE[imagePath] = tex" => "")
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line
         for (needle, replacement) in line_rules
