@@ -829,10 +829,73 @@ function replace_julia_ts_literals(data::AbstractString)
     # info with string literal
     data = replace(data, r"(?m)@info\s+\"([^\"]*)\".*$" => s"console.info(\"\1\")")
     data = rewrite_console_double_quoted_dollar_strings_to_templates(data)
+    data = replace_julia_symbol_literals_to_ts_strings(data)
     data = replace_julia_stdlib_string_ops(data)
     data = insert_semicolon_before_line_starting_with_open_paren(data)
     data = replace_julia_string_calls_to_ts(data)
     return data
+end
+
+# Julia symbol literal values `:name` -> TS string literal `"name"`.
+# Conservative rewrite: only in value-like positions, skipping quoted/template strings.
+function replace_julia_symbol_literals_to_ts_strings(data::AbstractString)::String
+    s = String(data)
+    io = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    is_ident_start(c::Char) = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'
+    is_ident_char(c::Char) = is_ident_start(c) || (c >= '0' && c <= '9')
+    while i <= n
+        c = s[i]
+        if c == '"' || c == '\'' || c == '`'
+            q = c
+            j = i
+            write(io, q)
+            j = nextind(s, j)
+            while j <= n
+                cj = s[j]
+                write(io, cj)
+                if cj == '\\'
+                    j = nextind(s, j)
+                    j <= n && write(io, s[j])
+                    j = nextind(s, j)
+                    continue
+                end
+                if cj == q
+                    j = nextind(s, j)
+                    break
+                end
+                j = nextind(s, j)
+            end
+            i = j
+            continue
+        end
+        if c == ':'
+            prev_ok = false
+            if i == firstindex(s)
+                prev_ok = true
+            else
+                p = s[prevind(s, i)]
+                prev_ok = isspace(p) || p in ('(', '[', '{', ',', '=', ';', '?', '+', '-', '*', '/', '%', '!', '&', '|', '^', '~', '<', '>')
+            end
+            if prev_ok && (i == firstindex(s) || s[prevind(s, i)] != ':')
+                j = nextind(s, i)
+                if j <= n && is_ident_start(s[j])
+                    k = j
+                    while k <= n && is_ident_char(s[k])
+                        k = nextind(s, k)
+                    end
+                    sym = s[j:prevind(s, k)]
+                    write(io, '"', sym, '"')
+                    i = k
+                    continue
+                end
+            end
+        end
+        write(io, c)
+        i = nextind(s, i)
+    end
+    return String(take!(io))
 end
 
 # Julia `replace` / `split` / `join` on strings and arrays → TS `String` / `Array` builtins (no helpers).
@@ -1618,7 +1681,7 @@ function replace_types(data::AbstractString)
         "Float64" => "number",
         "String" => "string",
         "Bool" => "boolean",
-        "Symbol" => "symbol",
+        "Symbol" => "string",
         "InternalAnimator" => "InternalAnimator",
         "InternalSprite" => "InternalSprite",
         "InternalShape" => "InternalShape",
@@ -1958,13 +2021,16 @@ function custom_function_removal(data::AbstractString)
         "on_notify",
 
         "Base.setproperty!",
+
+        # Sprite
         "get_effect_cache_snapshot",
         "clear_sprite_effects_cache",
         "update_effects",
         "apply_style",
         "Component_apply_effects",
         "generate_effect_cache_key",
-        "serialize_effects"
+        "serialize_effects",
+        "clear_texture_cache",
 
     ]
     s = String(data)
@@ -2432,6 +2498,8 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     push!(line_rules, "throw(" => "")
     push!(line_rules, "update_effects(" => "")
     push!(line_rules, "texture_to_render = self.effectTexture" => "")
+    push!(line_rules, "show_backtrace" => "")
+    push!(line_rules, "@error" => "")
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line
         for (needle, replacement) in line_rules

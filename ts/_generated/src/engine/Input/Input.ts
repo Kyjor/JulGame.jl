@@ -194,7 +194,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return m.latencyProfiler
     }
 
-    function _input_poll_accumulate(prof, t0, key: symbol)
+    function _input_poll_accumulate(prof, t0, key: string)
         if (prof === null) { return let dt = (time_ns() - t0) / 1e6 }
         (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
         t0 = time_ns()
@@ -218,7 +218,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return _trace_input_ui_hit_iter_ref: boolean
     }
 
-    function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: symbol, kvs...)
+    function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: string, kvs...)
         let t1 = time_ns()
         let dt = (t1 - t_blk) / 1e6
         t_blk = t1
@@ -235,7 +235,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return
     }
 
-    function _input_ui_hit_span(prof, t0: number, key: symbol, kvs...) {
+    function _input_ui_hit_span(prof, t0: number, key: string, kvs...) {
         let dt = (time_ns() - t0) / 1e6
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
@@ -267,7 +267,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             } else if (!Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))) {
                 break
             }
-            _input_poll_accumulate(prof, t0, :sdl_PollEvent)
+            _input_poll_accumulate(prof, t0, "sdl_PollEvent")
 
             let evt = event_ref
             handle_window_events(self, evt)
@@ -333,7 +333,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 }
             }
 
-            _input_poll_accumulate(prof, t0, :window_routing)
+            _input_poll_accumulate(prof, t0, "window_routing")
 
             if (evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
                 let t_ms_blk = time_ns()
@@ -347,32 +347,32 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                 let ui_hit_active = MAIN.scene.uiElements !== null && ((globalThis as any).JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
                 if (ui_hit_active) {
-                    _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_preamble)
+                    _input_ui_hit_span(prof, t_ms_blk, "hit_mouse_evt_preamble")
                     let t_ui_wall = time_ns()
                     let t_hit = time_ns()
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = [this.mousePosition.x, this.mousePosition.y], n_ui = MAIN.scene.uiElements.length)
+                    _input_ui_hit_step(prof, t_hit, "hit_ui_enter"; evt = evt.type, mouse = [this.mousePosition.x, this.mousePosition.y], n_ui = MAIN.scene.uiElements.length)
                     if (MAIN.scene.camera === null) {
-                        _input_ui_hit_step(prof, t_hit, :hit_ui_abort_camera)
+                        _input_ui_hit_step(prof, t_hit, "hit_ui_abort_camera")
                         @warn ("Camera is not set in the main scene.")
-                        _input_poll_accumulate(prof, t0, :mouse_ui_aborted_no_camera)
+                        _input_poll_accumulate(prof, t0, "mouse_ui_aborted_no_camera")
                         continue
                     }
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_camera_ok)
+                    _input_ui_hit_step(prof, t_hit, "hit_ui_camera_ok")
 
                     let canvases = filter(x -> isa(x, (globalThis as any).JulGame.ICanvas), MAIN.scene.uiElements)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_filter_canvas; n_canvases = canvases.length)
+                    _input_ui_hit_step(prof, t_hit, "hit_ui_filter_canvas"; n_canvases = canvases.length)
 
                     // Use cached layer order instead of sorting every mouse event
                     // This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
 
                     let uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_sort_ui; n = uiElementsOrderedByLayerDescending.length)
+                    _input_ui_hit_step(prof, t_hit, "hit_ui_sort_ui"; n = uiElementsOrderedByLayerDescending.length)
 
                     let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== null && entity.sprite !== null, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_sort_entities; n = entitiesWithSpritesOrderedByLayerDescending.length, n_entities = MAIN.scene.entities.length)
+                    _input_ui_hit_step(prof, t_hit, "hit_ui_sort_entities"; n = entitiesWithSpritesOrderedByLayerDescending.length, n_entities = MAIN.scene.entities.length)
 
                     let elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
-                    _input_ui_hit_step(prof, t_hit, :hit_ui_vcat; n_total = elementsOrderedByLayerDescending.length)
+                    _input_ui_hit_step(prof, t_hit, "hit_ui_vcat"; n_total = elementsOrderedByLayerDescending.length)
 
                     // TODO: add rest of entities without sprites in default order
                     // restOfEntities = filter(entity -> entity.sprite === null || entity.sprite === null, MAIN.scene.entities)
@@ -412,11 +412,11 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                         if (skipElement) {
                             console.debug(`Skipping element ${element.name} - isActive: ${element.isActive}, ignoreInputEvents: $(isa(element, (globalThis as any).JulGame.IEntity) ? element.ignoreInputEvents : `)N/A")"
-                            _input_ui_hit_span(prof, t_iter, :hit_ui_iter_skip_early)
+                            _input_ui_hit_span(prof, t_iter, "hit_ui_iter_skip_early")
                             continue
                         }
 
-                        _input_ui_hit_span(prof, t_iter, :hit_ui_iter_probe_active_filter)
+                        _input_ui_hit_span(prof, t_iter, "hit_ui_iter_probe_active_filter")
                         let t_prep0 = time_ns()
 
                         // Check position of button to see which we are interacting with
@@ -425,16 +425,16 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         let mouseX = this.mousePosition.x
                         let mouseY = this.mousePosition.y
 
-                        _input_ui_hit_span(prof, t_prep0, :hit_ui_iter_probe_prep_hitbox)
+                        _input_ui_hit_span(prof, t_prep0, "hit_ui_iter_probe_prep_hitbox")
                         let t_geom0 = time_ns()
 
                         // UI Element position and size in screen space (MUST BE SCALED)
                         let elementPosition = get_element_position(element)
-                        _input_ui_hit_span(prof, t_geom0, :hit_ui_iter_probe_get_position)
+                        _input_ui_hit_span(prof, t_geom0, "hit_ui_iter_probe_get_position")
                         let t_sz0 = time_ns()
 
                         let elementSize = get_element_size(element)
-                        _input_ui_hit_span(prof, t_sz0, :hit_ui_iter_probe_get_size)
+                        _input_ui_hit_span(prof, t_sz0, "hit_ui_iter_probe_get_size")
                         let t_unpk0 = time_ns()
 
                         let screenElementX = elementPosition.x
@@ -445,7 +445,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         console.debug(`Checking element '${element.name}': mouse(${mouseX}, ${mouseY}) vs element(${screenElementX}, ${screenElementY}, ${screenElementWidth}, ${screenElementHeight})`)
 
                         // Check if the mouse is inside the UI element (// using game world coordinates)
-                        _input_ui_hit_span(prof, t_unpk0, :hit_ui_iter_probe_unpack_layout)
+                        _input_ui_hit_span(prof, t_unpk0, "hit_ui_iter_probe_unpack_layout")
                         let t_aabb = time_ns()
                         if (mouseX < screenElementX) {
                             eventWasInsideThisElement = false
@@ -460,13 +460,13 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                             eventWasInsideThisElement = false
                             console.debug(`  -> Mouse Y (${mouseY}) > element bottom (${screenElementY + screenElementHeight})`)
                         }
-                        _input_ui_hit_span(prof, t_aabb, :hit_ui_iter_probe_aabb)
+                        _input_ui_hit_span(prof, t_aabb, "hit_ui_iter_probe_aabb")
 
                         if (!eventWasInsideThisElement) {
                             element.isHovered = false
                             let t_ctr = time_ns()
                             n_miss_bounds += 1
-                            _input_ui_hit_span(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
+                            _input_ui_hit_span(prof, t_ctr, "hit_ui_iter_miss_hover_counter_inc")
                             continue
                         }
 
@@ -475,12 +475,12 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         console.debug(`  -> Mouse is INSIDE element '${element.name}'`)
 
                         let clicked_down_here = clicked_down_on_this_element(this, element)
-                        _input_ui_hit_span(prof, t_hi, :hit_inside_1_clicked_down_query)
+                        _input_ui_hit_span(prof, t_hi, "hit_inside_1_clicked_down_query")
                         t_hi = time_ns()
 
                         let canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_here
                         console.debug(`  -> canClickOnThisElement: ${canClickOnThisElement}, clickedAnElementAlready: ${clickedAnElementAlready}, forceClickCheck: ${element.forceClickCheck}, clicked_down_on_this_element: ${clicked_down_here}`)
-                        _input_ui_hit_span(prof, t_hi, :hit_inside_2_can_click_bools)
+                        _input_ui_hit_span(prof, t_hi, "hit_inside_2_can_click_bools")
                         t_hi = time_ns()
 
                         if (!clickedAnElementAlready || element.forceClickCheck) {
@@ -491,7 +491,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                                 (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
 
                             console.debug(`  -> shouldHandleEvent: ${shouldHandleEvent} (event type: ${evt.type}, hoveredAnElementAlready: ${hoveredAnElementAlready})`)
-                            _input_ui_hit_span(prof, t_hi, :hit_inside_3a_should_handle_expr)
+                            _input_ui_hit_span(prof, t_hi, "hit_inside_3a_should_handle_expr")
                             t_hi = time_ns()
 
                             if (shouldHandleEvent) {
@@ -502,19 +502,19 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                                    this.elementsBeingClickedDownOn.push(element)
                                    console.debug(`  -> Added '${element.name}' to elementsBeingClickedDownOn`)
                                 }
-                                _input_ui_hit_span(prof, t_hi, :hit_inside_5_push_clicked_down_optional)
+                                _input_ui_hit_span(prof, t_hi, "hit_inside_5_push_clicked_down_optional")
                                 t_hi = time_ns()
                             } else {
-                                _input_ui_hit_span(prof, t_hi, :hit_inside_4_skip_should_handle_false)
+                                _input_ui_hit_span(prof, t_hi, "hit_inside_4_skip_should_handle_false")
                                 t_hi = time_ns()
                             }
                             if (element.isHovered) {
                                 hoveredAnElementAlready = true
                             }
-                            _input_ui_hit_span(prof, t_hi, :hit_inside_6_hover_an_element_already)
+                            _input_ui_hit_span(prof, t_hi, "hit_inside_6_hover_an_element_already")
                             t_hi = time_ns()
                         } else {
-                            _input_ui_hit_span(prof, t_hi, :hit_inside_3b_skip_clicked_guard)
+                            _input_ui_hit_span(prof, t_hi, "hit_inside_3b_skip_clicked_guard")
                             t_hi = time_ns()
                         }
 
@@ -529,25 +529,25 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                             }
                             clickedAnElementAlready = true
                         }
-                        _input_ui_hit_span(prof, t_hi, :hit_inside_7_mouse_btn_tail)
+                        _input_ui_hit_span(prof, t_hi, "hit_inside_7_mouse_btn_tail")
                     }
                     let t_tail = time_ns()
                     if (evt.type == SDL2.SDL_MOUSEBUTTONUP) {
                         this.elementsBeingClickedDownOn = []
-                        _input_ui_hit_step(prof, t_tail, :hit_ui_clear_click_state)
+                        _input_ui_hit_step(prof, t_tail, "hit_ui_clear_click_state")
                     }
-                    _input_ui_hit_step(prof, t_tail, :hit_ui_block_end)
-                    _input_ui_hit_span(prof, t_ui_wall, :hit_ui_block_wall_clock)
+                    _input_ui_hit_step(prof, t_tail, "hit_ui_block_end")
+                    _input_ui_hit_span(prof, t_ui_wall, "hit_ui_block_wall_clock")
                 } else {
-                    _input_ui_hit_span(prof, t_ms_blk, :hit_mouse_evt_skip_ui_hit_path)
+                    _input_ui_hit_span(prof, t_ms_blk, "hit_mouse_evt_skip_ui_hit_path")
                 }
 
                 let t_hm = time_ns()
                 handle_mouse_event(this, evt)
-                _input_ui_hit_span(prof, t_hm, :hit_mouse_evt_handle_mouse_event)
+                _input_ui_hit_span(prof, t_hm, "hit_mouse_evt_handle_mouse_event")
             }
 
-            _input_poll_accumulate(prof, t0, :mouse_ui_hit_test_dispatch)
+            _input_poll_accumulate(prof, t0, "mouse_ui_hit_test_dispatch")
 
             //if evt.type == SDL2.SDL_JOYAXISMOTION
                 if (evt.jaxis.which == 0) {
@@ -604,7 +604,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 }
             if (evt.type == SDL2.SDL_QUIT) {
                 this.quit = true
-                _input_poll_accumulate(prof, t0, :joystick_keyboard_state)
+                _input_poll_accumulate(prof, t0, "joystick_keyboard_state")
                 return -1
             }
             if (evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3) {
@@ -615,7 +615,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             let keyboardState = unsafe_wrap(Array, (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null), 300; own = false)
             handle_key_event(this, keyboardState)
 
-            _input_poll_accumulate(prof, t0, :joystick_keyboard_state)
+            _input_poll_accumulate(prof, t0, "joystick_keyboard_state")
         }
 
         if (this.isTestButtonClicked) {
@@ -667,7 +667,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                     return true
                 }
             catch
-                @error("Error checking scan code $(scanCode) at index $(Int32(scanCode) + 1)")
+
             }
         }
         return false

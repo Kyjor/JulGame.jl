@@ -50,7 +50,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 		scene: Scene
 		selectedEntities//: Entity[] | UIElement[] | null
 		shouldChangeScene: boolean
-		spriteLayers: NamedTuple{(:layers, :sorted), Tuple{Dict{Int, Vector{Any}}, Vector{Int}}}
+		spriteLayers: NamedTuple{("layers", "sorted"), Tuple{Dict{Int, Vector{Any}}, Vector{Int}}}
 		testLength: number
 		testMode: boolean
 		windowManager: WindowManager
@@ -308,8 +308,8 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 						if (self.testMode) {
 
 						} else {
-							@error String(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+
+
 						}
                     }
                 }
@@ -329,7 +329,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 						} else {
 							if (typeof(e) != ErrorException) {
 								console.log(`Error shutting down script: ${typeof(script)}`)
-								Base.show_backtrace(stdout, catch_backtrace())
+
 							}
 						}
                     }
@@ -416,8 +416,8 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 					if (this.testMode) {
 
 					} else {
-						@error String(e)
-						Base.show_backtrace(stdout, catch_backtrace())
+
+
 					}
 				}
 			}
@@ -504,8 +504,8 @@ function JulGame_change_scene(sceneFileName: string) {
 					} else {
 						if (typeof(e) != ErrorException) {
 							console.log(`Error shutting down script: ${typeof(script)}`)
-							@error String(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+
+
 						}
 					}
 				}
@@ -731,7 +731,7 @@ Parameters:
 - `startTime`: A reference to the start time of the game loop.
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 */
-function _accum_ui_render_breakdown_ms(prof, t0, key: symbol)
+function _accum_ui_render_breakdown_ms(prof, t0, key: string)
 	if (prof === null) { return let t1 = time_ns() }
 	(globalThis as any).JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0) / 1e6)
 	t0 = t1
@@ -824,8 +824,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 						} else {
 							console.log(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-							@error String(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+
+
 						}
 					}
 				}
@@ -873,8 +873,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 						} else {
 							console.log(entity.name, " with id: ", entity.id, " has a problem with it's update")
-							@error String(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+
+
 						}
 					}
 					let entityAnimator = entity.animator
@@ -993,8 +993,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						}
 						console.log(parent_info, " has a problem with it's render function")
-						@error String(e)
-						Base.show_backtrace(stdout, catch_backtrace())
+
+
 					}
 				}
 			}
@@ -1062,8 +1062,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			if (this.testMode) {
 
 			} else {
-				@error String(e)
-				Base.show_backtrace(stdout, catch_backtrace())
+
+
 			}
 		}
 		
@@ -1183,8 +1183,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					}
 					console.log(parent_info, " has a problem with rendering")
-					@error String(e)
-					Base.show_backtrace(stdout, catch_backtrace())
+
+
 				}
 			}
 		}

@@ -82,8 +82,8 @@ export {}
         try {
             (globalThis as any).JulGame.initialize(script)
         } catch (e) {
-            @error String(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+
+
         }
     }
 
@@ -165,7 +165,7 @@ export {}
         return newSoundSource
     }
 
-    function JulGame_add_sprite(self: Entity, isCreatedInEditor: boolean = false, sprite: Sprite = Sprite((255, 255, 255, 255), null, false, "", 0, {x: 0, y: 0}, {x: 0, y: 0}, 0, -1, {x: 0.5, y: 0.5}, :center, false)) {
+    function JulGame_add_sprite(self: Entity, isCreatedInEditor: boolean = false, sprite: Sprite = Sprite((255, 255, 255, 255), null, false, "", 0, {x: 0, y: 0}, {x: 0, y: 0}, 0, -1, {x: 0.5, y: 0.5}, "center", false)) {
         if (self.sprite != null) {
             console.log("Sprite already exists on entity named ", self.name)
             return

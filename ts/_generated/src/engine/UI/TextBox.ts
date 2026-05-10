@@ -59,7 +59,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         function TextBox(text: string; 
             id: string=(globalThis as any).JulGame.generate_uuid(), 
             name: string = "TextBox", 
-            anchor: symbol = :none,
+            anchor: string = "none",
             anchorOffset = {x: 0, y: 0}, 
             isWorldEntity: boolean=false, 
             layer: number=0,
@@ -97,7 +97,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             this.layer = layer
             this.name = name
             this.position = position
-            setfield(this, :text, text)
+            setfield(this, "text", text)
             this.isWorldEntity = isWorldEntity
             this.persistentBetweenScenes = persistentBetweenScenes
             this.isActive = isActive
