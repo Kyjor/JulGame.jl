@@ -1,7 +1,6 @@
 export {}
-import { clamp } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
-import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -112,7 +111,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             Component_load_image(this: InternalSprite, imagePath: string)
             if (this.image == null) {
                 let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
-                @error(string("Couldn't open image! path: $(fullPath) SDL Error: ", error))
+                @error(["Couldn't open image! path: $(fullPath) SDL Error: ", error].join(""))
                 Base.show_backtrace(stdout, catch_backtrace())
                 return
             }
@@ -278,7 +277,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             rotationCenter, 
             this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE
         ) != 0
-            error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
+            let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
         }
     }
 
@@ -327,25 +326,21 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             for (const f of fnames) {
                 let v = getfield(eff, f)
                 if (v isa Ptr) {
-                    vals.push(string(f, "=Ptr"))
+                    vals.push([f, "=Ptr"].join(""))
                 } else {
-                    vals.push(string(f, "=", v))
+                    vals.push([f, "=", v].join(""))
                 }
             }
-            parts.push(string(nameof(T), "(", join(vals, ","), ")"))
+            parts.push([nameof(T), "(", vals.join(","), ")"].join(""))
         }
-        return "[" * join(parts, ";") * "]"
+        return "[" * parts.join(";") * "]"
     }
     
     function generate_effect_cache_key(self: InternalSprite): string
         // Cache key based on image path, size, and effects - NOT instance ID
         // This allows sharing effect textures across sprites with same visuals
-        let content = string(
-            this.imagePath, "|",
-            this.size.x, "x", this.size.y, "|",
-            serialize_effects(this.effects)
-        )
-        return string(hash(content))
+        let content = [this.imagePath, "|", this.size.x, "x", this.size.y, "|", serialize_effects(this.effects)].join("")
+        return String(hash(content))
     }
     
     //  effects API
@@ -369,82 +364,11 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     function apply_style(self: InternalSprite, style) {
         return apply_effects(self, style.effects)
     }
-    
-    function update_effects(self: InternalSprite) {
-        if (isempty(self.effects) || !self.needsEffectUpdate) {
-            return
-        }
-        
-        // Check shared cache first
-        if (haskey(SPRITE_EFFECT_CACHE, self.effectCacheKey)) {
-            let cached = SPRITE_EFFECT_CACHE[self.effectCacheKey]
-            self.effectTexture = cached[0]
-            self.effectSize = cached[1]
-            self.needsEffectUpdate = false
-            console.debug("Sprite // using cached effect texture") path=self.imagePath key=self.effectCacheKey
-            return
-        }
-        
-        // Create target for effects
-        let target = (globalThis as any).(globalThis as any).JulGame.EffectsModule.SpriteTarget(self)
-        
-        // Apply effects
-        try {
-            let result = (globalThis as any).(globalThis as any).JulGame.EffectRendererModule.apply_effects(target, self.effects)
-            if (result isa (globalThis as any).(globalThis as any).JulGame.EffectsModule.SpriteTarget) {
-                // Effect texture should be updated by the renderer
-                // Query the effect texture size and store it
-                if (self.effectTexture != null) {
-                    let w = Ref{Cint}(0); h = Ref{Cint}(0)
-                    let fmt = Ref{UInt32}(0); access = Ref{Cint}(0);
-                    (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(self.effectTexture, fmt, access, w, h)
-                    self.effectSize = {x: w, y: h}
-                    
-                    // Cache the result for other sprites with same visuals
-                    SPRITE_EFFECT_CACHE[self.effectCacheKey] = [self.effectTexture, self.effectSize]
-                    console.debug("Cached sprite effect texture") path=self.imagePath key=self.effectCacheKey
-                }
-                self.needsEffectUpdate = false
-            }
-        } catch (e) {
-            @error("Failed to apply effects to sprite: $e")
-        }
-    }
-    
-    function clear_sprite_effects_cache() {
-        for (key, cached) in SPRITE_EFFECT_CACHE
-            if (cached[0] != null) {
-                (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(cached[0])
-            }
-        }
+
+
         empty(SPRITE_EFFECT_CACHE)
     }
 
-    function get_effect_cache_snapshot() {
-        let snapshot = []
-        for (key, cached) in SPRITE_EFFECT_CACHE
-            let texture = cached[0]
-            let size = cached[1]
-            let width = Int(Math.round(size.x))
-            let height = Int(Math.round(size.y))
-            if ((width <= 0 || height <= 0) && texture != null) {
-                w = Ref{Cint}(0)
-                let h = Ref{Cint}(0)
-                fmt = Ref{UInt32}(0)
-                let access = Ref{Cint}(0)
-                if ((globalThis as any).JulGameSdl.glue_SDL_QueryTexture(texture, fmt, access, w, h) == 0) {
-                    width = Int(w)
-                    height = Int(h)
-                }
-            }
-            snapshot.push((
-                let key = key,
-                texture = texture,
-                width = width,
-                height = height,
-                let approxBytes = width * height * 4,
-            ))
-        }
         return snapshot
     }
 
@@ -492,7 +416,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
         let fullPath = joinpath(BasePath, "assets", "images", imagePath)
         self.image = load_image_sdl(fullPath, imagePath)
-        error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
+        let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
     
         if (!isempty(error) || self.image == null) {
             try {
@@ -516,7 +440,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         }
     
         // Get image size
-        surface = unsafe_wrap(Array, self.image, 10; own = false)
+        let surface = unsafe_wrap(Array, self.image, 10; own = false)
         self.size = {x: surface[0].w, y: surface[0].h}
 
         // Create or get cached texture
@@ -533,15 +457,6 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function load_image_sdl(fullPath: string, imagePath: string) {
         let commaSeparatedPath = (globalThis as any).JulGame.get_comma_separated_path(imagePath)
-        if (haskey((globalThis as any).JulGame.IMAGE_CACHE, commaSeparatedPath)) {
-            let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[commaSeparatedPath]
-            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
-            if (rw != null) {
-                console.debug("loading image from cache")
-                console.debug("comma separated path: ", commaSeparatedPath)
-                return SDL2.IMG_Load_RW(rw, 1)
-            }
-        }
         console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 
         return SDL2.IMG_Load(fullPath)

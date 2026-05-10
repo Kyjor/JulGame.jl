@@ -122,6 +122,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = prefix_new_for_listed_class_constructors(data)
     data = rename_julia_this_receiver_to_self(data)
     data = prepend_generated_ts_imports(data, path_ts)
+    data = replace_ts_if_blocks_when_block_contains_substring(data)
     data = replace_entire_line_if_matches(data)
     data = "export {}\n" * data
     open(path_ts, "w") do io
@@ -153,16 +154,22 @@ end
 function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractString)::String
     need_clamp = occursin(r"\bclamp\s*\(", data)
     need_unsafe_string = occursin(r"\bunsafe_string\s*\(", data)
+    need_joinpath = occursin(r"\bjoinpath\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
-    (!need_clamp && !need_unsafe_string && !need_vec) && return data
+    (!need_clamp && !need_unsafe_string && !need_joinpath && !need_vec) && return data
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
-    if need_clamp
+    if need_clamp || need_unsafe_string || need_joinpath
         h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
         if isfile(h)
             rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
             rel = replace(rel, r"\.ts$" => "")
-            push!(lines, string("import { clamp } from \"", rel, "\";"))
+            syms = String[]
+            need_clamp && push!(syms, "clamp")
+            need_joinpath && push!(syms, "joinpath")
+            need_unsafe_string && push!(syms, "unsafe_string")
+            sort!(syms)
+            push!(lines, string("import { ", join(syms, ", "), " } from \"", rel, "\";"))
         end
     end
     if need_vec
@@ -171,14 +178,6 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             relv = replace(String(relpath(v, ts_dir)), '\\' => '/')
             relv = replace(relv, r"\.ts$" => "")
             push!(lines, string("import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from \"", relv, "\";"))
-        end
-    end
-    if need_unsafe_string
-        h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
-        if isfile(h)
-            rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
-            rel = replace(rel, r"\.ts$" => "")
-            push!(lines, string("import { unsafe_string } from \"", rel, "\";"))
         end
     end
     isempty(lines) && return data
@@ -830,8 +829,151 @@ function replace_julia_ts_literals(data::AbstractString)
     # info with string literal
     data = replace(data, r"(?m)@info\s+\"([^\"]*)\".*$" => s"console.info(\"\1\")")
     data = rewrite_console_double_quoted_dollar_strings_to_templates(data)
-    data = insert_semicolon_after_close_paren_before_line_starting_with_open_paren(data)
+    data = replace_julia_stdlib_string_ops(data)
+    data = insert_semicolon_before_line_starting_with_open_paren(data)
+    data = replace_julia_string_calls_to_ts(data)
     return data
+end
+
+# Julia `replace` / `split` / `join` on strings and arrays → TS `String` / `Array` builtins (no helpers).
+
+"""Julia `replace(s, '\\\\' => '/')` — parse args with comma-splitter (regex `[^,]+?` can grab wrong prefix)."""
+function replace_julia_replace_backslash_with_slash_calls(data::AbstractString)::String
+    s = String(data)
+    fi = firstindex(s)
+    pair_pat = r"^'\s*\\\\\s*'\s*=>\s*'/'"
+    changed = true
+    while changed
+        changed = false
+        i = fi
+        n = lastindex(s)
+        while i <= n
+            rg = findnext(r"\breplace\s*\(", s, i)
+            rg === nothing && break
+            lo = first(rg)
+            if lo > firstindex(s) && s[prevind(s, lo)] == '.'
+                i = nextind(s, last(rg))
+                continue
+            end
+            inner_start = nextind(s, last(rg))
+            close_idx = _find_outer_push_close(s, inner_start, n)
+            close_idx === nothing && break
+            inner = s[inner_start:prevind(s, close_idx)]
+            parts = split_top_level_commas_general(inner)
+            if length(parts) < 2
+                i = nextind(s, lo)
+                continue
+            end
+            p2 = strip(String(parts[2]))
+            match(pair_pat, p2) === nothing && (i = nextind(s, lo); continue)
+            recv = strip(String(parts[1]))
+            replacement = string(recv, ".replace(/\\\\/g, '/')")
+            pre = s[fi:prevind(s, lo)]
+            post = s[nextind(s, close_idx):n]
+            s = string(pre, replacement, post)
+            changed = true
+            break
+        end
+    end
+    return s
+end
+
+function replace_join_slice_end_calls(data::AbstractString)::String
+    s = String(data)
+    pat = r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*\[\s*(\d+)\s*:\s*end\s*\]\s*,\s*\"([^\"]*)\"\s*\)"
+    while true
+        m = match(pat, s)
+        m === nothing && break
+        name = m[1]::AbstractString
+        n = parse(Int, m[2]::AbstractString)
+        delim = m[3]::AbstractString
+        replacement =
+            n <= 1 ? string(name, ".join(\"", delim, "\")") :
+            string(name, ".slice(", n - 1, ").join(\"", delim, "\")")
+        s = replace(s, m.match => replacement, count = 1)
+    end
+    return s
+end
+
+"""`.split(...)[k]` from Julia (1-based `k`) → `.split(...)[k-1]` in TS (only `k >= 1`)."""
+function rewrite_split_call_result_one_based_indices(data::AbstractString)::String
+    s = String(data)
+    pat = r"(\.split\((?:[^()]|\([^)]*\))*\))\[([1-9]\d*)\]"
+    while true
+        m = match(pat, s)
+        m === nothing && break
+        k = parse(Int, m[2]::AbstractString)
+        replacement = string(m[1], "[", k - 1, "]")
+        s = replace(s, m.match => replacement, count = 1)
+    end
+    return s
+end
+
+function replace_julia_stdlib_string_ops(data::AbstractString)::String
+    s = String(data)
+    # `join(vec[N:end], "d")` before bare `join(vec, ...)` (Julia slice is 1-based).
+    s = replace_join_slice_end_calls(s)
+    # Bad bracket from partial transpile: `join(parts[1:]}, ",")` (`]`/`}` swapped vs Julia `[1:end]`).
+    s = replace(
+        s,
+        r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*\[\s*1\s*:\s*\]\s*\}\s*,\s*\"([^\"]*)\"\s*\)" =>
+            s"\1.join(\"\2\")",
+    )
+    # `join(arr, delim)` → `arr.join(delim)` (Julia argument order matches TS receiver + arg).
+    s = replace(
+        s,
+        r"\bjoin\(\s*([A-Za-z_][\w.]*)\s*,\s*\"([^\"]*)\"\s*\)" => s"\1.join(\"\2\")",
+    )
+    # `replace(str, '\\' => '/')` path normalization (scanner — not fragile `[^,]+?`).
+    s = replace_julia_replace_backslash_with_slash_calls(s)
+    # `split(str, delim)` — common generated shapes only (extend as needed).
+    s = replace(s, r"\bsplit\(\s*([^,]+?)\s*,\s*'/'\s*\)" => s"\1.split('/')")
+    s = replace(s, r"\bsplit\(\s*([^,]+?)\s*,\s*\";base64,\"\s*\)" => s"\1.split(\";base64,\")")
+    s = replace(s, r"\bsplit\(\s*([^,]+?)\s*,\s*\"\\.\"\s*\)" => s"\1.split(\".\")")
+    # `split(str)` — Julia default is whitespace / Unicode space (approximate with `/\\s+/`).
+    s = replace(s, r"\bsplit\(\s*([A-Za-z_][\w.]*)\s*\)" => s"\1.trim().split(/\\s+/)")
+    s = rewrite_split_call_result_one_based_indices(s)
+    return s
+end
+
+# Julia `string(a, b, ...)` — TS has no `string()` value; use `String(x)` or `[...].join("")`.
+# Must use `\bstring` so we do not match the `string(` inside `unsafe_string(...)` (that would emit `unsafe_String(...)`).
+function replace_julia_string_calls_to_ts(data::AbstractString)::String
+    s = String(data)
+    fi = firstindex(s)
+    changed = true
+    while changed
+        changed = false
+        i = fi
+        n = lastindex(s)
+        while i <= n
+            rg = findnext(r"\bstring\s*\(", s, i)
+            rg === nothing && break
+            lo = first(rg)
+            if lo > firstindex(s) && s[prevind(s, lo)] == '.'
+                i = nextind(s, last(rg))
+                continue
+            end
+            inner_start = nextind(s, last(rg))
+            close_idx = _find_outer_push_close(s, inner_start, n)
+            close_idx === nothing && break
+            inner = s[inner_start:prevind(s, close_idx)]
+            parts_stripped = map(p -> strip(String(p)), split_top_level_commas_general(inner))
+            replacement = if isempty(parts_stripped) || (length(parts_stripped) == 1 && isempty(parts_stripped[1]))
+                "\"\""
+            elseif length(parts_stripped) == 1
+                string("String(", parts_stripped[1], ")")
+            else
+                string("[", join(parts_stripped, ", "), "].join(\"\")")
+            end
+            pre = s[fi:prevind(s, lo)]
+            post = s[nextind(s, close_idx):n]
+            s = string(pre, replacement, post)
+            changed = true
+            break
+        end
+    end
+    return s
 end
 
 # Julia `"a $b $(c)"` in `console.*("...")` — TS needs `` `a ${b} ${c}` `` (double-quoted `$` is not interpolation).
@@ -909,8 +1051,14 @@ function rewrite_console_double_quoted_dollar_strings_to_templates(data::Abstrac
     )
 end
 
-# Avoid ASI pitfall: `console.log("...")\n(...)` parses as calling the `void` result of `console.log`.
-function insert_semicolon_after_close_paren_before_line_starting_with_open_paren(data::AbstractString)::String
+# Avoid ASI pitfalls: next line starting with `(` continues the previous expression unless ASI inserts `;`.
+# e.g. `self.x = y\n(globalThis...)` parses as `y(globalThis...)`; `console.log(...)\n(...)` calls void.
+const _TS_ASI_SKIP_SINGLE_KEYWORDS = Set([
+    "if", "else", "for", "while", "switch", "catch", "with", "case", "default",
+    "return", "throw", "break", "continue", "debugger", "function", "class",
+])
+
+function insert_semicolon_before_line_starting_with_open_paren(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty = true)
     n = length(lines)
     for idx in 1:(n - 1)
@@ -921,7 +1069,8 @@ function insert_semicolon_after_close_paren_before_line_starting_with_open_paren
         endswith(cur, ';') && continue
         endswith(cur, '{') && continue
         endswith(cur, '}') && continue
-        endswith(cur, ')') || continue
+        endswith(cur, '(') && continue
+        cur in _TS_ASI_SKIP_SINGLE_KEYWORDS && continue
         j = idx + 1
         while j <= n
             nx = String(strip(lines[j]))
@@ -1680,6 +1829,8 @@ function replace_first_assignments_with_let(data::AbstractString)::String
     out = map(lines) do line
         hm = match(header_pat, line)
         if hm !== nothing
+            # Fresh scope per function/constructor — Julia can reuse names (`error`) across functions.
+            empty!(seen)
             params = split(String(hm[1]), ',')
             for p in params
                 pm = match(r"^\s*([A-Za-z_]\w*)", p)
@@ -1719,6 +1870,14 @@ function custom_function_removal(data::AbstractString)
         "on_notify",
 
         "Base.setproperty!",
+        "get_effect_cache_snapshot",
+        "clear_sprite_effects_cache",
+        "update_effects",
+        "apply_style",
+        "Component_apply_effects",
+        "generate_effect_cache_key",
+        "serialize_effects"
+
     ]
     s = String(data)
     for func in functions_to_remove
@@ -2070,13 +2229,119 @@ function source_files_from_manifest(; repo_root::AbstractString = REPO_ROOT)::Ve
     return selected
 end
 
+# If any line of a TS `if (...) { ... }` block contains `needle`, replace the **whole** block with `value`
+# (`value == ""` deletes it). Keys are plain substrings — no regex. First matching key (dict order) wins.
+# Example: `TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS["haskey((globalThis as any).JulGame.AUDIO_CACHE"] = ""`
+const TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS = Dict{String,String}(
+    "haskey((globalThis as any).JulGame.AUDIO_CACHE" => "",
+    "haskey((globalThis as any).JulGame.IMAGE_CACHE" => "",
+)
+
+function _find_ts_if_opening_brace_on_line(ln::AbstractString, cond_paren_inner_start::Int)::Union{Nothing, Int}
+    s = String(ln)
+    close_cond = _find_outer_push_close(s, cond_paren_inner_start, lastindex(s))
+    close_cond === nothing && return nothing
+    j = nextind(s, close_cond)
+    n = lastindex(s)
+    while j <= n
+        c = s[j]
+        if c == '"'
+            j = _skip_double_quoted_string(s, j, n)
+            j = nextind(s, j)
+            continue
+        end
+        c == '{' && return j
+        j = nextind(s, j)
+    end
+    return nothing
+end
+
+# Returns (start_line_idx, end_line_idx) 1-based inclusive for the `if` line through its matching closing `}`.
+function _find_ts_if_block_line_range(lines::Vector{String}, start_line::Int)::Union{Nothing, Tuple{Int, Int}}
+    start_line <= length(lines) || return nothing
+    ln = lines[start_line]
+    occursin(r"^\s*if\s*\(", ln) || return nothing
+    m = match(r"^\s*if\s*\(\s*", ln)
+    m === nothing && return nothing
+    cond_inner = nextind(ln, lastindex(String(m.match)))
+    brace_at = _find_ts_if_opening_brace_on_line(ln, cond_inner)
+    brace_at === nothing && return nothing
+    depth = 1
+    li = start_line
+    i = nextind(ln, brace_at)
+    nlines = length(lines)
+    while li <= nlines
+        cur = lines[li]
+        n = lastindex(cur)
+        while i <= n
+            c = cur[i]
+            if c == '"'
+                i = _skip_double_quoted_string(cur, i, n)
+                i > n && return nothing
+                i = nextind(cur, i)
+                continue
+            end
+            if c == '{'
+                depth += 1
+            elseif c == '}'
+                depth -= 1
+                if depth == 0
+                    return (start_line, li)
+                end
+            end
+            i = nextind(cur, i)
+        end
+        li += 1
+        li > nlines && break
+        i = firstindex(lines[li])
+    end
+    return nothing
+end
+
+function replace_ts_if_blocks_when_block_contains_substring(data::AbstractString)::String
+    isempty(TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS) && return String(data)
+    lines = split(String(data), '\n'; keepempty = true)
+    ls = collect(String.(lines))
+    changed = true
+    while changed
+        changed = false
+        for i in 1:length(ls)
+            occursin(r"^\s*if\s*\(", ls[i]) || continue
+            rg = _find_ts_if_block_line_range(ls, i)
+            rg === nothing && continue
+            lo, hi = rg
+            block_text = join(view(ls, lo:hi), '\n')
+            hit = false
+            replacement = ""
+            for (needle, repl) in TS_IF_BLOCKS_REMOVE_OR_REPLACE_WHEN_CONTAINS
+                if occursin(needle, block_text)
+                    replacement = repl
+                    hit = true
+                    break
+                end
+            end
+            if !hit
+                continue
+            end
+            rep_lines = if isempty(replacement)
+                String[]
+            else
+                collect(String.(split(String(replacement), '\n'; keepempty = true)))
+            end
+            splice!(ls, lo:hi, rep_lines)
+            changed = true
+            break
+        end
+    end
+    return join(ls, '\n')
+end
+
 function replace_entire_line_if_matches(data::AbstractString)::String
     # Ordered rules: first match wins. If `needle` appears anywhere on a line, the whole line becomes `replacement`.
-    # Use a substring needle for literals; switch to `needle isa Regex` + `occursin(needle, line)` if you need `\b` word boundaries.
-    line_rules = Pair{Union{String, Regex}, String}[
-        "add_observer" => "",
-        "throw(" => "",
-    ]
+    # Build with `push!` so eltype stays `Pair{Union{String,Regex},String}` (avoid literal-array inference bugs).
+    line_rules = Pair{Union{String, Regex}, String}[]
+    push!(line_rules, "add_observer" => "")
+    push!(line_rules, "throw(" => "")
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line
         for (needle, replacement) in line_rules
@@ -2088,7 +2353,16 @@ function replace_entire_line_if_matches(data::AbstractString)::String
 end
 
 function main()
-    files = source_files_from_manifest()
+    files = String[]
+    if !isempty(ARGS)
+        for a in ARGS
+            p = isabspath(a) ? String(a) : joinpath(REPO_ROOT, String(a))
+            isfile(p) || error("not a file: $p")
+            push!(files, p)
+        end
+    else
+        append!(files, source_files_from_manifest())
+    end
     isempty(files) && (files = [joinpath(REPO_ROOT, "src", "MainLoop.jl")])
     # Smallest-first helps us iterate patterns safely from simpler files upward.
     sort!(files, by = f -> filesize(f))

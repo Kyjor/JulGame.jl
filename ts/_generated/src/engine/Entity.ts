@@ -76,13 +76,13 @@ export {}
     }
 
     function JulGame_add_script(self: Entity, script) {
-        console.debug(string("Adding script of type: ", typeof(script), " to entity named " , self.name))
+        console.debug(["Adding script of type: ", typeof(script), " to entity named ", self.name].join(""))
         self.scripts.push(script)
         script.parent = self
         try {
             (globalThis as any).JulGame.initialize(script)
         } catch (e) {
-            @error string(e)
+            @error String(e)
             Base.show_backtrace(stdout, catch_backtrace())
         }
     }
@@ -97,7 +97,7 @@ export {}
             try {
                 (globalThis as any).JulGame.update(script, deltaTime) 
             } catch (e) {
-                (globalThis as any).JulGame.ErrorLoggingModule.log_error((globalThis as any).JulGame.MAIN.errorLogger, string(e), current_exceptions())
+                (globalThis as any).JulGame.ErrorLoggingModule.log_error((globalThis as any).JulGame.MAIN.errorLogger, String(e), current_exceptions())
             }
         }
     }
@@ -269,5 +269,5 @@ export {}
     }
 
     function JulGame_generate_uuid() {
-        return string(UUIDs.uuid4())
+        return String(UUIDs.uuid4())
     }

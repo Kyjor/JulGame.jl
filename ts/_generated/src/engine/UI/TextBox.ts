@@ -1,6 +1,6 @@
 export {}
+import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
-import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..UI.JulGame
@@ -22,7 +22,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         return SDL2.SDL_ScaleModeBest
         // TODO: Add text scaling option?
         let q = try
-            string((globalThis as any).JulGame.SCALE_QUALITY)
+            String((globalThis as any).JulGame.SCALE_QUALITY)
         catch
             "2"
         }
@@ -174,16 +174,16 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             let rgba = { r: 0, g: 0, b: 0, a: 255 }
             (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
             (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 0, 255);
-            (globalThis as any).JulGameSdl.glue_SDL_RenderDrawLines((globalThis as any).JulGame.Renderer, [
-                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y), 
-                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x + self.size.x, self.position.y),
-                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x + self.size.x, self.position.y + self.size.y), 
-                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y + self.size.y), 
+            (globalThis as any).JulGameSdl.glue_SDL_RenderDrawLines((globalThis as any).JulGame.Renderer, [;
+                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y),;
+                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x + self.size.x, self.position.y),;
+                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x + self.size.x, self.position.y + self.size.y),;
+                (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y + self.size.y),;
                 (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y)], 5);
             (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
         }
 
-        let camera = MAIN.scene.camera
+        let camera = MAIN.scene.camera;
         
         (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         // Handle world coordinates for world entities, similar to Sprite component
@@ -309,10 +309,10 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function get_comma_separated_path(path: string) {
         // Normalize the path to use forward slashes
-        let normalized_path = replace(path, '\\' => '/')
+        let normalized_path = path.replace(/\\/g, '/')
         
         // Split the path into components
-        let parts = split(normalized_path, '/')
+        let parts = normalized_path.split('/')
         
         let result = join(parts[1:}], ",")
     
@@ -352,7 +352,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             console.debug(`Failed to render text for textbox ${this.name}`)
             return
         }
-        surface = unsafe_wrap(Array, this.renderText, 10; own = false)
+        let surface = unsafe_wrap(Array, this.renderText, 10; own = false)
         this.size = {x: surface[0].w, y: surface[0].h}
         this.originalSize = {x: this.size.x, y: this.size.y}
         this.textTexture = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, this.renderText)
@@ -398,7 +398,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         
         // If wrapping at word boundaries
         if (wrapWords) {
-            let words = split(text)
+            let words = text.trim().split(/\s+/)
             for (const word of words) {
                 w, h = Ref{Cint}(0), Ref{Cint}(0)
                 let word_with_space = word * " "
@@ -420,7 +420,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         } else {
             // Character by character wrapping
             for (const c of text) {
-                let char_str = string(c)
+                let char_str = String(c)
                 w, h = Ref{Cint}(0), Ref{Cint}(0)
                 SDL2.TTF_SizeUTF8(font, char_str, w, h)
                 
@@ -439,7 +439,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             }
         }
         
-        return join(lines, "\n")
+        return lines.join("\n")
     }
 
     function UI_set_color(self: TextBox, r: number=255, g: number=255, b: number=255, a: number=255) {
@@ -514,7 +514,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         if (isempty(effects)) {
             return "[]"
         }
-        parts = []
+        let parts = []
         for (const eff of effects) {
             let T = typeof(eff)
             let fnames = fieldnames(T)
@@ -523,28 +523,21 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
                 // Avoid dumping huge pointers; just tag Ptr fields
                 let v = getfield(eff, f)
                 if (v isa Ptr) {
-                    vals.push(string(f, "=Ptr"))
+                    vals.push([f, "=Ptr"].join(""))
                 } else {
-                    vals.push(string(f, "=", v))
+                    vals.push([f, "=", v].join(""))
                 }
             }
-            parts.push(string(nameof(T), "(", join(vals, ","), ")"))
+            parts.push([nameof(T), "(", vals.join(","), ")"].join(""))
         }
-        return "[" * join(parts, ";") * "]"
+        return "[" * parts.join(";") * "]"
     }
 
     // Generate cache key for effects based on content
     function generate_effect_cache_key(self: TextBox): string
         // Include all factors that affect the final rendered result
-        let content = string(
-            this.text, "|",
-            this.color, "|", 
-            this.fontPath, "|",
-            this.fontSize, "|",
-            serialize_effects(this.effects), "|",
-            this.size
-        )
-        return string(hash(content))
+        let content = [this.text, "|", this.color, "|", this.fontPath, "|", this.fontSize, "|", serialize_effects(this.effects), "|", this.size].join("")
+        return String(hash(content))
     }
     
     //  effects API
@@ -608,142 +601,9 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         empty(EFFECT_CACHE)
     }
 
-    function get_effect_cache_snapshot() {
-        let snapshot = []
-        for (key, texture) in EFFECT_CACHE
-            let width = 0
-            let height = 0
-            if (texture != null) {
-                let w = Ref{Cint}(0)
-                let h = Ref{Cint}(0)
-                let fmt = Ref{UInt32}(0)
-                let access = Ref{Cint}(0)
-                if ((globalThis as any).JulGameSdl.glue_SDL_QueryTexture(texture, fmt, access, w, h) == 0) {
-                    width = Int(w)
-                    height = Int(h)
-                }
-            }
-            snapshot.push((
-                key = key,
-                texture = texture,
-                width = width,
-                height = height,
-                let approxBytes = width * height * 4,
-            ))
-        }
         return snapshot
     }
-    
-    function update_effects(self: TextBox) {
-        if (isempty(self.effects) || !self.needsEffectUpdate) {
-            return
-        }
-        
-        // Check if we have a cached version
-        if (haskey(EFFECT_CACHE, self.effectCacheKey)) {
-            console.debug("Using cached effect texture", name=self.name, key=self.effectCacheKey)
-            // Don't destroy the old texture, just replace the reference
-            self.effectTexture = EFFECT_CACHE[self.effectCacheKey]
-            
-            // Update size from cached texture
-            if (self.effectTexture != null) {
-                w = Ref{Cint}(0); h = Ref{Cint}(0)
-                fmt = Ref{UInt32}(0); access = Ref{Cint}(0);
-                (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(self.effectTexture, fmt, access, w, h)
-                self.size = {x: w, y: h}
-                console.debug("Cached effect texture size updated") name=self.name w=w h=h
-            }
-            
-            self.needsEffectUpdate = false
-            return
-        }
-        
-        console.debug("Computing new effect texture", name=self.name, key=self.effectCacheKey, effects=serialize_effects(self.effects))
-        
-        // Check if renderer is available
-        if ((globalThis as any).JulGame.Renderer == null) {
-            console.debug("Renderer not available yet, deferring effects", name=self.name)
-            return
-        }
-        
-        // Check if font is available
-        if (self.font == null) {
-            console.debug("Font not available for effects", name=self.name)
-            return
-        }
-        
-        // Create a fresh base surface for effects processing (like the old system does)
-        let baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, self.font, self.text, (globalThis as any).JulGameSdl.glue_SDL_Color(self.color[0], self.color[1], self.color[2], self.color[3]))
-        if (baseSurface == null) {
-            @error("Failed to create base surface for effects", name=self.name)
-            return
-        }
-        try {
-            let arr = unsafe_wrap(Array, baseSurface, 10; own=false)
-            console.debug("Base surface created") name=self.name w=arr[0].w h=arr[0].h
-        } catch (e) {
-            console.debug("Failed to log base surface dims") err=e
-        }
-        
-        // Create target for effects with original color
-        let target = EffectsModule.SurfaceTarget(baseSurface, self.color)
-        
-        // Apply effects
-        try {
-            result = EffectRendererModule.apply_effects(target, self.effects)
-            if (result isa EffectsModule.SurfaceTarget && result.surface != null) {
-                // Verify renderer is still valid before creating texture
-                if ((globalThis as any).JulGame.Renderer == null) {
-                    @error("Renderer became null during effects processing for $(self.name)");
-                    (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(result.surface)
-                    return
-                }
-                
-                // Convert surface to texture
-                // Don't destroy old texture - it might be cached and used by other TextBoxes
-                
-                // Use CallSDLFunction like the old system for better error handling
-                self.effectTexture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, (globalThis as any).JulGame.Renderer, result.surface)
-                
-                if (self.effectTexture != null) {
-                    // Update size from the effect texture
-                    w = Ref{Cint}(0); h = Ref{Cint}(0)
-                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0);
-                    (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(self.effectTexture, fmt, access, w, h)
-                    self.size = {x: w, y: h}
-                    console.debug("Effect texture created") name=self.name tex_ptr=self.effectTexture w=w h=h
-                    // Set scaling mode according to (globalThis as any).JulGame.SCALE_QUALITY
-                    (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(self.effectTexture, get_scale_mode_from_quality())
-                    
-                    // Cache the result
-                    cache_effect_texture(self.effectCacheKey, self.effectTexture)
-                    
-                    self.needsEffectUpdate = false
-                } else {
-                    @error("Failed to create texture from effect surface", name=self.name)
-                }
-                
-                // Clean up the result surface
-                if (result.surface != baseSurface) {
-                    (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(result.surface)
-                }
-            } else {
-                @error("Effects application returned invalid result", name=self.name)
-            }
-            
-            // Clean up base surface if it wasn't consumed by effects
-            if (baseSurface != null && (!isdefined(result, :surface) || result.surface != baseSurface)) {
-                (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(baseSurface)
-            }
-        } catch (e) {
-            @error("Failed to apply effects", name=self.name, err=e)
-            Base.show_backtrace(stderr, catch_backtrace())
-            // Clean up on error
-            if (baseSurface != null) {
-                (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(baseSurface)
-            }
-        }
-    }
+
 //= 
  =//
 
@@ -804,11 +664,11 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         let hoverExitEvents = self.hoverExitEvents,
         let isActive = self.isActive,
         let persistentBetweenScenes = self.persistentBetweenScenes,
-        color=self.color, 
-        fontPath=self.fontPath, 
-        fontSize=self.fontSize, 
+        let color = self.color, 
+        let fontPath = self.fontPath, 
+        let fontSize = self.fontSize, 
         let maxLineWidth = self.maxLineWidth, 
-        wrapWords=self.wrapWords,
+        let wrapWords = self.wrapWords,
         let parent = self.parent
     )
         UI.initialize(newTextBox)

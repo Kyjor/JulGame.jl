@@ -158,7 +158,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 	When profiling is enabled, tracks execution time per script type.
 	*/
 	function call_script_update(this, script, deltaTime: number, profile: boolean=false) {
-		script_type = typeof(script)
+		let script_type = typeof(script)
 		
 		if ((script_type in this.knownScriptTypes)) {
 			// First call: register type (compilation happens here)
@@ -192,7 +192,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 	Call script shutdown/cleanup method.
 	*/
 	function call_script_shutdown(this, script) {
-		script_type = typeof(script)
+		let script_type = typeof(script)
 		
 		if ((script_type in this.knownScriptTypes)) {
 			this.knownScriptTypes.push(script_type)
@@ -308,7 +308,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 						if (self.testMode) {
 
 						} else {
-							@error string(e)
+							@error String(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
                     }
@@ -386,7 +386,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 	}
 
 	function create_new_canvas() {
-		canvas = create_new_canvas(MAIN)
+		let canvas = create_new_canvas(MAIN)
 		return canvas
 	}
 
@@ -416,7 +416,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 					if (this.testMode) {
 
 					} else {
-						@error string(e)
+						@error String(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 					}
 				}
@@ -504,7 +504,7 @@ function JulGame_change_scene(sceneFileName: string) {
 					} else {
 						if (typeof(e) != ErrorException) {
 							console.log(`Error shutting down script: ${typeof(script)}`)
-							@error string(e)
+							@error String(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
 					}
@@ -644,9 +644,9 @@ function JulGame_destroy_ui_element(self: MainLoop, uiElement) {
 }
 
 function destroy_entity_components(self: MainLoop, entity) {
-	entitySprite = entity.sprite
+	let entitySprite = entity.sprite
 	if (entitySprite != null) {
-		layer = entitySprite.layer
+		let layer = entitySprite.layer
 		if (haskey(self.spriteLayers.layers, layer)) { // No string interpolation!
 			for j = eachindex(self.spriteLayers.layers[layer])
 				if (self.spriteLayers.layers[layer][j] == entitySprite) {
@@ -698,7 +698,7 @@ function JulGame_create_entity(entity) {
 	this = MAIN
 	this.scene.entities.push(entity)
 	if (entity.sprite != null) {
-		layer = entity.sprite.layer
+		let layer = entity.sprite.layer
 		if (!haskey(this.spriteLayers.layers, layer)) { // No string interpolation!
 			this.spriteLayers.sorted.push(layer)
 			this.spriteLayers.layers[layer] = [entity.sprite]
@@ -782,7 +782,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			}
 
 			DEBUG = this.input.debug
-			cameraPosition = this.scene.camera !== null ? (this.scene.camera.position + this.scene.camera.offset) : {x: 0, y: 0}
+			let cameraPosition = this.scene.camera !== null ? (this.scene.camera.position + this.scene.camera.offset) : {x: 0, y: 0}
 			let cameraSize = this.scene.camera !== null ? this.scene.camera.size : {x: 0, y: 0}
 
 			let x = 0
@@ -806,7 +806,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				}
 				
 				let currentPhysicsTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
-				deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
+				let deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
 				(globalThis as any).JulGame.DELTA_TIME = deltaTime
 				if (this.testMode) {
 					this.currentTestTime += deltaTime
@@ -824,7 +824,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 						} else {
 							console.log(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-							@error string(e)
+							@error String(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
 					}
@@ -873,7 +873,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 
 						} else {
 							console.log(entity.name, " with id: ", entity.id, " has a problem with it's update")
-							@error string(e)
+							@error String(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
 					}
@@ -993,7 +993,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						}
 						console.log(parent_info, " has a problem with it's render function")
-						@error string(e)
+						@error String(e)
 						Base.show_backtrace(stdout, catch_backtrace())
 					}
 				}
@@ -1021,7 +1021,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				// Draw a gray rect under the debug textboxes
 				let rgba = { r: 0, g: 0, b: 0, a: 255 }
 				(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
-				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a]
+				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a];
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255);
 				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, (globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length));
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, currentColor[0], currentColor[1], currentColor[2], currentColor[3])
@@ -1062,7 +1062,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			if (this.testMode) {
 
 			} else {
-				@error string(e)
+				@error String(e)
 				Base.show_backtrace(stdout, catch_backtrace())
 			}
 		}
@@ -1074,11 +1074,11 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
     }
 
 	function render_scene_sprites_and_shapes(self: MainLoop, camera: Camera) {
-		cameraPosition = camera !== null ? camera.position : {x: 0, y: 0}
-		cameraSize = camera !== null ? camera.size : {x: 0, y: 0}
+		let cameraPosition = camera !== null ? camera.position : {x: 0, y: 0}
+		let cameraSize = camera !== null ? camera.size : {x: 0, y: 0}
 		let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
 			
-		skipcount = 0
+		let skipcount = 0
 		let rendercount = 0
 		let renderOrder = []
 		for (const entity of self.scene.entities) {
@@ -1091,7 +1091,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			}
 
 			let position = entity.transform.position
-			size = entity.transform.scale
+			let size = entity.transform.scale
 			let sprite = entity.sprite
 			let shape = entity.shape
 			let mesh3d = entity.mesh3d
@@ -1135,7 +1135,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			}
 		}
 
-	render_functions_to_call = filter(x -> x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
+	let render_functions_to_call = filter(x -> x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
 	filter(x -> !x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
 	for (const render_function of render_functions_to_call) {
 		renderOrder.push((render_function.layer, render_function))
@@ -1162,7 +1162,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				Component_draw(renderOrder[i][2], camera)
 			} else if (renderOrder[i][2] isa NamedTuple) {
 				// get the params	
-				func = renderOrder[i][2].function_to_call
+				let func = renderOrder[i][2].function_to_call
 				func()
 			} else if (hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)) {
 				// Render batched static sprite layer
@@ -1174,7 +1174,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				if (this.testMode) {
 
 				} else {
-					parent_info = ""
+					let parent_info = ""
 					if (isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)) {
 						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
 					} else if (hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== null && isa(renderOrder[i][2].parent, (globalThis as any).JulGame.EntityModule.Entity)) {
@@ -1183,7 +1183,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					}
 					console.log(parent_info, " has a problem with rendering")
-					@error string(e)
+					@error String(e)
 					Base.show_backtrace(stdout, catch_backtrace())
 				}
 			}
@@ -1197,7 +1197,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 	}
 
 	function stop_game_in_editor(self: MainLoop) {
-		self.isGameModeRunningInEditor = false
+		self.isGameModeRunningInEditor = false;
 		(globalThis as any).JulGameSdl.glue_Mix_HaltMusic()
 		
 		// Clean up all immediate UI components when stopping the game in editor
@@ -1213,7 +1213,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 	}
 
 	function render_scene_debug(self: MainLoop, cameraPosition, cameraSize) {
-		S = (globalThis as any).JulGame.pixels_per_world_unit(self.scene.camera)
+		let S = (globalThis as any).JulGame.pixels_per_world_unit(self.scene.camera)
 		let colliderSkipCount = 0
 		let colliderRenderCount = 0
 		for (const entity of self.scene.entities) {
@@ -1222,7 +1222,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 			}
 	
 			if (entity.collider != null) {
-				rgba = (r = 0, g = 0, b = 0, a = 255);
+				let rgba = { r: 0, g: 0, b: 0, a: 255 }
         		(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
@@ -1242,7 +1242,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 				colOffset = {x: colOffset.x, y: colOffset.y}
 						
 				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, 
-				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
+				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S,;
 				(pos.y + colOffset.y - cameraPosition.y) * S, 
 				entity.transform.scale.x * colSize.x * S, 
 				entity.transform.scale.y * colSize.y * S));

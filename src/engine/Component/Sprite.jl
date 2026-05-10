@@ -129,15 +129,16 @@ module SpriteModule
         end
     
         # Use effect texture if available and enabled, otherwise use regular texture
-        texture_to_render = if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
-            this.effectTexture
+        texture_to_render = nothing
+        if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
+            texture_to_render = this.effectTexture
         else
             # Create or get cached texture if it doesn't exist
             if this.texture == C_NULL && this.image != C_NULL
                 this.texture = get_or_create_texture(this.imagePath, this.image)
                 Component.set_color(this)
             end
-            this.texture
+            texture_to_render = this.texture
         end
     
         # Check and set color if necessary (for both regular and effect textures)

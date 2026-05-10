@@ -1,6 +1,5 @@
 export {}
-import { clamp } from "../../../../src/engine/core/juliaHelpers";
-import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -97,12 +96,12 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function Component_load_sound(self: InternalSoundSource, soundPath: string, isMusic: boolean) {
         console.debug(`load_sound: Loading sound from ${soundPath}, isMusic: ${isMusic}`)
-        self.isMusic = isMusic
+        self.isMusic = isMusic;
         (globalThis as any).JulGameSdl.glue_SDL_ClearError()
         self.sound = load_sound_sdl(soundPath, isMusic)
-        error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
+        let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
         if (error.length > 0) {
-            console.log(string("Couldn't open sound! SDL Error: ", error));
+            console.log(["Couldn't open sound! SDL Error: ", error].join(""));
             (globalThis as any).JulGameSdl.glue_SDL_ClearError()
             self.sound = null
             return
@@ -112,29 +111,20 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function load_sound_sdl(soundPath: string, isMusic: boolean) {
         console.debug(`load_sound_sdl: Loading sound from ${soundPath}, isMusic: ${isMusic}`)
-        if (haskey((globalThis as any).JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))) {
-            let raw_data = (globalThis as any).JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
-            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
-            if (rw != null) {
-                console.debug("loading sound from cache")
-                console.debug("comma separated path: ", get_comma_separated_path(soundPath))
-                return isMusic ? (globalThis as any).JulGameSdl.glue_Mix_LoadMUS_RW(rw, 1) : (globalThis as any).JulGameSdl.glue_Mix_LoadWAV_RW(rw, 1)
-            }
-        }
         console.debug(`load_sound_sdl: Loading sound from disk, there are ${(globalThis as any).JulGame.AUDIO_CACHE.length} sounds in cache`)
 
-        fullPath = joinpath(BasePath, "assets", "sounds", soundPath)
+        let fullPath = joinpath((globalThis as any).JulGame.BasePath, "assets", "sounds", soundPath)
         return isMusic ? (globalThis as any).JulGameSdl.glue_Mix_LoadMUS(fullPath) : (globalThis as any).JulGameSdl.glue_Mix_LoadWAV(fullPath)
     }
 
     function get_comma_separated_path(path: string) {
         // Normalize the path to use forward slashes
-        let normalized_path = replace(path, '\\' => '/')
+        let normalized_path = path.replace(/\\/g, '/')
         
         // Split the path into components
-        let parts = split(normalized_path, '/')
+        let parts = normalized_path.split('/')
         
-        let result = join(parts[1:}], ",")
+        let result = "t"
     
         return result  
     }

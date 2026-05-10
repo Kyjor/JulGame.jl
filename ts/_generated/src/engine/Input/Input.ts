@@ -1,6 +1,5 @@
 export {}
-import { clamp } from "../../../../src/engine/core/juliaHelpers";
-import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 //todo: separate mouse, keyboard, gamepad, and window into their own files
 
@@ -122,7 +121,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function _refresh_logical_mouse(self: Input, evt: SDL_Event) {
         let x = Int32[0]
-        let y = Int32[0]
+        let y = Int32[0];
         (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(pointer(x), pointer(y))
 
         if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
@@ -190,7 +189,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     }
 
     function _input_latency_profiler() {
-        let m = (globalThis as any).JulGame.MAIN
+        let m = (globalThis as any).JulGame.MAIN;
         (m !== null && m.latencyProfiler !== null && m.latencyProfiler.enabled) || return null
         return m.latencyProfiler
     }
@@ -221,7 +220,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: symbol, kvs...)
         let t1 = time_ns()
-        dt = (t1 - t_blk) / 1e6
+        let dt = (t1 - t_blk) / 1e6
         t_blk = t1
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
@@ -237,7 +236,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     }
 
     function _input_ui_hit_span(prof, t0: number, key: symbol, kvs...) {
-        dt = (time_ns() - t0) / 1e6
+        let dt = (time_ns() - t0) / 1e6
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
@@ -252,8 +251,8 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     }
 
     function poll_input(self: Input) {
-        prof = _input_latency_profiler()
-        t0 = time_ns()
+        let prof = _input_latency_profiler()
+        let t0 = time_ns()
 
         self.buttonsPressedDown = []
         self.mouseButtonsPressedDown = []
@@ -270,7 +269,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             }
             _input_poll_accumulate(prof, t0, :sdl_PollEvent)
 
-            evt = event_ref
+            let evt = event_ref
             handle_window_events(self, evt)
 
             // console.debug("polling input")
@@ -485,10 +484,10 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
                         t_hi = time_ns()
 
                         if (!clickedAnElementAlready || element.forceClickCheck) {
-                            let shouldHandleEvent = (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||
-                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) ||
-                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||
-                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||
+                            let shouldHandleEvent = (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||;
+                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) ||;
+                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||;
+                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||;
                                 (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
 
                             console.debug(`  -> shouldHandleEvent: ${shouldHandleEvent} (event type: ${evt.type}, hoveredAnElementAlready: ${hoveredAnElementAlready})`)
@@ -655,9 +654,9 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
         if (element.sprite === null || element.sprite === null) {
             return {x: 0, y: 0}
         }
-        baseSize = element.sprite.lastRenderedScreenSize === null ? {x: 0, y: 0} : element.sprite.lastRenderedScreenSize
+        let baseSize = element.sprite.lastRenderedScreenSize === null ? {x: 0, y: 0} : element.sprite.lastRenderedScreenSize
         // Apply interaction scale to shrink/grow hitbox independently of visual size
-        interactionScale = try element.sprite.interactionScale catch; 1.0 }
+        let interactionScale = try element.sprite.interactionScale catch; 1.0 }
         return {x: baseSize.x * interactionScale, y: baseSize.y * interactionScale}
     }
 
@@ -690,7 +689,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
         let count = 1
         for (const scanCode of self.scanCodes) {
-            button = scanCode[1]
+            let button = scanCode[1]
             if (check_scan_code(self, keyboardState, 1, [scanCode[0]]) && (button in self.buttonsHeldDown)) {
                 buttonsPressedDown.push(button)
                 self.buttonsHeldDown.push(button)
@@ -705,7 +704,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function handle_mouse_event(self: Input, event) {
         if (event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT) {
-            button = event.button.button
+            let button = event.button.button
             if (event.type == SDL2.SDL_MOUSEBUTTONDOWN && (button in self.mouseButtonsHeldDown)) {
                 self.mouseButtonsPressedDown.push(button)
                 self.mouseButtonsHeldDown.push(button)
@@ -842,11 +841,11 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
                 // Try to get PNG data from clipboard
                 try {
-                    png_data = read(`pbpaste -pboard general -Prefer png`)
+                    let png_data = read(`pbpaste -pboard general -Prefer png`)
                     if (png_data.length > 0) {
                         console.debug("Found PNG data in clipboard")
                         // Create temporary file for PNG data
-                        temp_file = tempname() * ".png"
+                        let temp_file = tempname() * ".png"
                         open(temp_file, "w") do file
                             write(file, png_data)
                         }
@@ -876,7 +875,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
                 // Try to get JPEG data from clipboard
                 try {
-                    jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
+                    let jpeg_data = read(`pbpaste -pboard general -Prefer jpeg`)
                     if (jpeg_data.length > 0) {
                         console.debug("Found JPEG data in clipboard")
                         // Create temporary file for JPEG data
@@ -955,7 +954,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     Add a clipboard file path to the // import queue.
     */
     function add_clipboard_file_to_import_queue(filepath: string) {
-        dropped_files = "dropped_files"
+        let dropped_files = "dropped_files"
         if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
             (globalThis as any).JulGame.EditorState[dropped_files] = [filepath]
         } else {
@@ -979,7 +978,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             }
 
             // Extract MIME type and base64 data
-            let parts = split(data, ";base64,")
+            let parts = data.split(";base64,")
             if (parts.length != 2) {
                 console.warn("Invalid base64 image data format")
                 return
@@ -1126,7 +1125,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     // Initialize an SDL_Event instance
     function init_sdl_event()
         // Create a vector of UInt8
-        data = UInt8[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        let data = UInt8[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1168,24 +1167,24 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function simulate_mouse_click(self: Input, window: any, x: Number, y: Number) {
         // Get current window size
-        window_width = Ref{Cint}(0)
-        window_height = Ref{Cint}(0);
+        let window_width = Ref{Cint}(0)
+        let window_height = Ref{Cint}(0);
         (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(window, window_width, window_height)
 
         // Get base resolution from WindowManager
-        logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
+        let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
 
-        safe_window_width = max(window_width, 1)
-        safe_window_height = max(window_height, 1)
-        safe_logical_width = max(logical_size.x, 1)
-        safe_logical_height = max(logical_size.y, 1)
-        scale_x = safe_window_width / safe_logical_width
-        scale_y = safe_window_height / safe_logical_height
-        scale = Math.min(scale_x, scale_y)
-        content_width = safe_logical_width * scale
-        content_height = safe_logical_height * scale
-        bar_x = (safe_window_width - content_width) / 2
-        bar_y = (safe_window_height - content_height) / 2
+        let safe_window_width = max(window_width, 1)
+        let safe_window_height = max(window_height, 1)
+        let safe_logical_width = max(logical_size.x, 1)
+        let safe_logical_height = max(logical_size.y, 1)
+        let scale_x = safe_window_width / safe_logical_width
+        let scale_y = safe_window_height / safe_logical_height
+        let scale = Math.min(scale_x, scale_y)
+        let content_width = safe_logical_width * scale
+        let content_height = safe_logical_height * scale
+        let bar_x = (safe_window_width - content_width) / 2
+        let bar_y = (safe_window_height - content_height) / 2
 
         // Convert logical coordinates to window coordinates (inverse of poll_input mapping)
         let window_x = Math.round(Int, (x * scale) + bar_x)
@@ -1287,7 +1286,7 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
             0,                 // State (pressed)
             0,                 // Repeat (0 for no repeat)
             0,                 // Padding
-            0,                 // Padding
+            0,                 // Padding;
             (globalThis as any).JulGameSdl.glue_SDL_Keysym(   // Keysym structure
                 SDL2.SDL_SCANCODE_SPACE, // Scancode
                 0,  // Keycode
@@ -1310,12 +1309,12 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
     function get_comma_separated_path(path: string) {
         // Normalize the path to use forward slashes
-        let normalized_path = replace(path, '\\' => '/')
+        let normalized_path = path.replace(/\\/g, '/')
 
         // Split the path into components
-        parts = split(normalized_path, '/')
+        let parts = normalized_path.split('/')
 
-        result = join(parts[1:}], ",")
+        let result = join(parts[1:}], ",")
 
         return result
     }
@@ -1336,15 +1335,6 @@ import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
     */
     function set_cursor_with_image(self: Input, imagePath: string, x: number, y: number, scale_factor: number=1.0) {
         let surface = null
-        if (haskey((globalThis as any).JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))) {
-            let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
-            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
-            if (rw != null) {
-                console.debug("loading cursor from cache")
-                console.debug("comma separated path: ", get_comma_separated_path(imagePath))
-                surface = SDL2.IMG_Load_RW(rw, 1)
-            }
-        } else {
             console.debug("loading cursor from disk")
             surface = SDL2.IMG_Load(pointer(joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)))
         }
