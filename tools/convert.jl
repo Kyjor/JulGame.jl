@@ -108,6 +108,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
     data = normalize_julia_ref_for_ts(data)
+    data = replace_let_named_tuple_rhs_to_object(data)
     data = replace_invokelatest_calls(data)
     data = replace_keyword_style_calls_to_object_args(data)
     data = normalize_julgame_global_access(data)
@@ -119,6 +120,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_empty_vector_literals(data)
     data = rewrite_rhs_vector_arithmetic(data)
     data = prefix_new_for_listed_class_constructors(data)
+    data = rename_julia_this_receiver_to_self(data)
     data = prepend_generated_ts_imports(data, path_ts)
     data = replace_entire_line_if_matches(data)
     data = "export {}\n" * data
@@ -150,8 +152,9 @@ end
 
 function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractString)::String
     need_clamp = occursin(r"\bclamp\s*\(", data)
+    need_unsafe_string = occursin(r"\bunsafe_string\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
-    (!need_clamp && !need_vec) && return data
+    (!need_clamp && !need_unsafe_string && !need_vec) && return data
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
     if need_clamp
@@ -168,6 +171,14 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             relv = replace(String(relpath(v, ts_dir)), '\\' => '/')
             relv = replace(relv, r"\.ts$" => "")
             push!(lines, string("import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from \"", relv, "\";"))
+        end
+    end
+    if need_unsafe_string
+        h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
+        if isfile(h)
+            rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
+            rel = replace(rel, r"\.ts$" => "")
+            push!(lines, string("import { unsafe_string } from \"", rel, "\";"))
         end
     end
     isempty(lines) && return data
@@ -762,6 +773,9 @@ function replace_julia_ts_literals(data::AbstractString)
     # Drop redundant int32 conversion helper in generated TS (any nesting).
     data = strip_safe_int32_convert_calls(data)
     data = strip_uint32_constructor_calls(data)
+    # `UInt8(n)` / `UInt8(expr)` — same idea as UInt32 (SDL color components).
+    data = replace(data, r"\bUInt8\(\s*(\d+)\s*\)" => s"\1")
+    data = replace(data, r"\bUInt8\(" => "Number(")
     # Julia `length(x)` -> TS `x.length` for simple non-nested args.
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
     # Julia `floor(...)` -> JS `Math.floor(...)`.
@@ -805,18 +819,123 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"(?m)^(\s*)targetPos\s*=\s*" => s"\1let targetPos = ")
     data = replace(data, r"(?m)^(\s*)targetScale\s*=\s*" => s"\1let targetScale = ")
     data = replace(data, r"\bsetfield\(([^,]+),\s*([^,]+),\s*([^)]+)\)" => s"(\1 as any)[\2 as any] = \3")
-    # `@warn "msg"` — string literal only (no interpolated/extra kwargs on this pass).
-    data = replace(data, r"@warn\s+\"([^\"]*)\"" => s"console.warn(\"\1\")")
-    # error with string literal
-    data = replace(data, r"@error\s+\"([^\"]*)\"" => s"console.error(\"\1\")")
+    # `@warn` / `@error` — strip trailing Julia kwargs (`exception=...`) on the same line.
+    data = replace(data, r"(?m)@warn\s+\"([^\"]*)\".*$" => s"console.warn(\"\1\")")
+    data = replace(data, r"(?m)@error\s+\"([^\"]*)\".*$" => s"console.error(\"\1\")")
     # debug with string literal
     data = replace(data, r"@debug\s+\"([^\"]*)\"" => s"console.debug(\"\1\")")
     # macro invocation style: `@debug("...")`.
     data = replace(data, r"@debug\(" => "console.debug(")
     data = replace(data, r"\bprintln\(" => "console.log(")
     # info with string literal
-    data = replace(data, r"@info\s+\"([^\"]*)\"" => s"console.info(\"\1\")")
+    data = replace(data, r"(?m)@info\s+\"([^\"]*)\".*$" => s"console.info(\"\1\")")
+    data = rewrite_console_double_quoted_dollar_strings_to_templates(data)
+    data = insert_semicolon_after_close_paren_before_line_starting_with_open_paren(data)
     return data
+end
+
+# Julia `"a $b $(c)"` in `console.*("...")` — TS needs `` `a ${b} ${c}` `` (double-quoted `$` is not interpolation).
+function julia_string_interpolation_to_ts_template_body(body::AbstractString)::String
+    s = String(body)
+    io = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    is_word_char(c::Char) = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+    while i <= n
+        c = s[i]
+        if c == '$' && i < n
+            ni = nextind(s, i)
+            if s[ni] == '('
+                inner_start = nextind(s, ni)
+                d = 1
+                j = inner_start
+                found = false
+                while j <= n
+                    if s[j] == '('
+                        d += 1
+                    elseif s[j] == ')'
+                        d -= 1
+                        if d == 0
+                            inner = s[inner_start:prevind(s, j)]
+                            write(io, "\${", inner, "}")
+                            i = nextind(s, j)
+                            found = true
+                            break
+                        end
+                    end
+                    j = nextind(s, j)
+                end
+                if found
+                    continue
+                end
+            elseif is_word_char(s[ni])
+                j = ni
+                id = IOBuffer()
+                while j <= n && is_word_char(s[j])
+                    write(id, s[j])
+                    j = nextind(s, j)
+                end
+                write(io, "\${", String(take!(id)), "}")
+                i = j
+                continue
+            end
+        end
+        write(io, c)
+        i = nextind(s, i)
+    end
+    return String(take!(io))
+end
+
+function escape_ts_template_literal_content(t::AbstractString)::String
+    x = replace(String(t), '\\' => "\\\\")
+    x = replace(x, '`' => "\\`")
+    return x
+end
+
+function rewrite_console_double_quoted_dollar_strings_to_templates(data::AbstractString)::String
+    pat = r"^(\s*console\.(?:log|debug|warn|error|info)\(\s*)\"([^\"]*)\"(\s*\).*)$"
+    lines = split(String(data), '\n'; keepempty = true)
+    return join(
+        map(lines) do line
+            m = match(pat, String(line))
+            m === nothing && return line
+            body = String(m[2])
+            occursin('$', body) || return line
+            inner = julia_string_interpolation_to_ts_template_body(body)
+            inner_esc = escape_ts_template_literal_content(inner)
+            string(m[1], "`", inner_esc, "`", m[3])
+        end,
+        '\n',
+    )
+end
+
+# Avoid ASI pitfall: `console.log("...")\n(...)` parses as calling the `void` result of `console.log`.
+function insert_semicolon_after_close_paren_before_line_starting_with_open_paren(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    n = length(lines)
+    for idx in 1:(n - 1)
+        raw = lines[idx]
+        cur = String(strip(raw))
+        isempty(cur) && continue
+        startswith(cur, "//") && continue
+        endswith(cur, ';') && continue
+        endswith(cur, '{') && continue
+        endswith(cur, '}') && continue
+        endswith(cur, ')') || continue
+        j = idx + 1
+        while j <= n
+            nx = String(strip(lines[j]))
+            if isempty(nx) || startswith(nx, "//")
+                j += 1
+                continue
+            end
+            if startswith(nx, '(')
+                lines[idx] = rstrip(raw) * ";"
+            end
+            break
+        end
+    end
+    return join(lines, '\n')
 end
 
 # `Ref(x)` (Julia box / pointer-ish arg) -> `x`. Out-params and glue calls mutate plain objects in TS.
@@ -877,6 +996,38 @@ function normalize_julia_ref_for_ts(data::AbstractString)::String
     return s
 end
 
+# `let x = (a = e1, b = e2)` (Julia named tuple) → `let x = { a: e1, b: e2 }` after Ref/UInt8 cleanup.
+function replace_let_named_tuple_rhs_to_object(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    rx_prefix = r"^(\s*)let\s+([A-Za-z_]\w*)\s*=\s*"
+    out = map(lines) do line
+        line = String(line)
+        m = match(rx_prefix, line)
+        m === nothing && return line
+        prefix_end = lastindex(String(m.match))
+        open_paren_i = findnext('(', line, prefix_end)
+        open_paren_i === nothing && return line
+        oi = first(open_paren_i)
+        inner_start = nextind(line, oi)
+        close_idx = _find_outer_push_close(line, inner_start, lastindex(line))
+        close_idx === nothing && return line
+        tail = String(strip(line[nextind(line, close_idx):end]))
+        occursin(r"^;?\s*(?://.*)?$", tail) || return line
+        inner = line[inner_start:prevind(line, close_idx)]
+        parts = split_top_level_commas_general(inner)
+        obj_pairs = String[]
+        for p in parts
+            sp = strip(String(p))
+            isempty(sp) && return line
+            pm = match(r"^([A-Za-z_]\w*)\s*=\s*(.+)$", sp)
+            pm === nothing && return line
+            push!(obj_pairs, string(String(pm[1]), ": ", String(strip(String(pm[2])))))
+        end
+        string(m[1], "let ", m[2], " = { ", join(obj_pairs, ", "), " }")
+    end
+    return join(out, '\n')
+end
+
 function normalize_julgame_global_access(data::AbstractString)::String
     s = String(data)
     # Cleanup old alias-based rewrites from previous converter versions.
@@ -891,16 +1042,14 @@ function rewrite_sdl_calls_to_glue(data::AbstractString)::String
     s = String(data)
     # Base mapping: SDL2.SDL_Foo(...) -> JulGameSdl.glue_SDL_Foo(...)
     s = replace(s, r"\bSDL2\.SDL_([A-Za-z0-9_]+)\(" => s"(globalThis as any).JulGameSdl.glue_SDL_\1(")
+    # SDL_mixer: SDL2.Mix_Foo(...) -> JulGameSdl.glue_Mix_Foo(...)
+    s = replace(s, r"\bSDL2\.Mix_([A-Za-z0-9_]+)\(" => s"(globalThis as any).JulGameSdl.glue_Mix_\1(")
     # Drop renderer ptr first-arg for calls now routed to glue.
     s = replace(s, r"\b(glue_SDL_[A-Za-z0-9_]+)\(\s*(?:Renderer|\(globalThis as any\)\.JulGame\.Renderer)\s*,\s*" => s"\1(")
     # Flatten SDL_FRect wrapper when used as arg.
     s = replace(s, r"Ref\(SDL2\.SDL_FRect\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)\)" => s"\1, \2, \3, \4")
     # Normalize Julia 1-based indexing to TS 0-based for any numeric index.
     s = rewrite_one_based_indices(s)
-    # Remove temporary color snapshot logic.
-    s = replace(s, r"(?m)^\s*(?:\(globalThis as any\)\.JulGameSdl\.)?glue_SDL_GetRenderDrawColor\([^\n]*\)\s*$" => "")
-    s = replace(s, r"(?m)^\s*(?:\(globalThis as any\)\.JulGameSdl\.)?glue_SDL_SetRenderDrawColor\(\s*rgba\.r\s*,\s*rgba\.g\s*,\s*rgba\.b\s*,\s*rgba\.a\s*\)\s*;?\s*$" => "")
-    s = replace(s, r"(?m)^\s*let rgba = .*Ref\(UInt8\(.*\)\).*\s*$" => "")
     # RenderDrawBlendMode variant currently modeled as blend-only glue.
     s = replace(s, r"(?m)^\s*\(globalThis as any\)\.JulGameSdl\.glue_SDL_SetRenderDrawBlendMode\([^\n]*\)\s*$" => "(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawBlendMode_BLEND()")
     return s
@@ -1065,6 +1214,10 @@ end
 function scalar_type_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
     t = String(strip(t))
     t == "Ptr{Nothing}" && return "null"
+    # `Ptr{Mod.Type}` — do not use `split(..., '.')[end]` (leaves a stray `}` on the leaf).
+    if startswith(t, "Ptr{") && endswith(t, "}")
+        return "any"
+    end
     if startswith(t, "Vector{") && endswith(t, "}")
         inner = t[nextind(t, firstindex(t), 7):prevind(t, lastindex(t))]
         return vector_inner_to_ts(inner, scalar_map)
@@ -1108,7 +1261,7 @@ function replace_union_annotations(data::AbstractString, scalar_map::Dict{String
         end
         union_inner = s[nextind(s, brace_open):prevind(s, prevind(s, p))]
         members = split_top_level_commas(union_inner)
-        ts_members = map(m -> scalar_type_to_ts(m, scalar_map), members)
+        ts_members = map(m -> julia_type_expr_to_ts(m, scalar_map), members)
         write(io, ": ", join(ts_members, " | "))
         idx = p
     end
@@ -1145,6 +1298,11 @@ end
 function julia_type_expr_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
     t = String(strip(t))
     t == "Ptr{Nothing}" && return "null"
+    if startswith(t, "Ptr{") && endswith(t, "}")
+        inner = String(strip(t[nextind(t, firstindex(t), 4):prevind(t, lastindex(t))]))
+        inner == "Nothing" && return "null"
+        return "any"
+    end
     t == "Nothing" && return "null"
     startswith(t, "Vector{") && endswith(t, "}") && return vector_inner_to_ts(t[nextind(t, firstindex(t), 7):prevind(t, lastindex(t))], scalar_map)
     if startswith(t, "Union{") && endswith(t, "}")
@@ -1189,7 +1347,11 @@ function replace_header_param_annotations(data::AbstractString, scalar_map::Dict
     out = map(lines) do line
         hm = match(header_pat, line)
         hm === nothing && return line
-        params = split(String(hm[2]), ',')
+        # Julia `f(a::T; b = 1)` — semicolon separates kwargs; TS uses commas only.
+        params_str = String(strip(String(hm[2])))
+        params_str = replace(params_str, r"\s*;\s*" => ", ")
+        raw_parts = split_top_level_commas_general(params_str)
+        params = [String(strip(p)) for p in raw_parts if !isempty(strip(String(p)))]
         rewritten = map(params) do p
             pm = match(r"^(\s*[A-Za-z_]\w*)::\s*([^=]+?)(\s*=\s*.*)?\s*$", String(p))
             pm === nothing && return p
@@ -1267,7 +1429,69 @@ function replace_types(data::AbstractString)
     for k in sort(collect(keys(scalar_map)), by = length, rev = true)
         data = replace(data, "::$k" => ": $(scalar_map[k])")
     end
+    # Header rewrite can leave TS `: Any` before `;` was fixed; `any` is the TS keyword.
+    data = replace(data, r":\s*Any\b" => ": any")
     return data
+end
+
+# After `function Foo(...)` → `constructor(...)`, kwargs may still use Julia `;` — TS needs commas.
+function replace_constructor_param_list_semicolons_to_commas(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    join(
+        map(lines) do line
+            line = String(line)
+            crg = findfirst("constructor(", line)
+            crg === nothing && return line
+            oi = last(crg)
+            inner_start = nextind(line, oi)
+            n = lastindex(line)
+            close_idx = _find_outer_push_close(line, inner_start, n)
+            close_idx === nothing && return line
+            inner = String(line[inner_start:prevind(line, close_idx)])
+            inner2 = replace(inner, r"\s*;\s*" => ", ")
+            inner2 == inner && return line
+            string(line[1:prevind(line, inner_start)], inner2, line[nextind(line, close_idx):n])
+        end,
+        '\n',
+    )
+end
+
+# Julia instance param `this::T` becomes TS `this: T`, but TS treats `this` as a fake parameter (not a real
+# argument, and `this` in body is often `void`). Rename to `self` in decl + matching function body.
+function rename_julia_this_receiver_to_self(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    out = String[]
+    decl_pat = r"^(\s*)function\s+\w+\s*\(\s*this\s*:"
+    i = 1
+    n = length(lines)
+    function _brace_delta(line::AbstractString)::Int
+        d = 0
+        for c in line
+            if c == '{'
+                d += 1
+            elseif c == '}'
+                d -= 1
+            end
+        end
+        return d
+    end
+    while i <= n
+        line = String(lines[i])
+        occursin(decl_pat, line) || (push!(out, line); i += 1; continue)
+        decl_line = replace(line, r"\(\s*this\s*:" => "(self:", count = 1)
+        push!(out, decl_line)
+        i += 1
+        balance = _brace_delta(decl_line)
+        while i <= n && balance > 0
+            body = String(lines[i])
+            body = replace(body, r"\bthis\." => "self.")
+            body = replace(body, r"\bthis\b" => "self")
+            push!(out, body)
+            balance += _brace_delta(body)
+            i += 1
+        end
+    end
+    return join(out, '\n')
 end
 
 function replace_constructor(data::AbstractString)
@@ -1294,6 +1518,7 @@ function replace_constructor(data::AbstractString)
     data = replace(data, "this = new()" => "")
     # Only the ctor idiom `return this` on its own line — not `return this.foo`.
     data = replace(data, r"(?m)^\s*return this\s*$" => "")
+    data = replace_constructor_param_list_semicolons_to_commas(data)
     return data
 end
 
@@ -1850,6 +2075,7 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     # Use a substring needle for literals; switch to `needle isa Regex` + `occursin(needle, line)` if you need `\b` word boundaries.
     line_rules = Pair{Union{String, Regex}, String}[
         "add_observer" => "",
+        "throw(" => "",
     ]
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line

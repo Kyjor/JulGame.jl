@@ -21,7 +21,7 @@ export {}
         playOnce: boolean
         sprite: InternalSprite | null
 
-        constructor(parent: any,  animations: JulGameAnimation[] = []) {
+        constructor(parent: any, animations: JulGameAnimation[] = []) {
             
             
             this.animations = animations
@@ -35,29 +35,29 @@ export {}
         }
     }
 
-    function Component_update(this: InternalAnimator,  currentRenderTime,  deltaTime) {
-        if (this.currentAnimation === null || this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == this.currentAnimation.frames.length) || this.sprite == null) {
+    function Component_update(self: InternalAnimator, currentRenderTime, deltaTime) {
+        if (self.currentAnimation === null || self.currentAnimation.animatedFPS < 1 || (self.playOnce && self.lastFrame == self.currentAnimation.frames.length) || self.sprite == null) {
             return
         }
-        deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
-        let framesToUpdate = Math.floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
+        deltaTime = (currentRenderTime - self.lastUpdate) / 1000.0
+        let framesToUpdate = Math.floor(deltaTime / (1.0 / self.currentAnimation.animatedFPS))
         if (framesToUpdate > 0) {
-            this.lastFrame = this.lastFrame + framesToUpdate
-            this.lastUpdate = currentRenderTime
+            self.lastFrame = self.lastFrame + framesToUpdate
+            self.lastUpdate = currentRenderTime
         }
-        let frameCount = this.currentAnimation.frames.length
-        if (this.lastFrame > frameCount) {
-            this.lastFrame = 1
+        let frameCount = self.currentAnimation.frames.length
+        if (self.lastFrame > frameCount) {
+            self.lastFrame = 1
         }
-        this.sprite.crop = this.currentAnimation.frames[this.lastFrame]
+        self.sprite.crop = self.currentAnimation.frames[self.lastFrame]
     }
 
     
-    function Component_play_animation_once(this: InternalAnimator,  animationIndex: number) {
-        if (animationIndex > 0 && animationIndex <= this.animations.length) {
-            this.currentAnimation = this.animations[animationIndex]
-            this.playOnce = true
-            this.lastFrame = 1
+    function Component_play_animation_once(self: InternalAnimator, animationIndex: number) {
+        if (animationIndex > 0 && animationIndex <= self.animations.length) {
+            self.currentAnimation = self.animations[animationIndex]
+            self.playOnce = true
+            self.lastFrame = 1
 
             return
         }
@@ -65,13 +65,13 @@ export {}
         console.warn("Animation index out of bounds")
     }
 
-    function Component_duplicate(this: InternalAnimator,  parent: any) {
-        let newAnimator = new InternalAnimator(parent, this.animations)
-        newAnimator.currentAnimation = this.currentAnimation
-        newAnimator.lastFrame = this.lastFrame
-        newAnimator.lastUpdate = this.lastUpdate
-        newAnimator.playOnce = this.playOnce
-        newAnimator.sprite = this.sprite
+    function Component_duplicate(self: InternalAnimator, parent: any) {
+        let newAnimator = new InternalAnimator(parent, self.animations)
+        newAnimator.currentAnimation = self.currentAnimation
+        newAnimator.lastFrame = self.lastFrame
+        newAnimator.lastUpdate = self.lastUpdate
+        newAnimator.playOnce = self.playOnce
+        newAnimator.sprite = self.sprite
 
         return newAnimator
     }
@@ -92,11 +92,11 @@ export {}
     force_frame_update(animator, 1)
     ```
     */
-    function force_frame_update(this: InternalAnimator,  frameIndex: number) {
-        if (this.currentAnimation === null || this.sprite === null) {
+    function force_frame_update(self: InternalAnimator, frameIndex: number) {
+        if (self.currentAnimation === null || self.sprite === null) {
             return
         }
         frameIndex = frameIndex
-        this.sprite.crop = this.currentAnimation.frames[frameIndex]
+        self.sprite.crop = self.currentAnimation.frames[frameIndex]
     }
     

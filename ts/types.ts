@@ -36,11 +36,8 @@ declare global {
   const MAIN: any;
   const C_NULL: null;
   const Renderer: any;
-  const JulGameSdl: {
-    glue_SDL_SetRenderDrawBlendMode_BLEND(): void;
-    glue_SDL_SetRenderDrawColor(r: number, g: number, b: number, a: number): void;
-    glue_SDL_RenderFillRectF(x: number, y: number, w: number, h: number): void;
-  };
+  /** Wasm SDL / SDL_mixer glue (`glue_SDL_*`, `glue_Mix_*`, …) — surface grows with `tools/convert.jl`. */
+  const JulGameSdl: Record<string, any>;
 
   function empty(x: any): void;
   function setfield(target: any, key: any, value: any): void;
@@ -60,4 +57,17 @@ declare global {
   const Below: ColliderLocation;
   const LeftSide: ColliderLocation;
   const RightSide: ColliderLocation;
+
+  /**
+   * Generated `function Component_*` live in `ts/_generated/.../Component/*.ts` as separate modules
+   * (`export {}`); implementations load together at runtime. Declarations here satisfy cross-file refs.
+   */
+  function Component_check_collisions(self: InternalCollider): void;
+  function Component_duplicate(self: any, parent: any): any;
+  function Component_initialize(self: any, ...args: any[]): void;
+  function Component_toggle_sound(self: any, loops?: number): void;
+  function Component_destroy(self: any): void;
+  function Component_unload_sound(self: any): void;
+  function Component_render(self: any, ctx: any): void;
+  function Component_draw(self: any, camera?: any): void;
 }

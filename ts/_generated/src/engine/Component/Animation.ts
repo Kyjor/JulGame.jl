@@ -7,7 +7,7 @@ export {}
         animatedFPS: number
         frames: Vector4[]
 
-        constructor(frames: Vector4[],  animatedFPS: number) {
+        constructor(frames: Vector4[], animatedFPS: number) {
             // Convert animatedFPS to Int32
             animatedFPS = animatedFPS
             

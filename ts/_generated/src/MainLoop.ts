@@ -1,4 +1,6 @@
 export {}
+import { unsafe_string } from "../../src/engine/core/juliaHelpers";
+
 
 	// using ..JulGame
 	// using ..(globalThis as any).JulGame.ErrorLoggingModule
@@ -24,7 +26,7 @@ export {}
 				try {
 					schedule(coroutine.task, InterruptException(), error=true)
 				} catch (e) {
-					console.debug("Error interrupting coroutine: $e")
+					console.debug(`Error interrupting coroutine: ${e}`)
 				}
 			}
 		}
@@ -69,13 +71,13 @@ export {}
 
 			console.debug("Initializing SDL")
 			if ((globalThis as any).JulGameSdl.glue_SDL_Init(SDL2.SDL_INIT_EVERYTHING) != 0) {
-				console.error("Failed to initialize SDL, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+				console.error(`Failed to initialize SDL, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 			}
 			if (SDL2.TTF_Init() != 0) {
-				console.error("Failed to initialize TTF, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+				console.error(`Failed to initialize TTF, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 			}
-			if (SDL2.Mix_OpenAudio(22050, SDL2.MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
-				console.error("Failed to open audio, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+			if ((globalThis as any).JulGameSdl.glue_Mix_OpenAudio(22050, SDL2.MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
+				console.error(`Failed to open audio, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 			}
 			(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 
@@ -121,8 +123,8 @@ export {}
 	Mark the input layer order cache as dirty, forcing a rebuild on next access.
 	Call this when adding/removing UI elements or entities, or when changing layers.
 	*/
-	function mark_input_layer_order_dirty(this: MainLoop) {
-		this.inputLayerOrderDirty = true
+	function mark_input_layer_order_dirty(self: MainLoop) {
+		self.inputLayerOrderDirty = true
 	}
 	
 	// ============================================================================
@@ -141,7 +143,7 @@ export {}
 		
 		if ((script_type in this.knownScriptTypes)) {
 			// First time: JIT compiles the method (slow but only once)
-			console.debug("First initialize call for $(script_type) - compiling...")
+			console.debug(`First initialize call for ${script_type} - compiling...`)
 			this.knownScriptTypes.push(script_type)
 			this.scriptTimings[script_type] = []
 		}
@@ -160,7 +162,7 @@ export {}
 		
 		if ((script_type in this.knownScriptTypes)) {
 			// First call: register type (compilation happens here)
-			console.debug("First update call for $(script_type) - compiling...")
+			console.debug(`First update call for ${script_type} - compiling...`)
 			this.knownScriptTypes.push(script_type)
 			this.scriptTimings[script_type] = []
 		}
@@ -194,7 +196,7 @@ export {}
 		
 		if ((script_type in this.knownScriptTypes)) {
 			this.knownScriptTypes.push(script_type)
-			console.debug("First shutdown call for $(script_type) - compiling...")
+			console.debug(`First shutdown call for ${script_type} - compiling...`)
 		}
 		
 		// Always use invokelatest (fast after first compilation)
@@ -207,8 +209,8 @@ export {}
 	
 	Print profiling statistics for each script type showing mean, P95, P99, and max execution times.
 	*/
-	function print_script_profiling_report(this: MainLoop) {
-		if (isempty(this.scriptTimings)) {
+	function print_script_profiling_report(self: MainLoop) {
+		if (isempty(self.scriptTimings)) {
 			console.log("No script profiling data available")
 			return
 		}
@@ -218,7 +220,7 @@ export {}
 		console.log("="^80)
 		
 		// Sort by mean time (slowest first)
-		let sorted_scripts = sort(collect(this.scriptTimings), by = kv -> isempty(kv[1]) ? 0.0 : Statistics.mean(kv[1]), rev=true)
+		let sorted_scripts = sort(collect(self.scriptTimings), by = kv -> isempty(kv[1]) ? 0.0 : Statistics.mean(kv[1]), rev=true)
 		
 		for (script_type, timings) in sorted_scripts
 			if (isempty(timings)) {
@@ -230,12 +232,12 @@ export {}
 			let p99 = quantile(timings, 0.99)
 			let max_time = maximum(timings)
 			
-			console.log("\n📜 $(script_type)")
-			console.log("  ├─ Calls: $(timings.length)")
-			console.log("  ├─ Mean:  $(Math.round(mean_time, digits=3)) ms")
-			console.log("  ├─ P95:   $(Math.round(p95, digits=3)) ms")
-			console.log("  ├─ P99:   $(Math.round(p99, digits=3)) ms")
-			console.log("  └─ Max:   $(Math.round(max_time, digits=3)) ms")
+			console.log(`\\n📜 ${script_type}`)
+			console.log(`  ├─ Calls: ${timings.length}`)
+			console.log(`  ├─ Mean:  ${Math.round(mean_time, digits=3)} ms`)
+			console.log(`  ├─ P95:   ${Math.round(p95, digits=3)} ms`)
+			console.log(`  ├─ P99:   ${Math.round(p99, digits=3)} ms`)
+			console.log(`  └─ Max:   ${Math.round(max_time, digits=3)} ms`)
 		}
 		
 		console.log("\n" * "="^80)
@@ -246,8 +248,8 @@ export {}
 	
 	Clear all script profiling data.
 	*/
-	function clear_script_profiling_data(this: MainLoop) {
-		for (_, timings) in this.scriptTimings
+	function clear_script_profiling_data(self: MainLoop) {
+		for (_, timings) in self.scriptTimings
 			empty(timings)
 		}
 	}
@@ -269,64 +271,64 @@ export {}
         }
     }
 
-    function initialize_new_scene(this: MainLoop) {
+    function initialize_new_scene(self: MainLoop) {
 		console.debug("Initializing new scene")
 		console.debug("Deserializing and building scene")
-        SceneBuilderModule.deserialize_and_build_scene(this.level)
+        SceneBuilderModule.deserialize_and_build_scene(self.level)
 
         initialize_scripts_and_components()
         
         if ((globalThis as any).JulGame.IS_EDITOR) {
 			console.debug("Starting non editor loop")
-            full_loop(this)
+            full_loop(self)
             return
         }
     }
 
-    function reset_camera_position(this: MainLoop) {
+    function reset_camera_position(self: MainLoop) {
 		console.debug("Resetting camera position")
-		if (this.scene.camera === null return }) {
+		if (self.scene.camera === null return }) {
 
         let cameraPosition = {x: 0.0, y: 0.0, z: 0.0}
-        (globalThis as any).JulGame.CameraModule.update(this.scene.camera, cameraPosition)
+        (globalThis as any).JulGame.CameraModule.update(self.scene.camera, cameraPosition)
     }
 	
-    function full_loop(this: MainLoop) {
+    function full_loop(self: MainLoop) {
         try {
-			this.close = false
+			self.close = false
             let startTime = UInt64(0)
             let lastPhysicsTime = UInt64((globalThis as any).JulGameSdl.glue_SDL_GetTicks())
-            while !this.close
+            while !self.close
                 try {
-                    game_loop(this, startTime, lastPhysicsTime)
+                    game_loop(self, startTime, lastPhysicsTime)
                 } catch (e) {
-                    if (this.testMode) {
-                        throw(e)
+                    if (self.testMode) {
+
                     } else {
-						if (this.testMode) {
-							rethrow(e)
+						if (self.testMode) {
+
 						} else {
 							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
                     }
                 }
-                if (this.testMode && this.currentTestTime >= this.testLength) {
+                if (self.testMode && self.currentTestTime >= self.testLength) {
 					console.info("Test mode complete")
                     break
                 }
             }
         finally
-            for (const entity of this.scene.entities) {
+            for (const entity of self.scene.entities) {
                 for (const script of entity.scripts) {
                     try {
-                        call_script_shutdown(this, script)
+                        call_script_shutdown(self, script)
                     } catch (e) {
-						if (this.testMode) {
-							rethrow(e)
+						if (self.testMode) {
+
 						} else {
 							if (typeof(e) != ErrorException) {
-								console.log("Error shutting down script: $(typeof(script))")
+								console.log(`Error shutting down script: ${typeof(script)}`)
 								Base.show_backtrace(stdout, catch_backtrace())
 							}
 						}
@@ -338,7 +340,7 @@ export {}
             console.debug("Cleaning up coroutines during game exit")
             cleanup_coroutines()
 			
-            if (!this.shouldChangeScene) {
+            if (!self.shouldChangeScene) {
                 // Clean up all immediate UI components on game shutdown
                 (globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
 				console.debug("Cleaning up immediate UI components")
@@ -346,40 +348,40 @@ export {}
 				return
             } else {
 				console.debug("Changing scene")
-                this.shouldChangeScene = false
-                initialize_new_scene(this)
+                self.shouldChangeScene = false
+                initialize_new_scene(self)
             }
         }
     }
 
-    function create_new_entity(this: MainLoop) {
+    function create_new_entity(self: MainLoop) {
 		console.debug("Creating new entity")
-        SceneBuilderModule.create_new_entity(this.level)
+        SceneBuilderModule.create_new_entity(self.level)
     }
 
-    function create_new_text_box(this: MainLoop) {
+    function create_new_text_box(self: MainLoop) {
 		console.debug("Creating new text box")
-        SceneBuilderModule.create_new_text_box(this.level)
+        SceneBuilderModule.create_new_text_box(self.level)
     }
 
-	function create_new_screen_button(this: MainLoop) {
+	function create_new_screen_button(self: MainLoop) {
 		console.debug("Creating new screen button")
-		SceneBuilderModule.create_new_screen_button(this.level)
+		SceneBuilderModule.create_new_screen_button(self.level)
 	}
 
-	function create_new_image(this: MainLoop) {
+	function create_new_image(self: MainLoop) {
 		console.debug("Creating new image")
-		SceneBuilderModule.create_new_image(this.level)
+		SceneBuilderModule.create_new_image(self.level)
 	}
 
-	function create_new_rectangle(this: MainLoop) {
+	function create_new_rectangle(self: MainLoop) {
 		console.debug("Creating new rectangle")
-		SceneBuilderModule.create_new_rectangle(this.level)
+		SceneBuilderModule.create_new_rectangle(self.level)
 	}
 
-	function create_new_canvas(this: MainLoop) {
+	function create_new_canvas(self: MainLoop) {
 		console.debug("Creating new canvas")
-		let canvas = SceneBuilderModule.create_new_canvas(this.level)
+		let canvas = SceneBuilderModule.create_new_canvas(self.level)
 		return canvas
 	}
 
@@ -412,7 +414,7 @@ export {}
 					call_script_initialize(this, script)
 				} catch (e) {
 					if (this.testMode) {
-						rethrow(e)
+
 					} else {
 						@error string(e)
 						Base.show_backtrace(stdout, catch_backtrace())
@@ -424,7 +426,7 @@ export {}
 			for (const entity of MAIN.scene.entities) {
 				console.debug("Checking for a soundSource that needs to be activated")
 				if (entity.soundSource != null && entity.soundSource !== null && entity.soundSource.playOnStart && !entity.soundSource.isPlaying) {
-					console.debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
+					console.debug(`Playing ${entity.name}'s (${entity.id}) sound source on start: ${entity.soundSource.path}`)
 					Component_toggle_sound(entity.soundSource)
 				}
 			} 
@@ -465,7 +467,7 @@ Change the scene to the specified `sceneFileName`. This function destroys the cu
 function JulGame_change_scene(sceneFileName: string) {
 	(globalThis as any).JulGame.IS_CHANGING_SCENE = true
 	this = MAIN
-	console.debug("Changing scene to: $(sceneFileName)")
+	console.debug(`Changing scene to: ${sceneFileName}`)
 	this.close = true
 	this.shouldChangeScene = true
 	
@@ -477,7 +479,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	cleanup_coroutines()
 	
 	//destroy current scene 
-	console.debug("Entity count before destroying: $(this.scene.entities.length)") 
+	console.debug(`Entity count before destroying: ${this.scene.entities.length}`) 
 	let count = 0
 	let skipcount = 0
 	let persistentEntities = []	
@@ -498,10 +500,10 @@ function JulGame_change_scene(sceneFileName: string) {
 					call_script_shutdown(this, script)
 				} catch (e) {
 					if (this.testMode) {
-						rethrow(e)
+
 					} else {
 						if (typeof(e) != ErrorException) {
-							console.log("Error shutting down script: $(typeof(script))")
+							console.log(`Error shutting down script: ${typeof(script)}`)
 							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						}
@@ -517,10 +519,10 @@ function JulGame_change_scene(sceneFileName: string) {
 	for (const entity of entitiesToDestroy) {
 		(globalThis as any).JulGame.destroy_entity(this, entity)
 	}
-	console.debug("Destroyed $count entities while changing scenes")
-	console.debug("Skipped $skipcount entities while changing scenes")
+	console.debug(`Destroyed ${count} entities while changing scenes`)
+	console.debug(`Skipped ${skipcount} entities while changing scenes`)
 
-	console.debug("Entities left after destroying while changing scenes (persistent): $(persistentEntities.length) ")
+	console.debug(`Entities left after destroying while changing scenes (persistent): ${persistentEntities.length} `)
 
 	let persistentUIElements = []
 	// delete all UIElements
@@ -582,16 +584,16 @@ function build_sprite_layers() {
 	return [layers = layerDict, sorted = sortedLayers]  // Return named tuple
 }
 
-function JulGame_initialize(this: any) {
-	//console.warn("⚠️  FALLBACK initialize called for: $(typeof(this))")
+function JulGame_initialize(self: any) {
+	//console.warn("⚠️  FALLBACK initialize called for: $(typeof(self))")
 }
 
-function JulGame_update(this: any,  deltaTime: any) {
-	//console.warn("⚠️  FALLBACK update called for: $(typeof(this))")
+function JulGame_update(self: any, deltaTime: any) {
+	//console.warn("⚠️  FALLBACK update called for: $(typeof(self))")
 }
 
-function JulGame_on_shutdown(this: any) {
-	//console.warn("⚠️  FALLBACK on_shutdown called for: $(typeof(this))")
+function JulGame_on_shutdown(self: any) {
+	//console.warn("⚠️  FALLBACK on_shutdown called for: $(typeof(self))")
 }
 
 
@@ -603,23 +605,23 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 // Arguments
 - `entity`: The entity to be destroyed.
 */
-function JulGame_destroy_entity(this: MainLoop,  entity) {
-	for i = eachindex(this.scene.entities)
-		if (this.scene.entities[i] == entity) {
-			destroy_entity_components(this, entity)
-			deleteat(this.scene.entities, i)
-			let entity_index = findfirst(x -> x == entity, this.selectedEntities)
+function JulGame_destroy_entity(self: MainLoop, entity) {
+	for i = eachindex(self.scene.entities)
+		if (self.scene.entities[i] == entity) {
+			destroy_entity_components(self, entity)
+			deleteat(self.scene.entities, i)
+			let entity_index = findfirst(x -> x == entity, self.selectedEntities)
 			if (entity_index !== null) {
-				deleteat(this.selectedEntities, entity_index)
+				deleteat(self.selectedEntities, entity_index)
 			}
-			mark_input_layer_order_dirty(this)  // Cache needs rebuild
+			mark_input_layer_order_dirty(self)  // Cache needs rebuild
 			break
 		}
 	}
 }
 
-function JulGame_destroy(this: MainLoop,  entity: Entity) {
-	(globalThis as any).JulGame.destroy_entity(this, entity)
+function JulGame_destroy(self: MainLoop, entity: Entity) {
+	(globalThis as any).JulGame.destroy_entity(self, entity)
 }
 
 function JulGame_destroy(entity: Entity) {
@@ -630,26 +632,26 @@ function JulGame_destroy_entity(entity) {
     (globalThis as any).JulGame.destroy_entity(MAIN, entity)
 }
 
-function JulGame_destroy_ui_element(this: MainLoop,  uiElement) {
-	for i = eachindex(this.scene.uiElements)
-		if (this.scene.uiElements[i] == uiElement) {
-			deleteat(this.scene.uiElements, i)
+function JulGame_destroy_ui_element(self: MainLoop, uiElement) {
+	for i = eachindex(self.scene.uiElements)
+		if (self.scene.uiElements[i] == uiElement) {
+			deleteat(self.scene.uiElements, i)
 			(globalThis as any).JulGame.destroy(uiElement)
-			mark_input_layer_order_dirty(this)  // Cache needs rebuild
+			mark_input_layer_order_dirty(self)  // Cache needs rebuild
 			break
 		}
 	}
 }
 
-function destroy_entity_components(this: MainLoop,  entity) {
+function destroy_entity_components(self: MainLoop, entity) {
 	entitySprite = entity.sprite
 	if (entitySprite != null) {
 		layer = entitySprite.layer
-		if (haskey(this.spriteLayers.layers, layer)) { // No string interpolation!
-			for j = eachindex(this.spriteLayers.layers[layer])
-				if (this.spriteLayers.layers[layer][j] == entitySprite) {
+		if (haskey(self.spriteLayers.layers, layer)) { // No string interpolation!
+			for j = eachindex(self.spriteLayers.layers[layer])
+				if (self.spriteLayers.layers[layer][j] == entitySprite) {
 					Component_destroy(entitySprite)
-					deleteat(this.spriteLayers.layers[layer], j)
+					deleteat(self.spriteLayers.layers[layer], j)
 					break
 				}
 			}
@@ -736,7 +738,7 @@ function _accum_ui_render_breakdown_ms(prof, t0, key: symbol)
 	return
 }
 
-function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhysicsTime = UInt64(0), windowPos = {x: 0, y: 0}, windowSize = {x: 0, y: 0})
+function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysicsTime = UInt64(0), windowPos = {x: 0, y: 0}, windowSize = {x: 0, y: 0})
 	// Start frame profiling
 	if (this.latencyProfiler !== null) {
 		(globalThis as any).JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
@@ -819,7 +821,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 						(globalThis as any).JulGame.update(rigidbody, deltaTime)
 					} catch (e) {
 						if (this.testMode) {
-							rethrow(e)
+
 						} else {
 							console.log(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
 							@error string(e)
@@ -868,7 +870,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 						}
 					} catch (e) {
 						if (this.testMode) {
-							rethrow(e)
+
 						} else {
 							console.log(entity.name, " with id: ", entity.id, " has a problem with it's update")
 							@error string(e)
@@ -982,7 +984,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 					}
 				} catch (e) {
 					if (this.testMode) {
-						rethrow(e)
+
 					} else {
 						let parent_info = ""
 						if (isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)) {
@@ -1017,10 +1019,11 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 				]
 
 				// Draw a gray rect under the debug textboxes
-
+				let rgba = { r: 0, g: 0, b: 0, a: 255 }
+				(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
 				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a]
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255)
-				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, (globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length))
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255);
+				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, (globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length));
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, currentColor[0], currentColor[1], currentColor[2], currentColor[3])
 
 				if (this.debugTextBoxes.length == 0) {
@@ -1048,7 +1051,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :present_and_delay)
 				}
 				
-				(globalThis as any).JulGameSdl.glue_SDL_RenderPresent((globalThis as any).JulGame.Renderer)
+				(globalThis as any).JulGameSdl.glue_SDL_RenderPresent((globalThis as any).JulGame.Renderer);
 				(globalThis as any).JulGameSdl.glue_SDL_framerateDelay(this.windowManager.fpsManager)
 				
 				if (this.latencyProfiler !== null) {
@@ -1057,7 +1060,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 			}
 		} catch (e) {
 			if (this.testMode) {
-				rethrow(e)
+
 			} else {
 				@error string(e)
 				Base.show_backtrace(stdout, catch_backtrace())
@@ -1070,7 +1073,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		}
     }
 
-	function render_scene_sprites_and_shapes(this: MainLoop,  camera: Camera) {
+	function render_scene_sprites_and_shapes(self: MainLoop, camera: Camera) {
 		cameraPosition = camera !== null ? camera.position : {x: 0, y: 0}
 		cameraSize = camera !== null ? camera.size : {x: 0, y: 0}
 		let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
@@ -1078,7 +1081,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		skipcount = 0
 		let rendercount = 0
 		let renderOrder = []
-		for (const entity of this.scene.entities) {
+		for (const entity of self.scene.entities) {
 			let spriteExists = entity.sprite != null && entity.sprite !== null
 			let shapeExists = entity.shape != null && entity.shape !== null
 			let mesh3dExists = entity.mesh3d != null && entity.mesh3d !== null
@@ -1100,19 +1103,19 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 			let skipSoftwareRenderer3d = false
 
 			// TODO: consider offset
-			if (spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && this.optimizeSpriteRendering) {
+			if (spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && self.optimizeSpriteRendering) {
 				skipSprite = true
 			}
 
 			// TODO: consider offset
-			if (shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && shape.isWorldEntity && this.optimizeSpriteRendering) {
+			if (shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && shape.isWorldEntity && self.optimizeSpriteRendering) {
 				skipShape = true
 			}
 
 			if (!skipSprite && spriteExists) {
 				// Skip static sprites in-game (they're rendered via batched textures)
 				// BUT always render them in editor scene viewer for manipulation
-				let should_batch = sprite.isStatic && ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
+				let should_batch = sprite.isStatic && ((globalThis as any).JulGame.IS_EDITOR || self.isGameModeRunningInEditor)
 				if (!should_batch) {
 					renderOrder.push((sprite.layer, sprite))
 				}
@@ -1140,8 +1143,8 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 	
 	// Add batched static sprite layers to render order
 	// Only render batched layers when NOT in editor scene viewer
-	if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
-		for (layer, batched_layer) in this.scene.batchedLayers
+	if ((globalThis as any).JulGame.IS_EDITOR || self.isGameModeRunningInEditor) {
+		for (layer, batched_layer) in self.scene.batchedLayers
 			renderOrder.push((layer, batched_layer))
 		}
 	}
@@ -1169,7 +1172,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 			}
 			} catch (e) {
 				if (this.testMode) {
-					rethrow(e)
+
 				} else {
 					parent_info = ""
 					if (isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)) {
@@ -1187,15 +1190,15 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		}
 	}
 
-	function start_game_in_editor(this: MainLoop,  path: string) {
-		this.isGameModeRunningInEditor = true
+	function start_game_in_editor(self: MainLoop, path: string) {
+		self.isGameModeRunningInEditor = true
 		SceneBuilderModule.add_scripts_to_entities(path)
 		initialize_scripts_and_components()
 	}
 
-	function stop_game_in_editor(this: MainLoop) {
-		this.isGameModeRunningInEditor = false
-		SDL2.Mix_HaltMusic()
+	function stop_game_in_editor(self: MainLoop) {
+		self.isGameModeRunningInEditor = false
+		(globalThis as any).JulGameSdl.glue_Mix_HaltMusic()
 		
 		// Clean up all immediate UI components when stopping the game in editor
 		(globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
@@ -1204,28 +1207,28 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		console.debug("Cleaning up coroutines when stopping game in editor")
 		cleanup_coroutines()
 		
-		if (this.scene.camera !== null && this.scene.camera != null) {
-			this.scene.camera.target = null
+		if (self.scene.camera !== null && self.scene.camera != null) {
+			self.scene.camera.target = null
 		}
 	}
 
-	function render_scene_debug(this: MainLoop,  cameraPosition,  cameraSize) {
-		S = (globalThis as any).JulGame.pixels_per_world_unit(this.scene.camera)
+	function render_scene_debug(self: MainLoop, cameraPosition, cameraSize) {
+		S = (globalThis as any).JulGame.pixels_per_world_unit(self.scene.camera)
 		let colliderSkipCount = 0
 		let colliderRenderCount = 0
-		for (const entity of this.scene.entities) {
+		for (const entity of self.scene.entities) {
 			if (!entity.isActive) {
 				continue
 			}
 	
 			if (entity.collider != null) {
-				rgba = (r = UInt8(0), g = UInt8(0), b = UInt8(0), a = UInt8(255))
-
+				rgba = (r = 0, g = 0, b = 0, a = 255);
+        		(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
 				let scale = entity.transform.scale
 	
-				if (((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/S || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/S)  && this.optimizeSpriteRendering) {
+				if (((pos.x + scale.x) < cameraPosition.x || pos.y < cameraPosition.y || pos.x > cameraPosition.x + cameraSize.x/S || (pos.y - scale.y) > cameraPosition.y + cameraSize.y/S)  && self.optimizeSpriteRendering) {
 					colliderSkipCount += 1
 					continue
 				}
@@ -1242,7 +1245,7 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, 
 				(pos.y + colOffset.y - cameraPosition.y) * S, 
 				entity.transform.scale.x * colSize.x * S, 
-				entity.transform.scale.y * colSize.y * S))
+				entity.transform.scale.y * colSize.y * S));
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 			}
 		}
@@ -1252,10 +1255,10 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Closing window")
 		if ((globalThis as any).JulGame.Renderer != Ptr{SDL2.SDL_Renderer}(null) && (globalThis as any).JulGame.Renderer != null) {
-			console.debug("Destroying renderer: $((globalThis as any).JulGame.Renderer)")
+			console.debug(`Destroying renderer: ${(globalThis as any).JulGame.Renderer}`);
 			(globalThis as any).JulGameSdl.glue_SDL_DestroyRenderer((globalThis as any).JulGame.Renderer)
 			if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
-				console.error("Failed to destroy renderer, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+				console.error(`Failed to destroy renderer, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 			}
 			(globalThis as any).JulGame.Renderer = null
 		} else {
@@ -1271,27 +1274,27 @@ function game_loop(this: MainLoop,  startTime: Ref{UInt64} = UInt64(0), lastPhys
 		
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
         // Reset any OpenGL-related attributes that might have been set
-        console.debug("Resetting GL attributes")
+        console.debug("Resetting GL attributes");
         (globalThis as any).JulGameSdl.glue_SDL_GL_ResetAttributes()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
-			console.error("Failed to reset GL attributes, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+			console.error(`Failed to reset GL attributes, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 		}
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
-		console.debug("Quitting Mix")
-        SDL2.Mix_Quit()
+		console.debug("Quitting Mix");
+        (globalThis as any).JulGameSdl.glue_Mix_Quit()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
-			console.error("Failed to quit Mix, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+			console.error(`Failed to quit Mix, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 		}
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Quitting TTF")
         SDL2.TTF_Quit()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
-			console.error("Failed to quit TTF, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+			console.error(`Failed to quit TTF, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 		}
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
-		console.debug("Quitting SDL")
+		console.debug("Quitting SDL");
         (globalThis as any).JulGameSdl.glue_SDL_Quit()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
-			console.error("Failed to quit SDL, $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+			console.error(`Failed to quit SDL, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 		}
 	}

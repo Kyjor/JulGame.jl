@@ -1,6 +1,7 @@
 export {}
 import { clamp } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
+import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -36,19 +37,19 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         crop: null | Vector4
         isFlipped: boolean
         isFloatPrecision: boolean
-        image: null | SDL_Surface}
+        image: null | any
         parent: IEntity // Entity
         lastRenderedScreenPosition: Vector2f | null
         lastRenderedScreenSize: Vector2f | null
         pixelsPerUnit: number
         size: Vector2
-        texture: null | SDL_Texture}
+        texture: null | any
         position: Vector2f
         anchor: symbol
         isStatic: boolean
         //  effects support
         effects: any[]  // Will hold Effect objects
-        effectTexture: null | SDL_Texture}
+        effectTexture: null | any
         effectSize: Vector2  // Size of effect texture (may be larger due to glow padding)
         effectCacheKey: String  // Cache key for sharing effect textures
         needsEffectUpdate: boolean
@@ -75,7 +76,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
 
             this.offset = offset
             this.isFlipped = isFlipped
-            console.debug("attemping to load sprite with path: $(imagePath)")
+            console.debug(`attemping to load sprite with path: ${imagePath}`)
             this.imagePath = imagePath
             this.center = center
             this.color = color
@@ -121,36 +122,36 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     }
     
-    function Component_draw(this: InternalSprite,  camera = null) {
-        if (this.image == null || (globalThis as any).JulGame.Renderer == null) {
+    function Component_draw(self: InternalSprite, camera = null) {
+        if (self.image == null || (globalThis as any).JulGame.Renderer == null) {
             return
         }
         
         // Update effects if needed
-        if (!isempty(this.effects) && this.needsEffectUpdate) {
-            update_effects(this)
+        if (!isempty(self.effects) && self.needsEffectUpdate) {
+            update_effects(self)
         }
     
         // Use effect texture if available and enabled, otherwise use regular texture
-        let texture_to_render = if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != null
-            this.effectTexture
+        let texture_to_render = if self.useEffectTexture && !isempty(self.effects) && self.effectTexture != null
+            self.effectTexture
         } else {
             // Create or get cached texture if it doesn't exist
-            if (this.texture == null && this.image != null) {
-                this.texture = get_or_create_texture(this.imagePath, this.image)
-                Component_set_color(this)
+            if (self.texture == null && self.image != null) {
+                self.texture = get_or_create_texture(self.imagePath, self.image)
+                Component_set_color(self)
             }
-            this.texture
+            self.texture
         }
     
         // Check and set color if necessary (for both regular and effect textures)
-        let colorRefs = (UInt8(0), UInt8(0), UInt8(0))
-        let alphaRef = UInt8(0)
-        (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, colorRefs...)
+        let colorRefs = (0, 0, 0)
+        let alphaRef = 0;
+        (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, colorRefs...);
         (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
         if (colorRefs[0][] != this.color[0] || colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || this.color[3] != alphaRef) {
-            (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, UInt8(clamp(this.color[0], 0, 255)), UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)))
-            (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, UInt8(clamp(this.color[3], 0, 255)))
+            (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, Number(clamp(this.color[0], 0, 255)), Number(clamp(this.color[1], 0, 255)), Number(clamp(this.color[2], 0, 255)));
+            (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, Number(clamp(this.color[3], 0, 255)))
         }
     
         let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
@@ -281,16 +282,16 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     }
 
-    function Component_initialize(this: InternalSprite) {
-        if (this.image == null) {
+    function Component_initialize(self: InternalSprite) {
+        if (self.image == null) {
             return
         }
 
-        this.texture = get_or_create_texture(this.imagePath, this.image)
+        self.texture = get_or_create_texture(self.imagePath, self.image)
     }
 
-    function Component_flip(this: InternalSprite) {
-        this.isFlipped = !this.isFlipped
+    function Component_flip(self: InternalSprite) {
+        self.isFlipped = !self.isFlipped
     }
     
     // Shared effect texture cache for sprites (keyed by image+size+effects, not instance)
@@ -299,15 +300,15 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     // Shared texture cache for base images (keyed by image path)
     const TEXTURE_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
 
-    function get_or_create_texture(imagePath: string,  surface: SDL_Surface}) {
+    function get_or_create_texture(imagePath: string, surface: any) {
         if (haskey(TEXTURE_CACHE, imagePath)) {
-            console.debug("Using cached texture for: $(imagePath)")
+            console.debug(`Using cached texture for: ${imagePath}`)
             return TEXTURE_CACHE[imagePath]
         }
         let tex = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, surface)
         if (tex != null) {
             TEXTURE_CACHE[imagePath] = tex
-            console.debug("Created and cached texture for: $(imagePath)")
+            console.debug(`Created and cached texture for: ${imagePath}`)
         } else {
             @error("Failed to create texture for: $(imagePath)")
         }
@@ -336,7 +337,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         return "[" * join(parts, ";") * "]"
     }
     
-    function generate_effect_cache_key(this: InternalSprite): string
+    function generate_effect_cache_key(self: InternalSprite): string
         // Cache key based on image path, size, and effects - NOT instance ID
         // This allows sharing effect textures across sprites with same visuals
         let content = string(
@@ -348,62 +349,62 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
     
     //  effects API
-    function Component_apply_effects(this: InternalSprite,  effects: Vector) {
-        this.effects = Any[effect for effect in effects]  // Convert to Vector{Any}
+    function Component_apply_effects(self: InternalSprite, effects: Vector) {
+        self.effects = Any[effect for effect in effects]  // Convert to Vector{Any}
         
         // Generate cache key and check if we need to recompute
-        let newKey = generate_effect_cache_key(this)
-        if (this.effectCacheKey == newKey && this.effectTexture != null) {
-            // Already have this effect cached on this sprite
-            console.debug("Sprite.apply_effects!: cache key unchanged; skipping recompute") path=this.imagePath
+        let newKey = generate_effect_cache_key(self)
+        if (self.effectCacheKey == newKey && self.effectTexture != null) {
+            // Already have self effect cached on self sprite
+            console.debug("Sprite.apply_effects!: cache key unchanged; skipping recompute") path=self.imagePath
 
         }
         
-        this.effectCacheKey = newKey
-        this.needsEffectUpdate = true
-        update_effects(this)
+        self.effectCacheKey = newKey
+        self.needsEffectUpdate = true
+        update_effects(self)
 
     }
     
-    function apply_style(this: InternalSprite,  style) {
-        return apply_effects(this, style.effects)
+    function apply_style(self: InternalSprite, style) {
+        return apply_effects(self, style.effects)
     }
     
-    function update_effects(this: InternalSprite) {
-        if (isempty(this.effects) || !this.needsEffectUpdate) {
+    function update_effects(self: InternalSprite) {
+        if (isempty(self.effects) || !self.needsEffectUpdate) {
             return
         }
         
         // Check shared cache first
-        if (haskey(SPRITE_EFFECT_CACHE, this.effectCacheKey)) {
-            let cached = SPRITE_EFFECT_CACHE[this.effectCacheKey]
-            this.effectTexture = cached[0]
-            this.effectSize = cached[1]
-            this.needsEffectUpdate = false
-            console.debug("Sprite // using cached effect texture") path=this.imagePath key=this.effectCacheKey
+        if (haskey(SPRITE_EFFECT_CACHE, self.effectCacheKey)) {
+            let cached = SPRITE_EFFECT_CACHE[self.effectCacheKey]
+            self.effectTexture = cached[0]
+            self.effectSize = cached[1]
+            self.needsEffectUpdate = false
+            console.debug("Sprite // using cached effect texture") path=self.imagePath key=self.effectCacheKey
             return
         }
         
         // Create target for effects
-        let target = (globalThis as any).(globalThis as any).JulGame.EffectsModule.SpriteTarget(this)
+        let target = (globalThis as any).(globalThis as any).JulGame.EffectsModule.SpriteTarget(self)
         
         // Apply effects
         try {
-            let result = (globalThis as any).(globalThis as any).JulGame.EffectRendererModule.apply_effects(target, this.effects)
+            let result = (globalThis as any).(globalThis as any).JulGame.EffectRendererModule.apply_effects(target, self.effects)
             if (result isa (globalThis as any).(globalThis as any).JulGame.EffectsModule.SpriteTarget) {
                 // Effect texture should be updated by the renderer
                 // Query the effect texture size and store it
-                if (this.effectTexture != null) {
+                if (self.effectTexture != null) {
                     let w = Ref{Cint}(0); h = Ref{Cint}(0)
-                    let fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
-                    (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
-                    this.effectSize = {x: w, y: h}
+                    let fmt = Ref{UInt32}(0); access = Ref{Cint}(0);
+                    (globalThis as any).JulGameSdl.glue_SDL_QueryTexture(self.effectTexture, fmt, access, w, h)
+                    self.effectSize = {x: w, y: h}
                     
                     // Cache the result for other sprites with same visuals
-                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = [this.effectTexture, this.effectSize]
-                    console.debug("Cached sprite effect texture") path=this.imagePath key=this.effectCacheKey
+                    SPRITE_EFFECT_CACHE[self.effectCacheKey] = [self.effectTexture, self.effectSize]
+                    console.debug("Cached sprite effect texture") path=self.imagePath key=self.effectCacheKey
                 }
-                this.needsEffectUpdate = false
+                self.needsEffectUpdate = false
             }
         } catch (e) {
             @error("Failed to apply effects to sprite: $e")
@@ -486,16 +487,16 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         return image
     }
 
-    function Component_load_image(this: InternalSprite,  imagePath: string) {
+    function Component_load_image(self: InternalSprite, imagePath: string) {
         (globalThis as any).JulGameSdl.glue_SDL_ClearError()
 
         let fullPath = joinpath(BasePath, "assets", "images", imagePath)
-        this.image = load_image_sdl(fullPath, imagePath)
+        self.image = load_image_sdl(fullPath, imagePath)
         error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
     
-        if (!isempty(error) || this.image == null) {
+        if (!isempty(error) || self.image == null) {
             try {
-                throw(error)
+
             } catch (e) {
                 @error("Error loading image '$imagePath'! SDL Error: ", e)
                 Base.show_backtrace(stdout, catch_backtrace()) // Backtrace won't be shown if we don't throw the error
@@ -503,34 +504,34 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             (globalThis as any).JulGameSdl.glue_SDL_ClearError()
     
             // Load from byte array
-            this.image = load_fallback_image()
-            setfield(this, :imagePath, "fallback.png")
-            this.pixelsPerUnit = 0
-            if (this.image == null) {
+            self.image = load_fallback_image()
+            setfield(self, :imagePath, "fallback.png")
+            self.pixelsPerUnit = 0
+            if (self.image == null) {
                 @error("Fallback image also failed to load! $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
                 return
             }
-        } else if (this.imagePath != imagePath) {
-            this.imagePath = imagePath
+        } else if (self.imagePath != imagePath) {
+            self.imagePath = imagePath
         }
     
         // Get image size
-        surface = unsafe_wrap(Array, this.image, 10; own = false)
-        this.size = {x: surface[0].w, y: surface[0].h}
+        surface = unsafe_wrap(Array, self.image, 10; own = false)
+        self.size = {x: surface[0].w, y: surface[0].h}
 
         // Create or get cached texture
-        this.texture = get_or_create_texture(this.imagePath, this.image)
+        self.texture = get_or_create_texture(self.imagePath, self.image)
 
-        if (this.texture == null) {
+        if (self.texture == null) {
             @error("Failed to create texture from image.")
             Base.show_backtrace(stdout, catch_backtrace())
             return
         }
 
-        Component_set_color(this)
+        Component_set_color(self)
     }
 
-    function load_image_sdl(fullPath: string,  imagePath: string) {
+    function load_image_sdl(fullPath: string, imagePath: string) {
         let commaSeparatedPath = (globalThis as any).JulGame.get_comma_separated_path(imagePath)
         if (haskey((globalThis as any).JulGame.IMAGE_CACHE, commaSeparatedPath)) {
             let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[commaSeparatedPath]
@@ -541,37 +542,37 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 return SDL2.IMG_Load_RW(rw, 1)
             }
         }
-        console.debug("Loading image from disk $(fullPath) for sprite, there are $((globalThis as any).JulGame.IMAGE_CACHE.length) images in cache")
+        console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 
         return SDL2.IMG_Load(fullPath)
     }
 
-    function Component_destroy(this: InternalSprite) {
-        if (this.image == null) {
+    function Component_destroy(self: InternalSprite) {
+        if (self.image == null) {
             return
         }
 
         // Only destroy texture if it's not in the shared cache
-        if (this.texture != null && !haskey(TEXTURE_CACHE, this.imagePath)) {
-            (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(this.texture)
+        if (self.texture != null && !haskey(TEXTURE_CACHE, self.imagePath)) {
+            (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(self.texture)
         }
-        this.image = null
-        this.texture = null
+        self.image = null
+        self.texture = null
     }
 
-    function Component_set_color(this: InternalSprite) {
-        (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(this.texture, UInt8(clamp(this.color[0], 0, 255)), UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)));
-        (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[3], 0, 255)));
+    function Component_set_color(self: InternalSprite) {
+        (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(self.texture, Number(clamp(self.color[0], 0, 255)), Number(clamp(self.color[1], 0, 255)), Number(clamp(self.color[2], 0, 255)));
+        (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(self.texture, Number(clamp(self.color[3], 0, 255)));
     }
 
-    function Component_duplicate(this: InternalSprite,  parent: any) {
-        let newSprite = new InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset, isStatic=this.isStatic)
-        newSprite.interactionScale = this.interactionScale
+    function Component_duplicate(self: InternalSprite, parent: any) {
+        let newSprite = new InternalSprite(parent, self.imagePath, self.crop, self.isFlipped, self.color, false; pixelsPerUnit=self.pixelsPerUnit, position=self.position, rotation=self.rotation, layer=self.layer, center=self.center, anchor=self.anchor, offset=self.offset, isStatic=self.isStatic)
+        newSprite.interactionScale = self.interactionScale
         Component_initialize(newSprite)
         return newSprite
     }
 
-    function Component_is_mouse_hovering(this: InternalSprite) {
+    function Component_is_mouse_hovering(self: InternalSprite) {
        // TODO: check if the mouse is hovering over any of the sprites pixels
        return false
     }

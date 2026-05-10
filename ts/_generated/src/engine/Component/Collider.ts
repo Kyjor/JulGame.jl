@@ -30,7 +30,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         size: Vector2f
         tag: string
         
-        constructor(parent: any,  size: Vector2f = {x: 1, y: 1}, offset = {x: 0, y: 0}, tag: string="Default", isTrigger: boolean=false, isPlatformerCollider: boolean = false, enabled: boolean=true) {
+        constructor(parent: any, size: Vector2f = {x: 1, y: 1}, offset = {x: 0, y: 0}, tag: string="Default", isTrigger: boolean=false, isPlatformerCollider: boolean = false, enabled: boolean=true) {
             
 
             this.collisionEvents = []
@@ -52,34 +52,34 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     }
 
-    function Component_get_size(this: InternalCollider) {
-        return this.size
+    function Component_get_size(self: InternalCollider) {
+        return self.size
     }
 
-    function Component_set_size(this: InternalCollider,  size: Vector2f) {
-        this.size = size
+    function Component_set_size(self: InternalCollider, size: Vector2f) {
+        self.size = size
     }
 
-    function Component_get_offset(this: InternalCollider) {
-        return this.offset
+    function Component_get_offset(self: InternalCollider) {
+        return self.offset
     }
 
-    function Component_set_offset(this: InternalCollider,  offset: Vector2f) {
-        this.offset = offset
+    function Component_set_offset(self: InternalCollider, offset: Vector2f) {
+        self.offset = offset
     }
 
-    function Component_get_tag(this: InternalCollider) {
-        return this.tag
+    function Component_get_tag(self: InternalCollider) {
+        return self.tag
     }
 
-    function Component_check_collisions(this: InternalCollider) {
+    function Component_check_collisions(self: InternalCollider) {
         let colliders = MAIN.scene.colliders
         //Only check the player against other colliders
         let colliderSkipCount = 0
         let colliderCheckedCount = 0
         let i = 0
         let onGround = false
-        if (!this.parent.isActive || !this.enabled) {
+        if (!self.parent.isActive || !self.enabled) {
             return
         }
 
@@ -90,85 +90,85 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 continue
             }
             
-            if (this != collider) {
-                // check if other collider is within range of this collider, if it isn't then skip it
-                if (collider.parent.transform.position.x > this.parent.transform.position.x + this.size.x || collider.parent.transform.position.x + collider.size.x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering) {
+            if (self != collider) {
+                // check if other collider is within range of self collider, if it isn't then skip it
+                if (collider.parent.transform.position.x > self.parent.transform.position.x + self.size.x || collider.parent.transform.position.x + collider.size.x < self.parent.transform.position.x && MAIN.optimizeSpriteRendering) {
                     colliderSkipCount += 1
                     continue
                 }
 
                 colliderCheckedCount += 1
-                let transform = this.parent.transform
-                let collision = check_collision(this, collider)
-                    transform = this.parent.transform
+                let transform = self.parent.transform
+                let collision = check_collision(self, collider)
+                    transform = self.parent.transform
                     if (collision[0] == Top) {
-                        this.currentCollisions.push(collider)
-                        for (const eventToCall of this.collisionEvents) {
+                        self.currentCollisions.push(collider)
+                        for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
                         }
                         //Begin to overlap, correct position
-                        if (!collider.isTrigger && !this.isTrigger) {
-                                this.parent.transform.position = {x: transform.position.x, y: transform.position.y + collision[1]}
+                        if (!collider.isTrigger && !self.isTrigger) {
+                                self.parent.transform.position = {x: transform.position.x, y: transform.position.y + collision[1]}
                         }
                     }
                     if (collision[0] == Left) {
-                        this.currentCollisions.push(collider)
-                        for (const eventToCall of this.collisionEvents) {
+                        self.currentCollisions.push(collider)
+                        for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
                         }
                         
-                        if (!collider.isTrigger && !this.isTrigger) {
+                        if (!collider.isTrigger && !self.isTrigger) {
                                 //Begin to overlap, correct position
-                                this.parent.transform.position = {x: transform.position.x + collision[1], y: transform.position.y}
+                                self.parent.transform.position = {x: transform.position.x + collision[1], y: transform.position.y}
                         }
                     }
                     if (collision[0] == Right) {
-                        this.currentCollisions.push(collider)
-                        for (const eventToCall of this.collisionEvents) {
+                        self.currentCollisions.push(collider)
+                        for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
                         }
                         //Begin to overlap, correct position
-                        if (!collider.isTrigger && !this.isTrigger) {
-                                this.parent.transform.position = {x: transform.position.x - collision[1], y: transform.position.y}
+                        if (!collider.isTrigger && !self.isTrigger) {
+                                self.parent.transform.position = {x: transform.position.x - collision[1], y: transform.position.y}
                         }
                     }
                     if (collision[0] == Bottom) {
-                        this.currentCollisions.push(collider)
-                        for (const eventToCall of this.collisionEvents) {
+                        self.currentCollisions.push(collider)
+                        for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
                         }
                         //Begin to overlap, correct position
                         
-                        if (!collider.isTrigger && !this.isTrigger) {
-                                this.parent.transform.position = {x: transform.position.x, y: transform.position.y - collision[1]}
-                                if (this.parent.rigidbody.velocity.y >= 0) {
-                                        this.parent.rigidbody.grounded = true
+                        if (!collider.isTrigger && !self.isTrigger) {
+                                self.parent.transform.position = {x: transform.position.x, y: transform.position.y - collision[1]}
+                                if (self.parent.rigidbody.velocity.y >= 0) {
+                                        self.parent.rigidbody.grounded = true
                                 }
                         }
                     }
                     if (collision[0] == Below) {
-                        this.currentCollisions.push(collider)
-                        for (const eventToCall of this.collisionEvents) {
+                        self.currentCollisions.push(collider)
+                        for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
                         }
                     }
-                    if (collision[2] && this.parent.rigidbody.grounded) {
+                    if (collision[2] && self.parent.rigidbody.grounded) {
                         onGround = true
                     }
                 }
 
             }
 
-            this.parent.rigidbody.grounded = onGround
+            self.parent.rigidbody.grounded = onGround
 
-        return this.currentCollisions.length > 0
+        return self.currentCollisions.length > 0
     }
 
-    function Component_add_collision_event(this: InternalCollider,  event) {
-        this.collisionEvents.push(event)
+    function Component_add_collision_event(self: InternalCollider, event) {
+        self.collisionEvents.push(event)
     }        
 
-    function check_collision(colliderA: InternalCollider,  colliderB: InternalCollider) {
+    function check_collision(colliderA: InternalCollider, colliderB: InternalCollider) {
         let posA = vecMul(vecAdd(colliderA.parent.transform.position, colliderA.offset), (globalThis as any).JulGame.SCALE_UNITS) as Vector2f
         let posB = vecMul(vecAdd(colliderB.parent.transform.position, colliderB.offset), (globalThis as any).JulGame.SCALE_UNITS) as Vector2f
         let colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * (globalThis as any).JulGame.SCALE_UNITS
@@ -179,6 +179,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let a = (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.round(posA.x), Math.round(posA.y), Math.round(colliderAXSize), Math.round(colliderAYSize))
         let b = (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.round(posB.x), Math.round(posB.y), Math.round(colliderBXSize), Math.round(colliderBYSize))
 
+        let rgba = { r: 0, g: 0, b: 0, a: 255 }
         // (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
         // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, SDL2.SDL_ALPHA_OPAQUE)
         
@@ -224,14 +225,14 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             let horizontalCollisionDir = None
             let verticalCollisionDir = None
             if (result.x == b.x && !colliderB.isPlatformerCollider) {
-                console.debug("colliding from left at depth $(depthHorizontal)")
+                console.debug(`colliding from left at depth ${depthHorizontal}`)
                 horizontalCollisionDir = Left
             } else if (result.x == a.x && !colliderB.isPlatformerCollider) {
-                console.debug("colliding from right at depth $(depthHorizontal)")
+                console.debug(`colliding from right at depth ${depthHorizontal}`)
                 horizontalCollisionDir = Right
             }
             if (result.y == b.y) {
-                console.debug("colliding from top at depth $(depthVertical)")
+                console.debug(`colliding from top at depth ${depthVertical}`)
                 // Check if moving upward through a platformer - if so, ignore to prevent snap-to-top
                 if (colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== null) {
                     // If moving upward (negative velocity in SDL coords), ignore collision
@@ -241,7 +242,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 }
                 verticalCollisionDir = Bottom
             } else if (result.y == a.y) {
-                console.debug("colliding from bottom at depth $(depthVertical)") 
+                console.debug(`colliding from bottom at depth ${depthVertical}`) 
                 // Platformer colliders allow pass-through from below
                 if (colliderB.isPlatformerCollider) {
                     return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
@@ -261,9 +262,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
     }
 
-    function Component_duplicate(this: InternalCollider,  parent: any) {
-        let newCollider = new InternalCollider(parent, this.size, this.offset, this.tag, this.isTrigger, this.isPlatformerCollider, this.enabled)
-        newCollider.collisionEvents = this.collisionEvents
+    function Component_duplicate(self: InternalCollider, parent: any) {
+        let newCollider = new InternalCollider(parent, self.size, self.offset, self.tag, self.isTrigger, self.isPlatformerCollider, self.enabled)
+        newCollider.collisionEvents = self.collisionEvents
         return newCollider
     }
    

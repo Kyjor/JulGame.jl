@@ -42,7 +42,7 @@ export {}
         forceClickCheck: boolean
         ignoreInputEvents: boolean
 
-        function Entity(name: string = "New entity",  id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = []; clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
+        function Entity(name: string = "New entity", id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = []; clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
             
 
             this.id = id
@@ -75,10 +75,10 @@ export {}
         }
     }
 
-    function JulGame_add_script(this: Entity,  script) {
-        console.debug(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
-        this.scripts.push(script)
-        script.parent = this
+    function JulGame_add_script(self: Entity, script) {
+        console.debug(string("Adding script of type: ", typeof(script), " to entity named " , self.name))
+        self.scripts.push(script)
+        script.parent = self
         try {
             (globalThis as any).JulGame.initialize(script)
         } catch (e) {
@@ -87,13 +87,13 @@ export {}
         }
     }
 
-    function JulGame_update(this: Entity,  deltaTime) {
-        if (!this.isActive) {
-            this.isHovered = false
+    function JulGame_update(self: Entity, deltaTime) {
+        if (!self.isActive) {
+            self.isHovered = false
             return
         }
 
-        for (const script of this.scripts) {
+        for (const script of self.scripts) {
             try {
                 (globalThis as any).JulGame.update(script, deltaTime) 
             } catch (e) {
@@ -102,134 +102,134 @@ export {}
         }
     }
 
-    function JulGame_add_animator(this: Entity,  animator: Animator = Animator(Animation[JulGameAnimation(Vector4[Vector4(0, 0, 0, 0)], 60)])) {
-        if (this.animator != null) {
-            console.log("Animator already exists on entity named ", this.name)
+    function JulGame_add_animator(self: Entity, animator: Animator = Animator(Animation[JulGameAnimation(Vector4[Vector4(0,0,0,0)], 60)])) {
+        if (self.animator != null) {
+            console.log("Animator already exists on entity named ", self.name)
             return
         }
 
-        this.animator = new InternalAnimator(this, animator.animations)
-        if (this.sprite != null) {
-            this.animator.sprite = this.sprite
+        self.animator = new InternalAnimator(self, animator.animations)
+        if (self.sprite != null) {
+            self.animator.sprite = self.sprite
         }
 
-        return this.animator
+        return self.animator
     }
 
-    function JulGame_add_collider(this: Entity,  collider: Collider = Collider(true,  false,  false,  {x: 0, y: 0}, {x: 1, y: 1}, "Default")) {
-        if (this.collider != null || this.circleCollider != null) {
-            console.log("Collider already exists on entity named ", this.name)
+    function JulGame_add_collider(self: Entity, collider: Collider = Collider(true, false, false, {x: 0, y: 0}, {x: 1, y: 1}, "Default")) {
+        if (self.collider != null || self.circleCollider != null) {
+            console.log("Collider already exists on entity named ", self.name)
             return
         }
             
-        this.collider = new InternalCollider(this, collider.size, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.isPlatformerCollider: boolean, collider.enabled: boolean)
+        self.collider = new InternalCollider(self, collider.size, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.isPlatformerCollider: boolean, collider.enabled: boolean)
 
-        return this.collider
+        return self.collider
     }
 
-    function JulGame_add_circle_collider(this: Entity,  collider: CircleCollider = CircleCollider(1.0,  true,  false,  {x: 0, y: 0}, "Default")) {
-        if (this.collider != null || this.circleCollider != null) {
-            console.log("Collider already exists on entity named ", this.name)
+    function JulGame_add_circle_collider(self: Entity, collider: CircleCollider = CircleCollider(1.0, true, false, {x: 0, y: 0}, "Default")) {
+        if (self.collider != null || self.circleCollider != null) {
+            console.log("Collider already exists on entity named ", self.name)
             return
         }
 
-        this.circleCollider = new InternalCircleCollider(this, collider.diameter, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.enabled: boolean)
+        self.circleCollider = new InternalCircleCollider(self, collider.diameter, collider.offset, collider.tag: string, collider.isTrigger: boolean, collider.enabled: boolean)
 
-        return this.circleCollider
+        return self.circleCollider
     }
 
-    function JulGame_add_rigidbody(this: Entity,  rigidbody: Rigidbody = Rigidbody(1.0,  true)) {
-        if (this.rigidbody != null) {
-            console.log("Rigidbody already exists on entity named ", this.name)
+    function JulGame_add_rigidbody(self: Entity, rigidbody: Rigidbody = Rigidbody(1.0, true)) {
+        if (self.rigidbody != null) {
+            console.log("Rigidbody already exists on entity named ", self.name)
             return
         }
 
-        this.rigidbody = new InternalRigidbody(this; rigidbody.mass, rigidbody.useGravity)
+        self.rigidbody = new InternalRigidbody(self, rigidbody.mass, rigidbody.useGravity)
         
-        return this.rigidbody
+        return self.rigidbody
     }
 
-    function JulGame_add_sound_source(this: Entity,  soundSource: SoundSource = SoundSource(-1,  false,  "",  false,  50)) {
-        if (this.soundSource != null) {
-            console.log("SoundSource already exists on entity named ", this.name)
+    function JulGame_add_sound_source(self: Entity, soundSource: SoundSource = SoundSource(-1, false, "", false, 50)) {
+        if (self.soundSource != null) {
+            console.log("SoundSource already exists on entity named ", self.name)
             return
         }
 
-        this.soundSource = new InternalSoundSource(this, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
+        self.soundSource = new InternalSoundSource(self, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
 
-        return this.soundSource
+        return self.soundSource
     }
 
-    function JulGame_create_sound_source(this: Entity,  soundSource: SoundSource = SoundSource(-1,  false,  "",  false,  50)) {
-        newSoundSource: InternalSoundSource = new InternalSoundSource(this, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
+    function JulGame_create_sound_source(self: Entity, soundSource: SoundSource = SoundSource(-1, false, "", false, 50)) {
+        newSoundSource: InternalSoundSource = new InternalSoundSource(self, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
         return newSoundSource
     }
 
-    function JulGame_add_sprite(this: Entity,  isCreatedInEditor: boolean = false,  sprite: Sprite = Sprite((255,  255,  255,  255), null, false, "", 0, {x: 0, y: 0}, {x: 0, y: 0}, 0, -1, {x: 0.5, y: 0.5}, :center, false)) {
-        if (this.sprite != null) {
-            console.log("Sprite already exists on entity named ", this.name)
+    function JulGame_add_sprite(self: Entity, isCreatedInEditor: boolean = false, sprite: Sprite = Sprite((255, 255, 255, 255), null, false, "", 0, {x: 0, y: 0}, {x: 0, y: 0}, 0, -1, {x: 0.5, y: 0.5}, :center, false)) {
+        if (self.sprite != null) {
+            console.log("Sprite already exists on entity named ", self.name)
             return
         }
 
-        this.sprite = new InternalSprite(this, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
-        if (this.animator != null) {
-            this.animator.sprite = this.sprite
+        self.sprite = new InternalSprite(self, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
+        if (self.animator != null) {
+            self.animator.sprite = self.sprite
         }
-        Component_initialize(this.sprite)
+        Component_initialize(self.sprite)
 
-        return this.sprite
+        return self.sprite
     }
 
-    function JulGame_add_shape(this: Entity,  shape: Shape = Shape(Vector3(255, 0, 0), true, true, 0, {x: 0, y: 0}, {x: 0, y: 0}, {x: 1, y: 1}, 255)) {
-        if (this.shape != null) {
-            console.log("Shape already exists on entity named ", this.name)
+    function JulGame_add_shape(self: Entity, shape: Shape = Shape(Vector3(255,0,0), true, true, 0, {x: 0, y: 0}, {x: 0, y: 0}, {x: 1, y: 1}, 255)) {
+        if (self.shape != null) {
+            console.log("Shape already exists on entity named ", self.name)
             return
         }
 
-        this.shape = new InternalShape(this, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
+        self.shape = new InternalShape(self, shape.color, shape.isFilled, shape.offset, shape.size; isWorldEntity = shape.isWorldEntity, position = shape.position, layer = shape.layer, alpha = shape.alpha)
         
-        return this.shape
+        return self.shape
     }
 
-    function JulGame_add_mesh3d(this: Entity,  mesh3d: Mesh3D = Mesh3D()) {
-        if (this.mesh3d != null) {
-            console.log("Mesh3D already exists on entity named ", this.name)
+    function JulGame_add_mesh3d(self: Entity, mesh3d: Mesh3D = Mesh3D()) {
+        if (self.mesh3d != null) {
+            console.log("Mesh3D already exists on entity named ", self.name)
             return
         }
 
-        this.mesh3d = mesh3d
-        mesh3d.parent = this
+        self.mesh3d = mesh3d
+        mesh3d.parent = self
         Component_initialize(mesh3d, (globalThis as any).JulGame.MAIN)
 
-        return this.mesh3d
+        return self.mesh3d
     }
 
-    function JulGame_add_software_renderer3d(this: Entity,  softwareRenderer3d: SoftwareRenderer3D = SoftwareRenderer3D()) {
-        if (this.softwareRenderer3d != null) {
-            console.log("SoftwareRenderer3D already exists on entity named ", this.name)
+    function JulGame_add_software_renderer3d(self: Entity, softwareRenderer3d: SoftwareRenderer3D = SoftwareRenderer3D()) {
+        if (self.softwareRenderer3d != null) {
+            console.log("SoftwareRenderer3D already exists on entity named ", self.name)
             return
         }
 
-        this.softwareRenderer3d = softwareRenderer3d
-        softwareRenderer3d.parent = this
+        self.softwareRenderer3d = softwareRenderer3d
+        softwareRenderer3d.parent = self
         Component_initialize(softwareRenderer3d, (globalThis as any).JulGame.MAIN)
 
-        return this.softwareRenderer3d
+        return self.softwareRenderer3d
     }
 
-    function JulGame_duplicate(this: Entity,  id: string = (globalThis as any).JulGame.generate_uuid()) {
-        let newEntity = Entity(this.name, id, Component_duplicate(this.transform, null))
+    function JulGame_duplicate(self: Entity, id: string = (globalThis as any).JulGame.generate_uuid()) {
+        let newEntity = Entity(self.name, id, Component_duplicate(self.transform, null))
         // animator: InternalAnimator | null
-        if (this.animator != null && this.animator !== null) {
-            newEntity.animator = Component_duplicate(this.animator, newEntity)
+        if (self.animator != null && self.animator !== null) {
+            newEntity.animator = Component_duplicate(self.animator, newEntity)
         }
         // collider: InternalCollider | null
-        if (this.collider != null && this.collider !== null) {
-            newEntity.collider = Component_duplicate(this.collider, newEntity)
+        if (self.collider != null && self.collider !== null) {
+            newEntity.collider = Component_duplicate(self.collider, newEntity)
         }
         // circleCollider: InternalCircleCollider | null
-        // if this.circleCollider != null && this.circleCollider !== null
-        //     newEntity.circleCollider = Component_duplicate(this.circleCollider, newEntity)
+        // if self.circleCollider != null && self.circleCollider !== null
+        //     newEntity.circleCollider = Component_duplicate(self.circleCollider, newEntity)
         // }
         // isActive: boolean
         newEntity.isActive = this.isActive

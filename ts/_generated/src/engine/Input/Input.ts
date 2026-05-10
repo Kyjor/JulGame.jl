@@ -1,5 +1,6 @@
 export {}
 import { clamp } from "../../../../src/engine/core/juliaHelpers";
+import { unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 //todo: separate mouse, keyboard, gamepad, and window into their own files
 
@@ -97,10 +98,10 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 this.numButtons = (globalThis as any).JulGameSdl.glue_SDL_JoystickNumButtons(this.joystick)
                 this.numHats = (globalThis as any).JulGameSdl.glue_SDL_JoystickNumHats(this.joystick)
 
-                console.debug("Now reading from joystick '$(unsafe_string(name))' with:")
-                console.debug("$(this.numAxes) axes")
-                console.debug("$(this.numButtons) buttons")
-                console.debug("$(this.numHats) hats")
+                console.debug(`Now reading from joystick '${unsafe_string(name)}' with:`)
+                console.debug(`${this.numAxes} axes`)
+                console.debug(`${this.numButtons} buttons`)
+                console.debug(`${this.numHats} hats`)
 
             }
             this.jaxis = null
@@ -119,30 +120,30 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
     }
 
-    function _refresh_logical_mouse(this: Input,  evt: SDL_Event) {
+    function _refresh_logical_mouse(self: Input, evt: SDL_Event) {
         let x = Int32[0]
         let y = Int32[0]
         (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(pointer(x), pointer(y))
 
         if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
-            console.debug("Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)")
-            console.debug("mouse state: $(x[0]), $(y[0])")
+            console.debug(`Mouse down: ${evt.type == SDL2.SDL_MOUSEBUTTONDOWN}`)
+            console.debug(`mouse state: ${x[0]}, ${y[0]}`)
             let window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
-            console.debug("window focused: $window_focused")
+            console.debug(`window focused: ${window_focused}`)
             if (!window_focused) {
                 console.debug("// using event coordinates")
                 x[0] = Int32(evt.button.x)
                 y[0] = Int32(evt.button.y)
-                console.debug("event coordinates: $(x[0]), $(y[0])")
+                console.debug(`event coordinates: ${x[0]}, ${y[0]}`)
             }
         }
 
-        this.mousePosition = {x: x[0], y: y[0]}
-        console.debug("new mouse pos: $(this.mousePosition)")
+        self.mousePosition = {x: x[0], y: y[0]}
+        console.debug(`new mouse pos: ${self.mousePosition}`)
 
         if ((globalThis as any).JulGame.IS_EDITOR) {
             let window_width = Ref{Cint}(0)
-            let window_height = Ref{Cint}(0)
+            let window_height = Ref{Cint}(0);
             (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
             let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
             let safe_window_width = max(window_width, 1)
@@ -156,9 +157,9 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let content_height = safe_logical_height * scale
             let bar_x = (safe_window_width - content_width) / 2
             let bar_y = (safe_window_height - content_height) / 2
-            console.debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
-            console.debug("window_width: $window_width, window_height: $window_height")
-            console.debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
+            console.debug(`letterbox scale: ${scale}, bar_x: ${bar_x}, bar_y: ${bar_y}`)
+            console.debug(`window_width: ${window_width}[], window_height: ${window_height}[]`)
+            console.debug(`logical_width: ${logical_size.x}, logical_height: ${logical_size.y}`)
             let scaled_x = (x[0] - bar_x) / scale
             let scaled_y = (y[0] - bar_y) / scale
             if (scaled_x == Inf || scaled_y == Inf) {
@@ -167,8 +168,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 scaled_y = 0
             }
             window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
-            this.mousePosition = {x: clamp(Math.floor(Int, scaled_x), 0, logical_size.x), y: clamp(Math.floor(Int, scaled_y), 0, logical_size.y)}
-            console.debug("Scaled mouse position: window coords ($(x[0]), $(y[0])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused")
+            self.mousePosition = {x: clamp(Math.floor(Int, scaled_x), 0, logical_size.x), y: clamp(Math.floor(Int, scaled_y), 0, logical_size.y)}
+            console.debug(`Scaled mouse position: window coords (${x[0]}, ${y[0]}) -> logical coords (${self.mousePosition.x}, ${self.mousePosition.y}), window_focused: ${window_focused}`)
         } else {
             let raw_mouse_x = x[0] - (globalThis as any).JulGame.EditorGameViewPosition.x
             let raw_mouse_y = y[0] - (globalThis as any).JulGame.EditorGameViewPosition.y
@@ -180,9 +181,9 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 scale_y = camera_size.y / (globalThis as any).JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                this.mousePosition = {x: Math.floor(Int, scaled_x), y: Math.floor(Int, scaled_y)}
+                self.mousePosition = {x: Math.floor(Int, scaled_x), y: Math.floor(Int, scaled_y)}
             } else {
-                this.mousePosition = {x: 0, y: 0}
+                self.mousePosition = {x: 0, y: 0}
             }
         }
         return
@@ -218,7 +219,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return _trace_input_ui_hit_iter_ref: boolean
     }
 
-    function _input_ui_hit_step(prof,  t_blk: Ref{UInt64},  key: )
+    function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: symbol, kvs...)
         let t1 = time_ns()
         dt = (t1 - t_blk) / 1e6
         t_blk = t1
@@ -227,64 +228,64 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
         if (_input_ui_hit_stream_logs()) {
             if (isempty(kvs)) {
-                console.info("[JulGame input/ui hit-test · stream]") key ms = Math.round(dt, digits = 3)
+                console.info("[JulGame input/ui hit-test · stream]")
             } else {
-                console.info("[JulGame input/ui hit-test · stream]") key ms = Math.round(dt, digits = 3) (; kvs...)
+                console.info("[JulGame input/ui hit-test · stream]")
             }
         }
         return
     }
 
-    function _input_ui_hit_span(prof,  t0: number,  key: ) {
+    function _input_ui_hit_span(prof, t0: number, key: symbol, kvs...) {
         dt = (time_ns() - t0) / 1e6
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
         if (_input_ui_hit_stream_logs() && _input_ui_hit_iter_stream_logs()) {
             if (isempty(kvs)) {
-                console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = Math.round(dt, digits = 3)
+                console.info("[JulGame input/ui hit-test · stream · iter]")
             } else {
-                console.info("[JulGame input/ui hit-test · stream · iter]") key dur_ms = Math.round(dt, digits = 3) (; kvs...)
+                console.info("[JulGame input/ui hit-test · stream · iter]")
             }
         }
         return
     }
 
-    function poll_input(this: Input) {
+    function poll_input(self: Input) {
         prof = _input_latency_profiler()
         t0 = time_ns()
 
-        this.buttonsPressedDown = []
-        this.mouseButtonsPressedDown = []
-        this.mouseButtonsReleased = []  // Clear the released buttons each frame
-        this.didMouseEventOccur = false
-        this.didMouseMotionOccur = false
+        self.buttonsPressedDown = []
+        self.mouseButtonsPressedDown = []
+        self.mouseButtonsReleased = []  // Clear the released buttons each frame
+        self.didMouseEventOccur = false
+        self.didMouseMotionOccur = false
         let event_ref = Ref{SDL2.SDL_Event}()
 
         while true
-            if (!isempty(this.pending_sdl_events)) {
-                event_ref = popfirst(this.pending_sdl_events)
+            if (!isempty(self.pending_sdl_events)) {
+                event_ref = popfirst(self.pending_sdl_events)
             } else if (!Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))) {
                 break
             }
             _input_poll_accumulate(prof, t0, :sdl_PollEvent)
 
             evt = event_ref
-            handle_window_events(this, evt)
+            handle_window_events(self, evt)
 
             // console.debug("polling input")
             // Only update mouse position for mouse-related events
             if (evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP) {
-                _refresh_logical_mouse(this, evt)
+                _refresh_logical_mouse(self, evt)
                 if (evt.type == SDL2.SDL_MOUSEMOTION) {
                     let coalesce_ref = Ref{SDL2.SDL_Event}()
                     while Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(coalesce_ref))
                         let e2 = coalesce_ref
                         if (e2.type == SDL2.SDL_MOUSEMOTION) {
-                            _refresh_logical_mouse(this, e2)
-                            this.didMouseMotionOccur = true
+                            _refresh_logical_mouse(self, e2)
+                            self.didMouseMotionOccur = true
                         } else {
-                            this.pending_sdl_events.push(e2)
+                            self.pending_sdl_events.push(e2)
                         }
                     }
                 }
@@ -297,7 +298,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let dropped_files = "dropped_files"
             let dropped_texts = "dropped_texts"
             if (evt.type == SDL2.SDL_DROPFILE) {
-                console.debug("Dropped file: $(unsafe_string(evt.drop.file))")
+                console.debug(`Dropped file: ${unsafe_string(evt.drop.file)}`)
                 if ((globalThis as any).JulGame.IS_EDITOR) {
                     if (get((globalThis as any).JulGame.EditorState, dropped_files, null) === null) {
                         (globalThis as any).JulGame.EditorState[dropped_files] = [unsafe_string(evt.drop.file)]
@@ -308,7 +309,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 // TODO: Handle dropped file
                 (globalThis as any).JulGameSdl.glue_SDL_free(evt.drop.file)
             } else if (evt.type == SDL2.SDL_DROPTEXT) {
-                console.debug("Dropped text: $(unsafe_string(evt.drop.file))")
+                console.debug(`Dropped text: ${unsafe_string(evt.drop.file)}`)
                 if ((globalThis as any).JulGame.IS_EDITOR) {
                     if (get((globalThis as any).JulGame.EditorState, dropped_texts, null) === null) {
                         (globalThis as any).JulGame.EditorState[dropped_texts] = [unsafe_string(evt.drop.file)]
@@ -342,7 +343,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     this.didMouseMotionOccur = true
                 }
                 if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
-                    console.debug("Mouse button down at $(this.mousePosition)")
+                    console.debug(`Mouse button down at ${this.mousePosition}`)
                 }
 
                 let ui_hit_active = MAIN.scene.uiElements !== null && ((globalThis as any).JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
@@ -379,7 +380,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     // append(elementsOrderedByLayerDescending, restOfEntities)
                     let clickedAnElementAlready = false
                     let hoveredAnElementAlready = false
-                    console.debug("Checking $(elementsOrderedByLayerDescending.length) elements for mouse event at $(this.mousePosition)")
+                    console.debug(`Checking ${elementsOrderedByLayerDescending.length} elements for mouse event at ${this.mousePosition}`)
                     let n_iter = 0
                     let n_skipped_inactive = 0
                     let n_skipped_canvas = 0
@@ -411,7 +412,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         }
 
                         if (skipElement) {
-                            console.debug("Skipping element $(element.name) - isActive: $(element.isActive), ignoreInputEvents: $(isa(element, (globalThis as any).JulGame.IEntity) ? element.ignoreInputEvents : ")N/A")"
+                            console.debug(`Skipping element ${element.name} - isActive: ${element.isActive}, ignoreInputEvents: $(isa(element, (globalThis as any).JulGame.IEntity) ? element.ignoreInputEvents : `)N/A")"
                             _input_ui_hit_span(prof, t_iter, :hit_ui_iter_skip_early)
                             continue
                         }
@@ -442,23 +443,23 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         let screenElementWidth = elementSize.x
                         let screenElementHeight = elementSize.y
 
-                        console.debug("Checking element '$(element.name)': mouse($mouseX, $mouseY) vs element($screenElementX, $screenElementY, $screenElementWidth, $screenElementHeight)")
+                        console.debug(`Checking element '${element.name}': mouse(${mouseX}, ${mouseY}) vs element(${screenElementX}, ${screenElementY}, ${screenElementWidth}, ${screenElementHeight})`)
 
                         // Check if the mouse is inside the UI element (// using game world coordinates)
                         _input_ui_hit_span(prof, t_unpk0, :hit_ui_iter_probe_unpack_layout)
                         let t_aabb = time_ns()
                         if (mouseX < screenElementX) {
                             eventWasInsideThisElement = false
-                            console.debug("  -> Mouse X ($mouseX) < element X ($screenElementX)")
+                            console.debug(`  -> Mouse X (${mouseX}) < element X (${screenElementX})`)
                         } else if (mouseX > screenElementX + screenElementWidth) {
                             eventWasInsideThisElement = false
-                            console.debug("  -> Mouse X ($mouseX) > element right ($(screenElementX + screenElementWidth))")
+                            console.debug(`  -> Mouse X (${mouseX}) > element right (${screenElementX + screenElementWidth})`)
                         } else if (mouseY < screenElementY) {
                             eventWasInsideThisElement = false
-                            console.debug("  -> Mouse Y ($mouseY) < element Y ($screenElementY)")
+                            console.debug(`  -> Mouse Y (${mouseY}) < element Y (${screenElementY})`)
                         } else if (mouseY > screenElementY + screenElementHeight) {
                             eventWasInsideThisElement = false
-                            console.debug("  -> Mouse Y ($mouseY) > element bottom ($(screenElementY + screenElementHeight))")
+                            console.debug(`  -> Mouse Y (${mouseY}) > element bottom (${screenElementY + screenElementHeight})`)
                         }
                         _input_ui_hit_span(prof, t_aabb, :hit_ui_iter_probe_aabb)
 
@@ -472,14 +473,14 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
                         n_hit_inside += 1
                         let t_hi = time_ns()
-                        console.debug("  -> Mouse is INSIDE element '$(element.name)'")
+                        console.debug(`  -> Mouse is INSIDE element '${element.name}'`)
 
                         let clicked_down_here = clicked_down_on_this_element(this, element)
                         _input_ui_hit_span(prof, t_hi, :hit_inside_1_clicked_down_query)
                         t_hi = time_ns()
 
                         let canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_here
-                        console.debug("  -> canClickOnThisElement: $canClickOnThisElement, clickedAnElementAlready: $clickedAnElementAlready, forceClickCheck: $(element.forceClickCheck), clicked_down_on_this_element: $clicked_down_here")
+                        console.debug(`  -> canClickOnThisElement: ${canClickOnThisElement}, clickedAnElementAlready: ${clickedAnElementAlready}, forceClickCheck: ${element.forceClickCheck}, clicked_down_on_this_element: ${clicked_down_here}`)
                         _input_ui_hit_span(prof, t_hi, :hit_inside_2_can_click_bools)
                         t_hi = time_ns()
 
@@ -490,17 +491,17 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                                 (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||
                                 (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
 
-                            console.debug("  -> shouldHandleEvent: $shouldHandleEvent (event type: $(evt.type), hoveredAnElementAlready: $hoveredAnElementAlready)")
+                            console.debug(`  -> shouldHandleEvent: ${shouldHandleEvent} (event type: ${evt.type}, hoveredAnElementAlready: ${hoveredAnElementAlready})`)
                             _input_ui_hit_span(prof, t_hi, :hit_inside_3a_should_handle_expr)
                             t_hi = time_ns()
 
                             if (shouldHandleEvent) {
-                                console.debug("  -> Handling event for element '$(element.name)'")
+                                console.debug(`  -> Handling event for element '${element.name}'`)
                                 (globalThis as any).JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
                                 t_hi = time_ns()
                                 if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
                                    this.elementsBeingClickedDownOn.push(element)
-                                   console.debug("  -> Added '$(element.name)' to elementsBeingClickedDownOn")
+                                   console.debug(`  -> Added '${element.name}' to elementsBeingClickedDownOn`)
                                 }
                                 _input_ui_hit_span(prof, t_hi, :hit_inside_5_push_clicked_down_optional)
                                 t_hi = time_ns()
@@ -519,13 +520,13 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         }
 
                         if (evt.type == SDL2.SDL_MOUSEBUTTONDOWN) {
-                            console.debug("Mouse button down at $(this.mousePosition) on element '$(element.name)'")
+                            console.debug(`Mouse button down at ${this.mousePosition} on element '${element.name}'`)
                         } else if (evt.type == SDL2.SDL_MOUSEBUTTONUP) {
-                            console.debug("Mouse button up at $(this.mousePosition) on element '$(element.name)'")
+                            console.debug(`Mouse button up at ${this.mousePosition} on element '${element.name}'`)
                             if (canClickOnThisElement) {
-                                console.debug("CLICKED on '$(element.name)' at $(this.mousePosition), skipping rest of event loop")
+                                console.debug(`CLICKED on '${element.name}' at ${this.mousePosition}, skipping rest of event loop`)
                             } else {
-                                console.debug("  -> Button up on '$(element.name)' but canClickOnThisElement is false")
+                                console.debug(`  -> Button up on '${element.name}' but canClickOnThisElement is false`)
                             }
                             clickedAnElementAlready = true
                         }
@@ -556,7 +557,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 for (const i of 0:this.numAxes-1) {
                     let axis = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i)
                     if (i < 0) {
-                        console.debug("Axis $i: $((globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i))")
+                        console.debug(`Axis ${i}: ${(globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i)}`)
                     }
                     let JOYSTICK_DEAD_ZONE = 8000
 
@@ -586,7 +587,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     let button = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetButton(this.joystick, i)
 
                     if (button != 0) {
-                        console.debug("Button $i: $(button)")
+                        console.debug(`Button ${i}: ${button}`)
                     }
                     if (i == 0 && button == 1) {
                         this.button = 1
@@ -599,7 +600,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
                     let hat = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetHat(this.joystick, i)
                     if (hat != 0) {
-                        console.debug("Hat $i: $(hat)")
+                        console.debug(`Hat ${i}: ${hat}`)
                     }
                 }
             if (evt.type == SDL2.SDL_QUIT) {
@@ -623,8 +624,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
     }
 
-    function clicked_down_on_this_element(this: Input,  element: IUIElement | IEntity) {
-        return element in this.elementsBeingClickedDownOn
+    function clicked_down_on_this_element(self: Input, element: IUIElement | IEntity) {
+        return element in self.elementsBeingClickedDownOn
     }
 
     function get_element_position(element: IUIElement) {
@@ -660,7 +661,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return {x: baseSize.x * interactionScale, y: baseSize.y * interactionScale}
     }
 
-    function check_scan_code(this: Input,  keyboardState,  keyState,  scanCodes) {
+    function check_scan_code(self: Input, keyboardState, keyState, scanCodes) {
         for (const scanCode of scanCodes) {
             try {
                 if (keyboardState[Int32(scanCode) + 1] == keyState) {
@@ -673,7 +674,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return false
     }
 
-    function handle_window_events(this: Input,  event: SDL_Event) {
+    function handle_window_events(self: Input, event: SDL_Event) {
         if (event.type != SDL2.SDL_WINDOWEVENT) {
             return
         }
@@ -684,33 +685,33 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         }
     }
 
-    function handle_key_event(this: Input,  keyboardState) {
-        let buttonsPressedDown = this.buttonsPressedDown
+    function handle_key_event(self: Input, keyboardState) {
+        let buttonsPressedDown = self.buttonsPressedDown
 
         let count = 1
-        for (const scanCode of this.scanCodes) {
+        for (const scanCode of self.scanCodes) {
             button = scanCode[1]
-            if (check_scan_code(this, keyboardState, 1, [scanCode[0]]) && (button in this.buttonsHeldDown)) {
+            if (check_scan_code(self, keyboardState, 1, [scanCode[0]]) && (button in self.buttonsHeldDown)) {
                 buttonsPressedDown.push(button)
-                this.buttonsHeldDown.push(button)
-            } else if (check_scan_code(this, keyboardState, 0, [scanCode[0]])) {
-                if (button in this.buttonsHeldDown) {
-                    deleteat(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
+                self.buttonsHeldDown.push(button)
+            } else if (check_scan_code(self, keyboardState, 0, [scanCode[0]])) {
+                if (button in self.buttonsHeldDown) {
+                    deleteat(self.buttonsHeldDown, findfirst(x -> x == button, self.buttonsHeldDown))
                 }
             }
         }
-        this.buttonsPressedDown = buttonsPressedDown
+        self.buttonsPressedDown = buttonsPressedDown
     }
 
-    function handle_mouse_event(this: Input,  event) {
+    function handle_mouse_event(self: Input, event) {
         if (event.button.button == SDL2.SDL_BUTTON_LEFT || event.button.button == SDL2.SDL_BUTTON_MIDDLE || event.button.button == SDL2.SDL_BUTTON_RIGHT) {
             button = event.button.button
-            if (event.type == SDL2.SDL_MOUSEBUTTONDOWN && (button in this.mouseButtonsHeldDown)) {
-                this.mouseButtonsPressedDown.push(button)
-                this.mouseButtonsHeldDown.push(button)
-            } else if (event.type == SDL2.SDL_MOUSEBUTTONUP && (button in this.mouseButtonsHeldDown)) {
-                this.mouseButtonsReleased.push(button)
-                deleteat(this.mouseButtonsHeldDown, findfirst(x -> x == button, this.mouseButtonsHeldDown))
+            if (event.type == SDL2.SDL_MOUSEBUTTONDOWN && (button in self.mouseButtonsHeldDown)) {
+                self.mouseButtonsPressedDown.push(button)
+                self.mouseButtonsHeldDown.push(button)
+            } else if (event.type == SDL2.SDL_MOUSEBUTTONUP && (button in self.mouseButtonsHeldDown)) {
+                self.mouseButtonsReleased.push(button)
+                deleteat(self.mouseButtonsHeldDown, findfirst(x -> x == button, self.mouseButtonsHeldDown))
             }
         }
     }
@@ -747,11 +748,11 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
 
-                    console.debug("Clipboard text: $(clipboard_text[1:Math.min(100, clipboard_text.length)])")
+                    console.debug(`Clipboard text: ${clipboard_text[1:Math.min(100, clipboard_text.length)]}`)
 
                     // Check if it's a file path to an image
                     if (isfile(clipboard_text) && is_image_file_by_extension(clipboard_text)) {
-                        console.debug("Clipboard contains image file path: $(clipboard_text)")
+                        console.debug(`Clipboard contains image file path: ${clipboard_text}`)
                         add_clipboard_file_to_import_queue(clipboard_text)
                         return
                     }
@@ -764,13 +765,13 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                     }
                 }
             } catch (e) {
-                console.debug("Error reading text clipboard (likely contains binary data): $(e)")
+                console.debug(`Error reading text clipboard (likely contains binary data): ${e}`)
             }
 
             // No additional fallback needed - platform-specific functions handle their own cases
 
         } catch (e) {
-            console.error("Error handling clipboard paste: $(e)")
+            console.error(`Error handling clipboard paste: ${e}`)
         }
     }
 
@@ -799,7 +800,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
                 } catch (e) {
-                    console.debug("No PNG data in clipboard: $(e)")
+                    console.debug(`No PNG data in clipboard: ${e}`)
                 }
 
                 // Try to get JPEG data from clipboard
@@ -816,7 +817,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
                 } catch (e) {
-                    console.debug("No JPEG data in clipboard: $(e)")
+                    console.debug(`No JPEG data in clipboard: ${e}`)
                 }
 
                 console.debug("No image data found in X11 clipboard")
@@ -824,7 +825,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 console.debug("xclip not available, cannot access X11 clipboard")
             }
         } catch (e) {
-            console.warn("Error accessing X11 clipboard: $(e)")
+            console.warn(`Error accessing X11 clipboard: ${e}`)
         }
     }
 
@@ -853,7 +854,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
                 } catch (e) {
-                    console.debug("No PNG data in clipboard: $(e)")
+                    console.debug(`No PNG data in clipboard: ${e}`)
                 }
 
                 // Try to get TIFF data from clipboard (common on macOS)
@@ -870,7 +871,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
                 } catch (e) {
-                    console.debug("No TIFF data in clipboard: $(e)")
+                    console.debug(`No TIFF data in clipboard: ${e}`)
                 }
 
                 // Try to get JPEG data from clipboard
@@ -887,7 +888,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                         return
                     }
                 } catch (e) {
-                    console.debug("No JPEG data in clipboard: $(e)")
+                    console.debug(`No JPEG data in clipboard: ${e}`)
                 }
 
                 console.debug("No image data found in macOS clipboard")
@@ -895,7 +896,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 console.debug("pbpaste not available, cannot access macOS clipboard")
             }
         } catch (e) {
-            console.warn("Error accessing macOS clipboard: $(e)")
+            console.warn(`Error accessing macOS clipboard: ${e}`)
         }
     }
 
@@ -924,17 +925,17 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 // Run PowerShell script
                 let result = readchomp(`powershell -Command "$powershell_script"`)
                 if (!isempty(result) && isfile(result)) {
-                    console.debug("Found image data in Windows clipboard, saved to: $(result)")
+                    console.debug(`Found image data in Windows clipboard, saved to: ${result}`)
                     add_clipboard_file_to_import_queue(result)
                     return
                 }
             } catch (e) {
-                console.debug("No image data in Windows clipboard: $(e)")
+                console.debug(`No image data in Windows clipboard: ${e}`)
             }
 
             console.debug("No image data found in Windows clipboard")
         } catch (e) {
-            console.warn("Error accessing Windows clipboard: $(e)")
+            console.warn(`Error accessing Windows clipboard: ${e}`)
         }
     }
 
@@ -960,7 +961,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         } else {
             (globalThis as any).JulGame.EditorState[dropped_files].push(filepath)
         }
-        console.debug("Added clipboard file to // import queue: $(basename(filepath))")
+        console.debug(`Added clipboard file to // import queue: ${basename(filepath)}`)
     }
 
     /*
@@ -1011,22 +1012,22 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let image_data = Base64.base64decode(base64_data)
             write(temp_filepath, image_data)
 
-            console.debug("Created temporary image file from clipboard: $(temp_filepath)")
+            console.debug(`Created temporary image file from clipboard: ${temp_filepath}`)
 
             // Add to // import queue
             add_clipboard_file_to_import_queue(temp_filepath)
 
         } catch (e) {
-            console.error("Error processing base64 image data: $(e)")
+            console.error(`Error processing base64 image data: ${e}`)
         }
     }
 
-    function update_input_state(this: Input,  data: Dict{String,  Any})
+    function update_input_state(self: Input, data: Dict{String, Any})
         this.buttonsHeldDown = [key for (key, value) in data if value]
     }
 
-    function get_button_held_down(this: Input,  button: string) {
-        if (uppercase(button) in this.buttonsHeldDown) {
+    function get_button_held_down(self: Input, button: string) {
+        if (uppercase(button) in self.buttonsHeldDown) {
             return true
         }
         return false
@@ -1040,8 +1041,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return get_button_pressed(MAIN.input, button)
     }
 
-    function get_button_pressed(this: Input,  button: string) {
-        if (uppercase(button) in this.buttonsPressedDown) {
+    function get_button_pressed(self: Input, button: string) {
+        if (uppercase(button) in self.buttonsPressedDown) {
             return true
         }
         return false
@@ -1051,15 +1052,15 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return get_button_released(MAIN.input, button)
     }
 
-    function get_button_released(this: Input,  button: string) {
-        if (uppercase(button) in this.buttonsReleased) {
+    function get_button_released(self: Input, button: string) {
+        if (uppercase(button) in self.buttonsReleased) {
             return true
         }
         return false
     }
 
-    function get_mouse_button(this: Input,  button: any) {
-        if (button in this.mouseButtonsHeldDown) {
+    function get_mouse_button(self: Input, button: any) {
+        if (button in self.mouseButtonsHeldDown) {
             return true
         }
         return false
@@ -1069,8 +1070,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return get_mouse_button(MAIN.input, button)
     }
 
-    function get_mouse_button_pressed(this: Input,  button: any) {
-        if (button in this.mouseButtonsPressedDown) {
+    function get_mouse_button_pressed(self: Input, button: any) {
+        if (button in self.mouseButtonsPressedDown) {
             return true
         }
         return false
@@ -1080,8 +1081,8 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return get_mouse_button_pressed(MAIN.input, button)
     }
 
-    function get_mouse_button_released(this: Input,  button: any) {
-        if (button in this.mouseButtonsReleased) {
+    function get_mouse_button_released(self: Input, button: any) {
+        if (button in self.mouseButtonsReleased) {
             return true
         }
         return false
@@ -1091,35 +1092,35 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         return get_mouse_button_released(MAIN.input, button)
     }
 
-    function get_mouse_position(this: Input) {
-        return this.mousePosition
+    function get_mouse_position(self: Input) {
+        return self.mousePosition
     }
 
     function get_mouse_position() {
         return get_mouse_position(MAIN.input)
     }
 
-    function get_mouse_position_in_world_space(this: Input) {
-        return this.mousePositionWorld
+    function get_mouse_position_in_world_space(self: Input) {
+        return self.mousePositionWorld
     }
 
     function get_mouse_position_in_world_space() {
         return get_mouse_position_in_world_space(MAIN.input)
     }
 
-    function create_cursor_bank(this: Input) {
-        this.cursorBank["arrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
-        this.cursorBank["ibeam"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
-        this.cursorBank["wait"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAIT)
-        this.cursorBank["crosshair"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_CROSSHAIR)
-        this.cursorBank["waitarrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAITARROW)
-        this.cursorBank["sizeall"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEALL)
-        this.cursorBank["sizenesw"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENESW)
-        this.cursorBank["sizenwse"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENWSE)
-        this.cursorBank["sizewe"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEWE)
-        this.cursorBank["sizens"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENS)
-        this.cursorBank["no"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_NO)
-        this.cursorBank["hand"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
+    function create_cursor_bank(self: Input) {
+        self.cursorBank["arrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_ARROW)
+        self.cursorBank["ibeam"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_IBEAM)
+        self.cursorBank["wait"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAIT)
+        self.cursorBank["crosshair"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_CROSSHAIR)
+        self.cursorBank["waitarrow"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_WAITARROW)
+        self.cursorBank["sizeall"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEALL)
+        self.cursorBank["sizenesw"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENESW)
+        self.cursorBank["sizenwse"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENWSE)
+        self.cursorBank["sizewe"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZEWE)
+        self.cursorBank["sizens"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_SIZENS)
+        self.cursorBank["no"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_NO)
+        self.cursorBank["hand"] = (globalThis as any).JulGameSdl.glue_SDL_CreateSystemCursor(SDL2.SDL_SYSTEM_CURSOR_HAND)
     }
 
     // Initialize an SDL_Event instance
@@ -1165,10 +1166,10 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         // Return the pointer to the class return { ptr_event
     }
 
-    function simulate_mouse_click(this: Input,  window: SDL_Window},  x: Number,  y: Number) {
+    function simulate_mouse_click(self: Input, window: any, x: Number, y: Number) {
         // Get current window size
         window_width = Ref{Cint}(0)
-        window_height = Ref{Cint}(0)
+        window_height = Ref{Cint}(0);
         (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(window, window_width, window_height)
 
         // Get base resolution from WindowManager
@@ -1192,7 +1193,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         x = window_x
         y = window_y
         // Move the mouse to the specified position
-        console.debug("Moving mouse to $(x), $(y)")
+        console.debug(`Moving mouse to ${x}, ${y}`);
         (globalThis as any).JulGameSdl.glue_SDL_WarpMouseInWindow(window, x, y)
 
         // Create a mouse button down event
@@ -1210,7 +1211,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             0,                         // Padding (unused, set to 0)
             x,                         // X position
             y                          // Y position
-        )
+        );
         (globalThis as any).JulGameSdl.glue_SDL_PushEvent(mouse_event)
         
         // Immediately push button up event as well so both are processed together
@@ -1228,14 +1229,14 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             0,                         // Padding (unused, set to 0)
             x,                         // X position (same as button down)
             y                          // Y position (same as button down)
-        )
+        );
         (globalThis as any).JulGameSdl.glue_SDL_PushEvent(mouse_up_event)
         
-        this.isTestButtonClicked = false  // No need to lift later since we pushed it immediately
-        this.simulatedClickPosition = null
+        self.isTestButtonClicked = false  // No need to lift later since we pushed it immediately
+        self.simulatedClickPosition = null
     }
 
-    function simulate_mouse_click(x: Number,  y: Number) {
+    function simulate_mouse_click(x: Number, y: Number) {
         simulate_mouse_click(MAIN.input, MAIN.windowManager.window, x, y)
     }
 
@@ -1246,7 +1247,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             let click_y = Int32(this.simulatedClickPosition.y)
         } else {
             // Fallback to current mouse position
-            x_ref, y_ref = Ref{Cint}(0), Ref{Cint}(0)
+            x_ref, y_ref = Ref{Cint}(0), Ref{Cint}(0);
             (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(x_ref, y_ref)
             click_x = Int32(x_ref)
             click_y = Int32(y_ref)
@@ -1265,7 +1266,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             0,                         // Padding (unused, set to 0)
             click_x,                   // X position (same as button down)
             click_y                    // Y position (same as button down)
-        )
+        );
         (globalThis as any).JulGameSdl.glue_SDL_PushEvent(mouse_event)
         this.isTestButtonClicked = false
         this.simulatedClickPosition = null
@@ -1275,7 +1276,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         lift_mouse_after_simulated_click(MAIN.input)
     }
 
-    function simulate_key_press(this: Input,  key: string) {
+    function simulate_key_press(self: Input, key: string) {
         // Create a keyboard event
         key_event = init_sdl_event()
         key_event.type = SDL2.SDL_KEYDOWN
@@ -1293,7 +1294,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
                 0,                                   // Modifiers (none)
                 0                                    // Window ID (0 for default window)
             )
-        )
+        );
         // key_event.key.keysym.sym = (globalThis as any).JulGameSdl.glue_SDL_Keycode(uppercase(key))
         // key_event.key.keysym.scancode = (globalThis as any).JulGameSdl.glue_SDL_Scancode(uppercase(key))
         // key_event.key.keysym.mod = 0
@@ -1333,7 +1334,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         // Example
         set_cursor_with_image(this, "cursor.png", 10, 10, 2.0)  // Scales up by 2x
     */
-    function set_cursor_with_image(this: Input,  imagePath: string,  x: number,  y: number,  scale_factor: number=1.0) {
+    function set_cursor_with_image(self: Input, imagePath: string, x: number, y: number, scale_factor: number=1.0) {
         let surface = null
         if (haskey((globalThis as any).JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))) {
             let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
@@ -1347,10 +1348,10 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
             console.debug("loading cursor from disk")
             surface = SDL2.IMG_Load(pointer(joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)))
         }
-        console.debug("Loading image from disk $(fullPath) for sprite, there are $((globalThis as any).JulGame.IMAGE_CACHE.length) images in cache")
+        console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 
         if (surface == null) {
-            console.error("Failed to load cursor image: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+            console.error(`Failed to load cursor image: ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
             return
         }
 
@@ -1370,7 +1371,7 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
         let scaled_surface = (globalThis as any).JulGameSdl.glue_SDL_CreateRGBSurface(0, new_width, new_height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
 
         if (scaled_surface == null) {
-            console.error("Failed to create scaled surface: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+            console.error(`Failed to create scaled surface: ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`);
             (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(surface)
             return
         }
@@ -1383,20 +1384,20 @@ import { clamp } from "../../../../src/engine/core/juliaHelpers";
 
         if (cursor != null) {
             set_cursor(cursor)
-            this.defaultCursor = cursor
-            console.debug("Cursor set successfully! Scaled by $(scale_factor)x, Hotspot: ($new_x, $new_y)")
+            self.defaultCursor = cursor
+            console.debug(`Cursor set successfully! Scaled by ${scale_factor}x, Hotspot: (${new_x}, ${new_y})`)
         } else {
-            console.error("Issue loading cursor: $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+            console.error(`Issue loading cursor: ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
         }
 
         // Free surfaces to avoid memory leaks
-        (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(surface)
+        (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(surface);
         (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(scaled_surface)
 
         return cursor
     }
 
-    function set_cursor_with_image(imagePath: string,  x: number,  y: number,  scale_factor: number=1.0) {
+    function set_cursor_with_image(imagePath: string, x: number, y: number, scale_factor: number=1.0) {
         set_cursor_with_image(MAIN.input, imagePath, x, y, scale_factor)
     }
 

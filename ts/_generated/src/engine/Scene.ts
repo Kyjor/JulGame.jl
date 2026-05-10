@@ -25,14 +25,14 @@ export {}
         }
     }
 
-    function get_entity_by_name(this: Scene,  name) {
-        for (const entity of this.entities) {
+    function get_entity_by_name(self: Scene, name) {
+        for (const entity of self.entities) {
             if (entity.name == name) {
                 return entity
             }
         }
 
-        console.debug("No entity with name $name found")
+        console.debug(`No entity with name ${name} found`)
         return null
     }
 
@@ -40,16 +40,16 @@ export {}
         return get_entity_by_name(MAIN.scene, name)
     }
 
-    function get_entities_by_name(this: Scene,  name) {
+    function get_entities_by_name(self: Scene, name) {
         let entities = []
-        for (const entity of this.entities) {
+        for (const entity of self.entities) {
             if (entity.name == name) {
                 entities.push(entity)
             }
         }
 
         if (entities.length == 0) {
-            console.debug("No entity with name $name found")
+            console.debug(`No entity with name ${name} found`)
         }
         return entities
     }
@@ -58,14 +58,14 @@ export {}
         return get_entities_by_name(MAIN.scene, name)
     }
 
-    function get_entity_by_id(this: Scene,  id) {
-        for (const entity of this.entities) {
+    function get_entity_by_id(self: Scene, id) {
+        for (const entity of self.entities) {
             if (entity.id == id) {
                 return entity
             }
         }
 
-        console.debug("No entity with id $id found")
+        console.debug(`No entity with id ${id} found`)
         return null
     }
 
@@ -73,14 +73,14 @@ export {}
         return get_entity_by_id(MAIN.scene, id)
     }
 
-    function get_ui_element_by_name(this: Scene,  name) {
-        for (const entity of this.uiElements) {
+    function get_ui_element_by_name(self: Scene, name) {
+        for (const entity of self.uiElements) {
             if (entity.name == name) {
                 return entity
             }
         }
 
-        console.debug("No entity with name $name found")
+        console.debug(`No entity with name ${name} found`)
         return null
     }
 
@@ -88,14 +88,14 @@ export {}
         return get_ui_element_by_name(MAIN.scene, name)
     }
 
-    function get_ui_element_by_id(this: Scene,  id) {
-        for (const element of this.uiElements) {
+    function get_ui_element_by_id(self: Scene, id) {
+        for (const element of self.uiElements) {
             if (element.id == id) {
                 return element
             }
         }
 
-        console.debug("No ui element with id $id found")
+        console.debug(`No ui element with id ${id} found`)
         return null
     }
 

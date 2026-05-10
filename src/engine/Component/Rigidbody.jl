@@ -18,7 +18,7 @@
         useGravity::Bool
         velocity::Math.Vector2f
 
-        function InternalRigidbody(parent::Any; mass::Float64 = 1.0, useGravity::Bool = true)
+        function InternalRigidbody(parent::Any, mass::Float64 = 1.0, useGravity::Bool = true)
             this = new()
             
             this.acceleration = Math.Vector2f()
@@ -89,7 +89,7 @@
     export add_velocity
 
     function Component.duplicate(this::InternalRigidbody, parent::Any)
-        newRigidbody = InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)
+        newRigidbody = InternalRigidbody(parent, this.mass, this.useGravity)
         newRigidbody.acceleration = this.acceleration
         newRigidbody.drag = this.drag
         newRigidbody.grounded = this.grounded

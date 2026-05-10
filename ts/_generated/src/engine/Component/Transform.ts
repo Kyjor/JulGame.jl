@@ -26,14 +26,14 @@ export {}
         }   
     }     
 
-    function Component_duplicate(this: ITransform,  parent: any) {
-        let newTransform = new Transform(this.position, this.scale, this.rotation, this.parent)
+    function Component_duplicate(self: ITransform, parent: any) {
+        let newTransform = new Transform(self.position, self.scale, self.rotation, self.parent)
         return newTransform
     }
 
-    function Component_is_mouse_hovering(this: ITransform) {
+    function Component_is_mouse_hovering(self: ITransform) {
         let mousePosition = (globalThis as any).JulGame.InputModule.get_mouse_position_in_world_space()
-        if (mousePosition.x >= this.position.x && mousePosition.x <= this.position.x + this.scale.x && mousePosition.y >= this.position.y && mousePosition.y <= this.position.y + this.scale.y) {
+        if (mousePosition.x >= self.position.x && mousePosition.x <= self.position.x + self.scale.x && mousePosition.y >= self.position.y && mousePosition.y <= self.position.y + self.scale.y) {
             return true
         }
         

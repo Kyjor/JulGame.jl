@@ -144,7 +144,7 @@ module EntityModule
             return
         end
 
-        this.rigidbody = InternalRigidbody(this::Entity; rigidbody.mass, rigidbody.useGravity)
+        this.rigidbody = InternalRigidbody(this::Entity, rigidbody.mass, rigidbody.useGravity)
         
         return this.rigidbody
     end
