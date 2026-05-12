@@ -306,15 +306,15 @@ module InputModule
                         if skipElement
                             n_skipped_inactive += 1
                         end
-                        if isa(element, JulGame.IEntity) && element.ignoreInputEvents
-                            skipElement = true
-                            if element.isActive
-                                n_skipped_ignore += 1
-                            end
-                        end
+                        # if isa(element, JulGame.IEntity) && element.ignoreInputEvents
+                        #     skipElement = true
+                        #     if element.isActive
+                        #         n_skipped_ignore += 1
+                        #     end
+                        # end
 
                         if skipElement
-                            @debug "Skipping element $(element.name) - isActive: $(element.isActive), ignoreInputEvents: $(isa(element, JulGame.IEntity) ? element.ignoreInputEvents : "N/A")"
+                            @debug "Skipping element $(element.name) - isActive: $(element.isActive)"
                             # _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_skip_early)
                             continue
                         end
@@ -579,9 +579,5 @@ module InputModule
                 deleteat!(this.mouseButtonsHeldDown, findfirst(x -> x == button, this.mouseButtonsHeldDown))
             end
         end
-    end
-
-    function update_input_state(this::Input, data::Dict{String, Any})
-        this.buttonsHeldDown = [key for (key, value) in data if value]
     end
 end # module InputModule

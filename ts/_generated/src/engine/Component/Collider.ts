@@ -5,18 +5,6 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     // include("../../utils/Enums.jl")
     // using ..Component.JulGame
     // import ..Component 
-
-    
-    class Collider {
-        enabled: boolean
-        isPlatformerCollider: boolean
-        isTrigger: boolean
-        offset: Vector2f
-        size: Vector2f
-        tag: string
-    }
-
-
     
     class InternalCollider {
         collisionEvents: Function[]
@@ -164,7 +152,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         return self.currentCollisions.length > 0
     }
 
-    function Component_add_collision_event(self: InternalCollider, event) {
+    function Component_add_collision_event(self: InternalCollider, event: any) {
         self.collisionEvents.push(event)
     }        
 

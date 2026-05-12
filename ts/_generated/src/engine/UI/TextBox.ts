@@ -171,7 +171,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
 
         if ((globalThis as any).JulGame.IS_DEBUG) {
-            let rgba = { r: 0, g: 0, b: 0, a: 255 }
+            let rgba = { r: 0, g: 0, b: 0, a: 255 };
             (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
             (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 0, 255);
             (globalThis as any).JulGameSdl.glue_SDL_RenderDrawLines((globalThis as any).JulGame.Renderer, [;
@@ -194,7 +194,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             @assert (globalThis as any).JulGameSdl.glue_SDL_RenderCopyF(
                 (globalThis as any).JulGame.Renderer, 
                 texture_to_render, 
-                null, 
+                null,;
                 (globalThis as any).JulGameSdl.glue_SDL_FRect(
                     Float32(posX), 
                     Float32(posY), 
@@ -215,7 +215,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             @assert (globalThis as any).JulGameSdl.glue_SDL_RenderCopyF(
                 (globalThis as any).JulGame.Renderer, 
                 texture_to_render, 
-                null, 
+                null,;
                 (globalThis as any).JulGameSdl.glue_SDL_FRect(
                     Float32(adjusted_position.x), 
                     Float32(adjusted_position.y), 

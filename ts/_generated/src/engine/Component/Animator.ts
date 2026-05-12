@@ -6,12 +6,6 @@ export {}
     // using ..Component.SpriteModule
     // import ..Component
     
-    
-    class Animator {
-        animations: JulGameAnimation[]
-    }
-
-    
     class InternalAnimator {
         animations: JulGameAnimation[]
         currentAnimation: JulGameAnimation | null
@@ -35,7 +29,7 @@ export {}
         }
     }
 
-    function Component_update(self: InternalAnimator, currentRenderTime, deltaTime) {
+    function Component_update(self: InternalAnimator, currentRenderTime: number, deltaTime: number) {
         if (self.currentAnimation === null || self.currentAnimation.animatedFPS < 1 || (self.playOnce && self.lastFrame == self.currentAnimation.frames.length) || self.sprite == null) {
             return
         }

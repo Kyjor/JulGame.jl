@@ -295,15 +295,15 @@ module SpriteModule
         return tex
     end
     
-    function load_fallback_image()
-        rwops = SDL2.SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), length(FALLBACK_IMAGE_BYTES))
-        if rwops == C_NULL
-            @error("Failed to create SDL_RWops for fallback image.")
-            return C_NULL
-        end
-        image = SDL2.IMG_Load_RW(rwops, 1)  # Load directly from memory and free rwops after use
-        return image
-    end
+    # function load_fallback_image()
+    #     rwops = SDL2.SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), length(FALLBACK_IMAGE_BYTES))
+    #     if rwops == C_NULL
+    #         @error("Failed to create SDL_RWops for fallback image.")
+    #         return C_NULL
+    #     end
+    #     image = SDL2.IMG_Load_RW(rwops, 1)  # Load directly from memory and free rwops after use
+    #     return image
+    # end
 
     function Component.load_image(this::InternalSprite, imagePath::String)
         SDL2.SDL_ClearError()
@@ -312,26 +312,26 @@ module SpriteModule
         this.image = load_image_sdl(fullPath, imagePath)
         error = unsafe_string(SDL2.SDL_GetError())
     
-        if length(error) > 0 || this.image == C_NULL
-            try
-                throw(error)
-            catch e
-                @error("Error loading image '$imagePath'! SDL Error: ", e)
-                Base.show_backtrace(stdout, catch_backtrace()) # Backtrace won't be shown if we don't throw the error
-            end
-            SDL2.SDL_ClearError()
+        # if length(error) > 0 || this.image == C_NULL
+        #     try
+        #         throw(error)
+        #     catch e
+        #         @error("Error loading image '$imagePath'! SDL Error: ", e)
+        #         Base.show_backtrace(stdout, catch_backtrace()) # Backtrace won't be shown if we don't throw the error
+        #     end
+        #     SDL2.SDL_ClearError()
     
-            # Load from byte array
-            this.image = load_fallback_image()
-            setfield!(this, :imagePath, "fallback.png")
-            this.pixelsPerUnit = 0
-            if this.image == C_NULL
-                @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")
-                return
-            end
-        elseif this.imagePath != imagePath
-            this.imagePath = imagePath
-        end
+        #     # Load from byte array
+        #     this.image = load_fallback_image()
+        #     setfield!(this, :imagePath, "fallback.png")
+        #     this.pixelsPerUnit = 0
+        #     if this.image == C_NULL
+        #         @error("Fallback image also failed to load! $(unsafe_string(SDL2.SDL_GetError()))")
+        #         return
+        #     end
+        # elseif this.imagePath != imagePath
+        #     this.imagePath = imagePath
+        # end
     
         # Get image size
         surface = unsafe_wrap(Array, this.image, 10; own = false)

@@ -127,6 +127,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
         r"(?m)^(\s*(?:this|self)\.pending_sdl_events\s*=\s*)\(globalThis as any\)\.JulGameSdl\.glue_SDL_Event\s*$" => s"\1[]",
     )
     data = replace_let_named_tuple_rhs_to_object(data)
+    data = insert_semicolon_before_line_starting_with_open_paren(data)
     data = replace_invokelatest_calls(data)
     data = replace_julia_semicolon_kw_calls_to_commas(data)
     data = replace_keyword_style_calls_to_object_args(data)
@@ -1614,7 +1615,6 @@ function insert_semicolon_before_line_starting_with_open_paren(data::AbstractStr
         startswith(cur, "//") && continue
         endswith(cur, ';') && continue
         endswith(cur, '{') && continue
-        endswith(cur, '}') && continue
         endswith(cur, '(') && continue
         cur in _TS_ASI_SKIP_SINGLE_KEYWORDS && continue
         j = idx + 1
@@ -3493,6 +3493,12 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     push!(line_rules, "_input_ui_hit_step" => "")
     push!(line_rules, "_input_ui_hit_iter_stream_logs" => "")
     push!(line_rules, "_input_ui_hit_stream_logs" => "")
+    push!(line_rules, "_handle_clipboard_paste" => "")
+    push!(line_rules, "handle_dropped_files" => "")
+    push!(line_rules, "is not set in the main scene" => "")
+    push!(line_rules, "uiElementsOrderedByLayerDescending = sort(reverse" => "")
+    push!(line_rules, "entitiesWithSpritesOrderedByLayerDescending =" => "")
+    push!(line_rules, " elementsOrderedByLayerDescending = vcat" => "let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.uiElements")
 
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line

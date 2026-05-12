@@ -10,7 +10,7 @@ export {}
         rotation: Vector3f
         screenPosition: Vector2
         screenRotation: Vector2
-        parent
+        parent: any
 
         constructor(position: Vector3f = {x: 0.0, y: 0.0, z: 0.0}, scale = {x: 1.0, y: 1.0, z: 1.0}, rotation = {x: 0.0, y: 0.0, z: 0.0}, parent = null) {
             

@@ -7,14 +7,6 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     // include(joinpath(@__DIR__, "SoundSource", "constants.jl"))
     
     
-    class SoundSource {
-        channel: number
-        isMusic: boolean
-        path: string
-        playOnStart: boolean
-        volume: number
-    }
-
     
     class InternalSoundSource {
         path: string

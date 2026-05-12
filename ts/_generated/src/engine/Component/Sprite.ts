@@ -10,23 +10,6 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     // include(joinpath(@__DIR__, "Sprite", "constants.jl"))
     // include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
 
-    
-    class Sprite {
-        color: [number, number, number, number]
-        crop: null | Vector4
-        isFlipped: boolean
-        imagePath: string
-        layer: number
-        offset: Vector2f
-        position: Vector2f
-        rotation: number
-        pixelsPerUnit: number
-        center: Vector2f
-        anchor: string
-        isStatic: boolean
-    }
-
-    
     class InternalSprite { 
         imagePath: string
         layer: number
@@ -101,8 +84,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                 return
             }
-            let surface = unsafe_wrap(Array, this.image, 10, false)
-            this.size = {x: surface[0].w, y: surface[0].h}
+            this.size = {x: 0, y: 0}
 
         }
     }
@@ -245,8 +227,8 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     
         // Calculate center for rotation
         let calculatedCenter = {x: dstRect.w * (self.center.x % 1), y: dstRect.h * (self.center.y % 1)}
-        let rotationCenter = !self.isFloatPrecision ? 
-            (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y)) :
+        let rotationCenter = !self.isFloatPrecision ?;
+            (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y)) :;
             (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
     
         self.lastRenderedScreenPosition = {x: Number(dstRect.x), y: Number(dstRect.y)}
@@ -282,15 +264,15 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return tex
     }
     
-    function load_fallback_image() {
-        let rwops = (globalThis as any).JulGameSdl.glue_SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), FALLBACK_IMAGE_BYTES.length)
-        if (rwops == null) {
-            console.error("Failed to create SDL_RWops for fallback image.")
-            return null
-        }
-        let image = (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rwops, 1)  // Load directly from memory and free rwops after use
-        return image
-    }
+    // function load_fallback_image()
+    //     rwops = (globalThis as any).JulGameSdl.glue_SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), FALLBACK_IMAGE_BYTES.length)
+    //     if rwops == null
+    //         console.error("Failed to create SDL_RWops for fallback image.")
+    //         return null
+    //     }
+    //     image = (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rwops, 1)  // Load directly from memory and free rwops after use
+    //     return image
+    // }
 
     function Component_load_image(self: InternalSprite, imagePath: string) {
         (globalThis as any).JulGameSdl.glue_SDL_ClearError()
@@ -299,30 +281,29 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         self.image = load_image_sdl(fullPath, imagePath)
         let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
     
-        if (error.length > 0 || self.image == null) {
-            try {
+        // if error.length > 0 || self.image == null
+        //     try
 
-            } catch (e) {
-                console.error("Error loading image '$imagePath'! SDL Error: ", e)
+        //     catch e
+        //         console.error("Error loading image '$imagePath'! SDL Error: ", e)
 
-            }
-            (globalThis as any).JulGameSdl.glue_SDL_ClearError()
+        //     }
+        //     (globalThis as any).JulGameSdl.glue_SDL_ClearError()
     
-            // Load from byte array
-            self.image = load_fallback_image()
-            setfield(self, "imagePath", "fallback.png")
-            self.pixelsPerUnit = 0
-            if (self.image == null) {
-                console.error(`Fallback image also failed to load! ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-                return
-            }
-        } else if (self.imagePath != imagePath) {
-            self.imagePath = imagePath
-        }
+        //     // Load from byte array
+        //     this.image = load_fallback_image()
+        //     setfield(this, :imagePath, "fallback.png")
+        //     this.pixelsPerUnit = 0
+        //     if this.image == null
+        //         console.error("Fallback image also failed to load! $(unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()))")
+        //         return
+        //     }
+        // elseif this.imagePath != imagePath
+        //     this.imagePath = imagePath
+        // }
     
         // Get image size
-        let surface = unsafe_wrap(Array, self.image, 10, false)
-        self.size = {x: surface[0].w, y: surface[0].h}
+        self.size = {x: 0, y: 0}
 
         // Create or get cached texture
         self.texture = get_or_create_texture(self.imagePath, self.image)

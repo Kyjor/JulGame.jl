@@ -78,7 +78,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 			}
 			if ((globalThis as any).JulGameSdl.glue_Mix_OpenAudio(22050, SDL2.MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
 				console.error(`Failed to open audio, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-			}
+			};
 			(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 
 			this.scene = SceneModule.Scene()
@@ -774,7 +774,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "render_clear")
-				}
+				};
 				(globalThis as any).JulGameSdl.glue_SDL_RenderClear((globalThis as any).JulGame.Renderer)
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
@@ -1019,7 +1019,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				]
 
 				// Draw a gray rect under the debug textboxes
-				let rgba = { r: 0, g: 0, b: 0, a: 255 }
+				let rgba = { r: 0, g: 0, b: 0, a: 255 };
 				(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
 				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a];
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255);
@@ -1049,7 +1049,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			if ((globalThis as any).JulGame.IS_EDITOR) {
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "present_and_delay")
-				}
+				};
 				
 				(globalThis as any).JulGameSdl.glue_SDL_RenderPresent((globalThis as any).JulGame.Renderer);
 				(globalThis as any).JulGameSdl.glue_SDL_framerateDelay(this.windowManager.fpsManager)
@@ -1222,7 +1222,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			}
 	
 			if (entity.collider != null) {
-				let rgba = { r: 0, g: 0, b: 0, a: 255 }
+				let rgba = { r: 0, g: 0, b: 0, a: 255 };
         		(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
@@ -1239,7 +1239,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				let colSize = collider.size
 				colSize = {x: colSize.x, y: colSize.y}
 				let colOffset = collider.offset
-				colOffset = {x: colOffset.x, y: colOffset.y}
+				colOffset = {x: colOffset.x, y: colOffset.y};
 						
 				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer,;
 				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, (pos.y + colOffset.y - cameraPosition.y) * S, entity.transform.scale.x * colSize.x * S, entity.transform.scale.y * colSize.y * S));
@@ -1261,13 +1261,13 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 		} else {
 			console.debug("Renderer is already destroyed")
 			return
-		}
+		};
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		
 		// Use the WindowManager to close the window
 		if ((globalThis as any).JulGame.MAIN.windowManager !== null) {
 			(globalThis as any).JulGame.WindowManagerModule.close_window()
-		}
+		};
 		
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
         // Reset any OpenGL-related attributes that might have been set
@@ -1275,19 +1275,19 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
         (globalThis as any).JulGameSdl.glue_SDL_GL_ResetAttributes()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
 			console.error(`Failed to reset GL attributes, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-		}
+		};
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Quitting Mix");
         (globalThis as any).JulGameSdl.glue_Mix_Quit()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
 			console.error(`Failed to quit Mix, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-		}
+		};
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Quitting TTF")
         SDL2.TTF_Quit()
 		if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
 			console.error(`Failed to quit TTF, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-		}
+		};
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Quitting SDL");
         (globalThis as any).JulGameSdl.glue_SDL_Quit()
