@@ -1,5 +1,5 @@
 export {}
-import { unsafe_string } from "../../src/engine/core/juliaHelpers";
+import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 
 
 	// using ..JulGame
@@ -298,7 +298,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 			self.close = false
             let startTime = 0
             let lastPhysicsTime = Number((globalThis as any).JulGameSdl.glue_SDL_GetTicks())
-            while !self.close
+            while (!self.close) {
                 try {
                     game_loop(self, startTime, lastPhysicsTime)
                 } catch (e) {

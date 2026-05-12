@@ -1,5 +1,10 @@
 /** Julia-style helpers for transpiled TS (no direct JS/TS equivalent). */
 
+/** Julia `time_ns()` — monotonic-ish time in nanoseconds for deltas (e.g. `(time_ns() - t0) / 1e6` ms). */
+export function time_ns(): number {
+    return performance.now() * 1e6
+}
+
 export function clamp(val: number, min: number, max: number): number {
     return Math.min(Math.max(val, min), max);
 }
@@ -7,8 +12,6 @@ export function clamp(val: number, min: number, max: number): number {
 export function unsafe_string(ptr: number): string {
     return "nothing yet"
 }
-
-/** Julia `joinpath` — segments joined with `/` (browser / wasm asset paths). */
 export function joinpath(...parts: string[]): string {
     if (parts.length === 0) return ""
     const normalized = parts.map((p) => String(p).replace(/\\/g, "/"))

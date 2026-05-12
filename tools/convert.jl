@@ -114,10 +114,12 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_component_qualified_calls(data)
     data = replace_function_definitions(data)
     data = replace_if_statements(data)
+    data = replace_while_statements(data)
     data = replace_else_elseif_blocks(data)
     data = replace_for_in_loops(data)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
+    data = replace_while_statements(data)
     data = normalize_julia_ref_for_ts(data)
     # After `glue_SDL_Event[]` → `glue_SDL_Event` (ref-strip), empty SDL event queue must be `[]`.
     data = replace(
@@ -133,6 +135,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = custom_function_removal(data)
     data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
+    data = replace_popfirst_calls(data)
     data = replace_setfield_calls(data)
     data = replace_empty_vector_literals(data)
     data = rewrite_rhs_vector_arithmetic(data)
@@ -172,11 +175,12 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
     need_clamp = occursin(r"\bclamp\s*\(", data)
     need_unsafe_string = occursin(r"\bunsafe_string\s*\(", data)
     need_joinpath = occursin(r"\bjoinpath\s*\(", data)
+    need_time_ns = occursin(r"\btime_ns\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
-    (!need_clamp && !need_unsafe_string && !need_joinpath && !need_vec) && return data
+    (!need_clamp && !need_unsafe_string && !need_joinpath && !need_time_ns && !need_vec) && return data
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
-    if need_clamp || need_unsafe_string || need_joinpath
+    if need_clamp || need_unsafe_string || need_joinpath || need_time_ns
         h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
         if isfile(h)
             rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
@@ -184,6 +188,7 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             syms = String[]
             need_clamp && push!(syms, "clamp")
             need_joinpath && push!(syms, "joinpath")
+            need_time_ns && push!(syms, "time_ns")
             need_unsafe_string && push!(syms, "unsafe_string")
             sort!(syms)
             push!(lines, string("import { ", join(syms, ", "), " } from \"", rel, "\";"))
@@ -2713,6 +2718,32 @@ function replace_if_statements(data::AbstractString)
     )
 end
 
+function replace_while_statements(data::AbstractString)
+    # Julia: `while cond` — TS: `while (cond) {` (trailing line comment preserved after `{`).
+    s = String(data)
+    lines = split(s, '\n'; keepempty = true)
+    pat = r"^(\s*)while\b\s*(.+)$"
+    return join(
+        map(lines) do line
+            # Already `while (...` with a `{` on this line (TS / re-run safe).
+            occursin(r"^\s*while\s*\(", line) && occursin('{', line) && return line
+            m = match(pat, line)
+            if m === nothing
+                line
+            else
+                raw = String(m[2])
+                cond, cmt = _split_trailing_ts_comment(raw)
+                cond = String(strip(cond))
+                if startswith(cond, "(") && endswith(cond, ")")
+                    cond = String(strip(chop(cond, head = 1, tail = 1)))
+                end
+                string(m[1], "while (", cond, ") {", cmt)
+            end
+        end,
+        '\n',
+    )
+end
+
 function replace_first_assignments_with_let(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty = true)
     seen = Set{String}()
@@ -2972,6 +3003,34 @@ function replace_push_calls(data::AbstractString)::String
         end
         arg1, arg2, close_idx = res
         write(buf, strip(String(arg1)), ".push(", strip(String(arg2)), ")")
+        seg_start = nextind(s, close_idx)
+    end
+    return String(take!(buf))
+end
+
+# `popfirst!(collection)` / `popfirst(collection)` (after `!(` → `(`) → `collection.shift()`.
+function replace_popfirst_calls(data::AbstractString)::String
+    s = String(data)
+    needle = "popfirst("
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner = strip(String(s[inner_start:prevind(s, close_idx)]))
+        write(buf, inner, ".shift()")
         seg_start = nextind(s, close_idx)
     end
     return String(take!(buf))

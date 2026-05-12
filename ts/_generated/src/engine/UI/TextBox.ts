@@ -613,10 +613,6 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         UI.rerender_text(self)
     }
     
-    function get_max_line_width(self: TextBox) {
-        return self.maxLineWidth
-    }
-    
     // Add method to control word wrapping behavior
     function set_wrap_words(self: TextBox, wrapWords: boolean) {
         self.wrapWords = wrapWords

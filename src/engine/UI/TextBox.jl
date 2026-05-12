@@ -766,10 +766,6 @@ module TextBoxModule
         UI.rerender_text(this)
     end
     
-    function get_max_line_width(this::TextBox)
-        return this.maxLineWidth
-    end
-    
     # Add method to control word wrapping behavior
     function set_wrap_words(this::TextBox, wrapWords::Bool)
         this.wrapWords = wrapWords
