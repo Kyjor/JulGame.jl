@@ -57,7 +57,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 		
 		// Script tracking for profiling and debugging
 		knownScriptTypes: Set{DataType}
-		scriptTimings: Dict{DataType, Vector{Float64}}  // For profiling per script type
+		scriptTimings: Record<DataType, number[]>  // For profiling per script type
 		
 		cachedInputLayerOrder: any[]
 		// Cached input layer order (rebuilt only when layers change)
@@ -97,7 +97,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 			this.testLength = 0.0
 			this.coroutine_condition = Condition()
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
-			this.spriteLayers = (layers = Dict{Int, Vector{Any}}(), sorted = [])
+			this.spriteLayers = (layers = {}, sorted = [])
 			this.latencyProfiler = null  // Disabled by default, enable with enable_profiling()
 
 			this.windowManager = WindowManager()
@@ -112,7 +112,7 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
 			
 			// Initialize script tracking
 			this.knownScriptTypes = Set{DataType}()
-			this.scriptTimings = Dict{DataType, Vector{Float64}}()
+			this.scriptTimings = {}
 
 		}
 	}
@@ -296,8 +296,8 @@ import { unsafe_string } from "../../src/engine/core/juliaHelpers";
     function full_loop(self: MainLoop) {
         try {
 			self.close = false
-            let startTime = UInt64(0)
-            let lastPhysicsTime = UInt64((globalThis as any).JulGameSdl.glue_SDL_GetTicks())
+            let startTime = 0
+            let lastPhysicsTime = Number((globalThis as any).JulGameSdl.glue_SDL_GetTicks())
             while !self.close
                 try {
                     game_loop(self, startTime, lastPhysicsTime)
@@ -564,7 +564,7 @@ Returns a named tuple with (layers = Dict{Int, Vector}, sorted = Vector{Int})
 */
 function build_sprite_layers() {
 	console.debug("Building sprite layers")
-	let layerDict = Dict{Int, Vector{Any}}()  // Int keys instead of String - no allocations!
+	let layerDict = {}  // Int keys instead of String - no allocations!
 	let sortedLayers = []
 	
 	for (const entity of MAIN.scene.entities) {
@@ -722,7 +722,7 @@ function JulGame_create_entity(entity) {
 }
 
 /*
-game_loop(this, startTime = UInt64(0), lastPhysicsTime = UInt64(0), close = Bool(false), Vector{Any}} = null)
+game_loop(this, startTime = 0, lastPhysicsTime = 0, close = Bool(false), Vector{Any}} = null)
 
 Runs the game loop.
 
@@ -738,7 +738,7 @@ function _accum_ui_render_breakdown_ms(prof, t0, key: string)
 	return
 }
 
-function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysicsTime = UInt64(0), windowPos = {x: 0, y: 0}, windowSize = {x: 0, y: 0})
+function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime = 0, windowPos = {x: 0, y: 0}, windowSize = {x: 0, y: 0})
 	// Start frame profiling
 	if (this.latencyProfiler !== null) {
 		(globalThis as any).JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
@@ -972,7 +972,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = UInt64(0), lastPhysi
 						continue
 					}
 					let tgt = uiRenderingOrder[i][2]
-					let t_r = prof_ui === null ? UInt64(0) : time_ns()
+					let t_r = prof_ui === null ? 0 : time_ns()
 					if (tgt isa NamedTuple) {
 						let func = tgt.function_to_call
 						func()

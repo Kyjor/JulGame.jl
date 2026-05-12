@@ -16,15 +16,15 @@ module InputModule
         didMouseMotionOccur::Bool
         editorCallback::Union{Function, Nothing}
         main
-        mouseButtonsPressedDown::Vector
-        mouseButtonsHeldDown::Vector
-        mouseButtonsReleased::Vector
+        mouseButtonsPressedDown
+        mouseButtonsHeldDown
+        mouseButtonsReleased
         mousePosition
         mousePositionEditorGameWindowOffset::Vector2
         mousePositionWorld::Math.Vector2f
         joystick
         scanCodeStrings::Vector{String}
-        scanCodes::Vector
+        scanCodes
         quit::Bool
 
         elementsBeingClickedDownOn
@@ -70,11 +70,11 @@ module InputModule
             this.scanCodeStrings = String[]
             for m in instances(SDL2.SDL_Scancode)
                 codeString = "$(m)"
-                code::SDL2.SDL_Scancode = m
                 if codeString == "SDL_NUM_SCANCODES"
                     continue
                 end
-                push!(this.scanCodes, [code, SubString(codeString, 14, length(codeString))])
+                # Keep scanCodes as plain numeric ids + string names (TS doesn't have a native SDL enum type).
+                push!(this.scanCodes, [Int32(m), SubString(codeString, 14, length(codeString))])
             end
 
             SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
@@ -122,6 +122,7 @@ module InputModule
         y = Int32[1]
         SDL2.SDL_GetMouseState(pointer(x), pointer(y))
 
+        window_focused = false
         if evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
             @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
             @debug "mouse state: $(x[1]), $(y[1])"
@@ -138,6 +139,10 @@ module InputModule
         this.mousePosition = Math.Vector2(x[1], y[1])
         @debug "new mouse pos: $(this.mousePosition)"
 
+        scale_x = 0
+        scale_y = 0
+        scaled_x = 0
+        scaled_y = 0
         if !JulGame.IS_EDITOR
             window_width = Ref{Cint}(0)
             window_height = Ref{Cint}(0)
@@ -160,7 +165,7 @@ module InputModule
             scaled_x = (x[1] - bar_x) / scale
             scaled_y = (y[1] - bar_y) / scale
             if scaled_x == Inf || scaled_y == Inf
-                Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
+                @error("Mouse position is infinite")
                 scaled_x = 0
                 scaled_y = 0
             end

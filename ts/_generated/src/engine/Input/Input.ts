@@ -19,15 +19,15 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         didMouseMotionOccur: boolean
         editorCallback: Function | null
         main
-        mouseButtonsPressedDown: Vector
-        mouseButtonsHeldDown: Vector
-        mouseButtonsReleased: Vector
+        mouseButtonsPressedDown
+        mouseButtonsHeldDown
+        mouseButtonsReleased
         mousePosition
         mousePositionEditorGameWindowOffset: Vector2
         mousePositionWorld: Vector2f
         joystick
         scanCodeStrings: string[]
-        scanCodes: Vector
+        scanCodes
         quit: boolean
 
         elementsBeingClickedDownOn
@@ -42,14 +42,14 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         button
 
         // Cursor bank
-        cursorBank: SDL_SystemCursor}} // Key is the name of the cursor, value is the SDL2 cursor
+        cursorBank: Record<string, any> // Key is the name of the cursor, value is the SDL2 cursor
 
         // Testing
         isTestButtonClicked: boolean
         simulatedClickPosition: Vector2 | null
 
         // SDL events pulled while coalescing SDL_MOUSEMOTION (processed on following poll_input iterations)
-        pending_sdl_events: SDL_Event[]
+        pending_sdl_events: any[]
 
         constructor() {
             
@@ -71,16 +71,16 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             this.quit = false
             this.scanCodes = []
             this.scanCodeStrings = []
-            for (const m of instances((globalThis as any).JulGameSdl.glue_SDL_Scancode)) {
+            for (const m of Object.values((globalThis as any).JulGameSdl.glue_SDL_Scancode)) {
                 let codeString = "$(m)"
-                code = m
                 if (codeString == "SDL_NUM_SCANCODES") {
                     continue
                 }
-                this.scanCodes.push([code, SubString(codeString, 14, codeString.length)])
+                // Keep scanCodes as plain numeric ids + string names (TS doesn't have a native SDL enum type).
+                this.scanCodes.push([Number(m), (codeString).slice((14) - 1, codeString.length)])
             }
 
-            (globalThis as any).JulGameSdl.glue_SDL_Init(UInt64((globalThis as any).JulGameSdl.glue_SDL_INIT_JOYSTICK))
+            (globalThis as any).JulGameSdl.glue_SDL_Init(Number((globalThis as any).JulGameSdl.glue_SDL_INIT_JOYSTICK))
             if ((globalThis as any).JulGameSdl.glue_SDL_NumJoysticks() < 1) {
                 console.debug("Warning: No joysticks connected!")
                 this.numAxes = 0
@@ -108,31 +108,31 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             this.yDir = 0
             this.button = 0
 
-            this.cursorBank = Dict{String, (globalThis as any).JulGameSdl.glue_SDL_SystemCursor}()
+            this.cursorBank = {}
             create_cursor_bank(this)
             this.defaultCursor = this.cursorBank["arrow"]
 
             this.isTestButtonClicked = false
             this.simulatedClickPosition = null
-            this.pending_sdl_events = (globalThis as any).JulGameSdl.glue_SDL_Event
-
+            this.pending_sdl_events = []
         }
     }
 
-    function _refresh_logical_mouse(self: Input, evt: SDL_Event) {
-        let x = Int32[0]
-        let y = Int32[0];
-        (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(pointer(x), pointer(y))
+    function _refresh_logical_mouse(self: Input, evt: any) {
+        let x = [1]
+        let y = [1];
+        (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(...x, ...y)
 
+        let window_focused = false
         if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
             console.debug(`Mouse down: ${evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN}`)
             console.debug(`mouse state: ${x[0]}, ${y[0]}`)
-            let window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
+            window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
             console.debug(`window focused: ${window_focused}`)
             if (!window_focused) {
                 console.debug("// using event coordinates")
-                x[0] = Int32(evt.button.x)
-                y[0] = Int32(evt.button.y)
+                x[0] = Number(evt.button.x)
+                y[0] = Number(evt.button.y)
                 console.debug(`event coordinates: ${x[0]}, ${y[0]}`)
             }
         }
@@ -140,34 +140,38 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         self.mousePosition = {x: x[0], y: y[0]}
         console.debug(`new mouse pos: ${self.mousePosition}`)
 
+        let scale_x = 0
+        let scale_y = 0
+        let scaled_x = 0
+        let scaled_y = 0
         if ((globalThis as any).JulGame.IS_EDITOR) {
-            let window_width = Ref{Cint}(0)
-            let window_height = Ref{Cint}(0);
-            (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(MAIN.windowManager.window, window_width, window_height)
+            let window_width = [0]
+            let window_height = [0];
+            (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(MAIN.windowManager.window, ...window_width, ...window_height)
             let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
-            let safe_window_width = max(window_width, 1)
-            let safe_window_height = max(window_height, 1)
-            let safe_logical_width = max(logical_size.x, 1)
-            let safe_logical_height = max(logical_size.y, 1)
-            let scale_x = safe_window_width / safe_logical_width
-            let scale_y = safe_window_height / safe_logical_height
+            let safe_window_width = Math.max(window_width[0], 1)
+            let safe_window_height = Math.max(window_height[0], 1)
+            let safe_logical_width = Math.max(logical_size.x, 1)
+            let safe_logical_height = Math.max(logical_size.y, 1)
+            scale_x = safe_window_width / safe_logical_width
+            scale_y = safe_window_height / safe_logical_height
             let scale = Math.min(scale_x, scale_y)
             let content_width = safe_logical_width * scale
             let content_height = safe_logical_height * scale
             let bar_x = (safe_window_width - content_width) / 2
             let bar_y = (safe_window_height - content_height) / 2
             console.debug(`letterbox scale: ${scale}, bar_x: ${bar_x}, bar_y: ${bar_y}`)
-            console.debug(`window_width: ${window_width}[], window_height: ${window_height}[]`)
+            console.debug(`window_width: ${window_width[0]}, window_height: ${window_height[0]}`)
             console.debug(`logical_width: ${logical_size.x}, logical_height: ${logical_size.y}`)
-            let scaled_x = (x[0] - bar_x) / scale
-            let scaled_y = (y[0] - bar_y) / scale
-            if (scaled_x == Inf || scaled_y == Inf) {
-                Base.@logmsg(Base.LogLevel(-1), "Mouse position is infinite")
+            scaled_x = (x[0] - bar_x) / scale
+            scaled_y = (y[0] - bar_y) / scale
+            if (scaled_x == Infinity || scaled_y == Infinity) {
+
                 scaled_x = 0
                 scaled_y = 0
             }
             window_focused = (MAIN !== null && MAIN.windowManager !== null && MAIN.windowManager.isWindowFocused)
-            self.mousePosition = {x: clamp(Math.floor(Int, scaled_x), 0, logical_size.x), y: clamp(Math.floor(Int, scaled_y), 0, logical_size.y)}
+            self.mousePosition = {x: clamp(Math.floor(scaled_x), 0, logical_size.x), y: clamp(Math.floor(scaled_y), 0, logical_size.y)}
             console.debug(`Scaled mouse position: window coords (${x[0]}, ${y[0]}) -> logical coords (${self.mousePosition.x}, ${self.mousePosition.y}), window_focused: ${window_focused}`)
         } else {
             let raw_mouse_x = x[0] - (globalThis as any).JulGame.EditorGameViewPosition.x
@@ -180,7 +184,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 scale_y = camera_size.y / (globalThis as any).JulGame.EditorGameViewSize.y
                 scaled_x = clamped_mouse_x * scale_x
                 scaled_y = clamped_mouse_y * scale_y
-                self.mousePosition = {x: Math.floor(Int, scaled_x), y: Math.floor(Int, scaled_y)}
+                self.mousePosition = {x: Math.floor(scaled_x), y: Math.floor(scaled_y)}
             } else {
                 self.mousePosition = {x: 0, y: 0}
             }
@@ -194,7 +198,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return m.latencyProfiler
     }
 
-    function _input_poll_accumulate(prof, t0, key: string)
+
         if (prof === null) { return let dt = (time_ns() - t0) / 1e6 }
         (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_poll_ms(prof, key, dt)
         t0 = time_ns()
@@ -203,29 +207,18 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
     // UI hit-test: timings go to LatencyProfiler (summed per frame, printed only on slow-frame CRITICAL/WARNING reports).
     // Optional live spam: JULGAME_TRACE_INPUT_UI_HIT=1 (every SDL mouse event). Per-element: JULGAME_TRACE_INPUT_UI_HIT_ITER=1.
-    function _input_ui_hit_stream_logs() {
-        let e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
-        return e in ("1", "true", "yes", "on")
-    }
 
-    const _trace_input_ui_hit_iter_ref = Ref{Union{null, Bool}}(null)
-    function _input_ui_hit_iter_stream_logs() {
-        let v = _trace_input_ui_hit_iter_ref
-        if (v === null) {
-            let s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_ITER", "0")))
-            _trace_input_ui_hit_iter_ref = s == "1" || s in ("true", "yes", "on")
-        }
-        return _trace_input_ui_hit_iter_ref: boolean
-    }
+    let _trace_input_ui_hit_iter_ref: boolean | null = null
 
-    function _input_ui_hit_step(prof, t_blk: Ref{UInt64}, key: string, ...kvs)
+
+
         let t1 = time_ns()
         let dt = (t1 - t_blk) / 1e6
         t_blk = t1
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
-        if (_input_ui_hit_stream_logs()) {
+
             if (isempty(kvs)) {
                 console.info("[JulGame input/ui hit-test · stream]")
             } else {
@@ -235,12 +228,12 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return
     }
 
-    function _input_ui_hit_span(prof, t0: number, key: string, ...kvs) {
+
         let dt = (time_ns() - t0) / 1e6
         if (prof !== null) {
             (globalThis as any).JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms(prof, key, dt)
         }
-        if (_input_ui_hit_stream_logs() && _input_ui_hit_iter_stream_logs()) {
+
             if (isempty(kvs)) {
                 console.info("[JulGame input/ui hit-test · stream · iter]")
             } else {
@@ -259,7 +252,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         self.mouseButtonsReleased = []  // Clear the released buttons each frame
         self.didMouseEventOccur = false
         self.didMouseMotionOccur = false
-        let event_ref = Ref{(globalThis as any).JulGameSdl.glue_SDL_Event}()
+        let event_ref = (globalThis as any).JulGameSdl.glue_SDL_Event()
 
         while true
             if (!isempty(self.pending_sdl_events)) {
@@ -267,7 +260,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             } else if (!Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(event_ref))) {
                 break
             }
-            _input_poll_accumulate(prof, t0, "sdl_PollEvent")
+
 
             let evt = event_ref
             handle_window_events(self, evt)
@@ -277,7 +270,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                 _refresh_logical_mouse(self, evt)
                 if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) {
-                    let coalesce_ref = Ref{(globalThis as any).JulGameSdl.glue_SDL_Event}()
+                    let coalesce_ref = (globalThis as any).JulGameSdl.glue_SDL_Event()
                     while Bool((globalThis as any).JulGameSdl.glue_SDL_PollEvent(coalesce_ref))
                         let e2 = coalesce_ref
                         if (e2.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION) {
@@ -333,7 +326,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 }
             }
 
-            _input_poll_accumulate(prof, t0, "window_routing")
+
 
             if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEMOTION || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                 let t_ms_blk = time_ns()
@@ -347,32 +340,32 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                 let ui_hit_active = MAIN.scene.uiElements !== null && ((globalThis as any).JulGame.IS_EDITOR && !MAIN.isGameModeRunningInEditor)
                 if (ui_hit_active) {
-                    _input_ui_hit_span(prof, t_ms_blk, "hit_mouse_evt_preamble")
+
                     let t_ui_wall = time_ns()
                     let t_hit = time_ns()
-                    _input_ui_hit_step(prof, t_hit, "hit_ui_enter"; evt = evt.type, mouse = [this.mousePosition.x, this.mousePosition.y], n_ui = MAIN.scene.uiElements.length)
+
                     if (MAIN.scene.camera === null) {
-                        _input_ui_hit_step(prof, t_hit, "hit_ui_abort_camera")
+
                         @warn ("Camera is not set in the main scene.")
-                        _input_poll_accumulate(prof, t0, "mouse_ui_aborted_no_camera")
+
                         continue
                     }
-                    _input_ui_hit_step(prof, t_hit, "hit_ui_camera_ok")
+
 
                     let canvases = filter(x -> isa(x, (globalThis as any).JulGame.ICanvas), MAIN.scene.uiElements)
-                    _input_ui_hit_step(prof, t_hit, "hit_ui_filter_canvas"; n_canvases = canvases.length)
+
 
                     // Use cached layer order instead of sorting every mouse event
                     // This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
 
                     let uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
-                    _input_ui_hit_step(prof, t_hit, "hit_ui_sort_ui"; n = uiElementsOrderedByLayerDescending.length)
+
 
                     let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== null && entity.sprite !== null, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
-                    _input_ui_hit_step(prof, t_hit, "hit_ui_sort_entities"; n = entitiesWithSpritesOrderedByLayerDescending.length, n_entities = MAIN.scene.entities.length)
+
 
                     let elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
-                    _input_ui_hit_step(prof, t_hit, "hit_ui_vcat"; n_total = elementsOrderedByLayerDescending.length)
+
 
                     // TODO: add rest of entities without sprites in default order
                     // restOfEntities = filter(entity -> entity.sprite === null || entity.sprite === null, MAIN.scene.entities)
@@ -412,11 +405,11 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                         if (skipElement) {
                             console.debug(`Skipping element ${element.name} - isActive: ${element.isActive}, ignoreInputEvents: $(isa(element, (globalThis as any).JulGame.IEntity) ? element.ignoreInputEvents : `)N/A")"
-                            _input_ui_hit_span(prof, t_iter, "hit_ui_iter_skip_early")
+
                             continue
                         }
 
-                        _input_ui_hit_span(prof, t_iter, "hit_ui_iter_probe_active_filter")
+
                         let t_prep0 = time_ns()
 
                         // Check position of button to see which we are interacting with
@@ -425,16 +418,16 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         let mouseX = this.mousePosition.x
                         let mouseY = this.mousePosition.y
 
-                        _input_ui_hit_span(prof, t_prep0, "hit_ui_iter_probe_prep_hitbox")
+
                         let t_geom0 = time_ns()
 
                         // UI Element position and size in screen space (MUST BE SCALED)
                         let elementPosition = get_element_position(element)
-                        _input_ui_hit_span(prof, t_geom0, "hit_ui_iter_probe_get_position")
+
                         let t_sz0 = time_ns()
 
                         let elementSize = get_element_size(element)
-                        _input_ui_hit_span(prof, t_sz0, "hit_ui_iter_probe_get_size")
+
                         let t_unpk0 = time_ns()
 
                         let screenElementX = elementPosition.x
@@ -445,7 +438,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         console.debug(`Checking element '${element.name}': mouse(${mouseX}, ${mouseY}) vs element(${screenElementX}, ${screenElementY}, ${screenElementWidth}, ${screenElementHeight})`)
 
                         // Check if the mouse is inside the UI element (// using game world coordinates)
-                        _input_ui_hit_span(prof, t_unpk0, "hit_ui_iter_probe_unpack_layout")
+
                         let t_aabb = time_ns()
                         if (mouseX < screenElementX) {
                             eventWasInsideThisElement = false
@@ -460,13 +453,13 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                             eventWasInsideThisElement = false
                             console.debug(`  -> Mouse Y (${mouseY}) > element bottom (${screenElementY + screenElementHeight})`)
                         }
-                        _input_ui_hit_span(prof, t_aabb, "hit_ui_iter_probe_aabb")
+
 
                         if (!eventWasInsideThisElement) {
                             element.isHovered = false
                             let t_ctr = time_ns()
                             n_miss_bounds += 1
-                            _input_ui_hit_span(prof, t_ctr, "hit_ui_iter_miss_hover_counter_inc")
+
                             continue
                         }
 
@@ -475,12 +468,12 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                         console.debug(`  -> Mouse is INSIDE element '${element.name}'`)
 
                         let clicked_down_here = clicked_down_on_this_element(this, element)
-                        _input_ui_hit_span(prof, t_hi, "hit_inside_1_clicked_down_query")
+
                         t_hi = time_ns()
 
                         let canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_here
                         console.debug(`  -> canClickOnThisElement: ${canClickOnThisElement}, clickedAnElementAlready: ${clickedAnElementAlready}, forceClickCheck: ${element.forceClickCheck}, clicked_down_on_this_element: ${clicked_down_here}`)
-                        _input_ui_hit_span(prof, t_hi, "hit_inside_2_can_click_bools")
+
                         t_hi = time_ns()
 
                         if (!clickedAnElementAlready || element.forceClickCheck) {
@@ -491,7 +484,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                                 (canClickOnThisElement && evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP)
 
                             console.debug(`  -> shouldHandleEvent: ${shouldHandleEvent} (event type: ${evt.type}, hoveredAnElementAlready: ${hoveredAnElementAlready})`)
-                            _input_ui_hit_span(prof, t_hi, "hit_inside_3a_should_handle_expr")
+
                             t_hi = time_ns()
 
                             if (shouldHandleEvent) {
@@ -502,19 +495,19 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                                    this.elementsBeingClickedDownOn.push(element)
                                    console.debug(`  -> Added '${element.name}' to elementsBeingClickedDownOn`)
                                 }
-                                _input_ui_hit_span(prof, t_hi, "hit_inside_5_push_clicked_down_optional")
+
                                 t_hi = time_ns()
                             } else {
-                                _input_ui_hit_span(prof, t_hi, "hit_inside_4_skip_should_handle_false")
+
                                 t_hi = time_ns()
                             }
                             if (element.isHovered) {
                                 hoveredAnElementAlready = true
                             }
-                            _input_ui_hit_span(prof, t_hi, "hit_inside_6_hover_an_element_already")
+
                             t_hi = time_ns()
                         } else {
-                            _input_ui_hit_span(prof, t_hi, "hit_inside_3b_skip_clicked_guard")
+
                             t_hi = time_ns()
                         }
 
@@ -529,25 +522,25 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                             }
                             clickedAnElementAlready = true
                         }
-                        _input_ui_hit_span(prof, t_hi, "hit_inside_7_mouse_btn_tail")
+
                     }
                     let t_tail = time_ns()
                     if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
                         this.elementsBeingClickedDownOn = []
-                        _input_ui_hit_step(prof, t_tail, "hit_ui_clear_click_state")
+
                     }
-                    _input_ui_hit_step(prof, t_tail, "hit_ui_block_end")
-                    _input_ui_hit_span(prof, t_ui_wall, "hit_ui_block_wall_clock")
+
+
                 } else {
-                    _input_ui_hit_span(prof, t_ms_blk, "hit_mouse_evt_skip_ui_hit_path")
+
                 }
 
                 let t_hm = time_ns()
                 handle_mouse_event(this, evt)
-                _input_ui_hit_span(prof, t_hm, "hit_mouse_evt_handle_mouse_event")
+
             }
 
-            _input_poll_accumulate(prof, t0, "mouse_ui_hit_test_dispatch")
+
 
             //if evt.type == (globalThis as any).JulGameSdl.glue_SDL_JOYAXISMOTION
                 if (evt.jaxis.which == 0) {
@@ -604,7 +597,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
                 }
             if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_QUIT) {
                 this.quit = true
-                _input_poll_accumulate(prof, t0, "joystick_keyboard_state")
+
                 return -1
             }
             if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN && evt.key.keysym.scancode == (globalThis as any).JulGameSdl.glue_SDL_SCANCODE_F3) {
@@ -615,7 +608,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             let keyboardState = unsafe_wrap(Array, (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null), 300, false)
             handle_key_event(this, keyboardState)
 
-            _input_poll_accumulate(prof, t0, "joystick_keyboard_state")
+
         }
 
         if (this.isTestButtonClicked) {
@@ -663,7 +656,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     function check_scan_code(self: Input, keyboardState, keyState, scanCodes) {
         for (const scanCode of scanCodes) {
             try {
-                if (keyboardState[Int32(scanCode) + 1] == keyState) {
+                if (keyboardState[Number(scanCode) + 1] == keyState) {
                     return true
                 }
             catch
@@ -673,7 +666,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         return false
     }
 
-    function handle_window_events(self: Input, event: SDL_Event) {
+    function handle_window_events(self: Input, event: any) {
         if (event.type != (globalThis as any).JulGameSdl.glue_SDL_WINDOWEVENT) {
             return
         }
@@ -721,58 +714,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     Handle Ctrl+V clipboard paste for images in the editor.
     Checks if clipboard contains image data and creates a temporary file for import.
     */
-    function handle_clipboard_paste() {
-        try {
-            // Try to get image data from platform-specific clipboard
-            if (Sys.islinux()) {
-                console.debug("Linux detected, attempting to get image from X11 clipboard")
-                handle_x11_clipboard_image()
-            } else if (Sys.isapple()) {
-                console.debug("macOS detected, attempting to get image from clipboard")
-                handle_macos_clipboard_image()
-            } else if (Sys.iswindows()) {
-                console.debug("Windows detected, attempting to get image from clipboard")
-                handle_windows_clipboard_image()
-            }
 
-            // Only check text clipboard if SDL reports it has text data
-            // and avoid errors when clipboard contains binary data
-            try {
-                if ((globalThis as any).JulGameSdl.glue_SDL_HasClipboardText() == (globalThis as any).JulGameSdl.glue_SDL_TRUE) {
-                    let clipboard_text = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetClipboardText())
-
-                    // Skip if the text looks like an error message from xclip
-                    if (occursin("xclip: Error:", clipboard_text) || occursin("ProcessFailedException", clipboard_text)) {
-                        console.debug("Skipping clipboard text that appears to be an error message")
-                        return
-                    }
-
-                    console.debug(`Clipboard text: ${clipboard_text[1:Math.min(100, clipboard_text.length)]}`)
-
-                    // Check if it's a file path to an image
-                    if (isfile(clipboard_text) && is_image_file_by_extension(clipboard_text)) {
-                        console.debug(`Clipboard contains image file path: ${clipboard_text}`)
-                        add_clipboard_file_to_import_queue(clipboard_text)
-                        return
-                    }
-
-                    // Check if it's base64 image data (common format: data:image/png;base64,...)
-                    if (startswith(clipboard_text, "data:image/")) {
-                        console.debug("Clipboard contains base64 image data")
-                        handle_base64_image_data(clipboard_text)
-                        return
-                    }
-                }
-            } catch (e) {
-                console.debug(`Error reading text clipboard (likely contains binary data): ${e}`)
-            }
-
-            // No additional fallback needed - platform-specific functions handle their own cases
-
-        } catch (e) {
-            console.error(`Error handling clipboard paste: ${e}`)
-        }
-    }
 
     /*
         handle_x11_clipboard_image()
@@ -834,8 +776,8 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     */
 
 
-    function update_input_state(self: Input, data: Dict{String, Any})
-        this.buttonsHeldDown = [key for (key, value) in data if value]
+    function update_input_state(self: Input, data: Record<string, any>) {
+        self.buttonsHeldDown = [key for (key, value) in data if value]
     }
 
     function get_button_held_down(self: Input, button: string) {
@@ -980,17 +922,17 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
     function simulate_mouse_click(self: Input, window: any, x: Number, y: Number) {
         // Get current window size
-        let window_width = Ref{Cint}(0)
-        let window_height = Ref{Cint}(0);
-        (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(window, window_width, window_height)
+        let window_width = [0]
+        let window_height = [0];
+        (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize(window, ...window_width, ...window_height)
 
         // Get base resolution from WindowManager
         let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
 
-        let safe_window_width = max(window_width, 1)
-        let safe_window_height = max(window_height, 1)
-        let safe_logical_width = max(logical_size.x, 1)
-        let safe_logical_height = max(logical_size.y, 1)
+        let safe_window_width = Math.max(window_width[0], 1)
+        let safe_window_height = Math.max(window_height[0], 1)
+        let safe_logical_width = Math.max(logical_size.x, 1)
+        let safe_logical_height = Math.max(logical_size.y, 1)
         let scale_x = safe_window_width / safe_logical_width
         let scale_y = safe_window_height / safe_logical_height
         let scale = Math.min(scale_x, scale_y)
@@ -1000,8 +942,8 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let bar_y = (safe_window_height - content_height) / 2
 
         // Convert logical coordinates to window coordinates (inverse of poll_input mapping)
-        let window_x = Math.round(Int, (x * scale) + bar_x)
-        let window_y = Math.round(Int, (y * scale) + bar_y)
+        let window_x = Math.round((x * scale) + bar_x)
+        let window_y = Math.round((y * scale) + bar_y)
         x = window_x
         y = window_y
         // Move the mouse to the specified position
@@ -1055,14 +997,14 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     function lift_mouse_after_simulated_click(this) {
         // Use the stored click position, or current mouse position as fallback
         if (this.simulatedClickPosition !== null) {
-            let click_x = Int32(this.simulatedClickPosition.x)
-            let click_y = Int32(this.simulatedClickPosition.y)
+            let click_x = Number(this.simulatedClickPosition.x)
+            let click_y = Number(this.simulatedClickPosition.y)
         } else {
             // Fallback to current mouse position
-            x_ref, y_ref = Ref{Cint}(0), Ref{Cint}(0);
-            (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(x_ref, y_ref)
-            click_x = Int32(x_ref)
-            click_y = Int32(y_ref)
+            let x_ref = [0], y_ref = [0];
+            (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(...x_ref, ...y_ref)
+            click_x = Number(x_ref[0])
+            click_y = Number(y_ref[0])
         }
         
         mouse_event = init_sdl_event()

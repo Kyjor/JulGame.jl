@@ -400,17 +400,17 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         if (wrapWords) {
             let words = text.trim().split(/\s+/)
             for (const word of words) {
-                w, h = Ref{Cint}(0), Ref{Cint}(0)
+                let w = [0], h = [0]
                 let word_with_space = word * " "
                 SDL2.TTF_SizeUTF8(font, word_with_space, w, h)
                 
-                if (current_width + w > maxWidth && !isempty(current_line)) {
+                if (current_width + w[0] > maxWidth && !isempty(current_line)) {
                     lines.push(rstrip(current_line))
                     current_line = word * " "
-                    current_width = w
+                    current_width = w[0]
                 } else {
                     current_line *= word * " "
-                    current_width += w
+                    current_width += w[0]
                 }
             }
             
@@ -421,16 +421,16 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             // Character by character wrapping
             for (const c of text) {
                 let char_str = String(c)
-                w, h = Ref{Cint}(0), Ref{Cint}(0)
+                let w = [0], h = [0]
                 SDL2.TTF_SizeUTF8(font, char_str, w, h)
                 
-                if (current_width + w > maxWidth && !isempty(current_line)) {
+                if (current_width + w[0] > maxWidth && !isempty(current_line)) {
                     lines.push(current_line)
                     current_line = char_str
-                    current_width = w
+                    current_width = w[0]
                 } else {
                     current_line *= char_str
-                    current_width += w
+                    current_width += w[0]
                 }
             }
             
@@ -452,7 +452,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
     
     function UI_update_font_size(self: TextBox, newSize: number, basePath: string = "") {
-        let applied_size = max(1, newSize)
+        let applied_size = Math.max(1, newSize)
         if (self.fontSize == applied_size && self.font != null) {
             return
         }
@@ -581,7 +581,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
     
     // Global effects cache
-    const EFFECT_CACHE = Dict{String, Ptr{(globalThis as any).JulGameSdl.glue_SDL_Texture}}()
+    const EFFECT_CACHE = {}
     const MAX_CACHE_SIZE = 100
     
     // Cache management functions

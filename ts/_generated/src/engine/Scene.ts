@@ -10,7 +10,7 @@ export {}
         rigidbodies: any[]
         uiElements: any[]
         name: string
-        batchedLayers: Dict{Int, Any}  // Static sprite batching: layer => BatchedLayer
+        batchedLayers: Record<number, any>  // Static sprite batching: layer => BatchedLayer
 
         constructor() {
             
@@ -20,7 +20,7 @@ export {}
             this.entities = []
             this.rigidbodies = []
             this.uiElements = []
-            this.batchedLayers = Dict{Int, Any}()
+            this.batchedLayers = {}
 
         }
     }

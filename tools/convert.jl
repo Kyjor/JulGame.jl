@@ -23,6 +23,17 @@ const TS_ARRAY_PRIMITIVE_TYPE_NAMES = Set{String}([
     "bigint",
 ])
 
+# `Ref{Cint}` / `UInt32` / `UInt64` → TS `[…]`; `ident[]` on these reads as `ident[0]`.
+const BUFFER_REF_READ_WHITELIST = Set{String}([
+    "window_width", "window_height", "w", "h", "width", "height",
+    "access", "fmt", "x_ref", "y_ref", "x", "y",
+])
+# Julia `ident[]` unbox stays `ident` (SDL structs, trace cell, `Ref{UInt64}` params, …).
+const REFCELL_UNBOX_BLACKLIST = Set{String}([
+    "event_ref", "coalesce_ref", "_trace_input_ui_hit_iter_ref",
+    "mode", "current_mode", "closest_mode", "t_blk",
+])
+
 const TS_CLASS_NAMES_NEEDING_NEW = String[
     "InternalAnimator",
     "InternalCircleCollider",
@@ -108,6 +119,11 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_first_assignments_with_let(data)
     data = replace_julia_ts_literals(data)
     data = normalize_julia_ref_for_ts(data)
+    # After `glue_SDL_Event[]` → `glue_SDL_Event` (ref-strip), empty SDL event queue must be `[]`.
+    data = replace(
+        data,
+        r"(?m)^(\s*(?:this|self)\.pending_sdl_events\s*=\s*)\(globalThis as any\)\.JulGameSdl\.glue_SDL_Event\s*$" => s"\1[]",
+    )
     data = replace_let_named_tuple_rhs_to_object(data)
     data = replace_invokelatest_calls(data)
     data = replace_julia_semicolon_kw_calls_to_commas(data)
@@ -965,9 +981,112 @@ function replace_ts_vector_object_literal_equality(data::AbstractString)::String
     return String(take!(io))
 end
 
+# `Dict{K,V}()` / `Dict{K, glue_T}()` (after SDL rewrites in type position) → `{}` for empty Julia dict init.
+function replace_julia_dict_empty_ctor_as_object(data::AbstractString)::String
+    s = String(data)
+    out = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    needle = "Dict{"
+    while i <= n
+        rg = findnext(needle, s, i)
+        if rg === nothing
+            write(out, SubString(s, i:n))
+            break
+        end
+        lo = first(rg)
+        lo > i && write(out, SubString(s, i, prevind(s, lo)))
+        open_brace = last(rg)
+        depth = 1
+        p = nextind(s, open_brace)
+        close_br = nothing
+        while p <= n
+            c = s[p]
+            if c == '{'
+                depth += 1
+            elseif c == '}'
+                depth -= 1
+                if depth == 0
+                    close_br = p
+                    break
+                end
+            end
+            p = nextind(s, p)
+        end
+        if close_br === nothing
+            write(out, SubString(s, lo))
+            i = nextind(s, lo)
+            continue
+        end
+        nxt = nextind(s, close_br)
+        if nxt <= n && s[nxt] == '('
+            inner_start = nextind(s, nxt)
+            close_paren = _find_outer_push_close(s, inner_start, n)
+            if close_paren !== nothing
+                write(out, "{}")
+                i = nextind(s, close_paren)
+                continue
+            end
+        end
+        write(out, SubString(s, lo:close_br))
+        i = nextind(s, close_br)
+    end
+    return String(take!(out))
+end
+
+# Julia `SubString(s, i, j)` (1-based inclusive end `j`) → TS `s.slice(i - 1, j)` (`slice` end is exclusive; matches Julia end-inclusive).
+function replace_julia_substring_three_arg_calls(data::AbstractString)::String
+    s = String(data)
+    out = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    pat = r"\bSubString\("
+    while i <= n
+        rg = findnext(pat, s, i)
+        if rg === nothing
+            write(out, SubString(s, i:n))
+            break
+        end
+        lo = first(rg)
+        lo > i && write(out, SubString(s, i, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(out, SubString(s, lo))
+            i = nextind(s, lo)
+            continue
+        end
+        inner = String(SubString(s, inner_start, prevind(s, close_idx)))
+        parts = split_top_level_commas_general(inner)
+        if length(parts) != 3
+            write(out, SubString(s, lo:close_idx))
+            i = nextind(s, close_idx)
+            continue
+        end
+        a = String(strip(parts[1]))
+        b = String(strip(parts[2]))
+        c = String(strip(parts[3]))
+        write(out, "(", a, ").slice((", b, ") - 1, ", c, ")")
+        i = nextind(s, close_idx)
+    end
+    return String(take!(out))
+end
+
 function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\bC_NULL\b" => "null")
     data = replace(data, r"\bnothing\b" => "null")
+    # `w, h = Ref{Cint}(0), Ref{Cint}(0)` → `let w = [0], h = [0]`.
+    data = replace(
+        data,
+        r"(?m)^(\s*)([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*=\s*Ref\{Cint\}\(\s*([^)]*)\s*\)\s*,\s*Ref\{Cint\}\(\s*([^)]*)\s*\)\s*;?\s*$" =>
+            s"\1let \2 = [\4], \3 = [\5]",
+    )
+    # `const _trace_… = Ref{Union{…}}(null)` → plain nullable flag (no `Ref` in TS).
+    data = replace(
+        data,
+        r"^\s*const\s+(_trace_input_ui_hit_iter_ref)\s*=\s*Ref\{Union\{[^}]+\}\}\(\s*null\s*\)\s*;?\s*$"m =>
+            s"    let \1: boolean | null = null",
+    )
     data = replace(data, r"\bNothing\b" => "null")
     data = replace(data, ": null | Transform" => ": null | ITransform")
     # Drop leftover Julia type assertions in expressions, e.g. `x::Ptr{...}`.
@@ -978,16 +1097,34 @@ function replace_julia_ts_literals(data::AbstractString)
     # `UInt8(n)` / `UInt8(expr)` — same idea as UInt32 (SDL color components).
     data = replace(data, r"\bUInt8\(\s*(\d+)\s*\)" => s"\1")
     data = replace(data, r"\bUInt8\(" => "Number(")
+    data = replace(data, r"\bInt32\(\s*(\d+)\s*\)" => s"\1")
+    data = replace(data, r"\bInt32\(" => "Number(")
+    # Julia typed vector literal `Int32[0, 1]` → TS `[0, 1]` (also used as int out-param buffers).
+    data = replace(data, r"\bInt32\[" => "[")
+    data = replace(data, r"\bUInt64\(\s*(\d+)\s*\)" => s"\1")
+    data = replace(data, r"\bUInt64\(" => "Number(")
     # Julia `length(x)` -> TS `x.length` for simple non-nested args.
     data = replace(data, r"\blength\(([^()]+)\)" => s"\1.length")
-    # Julia `floor(...)` -> JS `Math.floor(...)`.
-    data = replace(data, r"\bfloor\(" => "Math.floor(")
+    # Julia `floor(T, x)` / `round(T, x)` / `ceil(T, x)` (T an integer type) → JS `Math.*(x)`.
+    _jint = "(?:Int|Int32|Int64|UInt32|UInt64|Integer)"
+    data = replace(data, Regex("\\bfloor\\s*\\(\\s*" * _jint * "\\s*,\\s*") => "Math.floor(")
+    data = replace(data, Regex("\\bround\\s*\\(\\s*" * _jint * "\\s*,\\s*") => "Math.round(")
+    data = replace(data, Regex("\\bceil\\s*\\(\\s*" * _jint * "\\s*,\\s*") => "Math.ceil(")
+    # Julia `floor(x)` -> JS `Math.floor(x)` (skip if already `Math.floor`).
+    data = replace(data, r"(?<!\bMath\.)\bfloor\(" => "Math.floor(")
+    # Julia enum helper `instances(T)` -> JS value iteration.
+    data = replace(data, r"\binstances\(" => "Object.values(")
     # Julia `min(...)` -> JS `Math.min(...)` (not `Math.Math.min` — exclude already-prefixed).
     data = replace(data, r"(?<!\bMath\.)\bmin\s*\(" => "Math.min(")
+    data = replace(data, r"(?<!\bMath\.)\bmax\s*\(" => "Math.max(")
     # Bare `round(...)` -> `Math.round(...)` (word + call only; not `Math.round`, `surround`, etc.).
     data = replace(data, r"(?<!\bMath\.)\bround\s*\(" => "Math.round(")
+    # Bare `ceil(...)` -> `Math.ceil(...)`.
+    data = replace(data, r"(?<!\bMath\.)\bceil\(" => "Math.ceil(")
     # `clamp(...)` stays as `clamp(...)`; generated files import it from `juliaHelpers.ts`.
     # Numeric helpers.
+    # Julia `Inf` / `-Inf` → JS `Infinity` / `-Infinity`.
+    data = replace(data, r"\bInf\b" => "Infinity")
     data = replace(data, r"\bFloat64\(" => "Number(")
     # `convert(Float64, x)` (no global `convert` in JS) — same intent as `Float64(x)`.
     data = replace(data, r"\bconvert\s*\(\s*Float64\s*,\s*" => "Number(")
@@ -1018,6 +1155,27 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"\.a\[\]" => ".a")
     # SDL2 direct calls -> wasm glue calls.
     data = rewrite_sdl_calls_to_glue(data)
+    # `SDL_GetMouseState` out ints: Julia `pointer(x)` on `Int32[...]` buffers → glue `...x, ...y` (same idea as color ref spreads).
+    data = replace(
+        data,
+        r"\.glue_SDL_GetMouseState\(\s*pointer\(\s*([A-Za-z_]\w*)\s*\)\s*,\s*pointer\(\s*([A-Za-z_]\w*)\s*\)\)" =>
+            s".glue_SDL_GetMouseState(...\1, ...\2)",
+    )
+    data = replace(
+        data,
+        r"\.glue_SDL_GetMouseState\(\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*\)" =>
+            s".glue_SDL_GetMouseState(...\1, ...\2)",
+    )
+    data = replace(
+        data,
+        r"\.glue_SDL_GetWindowSize\(\s*([^,]+?)\s*,\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*\)" =>
+            s".glue_SDL_GetWindowSize(\1, ...\2, ...\3)",
+    )
+    data = replace(
+        data,
+        r"\.glue_SDL_GetWindowPosition\(\s*([^,]+?)\s*,\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*\)" =>
+            s".glue_SDL_GetWindowPosition(\1, ...\2, ...\3)",
+    )
     # Common value-shape cleanup.
     data = replace(data, r"let center_world\s*=\s*center_pixels\s*/\s*pixels_per_world_unit\(this\)" => "let center_world = {x: center_pixels.x / pixels_per_world_unit(this), y: center_pixels.y / pixels_per_world_unit(this)}")
     data = replace(data, r"(?m)^(\s*)targetPos\s*=\s*" => s"\1let targetPos = ")
@@ -1038,7 +1196,9 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace_julia_stdlib_string_ops(data)
     data = insert_semicolon_before_line_starting_with_open_paren(data)
     data = replace_julia_string_calls_to_ts(data)
+    data = replace_julia_substring_three_arg_calls(data)
     data = replace_ts_vector_object_literal_equality(data)
+    data = replace_julia_dict_empty_ctor_as_object(data)
     return data
 end
 
@@ -1379,7 +1539,16 @@ function julia_string_interpolation_to_ts_template_body(body::AbstractString)::S
                     write(id, s[j])
                     j = nextind(s, j)
                 end
-                write(io, "\${", String(take!(id)), "}")
+                idstr = String(take!(id))
+                if j <= n && s[j] == '['
+                    j2 = nextind(s, j)
+                    if j2 <= n && s[j2] == ']'
+                        write(io, "\${", idstr, "[0]}")
+                        i = nextind(s, j2)
+                        continue
+                    end
+                end
+                write(io, "\${", idstr, "}")
                 i = j
                 continue
             end
@@ -1449,6 +1618,89 @@ function insert_semicolon_before_line_starting_with_open_paren(data::AbstractStr
     return join(lines, '\n')
 end
 
+# `Ref{Cint}(e)` / `Ref{UInt32}` / `Ref{UInt64}(e)` → TS one-element buffer `[e]` for SDL out-params.
+function replace_ref_curly_primitive_buffers(data::AbstractString)::String
+    s = String(data)
+    needle = "Ref{"
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_type_start = nextind(s, last(rg))
+        bi = inner_type_start
+        depth = 1
+        type_end = nothing
+        while bi <= n
+            c = s[bi]
+            if c == '{'
+                depth += 1
+            elseif c == '}'
+                depth -= 1
+                if depth == 0
+                    type_end = bi
+                    break
+                end
+            end
+            bi = nextind(s, bi)
+        end
+        if type_end === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner_type = strip(String(s[inner_type_start:prevind(s, type_end)]))
+        bi2 = nextind(s, type_end)
+        while bi2 <= n && Base.Unicode.isspace(s[bi2])
+            bi2 = nextind(s, bi2)
+        end
+        if bi2 > n || s[bi2] != '('
+            write(buf, SubString(s, lo, type_end))
+            seg_start = nextind(s, type_end)
+            continue
+        end
+        inner_paren_start = nextind(s, bi2)
+        close_idx = _find_outer_push_close(s, inner_paren_start, n)
+        if close_idx === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner_arg = s[inner_paren_start:prevind(s, close_idx)]
+        repl = if inner_type == "Cint" || inner_type == "UInt32" || inner_type == "UInt64"
+            string("[", inner_arg, "]")
+        else
+            nothing
+        end
+        if repl !== nothing
+            write(buf, repl)
+            seg_start = nextind(s, close_idx)
+        else
+            write(buf, SubString(s, lo, close_idx))
+            seg_start = nextind(s, close_idx)
+        end
+    end
+    return String(take!(buf))
+end
+
+function replace_ref_curly_empty_glue_sdl_value_ctors(data::AbstractString)::String
+    s = String(data)
+    s = replace(
+        s,
+        r"Ref\{\(globalThis as any\)\.JulGameSdl\.glue_SDL_Event\}\(\)" =>
+            "(globalThis as any).JulGameSdl.glue_SDL_Event()",
+    )
+    replace(
+        s,
+        r"Ref\{\(globalThis as any\)\.JulGameSdl\.glue_SDL_DisplayMode\}\(\)" =>
+            "(globalThis as any).JulGameSdl.glue_SDL_DisplayMode()",
+    )
+end
+
 # `Ref(x)` (Julia box / pointer-ish arg) -> `x`. Out-params and glue calls mutate plain objects in TS.
 function strip_ref_wrappers(data::AbstractString)::String
     s = String(data)
@@ -1477,7 +1729,37 @@ function strip_ref_wrappers(data::AbstractString)::String
     return String(take!(buf))
 end
 
-# Julia `x[]` on a Ref -> TS `x`. Skip lowercase names that are TS array element types (`string[]`, …).
+# Julia `ident[] =` (Ref assignment) → TS `ident =` or `ident[0] =` for one-element out-buffers.
+function replace_julia_ref_cell_assignments_for_ts(data::AbstractString)::String
+    s = String(data)
+    pat = r"\b([a-z_$][\w]*)\[\]\s*="
+    io = IOBuffer()
+    idx = firstindex(s)
+    n = lastindex(s)
+    while idx <= n
+        rg = findnext(pat, s, idx)
+        if rg === nothing
+            write(io, SubString(s, idx))
+            break
+        end
+        f = first(rg)
+        f > idx && write(io, SubString(s, idx, prevind(s, f)))
+        m = match(pat, s, f)
+        m === nothing && break
+        name = String(m.captures[1])
+        if name in TS_ARRAY_PRIMITIVE_TYPE_NAMES
+            write(io, m.match)
+        elseif name in BUFFER_REF_READ_WHITELIST
+            write(io, name, "[0] =")
+        else
+            write(io, name, " =")
+        end
+        idx = nextind(s, last(rg))
+    end
+    return String(take!(io))
+end
+
+# Julia `x[]` on a Ref → TS `x`, `x[0]` for numeric out-buffers, or unchanged `string[]` etc.
 function replace_julia_ref_cell_reads(data::AbstractString)::String
     s = String(data)
     pat = r"\b([a-z_$][\w.]*)\[\]"
@@ -1495,7 +1777,17 @@ function replace_julia_ref_cell_reads(data::AbstractString)::String
         m = match(pat, s, f)
         m === nothing && break
         name = String(m.captures[1])
-        write(io, name in TS_ARRAY_PRIMITIVE_TYPE_NAMES ? m.match : name)
+        if name in TS_ARRAY_PRIMITIVE_TYPE_NAMES
+            write(io, m.match)
+        elseif occursin('.', name)
+            write(io, name)
+        elseif name in BUFFER_REF_READ_WHITELIST
+            write(io, name, "[0]")
+        elseif name in REFCELL_UNBOX_BLACKLIST
+            write(io, name)
+        else
+            write(io, name)
+        end
         idx = nextind(s, last(rg))
     end
     return String(take!(io))
@@ -1529,11 +1821,16 @@ function replace_julia_call_splat_suffix(data::AbstractString)::String
 end
 
 function normalize_julia_ref_for_ts(data::AbstractString)::String
-    s = strip_ref_wrappers(data)
+    s = replace_ref_curly_primitive_buffers(data)
+    s = strip_ref_wrappers(s)
+    s = replace_ref_curly_empty_glue_sdl_value_ctors(s)
     s = replace_indexed_julia_ref_cell_reads(s)
+    s = replace_julia_ref_cell_assignments_for_ts(s)
     s = replace_julia_ref_cell_reads(s)
     s = replace_numeric_paren_tuple_assign_or_return(s)
     s = replace_julia_call_splat_suffix(s)
+    # `replace_types` maps `::Bool` → `: boolean` everywhere, including `return x::Bool` (invalid TS).
+    s = replace(s, r"return\s+(_trace_input_ui_hit_iter_ref)\s*:\s*boolean\b" => s"return \1")
     return s
 end
 
@@ -1882,7 +2179,8 @@ function scalar_type_to_ts(t::AbstractString, scalar_map::Dict{String,String})::
     if haskey(scalar_map, t)
         return scalar_map[t]
     end
-    if occursin('.', t)
+    _julia_sdlish_type_use_any(t) && return "any"
+    if occursin('.', t) && !occursin('{', t)
         leaf = String(split(t, '.')[end])
         return string(get(scalar_map, leaf, leaf))
     end
@@ -1925,12 +2223,20 @@ function replace_union_annotations(data::AbstractString, scalar_map::Dict{String
     return String(take!(io))
 end
 
+# SDL C struct names have no TS equivalent (`SDL2.SDL_Event`, `SDL_Event`, …) — use `any` / `any[]`.
+function _julia_sdlish_type_use_any(t::AbstractString)::Bool
+    ts = String(strip(t))
+    startswith(ts, "SDL2.") && return true
+    return occursin(r"^SDL_[A-Za-z0-9_]+$", ts)
+end
+
 function vector_inner_to_ts(inner::AbstractString, scalar_map::Dict{String,String})::String
     inner = String(strip(inner))
+    _julia_sdlish_type_use_any(inner) && return "any[]"
     if haskey(scalar_map, inner)
         return scalar_map[inner] * "[]"
     end
-    if occursin('.', inner)
+    if occursin('.', inner) && !occursin('{', inner)
         leaf = String(split(inner, '.')[end])
         return string(get(scalar_map, leaf, leaf)) * "[]"
     end
@@ -1952,6 +2258,39 @@ function replace_empty_vector_literals(data::AbstractString)::String
     return s
 end
 
+# `Dict{K, V}` with nested braces in `V` (e.g. `Ptr{SDL2.T}`) — split at depth-0 commas only.
+function _julia_dict_type_key_val(t::AbstractString)::Union{Nothing,Tuple{String,String}}
+    ts = String(strip(t))
+    (startswith(ts, "Dict{") && endswith(ts, "}")) || return nothing
+    lo = 0
+    for j in eachindex(ts)
+        if ts[j] == '{'
+            lo = j
+            break
+        end
+    end
+    lo == 0 && return nothing
+    depth = 0
+    p = lo
+    n = lastindex(ts)
+    while p <= n
+        c = ts[p]
+        if c == '{'
+            depth += 1
+        elseif c == '}'
+            depth -= 1
+            if depth == 0
+                inner = ts[nextind(ts, lo):prevind(ts, p)]
+                parts = split_top_level_commas_general(inner)
+                length(parts) == 2 || return nothing
+                return (String(strip(parts[1])), String(strip(parts[2])))
+            end
+        end
+        p = nextind(ts, p)
+    end
+    return nothing
+end
+
 function julia_type_expr_to_ts(t::AbstractString, scalar_map::Dict{String,String})::String
     t = String(strip(t))
     t == "Ptr{Nothing}" && return "null"
@@ -1961,6 +2300,11 @@ function julia_type_expr_to_ts(t::AbstractString, scalar_map::Dict{String,String
         return "any"
     end
     t == "Nothing" && return "null"
+    dk = _julia_dict_type_key_val(t)
+    if dk !== nothing
+        kt, vt = dk
+        return string("Record<", julia_type_expr_to_ts(kt, scalar_map), ", ", julia_type_expr_to_ts(vt, scalar_map), ">")
+    end
     startswith(t, "Vector{") && endswith(t, "}") && return vector_inner_to_ts(t[nextind(t, firstindex(t), 7):prevind(t, lastindex(t))], scalar_map)
     if startswith(t, "Union{") && endswith(t, "}")
         inner = t[nextind(t, firstindex(t), 6):prevind(t, lastindex(t))]
@@ -1980,7 +2324,8 @@ function julia_type_expr_to_ts(t::AbstractString, scalar_map::Dict{String,String
     if haskey(scalar_map, t)
         return scalar_map[t]
     end
-    if occursin('.', t)
+    _julia_sdlish_type_use_any(t) && return "any"
+    if occursin('.', t) && !occursin('{', t)
         leaf = String(split(t, '.')[end])
         return string(get(scalar_map, leaf, leaf))
     end
@@ -2432,10 +2777,14 @@ function custom_function_removal(data::AbstractString)
         "handle_x11_clipboard_image",   
         "handle_macos_clipboard_image",
         "handle_windows_clipboard_image",
+        "handle_clipboard_paste",
         "is_image_file_by_extension",
         "add_clipboard_file_to_import_queue",
         "handle_base64_image_data",
-        
+        "_input_poll_accumulate",
+        "_input_ui_hit_span",
+        "_input_ui_hit_stream_logs",
+        "_input_ui_hit_iter_stream_logs",
     ]
     s = String(data)
     for func in functions_to_remove
@@ -2909,6 +3258,12 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     push!(line_rules, "show_backtrace" => "")
     push!(line_rules, "@error" => "")
     push!(line_rules, "TEXTURE_CACHE[imagePath] = tex" => "")
+    push!(line_rules, "_input_ui_hit_span" => "")
+    push!(line_rules, "_input_poll_accumulate" => "")
+    push!(line_rules, "_input_ui_hit_step" => "")
+    push!(line_rules, "_input_ui_hit_iter_stream_logs" => "")
+    push!(line_rules, "_input_ui_hit_stream_logs" => "")
+
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line
         for (needle, replacement) in line_rules
