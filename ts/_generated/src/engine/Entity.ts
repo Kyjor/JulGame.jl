@@ -82,7 +82,7 @@ export {}
         try {
             (globalThis as any).JulGame.initialize(script)
         } catch (e) {
-
+            @error String(e)
 
         }
     }

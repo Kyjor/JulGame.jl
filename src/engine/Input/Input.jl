@@ -398,7 +398,7 @@ module InputModule
                             t_hi = time_ns()
 
                             if shouldHandleEvent
-                                @debug "  -> Handling event for element '$(element.name)'"
+                                #@debug "  -> Handling event for element '$(element.name)'"
                                 JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
                                 t_hi = time_ns()
                                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN

@@ -136,6 +136,8 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
     data = replace_popfirst_calls(data)
+    data = replace_deleteat_calls(data)
+    data = replace_findfirst_equality_calls(data)
     data = replace_setfield_calls(data)
     data = replace_empty_vector_literals(data)
     data = rewrite_rhs_vector_arithmetic(data)
@@ -1151,6 +1153,13 @@ function replace_julia_ts_literals(data::AbstractString)
     # Julia try/catch forms.
     data = replace(data, r"(?m)^(\s*)try\s*$" => s"\1try {")
     data = replace(data, r"(?m)^(\s*)catch\s+([A-Za-z_]\w*)\s*$" => s"\1} catch (\2) {")
+    data = replace(data, r"(?m)^(\s*)catch\s*$" => s"\1} catch {")
+    # Julia lambdas `x -> expr` → TS `x => expr` (repeat: nested `f->f==` etc.).
+    for _ in 1:64
+        old = data
+        data = replace(data, r"\b([A-Za-z_]\w*)\s*->\s*" => s"\1 => ")
+        old == data && break
+    end
     # Local typed assignment `x::T = ...` -> `let x = ...`.
     data = replace(data, r"(?m)^(\s*)([A-Za-z_]\w*)::[^\s=]+\s*=\s*(.+)$" => s"\1let \2 = \3")
     # Ref cell reads in Julia (`x[]`) become plain property/value access.
@@ -1187,6 +1196,7 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"(?m)^(\s*)targetScale\s*=\s*" => s"\1let targetScale = ")
     data = replace(data, r"\bsetfield\(([^,]+),\s*([^,]+),\s*([^)]+)\)" => s"(\1 as any)[\2 as any] = \3")
     # `@warn` / `@error` — strip trailing Julia kwargs (`exception=...`) on the same line.
+    data = replace(data, r"@error\s*\(" => "console.error(")
     data = replace(data, r"(?m)@warn\s+\"([^\"]*)\".*$" => s"console.warn(\"\1\")")
     data = replace(data, r"(?m)@error\s+\"([^\"]*)\".*$" => s"console.error(\"\1\")")
     # debug with string literal
@@ -3036,6 +3046,168 @@ function replace_popfirst_calls(data::AbstractString)::String
     return String(take!(buf))
 end
 
+# --- `deleteat!` / `findfirst` (after `!(` → `(`) → JS `splice` / `findIndex` ---
+
+function _julia_call_paren_inner(call::AbstractString, fname_prefix::AbstractString)::Union{Nothing,String}
+    t = String(strip(call))
+    startswith(t, fname_prefix) || return nothing
+    oi = findfirst('(', t)
+    oi === nothing && return nothing
+    inner_start = nextind(t, first(oi))
+    close_idx = _find_outer_push_close(t, inner_start, lastindex(t))
+    close_idx === nothing && return nothing
+    return String(strip(SubString(t, inner_start, prevind(t, close_idx))))
+end
+
+function _try_findfirst_equality_to_ts(inner::AbstractString)::Union{Nothing,String}
+    parts = split_top_level_commas_general(String(inner))
+    length(parts) != 2 && return nothing
+    pred = String(strip(parts[1]))
+    coll = String(strip(parts[2]))
+    pm = match(r"^([A-Za-z_]\w*)\s*(?:->|=>)\s*\1\s*(===|==)\s*(.+)$"s, pred)
+    pm === nothing && return nothing
+    lam = String(pm.captures[1])
+    rhs = String(strip(String(pm.captures[3])))
+    return string(
+        "(() => { const a = ",
+        coll,
+        "; const i = a.findIndex((",
+        lam,
+        ") => ",
+        lam,
+        " === ",
+        rhs,
+        "); return i < 0 ? null : i + 1; })()",
+    )
+end
+
+function _try_deleteat_findfirst_combo(arr::AbstractString, idxcall::AbstractString)::Union{Nothing,String}
+    inner = _julia_call_paren_inner(idxcall, "findfirst(")
+    inner === nothing && return nothing
+    parts = split_top_level_commas_general(inner)
+    length(parts) != 2 && return nothing
+    pred = String(strip(parts[1]))
+    coll = String(strip(parts[2]))
+    pm = match(r"^([A-Za-z_]\w*)\s*(?:->|=>)\s*\1\s*(===|==)\s*(.+)$"s, pred)
+    pm === nothing && return nothing
+    lam = String(pm.captures[1])
+    rhs = String(strip(String(pm.captures[3])))
+    # `findIndex` on the same array we splice (Julia always uses one collection here).
+    return string(
+        "(() => { const a = ",
+        arr,
+        "; const i = a.findIndex((",
+        lam,
+        ") => ",
+        lam,
+        " === ",
+        rhs,
+        "); if (i >= 0) a.splice(i, 1); })()",
+    )
+end
+
+function _parse_julia_int_underscore(s::AbstractString)::Union{Nothing,Int}
+    st = String(strip(s))
+    occursin(r"^[\d_]+$", st) || return nothing
+    return parse(Int, replace(st, '_' => ""))
+end
+
+function _try_deleteat_simple(arr::AbstractString, idx::AbstractString)::Union{Nothing,String}
+    idxt = String(strip(idx))
+    length(split_top_level_commas_general(idxt)) != 1 && return nothing
+    occursin(r"^\s*findfirst\s*\(", idxt) && return nothing
+    rm = match(r"^([\d_]+)\s*:\s*([\d_]+)$", idxt)
+    if rm !== nothing
+        a = _parse_julia_int_underscore(String(rm.captures[1]))
+        b = _parse_julia_int_underscore(String(rm.captures[2]))
+        (a === nothing || b === nothing) && return nothing
+        return string("(", arr, ").splice(", a - 1, ", ", b - a + 1, ")")
+    end
+    return string("(", arr, ").splice((", idxt, ") - 1, 1)")
+end
+
+"""`deleteat!(a, i)` / `deleteat(a, i)` → `splice` (1-based Julia index); combo with `findfirst(x -> x == v, a)` → `findIndex` + `splice`."""
+function replace_deleteat_calls(data::AbstractString)::String
+    s = String(data)
+    needle = "deleteat("
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner = String(s[inner_start:prevind(s, close_idx)])
+        parts = split_top_level_commas_general(inner)
+        repl = if length(parts) == 2
+            arr = String(strip(parts[1]))
+            idxcall = String(strip(parts[2]))
+            r = _try_deleteat_findfirst_combo(arr, idxcall)
+            r === nothing ? _try_deleteat_simple(arr, idxcall) : r
+        else
+            nothing
+        end
+        if repl === nothing
+            write(buf, SubString(s, lo:close_idx))
+        else
+            write(buf, repl)
+        end
+        seg_start = nextind(s, close_idx)
+    end
+    return String(take!(buf))
+end
+
+"""`findfirst(x -> x == y, coll)` → 1-based index or `null` (via `findIndex`)."""
+function replace_findfirst_equality_calls(data::AbstractString)::String
+    s = String(data)
+    needle = "findfirst("
+    buf = IOBuffer()
+    seg_start = firstindex(s)
+    n = lastindex(s)
+    while true
+        rg = findnext(needle, s, seg_start)
+        if rg === nothing
+            seg_start <= n && write(buf, SubString(s, seg_start))
+            break
+        end
+        lo = first(rg)
+        if lo > firstindex(s)
+            pc = s[prevind(s, lo)]
+            if isletter(pc) || pc == '_' || isdigit(pc)
+                write(buf, SubString(s, seg_start:last(rg)))
+                seg_start = nextind(s, last(rg))
+                continue
+            end
+        end
+        lo > seg_start && write(buf, SubString(s, seg_start, prevind(s, lo)))
+        inner_start = nextind(s, last(rg))
+        close_idx = _find_outer_push_close(s, inner_start, n)
+        if close_idx === nothing
+            write(buf, SubString(s, lo:n))
+            break
+        end
+        inner = String(s[inner_start:prevind(s, close_idx)])
+        tsx = _try_findfirst_equality_to_ts(inner)
+        if tsx === nothing
+            write(buf, SubString(s, lo:close_idx))
+        else
+            write(buf, tsx)
+        end
+        seg_start = nextind(s, close_idx)
+    end
+    return String(take!(buf))
+end
+
 function _find_outer_push_close(s::String, inner_start::Int, n::Int)::Union{Nothing, Int}
     i = inner_start
     paren = 1
@@ -3315,7 +3487,6 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     push!(line_rules, "update_effects(" => "")
     push!(line_rules, "texture_to_render = self.effectTexture" => "")
     push!(line_rules, "show_backtrace" => "")
-    push!(line_rules, "@error" => "")
     push!(line_rules, "TEXTURE_CACHE[imagePath] = tex" => "")
     push!(line_rules, "_input_ui_hit_span" => "")
     push!(line_rules, "_input_poll_accumulate" => "")

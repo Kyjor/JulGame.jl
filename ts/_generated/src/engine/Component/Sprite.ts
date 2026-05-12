@@ -97,7 +97,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             Component_load_image(this, imagePath)
             if (this.image == null) {
                 let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
-
+                console.error(["Couldn't open image! path: $(fullPath) SDL Error: ", error].join(""))
 
                 return
             }
@@ -255,7 +255,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let renderFn = self.isFloatPrecision ? (globalThis as any).JulGameSdl.glue_SDL_RenderCopyExF : (globalThis as any).JulGameSdl.glue_SDL_RenderCopyEx
         if (renderFn((globalThis as any).JulGame.Renderer, texture_to_render, srcRect, dstRect, self.rotation, rotationCenter, self.isFlipped ? 1 : 0) != 0) {
             let error = unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())
-
+            console.error(`Failed to render sprite: ${error}`)
         }
     }
 
@@ -277,7 +277,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
             console.debug(`Created and cached texture for: ${imagePath}`)
         } else {
-
+            console.error(`Failed to create texture for: ${imagePath}`)
         }
         return tex
     }
@@ -285,7 +285,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     function load_fallback_image() {
         let rwops = (globalThis as any).JulGameSdl.glue_SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), FALLBACK_IMAGE_BYTES.length)
         if (rwops == null) {
-
+            console.error("Failed to create SDL_RWops for fallback image.")
             return null
         }
         let image = (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rwops, 1)  // Load directly from memory and free rwops after use
@@ -303,7 +303,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             try {
 
             } catch (e) {
-
+                console.error("Error loading image '$imagePath'! SDL Error: ", e)
 
             }
             (globalThis as any).JulGameSdl.glue_SDL_ClearError()
@@ -313,7 +313,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             setfield(self, "imagePath", "fallback.png")
             self.pixelsPerUnit = 0
             if (self.image == null) {
-
+                console.error(`Fallback image also failed to load! ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
                 return
             }
         } else if (self.imagePath != imagePath) {
@@ -328,7 +328,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         self.texture = get_or_create_texture(self.imagePath, self.image)
 
         if (self.texture == null) {
-
+            console.error("Failed to create texture from image.")
 
             return
         }

@@ -179,7 +179,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 			v.push(elapsed)
 			// Cap growth when profiling stays on for long sessions (avoids unbounded vectors / GC pressure).
 			if (v.length > 25_000) {
-				deleteat(v, 1:10_000)
+				(v).splice(0, 10000)
 			}
 		} else {
 			(globalThis as any).JulGame.update(script, deltaTime)
@@ -220,7 +220,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 		console.log("="^80)
 		
 		// Sort by mean time (slowest first)
-		let sorted_scripts = sort(collect(self.scriptTimings), by = kv -> isempty(kv[1]) ? 0.0 : Statistics.mean(kv[1]), rev=true)
+		let sorted_scripts = sort(collect(self.scriptTimings), by = kv => isempty(kv[1]) ? 0.0 : Statistics.mean(kv[1]), rev=true)
 		
 		for (script_type, timings) in sorted_scripts
 			if (isempty(timings)) {
@@ -308,7 +308,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 						if (self.testMode) {
 
 						} else {
-
+							@error String(e)
 
 						}
                     }
@@ -416,7 +416,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 					if (this.testMode) {
 
 					} else {
-
+						@error String(e)
 
 					}
 				}
@@ -504,7 +504,7 @@ function JulGame_change_scene(sceneFileName: string) {
 					} else {
 						if (typeof(e) != ErrorException) {
 							console.log(`Error shutting down script: ${typeof(script)}`)
-
+							@error String(e)
 
 						}
 					}
@@ -609,10 +609,10 @@ function JulGame_destroy_entity(self: MainLoop, entity) {
 	for i = eachindex(self.scene.entities)
 		if (self.scene.entities[i] == entity) {
 			destroy_entity_components(self, entity)
-			deleteat(self.scene.entities, i)
-			let entity_index = findfirst(x -> x == entity, self.selectedEntities)
+			(self.scene.entities).splice((i) - 1, 1)
+			let entity_index = (() => { const a = self.selectedEntities; const i = a.findIndex((x) => x === entity); return i < 0 ? null : i + 1; })()
 			if (entity_index !== null) {
-				deleteat(self.selectedEntities, entity_index)
+				(self.selectedEntities).splice((entity_index) - 1, 1)
 			}
 			mark_input_layer_order_dirty(self)  // Cache needs rebuild
 			break
@@ -635,7 +635,7 @@ function JulGame_destroy_entity(entity) {
 function JulGame_destroy_ui_element(self: MainLoop, uiElement) {
 	for i = eachindex(self.scene.uiElements)
 		if (self.scene.uiElements[i] == uiElement) {
-			deleteat(self.scene.uiElements, i)
+			(self.scene.uiElements).splice((i) - 1, 1)
 			(globalThis as any).JulGame.destroy(uiElement)
 			mark_input_layer_order_dirty(self)  // Cache needs rebuild
 			break
@@ -651,7 +651,7 @@ function destroy_entity_components(self: MainLoop, entity) {
 			for j = eachindex(self.spriteLayers.layers[layer])
 				if (self.spriteLayers.layers[layer][j] == entitySprite) {
 					Component_destroy(entitySprite)
-					deleteat(self.spriteLayers.layers[layer], j)
+					(self.spriteLayers.layers[layer]).splice((j) - 1, 1)
 					break
 				}
 			}
@@ -660,12 +660,12 @@ function destroy_entity_components(self: MainLoop, entity) {
 
 	let entityRigidbody = entity.rigidbody
 	if (entityRigidbody != null) {
-		filter(rb -> rb != entityRigidbody, this.scene.rigidbodies)
+		filter(rb => rb != entityRigidbody, this.scene.rigidbodies)
 	}
 
 	let entityCollider = entity.collider
 	if (entityCollider != null) {
-		filter(col -> col != entityCollider, this.scene.colliders)
+		filter(col => col != entityCollider, this.scene.colliders)
 	}
 
 	let entitySoundSource = entity.soundSource
@@ -824,7 +824,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 						} else {
 							console.log(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-
+							@error String(e)
 
 						}
 					}
@@ -873,7 +873,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 						} else {
 							console.log(entity.name, " with id: ", entity.id, " has a problem with it's update")
-
+							@error String(e)
 
 						}
 					}
@@ -897,7 +897,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 			for (const coroutine_to_remove of coroutines_to_remove) {
 				console.debug("coroutine done, removing")
-				deleteat((globalThis as any).JulGame.Coroutines, findfirst(x -> x == coroutine_to_remove, (globalThis as any).JulGame.Coroutines))
+				(() => { const a = (globalThis as any).JulGame.Coroutines; const i = a.findIndex((x) => x === coroutine_to_remove); if (i >= 0) a.splice(i, 1); })()
 			}
 			
 			if (this.latencyProfiler !== null) {
@@ -929,7 +929,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			let uiRenderingOrder = []
 			let prof_ui = this.latencyProfiler
 			let t_ui = time_ns()
-			let canvases = filter(x -> isa(x, (globalThis as any).JulGame.ICanvas), this.scene.uiElements)
+			let canvases = filter(x => isa(x, (globalThis as any).JulGame.ICanvas), this.scene.uiElements)
 			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_filter_canvases")
 			let immediate_scene_skip = UI.ImmediateUIModule.immediate_ui_managed_scene_skip_ids()
 			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_immediate_skip_ids_build")
@@ -944,8 +944,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				//}
 			}
 			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_scene_elements_scan")
-			let render_functions_to_call = filter(x -> !x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
-			filter(x -> x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
+			let render_functions_to_call = filter(x => !x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
+			filter(x => x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
 			for (const render_function of render_functions_to_call) {
 				uiRenderingOrder.push((render_function.layer, render_function))
 			}
@@ -957,7 +957,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			}
 			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_immediate_append_order")
 
-			sort(uiRenderingOrder, by = x -> x[0])
+			sort(uiRenderingOrder, by = x => x[0])
 			_accum_ui_render_breakdown_ms(prof_ui, t_ui, "ui_sort_render_order")
 			for i = eachindex(uiRenderingOrder)
 				try {
@@ -993,7 +993,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						}
 						console.log(parent_info, " has a problem with it's render function")
-
+						@error String(e)
 
 					}
 				}
@@ -1062,7 +1062,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			if (this.testMode) {
 
 			} else {
-
+				@error String(e)
 
 			}
 		}
@@ -1135,8 +1135,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			}
 		}
 
-	let render_functions_to_call = filter(x -> x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
-	filter(x -> !x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
+	let render_functions_to_call = filter(x => x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
+	filter(x => !x.isWorldEntity, (globalThis as any).JulGame.RENDER_FUNCTIONS)
 	for (const render_function of render_functions_to_call) {
 		renderOrder.push((render_function.layer, render_function))
 	}
@@ -1149,7 +1149,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 		}
 	}
 	
-	sort(renderOrder, by = x -> x[0])
+	sort(renderOrder, by = x => x[0])
 		
 		for i = eachindex(renderOrder)
 			try {
@@ -1183,7 +1183,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					}
 					console.log(parent_info, " has a problem with rendering")
-
+					@error String(e)
 
 				}
 			}

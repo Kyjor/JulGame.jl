@@ -172,7 +172,7 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
             scaled_x = (x[0] - bar_x) / scale
             scaled_y = (y[0] - bar_y) / scale
             if (scaled_x == Infinity || scaled_y == Infinity) {
-
+                console.error("Mouse position is infinite")
                 scaled_x = 0
                 scaled_y = 0
             }
@@ -275,17 +275,17 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
                     // Use cached layer order instead of sorting every mouse event
                     // This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
 
-                    let uiElementsOrderedByLayerDescending = sort(reverse((globalThis as any).JulGame.MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
+                    let uiElementsOrderedByLayerDescending = sort(reverse((globalThis as any).JulGame.MAIN.scene.uiElements), by = uiElement => uiElement.layer, rev = true)
 
 
-                    let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== null && entity.sprite !== null, (globalThis as any).JulGame.MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
+                    let entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity => entity.sprite !== null && entity.sprite !== null, (globalThis as any).JulGame.MAIN.scene.entities)), by = entity => entity.sprite.layer, rev = true)
 
 
                     let elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
 
 
                     // TODO: add rest of entities without sprites in default order
-                    // restOfEntities = filter(entity -> entity.sprite === null || entity.sprite === null, (globalThis as any).JulGame.MAIN.scene.entities)
+                    // restOfEntities = filter(entity => entity.sprite === null || entity.sprite === null, (globalThis as any).JulGame.MAIN.scene.entities)
                     // append(elementsOrderedByLayerDescending, restOfEntities)
                     let clickedAnElementAlready = false
                     let hoveredAnElementAlready = false
@@ -530,8 +530,8 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
                 if (keyboardState[check_code] == keyState) {
                     return true
                 }
-            catch
-
+            } catch {
+                console.error(`Error checking scan code ${scanCode} at index ${Number(scanCode) + 1}`)
             }
         }
         return false
@@ -559,7 +559,7 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
                 self.buttonsHeldDown.push(button)
             } else if (check_scan_code(self, keyboardState, 0, [scanCode[0]])) {
                 if (button in self.buttonsHeldDown) {
-                    deleteat(self.buttonsHeldDown, findfirst(x -> x == button, self.buttonsHeldDown))
+                    (() => { const a = self.buttonsHeldDown; const i = a.findIndex((x) => x === button); if (i >= 0) a.splice(i, 1); })()
                 }
             }
         }
@@ -574,7 +574,7 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
                 self.mouseButtonsHeldDown.push(button)
             } else if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP && (button in self.mouseButtonsHeldDown)) {
                 self.mouseButtonsReleased.push(button)
-                deleteat(self.mouseButtonsHeldDown, findfirst(x -> x == button, self.mouseButtonsHeldDown))
+                (() => { const a = self.mouseButtonsHeldDown; const i = a.findIndex((x) => x === button); if (i >= 0) a.splice(i, 1); })()
             }
         }
     }

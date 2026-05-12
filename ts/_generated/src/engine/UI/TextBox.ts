@@ -23,12 +23,12 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         // TODO: Add text scaling option?
         let q = try
             String((globalThis as any).JulGame.SCALE_QUALITY)
-        catch
+        } catch {
             "2"
         }
         let val = try
             parse(Int, q)
-        catch
+        } catch {
             2
         }
         if (val == 0) {
@@ -506,7 +506,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         
         free_text_resources(self)
 
-        MAIN.scene.uiElements = filter(x -> x !== self, MAIN.scene.uiElements)
+        MAIN.scene.uiElements = filter(x => x !== self, MAIN.scene.uiElements)
     }
     
     // Generate a stable string for effects to use in cache keys
