@@ -2,7 +2,7 @@ name = "JulGame"
 uuid = "4850f9bb-d191-4a1e-9f97-ee64062927c3"
 authors = ["Kyjor <kyjordev@gmail.com>"]
 repo = "https://github.com/Kyjor/JulGame.jl.git"
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 CImGui = "5d785b6c-b76f-510e-a07c-3070796c7e87"
