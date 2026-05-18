@@ -5,6 +5,8 @@
 [Trello board](https://trello.com/b/M6uH0Jmy/julgame)
 ![JulGame Logo](https://github.com/Kyjor/JulGame.jl/assets/13784123/f68ece3a-62a1-48fb-a905-c7c8b9aa35c1)
 
+**You are free to use, modify, and/or reproduce this logo any way you please. You do not need to credit nor attach any license to use this in your own works.**
+
 ![The Jester](https://github.com/Kyjor/JulGame.jl/assets/13784123/61c51bab-557d-4712-86a8-59ab91350667)
 ![CoinGrabber](https://github.com/Kyjor/JulGame.jl/assets/13784123/43811fd4-781d-4530-9de0-59c282b27710)
 
@@ -116,3 +118,6 @@ Here I will be keeping a list for the first **original** games created with JulG
 8.
 9.
 10.
+
+## Crediting JulGame 
+If you create a game with this tool, you are not required to credit JulGame. However, if you would like to credit it, please let the end-user know that your product was made with JulGame, implying that it is not directly associated with JulGame/created by me directly. You may use the logo while crediting as well.

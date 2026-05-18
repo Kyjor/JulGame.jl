@@ -16,6 +16,7 @@ module InputModule
         mouseButtonsHeldDown::Vector
         mouseButtonsReleased::Vector
         mousePosition
+        mouseWheel::Math.Vector2f
         joystick
         scanCodeStrings::Vector{String}
         scanCodes::Vector
@@ -44,6 +45,7 @@ module InputModule
             this.mouseButtonsHeldDown = []
             this.mouseButtonsReleased = []
             this.mousePosition = Math.Vector2(0,0)
+            this.mouseWheel = Math.Vector2f(0, 0)
             this.quit = false
             this.scanCodes = []
             this.scanCodeStrings = String[]
@@ -90,6 +92,7 @@ module InputModule
 
     function poll_input(this::Input)
         this.buttonsPressedDown = []
+        this.mouseWheel = Math.Vector2f(0, 0)
         didMouseEventOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
         while Bool(SDL2.SDL_PollEvent(event_ref))
@@ -136,7 +139,15 @@ module InputModule
                 end
 
                 handle_mouse_event(this, evt)
-            end 
+            end
+
+            if evt.type == SDL2.SDL_MOUSEWHEEL
+                dx, dy = _mouse_wheel_delta_xy(evt.wheel)
+                this.mouseWheel = this.mouseWheel + Math.Vector2f(dx, dy)
+                x, y = Int32[1], Int32[1]
+                SDL2.SDL_GetMouseState(pointer(x), pointer(y))
+                this.mousePosition = Math.Vector2(x[1], y[1])
+            end
 
             #if evt.type == SDL2.SDL_JOYAXISMOTION
                 if evt.jaxis.which == 0
@@ -231,46 +242,65 @@ module InputModule
         
         # Uncomment to debug window events
         if windowEvent == SDL2.SDL_WINDOWEVENT_SHOWN
-            @info(string("Window $(event.window.windowID) shown"))
+            @debug(string("Window $(event.window.windowID) shown"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIDDEN
-            @info(string("Window $(event.window.windowID) hidden"))
+            @debug(string("Window $(event.window.windowID) hidden"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_EXPOSED
-            @info(string("Window $(event.window.windowID) exposed"))
+            @debug(string("Window $(event.window.windowID) exposed"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MOVED
-            @info(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
+            @debug(string("Window $(event.window.windowID) moved to $(event.window.data1),$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESIZED # todo: update zoom and viewport size here
             if !JulGame.IS_EDITOR
-                @info(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
+                @debug(string("Window $(event.window.windowID) resized to $(event.window.data1)x$(event.window.data2)"))
                 JulGame.MainLoop.update_viewport(MAIN, event.window.data1, event.window.data2)
             end
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_SIZE_CHANGED
-            @info(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
+            @debug(string("Window $(event.window.windowID) size changed to $(event.window.data1)x$(event.window.data2)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MINIMIZED
-            @info(string("Window $(event.window.windowID) minimized"))
+            @debug(string("Window $(event.window.windowID) minimized"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_MAXIMIZED
-            @info(string("Window $(event.window.windowID) maximized"))
+            @debug(string("Window $(event.window.windowID) maximized"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_RESTORED
-            @info(string("Window $(event.window.windowID) restored"))
+            @debug(string("Window $(event.window.windowID) restored"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_ENTER
-            @info(string("Mouse entered window $(event.window.windowID)"))
+            @debug(string("Mouse entered window $(event.window.windowID)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_LEAVE
-            @info(string("Mouse left window $(event.window.windowID)"))
+            @debug(string("Mouse left window $(event.window.windowID)"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_GAINED
-            @info(string("Window $(event.window.windowID) gained keyboard focus"))
+            @debug(string("Window $(event.window.windowID) gained keyboard focus"))
             this.isWindowFocused = true
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_FOCUS_LOST
-            @info(string("Window $(event.window.windowID) lost keyboard focus"))
+            @debug(string("Window $(event.window.windowID) lost keyboard focus"))
             this.isWindowFocused = false
 
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_CLOSE
-            @info(string("Window $(event.window.windowID) closed"))
+            @debug(string("Window $(event.window.windowID) closed"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_TAKE_FOCUS
-            @info(string("Window $(event.window.windowID) is offered a focus"))
+            @debug(string("Window $(event.window.windowID) is offered a focus"))
         elseif windowEvent == SDL2.SDL_WINDOWEVENT_HIT_TEST
-            @info(string("Window $(event.window.windowID) has a special hit test"))
+            @debug(string("Window $(event.window.windowID) has a special hit test"))
         else
-            @info(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
+            @debug(string("Window $(event.window.windowID) got unknown event $(event.window.event)"))   
         end    
+    end
+
+    const _SDL_WHEEL_USE_PRECISE = Ref{Union{Nothing,Bool}}(nothing)
+    function _sdl_wheel_use_precise()
+        if _SDL_WHEEL_USE_PRECISE[] === nothing
+            ver = Ref(SDL2.SDL_version(0, 0, 0))
+            SDL2.SDL_GetVersion(ver)
+            vl = ver[]
+            n = parse(Int32, replace("$(vl.major).$(vl.minor).$(vl.patch)", "." => ""))
+            _SDL_WHEEL_USE_PRECISE[] = n >= 2018
+        end
+        return _SDL_WHEEL_USE_PRECISE[]::Bool
+    end
+
+    function _mouse_wheel_delta_xy(w)::Tuple{Float64,Float64}
+        if _sdl_wheel_use_precise()
+            return (Float64(w.preciseX), Float64(w.preciseY))
+        end
+        return (Float64(w.x), Float64(w.y))
     end
 
     function handle_key_event(this::Input, keyboardState)
