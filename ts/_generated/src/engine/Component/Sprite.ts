@@ -56,6 +56,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             this.position = position
             this.rotation = rotation
             this.texture = null
+            this.size = { x: 0, y: 0 }
             this.isFloatPrecision = false
             this.lastRenderedScreenPosition = null
             this.lastRenderedScreenSize = null
@@ -84,11 +85,32 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
                 return
             }
-            this.size = {x: 0, y: 0}
 
         }
     }
     
+    /** JSON / Julia sometimes leaves `{}` or partial crop; NaN rects look "broken". */
+    function spriteEffectiveCrop(self: InternalSprite): null | Vector4 {
+        const c = self.crop;
+        if (c == null) {
+            return null;
+        }
+        const x = Number((c as Vector4).x);
+        const y = Number((c as Vector4).y);
+        const z = Number((c as Vector4).z);
+        const t = Number((c as Vector4).t);
+        if (!Number.isFinite(z) || !Number.isFinite(t) || z <= 0 || t <= 0) {
+            return null;
+        }
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            return null;
+        }
+        if (x === 0 && y === 0 && z === 0 && t === 0) {
+            return null;
+        }
+        return { x, y, z, t };
+    }
+
     function Component_draw(self: InternalSprite, camera: any = null) {
         if (self.image == null || (globalThis as any).JulGame.Renderer == null) {
             return
@@ -113,14 +135,9 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         }
     
         // Check and set color if necessary (for both regular and effect textures)
-        let colorRefs = [0, 0, 0]
-        let alphaRef = 0;
-        (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render, ...colorRefs);
-        (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(texture_to_render, alphaRef)
-        if (colorRefs[0] != self.color[0] || colorRefs[1] != self.color[1] || colorRefs[2] != self.color[2] || self.color[3] != alphaRef) {
-            (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, Number(clamp(self.color[0], 0, 255)), Number(clamp(self.color[1], 0, 255)), Number(clamp(self.color[2], 0, 255)));
-            (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, Number(clamp(self.color[3], 0, 255)))
-        }
+        // Set color mod (skip SDL_GetTextureColorMod — not exposed to JS heap in wasm glue)
+        (globalThis as any).JulGameSdl.glue_SDL_SetTextureColorMod(texture_to_render, Number(clamp(self.color[0], 0, 255)), Number(clamp(self.color[1], 0, 255)), Number(clamp(self.color[2], 0, 255)));
+        (globalThis as any).JulGameSdl.glue_SDL_SetTextureAlphaMod(texture_to_render, Number(clamp(self.color[3], 0, 255)))
     
         let S = (globalThis as any).JulGame.pixels_per_world_unit(camera)
         // Calculate camera difference
@@ -131,8 +148,9 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         // Calculate position
         let position = self.parent.transform.position
     
+        let ec = spriteEffectiveCrop(self)
         // Calculate source rectangle
-        let srcRect = (self.crop === null || (self.crop.x === 0 && self.crop.y === 0 && self.crop.z === 0 && self.crop.t === 0)) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(self.crop.x, self.crop.y, self.crop.z, self.crop.t)
+        let srcRect = ec === null ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(ec.x, ec.y, ec.z, ec.t)
     
         // Calculate pixels per unit
         let ppu = self.pixelsPerUnit > 0 ? self.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -141,7 +159,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let usingEffectTex = texture_to_render == self.effectTexture && (self.effectSize == null || self.effectSize.x !== 0 || self.effectSize.y !== 0)
         
         // Always use original sprite size for positioning calculations
-        let crop = self.crop == null ? {x: 0, y: 0, z: 0, t: 0} : self.crop
+        let crop = ec === null ? {x: 0, y: 0, z: 0, t: 0} : ec
         let cropWidth = srcRect == null ? self.size.x : crop.z
         let cropHeight = srcRect == null ? self.size.y : crop.t
         let scaleX = self.parent.transform.scale.x
@@ -162,8 +180,9 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         let scaledWidth = 0.0
         let scaledHeight = 0.0
         if (self.pixelsPerUnit == 0) {
-            scaledWidth = cropWidth * scaleX * S / 64.0
-            scaledHeight = cropHeight * scaleY * S / 64.0
+            const su = (globalThis as any).JulGame.SCALE_UNITS as number;
+            scaledWidth = (cropWidth * scaleX * S) / su;
+            scaledHeight = (cropHeight * scaleY * S) / su;
         } else {
             // Use pixelsPerUnit or default PIXELS_PER_UNIT for scaling
             ppu = self.pixelsPerUnit > 0 ? self.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -211,6 +230,19 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             centeredX -= (scaledWidth - S * scaleX)
             centeredY -= (scaledHeight - S * scaleY)
         }
+
+        if (!(scaledWidth > 0 && scaledHeight > 0) || !Number.isFinite(scaledWidth) || !Number.isFinite(scaledHeight) || !Number.isFinite(centeredX) || !Number.isFinite(centeredY)) {
+            console.warn(`Component_draw: skip sprite (bad geometry) ${self.imagePath}`, {
+                scaledWidth,
+                scaledHeight,
+                centeredX,
+                centeredY,
+                cropWidth,
+                cropHeight,
+                S,
+            })
+            return
+        }
         
         // AFTER anchor positioning: expand render size for effect texture and offset to center it
     
@@ -227,9 +259,9 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     
         // Calculate center for rotation
         let calculatedCenter = {x: dstRect.w * (self.center.x % 1), y: dstRect.h * (self.center.y % 1)}
-        let rotationCenter = !self.isFloatPrecision ?;
-            (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y)) :;
-            (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
+        let rotationCenter = !self.isFloatPrecision
+            ? (globalThis as any).JulGameSdl.glue_SDL_Point(Math.round(calculatedCenter.x), Math.round(calculatedCenter.y))
+            : (globalThis as any).JulGameSdl.glue_SDL_FPoint(calculatedCenter.x, calculatedCenter.y)
     
         self.lastRenderedScreenPosition = {x: Number(dstRect.x), y: Number(dstRect.y)}
         self.lastRenderedScreenSize = {x: Number(dstRect.w), y: Number(dstRect.h)}
@@ -302,8 +334,15 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         //     this.imagePath = imagePath
         // }
     
-        // Get image size
-        self.size = {x: 0, y: 0}
+        // Get image size from SDL surface
+        if (self.image != null) {
+            self.size = {
+                x: (globalThis as any).JulGameSdl.glue_surface_w(self.image),
+                y: (globalThis as any).JulGameSdl.glue_surface_h(self.image),
+            }
+        } else {
+            self.size = { x: 0, y: 0 }
+        }
 
         // Create or get cached texture
         self.texture = get_or_create_texture(self.imagePath, self.image)
@@ -351,3 +390,4 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
        return false
     }
 
+export { InternalSprite, Component_draw, Component_initialize }

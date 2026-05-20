@@ -41,3 +41,4 @@ export {}
     }
 
 
+export { Transform, Component_duplicate }

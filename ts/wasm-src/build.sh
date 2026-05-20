@@ -4,14 +4,20 @@ set -euo pipefail
 cd "$(dirname "$0")"
 OUT_DIR="../src/platform/sdl-wasm"
 mkdir -p "$OUT_DIR"
+FUNCS='["_main","_glue_init","_glue_render_square_frame","_glue_poll_quit","_glue_SDL_GetTicks","_glue_get_renderer","_glue_SDL_RenderClear","_glue_SDL_RenderPresent","_glue_SDL_RenderSetLogicalSize","_glue_SDL_SetRenderDrawBlendMode_BLEND","_glue_SDL_SetRenderDrawColor","_glue_SDL_RenderFillRectF","_glue_IMG_Load","_glue_SDL_CreateTextureFromSurface","_glue_SDL_FreeSurface","_glue_SDL_GetError","_glue_SDL_ClearError","_glue_surface_w","_glue_surface_h","_glue_SDL_SetTextureColorMod","_glue_SDL_SetTextureAlphaMod","_glue_render_copy_ex","_glue_render_copy_ex_f"]'
 # SINGLE_FILE: embed .wasm in .js so itch.io/CDN never does a separate wasm fetch (often 403).
 emcc main.c -o "$OUT_DIR/julgame.js" \
   -s USE_SDL=2 \
+  -s USE_SDL_IMAGE=2 \
+  -s SDL2_IMAGE_FORMATS=png,jpg \
+  -s USE_LIBPNG=1 \
+  -s USE_ZLIB=1 \
   -s WASM=1 \
   -s SINGLE_FILE=1 \
   -s MODULARIZE=1 \
   -s EXPORT_ES6=1 \
   -s INVOKE_RUN=0 \
-  -s EXPORTED_FUNCTIONS="['_main','_glue_init','_glue_render_square_frame','_glue_poll_quit']" \
-  -s EXPORTED_RUNTIME_METHODS="['cwrap']" \
+  -s FORCE_FILESYSTEM=1 \
+  -s EXPORTED_FUNCTIONS="$FUNCS" \
+  -s EXPORTED_RUNTIME_METHODS="['cwrap','FS']" \
   -O2

@@ -166,3 +166,5 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         newSoundSource.isPlaying = self.isPlaying
         return newSoundSource
     }
+
+export { InternalSoundSource }

@@ -93,4 +93,5 @@ export {}
         frameIndex = frameIndex
         self.sprite.crop = self.currentAnimation.frames[frameIndex]
     }
-    
+
+export { InternalAnimator }

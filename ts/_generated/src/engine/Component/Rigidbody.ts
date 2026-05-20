@@ -94,3 +94,5 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         newRigidbody.offset = self.offset
         return newRigidbody
     }
+
+export { InternalRigidbody }

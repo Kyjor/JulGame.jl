@@ -255,4 +255,6 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         newCollider.collisionEvents = self.collisionEvents
         return newCollider
     }
+
+export { InternalCollider }
    

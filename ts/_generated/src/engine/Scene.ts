@@ -4,7 +4,7 @@ export {}
     
     
     class Scene {
-        camera: null | Camera
+        camera: null | any
         colliders: any[]
         entities: any[]
         rigidbodies: any[]
@@ -21,84 +21,98 @@ export {}
             this.rigidbodies = []
             this.uiElements = []
             this.batchedLayers = {}
+            this.name = ""
 
         }
     }
 
-    function get_entity_by_name(self: Scene, name) {
+    /* Julia multiple-dispatch → TS overloads (one implementation; no duplicate identifiers). */
+    function get_entity_by_name(self: Scene, name: string): any;
+    function get_entity_by_name(name: string): any;
+    function get_entity_by_name(selfOrName: Scene | string, name?: string): any {
+        if (typeof selfOrName === "string") {
+            return get_entity_by_name((globalThis as any).MAIN.scene, selfOrName);
+        }
+        const self = selfOrName;
+        const n = name as string;
         for (const entity of self.entities) {
-            if (entity.name == name) {
-                return entity
+            if (entity.name == n) {
+                return entity;
             }
         }
-
-        console.debug(`No entity with name ${name} found`)
-        return null
+        console.debug(`No entity with name ${n} found`);
+        return null;
     }
 
-    function get_entity_by_name(name) {
-        return get_entity_by_name(MAIN.scene, name)
-    }
-
-    function get_entities_by_name(self: Scene, name) {
-        let entities = []
+    function get_entities_by_name(self: Scene, name: string): any[];
+    function get_entities_by_name(name: string): any[];
+    function get_entities_by_name(selfOrName: Scene | string, name?: string): any[] {
+        if (typeof selfOrName === "string") {
+            return get_entities_by_name((globalThis as any).MAIN.scene, selfOrName);
+        }
+        const self = selfOrName;
+        const n = name as string;
+        let entities = [];
         for (const entity of self.entities) {
-            if (entity.name == name) {
-                entities.push(entity)
+            if (entity.name == n) {
+                entities.push(entity);
             }
         }
-
         if (entities.length == 0) {
-            console.debug(`No entity with name ${name} found`)
+            console.debug(`No entity with name ${n} found`);
         }
-        return entities
+        return entities;
     }
 
-    function get_entities_by_name(name) {
-        return get_entities_by_name(MAIN.scene, name)
-    }
-
-    function get_entity_by_id(self: Scene, id) {
+    function get_entity_by_id(self: Scene, id: string): any;
+    function get_entity_by_id(id: string): any;
+    function get_entity_by_id(selfOrId: Scene | string, id?: string): any {
+        if (typeof selfOrId === "string") {
+            return get_entity_by_id((globalThis as any).MAIN.scene, selfOrId);
+        }
+        const self = selfOrId;
+        const i = id as string;
         for (const entity of self.entities) {
-            if (entity.id == id) {
-                return entity
+            if (entity.id == i) {
+                return entity;
             }
         }
-
-        console.debug(`No entity with id ${id} found`)
-        return null
+        console.debug(`No entity with id ${i} found`);
+        return null;
     }
 
-    function get_entity_by_id(id: string) {
-        return get_entity_by_id(MAIN.scene, id)
-    }
-
-    function get_ui_element_by_name(self: Scene, name) {
+    function get_ui_element_by_name(self: Scene, name: string): any;
+    function get_ui_element_by_name(name: string): any;
+    function get_ui_element_by_name(selfOrName: Scene | string, name?: string): any {
+        if (typeof selfOrName === "string") {
+            return get_ui_element_by_name((globalThis as any).MAIN.scene, selfOrName);
+        }
+        const self = selfOrName;
+        const n = name as string;
         for (const entity of self.uiElements) {
-            if (entity.name == name) {
-                return entity
+            if (entity.name == n) {
+                return entity;
             }
         }
-
-        console.debug(`No entity with name ${name} found`)
-        return null
+        console.debug(`No entity with name ${n} found`);
+        return null;
     }
 
-    function get_ui_element_by_name(name) {
-        return get_ui_element_by_name(MAIN.scene, name)
-    }
-
-    function get_ui_element_by_id(self: Scene, id) {
+    function get_ui_element_by_id(self: Scene, id: string): any;
+    function get_ui_element_by_id(id: string): any;
+    function get_ui_element_by_id(selfOrId: Scene | string, id?: string): any {
+        if (typeof selfOrId === "string") {
+            return get_ui_element_by_id((globalThis as any).MAIN.scene, selfOrId);
+        }
+        const self = selfOrId;
+        const i = id as string;
         for (const element of self.uiElements) {
-            if (element.id == id) {
-                return element
+            if (element.id == i) {
+                return element;
             }
         }
-
-        console.debug(`No ui element with id ${id} found`)
-        return null
+        console.debug(`No ui element with id ${i} found`);
+        return null;
     }
 
-    function get_ui_element_by_id(id: string) {
-        return get_ui_element_by_id(MAIN.scene, id)
-    }
+export { Scene }
