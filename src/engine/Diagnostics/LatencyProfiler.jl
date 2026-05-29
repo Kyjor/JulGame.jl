@@ -32,7 +32,7 @@ using Dates
 export LatencyProfiler, ProfileSection, start_frame, end_frame, start_section, end_section
 export accumulate_script_update_ms!, accumulate_input_poll_ms!, accumulate_input_ui_hit_detail_ms!, accumulate_input_ui_hit_detail_count!, accumulate_ui_render_breakdown_ms!
 export print_latency_report, print_realtime_stats, export_profiling_data, clear_profiling_data
-export get_worst_frames, @profile_section
+export get_worst_frames, @profile_section, get_gc_time_ms, get_allocation_count
 
 """
     ProfileSection

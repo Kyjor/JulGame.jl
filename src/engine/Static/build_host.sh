@@ -1,108 +1,59 @@
 #!/usr/bin/env bash
+# Build / verify libsc_game.so (Julia StaticCompiler output, no SDL).
+# Produces: lib_desktop/libsc_game.so, lib_desktop/libsc_game.a, lib_desktop/sc_game.h
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_A="$ROOT/lib_desktop/libsc_game.a"
-# shellcheck source=deps/sdl2_paths.sh
-source "$ROOT/deps/sdl2_paths.sh"
+LIB_DIR="$ROOT/lib_desktop"
+LIB_SO="$LIB_DIR/libsc_game.so"
+LIB_A="$LIB_DIR/libsc_game.a"
+HEADER="$LIB_DIR/sc_game.h"
+
+if [[ "${REBUILD:-0}" == "1" || ! -f "$LIB_SO" ]]; then
+    echo "🔨 Compiling Julia static library (desktop)..."
+    (cd "$ROOT" && julia --project=. compile_library.jl desktop)
+fi
+
+if [[ ! -f "$LIB_SO" ]]; then
+    echo "❌ Missing $LIB_SO"
+    echo "   Run: (cd $ROOT && julia --project=. compile_library.jl desktop)"
+    echo "   Needs Julia 1.11 + Project.toml StaticCompiler (not global 0.7.2 on 1.11)."
+    exit 1
+fi
 
 if [[ ! -f "$LIB_A" ]]; then
-    echo "❌ Missing $LIB_A — run: julia compile_library.jl desktop"
-    exit 1
+    echo "⚠️  Missing $LIB_A (shared .so exists)"
 fi
 
-# Linux (GNU nm): " T sc_run" — macOS (Mach-O): " T _sc_run"
-if ! nm "$LIB_A" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?sc_run$'; then
-    echo "❌ $LIB_A has no compiled Julia symbols (sc_run missing from nm)"
-    echo "   Run: julia compile_library.jl desktop"
-    echo "   If the archive is up to date and this persists: StaticCompiler may need Julia ≤1.10 — see README.md"
-    exit 1
-fi
-
-if [[ -z "$SDL2_LIBDIR" || ! -f "$SDL2_LIBDIR/libSDL2.a" ]]; then
-    echo "ℹ️  Vendored SDL2 not built — running deps/build_sdl2.sh"
-    "$ROOT/deps/build_sdl2.sh"
-    source "$ROOT/deps/sdl2_paths.sh"
-fi
-
-if [[ -z "$SDL2_IMAGE_LIBDIR" || ! -f "$SDL2_IMAGE_LIBDIR/libSDL2_image.a" ]]; then
-    echo "ℹ️  Vendored SDL2_image not built — running deps/build_sdl2_image.sh"
-    "$ROOT/deps/build_sdl2_image.sh"
-    source "$ROOT/deps/sdl2_paths.sh"
-fi
-
-if [[ -z "$SDL2_MIXER_LIBDIR" || ! -f "$SDL2_MIXER_LIBDIR/libSDL2_mixer.a" ]]; then
-    echo "ℹ️  Vendored SDL2_mixer not built — running deps/build_sdl2_mixer.sh"
-    "$ROOT/deps/build_sdl2_mixer.sh"
-    source "$ROOT/deps/sdl2_paths.sh"
-fi
-
-SDL2_CONFIG="$SDL2_PREFIX/bin/sdl2-config"
-read -r -a SDL_CFLAGS <<< "$("$SDL2_CONFIG" --cflags)"
-# Full static SDL line from sdl2-config (Linux: transitive -l…; macOS: -framework… + libSDL2.a).
-read -r -a SDL_STATIC_LIBS <<< "$("$SDL2_CONFIG" --static-libs)"
-
-SDL2_IMAGE_STATIC_LIBS=()
-if [[ -n "${SDL2_IMAGE_PKGCONFIG:-}" && -f "$SDL2_IMAGE_PKGCONFIG/SDL2_image.pc" ]] \
-    && command -v pkg-config >/dev/null 2>&1; then
-    PKG_CONFIG_PATH="${SDL2_IMAGE_PKGCONFIG}:${SDL2_PKGCONFIG:-}${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-    export PKG_CONFIG_PATH
-    read -r -a SDL2_IMAGE_STATIC_LIBS <<< "$(pkg-config --static --libs SDL2_image)"
-else
-    SDL2_IMAGE_STATIC_LIBS=("$SDL2_IMAGE_LIBDIR/libSDL2_image.a")
-fi
-
-SDL2_MIXER_STATIC_LIBS=()
-if [[ -n "${SDL2_MIXER_PKGCONFIG:-}" && -f "$SDL2_MIXER_PKGCONFIG/SDL2_mixer.pc" ]] \
-    && command -v pkg-config >/dev/null 2>&1; then
-    PKG_CONFIG_PATH="${SDL2_MIXER_PKGCONFIG}:${SDL2_IMAGE_PKGCONFIG:-}:${SDL2_PKGCONFIG:-}${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-    export PKG_CONFIG_PATH
-    read -r -a SDL2_MIXER_STATIC_LIBS <<< "$(pkg-config --static --libs SDL2_mixer)"
-else
-    SDL2_MIXER_STATIC_LIBS=("$SDL2_MIXER_LIBDIR/libSDL2_mixer.a")
-fi
-
-LINK_FLAGS=()
-if [[ "${STATIC:-0}" == "1" ]]; then
-    if [[ ! -f /usr/lib64/libc.a && ! -f /usr/lib/x86_64-linux-gnu/libc.a ]]; then
-        echo "❌ STATIC=1 needs glibc-static"
-        echo "   Fedora: sudo dnf install glibc-static"
-        echo "   Debian: sudo apt install libc6-dev"
+if ! nm -D "$LIB_SO" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
+    if ! nm "$LIB_SO" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
+        echo "❌ $LIB_SO is missing static_is_mouse_inside_element"
+        echo "   Rebuild: REBUILD=1 $0"
         exit 1
     fi
-    LINK_FLAGS=(-static)
-    echo "🔨 Fully static link (no glibc version lock on target) ..."
-else
-    echo "🔨 Linking host with static SDL2 + SDL2_image + SDL2_mixer ..."
 fi
 
-# bash 3.2 + set -u: empty "${arr[@]}" errors; bash 4.4+ allows it. ${arr[@]+…} is portable.
-gcc "${LINK_FLAGS[@]+"${LINK_FLAGS[@]}"}" -o "$ROOT/host" "$ROOT/host.c" -I"$ROOT/lib_desktop" "${SDL_CFLAGS[@]+"${SDL_CFLAGS[@]}"}" \
-    "$LIB_A" \
-    "${SDL2_MIXER_STATIC_LIBS[@]+"${SDL2_MIXER_STATIC_LIBS[@]}"}" \
-    "${SDL2_IMAGE_STATIC_LIBS[@]+"${SDL2_IMAGE_STATIC_LIBS[@]}"}" \
-    "${SDL_STATIC_LIBS[@]+"${SDL_STATIC_LIBS[@]}"}" \
-    -pthread -lm -ldl
-
-if ldd "$ROOT/host" 2>/dev/null | grep -q libSDL; then
-    echo "⚠️  host still links libSDL dynamically"
-    ldd "$ROOT/host" | grep SDL
-    exit 1
+if [[ -f "$HEADER" ]]; then
+    echo "✅ Header: $HEADER"
 fi
 
-echo "✅ Built: $ROOT/host (SDL2 + SDL2_image + SDL2_mixer static, no SDL3)"
-ls -lh "$ROOT/host"
-if [[ "${STATIC:-0}" == "1" ]]; then
-    echo "   fully static — should run on older Linux VMs"
-    ldd "$ROOT/host" 2>&1 || echo "   (static binary — not a dynamic executable)"
-else
-    ldd "$ROOT/host" 2>/dev/null || true
-    # GNU grep -oP only; glibc symbol scan is Linux ELF anyway.
-    if [[ "$(uname -s)" == Linux ]]; then
-        max_glibc="$(objdump -T "$ROOT/host" 2>/dev/null | grep -oP 'GLIBC_[0-9.]+' | sort -V | tail -1 || true)"
-        if [[ -n "$max_glibc" ]]; then
-            echo "   requires $max_glibc on target (built on this machine's glibc)"
-            echo "   older VMs: build on target, or: STATIC=1 ./build_host.sh (needs glibc-static)"
-        fi
+echo "✅ Built: $LIB_SO (no SDL)"
+ls -lh "$LIB_SO"
+if command -v ldd >/dev/null 2>&1; then
+    if ldd "$LIB_SO" 2>/dev/null | grep -qi sdl; then
+        echo "⚠️  unexpected SDL dependency:"
+        ldd "$LIB_SO" | grep -i sdl || true
+        exit 1
     fi
+    echo "   dynamic deps:"
+    ldd "$LIB_SO" 2>/dev/null | sed 's/^/      /' || true
 fi
+
+# --- SDL host executable (disabled) ---
+# When you need a test binary again, restore host.c + sc_run and uncomment below.
+#
+# source "$ROOT/deps/sdl2_paths.sh"
+# ... vendored SDL2 / SDL2_image / SDL2_mixer ...
+# gcc ... -o "$ROOT/host" "$ROOT/host.c" -I"$LIB_DIR" "$LIB_A" ... SDL libs ...
+#
+# Called from Julia via ccall((:static_is_mouse_inside_element, path_to_libsc_game.so), ...)

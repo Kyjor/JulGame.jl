@@ -5,6 +5,9 @@ module InputModule
     using Dates
     using Base64
 
+    include(joinpath(@__DIR__, "..", "Static", "UIHitTest.jl"))
+    using .UIHitTestModule
+
     export Input
     mutable struct Input
         buttonsPressedDown::Vector{String}
@@ -47,6 +50,8 @@ module InputModule
 
         # SDL events pulled while coalescing SDL_MOUSEMOTION (processed on following poll_input iterations)
         pending_sdl_events::Vector{SDL2.SDL_Event}
+
+        uiHitTestBuffer::UIHitTestModule.HitTestBuffer
 
         function Input()
             this = new()
@@ -112,6 +117,7 @@ module InputModule
             this.isTestButtonClicked = false
             this.simulatedClickPosition = nothing
             this.pending_sdl_events = SDL2.SDL_Event[]
+            this.uiHitTestBuffer = UIHitTestModule.HitTestBuffer(64)
 
             return this
         end
@@ -205,6 +211,101 @@ module InputModule
 
     # UI hit-test: timings go to LatencyProfiler (summed per frame, printed only on slow-frame CRITICAL/WARNING reports).
     # Optional live spam: JULGAME_TRACE_INPUT_UI_HIT=1 (every SDL mouse event). Per-element: JULGAME_TRACE_INPUT_UI_HIT_ITER=1.
+    # GC/allocation deltas on batch @info lines: JULGAME_TRACE_INPUT_UI_HIT_GC=1 (uses Base.gc_num cumulative counters).
+    # A/B test: JULGAME_DISABLE_GC_DURING_UI_HIT=1 disables GC for the duration of each UI hit-test event (restored after).
+    const _trace_input_ui_hit_gc_ref = Ref{Union{Nothing, Bool}}(nothing)
+    const _disable_gc_during_ui_hit_ref = Ref{Union{Nothing, Bool}}(nothing)
+    const _disable_gc_during_ui_hit_warned_ref = Ref(false)
+
+    function _input_ui_hit_disable_gc_test()::Bool
+        v = _disable_gc_during_ui_hit_ref[]
+        if v === nothing
+            s = lowercase(strip(get(ENV, "JULGAME_DISABLE_GC_DURING_UI_HIT", "0")))
+            _disable_gc_during_ui_hit_ref[] = s == "1" || s in ("true", "yes", "on")
+        end
+        return _disable_gc_during_ui_hit_ref[]::Bool
+    end
+
+    function _input_ui_hit_maybe_without_gc(f)
+        if !_input_ui_hit_disable_gc_test()
+            return f()
+        end
+        if !_disable_gc_during_ui_hit_warned_ref[]
+            _disable_gc_during_ui_hit_warned_ref[] = true
+            @warn "JULGAME_DISABLE_GC_DURING_UI_HIT=1: automatic GC disabled during each UI hit-test event (memory will grow until GC is re-enabled)"
+        end
+        try
+            GC.enable(false)
+            return f()
+        finally
+            GC.enable(true)
+        end
+    end
+
+    function _input_ui_hit_gc_trace_logs()
+        v = _trace_input_ui_hit_gc_ref[]
+        if v === nothing
+            s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_GC", "0")))
+            _trace_input_ui_hit_gc_ref[] = s == "1" || s in ("true", "yes", "on")
+        end
+        return _trace_input_ui_hit_gc_ref[]::Bool
+    end
+
+    @inline function _ui_hit_gc_snapshot()::Tuple{Float64, Int}
+        gc_stats = Base.gc_num()
+        return (gc_stats.total_time / 1e6, Int(gc_stats.allocd))
+    end
+
+    @inline function _ui_hit_gc_delta(since::Tuple{Float64, Int})::Tuple{Float64, Int}
+        gc_stats = Base.gc_num()
+        gc_ms = gc_stats.total_time / 1e6 - since[1]
+        alloc_bytes = Int(gc_stats.allocd) - since[2]
+        return (gc_ms, alloc_bytes)
+    end
+
+    function _input_ui_hit_record_gc!(
+        prof,
+        gc_key::Symbol,
+        alloc_key::Symbol,
+        since::Tuple{Float64, Int},
+    )::Tuple{Float64, Int}
+        gc_ms, alloc_bytes = _ui_hit_gc_delta(since)
+        if prof !== nothing
+            JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, gc_key, gc_ms)
+            if alloc_bytes > 0
+                JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_count!(prof, alloc_key, alloc_bytes)
+            end
+        end
+        return gc_ms, alloc_bytes
+    end
+
+    function _input_ui_hit_gc_suffix(since::Union{Nothing, Tuple{Float64, Int}})
+        since === nothing && return ""
+        gc_ms, alloc_bytes = _ui_hit_gc_delta(since)
+        return " gc_ms=$(round(gc_ms, digits=3)) alloc_bytes=$alloc_bytes"
+    end
+
+    # Per-step gather breakdown (batch path): JULGAME_TRACE_INPUT_UI_HIT_GATHER_DETAIL=1
+    const _trace_input_ui_hit_gather_detail_ref = Ref{Union{Nothing, Bool}}(nothing)
+    function _input_ui_hit_gather_detail_logs()::Bool
+        v = _trace_input_ui_hit_gather_detail_ref[]
+        if v === nothing
+            s = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT_GATHER_DETAIL", "0")))
+            _trace_input_ui_hit_gather_detail_ref[] = s == "1" || s in ("true", "yes", "on")
+        end
+        return _trace_input_ui_hit_gather_detail_ref[]::Bool
+    end
+
+    @inline function _ui_hit_elapsed_ms(t0::UInt64)::Float64
+        return (time_ns() - t0) / 1e6
+    end
+
+    function _input_ui_hit_record_gather_ms!(prof, key::Symbol, elapsed_ms::Float64)
+        prof === nothing && return
+        JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, elapsed_ms)
+        return
+    end
+
     function _input_ui_hit_stream_logs()
         e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
         return e in ("1", "true", "yes", "on")
@@ -364,178 +465,11 @@ module InputModule
                     canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_canvases = length(canvases))
 
-                    # Use cached layer order instead of sorting every mouse event
-                    # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
-                    #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
-                                        # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
+                    elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_layer_order_cache; n_total = length(elementsOrderedByLayerDescending))
 
-                    uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
-
-                    entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(entitiesWithSpritesOrderedByLayerDescending), n_entities = length(MAIN.scene.entities))
-
-                    elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
-
-                    # TODO: add rest of entities without sprites in default order
-                    # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, MAIN.scene.entities)
-                    # append!(elementsOrderedByLayerDescending, restOfEntities)
-                    clickedAnElementAlready = false
-                    hoveredAnElementAlready = false
                     @debug "Checking $(length(elementsOrderedByLayerDescending)) elements for mouse event at $(this.mousePosition)"
-                    n_iter = 0
-                    n_skipped_inactive = 0
-                    n_skipped_canvas = 0
-                    n_skipped_ignore = 0
-                    n_miss_bounds = 0
-                    n_hit_inside = 0
-                    for element in elementsOrderedByLayerDescending
-                        n_iter += 1
-                        t_iter = time_ns()
-
-                        skipElement = !element.isActive
-                        if skipElement
-                            n_skipped_inactive += 1
-                        end
-                        if !skipElement
-                            for canvas in canvases
-                                if element in canvas.children && !canvas.isActive
-                                    skipElement = true
-                                    n_skipped_canvas += 1
-                                    break
-                                end
-                            end
-                        end
-                        if isa(element, JulGame.IEntity) && element.ignoreInputEvents
-                            skipElement = true
-                            if element.isActive
-                                n_skipped_ignore += 1
-                            end
-                        end
-
-                        if skipElement
-                            @debug "Skipping element $(element.name) - isActive: $(element.isActive), ignoreInputEvents: $(isa(element, JulGame.IEntity) ? element.ignoreInputEvents : "N/A")"
-                            _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_skip_early)
-                            continue
-                        end
-
-                        _input_ui_hit_span!(prof, t_iter, :hit_ui_iter_probe_active_filter)
-                        t_prep0 = time_ns()
-
-                        # Check position of button to see which we are interacting with
-                        eventWasInsideThisElement = true
-
-                        mouseX = this.mousePosition.x
-                        mouseY = this.mousePosition.y
-
-                        _input_ui_hit_span!(prof, t_prep0, :hit_ui_iter_probe_prep_hitbox)
-                        t_geom0 = time_ns()
-
-                        # UI Element position and size in screen space (MUST BE SCALED)
-                        elementPosition = get_element_position(element)
-                        _input_ui_hit_span!(prof, t_geom0, :hit_ui_iter_probe_get_position)
-                        t_sz0 = time_ns()
-
-                        elementSize = get_element_size(element)
-                        _input_ui_hit_span!(prof, t_sz0, :hit_ui_iter_probe_get_size)
-                        t_unpk0 = time_ns()
-
-                        screenElementX = elementPosition.x
-                        screenElementY = elementPosition.y
-                        screenElementWidth = elementSize.x
-                        screenElementHeight = elementSize.y
-
-                        @debug "Checking element '$(element.name)': mouse($mouseX, $mouseY) vs element($screenElementX, $screenElementY, $screenElementWidth, $screenElementHeight)"
-
-                        # Check if the mouse is inside the UI element (using game world coordinates)
-                        _input_ui_hit_span!(prof, t_unpk0, :hit_ui_iter_probe_unpack_layout)
-                        t_aabb = time_ns()
-                        if mouseX < screenElementX
-                            eventWasInsideThisElement = false
-                            @debug "  -> Mouse X ($mouseX) < element X ($screenElementX)"
-                        elseif mouseX > screenElementX + screenElementWidth
-                            eventWasInsideThisElement = false
-                            @debug "  -> Mouse X ($mouseX) > element right ($(screenElementX + screenElementWidth))"
-                        elseif mouseY < screenElementY
-                            eventWasInsideThisElement = false
-                            @debug "  -> Mouse Y ($mouseY) < element Y ($screenElementY)"
-                        elseif mouseY > screenElementY + screenElementHeight
-                            eventWasInsideThisElement = false
-                            @debug "  -> Mouse Y ($mouseY) > element bottom ($(screenElementY + screenElementHeight))"
-                        end
-                        @info "time_ns() - t_aabb: $(t_aabb/1e6) ms"
-                        _input_ui_hit_span!(prof, t_aabb, :hit_ui_iter_probe_aabb)
-
-                        if !eventWasInsideThisElement
-                            element.isHovered = false
-                            t_ctr = time_ns()
-                            n_miss_bounds += 1
-                            _input_ui_hit_span!(prof, t_ctr, :hit_ui_iter_miss_hover_counter_inc)
-                            continue
-                        end
-
-                        n_hit_inside += 1
-                        t_hi = time_ns()
-                        @debug "  -> Mouse is INSIDE element '$(element.name)'"
-
-                        clicked_down_here = clicked_down_on_this_element(this, element)
-                        _input_ui_hit_span!(prof, t_hi, :hit_inside_1_clicked_down_query)
-                        t_hi = time_ns()
-
-                        canClickOnThisElement = (!clickedAnElementAlready || element.forceClickCheck) && clicked_down_here
-                        @debug "  -> canClickOnThisElement: $canClickOnThisElement, clickedAnElementAlready: $clickedAnElementAlready, forceClickCheck: $(element.forceClickCheck), clicked_down_on_this_element: $clicked_down_here"
-                        _input_ui_hit_span!(prof, t_hi, :hit_inside_2_can_click_bools)
-                        t_hi = time_ns()
-
-                        if !clickedAnElementAlready || element.forceClickCheck
-                            shouldHandleEvent = (!hoveredAnElementAlready && evt.type == SDL2.SDL_MOUSEMOTION) ||
-                                (element.forceClickCheck && evt.type == SDL2.SDL_MOUSEMOTION) ||
-                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && !clickedAnElementAlready) ||
-                                (evt.type == SDL2.SDL_MOUSEBUTTONDOWN && element.forceClickCheck) ||
-                                (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
-
-                            @debug "  -> shouldHandleEvent: $shouldHandleEvent (event type: $(evt.type), hoveredAnElementAlready: $hoveredAnElementAlready)"
-                            _input_ui_hit_span!(prof, t_hi, :hit_inside_3a_should_handle_expr)
-                            t_hi = time_ns()
-
-                            if shouldHandleEvent
-                                @debug "  -> Handling event for element '$(element.name)'"
-                                JulGame.UI.handle_event(element, evt, this.mousePosition.x, this.mousePosition.y)
-                                t_hi = time_ns()
-                                if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-                                   push!(this.elementsBeingClickedDownOn, element)
-                                   @debug "  -> Added '$(element.name)' to elementsBeingClickedDownOn"
-                                end
-                                _input_ui_hit_span!(prof, t_hi, :hit_inside_5_push_clicked_down_optional)
-                                t_hi = time_ns()
-                            else
-                                _input_ui_hit_span!(prof, t_hi, :hit_inside_4_skip_should_handle_false)
-                                t_hi = time_ns()
-                            end
-                            if element.isHovered
-                                hoveredAnElementAlready = true
-                            end
-                            _input_ui_hit_span!(prof, t_hi, :hit_inside_6_hover_an_element_already)
-                            t_hi = time_ns()
-                        else
-                            _input_ui_hit_span!(prof, t_hi, :hit_inside_3b_skip_clicked_guard)
-                            t_hi = time_ns()
-                        end
-
-                        if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-                            @debug "Mouse button down at $(this.mousePosition) on element '$(element.name)'"
-                        elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
-                            @debug "Mouse button up at $(this.mousePosition) on element '$(element.name)'"
-                            if canClickOnThisElement
-                                @debug "CLICKED on '$(element.name)' at $(this.mousePosition), skipping rest of event loop"
-                            else
-                                @debug "  -> Button up on '$(element.name)' but canClickOnThisElement is false"
-                            end
-                            clickedAnElementAlready = true
-                        end
-                        _input_ui_hit_span!(prof, t_hi, :hit_inside_7_mouse_btn_tail)
-                    end
+                    _run_ui_hit_test_loop!(this, evt, prof, canvases, elementsOrderedByLayerDescending)
                     t_tail = Ref(time_ns())
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP
                         this.elementsBeingClickedDownOn = []
@@ -1426,4 +1360,6 @@ module InputModule
     #         end
     #     end
     # end
+
+    include(joinpath(@__DIR__, "InputUIHit.jl"))
 end # module InputModule
