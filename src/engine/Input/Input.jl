@@ -464,6 +464,7 @@ module InputModule
                             eventWasInsideThisElement = false
                             @debug "  -> Mouse Y ($mouseY) > element bottom ($(screenElementY + screenElementHeight))"
                         end
+                        @info "time_ns() - t_aabb: $(t_aabb/1e6) ms"
                         _input_ui_hit_span!(prof, t_aabb, :hit_ui_iter_probe_aabb)
 
                         if !eventWasInsideThisElement
