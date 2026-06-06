@@ -5,6 +5,18 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     // include("../../utils/Enums.jl")
     // using ..Component.JulGame
     // import ..Component 
+
+    
+    class Collider {
+        enabled: boolean
+        isPlatformerCollider: boolean
+        isTrigger: boolean
+        offset: Vector2f
+        size: Vector2f
+        tag: string
+    }
+
+
     
     class InternalCollider {
         collisionEvents: Function[]
@@ -152,7 +164,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         return self.currentCollisions.length > 0
     }
 
-    function Component_add_collision_event(self: InternalCollider, event: any) {
+    function Component_add_collision_event(self: InternalCollider, event) {
         self.collisionEvents.push(event)
     }        
 
@@ -168,8 +180,8 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let b = (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.round(posB.x), Math.round(posB.y), Math.round(colliderBXSize), Math.round(colliderBYSize))
 
         let rgba = { r: 0, g: 0, b: 0, a: 255 }
-        // (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
-        // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
+        // Object.assign(rgba, (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer))
+        // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 255, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
         
         let result = (globalThis as any).JulGameSdl.glue_SDL_Rect(0,0,0,0)
         let isIntersection = (globalThis as any).JulGameSdl.glue_SDL_IntersectRect(a, b, result)
@@ -201,7 +213,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             let b1 = (globalThis as any).JulGameSdl.glue_SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
             // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, a1)
             // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, b1)
-            // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
+            // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
 
             // console.log("col a (me): $(a)")
             // console.log("col b (other): $(b)")
@@ -245,7 +257,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             }
         }
 
-        //(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
+        //(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
 
         return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
     }
@@ -255,6 +267,5 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         newCollider.collisionEvents = self.collisionEvents
         return newCollider
     }
-
-export { InternalCollider }
    
+export { Collider, Component_add_collision_event, Component_check_collisions, Component_duplicate, Component_get_offset, Component_get_size, Component_get_tag, Component_set_offset, Component_set_size, InternalCollider, check_collision }

@@ -105,6 +105,16 @@ void glue_SDL_SetRenderDrawColor(int r, int g, int b, int a) {
     SDL_SetRenderDrawColor(renderer, (Uint8)r, (Uint8)g, (Uint8)b, (Uint8)a);
 }
 
+/* Packed r,g,b,a for JS (single cwrap return). */
+EMSCRIPTEN_KEEPALIVE
+unsigned glue_SDL_GetRenderDrawColor_packed(void) {
+    Uint8 r = 0, g = 0, b = 0, a = 255;
+    if (renderer != NULL) {
+        SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+    }
+    return (unsigned)r | ((unsigned)g << 8) | ((unsigned)b << 16) | ((unsigned)a << 24);
+}
+
 EMSCRIPTEN_KEEPALIVE
 void glue_SDL_RenderFillRectF(float x, float y, float w, float h) {
     if (renderer == NULL) {
@@ -189,6 +199,17 @@ void glue_SDL_SetTextureAlphaMod(void *texture, int a) {
         return;
     }
     SDL_SetTextureAlphaMod((SDL_Texture *)texture, (Uint8)a);
+}
+
+/* Packed r,g,b,a from SDL_GetTextureColorMod + SDL_GetTextureAlphaMod. */
+EMSCRIPTEN_KEEPALIVE
+unsigned glue_SDL_GetTextureColorMod_packed(void *texture) {
+    Uint8 r = 255, g = 255, b = 255, a = 255;
+    if (texture != NULL) {
+        SDL_GetTextureColorMod((SDL_Texture *)texture, &r, &g, &b);
+        SDL_GetTextureAlphaMod((SDL_Texture *)texture, &a);
+    }
+    return (unsigned)r | ((unsigned)g << 8) | ((unsigned)b << 16) | ((unsigned)a << 24);
 }
 
 /*

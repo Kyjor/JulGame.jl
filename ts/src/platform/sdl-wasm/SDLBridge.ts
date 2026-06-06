@@ -27,6 +27,7 @@ type JulGameSdlCApi = {
     glue_SDL_RenderSetLogicalSize: (w: number, h: number) => void;
     glue_SDL_SetRenderDrawBlendMode_BLEND: () => void;
     glue_SDL_SetRenderDrawColor: (r: number, g: number, b: number, a: number) => void;
+    glue_SDL_GetRenderDrawColor_packed: () => number;
     glue_SDL_RenderFillRectF: (x: number, y: number, w: number, h: number) => void;
     glue_IMG_Load: (path: string) => number;
     /** C glue uses static renderer; first arg from transpiled Julia is ignored. */
@@ -38,6 +39,7 @@ type JulGameSdlCApi = {
     glue_surface_h: (surface: number) => number;
     glue_SDL_SetTextureColorMod: (tex: number, r: number, g: number, b: number) => void;
     glue_SDL_SetTextureAlphaMod: (tex: number, a: number) => void;
+    glue_SDL_GetTextureColorMod_packed: (tex: number) => number;
     glue_render_copy_ex: (
         texture: number,
         has_src: number,
@@ -72,8 +74,26 @@ type JulGameSdlCApi = {
     ) => number;
 };
 
+function unpackRenderDrawColorPacked(packed: number): { r: number; g: number; b: number; a: number } {
+    return {
+        r: packed & 0xff,
+        g: (packed >> 8) & 0xff,
+        b: (packed >> 16) & 0xff,
+        a: (packed >>> 24) & 0xff,
+    };
+}
+
 /** API shape consumed by `_generated` engine code + wasm glue. */
 export type JulGameSdlApi = JulGameSdlCApi & {
+    glue_SDL_GetRenderDrawColor: (
+        _renderer: number,
+        ..._legacyOut: unknown[]
+    ) => { r: number; g: number; b: number; a: number } | void;
+    glue_SDL_GetTextureColorMod: (
+        tex: number,
+        ..._legacyOut: unknown[]
+    ) => { r: number; g: number; b: number } | void;
+    glue_SDL_GetTextureAlphaMod: (tex: number, ..._legacyOut: unknown[]) => number | void;
     glue_SDL_FRect: (x: number, y: number, w: number, h: number) => { x: number; y: number; w: number; h: number };
     glue_SDL_Rect: (x: number, y: number, w: number, h: number) => { x: number; y: number; w: number; h: number };
     glue_SDL_Point: (x: number, y: number) => { x: number; y: number };
@@ -96,6 +116,7 @@ export type JulGameSdlApi = JulGameSdlCApi & {
         center: { x: number; y: number },
         flip: number,
     ) => number;
+    glue_SDL_ALPHA_OPAQUE: number;
 };
 
 function wrapRenderCopyEx(
@@ -187,6 +208,7 @@ export class SDLBridge {
                 "number",
                 "number",
             ]) as JulGameSdlCApi["glue_SDL_SetRenderDrawColor"],
+            glue_SDL_GetRenderDrawColor_packed: cwrap("glue_SDL_GetRenderDrawColor_packed", "number", []) as JulGameSdlCApi["glue_SDL_GetRenderDrawColor_packed"],
             glue_SDL_RenderFillRectF: cwrap("glue_SDL_RenderFillRectF", null, [
                 "number",
                 "number",
@@ -212,6 +234,9 @@ export class SDLBridge {
                 "number",
             ]) as JulGameSdlCApi["glue_SDL_SetTextureColorMod"],
             glue_SDL_SetTextureAlphaMod: cwrap("glue_SDL_SetTextureAlphaMod", null, ["number", "number"]) as JulGameSdlCApi["glue_SDL_SetTextureAlphaMod"],
+            glue_SDL_GetTextureColorMod_packed: cwrap("glue_SDL_GetTextureColorMod_packed", "number", [
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_GetTextureColorMod_packed"],
             glue_render_copy_ex: cwrap("glue_render_copy_ex", "number", [
                 "number",
                 "number",
@@ -251,6 +276,56 @@ export class SDLBridge {
         const glue_SDL_Point: JulGameSdlApi["glue_SDL_Point"] = (x, y) => ({ x, y });
         const glue_SDL_FPoint: JulGameSdlApi["glue_SDL_FPoint"] = (x, y) => ({ x, y });
 
+        const glue_SDL_GetRenderDrawColorWrapped: JulGameSdlApi["glue_SDL_GetRenderDrawColor"] = (
+            _renderer,
+            ...legacyOut
+        ) => {
+            const color = unpackRenderDrawColorPacked(cApi.glue_SDL_GetRenderDrawColor_packed());
+            // Legacy transpiled out-params (rgba.r, …) — caller keeps its preset `rgba` object.
+            if (legacyOut.length >= 4) {
+                return;
+            }
+            return color;
+        };
+
+        const glue_SDL_SetRenderDrawColorWrapped = (
+            a: number,
+            b?: number,
+            c?: number,
+            d?: number,
+            e?: number,
+        ): void => {
+            if (b !== undefined && c !== undefined && d !== undefined && e !== undefined) {
+                cApi.glue_SDL_SetRenderDrawColor(b, c, d, e);
+                return;
+            }
+            if (b !== undefined && c !== undefined && d !== undefined) {
+                cApi.glue_SDL_SetRenderDrawColor(a, b, c, d);
+            }
+        };
+
+        const glue_SDL_GetTextureColorModWrapped: JulGameSdlApi["glue_SDL_GetTextureColorMod"] = (
+            tex,
+            ...legacyOut
+        ) => {
+            const { r, g, b } = unpackRenderDrawColorPacked(cApi.glue_SDL_GetTextureColorMod_packed(tex));
+            if (legacyOut.length > 0) {
+                return;
+            }
+            return { r, g, b };
+        };
+
+        const glue_SDL_GetTextureAlphaModWrapped: JulGameSdlApi["glue_SDL_GetTextureAlphaMod"] = (
+            tex,
+            ...legacyOut
+        ) => {
+            const { a } = unpackRenderDrawColorPacked(cApi.glue_SDL_GetTextureColorMod_packed(tex));
+            if (legacyOut.length > 0) {
+                return;
+            }
+            return a;
+        };
+
         const glue_SDL_RenderFillRectFWrapped = (a: unknown, b?: number, cArg?: number, d?: number): void => {
             if (typeof b === "number" && typeof cArg === "number" && typeof d === "number" && typeof a === "number") {
                 cApi.glue_SDL_RenderFillRectF(a, b, cArg, d);
@@ -269,7 +344,12 @@ export class SDLBridge {
                 glue_SDL_Rect,
                 glue_SDL_Point,
                 glue_SDL_FPoint,
+                glue_SDL_GetRenderDrawColor: glue_SDL_GetRenderDrawColorWrapped,
+                glue_SDL_SetRenderDrawColor: glue_SDL_SetRenderDrawColorWrapped,
+                glue_SDL_GetTextureColorMod: glue_SDL_GetTextureColorModWrapped,
+                glue_SDL_GetTextureAlphaMod: glue_SDL_GetTextureAlphaModWrapped,
                 glue_SDL_RenderFillRectF: glue_SDL_RenderFillRectFWrapped as JulGameSdlApi["glue_SDL_RenderFillRectF"],
+                glue_SDL_ALPHA_OPAQUE: 255,
                 glue_SDL_RenderCopyEx: wrapRenderCopyEx(cApi.glue_render_copy_ex),
                 glue_SDL_RenderCopyExF: wrapRenderCopyExF(cApi.glue_render_copy_ex_f),
             },

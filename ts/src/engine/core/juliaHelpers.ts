@@ -12,6 +12,27 @@ export function clamp(val: number, min: number, max: number): number {
 export function unsafe_string(ptr: number): string {
     return "nothing yet"
 }
+
+/**
+ * Julia `unsafe_wrap(Array, ptr, n, own)` for SDL surface pointers.
+ * Transpiled code reads `surface[0].w` / `surface[0].h` after wrapping.
+ */
+export function unsafe_wrap(
+    _arrayType: unknown,
+    ptr: number | null | undefined,
+    _count?: number,
+    _own?: boolean,
+): Array<{ w: number; h: number }> {
+    if (ptr == null || ptr === 0) {
+        return [{ w: 0, h: 0 }]
+    }
+    const sdl = (globalThis as { JulGameSdl?: { glue_surface_w?: (p: number) => number; glue_surface_h?: (p: number) => number } })
+        .JulGameSdl
+    if (sdl?.glue_surface_w && sdl?.glue_surface_h) {
+        return [{ w: sdl.glue_surface_w(ptr), h: sdl.glue_surface_h(ptr) }]
+    }
+    return [{ w: 0, h: 0 }]
+}
 export function joinpath(...parts: string[]): string {
     if (parts.length === 0) return ""
     const normalized = parts.map((p) => String(p).replace(/\\/g, "/"))

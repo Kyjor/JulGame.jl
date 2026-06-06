@@ -443,53 +443,53 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
 
 
                 // if evt.jaxis.which == 0
-                //     this.jaxis = evt.jaxis
+                //     self.jaxis = evt.jaxis
                 // }
-                // for i in 0:this.numAxes-1
-                //     axis = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i)
+                // for i in 0:self.numAxes-1
+                //     axis = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(self.joystick, i)
                 //     if i < 0
-                //         console.debug("Axis $i: $((globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(this.joystick, i))")
+                //         console.debug("Axis $i: $((globalThis as any).JulGameSdl.glue_SDL_JoystickGetAxis(self.joystick, i))")
                 //     }
                 //     JOYSTICK_DEAD_ZONE = 8000
 
                 //     if i == 0
                 //         if axis < -JOYSTICK_DEAD_ZONE
-                //             this.xDir = -1
+                //             self.xDir = -1
                 //         // Right of dead zone
                 //         elseif axis > JOYSTICK_DEAD_ZONE
-                //             this.xDir = 1
+                //             self.xDir = 1
                 //         else
-                //             this.xDir = 0
+                //             self.xDir = 0
                 //         }
                 //     elseif i == 1
                 //         if axis < -JOYSTICK_DEAD_ZONE
-                //             this.yDir = -1
+                //             self.yDir = -1
                 //         // Right of dead zone
                 //         elseif axis > JOYSTICK_DEAD_ZONE
-                //             this.yDir = 1
+                //             self.yDir = 1
                 //         else
-                //             this.yDir = 0
+                //             self.yDir = 0
                 //         }
                 //     }
 
                 // }
 
-                // for i in 0:this.numButtons-1
-                //     button = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetButton(this.joystick, i)
+                // for i in 0:self.numButtons-1
+                //     button = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetButton(self.joystick, i)
 
                 //     if button != 0
                 //         console.debug("Button $i: $(button)")
                 //     }
                 //     if i == 0 && button == 1
-                //         this.button = 1
+                //         self.button = 1
                 //     elseif i == 0
-                //         this.button = 0
+                //         self.button = 0
                 //     }
                 // }
 
-                // for i in 0:this.numHats-1
+                // for i in 0:self.numHats-1
 
-                //     hat = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetHat(this.joystick, i)
+                //     hat = (globalThis as any).JulGameSdl.glue_SDL_JoystickGetHat(self.joystick, i)
                 //     if hat != 0
                 //         console.debug("Hat $i: $(hat)")
                 //     }
@@ -510,8 +510,8 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
 
         }
 
-        // if this.isTestButtonClicked
-        //     lift_mouse_after_simulated_click(this)
+        // if self.isTestButtonClicked
+        //     lift_mouse_after_simulated_click(self)
         // }
     }
 

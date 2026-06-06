@@ -1,5 +1,7 @@
 export {}
 import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
+import { Camera } from "./Camera/Camera";
+import { InternalSprite } from "./Component/Sprite";
 
 
 	// using ..JulGame
@@ -66,7 +68,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 		scratchInputCanvases: any[]
 		scratchInputHiddenCanvasChildIds: Set{UInt}
 
-		constructor() {
+		constructor() {
 			this = new()
 
 			console.debug("Initializing SDL")
@@ -141,12 +143,12 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 	function call_script_initialize(this, script) {
 		let script_type = typeof(script)
 		
-		if ((script_type in this.knownScriptTypes)) {
+		if (!(script_type in this.knownScriptTypes)) {
 			// First time: JIT compiles the method (slow but only once)
 			console.debug(`First initialize call for ${script_type} - ...compiling`)
 			this.knownScriptTypes.push(script_type)
 			this.scriptTimings[script_type] = []
-		}
+		};
 		
 		(globalThis as any).JulGame.initialize(script)
 	}
@@ -160,7 +162,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 	function call_script_update(this, script, deltaTime: number, profile: boolean=false) {
 		let script_type = typeof(script)
 		
-		if ((script_type in this.knownScriptTypes)) {
+		if (!(script_type in this.knownScriptTypes)) {
 			// First call: register type (compilation happens here)
 			console.debug(`First update call for ${script_type} - ...compiling`)
 			this.knownScriptTypes.push(script_type)
@@ -169,7 +171,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 		
 		// Profile if requested
 		if (profile && haskey(this.scriptTimings, script_type)) {
-			let start_time = time_ns()
+			let start_time = time_ns();
 			(globalThis as any).JulGame.update(script, deltaTime)
 			let elapsed = (time_ns() - start_time) / 1e6
 			if (this.latencyProfiler !== null) {
@@ -194,10 +196,10 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 	function call_script_shutdown(this, script) {
 		let script_type = typeof(script)
 		
-		if ((script_type in this.knownScriptTypes)) {
+		if (!(script_type in this.knownScriptTypes)) {
 			this.knownScriptTypes.push(script_type)
 			console.debug(`First shutdown call for ${script_type} - ...compiling`)
-		}
+		};
 		
 		// Always use invokelatest (fast after first compilation)
 		(globalThis as any).JulGame.on_shutdown(script)
@@ -264,7 +266,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 		console.debug("Initializing scripts and components")
         initialize_scripts_and_components()
 
-        if ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.IS_WEB) {
+        if (!(globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.IS_WEB) {
 			console.debug("Starting non editor loop")
             full_loop(MAIN)
             return
@@ -278,7 +280,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 
         initialize_scripts_and_components()
         
-        if ((globalThis as any).JulGame.IS_EDITOR) {
+        if (!(globalThis as any).JulGame.IS_EDITOR) {
 			console.debug("Starting non editor loop")
             full_loop(self)
             return
@@ -289,7 +291,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 		console.debug("Resetting camera position")
 		if (self.scene.camera === null return }) {
 
-        let cameraPosition = {x: 0.0, y: 0.0, z: 0.0}
+        let cameraPosition = {x: 0.0, y: 0.0, z: 0.0};
         (globalThis as any).JulGame.CameraModule.update(self.scene.camera, cameraPosition)
     }
 	
@@ -308,7 +310,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 						if (self.testMode) {
 
 						} else {
-							@error String(e)
+							console.error(String(e))
 
 						}
                     }
@@ -343,7 +345,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
             if (!self.shouldChangeScene) {
                 // Clean up all immediate UI components on game shutdown
                 (globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
-				console.debug("Cleaning up immediate UI components")
+				console.debug("Cleaning up immediate UI components");
 				(globalThis as any).JulGame.cleanup_sdl_resources()
 				return
             } else {
@@ -407,7 +409,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 
 		this.spriteLayers = build_sprite_layers()
 		
-		if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
+		if (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 
 			for (const script of scripts) {
 				try {
@@ -416,7 +418,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 					if (this.testMode) {
 
 					} else {
-						@error String(e)
+						console.error(String(e))
 
 					}
 				}
@@ -446,7 +448,7 @@ import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 		} 
 		
 		// Batch static sprites for performance
-		if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
+		if (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 			console.debug("Batching static sprites")
 			MAIN.scene.batchedLayers = (globalThis as any).JulGame.StaticSpriteBatcherModule.batch_static_sprites(MAIN.scene)
 		}
@@ -469,7 +471,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	this = MAIN
 	console.debug(`Changing scene to: ${sceneFileName}`)
 	this.close = true
-	this.shouldChangeScene = true
+	this.shouldChangeScene = true;
 	
 	// Clean up all immediate UI components
 	(globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
@@ -486,7 +488,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	let entitiesToDestroy = []
 
 	for (const entity of this.scene.entities) {
-		if (entity.persistentBetweenScenes && ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor)) {
+		if (entity.persistentBetweenScenes && (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor)) {
 			console.debug("Persistent entity: ", entity.name, " with id: ", entity.id)
 			persistentEntities.push(entity)
 			skipcount += 1
@@ -494,7 +496,7 @@ function JulGame_change_scene(sceneFileName: string) {
 		}
 
 		destroy_entity_components(this, entity)
-		if ((globalThis as any).JulGame.IS_EDITOR) {
+		if (!(globalThis as any).JulGame.IS_EDITOR) {
 			for (const script of entity.scripts) {
 				try {
 					call_script_shutdown(this, script)
@@ -504,7 +506,7 @@ function JulGame_change_scene(sceneFileName: string) {
 					} else {
 						if (typeof(e) != ErrorException) {
 							console.log(`Error shutting down script: ${typeof(script)}`)
-							@error String(e)
+							console.error(String(e))
 
 						}
 					}
@@ -532,12 +534,12 @@ function JulGame_change_scene(sceneFileName: string) {
 			persistentUIElements.push(uiElement)
 			skipcount += 1
 			continue
-		}
+		};
         (globalThis as any).JulGame.destroy(uiElement)
 	}
 	
 	// Clean up batched static sprite textures
-	console.debug("Cleaning up batched sprite layers")
+	console.debug("Cleaning up batched sprite layers");
 	(globalThis as any).JulGame.StaticSpriteBatcherModule.cleanup_batched_layers(this.scene.batchedLayers)
 	
 	//load new scene 
@@ -551,7 +553,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	
 	if ((globalThis as any).JulGame.IS_EDITOR) {
 		initialize_new_scene(this)
-	}
+	};
 	(globalThis as any).JulGame.IS_CHANGING_SCENE = false
 }
 
@@ -635,7 +637,7 @@ function JulGame_destroy_entity(entity) {
 function JulGame_destroy_ui_element(self: MainLoop, uiElement) {
 	for i = eachindex(self.scene.uiElements)
 		if (self.scene.uiElements[i] == uiElement) {
-			(self.scene.uiElements).splice((i) - 1, 1)
+			(self.scene.uiElements).splice((i) - 1, 1);
 			(globalThis as any).JulGame.destroy(uiElement)
 			mark_input_layer_order_dirty(self)  // Cache needs rebuild
 			break
@@ -732,7 +734,7 @@ Parameters:
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 */
 function _accum_ui_render_breakdown_ms(prof, t0, key: string)
-	if (prof === null) { return let t1 = time_ns() }
+	if (prof === null) { return let t1 = time_ns() };
 	(globalThis as any).JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0) / 1e6)
 	t0 = t1
 	return
@@ -742,10 +744,10 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 	// Start frame profiling
 	if (this.latencyProfiler !== null) {
 		(globalThis as any).JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
-	}
+	};
 
 	(globalThis as any).JulGame.FrameCount += 1
-	if (this.shouldChangeScene && (globalThis as any).JulGame.IS_EDITOR) {
+	if (this.shouldChangeScene && !(globalThis as any).JulGame.IS_EDITOR) {
 		this.shouldChangeScene = false
 		initialize_new_scene(this)
 		return
@@ -756,10 +758,10 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 			let DEBUG = false
 			//region Input
-			if ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.IS_WEB) {
+			if (!(globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.IS_WEB) {
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "input_poll")
-				}
+				};
 
 				(globalThis as any).JulGame.InputModule.poll_input(this.input)
 
@@ -800,13 +802,13 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			}
 			
 			//region Physics
-			if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
+			if (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "physics")
 				}
 				
 				let currentPhysicsTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
-				let deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
+				let deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0;
 				(globalThis as any).JulGame.DELTA_TIME = deltaTime
 				if (this.testMode) {
 					this.currentTestTime += deltaTime
@@ -824,7 +826,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 						} else {
 							console.log(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-							@error String(e)
+							console.error(String(e))
 
 						}
 					}
@@ -842,12 +844,12 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 		}
 		
 		let currentRenderTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
-		if (this.scene.camera !== null && (globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.IS_WEB) {
+		if (this.scene.camera !== null && !(globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.IS_WEB) {
 			(globalThis as any).JulGame.CameraModule.update(this.scene.camera)
 		}
 		
 		// Check if static sprite batches need regeneration
-		if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
+		if (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 			(globalThis as any).JulGame.StaticSpriteBatcherModule.check_and_rebatch_if_needed(this.scene)
 		}
 
@@ -856,7 +858,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 					continue
 				}
 
-				if ((globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
+				if (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 					try {
 						// Call scripts with optional per-script profiling
 						for (const script of entity.scripts) {
@@ -864,7 +866,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 							call_script_update(this, script, deltaTime, profile_scripts)
 						}
 						if (this.close && !this.isGameModeRunningInEditor) {
-							console.debug("Closing game")
+							console.debug("Closing game");
 							(globalThis as any).JulGame.engine_states.current_state = "quit"
 							return
 						}
@@ -873,7 +875,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 						} else {
 							console.log(entity.name, " with id: ", entity.id, " has a problem with it's update")
-							@error String(e)
+							console.error(String(e))
 
 						}
 					}
@@ -904,7 +906,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				(globalThis as any).JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
 			}
 			
-			if ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.IS_WEB) {
+			if (!(globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.IS_WEB) {
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "sprite_rendering")
 				}
@@ -993,7 +995,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						}
 						console.log(parent_info, " has a problem with it's render function")
-						@error String(e)
+						console.error(String(e))
 
 					}
 				}
@@ -1019,23 +1021,22 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				]
 
 				// Draw a gray rect under the debug textboxes
-				let rgba = { r: 0, g: 0, b: 0, a: 255 };
-				(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
+				let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer)
 				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a];
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255);
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(100, 100, 100, 255);
 				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, (globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length));
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, currentColor[0], currentColor[1], currentColor[2], currentColor[3])
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(currentColor[0], currentColor[1], currentColor[2], currentColor[3])
 
 				if (this.debugTextBoxes.length == 0) {
 					for i = eachindex(statTexts)
 				 		let textBox = UI.TextBoxModule.TextBox(statTexts[i], 24, {x: 0, y: 35 * i})
-				 		this.debugTextBoxes.push(textBox)
+				 		this.debugTextBoxes.push(textBox);
                          (globalThis as any).JulGame.initialize(textBox)
 				 	}
 				 } else {
 				 	for i = eachindex(this.debugTextBoxes)
                          let db_textbox = this.debugTextBoxes[i]
-                         db_textbox.text = statTexts[i]
+                         db_textbox.text = statTexts[i];
                          (globalThis as any).JulGame.render(db_textbox)
 			 	  	}
 				 }
@@ -1046,7 +1047,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				yield()
 			}
 
-			if ((globalThis as any).JulGame.IS_EDITOR) {
+			if (!(globalThis as any).JulGame.IS_EDITOR) {
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "present_and_delay")
 				};
@@ -1062,7 +1063,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			if (this.testMode) {
 
 			} else {
-				@error String(e)
+				console.error(String(e))
 
 			}
 		}
@@ -1115,7 +1116,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			if (!skipSprite && spriteExists) {
 				// Skip static sprites in-game (they're rendered via batched textures)
 				// BUT always render them in editor scene viewer for manipulation
-				let should_batch = sprite.isStatic && ((globalThis as any).JulGame.IS_EDITOR || self.isGameModeRunningInEditor)
+				let should_batch = sprite.isStatic && (!(globalThis as any).JulGame.IS_EDITOR || self.isGameModeRunningInEditor)
 				if (!should_batch) {
 					renderOrder.push((sprite.layer, sprite))
 				}
@@ -1143,7 +1144,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 	
 	// Add batched static sprite layers to render order
 	// Only render batched layers when NOT in editor scene viewer
-	if ((globalThis as any).JulGame.IS_EDITOR || self.isGameModeRunningInEditor) {
+	if (!(globalThis as any).JulGame.IS_EDITOR || self.isGameModeRunningInEditor) {
 		for (layer, batched_layer) in self.scene.batchedLayers
 			renderOrder.push((layer, batched_layer))
 		}
@@ -1183,7 +1184,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
 					}
 					console.log(parent_info, " has a problem with rendering")
-					@error String(e)
+					console.error(String(e))
 
 				}
 			}
@@ -1198,7 +1199,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 	function stop_game_in_editor(self: MainLoop) {
 		self.isGameModeRunningInEditor = false;
-		(globalThis as any).JulGameSdl.glue_Mix_HaltMusic()
+		(globalThis as any).JulGameSdl.glue_Mix_HaltMusic();
 		
 		// Clean up all immediate UI components when stopping the game in editor
 		(globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
@@ -1222,9 +1223,8 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			}
 	
 			if (entity.collider != null) {
-				let rgba = { r: 0, g: 0, b: 0, a: 255 };
-        		(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
+				let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer);
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 0, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
 				let scale = entity.transform.scale
 	
@@ -1241,9 +1241,9 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				let colOffset = collider.offset
 				colOffset = {x: colOffset.x, y: colOffset.y};
 						
-				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer,;
+				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, 
 				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, (pos.y + colOffset.y - cameraPosition.y) * S, entity.transform.scale.x * colSize.x * S, entity.transform.scale.y * colSize.y * S));
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
 			}
 		}
 	}
@@ -1251,12 +1251,12 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 	function JulGame_cleanup_sdl_resources() {
 		(globalThis as any).JulGameSdl.glue_SDL_ClearError()
 		console.debug("Closing window")
-		if ((globalThis as any).JulGame.Renderer != Ptr{(globalThis as any).JulGameSdl.glue_SDL_Renderer}(null) && (globalThis as any).JulGame.Renderer != null) {
+		if ((globalThis as any).JulGame.Renderer != null && (globalThis as any).JulGame.Renderer != null) {
 			console.debug(`Destroying renderer: ${(globalThis as any).JulGame.Renderer}`);
 			(globalThis as any).JulGameSdl.glue_SDL_DestroyRenderer((globalThis as any).JulGame.Renderer)
 			if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
 				console.error(`Failed to destroy renderer, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-			}
+			};
 			(globalThis as any).JulGame.Renderer = null
 		} else {
 			console.debug("Renderer is already destroyed")
@@ -1295,3 +1295,4 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			console.error(`Failed to quit SDL, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 		}
 	}
+export { JulGame_change_scene, JulGame_cleanup_sdl_resources, JulGame_create_entity, JulGame_destroy, JulGame_destroy_entity, JulGame_destroy_ui_element, JulGame_initialize, JulGame_on_shutdown, JulGame_update, MainLoop, _accum_ui_render_breakdown_ms, build_sprite_layers, call_script_initialize, call_script_shutdown, call_script_update, cleanup_coroutines, clear_script_profiling_data, create_new_canvas, create_new_entity, create_new_image, create_new_rectangle, create_new_screen_button, create_new_text_box, destroy_entity_components, full_loop, game_loop, initialize_new_scene, initialize_scripts_and_components, mark_input_layer_order_dirty, prepare_window_scripts_and_start_loop, print_script_profiling_report, render_scene_debug, render_scene_sprites_and_shapes, reset_camera_position, start_game_in_editor, stop_game_in_editor }

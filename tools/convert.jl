@@ -36,15 +36,26 @@ const REFCELL_UNBOX_BLACKLIST = Set{String}([
 ])
 
 const TS_CLASS_NAMES_NEEDING_NEW = String[
+    "Entity",
     "InternalAnimator",
-    "InternalCircleCollider",
     "InternalCollider",
     "InternalRigidbody",
-    "InternalShape",
     "InternalSoundSource",
     "InternalSprite",
     "Transform",
 ]
+
+# Symbols used across generated engine modules — inject `import { … } from "…"` when referenced.
+const _CROSS_MODULE_SYMBOL_SOURCES = Dict{String, Tuple{String, Vector{String}}}(
+    "InternalAnimator" => ("./Component/Animator", ["InternalAnimator"]),
+    "InternalCollider" => ("./Component/Collider", ["InternalCollider"]),
+    "InternalRigidbody" => ("./Component/Rigidbody", ["InternalRigidbody"]),
+    "InternalSoundSource" => ("./Component/SoundSource", ["InternalSoundSource"]),
+    "InternalSprite" => ("./Component/Sprite", ["InternalSprite"]),
+    "Component_initialize" => ("./Component/Sprite", ["Component_initialize"]),
+    "Transform" => ("./Component/Transform", ["Transform"]),
+    "Camera" => ("./Camera/Camera", ["Camera"]),
+)
 
 default_out_dir() = joinpath(REPO_ROOT, "ts", "_generated")
 
@@ -147,7 +158,7 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = rewrite_rhs_vector_arithmetic(data)
     data = prefix_new_for_listed_class_constructors(data)
     data = rename_julia_this_receiver_to_self(data)
-    data = prepend_generated_ts_imports(data, path_ts)
+    data = replace_julia_ts_fixup_pass(data, path_jl)
     data = replace_ts_if_blocks_when_block_contains_substring(data)
     data = replace_entire_line_if_matches(data, path_jl)
     data = merge_main_scene_delegating_overloads(data)
@@ -156,7 +167,12 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     else
         data = "export {}\n" * data
     end
-    data = append_generated_module_exports(data)
+    data = prepend_generated_ts_imports(data, path_ts)
+    # Input.ts exports are finalized in `postprocess_input_ts` (`tools/convert/input.jl`).
+    if !is_input_source(path_jl)
+        data = append_generated_module_exports(data)
+    end
+    is_camera_source(path_jl) && (data = finalize_camera_exports(data))
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -186,13 +202,13 @@ end
 function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractString)::String
     need_clamp = occursin(r"\bclamp\s*\(", data)
     need_unsafe_string = occursin(r"\bunsafe_string\s*\(", data)
+    need_unsafe_wrap = occursin(r"\bunsafe_wrap\s*\(", data)
     need_joinpath = occursin(r"\bjoinpath\s*\(", data)
     need_time_ns = occursin(r"\btime_ns\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
-    (!need_clamp && !need_unsafe_string && !need_joinpath && !need_time_ns && !need_vec) && return data
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
-    if need_clamp || need_unsafe_string || need_joinpath || need_time_ns
+    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_time_ns
         h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
         if isfile(h)
             rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
@@ -202,6 +218,7 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             need_joinpath && push!(syms, "joinpath")
             need_time_ns && push!(syms, "time_ns")
             need_unsafe_string && push!(syms, "unsafe_string")
+            need_unsafe_wrap && push!(syms, "unsafe_wrap")
             sort!(syms)
             push!(lines, string("import { ", join(syms, ", "), " } from \"", rel, "\";"))
         end
@@ -214,8 +231,28 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             push!(lines, string("import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from \"", relv, "\";"))
         end
     end
+    # Cross-module component / transform imports (Entity.ts, Scene.ts, …).
+    by_path = Dict{String, Vector{String}}()
+    for (sym, (rel_path, _)) in _CROSS_MODULE_SYMBOL_SOURCES
+        occursin(Regex("\\b" * sym * "\\b"), data) || continue
+        # Do not import symbols defined in this file (e.g. `class Camera`, `function Component_initialize`).
+        occursin(Regex("class\\s+" * sym * "\\s*\\{"), data) && continue
+        occursin(Regex("function\\s+" * sym * "\\s*\\("), data) && continue
+        occursin(Regex("import\\s+\\{[^}]*\\b" * sym * "\\b"), data) && continue
+        syms = get!(by_path, rel_path, String[])
+        sym in syms || push!(syms, sym)
+    end
+    for rel_path in sort(collect(keys(by_path)))
+        syms = sort!(by_path[rel_path])
+        push!(lines, string("import { ", join(syms, ", "), " } from \"", rel_path, "\";"))
+    end
     isempty(lines) && return data
-    return string(join(lines, "\n"), "\n\n", data)
+    import_block = string(join(lines, "\n"), "\n")
+    data_lines = split(String(data), '\n'; keepempty = true)
+    if !isempty(data_lines) && strip(data_lines[1]) == "export {}"
+        return string(data_lines[1], "\n", import_block, "\n", join(data_lines[2:end], '\n'))
+    end
+    return string(import_block, "\n", data)
 end
 
 # --- Julia-style vector `+ - * /` on plain `{x,y}` / `{x,y,z}` objects (see `src/Math/Vector2.jl`, `Math.jl`) ---
@@ -1164,6 +1201,7 @@ function replace_julia_ts_literals(data::AbstractString)
     # Julia `Inf` / `-Inf` → JS `Infinity` / `-Infinity`.
     data = replace(data, r"\bInf\b" => "Infinity")
     data = replace(data, r"\bFloat64\(" => "Number(")
+    data = replace(data, r"\bFloat32\(" => "Number(")
     # `convert(Float64, x)` (no global `convert` in JS) — same intent as `Float64(x)`.
     data = replace(data, r"\bconvert\s*\(\s*Float64\s*,\s*" => "Number(")
     data = replace(data, r"\binv\(([^()]+)\)" => s"(1 / (\1))")
@@ -1230,6 +1268,8 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"@error\s*\(" => "console.error(")
     data = replace(data, r"(?m)@warn\s+\"([^\"]*)\".*$" => s"console.warn(\"\1\")")
     data = replace(data, r"(?m)@error\s+\"([^\"]*)\".*$" => s"console.error(\"\1\")")
+    # `@error String(e)` and other expression forms (not already `console.error(`).
+    data = replace(data, r"(?m)@error\s+(.+)$" => s"console.error(\1)")
     # debug with string literal
     data = replace(data, r"@debug\s+\"([^\"]*)\"" => s"console.debug(\"\1\")")
     # macro invocation style: `@debug("...")`.
@@ -1637,7 +1677,7 @@ const _TS_ASI_SKIP_SINGLE_KEYWORDS = Set([
 
 # Julia line continuations (`expr ||\n    (next)`) must not get ASI `;` after the operator.
 const _TS_ASI_EXPRESSION_CONTINUATION_SUFFIXES = (
-    "||", "&&", "??", "+", "-", "*", "/", "%", ",", "|", "&", "^", "?",
+    "||", "&&", "??", "+", "-", "*", "/", "%", ",", "|", "&", "^", "?", ":",
 )
 
 function _ts_line_continues_expression(cur::AbstractString)::Bool
@@ -2562,6 +2602,273 @@ function _rename_julia_this_in_function_body(line::AbstractString)::String
     return line
 end
 
+"""True when `path_jl` is `src/engine/Entity.jl`."""
+function is_entity_source(path_jl::AbstractString)::Bool
+    norm = replace(normpath(String(path_jl)), '\\' => '/')
+    return endswith(norm, "src/engine/Entity.jl")
+end
+
+"""True when `path_jl` is `src/engine/Camera/Camera.jl`."""
+function is_camera_source(path_jl::AbstractString)::Bool
+    norm = replace(normpath(String(path_jl)), '\\' => '/')
+    return endswith(norm, "src/engine/Camera/Camera.jl")
+end
+
+"""Aliases expected by `julGameBootstrap.ts` / `MainLoop.ts`."""
+function finalize_camera_exports(data::AbstractString)::String
+    s = rstrip(String(data), '\n')
+    s = replace(s, r"export\s+\{[^}]+\}\s*$" => "")
+    s = rstrip(s, '\n')
+    return string(
+        s,
+        """
+
+export {
+    Camera,
+    apply_zoom_to_center,
+    pixels_per_world_unit,
+    update,
+    pixels_per_world_unit as cameraPixelsPerWorldUnit,
+    update as cameraUpdate,
+}
+""",
+    )
+end
+
+function _find_balanced_closing_paren(s::AbstractString, open_idx::Int)::Union{Nothing, Int}
+    depth = 0
+    n = lastindex(s)
+    i = open_idx
+    while i <= n
+        c = s[i]
+        if c == '('
+            depth += 1
+        elseif c == ')'
+            depth -= 1
+            depth == 0 && return i
+        end
+        i = nextind(s, i)
+    end
+    return nothing
+end
+
+const _ENTITY_BROKEN_DEFAULT_MARKERS = (
+    "Animation[", "Vector4[{", "JulGameAnimation(", "Sprite((", "Animator(",
+)
+
+"""Strip Julia default args that do not transpile to valid TS (Entity `JulGame.add_*`)."""
+function simplify_entity_julgame_add_headers(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    out = String[]
+    for line in lines
+        m = match(r"^(\s*function\s+(JulGame_add_\w+|JulGame_create_sound_source))\s*\(", line)
+        if m === nothing
+            push!(out, line)
+            continue
+        end
+        fname = String(m.captures[2])
+        if fname in ("JulGame_add_script", "JulGame_update", "JulGame_duplicate", "JulGame_generate_uuid")
+            push!(out, line)
+            continue
+        end
+        open_idx = m.offset + length(m.match) - 1
+        close_idx = _find_balanced_closing_paren(line, open_idx)
+        if close_idx === nothing
+            push!(out, line)
+            continue
+        end
+        inner = line[open_idx+1:prevind(line, close_idx)]
+        has_default = occursin('=', inner)
+        broken = any(marker -> occursin(marker, line), _ENTITY_BROKEN_DEFAULT_MARKERS)
+        if !has_default && !broken
+            push!(out, line)
+            continue
+        end
+        new_params = if fname == "JulGame_add_sprite"
+            "self: Entity, isCreatedInEditor: boolean = false, sprite?: unknown"
+        else
+            pm = match(r"self:\s*Entity\s*,\s*(\w+):", inner)
+            pm === nothing && (push!(out, line); continue)
+            "self: Entity, $(String(pm.captures[1]))?: unknown"
+        end
+        push!(out, line[1:prevind(line, open_idx)] * "(" * new_params * ")" * line[nextind(line, close_idx):end])
+    end
+    return join(out, '\n')
+end
+
+"""Julia dollar-paren string interpolation → TS template literal form (balanced parens)."""
+function replace_julia_dollar_paren_interpolation(msg::AbstractString)::String
+    s = String(msg)
+    out = IOBuffer()
+    i = firstindex(s)
+    n = lastindex(s)
+    while i <= n
+        if i < n && s[i] == '$' && s[nextind(s, i)] == '('
+            open_paren = nextind(s, i)
+            close_idx = _find_balanced_closing_paren(s, open_paren)
+            if close_idx === nothing
+                write(out, SubString(s, i))
+                break
+            end
+            write(out, "\${")
+            inner_start = nextind(s, open_paren)
+            inner_end = prevind(s, close_idx)
+            inner_start <= inner_end && write(out, SubString(s, inner_start:inner_end))
+            write(out, '}')
+            i = nextind(s, close_idx)
+        else
+            write(out, s[i])
+            i = nextind(s, i)
+        end
+    end
+    return String(take!(out))
+end
+
+"""`SDL_GetRenderDrawColor` Julia out-params → glue that returns `{ r, g, b, a }`."""
+function replace_sdl_get_render_draw_color_calls(data::AbstractString)::String
+    s = String(data)
+    s = replace(
+        s,
+        r"let rgba = \{ r: \d+, g: \d+, b: \d+, a: \d+ \}\s*;?\s*\n\s*\(globalThis as any\)\.JulGameSdl\.glue_SDL_GetRenderDrawColor\(\s*\(globalThis as any\)\.JulGame\.Renderer\s*,\s*rgba\.r\s*,\s*rgba\.g\s*,\s*rgba\.b\s*,\s*rgba\.a\s*\)" =>
+            "let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer)",
+    )
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGameSdl\.glue_SDL_GetRenderDrawColor\(\s*\(globalThis as any\)\.JulGame\.Renderer\s*,\s*rgba\.r\s*,\s*rgba\.g\s*,\s*rgba\.b\s*,\s*rgba\.a\s*\)" =>
+            "Object.assign(rgba, (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer))",
+    )
+    return s
+end
+
+"""`SDL_GetTextureColorMod` / `SDL_GetTextureAlphaMod` Julia out-params → glue return values."""
+function replace_sdl_get_texture_color_mod_calls(data::AbstractString)::String
+    s = String(data)
+    s = replace(
+        s,
+        r"(\s*)let colorRefs = \[0, 0, 0\]\s*\n\s*let alphaRef = 0;\s*\n\s*\(globalThis as any\)\.JulGameSdl\.glue_SDL_GetTextureColorMod\((\w+),\s*\.\.\.colorRefs\);\s*\n\s*\(globalThis as any\)\.JulGameSdl\.glue_SDL_GetTextureAlphaMod\(\2,\s*alphaRef\)\s*\n\s*if \(colorRefs\[0\] != ([^|]+) \|\| colorRefs\[1\] != ([^|]+) \|\| colorRefs\[2\] != ([^|]+) \|\| ([^\)]+) != alphaRef\)" =>
+            s"\1let _textureColor = (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(\2)\n\1let _textureAlpha = (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(\2)\n\1if (_textureColor.r != \3 || _textureColor.g != \4 || _textureColor.b != \5 || \6 != _textureAlpha)",
+    )
+    return s
+end
+
+function replace_julia_assert_blocks(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty = true)
+    out = String[]
+    i = 1
+    n = length(lines)
+    while i <= n
+        line = String(lines[i])
+        if !occursin(r"^\s*@assert\s+", line)
+            push!(out, line)
+            i += 1
+            continue
+        end
+        chunk = String[line]
+        i += 1
+        while i <= n
+            push!(chunk, String(lines[i]))
+            joined = join(chunk, '\n')
+            occursin(r"\)\s+==\s+0\s+\"", joined) && break
+            i += 1
+        end
+        block = join(chunk, '\n')
+        m = match(r"(?s)^(\s*)@assert\s+(.+?)\s+==\s+0\s+\"(.+)\"\s*$", block)
+        if m === nothing
+            append!(out, chunk)
+        else
+            indent = String(m.captures[1])
+            expr = strip(String(m.captures[2]))
+            msg = replace_julia_dollar_paren_interpolation(String(m.captures[3]))
+            push!(out, indent * "if (!(" * expr * ")) {")
+            push!(out, indent * "    throw new Error(`" * msg * "`)")
+            push!(out, indent * "}")
+        end
+        i += 1
+    end
+    return join(out, '\n')
+end
+
+"""Late-pass Julia→TS cleanups after global rewrites and ASI."""
+function replace_julia_ts_fixup_pass(data::AbstractString, path_jl::AbstractString = "")::String
+    s = String(data)
+    s = replace(s, r"\bcurrent_exceptions\(\)" => "undefined")
+    s = replace(s, r"Ptr\{[^}]+\}\(\s*null\s*\)" => "null")
+    s = replace(
+        s,
+        r"String\(UUIDs\.uuid4\(\)\)" =>
+            "(typeof crypto !== \"undefined\" && \"randomUUID\" in crypto ? (crypto as Crypto).randomUUID() : `id-" *
+            "\${Math.random().toString(36).slice(2, 11)}`)",
+    )
+    # Julia keyword-arg type annotations in call position: `obj.prop: boolean` → `obj.prop`.
+    s = replace(s, r"(\w+\.\w+):\s*(?:boolean|string|number)\b" => s"\1")
+    # Julia typed local assign: `name: InternalFoo =` → `let name =`.
+    s = replace(s, r"(?m)^(\s*)([A-Za-z_]\w*):\s*Internal\w+\s*=" => s"\1let \2 =")
+    # Ternary false branch broken by ASI: `... :;` → `... :`.
+    s = replace(s, r":\s*;" => ":")
+    s = replace_sdl_get_render_draw_color_calls(s)
+    s = replace_sdl_get_texture_color_mod_calls(s)
+    s = replace(s, r"\.glue_SDL_SetRenderDrawColor\(\s*\(globalThis as any\)\.JulGame\.Renderer\s*,\s*" => ".glue_SDL_SetRenderDrawColor(")
+    s = replace_julia_assert_blocks(s)
+    if is_entity_source(path_jl)
+        s = simplify_entity_julgame_add_headers(s)
+        s = omit_entity_untranspiled_components(s)
+    end
+    return s
+end
+
+# `(field, internal_type, JulGame_add_* function)` — no generated TS module yet.
+const _ENTITY_OMITTED_TS_COMPONENTS = [
+    ("circleCollider", "InternalCircleCollider", "JulGame_add_circle_collider"),
+    ("shape", "InternalShape", "JulGame_add_shape"),
+]
+
+function _ts_brace_delta_line(line::AbstractString)::Int
+    stripped = replace(line, r"//.*$" => "")
+    d = 0
+    for c in stripped
+        if c == '{'
+            d += 1
+        elseif c == '}'
+            d -= 1
+        end
+    end
+    return d
+end
+
+"""Drop imports and stub add_* helpers for components without generated TS yet."""
+function omit_entity_untranspiled_components(data::AbstractString)::String
+    s = String(data)
+    for (field, internal_type, func_name) in _ENTITY_OMITTED_TS_COMPONENTS
+        s = replace(s, "$(field): $(internal_type) | null" => "$(field): any | null")
+    end
+    lines = split(s, '\n'; keepempty = true)
+    stub_funcs = Set(String[fc[3] for fc in _ENTITY_OMITTED_TS_COMPONENTS])
+    out = String[]
+    i = 1
+    n = length(lines)
+    while i <= n
+        line = String(lines[i])
+        m = match(r"^\s*function\s+(\w+)\s*\(", line)
+        if m !== nothing && String(m.captures[1]) in stub_funcs
+            func_name = String(m.captures[1])
+            push!(out, "    function $(func_name)(self: Entity, _arg?: unknown) {")
+            push!(out, "        console.warn(\"$(func_name): not transpiled yet\")")
+            push!(out, "        return null")
+            push!(out, "    }")
+            balance = _ts_brace_delta_line(line)
+            i += 1
+            while i <= n && balance > 0
+                balance += _ts_brace_delta_line(String(lines[i]))
+                i += 1
+            end
+            continue
+        end
+        push!(out, line)
+        i += 1
+    end
+    return join(out, '\n')
+end
+
 function rename_julia_this_receiver_to_self(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty = true)
     out = String[]
@@ -2570,8 +2877,10 @@ function rename_julia_this_receiver_to_self(data::AbstractString)::String
     i = 1
     n = length(lines)
     function _brace_delta(line::AbstractString)::Int
+        # `// }` in comments must not close the function body early.
+        stripped = replace(line, r"//.*$" => "")
         d = 0
-        for c in line
+        for c in stripped
             if c == '{'
                 d += 1
             elseif c == '}'

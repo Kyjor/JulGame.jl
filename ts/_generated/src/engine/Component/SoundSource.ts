@@ -7,6 +7,14 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     // include(joinpath(@__DIR__, "SoundSource", "constants.jl"))
     
     
+    class SoundSource {
+        channel: number
+        isMusic: boolean
+        path: string
+        playOnStart: boolean
+        volume: number
+    }
+
     
     class InternalSoundSource {
         path: string
@@ -166,5 +174,4 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         newSoundSource.isPlaying = self.isPlaying
         return newSoundSource
     }
-
-export { InternalSoundSource }
+export { Component_duplicate, Component_load_sound, Component_play, Component_set_volume, Component_stop_music, Component_toggle_sound, Component_unload_sound, InternalSoundSource, SoundSource, get_comma_separated_path, load_sound_sdl, set_master_volume }

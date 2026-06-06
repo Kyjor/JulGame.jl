@@ -18,7 +18,7 @@ export {}
         target: null | ITransform
         windowPos: Vector2
 
-        constructor(size: Vector2, initialPosition: Vector3f, offset: Vector2f, target: any) {
+        constructor(size: Vector2, initialPosition: Vector3f, offset: Vector2f, target) {
             
             
             this.id = (globalThis as any).JulGame.generate_uuid()
@@ -62,12 +62,12 @@ export {}
     }
 
     function update(self: Camera, newPosition: null | Vector3f = null) {
-        if ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.WindowManagerModule.get_logical_size() != self.size) {
+        if (!(globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.WindowManagerModule.get_logical_size().x != self.size.x || (globalThis as any).JulGame.WindowManagerModule.get_logical_size().y != self.size.y) {
             (globalThis as any).JulGame.WindowManagerModule.set_logical_size(self.size.x, self.size.y)
             console.debug(`Logical size changed to ${self.size}`)
         };
 (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawBlendMode_BLEND()
-        let rgba = { r: 0, g: 0, b: 0, a: 255 };
+        let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer);
         (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(self.backgroundColor[0], self.backgroundColor[1], self.backgroundColor[2], self.backgroundColor[3]);
         (globalThis as any).JulGameSdl.glue_SDL_RenderFillRectF((globalThis as any).JulGameSdl.glue_SDL_FRect(self.windowPos.x, self.windowPos.y, self.size.x, self.size.y));
         (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
@@ -87,4 +87,12 @@ export {}
         }
     }
 
-export { Camera, update as cameraUpdate, pixels_per_world_unit as cameraPixelsPerWorldUnit }
+    // making set property observable
+export {
+    Camera,
+    apply_zoom_to_center,
+    pixels_per_world_unit,
+    update,
+    pixels_per_world_unit as cameraPixelsPerWorldUnit,
+    update as cameraUpdate,
+}

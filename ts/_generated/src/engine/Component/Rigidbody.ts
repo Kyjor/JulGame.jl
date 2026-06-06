@@ -100,4 +100,4 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         newRigidbody.offset = self.offset
         return newRigidbody
     }
-export { Component_apply_forces, Component_duplicate, Component_get_velocity, Component_update, InternalRigidbody }
+export { Component_apply_forces, Component_duplicate, Component_get_velocity, Component_update, InternalRigidbody, Rigidbody, add_velocity }

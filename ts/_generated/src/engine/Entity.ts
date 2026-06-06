@@ -1,10 +1,11 @@
 export {}
-import { InternalAnimator } from "./Component/Animator"
-import { InternalCollider } from "./Component/Collider"
-import { InternalRigidbody } from "./Component/Rigidbody"
-import { InternalSoundSource } from "./Component/SoundSource"
-import { InternalSprite, Component_initialize } from "./Component/Sprite"
-import { Transform } from "./Component/Transform"
+import { InternalAnimator } from "./Component/Animator";
+import { InternalCollider } from "./Component/Collider";
+import { InternalRigidbody } from "./Component/Rigidbody";
+import { InternalSoundSource } from "./Component/SoundSource";
+import { Component_initialize, InternalSprite } from "./Component/Sprite";
+import { Transform } from "./Component/Transform";
+
 
     // using UUIDs
     // using ..(globalThis as any).JulGame.AnimationModule
@@ -34,8 +35,8 @@ import { Transform } from "./Component/Transform"
         animator: InternalAnimator | null
         collider: InternalCollider | null
         circleCollider: any | null
-        mesh3d: IMesh3D | null
-        softwareRenderer3d: ISoftwareRenderer3D | null
+        mesh3d: Mesh3D | null
+        softwareRenderer3d: SoftwareRenderer3D | null
         rigidbody: InternalRigidbody | null
         shape: any | null
         soundSource: InternalSoundSource | null
@@ -48,7 +49,7 @@ import { Transform } from "./Component/Transform"
         forceClickCheck: boolean
         ignoreInputEvents: boolean
 
-        constructor(name: string = "New entity", id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts: any[] = [], clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
+        constructor(name: string = "New entity", id: string = (globalThis as any).JulGame.generate_uuid(), transform: ITransform = new Transform(), scripts = [], clickEvents = [], forceClickCheck: boolean = false, ignoreInputEvents: boolean = false) {
             
 
             this.id = id
@@ -81,18 +82,19 @@ import { Transform } from "./Component/Transform"
         }
     }
 
-    function JulGame_add_script(self: Entity, script: unknown) {
+    function JulGame_add_script(self: Entity, script) {
         console.debug(["Adding script of type: ", typeof(script), " to entity named ", self.name].join(""))
         self.scripts.push(script)
-        ;(script as { parent: Entity }).parent = self
+        script.parent = self
         try {
             (globalThis as any).JulGame.initialize(script)
         } catch (e) {
             console.error(String(e))
+
         }
     }
 
-    function JulGame_update(self: Entity, deltaTime: number) {
+    function JulGame_update(self: Entity, deltaTime) {
         if (!self.isActive) {
             self.isHovered = false
             return
@@ -107,16 +109,21 @@ import { Transform } from "./Component/Transform"
         }
     }
 
-    function JulGame_add_animator(self: Entity, _animator?: unknown) {
+    function JulGame_add_animator(self: Entity, animator?: unknown) {
         if (self.animator != null) {
             console.log("Animator already exists on entity named ", self.name)
             return
         }
-        console.warn("JulGame_add_animator: not supported in stripped TS runtime")
-        return null
+
+        self.animator = new InternalAnimator(self, animator.animations)
+        if (self.sprite != null) {
+            self.animator.sprite = self.sprite
+        }
+
+        return self.animator
     }
 
-    function JulGame_add_collider(self: Entity, collider: any) {
+    function JulGame_add_collider(self: Entity, collider?: unknown) {
         if (self.collider != null || self.circleCollider != null) {
             console.log("Collider already exists on entity named ", self.name)
             return
@@ -127,17 +134,12 @@ import { Transform } from "./Component/Transform"
         return self.collider
     }
 
-    function JulGame_add_circle_collider(self: Entity, _collider: any) {
-        if (self.collider != null || self.circleCollider != null) {
-            console.log("Collider already exists on entity named ", self.name)
-            return
-        }
-
-        console.warn("JulGame_add_circle_collider: not supported in stripped TS runtime")
+    function JulGame_add_circle_collider(self: Entity, _arg?: unknown) {
+        console.warn("JulGame_add_circle_collider: not transpiled yet")
         return null
     }
 
-    function JulGame_add_rigidbody(self: Entity, rigidbody: any) {
+    function JulGame_add_rigidbody(self: Entity, rigidbody?: unknown) {
         if (self.rigidbody != null) {
             console.log("Rigidbody already exists on entity named ", self.name)
             return
@@ -148,7 +150,7 @@ import { Transform } from "./Component/Transform"
         return self.rigidbody
     }
 
-    function JulGame_add_sound_source(self: Entity, soundSource: any) {
+    function JulGame_add_sound_source(self: Entity, soundSource?: unknown) {
         if (self.soundSource != null) {
             console.log("SoundSource already exists on entity named ", self.name)
             return
@@ -159,12 +161,12 @@ import { Transform } from "./Component/Transform"
         return self.soundSource
     }
 
-    function JulGame_create_sound_source(self: Entity, soundSource: any) {
-        const newSoundSource = new InternalSoundSource(self, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
+    function JulGame_create_sound_source(self: Entity, soundSource?: unknown) {
+        let newSoundSource = new InternalSoundSource(self, soundSource.path, soundSource.channel, soundSource.volume, soundSource.isMusic, soundSource.playOnStart)
         return newSoundSource
     }
 
-    function JulGame_add_sprite(self: Entity, isCreatedInEditor: boolean = false, sprite: any) {
+    function JulGame_add_sprite(self: Entity, isCreatedInEditor: boolean = false, sprite?: unknown) {
         if (self.sprite != null) {
             console.log("Sprite already exists on entity named ", self.name)
             return
@@ -179,13 +181,35 @@ import { Transform } from "./Component/Transform"
         return self.sprite
     }
 
-    function JulGame_add_shape(self: Entity, _shape: any) {
-        if (self.shape != null) {
-            console.log("Shape already exists on entity named ", self.name)
+    function JulGame_add_shape(self: Entity, _arg?: unknown) {
+        console.warn("JulGame_add_shape: not transpiled yet")
+        return null
+    }
+
+    function JulGame_add_mesh3d(self: Entity, mesh3d?: unknown) {
+        if (self.mesh3d != null) {
+            console.log("Mesh3D already exists on entity named ", self.name)
             return
         }
-        console.warn("JulGame_add_shape: not supported in stripped TS runtime")
-        return null
+
+        self.mesh3d = mesh3d
+        mesh3d.parent = self
+        Component_initialize(mesh3d, (globalThis as any).JulGame.MAIN)
+
+        return self.mesh3d
+    }
+
+    function JulGame_add_software_renderer3d(self: Entity, softwareRenderer3d?: unknown) {
+        if (self.softwareRenderer3d != null) {
+            console.log("SoftwareRenderer3D already exists on entity named ", self.name)
+            return
+        }
+
+        self.softwareRenderer3d = softwareRenderer3d
+        softwareRenderer3d.parent = self
+        Component_initialize(softwareRenderer3d, (globalThis as any).JulGame.MAIN)
+
+        return self.softwareRenderer3d
     }
 
     function JulGame_duplicate(self: Entity, id: string = (globalThis as any).JulGame.generate_uuid()) {
@@ -198,20 +222,20 @@ import { Transform } from "./Component/Transform"
         if (self.collider != null && self.collider !== null) {
             newEntity.collider = Component_duplicate(self.collider, newEntity)
         }
-        // circleCollider: InternalCircleCollider | null
+        // circleCollider: any | null
         // if self.circleCollider != null && self.circleCollider !== null
         //     newEntity.circleCollider = Component_duplicate(self.circleCollider, newEntity)
         // }
         // isActive: boolean
         newEntity.isActive = self.isActive
         // mesh3d: Mesh3D | null
-        // if (this.mesh3d != null && this.mesh3d !== null) {
-        //     //newEntity.mesh3d = Component_duplicate(this.mesh3d, newEntity)
-        // }
-        // // softwareRenderer3d: SoftwareRenderer3D | null
-        // if (this.softwareRenderer3d != null && this.softwareRenderer3d !== null) {
-        //     newEntity.softwareRenderer3d = this.softwareRenderer3d
-        // }
+        if (self.mesh3d != null && self.mesh3d !== null) {
+            //newEntity.mesh3d = Component_duplicate(self.mesh3d, newEntity)
+        }
+        // softwareRenderer3d: SoftwareRenderer3D | null
+        if (self.softwareRenderer3d != null && self.softwareRenderer3d !== null) {
+            newEntity.softwareRenderer3d = self.softwareRenderer3d
+        }
         // persistentBetweenScenes: boolean
         newEntity.persistentBetweenScenes = self.persistentBetweenScenes
         // rigidbody: InternalRigidbody | null
@@ -219,10 +243,10 @@ import { Transform } from "./Component/Transform"
             newEntity.rigidbody = Component_duplicate(self.rigidbody, newEntity)
         }
         // scripts: any[]
-        // for script in this.scripts
+        // for script in self.scripts
         //     (globalThis as any).JulGame.add_script(newEntity, script)
         // }
-        // shape: InternalShape | null
+        // shape: any | null
         if (self.shape != null && self.shape !== null) {
             newEntity.shape = Component_duplicate(self.shape, newEntity)
         }
@@ -233,17 +257,13 @@ import { Transform } from "./Component/Transform"
         // sprite: InternalSprite | null
         if (self.sprite != null && self.sprite !== null) {
             newEntity.sprite = Component_duplicate(self.sprite, newEntity)
-        }
+        };
         
         (globalThis as any).JulGame.MAIN.scene.entities.push(newEntity)
         return newEntity
     }
 
     function JulGame_generate_uuid() {
-        if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-            return (crypto as Crypto).randomUUID()
-        }
-        return `id-${Math.random().toString(36).slice(2, 11)}`
+        return (typeof crypto !== "undefined" && "randomUUID" in crypto ? (crypto as Crypto).randomUUID() : `id-${Math.random().toString(36).slice(2, 11)}`)
     }
-
-export { Entity, JulGame_add_script, JulGame_add_sprite, JulGame_update }
+export { Entity, JulGame_add_animator, JulGame_add_circle_collider, JulGame_add_collider, JulGame_add_mesh3d, JulGame_add_rigidbody, JulGame_add_script, JulGame_add_shape, JulGame_add_software_renderer3d, JulGame_add_sound_source, JulGame_add_sprite, JulGame_create_sound_source, JulGame_duplicate, JulGame_generate_uuid, JulGame_update }

@@ -1,4 +1,6 @@
 export {}
+import { InternalSprite } from "./Component/Sprite";
+
 
     // using ..Component.AnimationModule
     // using ..Component.JulGame
@@ -100,4 +102,4 @@ export {}
         self.sprite.crop = self.currentAnimation.frames[frameIndex]
     }
     
-export { Component_duplicate, Component_play_animation_once, Component_update, InternalAnimator }
+export { Animator, Component_duplicate, Component_play_animation_once, Component_update, InternalAnimator, force_frame_update }
