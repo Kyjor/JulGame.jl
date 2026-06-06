@@ -6,6 +6,7 @@
 # Output path rule: <REPO_ROOT>/_generated/<mirror-of-relative-path>.ts
 
 const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
+include(joinpath(@__DIR__, "convert", "input.jl"))
 
 # Generated TS calls Julia-style `InternalFoo(args)` on classes — emit `new InternalFoo(args)`.
 # Start with engine `Internal*` component types; append more names as other modules gain classes.
@@ -133,9 +134,11 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_keyword_style_calls_to_object_args(data)
     data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
-    data = custom_function_removal(data)
+    data = custom_function_removal(data, path_jl)
     data = replace_push_calls(data)
     data = remove_!_from_function_names(data)
+    # `JulGame.foo` → `(globalThis...).JulGame.foo` and `!(...)` rewrites can create new line-leading `(`.
+    data = insert_semicolon_before_line_starting_with_open_paren(data)
     data = replace_popfirst_calls(data)
     data = replace_deleteat_calls(data)
     data = replace_findfirst_equality_calls(data)
@@ -146,8 +149,14 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = rename_julia_this_receiver_to_self(data)
     data = prepend_generated_ts_imports(data, path_ts)
     data = replace_ts_if_blocks_when_block_contains_substring(data)
-    data = replace_entire_line_if_matches(data)
-    data = "export {}\n" * data
+    data = replace_entire_line_if_matches(data, path_jl)
+    data = merge_main_scene_delegating_overloads(data)
+    if is_input_source(path_jl)
+        data = postprocess_input_ts(data, path_jl, path_ts)
+    else
+        data = "export {}\n" * data
+    end
+    data = append_generated_module_exports(data)
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -600,6 +609,27 @@ function replace_exports(data::AbstractString)
     # replace the line with export with empty string
     data = replace(data, r"export .*" => "")
     return data
+end
+
+"""Emit `export { InternalFoo, Component_bar, … }` for cross-module imports (Entity.ts, MainLoop.ts)."""
+function append_generated_module_exports(data::AbstractString)::String
+    s = rstrip(String(data), '\n')
+    # Files with hand-tuned export lists (aliases, JulGame_* re-exports) keep them as-is.
+    occursin(r"\nexport\s+\{[^\n]+\}\s*$", s) && return s
+    syms = String[]
+    for m in eachmatch(r"(?m)^\s*class\s+(\w+)\s*\{", s)
+        push!(syms, String(m.captures[1]))
+    end
+    for m in eachmatch(r"(?m)^\s*function\s+(Component_\w+)\s*\(", s)
+        push!(syms, String(m.captures[1]))
+    end
+    for m in eachmatch(r"(?m)^\s*function\s+((?!Component_)\w+)\s*\(", s)
+        push!(syms, String(m.captures[1]))
+    end
+    unique!(syms)
+    sort!(syms)
+    isempty(syms) && return s
+    return string(s, "\nexport { ", join(syms, ", "), " }\n")
 end
 
 function replace_comments(data::AbstractString)
@@ -1605,6 +1635,18 @@ const _TS_ASI_SKIP_SINGLE_KEYWORDS = Set([
     "return", "throw", "break", "continue", "debugger", "function", "class",
 ])
 
+# Julia line continuations (`expr ||\n    (next)`) must not get ASI `;` after the operator.
+const _TS_ASI_EXPRESSION_CONTINUATION_SUFFIXES = (
+    "||", "&&", "??", "+", "-", "*", "/", "%", ",", "|", "&", "^", "?",
+)
+
+function _ts_line_continues_expression(cur::AbstractString)::Bool
+    for op in _TS_ASI_EXPRESSION_CONTINUATION_SUFFIXES
+        endswith(cur, op) && return true
+    end
+    return false
+end
+
 function insert_semicolon_before_line_starting_with_open_paren(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty = true)
     n = length(lines)
@@ -1616,6 +1658,7 @@ function insert_semicolon_before_line_starting_with_open_paren(data::AbstractStr
         endswith(cur, ';') && continue
         endswith(cur, '{') && continue
         endswith(cur, '(') && continue
+        _ts_line_continues_expression(cur) && continue
         cur in _TS_ASI_SKIP_SINGLE_KEYWORDS && continue
         j = idx + 1
         while j <= n
@@ -2513,10 +2556,17 @@ end
 
 # Julia instance param `this::T` becomes TS `this: T`, but TS treats `this` as a fake parameter (not a real
 # argument, and `this` in body is often `void`). Rename to `self` in decl + matching function body.
+function _rename_julia_this_in_function_body(line::AbstractString)::String
+    line = replace(line, r"\bthis\." => "self.")
+    line = replace(line, r"\bthis\b" => "self")
+    return line
+end
+
 function rename_julia_this_receiver_to_self(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty = true)
     out = String[]
-    decl_pat = r"^(\s*)function\s+\w+\s*\(\s*this\s*:"
+    decl_pat_this = r"^(\s*)(?:export\s+)?function\s+\w+\s*\(\s*this\s*:"
+    decl_pat_self = r"^(\s*)(?:export\s+)?function\s+\w+\s*\(\s*self\s*:"
     i = 1
     n = length(lines)
     function _brace_delta(line::AbstractString)::Int
@@ -2532,17 +2582,29 @@ function rename_julia_this_receiver_to_self(data::AbstractString)::String
     end
     while i <= n
         line = String(lines[i])
-        occursin(decl_pat, line) || (push!(out, line); i += 1; continue)
-        decl_line = replace(line, r"\(\s*this\s*:" => "(self:", count = 1)
-        push!(out, decl_line)
-        i += 1
-        balance = _brace_delta(decl_line)
-        while i <= n && balance > 0
-            body = String(lines[i])
-            body = replace(body, r"\bthis\." => "self.")
-            body = replace(body, r"\bthis\b" => "self")
-            push!(out, body)
-            balance += _brace_delta(body)
+        if occursin(decl_pat_this, line)
+            decl_line = replace(line, r"\(\s*this\s*:" => "(self:", count = 1)
+            push!(out, decl_line)
+            i += 1
+            balance = _brace_delta(decl_line)
+            while i <= n && balance > 0
+                body = _rename_julia_this_in_function_body(String(lines[i]))
+                push!(out, body)
+                balance += _brace_delta(body)
+                i += 1
+            end
+        elseif occursin(decl_pat_self, line)
+            push!(out, line)
+            i += 1
+            balance = _brace_delta(line)
+            while i <= n && balance > 0
+                body = _rename_julia_this_in_function_body(String(lines[i]))
+                push!(out, body)
+                balance += _brace_delta(body)
+                i += 1
+            end
+        else
+            push!(out, line)
             i += 1
         end
     end
@@ -2791,7 +2853,7 @@ function replace_first_assignments_with_let(data::AbstractString)::String
     return join(out, '\n')
 end
 
-function custom_function_removal(data::AbstractString)
+function custom_function_removal(data::AbstractString, path_jl::AbstractString = "")
     functions_to_remove = [
         "Component_update_array_value",
         "Component_append_array",
@@ -2813,25 +2875,115 @@ function custom_function_removal(data::AbstractString)
         "generate_effect_cache_key",
         "serialize_effects",
         "clear_texture_cache",
-
-        # Input
-        "handle_x11_clipboard_image",   
-        "handle_macos_clipboard_image",
-        "handle_windows_clipboard_image",
-        "handle_clipboard_paste",
-        "is_image_file_by_extension",
-        "add_clipboard_file_to_import_queue",
-        "handle_base64_image_data",
-        "_input_poll_accumulate",
-        "_input_ui_hit_span",
-        "_input_ui_hit_stream_logs",
-        "_input_ui_hit_iter_stream_logs",
     ]
+    if is_input_source(path_jl)
+        append!(functions_to_remove, input_functions_to_remove())
+    end
     s = String(data)
     for func in functions_to_remove
         s = remove_ts_function_block(s, func)
     end
     return s
+end
+
+function _line_brace_delta(line::AbstractString)::Int
+    d = 0
+    for c in line
+        if c == '{'
+            d += 1
+        elseif c == '}'
+            d -= 1
+        end
+    end
+    return d
+end
+
+function _read_braced_block_lines(lines::Vector{SubString{String}}, start_i::Int)::Tuple{Int, Vector{String}}
+    balance = 0
+    body = String[]
+    i = start_i
+    n = length(lines)
+    while i <= n
+        line = String(lines[i])
+        push!(body, line)
+        balance += _line_brace_delta(line)
+        i += 1
+        balance <= 0 && break
+    end
+    return (i, body)
+end
+
+"""Julia `f(scene, x)` + `f(x) = f(MAIN.scene, x)` → one TS function with `typeof` dispatch."""
+function merge_main_scene_delegating_overloads(data::AbstractString)::String
+    lines = split(String(data), '\n'; keepempty=true)
+    out = String[]
+    i = 1
+    n = length(lines)
+    inst_pat = r"^(\s*)function\s+(\w+)\(self:\s*(\w+),\s*(\w+)(?::\s*string)?\)\s*\{"
+    while i <= n
+        line = String(lines[i])
+        m = match(inst_pat, line)
+        if m === nothing
+            push!(out, line)
+            i += 1
+            continue
+        end
+        indent, fname, typ, arg = String(m.captures[1]), String(m.captures[2]), String(m.captures[3]), String(m.captures[4])
+        inst_end, inst_body = _read_braced_block_lines(lines, i)
+        j = inst_end
+        while j <= n && isempty(strip(String(lines[j])))
+            j += 1
+        end
+        if j > n || length(inst_body) < 2
+            append!(out, inst_body)
+            i = inst_end
+            continue
+        end
+        deleg_open = match(Regex("^\\s*function\\s+" * fname * "\\(" * arg * ":\\s*string\\)\\s*\\{"), String(lines[j]))
+        if deleg_open === nothing
+            append!(out, inst_body)
+            i = inst_end
+            continue
+        end
+        deleg_end, deleg_body = _read_braced_block_lines(lines, j)
+        deleg_text = join(deleg_body, '\n')
+        if !occursin("return $fname(MAIN.scene, $arg)", deleg_text) &&
+           !occursin("return $fname((globalThis as any).JulGame.MAIN.scene, $arg)", deleg_text)
+            append!(out, inst_body)
+            i = inst_end
+            continue
+        end
+        inner = join(inst_body[2:(end - 1)], '\n')
+        push!(
+            out,
+            string(
+                indent,
+                "function ",
+                fname,
+                "(selfOrName: ",
+                typ,
+                " | string, ",
+                arg,
+                "?: string) {\n",
+                indent,
+                "    if (typeof selfOrName === \"string\") {\n",
+                indent,
+                "        return ",
+                fname,
+                "(MAIN.scene, selfOrName)\n",
+                indent,
+                "    }\n",
+                indent,
+                "    const self = selfOrName\n",
+                inner,
+                "\n",
+                indent,
+                "}",
+            ),
+        )
+        i = deleg_end
+    end
+    return join(out, '\n')
 end
 
 # Strip a whole `function name(...) { ... }` (names are already TS/mangled). `r"...$var"` does not interpolate.
@@ -3330,7 +3482,8 @@ function _parse_push_two_args(s::String, inner_start::Int, n::Int)::Union{Nothin
 end
 
 function remove_!_from_function_names(data::AbstractString)
-    return replace(data, "!(" => "(")
+    # Julia mutating calls (`push!(x)`) only — keep TS unary `!(expr)`.
+    return replace(data, r"(\w)!\(" => s"\1(")
 end
 
 function source_files_from_manifest(; repo_root::AbstractString = REPO_ROOT)::Vector{String}
@@ -3478,9 +3631,8 @@ function replace_ts_if_blocks_when_block_contains_substring(data::AbstractString
     return join(ls, '\n')
 end
 
-function replace_entire_line_if_matches(data::AbstractString)::String
+function replace_entire_line_if_matches(data::AbstractString, path_jl::AbstractString = "")::String
     # Ordered rules: first match wins. If `needle` appears anywhere on a line, the whole line becomes `replacement`.
-    # Build with `push!` so eltype stays `Pair{Union{String,Regex},String}` (avoid literal-array inference bugs).
     line_rules = Pair{Union{String, Regex}, String}[]
     push!(line_rules, "add_observer" => "")
     push!(line_rules, "throw(" => "")
@@ -3488,17 +3640,23 @@ function replace_entire_line_if_matches(data::AbstractString)::String
     push!(line_rules, "texture_to_render = self.effectTexture" => "")
     push!(line_rules, "show_backtrace" => "")
     push!(line_rules, "TEXTURE_CACHE[imagePath] = tex" => "")
-    push!(line_rules, "_input_ui_hit_span" => "")
-    push!(line_rules, "_input_poll_accumulate" => "")
-    push!(line_rules, "_input_ui_hit_step" => "")
-    push!(line_rules, "_input_ui_hit_iter_stream_logs" => "")
-    push!(line_rules, "_input_ui_hit_stream_logs" => "")
-    push!(line_rules, "_handle_clipboard_paste" => "")
-    push!(line_rules, "handle_dropped_files" => "")
-    push!(line_rules, "is not set in the main scene" => "")
-    push!(line_rules, "uiElementsOrderedByLayerDescending = sort(reverse" => "")
-    push!(line_rules, "entitiesWithSpritesOrderedByLayerDescending =" => "")
-    push!(line_rules, " elementsOrderedByLayerDescending = vcat" => "let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.uiElements")
+    if !is_input_source(path_jl)
+        push!(line_rules, "_input_ui_hit_span" => "")
+        push!(line_rules, "_input_poll_accumulate" => "")
+        push!(line_rules, "_input_ui_hit_step" => "")
+        push!(line_rules, "_input_ui_hit_iter_stream_logs" => "")
+        push!(line_rules, "_input_ui_hit_stream_logs" => "")
+        push!(line_rules, "_handle_clipboard_paste" => "")
+        push!(line_rules, "handle_dropped_files" => "")
+        push!(line_rules, "is not set in the main scene" => "")
+        push!(line_rules, "uiElementsOrderedByLayerDescending = sort(reverse" => "")
+        push!(line_rules, "entitiesWithSpritesOrderedByLayerDescending =" => "")
+        push!(
+            line_rules,
+            " elementsOrderedByLayerDescending = vcat" =>
+                "let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.uiElements",
+        )
+    end
 
     lines = split(String(data), '\n'; keepempty = true)
     out = map(lines) do line

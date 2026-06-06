@@ -6,6 +6,12 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     // using ..Component.JulGame
     // import ..Component
     
+    class Rigidbody {
+        mass: number
+        useGravity: boolean
+    }
+
+    
     class InternalRigidbody { 
         acceleration: Vector2f
         drag: number
@@ -31,7 +37,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
     }
 
-    function Component_update(self: InternalRigidbody, dt: number) {
+    function Component_update(self: InternalRigidbody, dt) {
         dt = clamp(dt, 0, .5)
         let velocityMultiplier = {x: 1.0, y: 1.0}
         let transform = self.parent.transform
@@ -94,5 +100,4 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         newRigidbody.offset = self.offset
         return newRigidbody
     }
-
-export { InternalRigidbody }
+export { Component_apply_forces, Component_duplicate, Component_get_velocity, Component_update, InternalRigidbody }

@@ -1,4 +1,3 @@
-export {}
 import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 //todo: separate mouse, keyboard, gamepad, and window into their own files
@@ -24,28 +23,28 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
         didMouseEventOccur: boolean
         didMouseMotionOccur: boolean
         editorCallback: Function | null
-        main: any
-        mouseButtonsPressedDown: any
-        mouseButtonsHeldDown: any
-        mouseButtonsReleased: any
-        mousePosition: any
+        main
+        mouseButtonsPressedDown
+        mouseButtonsHeldDown
+        mouseButtonsReleased
+        mousePosition
         mousePositionEditorGameWindowOffset: Vector2
         mousePositionWorld: Vector2f
-        joystick: any
+        joystick
         scanCodeStrings: string[]
-        scanCodes: any
+        scanCodes
         quit: boolean
 
-        elementsBeingClickedDownOn: any[]
+        elementsBeingClickedDownOn
 
         //Gamepad
-        jaxis: any
-        xDir: any
-        yDir: any
-        numAxes: any
-        numButtons: any
-        numHats: any
-        button: any
+        jaxis
+        xDir
+        yDir
+        numAxes
+        numButtons
+        numHats
+        button
 
         // Cursor bank
         cursorBank: Record<string, any> // Key is the name of the cursor, value is the SDL2 cursor
@@ -75,16 +74,9 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
             this.mousePositionEditorGameWindowOffset = {x: 0, y: 0}
             this.mousePositionWorld = {x: 0, y: 0}
             this.quit = false
-            this.scanCodes = []
-            this.scanCodeStrings = []
-            for (const m of Object.values((globalThis as any).JulGameSdl.glue_SDL_Scancode)) {
-                let codeString = "$(m)"
-                if (codeString == "SDL_NUM_SCANCODES") {
-                    continue
-                }
-                // Keep scanCodes as plain numeric ids + string names (TS doesn't have a native SDL enum type).
-                this.scanCodes.push([Number(m), (codeString).slice((14) - 1, codeString.length)])
-            };
+            this.scanCodes = (globalThis as any).JulGameSdl.SDL_SCANCODE_ENTRIES.slice()
+            this.scanCodeStrings = [];
+
 
             (globalThis as any).JulGameSdl.glue_SDL_Init(Number((globalThis as any).JulGameSdl.glue_SDL_INIT_JOYSTICK))
             if ((globalThis as any).JulGameSdl.glue_SDL_NumJoysticks() < 1) {
@@ -127,7 +119,7 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
     function _refresh_logical_mouse(self: Input, evt: any) {
         let x = [1]
         let y = [1];
-        (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(...x, ...y)
+        (globalThis as any).JulGameSdl.glue_SDL_GetMouseState(x, y)
 
         let window_focused = false
         if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN || evt.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP) {
@@ -150,10 +142,10 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
         let scale_y = 0
         let scaled_x = 0
         let scaled_y = 0
-        if ((globalThis as any).JulGame.IS_EDITOR) {
+        if (!(globalThis as any).JulGame.IS_EDITOR) {
             let window_width = [0]
             let window_height = [0];
-            (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize((globalThis as any).JulGame.MAIN.windowManager.window, ...window_width, ...window_height)
+            (globalThis as any).JulGameSdl.glue_SDL_GetWindowSize((globalThis as any).JulGame.MAIN.windowManager.window, window_width, window_height)
             let logical_size = (globalThis as any).JulGame.WindowManagerModule.get_logical_size()
             let safe_window_width = Math.max(window_width[0], 1)
             let safe_window_height = Math.max(window_height[0], 1)
@@ -198,7 +190,7 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
         return
     }
 
-    function poll_input(self: Input) {
+    export function poll_input(self: Input) {
         // prof = _input_latency_profiler()
         // t0 = time_ns()
 
@@ -258,7 +250,7 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
                     console.debug(`Mouse button down at ${self.mousePosition}`)
                 }
 
-                let ui_hit_active = (globalThis as any).JulGame.MAIN.scene.uiElements !== null && ((globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.MAIN.isGameModeRunningInEditor)
+                let ui_hit_active = (globalThis as any).JulGame.MAIN.scene.uiElements !== null && !((globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.MAIN.isGameModeRunningInEditor)
                 if (ui_hit_active) {
 
                     let t_ui_wall = time_ns()
@@ -274,6 +266,10 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
 
                     // Use cached layer order instead of sorting every mouse event
                     // This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
+
+
+
+
 
 
 
@@ -326,11 +322,11 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
                         let t_geom0 = time_ns()
 
                         // UI Element position and size in screen space (MUST BE SCALED)
-                        let elementPosition = {x: 0, y: 0} //get_element_position(element)
+                        let elementPosition = get_element_position(element)
 
                         let t_sz0 = time_ns()
 
-                        let elementSize = {x: 0, y: 0} //get_element_size(element)
+                        let elementSize = get_element_size(element)
 
                         let t_unpk0 = time_ns()
 
@@ -371,7 +367,7 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
                         let t_hi = time_ns()
                         console.debug(`  -> Mouse is INSIDE element '${element.name}'`)
 
-                        let clicked_down_here = false //clicked_down_on_this_element(self, element)
+                        let clicked_down_here = clicked_down_on_this_element(self, element)
 
                         t_hi = time_ns()
 
@@ -503,13 +499,13 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
 
                 return -1
             }
-            // if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN && evt.key.keysym.scancode == (globalThis as any).JulGameSdl.glue_SDL_SCANCODE_F3) {
-            //     self.debug = !self.debug
-            //     (globalThis as any).JulGame.IS_DEBUG = (globalThis as any).JulGame.IS_DEBUG
-            // }
+            if (evt.type == (globalThis as any).JulGameSdl.glue_SDL_KEYDOWN && evt.key.keysym.scancode == (globalThis as any).JulGameSdl.glue_SDL_SCANCODE_F3) {
+                self.debug = !self.debug;
+                (globalThis as any).JulGame.IS_DEBUG = !(globalThis as any).JulGame.IS_DEBUG
+            }
 
-            // let keyboardState = unsafe_wrap(Array, (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null), 300, false)
-            // handle_key_event(this, keyboardState)
+            let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)
+            handle_key_event(self, keyboardState)
 
 
         }
@@ -519,7 +515,7 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
         // }
     }
 
-    function check_scan_code(self: Input, keyboardState: any, keyState: any, scanCodes: any) {
+    function check_scan_code(self: Input, keyboardState, keyState, scanCodes) {
         for (const scanCode of scanCodes) {
             try {
                 let check_code = Number(scanCode) + 1
@@ -544,17 +540,17 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
         }
     }
 
-    function handle_key_event(self: Input, keyboardState: any) {
+    function handle_key_event(self: Input, keyboardState) {
         let buttonsPressedDown = self.buttonsPressedDown
 
         let count = 1
         for (const scanCode of self.scanCodes) {
             let button = scanCode[1]
-            if (check_scan_code(self, keyboardState, 1, [scanCode[0]]) && (button in self.buttonsHeldDown)) {
-                buttonsPressedDown.push("button")
-                self.buttonsHeldDown.push("button")
+            if (check_scan_code(self, keyboardState, 1, [scanCode[0]]) && !(self.buttonsHeldDown.includes(button))) {
+                buttonsPressedDown.push(button)
+                self.buttonsHeldDown.push(button)
             } else if (check_scan_code(self, keyboardState, 0, [scanCode[0]])) {
-                if (button in self.buttonsHeldDown) {
+                if (self.buttonsHeldDown.includes(button)) {
                     (() => { const a = self.buttonsHeldDown; const i = a.findIndex((x) => x === button); if (i >= 0) a.splice(i, 1); })()
                 }
             }
@@ -562,15 +558,22 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
         self.buttonsPressedDown = buttonsPressedDown
     }
 
-    function handle_mouse_event(self: Input, event: any) {
+    function handle_mouse_event(self: Input, event) {
         if (event.button.button == (globalThis as any).JulGameSdl.glue_SDL_BUTTON_LEFT || event.button.button == (globalThis as any).JulGameSdl.glue_SDL_BUTTON_MIDDLE || event.button.button == (globalThis as any).JulGameSdl.glue_SDL_BUTTON_RIGHT) {
             let button = event.button.button
-            if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN && (button in self.mouseButtonsHeldDown)) {
-                self.mouseButtonsPressedDown.push("button")
-                self.mouseButtonsHeldDown.push("button")
-            } else if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP && (button in self.mouseButtonsHeldDown)) {
-                self.mouseButtonsReleased.push("button");
+            if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONDOWN && !(self.mouseButtonsHeldDown.includes(button))) {
+                self.mouseButtonsPressedDown.push(button)
+                self.mouseButtonsHeldDown.push(button)
+            } else if (event.type == (globalThis as any).JulGameSdl.glue_SDL_MOUSEBUTTONUP && (self.mouseButtonsHeldDown.includes(button))) {
+                self.mouseButtonsReleased.push(button);
                 (() => { const a = self.mouseButtonsHeldDown; const i = a.findIndex((x) => x === button); if (i >= 0) a.splice(i, 1); })()
             }
         }
     }
+
+    export function createInput(): Input {
+        return new Input()
+    }
+
+    export type TranspiledInput = Input;
+    export { Input }

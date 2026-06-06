@@ -10,7 +10,7 @@ export {}
         rotation: Vector3f
         screenPosition: Vector2
         screenRotation: Vector2
-        parent: any
+        parent
 
         constructor(position: Vector3f = {x: 0.0, y: 0.0, z: 0.0}, scale = {x: 1.0, y: 1.0, z: 1.0}, rotation = {x: 0.0, y: 0.0, z: 0.0}, parent = null) {
             
@@ -20,7 +20,7 @@ export {}
             this.rotation = rotation
             this.screenPosition = {x: 0.0, y: 0.0}
             this.screenRotation = {x: 0.0, y: 0.0}
-            this.parent = parent
+            this.parent = parent;
 
 
         }   
@@ -39,6 +39,4 @@ export {}
         
         return false
     }
-
-
-export { Transform, Component_duplicate }
+export { Component_duplicate, Component_is_mouse_hovering, Transform }

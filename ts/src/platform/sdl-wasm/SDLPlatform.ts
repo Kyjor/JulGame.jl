@@ -29,7 +29,7 @@ export class SDLPlatform implements Platform {
             throw new Error(`glue_init failed (code ${code})`);
         }
 
-        bootstrapJulGameSdl(api, this.canvas.width, this.canvas.height);
+        bootstrapJulGameSdl(api, this.canvas.width, this.canvas.height, this.canvas);
 
         const mod = this.bridge.getModule();
         const sceneUrl = new URL("../../../../test/projects/SmokeTest/scenes/scene.json", import.meta.url).href;
@@ -60,6 +60,8 @@ export class SDLPlatform implements Platform {
         }
 
         this.setStatus("sdl-wasm: stripped engine loop");
+        this.canvas.tabIndex = 0;
+        this.canvas.focus({ preventScroll: true });
         this.startLoop(api);
     }
 
@@ -68,11 +70,12 @@ export class SDLPlatform implements Platform {
         this.loopStarted = true;
 
         const tick = (): void => {
-            if (api.glue_poll_quit() !== 0) {
+            runStrippedGameFrame();
+            const main = (globalThis as unknown as { MAIN?: { input?: { quit?: boolean } } }).MAIN;
+            if (main?.input?.quit) {
                 this.setStatus("sdl-wasm: quit");
                 return;
             }
-            runStrippedGameFrame();
             requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);

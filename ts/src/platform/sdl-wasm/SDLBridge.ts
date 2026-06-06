@@ -1,4 +1,5 @@
 import { loadSDLModule } from "./sdlModule";
+import { attachSdlInputGlue } from "./sdlInputGlue";
 
 type Cwrap = (
     ident: string,
@@ -261,16 +262,19 @@ export class SDLBridge {
             }
         };
 
-        this.api = {
-            ...cApi,
-            glue_SDL_FRect,
-            glue_SDL_Rect,
-            glue_SDL_Point,
-            glue_SDL_FPoint,
-            glue_SDL_RenderFillRectF: glue_SDL_RenderFillRectFWrapped as JulGameSdlApi["glue_SDL_RenderFillRectF"],
-            glue_SDL_RenderCopyEx: wrapRenderCopyEx(cApi.glue_render_copy_ex),
-            glue_SDL_RenderCopyExF: wrapRenderCopyExF(cApi.glue_render_copy_ex_f),
-        };
+        this.api = attachSdlInputGlue(
+            {
+                ...cApi,
+                glue_SDL_FRect,
+                glue_SDL_Rect,
+                glue_SDL_Point,
+                glue_SDL_FPoint,
+                glue_SDL_RenderFillRectF: glue_SDL_RenderFillRectFWrapped as JulGameSdlApi["glue_SDL_RenderFillRectF"],
+                glue_SDL_RenderCopyEx: wrapRenderCopyEx(cApi.glue_render_copy_ex),
+                glue_SDL_RenderCopyExF: wrapRenderCopyExF(cApi.glue_render_copy_ex_f),
+            },
+            this.module as Parameters<typeof attachSdlInputGlue>[1],
+        );
     }
 
     getApi(): JulGameSdlApi {

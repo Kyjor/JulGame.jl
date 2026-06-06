@@ -6,6 +6,12 @@ export {}
     // using ..Component.SpriteModule
     // import ..Component
     
+    
+    class Animator {
+        animations: JulGameAnimation[]
+    }
+
+    
     class InternalAnimator {
         animations: JulGameAnimation[]
         currentAnimation: JulGameAnimation | null
@@ -29,7 +35,7 @@ export {}
         }
     }
 
-    function Component_update(self: InternalAnimator, currentRenderTime: number, deltaTime: number) {
+    function Component_update(self: InternalAnimator, currentRenderTime, deltaTime) {
         if (self.currentAnimation === null || self.currentAnimation.animatedFPS < 1 || (self.playOnce && self.lastFrame == self.currentAnimation.frames.length) || self.sprite == null) {
             return
         }
@@ -93,5 +99,5 @@ export {}
         frameIndex = frameIndex
         self.sprite.crop = self.currentAnimation.frames[frameIndex]
     }
-
-export { InternalAnimator }
+    
+export { Component_duplicate, Component_play_animation_once, Component_update, InternalAnimator }

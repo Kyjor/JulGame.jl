@@ -61,12 +61,7 @@ void glue_render_square_frame(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int glue_poll_quit(void) {
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            return 1;
-        }
-    }
+    /* Quit is handled by transpiled Input.poll_input via SDL_QUIT events. */
     return 0;
 }
 
@@ -240,4 +235,90 @@ int glue_render_copy_ex_f(void *texture, int has_src, float sx, float sy, float 
     SDL_Point center = {(int)floorf(cx), (int)floorf(cy)};
     return SDL_RenderCopyEx(renderer, (SDL_Texture *)texture, psrc, &dst, angle, &center,
                             (SDL_RendererFlip)flip);
+}
+
+/* --- Input glue (static event + keyboard state for transpiled Input.ts) --- */
+
+static SDL_Event s_input_event;
+static int s_mouse_x = 0;
+static int s_mouse_y = 0;
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_poll_event(void) {
+    int ok = SDL_PollEvent(&s_input_event);
+    if (ok) {
+        s_mouse_x = 0;
+        s_mouse_y = 0;
+        SDL_GetMouseState(&s_mouse_x, &s_mouse_y);
+    }
+    return ok;
+}
+
+EMSCRIPTEN_KEEPALIVE
+Uint32 glue_input_event_type(void) {
+    return s_input_event.type;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_event_button_x(void) {
+    return s_input_event.button.x;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_event_button_y(void) {
+    return s_input_event.button.y;
+}
+
+EMSCRIPTEN_KEEPALIVE
+Uint8 glue_input_event_button_button(void) {
+    return s_input_event.button.button;
+}
+
+EMSCRIPTEN_KEEPALIVE
+Uint8 glue_input_event_window_event(void) {
+    return s_input_event.window.event;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_get_mouse_x(void) {
+    SDL_GetMouseState(&s_mouse_x, &s_mouse_y);
+    return s_mouse_x;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_get_mouse_y(void) {
+    SDL_GetMouseState(&s_mouse_x, &s_mouse_y);
+    return s_mouse_y;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const Uint8 *glue_input_get_keyboard_state(void) {
+    return SDL_GetKeyboardState(NULL);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_get_num_scancodes(void) {
+    int num = 0;
+    SDL_GetKeyboardState(&num);
+    return num;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_input_key_down(int scancode) {
+    int num = 0;
+    const Uint8 *state = SDL_GetKeyboardState(&num);
+    if (!state || scancode < 0 || scancode >= num) {
+        return 0;
+    }
+    return state[scancode] ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_SDL_Init_subsystem(Uint32 flags) {
+    return (SDL_InitSubSystem(flags) == 0) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_SDL_NumJoysticks(void) {
+    return SDL_NumJoysticks();
 }

@@ -1,5 +1,6 @@
 import "./src/engine/core/globalConstants";
 import { Engine } from "./src/engine/core/Engine";
+import { bootstrapWebInput } from "./src/engine/runtime/julGameBootstrap";
 import { BrowserPlatform } from "./src/platform/web/BrowserPlatform";
 import { SDLPlatform } from "./src/platform/sdl-wasm";
 import { createGameMain } from "./src/game/GameMain";
@@ -24,6 +25,7 @@ async function boot() {
         return;
     }
 
+    bootstrapWebInput(canvas);
     const platform = new BrowserPlatform(canvas, status);
     const engine = new Engine(platform, createGameMain());
     await engine.start();

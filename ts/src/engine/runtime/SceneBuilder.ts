@@ -72,6 +72,7 @@ type ComponentJson = {
     imagePath?: string;
     isFlipped?: boolean;
     crop?: { x?: number; y?: number; z?: number; t?: number };
+    pixelsPerUnit?: number;
 };
 
 async function syncSpriteAssetsToMemfs(
@@ -173,7 +174,11 @@ export async function applyStrippedSceneData(
                 crop,
                 isFlipped: !!spriteComp.isFlipped,
                 color: [255, 255, 255, 255],
-                pixelsPerUnit: 0,
+                pixelsPerUnit:
+                    typeof spriteComp.pixelsPerUnit === "number"
+                        ? spriteComp.pixelsPerUnit
+                        : ((globalThis as { JulGame?: { PIXELS_PER_UNIT?: number } }).JulGame
+                              ?.PIXELS_PER_UNIT ?? 64),
                 position: { x: 0, y: 0 },
                 rotation: 0,
                 layer: 0,
