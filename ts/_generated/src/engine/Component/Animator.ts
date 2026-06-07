@@ -57,7 +57,7 @@ import { InternalSprite } from "./Sprite";
     
     function Component_play_animation_once(self: InternalAnimator, animationIndex: number) {
         if (animationIndex > 0 && animationIndex <= self.animations.length) {
-            self.currentAnimation = self.animations[animationIndex]
+            self.currentAnimation = self.animations[animationIndex - 1]
             self.playOnce = true
             self.lastFrame = 1
 

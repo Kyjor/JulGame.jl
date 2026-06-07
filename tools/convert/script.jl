@@ -141,6 +141,11 @@ function apply_game_script_fixups(data::AbstractString, name::AbstractString)::S
     )
     s = replace(s, r"\bVector2f\(([^,]+),\s*([^)]+)\)" => s"{x: \1, y: \2}")
     s = replace(s, r"\bVector3f\(([^,]+),\s*([^,]+),\s*([^)]+)\)" => s"{x: \1, y: \2, z: \3}")
+    s = replace(
+        s,
+        r"((?:self\.)[\w.]+\.transform\.position) = (\{x:[^}]+\}) \+ (self\.offset)" =>
+            s"\1 = vecAdd(\2, \3)",
+    )
     s = replace(s, "parse(Int," => "parseInt(")
     s = replace(s, "\"\$(score)\"" => "`\${score}`")
     s = replace(s, r"\bcos\(" => "Math.cos(")
@@ -225,6 +230,9 @@ function finalize_game_script_ts(data::AbstractString, path_jl::AbstractString, 
     end
     if needs_async
         println(reg, "import { isTaskDone, notifyCondition, scheduleTask, waitCondition, yieldTask } from \"julgame/src/engine/runtime/coroutineRuntime\";")
+    end
+    if occursin(r"\bvec(?:Add|Sub|Mul|Div|Neg)\(", s)
+        println(reg, "import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from \"julgame/src/engine/core/vectorOps\";")
     end
     println(reg, "")
     print(reg, s)

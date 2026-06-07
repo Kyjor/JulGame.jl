@@ -437,6 +437,45 @@ function _read_atom_token!(ps::_Ps)::Union{Nothing, String}
     return nothing
 end
 
+function _read_braced_atom!(ps::_Ps)::Union{Nothing, String}
+    _skip_ws!(ps)
+    ps.i > ps.n && return nothing
+    ps.s[ps.i] != '{' && return nothing
+    i0 = ps.i
+    depth = 0
+    while ps.i <= ps.n
+        c = ps.s[ps.i]
+        if c == '"'
+            ps.i = nextind(ps.s, ps.i)
+            while ps.i <= ps.n
+                cc = ps.s[ps.i]
+                if cc == '\\'
+                    ps.i = nextind(ps.s, ps.i, 2)
+                    continue
+                end
+                if cc == '"'
+                    ps.i = nextind(ps.s, ps.i)
+                    break
+                end
+                ps.i = nextind(ps.s, ps.i)
+            end
+            continue
+        end
+        if c == '{'
+            depth += 1
+        elseif c == '}'
+            depth -= 1
+            if depth == 0
+                i1 = ps.i
+                ps.i = nextind(ps.s, ps.i)
+                return String(SubString(ps.s, i0, i1))
+            end
+        end
+        ps.i = nextind(ps.s, ps.i)
+    end
+    return nothing
+end
+
 function _parse_postfix!(ps::_Ps)::Union{Nothing, _VecAst}
     c0 = _peekc(ps)
     c0 === nothing && return nothing
@@ -449,6 +488,10 @@ function _parse_postfix!(ps::_Ps)::Union{Nothing, _VecAst}
         (ps.i > ps.n || ps.s[ps.i] != ')') && return nothing
         ps.i = nextind(ps.s, ps.i)
         node = inner
+    elseif c0 == '{'
+        br = _read_braced_atom!(ps)
+        br === nothing && return nothing
+        node = _Leaf(br)
     else
         tok = _read_atom_token!(ps)
         tok === nothing && return nothing
@@ -626,7 +669,7 @@ function _rewrite_vector_arithmetic_line(line::AbstractString)::String
         rw = _try_rewrite_set_velocity_line(s)
         rw !== nothing && return rw
     end
-    m = match(r"^(\s*(?:let\s+)?)([A-Za-z_$][\w$.]*)\s*=\s*(.+)$", s)
+    m = match(r"^(\s*let\s+)([A-Za-z_$]\w*)\s*=\s*(.+)$", s)
     if m !== nothing
         rhs = String(strip(m[3]))
         (startswith(rhs, "{") || startswith(rhs, "[") || startswith(rhs, "`")) && return line
@@ -648,6 +691,23 @@ function _rewrite_vector_arithmetic_line(line::AbstractString)::String
         rew = _try_rewrite_rhs_vector_expr(rhs0)
         if rew !== nothing
             return string(m2[1], rew, " as Vector2f")
+        end
+    end
+    m3 = match(r"^(\s*)(.+)\s*=\s*(.+)$", s)
+    if m3 !== nothing
+        lhs = String(strip(m3[2]))
+        rhs = String(strip(m3[3]))
+        (startswith(rhs, "{") && !occursin('+', rhs) && !occursin('-', rhs)) && return line
+        startswith(rhs, "[") && return line
+        startswith(rhs, "`") && return line
+        occursin('"', rhs) && return line
+        (occursin("transform.position", lhs) || endswith(lhs, ".position") ||
+         endswith(lhs, ".velocity") || occursin(".velocity", lhs)) || return line
+        !_rhs_hints_vector_math(rhs) && return line
+        rhs0 = rstrip(rhs, ';')
+        rew = _try_rewrite_rhs_vector_expr(rhs0)
+        if rew !== nothing
+            return string(m3[1], lhs, " = ", rew)
         end
     end
     return line

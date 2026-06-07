@@ -71,6 +71,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: net start audiosrv
         shell: powershell
+        continue-on-error: true
 
       - uses: julia-actions/setup-julia@v1
         with:

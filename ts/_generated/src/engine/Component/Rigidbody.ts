@@ -53,7 +53,7 @@ import { Component_check_collisions } from "./Collider";
         let newVelocity = vecAdd(self.velocity, vecMul(vecAdd(self.acceleration, newAcceleration), vecMul(dt, 0.5))) as Vector2f
 
         transform.position = newPosition
-        self.velocity = vecMul(newVelocity, velocityMultiplier) as Vector2f
+        self.velocity = vecMul(newVelocity, velocityMultiplier)
         self.acceleration = newAcceleration
 
         if (self.parent.collider != null) {
@@ -82,7 +82,7 @@ import { Component_check_collisions } from "./Collider";
     - `velocity`: The velocity to set.
     */
     function add_velocity(self: InternalRigidbody, velocity: Vector2f) {
-        self.velocity = vecAdd(self.velocity, velocity) as Vector2f
+        self.velocity = vecAdd(self.velocity, velocity)
         if (velocity.y < 0) {
             self.grounded = false
             if (self.parent.collider != null) {

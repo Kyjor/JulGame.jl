@@ -636,7 +636,7 @@ function JulGame_destroy_entity(entity) {
 
 function JulGame_destroy_ui_element(self: MainLoop, uiElement) {
 	for i = eachindex(self.scene.uiElements)
-		if (self.scene.uiElements[i] == uiElement) {
+		if (self.scene.uiElements[i - 1] == uiElement) {
 			(self.scene.uiElements).splice((i) - 1, 1)
 			(globalThis as any).JulGame.destroy(uiElement)
 			mark_input_layer_order_dirty(self)  // Cache needs rebuild
