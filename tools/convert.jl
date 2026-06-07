@@ -7,6 +7,10 @@
 
 const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
 include(joinpath(@__DIR__, "convert", "input.jl"))
+include(joinpath(@__DIR__, "convert", "script.jl"))
+include(joinpath(@__DIR__, "convert", "collider.jl"))
+include(joinpath(@__DIR__, "convert", "animator.jl"))
+include(joinpath(@__DIR__, "convert", "sprite.jl"))
 
 # Generated TS calls Julia-style `InternalFoo(args)` on classes — emit `new InternalFoo(args)`.
 # Start with engine `Internal*` component types; append more names as other modules gain classes.
@@ -53,6 +57,7 @@ const _CROSS_MODULE_SYMBOL_SOURCES = Dict{String, Tuple{String, Vector{String}}}
     "InternalSoundSource" => ("./Component/SoundSource", ["InternalSoundSource"]),
     "InternalSprite" => ("./Component/Sprite", ["InternalSprite"]),
     "Component_initialize" => ("./Component/Sprite", ["Component_initialize"]),
+    "Component_check_collisions" => ("./Component/Collider", ["Component_check_collisions"]),
     "Transform" => ("./Component/Transform", ["Transform"]),
     "Camera" => ("./Camera/Camera", ["Camera"]),
 )
@@ -101,13 +106,18 @@ function emit_stub(path_ts::AbstractString, path_jl::AbstractString)
     path_ts
 end
 
-function transpile_file(path_jl::AbstractString)
-    path_ts = ts_output_path(path_jl)
+function transpile_file(path_jl::AbstractString; repo_root::AbstractString = REPO_ROOT)
+    path_ts = ts_output_path(path_jl; repo_root = repo_root)
     emit_stub(path_ts, path_jl)
-    parse_file(path_jl, path_ts)
+    parse_file(path_jl, path_ts; repo_root = repo_root)
 end
 
-function parse_file(path_jl::AbstractString, path_ts::AbstractString)
+function parse_file(
+    path_jl::AbstractString,
+    path_ts::AbstractString;
+    repo_root::AbstractString = REPO_ROOT,
+)
+    _ = repo_root
     mkpath(dirname(path_ts))
     data = read(path_jl, String)
     # Drop UTF-8 BOMs copied from source files so generated TS starts cleanly.
@@ -162,17 +172,25 @@ function parse_file(path_jl::AbstractString, path_ts::AbstractString)
     data = replace_ts_if_blocks_when_block_contains_substring(data)
     data = replace_entire_line_if_matches(data, path_jl)
     data = merge_main_scene_delegating_overloads(data)
+    is_script = is_game_script_source(path_jl)
     if is_input_source(path_jl)
         data = postprocess_input_ts(data, path_jl, path_ts)
+    elseif is_script
+        data = postprocess_game_script_ts(data, path_jl, path_ts)
     else
         data = "export {}\n" * data
     end
-    data = prepend_generated_ts_imports(data, path_ts)
+    if !is_script
+        data = prepend_generated_ts_imports(data, path_ts)
+    end
     # Input.ts exports are finalized in `postprocess_input_ts` (`tools/convert/input.jl`).
-    if !is_input_source(path_jl)
+    if !is_input_source(path_jl) && !is_script
         data = append_generated_module_exports(data)
     end
     is_camera_source(path_jl) && (data = finalize_camera_exports(data))
+    is_collider_source(path_jl) && (data = postprocess_collider_ts(data))
+    is_animator_source(path_jl) && (data = postprocess_animator_ts(data))
+    is_sprite_source(path_jl) && (data = postprocess_sprite_ts(data))
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -231,20 +249,26 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             push!(lines, string("import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from \"", relv, "\";"))
         end
     end
-    # Cross-module component / transform imports (Entity.ts, Scene.ts, …).
+    # Cross-module component / transform imports (paths in dict are relative to `_generated/src/engine`).
+    engine_ts_root = abspath(joinpath(REPO_ROOT, "ts", "_generated", "src", "engine"))
     by_path = Dict{String, Vector{String}}()
-    for (sym, (rel_path, _)) in _CROSS_MODULE_SYMBOL_SOURCES
+    for (sym, (engine_rel, _)) in _CROSS_MODULE_SYMBOL_SOURCES
         occursin(Regex("\\b" * sym * "\\b"), data) || continue
         # Do not import symbols defined in this file (e.g. `class Camera`, `function Component_initialize`).
         occursin(Regex("class\\s+" * sym * "\\s*\\{"), data) && continue
         occursin(Regex("function\\s+" * sym * "\\s*\\("), data) && continue
         occursin(Regex("import\\s+\\{[^}]*\\b" * sym * "\\b"), data) && continue
-        syms = get!(by_path, rel_path, String[])
+        module_rel = replace(String(engine_rel), r"^\./" => "")
+        target_ts = joinpath(engine_ts_root, module_rel * ".ts")
+        import_from = replace(String(relpath(target_ts, ts_dir)), '\\' => '/')
+        import_from = replace(import_from, r"\.ts$" => "")
+        startswith(import_from, ".") || (import_from = "./" * import_from)
+        syms = get!(by_path, import_from, String[])
         sym in syms || push!(syms, sym)
     end
-    for rel_path in sort(collect(keys(by_path)))
-        syms = sort!(by_path[rel_path])
-        push!(lines, string("import { ", join(syms, ", "), " } from \"", rel_path, "\";"))
+    for import_from in sort(collect(keys(by_path)))
+        syms = sort!(by_path[import_from])
+        push!(lines, string("import { ", join(syms, ", "), " } from \"", import_from, "\";"))
     end
     isempty(lines) && return data
     import_block = string(join(lines, "\n"), "\n")
@@ -3977,24 +4001,54 @@ function replace_entire_line_if_matches(data::AbstractString, path_jl::AbstractS
     return join(out, '\n')
 end
 
-function main()
+function parse_cli_args()::Tuple{Vector{String}, AbstractString}
+    project_root = nothing
+    all_scripts = false
     files = String[]
-    if !isempty(ARGS)
-        for a in ARGS
-            p = isabspath(a) ? String(a) : joinpath(REPO_ROOT, String(a))
+    i = 1
+    while i <= length(ARGS)
+        a = ARGS[i]
+        if a == "--project-root"
+            i + 1 > length(ARGS) && error("--project-root requires a path")
+            project_root = abspath(ARGS[i + 1])
+            i += 2
+            continue
+        elseif a == "--all-scripts"
+            all_scripts = true
+            i += 1
+            continue
+        else
+            base = project_root !== nothing ? project_root : REPO_ROOT
+            p = isabspath(a) ? String(a) : joinpath(base, String(a))
             isfile(p) || error("not a file: $p")
             push!(files, p)
+            i += 1
         end
-    else
-        append!(files, source_files_from_manifest())
+    end
+    if all_scripts
+        project_root === nothing && error("--all-scripts requires --project-root")
+        append!(files, collect_project_script_files(project_root))
+    end
+    if isempty(files)
+        if project_root !== nothing
+            append!(files, collect_project_script_files(project_root))
+        else
+            append!(files, source_files_from_manifest())
+        end
     end
     isempty(files) && (files = [joinpath(REPO_ROOT, "src", "MainLoop.jl")])
+    repo = project_root !== nothing ? project_root : REPO_ROOT
+    return unique(files), repo
+end
+
+function main()
+    files, repo_root = parse_cli_args()
     # Smallest-first helps us iterate patterns safely from simpler files upward.
     sort!(files, by = f -> filesize(f))
     mkpath(default_out_dir())
     for f in files
         isfile(f) || error("not a file: $f")
-        println(transpile_file(f))
+        println(transpile_file(f; repo_root = repo_root))
     end
 end
 

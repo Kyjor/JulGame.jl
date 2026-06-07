@@ -1,19 +1,40 @@
 import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
 import { Camera, cameraPixelsPerWorldUnit, cameraUpdate } from "../../../_generated/src/engine/Camera/Camera";
+import { force_frame_update } from "../../../_generated/src/engine/Component/Animator";
+import {
+    Component_add_collision_event,
+    Component_check_collisions,
+} from "../../../_generated/src/engine/Component/Collider";
+import { add_velocity, Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
+import { Component_flip } from "../../../_generated/src/engine/Component/Sprite";
+import {
+    Component_load_sound,
+    Component_toggle_sound,
+    InternalSoundSource,
+} from "../../../_generated/src/engine/Component/SoundSource";
 import { Entity, JulGame_add_script, JulGame_add_sprite, JulGame_update } from "../../../_generated/src/engine/Entity";
 import { Scene } from "../../../_generated/src/engine/Scene";
+import { installCoroutineGlobals } from "./coroutineRuntime";
 import { installTranspiledInput } from "./inputBootstrap";
+import { initializeScript, updateScript } from "./scriptRegistry";
 import { installStrippedInput } from "./StrippedInput";
+import { wireSceneApi } from "./scriptLoader";
 
 /**
  * SDL / wasm entry: attach `JulGame`, `JulGameSdl`, `MAIN`, and `Renderer` expected by `_generated` modules.
  * Call after `JulGameSdl` c API is ready and before loading scenes or running frames.
  */
+export type BootstrapOptions = {
+    basePath?: string;
+    gravity?: number;
+};
+
 export function bootstrapJulGameSdl(
     api: JulGameSdlApi,
     canvasWidth: number,
     canvasHeight: number,
     _canvas: HTMLCanvasElement,
+    opts: BootstrapOptions = {},
 ): void {
     const root = globalThis as unknown as {
         JulGameSdl: JulGameSdlApi;
@@ -32,18 +53,29 @@ export function bootstrapJulGameSdl(
     };
     jg.add_script = JulGame_add_script;
     jg.add_sprite = JulGame_add_sprite;
-    jg.update = JulGame_update;
-    jg.initialize = (_obj: unknown) => {
-        /* User scripts / editor — stripped runtime no-op */
+    jg.update = (obj: unknown, deltaTime = 0) => {
+        if (obj && typeof obj === "object" && "scripts" in obj) {
+            JulGame_update(obj as Entity, deltaTime);
+        } else {
+            updateScript(obj, deltaTime);
+        }
+    };
+    jg.initialize = (script: unknown) => {
+        initializeScript(script);
+    };
+    jg.updateScript = (script: unknown, deltaTime: number) => {
+        updateScript(script, deltaTime);
     };
     jg.pixels_per_world_unit = cameraPixelsPerWorldUnit;
     jg.CameraModule = { update: cameraUpdate };
     jg.IS_EDITOR = false;
     jg.IS_WEB = true;
     jg.IS_DEBUG = false;
-    jg.BasePath = "/game";
+    jg.BasePath = opts.basePath ?? "/game";
+    jg.GRAVITY = opts.gravity ?? 9.81;
     jg.PIXELS_PER_UNIT = 64;
     jg.IMAGE_CACHE = [];
+    jg.AUDIO_CACHE = [];
     jg.Coroutines = [];
     jg.FrameCount = 0;
     jg.DELTA_TIME = 0;
@@ -88,6 +120,25 @@ export function bootstrapJulGameSdl(
     };
     jg.MAIN = root.MAIN;
     installTranspiledInput(jg, root.MAIN);
+    installCoroutineGlobals(jg);
+    wireSceneApi(jg);
+    jg.Component = {
+        add_collision_event: Component_add_collision_event,
+        check_collisions: Component_check_collisions,
+        toggle_sound: Component_toggle_sound,
+        load_sound: Component_load_sound,
+        flip: Component_flip,
+    };
+    jg.RigidbodyModule = { add_velocity, Component_update: rigidbodyUpdate };
+    jg.AnimatorModule = { force_frame_update };
+    jg.Math = {
+        Vector2f: (x: number, y: number) => ({ x, y }),
+        Vector3f: (x: number, y: number, z: number) => ({ x, y, z }),
+    };
+    jg.SoundSourceModule = {
+        InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
+            new InternalSoundSource(...args),
+    };
 }
 
 /** DOM input fallback for `?backend=web` (no SDL). */

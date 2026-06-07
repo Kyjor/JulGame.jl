@@ -9,8 +9,22 @@ export function clamp(val: number, min: number, max: number): number {
     return Math.min(Math.max(val, min), max);
 }
 
-export function unsafe_string(ptr: number): string {
-    return "nothing yet"
+/** Julia `unsafe_string` — decode a C string pointer, or pass through wasm cwrap `"string"` results. */
+export function unsafe_string(ptr: number | string | null | undefined): string {
+    if (ptr == null) {
+        return "";
+    }
+    if (typeof ptr === "string") {
+        return ptr;
+    }
+    if (ptr === 0) {
+        return "";
+    }
+    const sdl = (globalThis as { JulGameSdl?: { UTF8ToString?: (p: number) => string } }).JulGameSdl;
+    if (sdl?.UTF8ToString) {
+        return sdl.UTF8ToString(ptr);
+    }
+    return "";
 }
 
 /**

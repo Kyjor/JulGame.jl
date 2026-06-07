@@ -4,8 +4,6 @@ module SpriteModule
     import ..Component
     # Effects imports - will be available after Effects module is loaded
     import ..Component.JulGame as JG
-    include(joinpath(@__DIR__, "Sprite", "constants.jl"))
-    include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
 
     export Sprite
     struct Sprite
@@ -104,6 +102,9 @@ module SpriteModule
             return this
         end
     end
+
+    include(joinpath(@__DIR__, "Sprite", "constants.jl"))
+    include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
     
     function Component.draw(this::InternalSprite, camera = nothing)
         if this.image == C_NULL || JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL

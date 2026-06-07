@@ -1,5 +1,5 @@
 export {}
-import { InternalSprite } from "./Component/Sprite";
+import { InternalSprite } from "./Sprite";
 
 
     // using ..Component.AnimationModule
@@ -51,7 +51,7 @@ import { InternalSprite } from "./Component/Sprite";
         if (self.lastFrame > frameCount) {
             self.lastFrame = 1
         }
-        self.sprite.crop = self.currentAnimation.frames[self.lastFrame]
+        self.sprite.crop = self.currentAnimation.frames[self.lastFrame > 0 ? self.lastFrame - 1 : 0]
     }
 
     
@@ -99,7 +99,7 @@ import { InternalSprite } from "./Component/Sprite";
             return
         }
         frameIndex = frameIndex
-        self.sprite.crop = self.currentAnimation.frames[frameIndex]
+        self.sprite.crop = self.currentAnimation.frames[frameIndex - 1]
     }
     
 export { Animator, Component_duplicate, Component_play_animation_once, Component_update, InternalAnimator, force_frame_update }

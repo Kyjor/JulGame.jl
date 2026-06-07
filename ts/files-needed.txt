@@ -11,3 +11,8 @@ Scene.jl
 MainLoop.jl
 Collider.jl
 Rigidbody.jl
+WindowManager.jl
+ScreenButton.jl
+Rectangle.jl
+SceneBuilder.jl
+SceneReader.jl

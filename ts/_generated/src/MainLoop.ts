@@ -1,7 +1,7 @@
 export {}
 import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
-import { Camera } from "./Camera/Camera";
-import { InternalSprite } from "./Component/Sprite";
+import { Camera } from "./engine/Camera/Camera";
+import { InternalSprite } from "./engine/Component/Sprite";
 
 
 	// using ..JulGame

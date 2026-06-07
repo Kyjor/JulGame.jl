@@ -2,10 +2,26 @@ import "../../engine/core/globalConstants";
 import type { Platform } from "../../engine/platform/Platform";
 import type { RenderCommand } from "../../engine/rendering/RenderCommands";
 import { bootstrapJulGameSdl } from "../../engine/runtime/julGameBootstrap";
+import { initializeAllScripts } from "../../engine/runtime/scriptLoader";
 import { loadStrippedScene } from "../../engine/runtime/SceneBuilder";
-import { runStrippedGameFrame } from "../../engine/runtime/MainLoop";
+import { reloadEntitySounds, tryOpenGameAudio } from "../../engine/runtime/memfsAudio";
+import { runGameFrame } from "../../engine/runtime/MainLoop";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { SDLBridge } from "./SDLBridge";
+
+export type ProjectConfig = {
+    sceneJsonUrl: string;
+    memfsAssetBaseUrl: string;
+    basePath?: string;
+    maxEntities?: number;
+};
+
+const DEFAULT_SMOKE_TEST: ProjectConfig = {
+    sceneJsonUrl: new URL("../../../../test/projects/SmokeTest/scenes/scene.json", import.meta.url).href,
+    memfsAssetBaseUrl: new URL("../../../../test/projects/SmokeTest", import.meta.url).href,
+    basePath: "/game",
+    maxEntities: 96,
+};
 
 export class SDLPlatform implements Platform {
     private readonly bridge = new SDLBridge();
@@ -14,6 +30,7 @@ export class SDLPlatform implements Platform {
     constructor(
         private readonly canvas: HTMLCanvasElement,
         private readonly status: HTMLElement,
+        private readonly project: ProjectConfig = DEFAULT_SMOKE_TEST,
     ) {}
 
     async init(): Promise<void> {
@@ -29,19 +46,34 @@ export class SDLPlatform implements Platform {
             throw new Error(`glue_init failed (code ${code})`);
         }
 
-        bootstrapJulGameSdl(api, this.canvas.width, this.canvas.height, this.canvas);
+        bootstrapJulGameSdl(api, this.canvas.width, this.canvas.height, this.canvas, {
+            basePath: this.project.basePath ?? "/game",
+        });
 
         const mod = this.bridge.getModule();
-        const sceneUrl = new URL("../../../../test/projects/SmokeTest/scenes/scene.json", import.meta.url).href;
-        const assetBase = new URL("../../../../test/projects/SmokeTest", import.meta.url).href;
         const main = (globalThis as unknown as { MAIN: { scene: Scene } }).MAIN;
+        const audioReady = tryOpenGameAudio(api);
         await loadStrippedScene(main.scene, mod, {
-            sceneJsonUrl: sceneUrl,
-            memfsAssetBaseUrl: assetBase,
+            sceneJsonUrl: this.project.sceneJsonUrl,
+            memfsAssetBaseUrl: this.project.memfsAssetBaseUrl,
             canvasWidth: this.canvas.width,
             canvasHeight: this.canvas.height,
-            maxEntities: 96,
+            maxEntities: this.project.maxEntities ?? 128,
+            loadScripts: true,
+            deferScriptInitialize: !audioReady,
         });
+        const finishScriptAndAudio = (): void => {
+            tryOpenGameAudio(api);
+            reloadEntitySounds(main.scene);
+            initializeAllScripts(main.scene.entities);
+            this.setStatus("sdl-wasm: game loop");
+        };
+        if (audioReady) {
+            reloadEntitySounds(main.scene);
+        } else {
+            this.setStatus("sdl-wasm: click canvas to enable audio");
+            this.canvas.addEventListener("pointerdown", () => finishScriptAndAudio(), { once: true });
+        }
 
         const cam = main.scene.camera as { size?: { x: number; y: number } } | null;
         const cw = this.canvas.width;
@@ -59,7 +91,7 @@ export class SDLPlatform implements Platform {
             api.glue_SDL_RenderSetLogicalSize(0, 0);
         }
 
-        this.setStatus("sdl-wasm: stripped engine loop");
+        this.setStatus("sdl-wasm: game loop");
         this.canvas.tabIndex = 0;
         this.canvas.focus({ preventScroll: true });
         this.startLoop(api);
@@ -70,7 +102,7 @@ export class SDLPlatform implements Platform {
         this.loopStarted = true;
 
         const tick = (): void => {
-            runStrippedGameFrame();
+            runGameFrame();
             const main = (globalThis as unknown as { MAIN?: { input?: { quit?: boolean } } }).MAIN;
             if (main?.input?.quit) {
                 this.setStatus("sdl-wasm: quit");

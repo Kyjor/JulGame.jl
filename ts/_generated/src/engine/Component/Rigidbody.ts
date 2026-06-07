@@ -1,6 +1,7 @@
 export {}
 import { clamp } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
+import { Component_check_collisions } from "./Collider";
 
 
     // using ..Component.JulGame

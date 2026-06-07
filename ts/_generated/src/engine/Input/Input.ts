@@ -6,12 +6,6 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
     // using ..(globalThis as any).JulGame.Math
     // using Dates
     // using Base64
-    // include("api.jl")
-    // include("clipboard.jl")
-    // include("cursor.jl")
-    // include("profile.jl")
-    // include("test_helpers.jl")
-    // include("ui.jl")
 
     
     class Input {
@@ -107,14 +101,20 @@ import { clamp, time_ns, unsafe_string } from "../../../../src/engine/core/julia
             this.button = 0
 
             this.cursorBank = {}
-            //create_cursor_bank(this)
-            this.defaultCursor = this.cursorBank["arrow"]
+            create_cursor_bank(this)
 
             this.isTestButtonClicked = false
             this.simulatedClickPosition = null
             this.pending_sdl_events = []
         }
     }
+
+    // include("api.jl")
+    // include("clipboard.jl")
+    // include("cursor.jl")
+    // include("profile.jl")
+    // include("test_helpers.jl")
+    // include("ui.jl")
 
     function _refresh_logical_mouse(self: Input, evt: any) {
         let x = [1]
@@ -504,26 +504,29 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
                 (globalThis as any).JulGame.IS_DEBUG = !(globalThis as any).JulGame.IS_DEBUG
             }
 
-            let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)
-            handle_key_event(self, keyboardState)
-
-
         }
+
+        let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)
+        handle_key_event(self, keyboardState)
 
         // if self.isTestButtonClicked
         //     lift_mouse_after_simulated_click(self)
         // }
     }
 
+    function create_cursor_bank(self: Input): void {
+        self.defaultCursor = null
+    }
+
     function check_scan_code(self: Input, keyboardState, keyState, scanCodes) {
         for (const scanCode of scanCodes) {
             try {
-                let check_code = Number(scanCode) + 1
+                let check_code = Number(scanCode)
                 if (keyboardState[check_code] == keyState) {
                     return true
                 }
             } catch {
-                console.error(`Error checking scan code ${scanCode} at index ${Number(scanCode) + 1}`)
+                console.error(`Error checking scan code ${scanCode} at index ${Number(scanCode)}`)
             }
         }
         return false

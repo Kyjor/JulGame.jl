@@ -122,7 +122,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
             return
         }
         
-        self.windowSize = {x: width, y: height}
+        self.windowSize = {x: width, y: height};
         (globalThis as any).JulGameSdl.glue_SDL_SetWindowSize(self.window, width, height)
     }
 
@@ -379,7 +379,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         if (self.window == null) {
             console.error("Cannot center window: Window has not been created")
             return
-        }
+        };
         
         (globalThis as any).JulGameSdl.glue_SDL_SetWindowPosition(self.window, (globalThis as any).JulGameSdl.glue_SDL_WINDOWPOS_CENTERED, (globalThis as any).JulGameSdl.glue_SDL_WINDOWPOS_CENTERED)
         
@@ -403,7 +403,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         if (self.window == null) {
             console.error("Cannot set window position: Window has not been created")
             return
-        }
+        };
         
         (globalThis as any).JulGameSdl.glue_SDL_SetWindowPosition(self.window, x, y)
         self.position = {x: x, y: y}
@@ -468,7 +468,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         if (surface == null) {
             console.error(`Failed to load icon image: ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
             return
-        }
+        };
         
         (globalThis as any).JulGameSdl.glue_SDL_SetWindowIcon(self.window, surface);
         (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(surface)
@@ -684,7 +684,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         if (self.window == null) {
             console.error("Cannot minimize window: Window has not been created")
             return
-        }
+        };
         
         (globalThis as any).JulGameSdl.glue_SDL_MinimizeWindow(self.window)
     }
@@ -702,7 +702,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         if (self.window == null) {
             console.error("Cannot maximize window: Window has not been created")
             return
-        }
+        };
         
         (globalThis as any).JulGameSdl.glue_SDL_MaximizeWindow(self.window)
     }
@@ -720,7 +720,7 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
         if (self.window == null) {
             console.error("Cannot restore window: Window has not been created")
             return
-        }
+        };
         
         (globalThis as any).JulGameSdl.glue_SDL_RestoreWindow(self.window)
     }
@@ -852,3 +852,4 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
     function get_base_resolution()
         return get_base_resolution((globalThis as any).JulGame.MAIN.windowManager)
     }
+export { JulGame_get_window_size, WindowManager, center_window, close_window, create_window, get_available_displays, get_base_resolution, get_display_dimensions, get_display_modes, get_display_name, get_display_refresh_rate, get_logical_size, get_window_size, handle_window_event, maximize_window, minimize_window, resize_window, restore_window, set_base_resolution, set_borderless_fullscreen, set_display_mode, set_frame_rate, set_fullscreen, set_logical_size, set_render_scale, set_resizable, set_vsync, set_window_icon, set_window_opacity, set_window_position, set_window_title, toggle_borderless, toggle_fullscreen, toggle_resizable, toggle_vsync }

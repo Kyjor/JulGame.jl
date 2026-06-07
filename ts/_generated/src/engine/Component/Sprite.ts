@@ -7,8 +7,6 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
     // import ..Component
     // Effects imports - will be available after Effects 
     // import ..Component.JulGame as JG
-    // include(joinpath(@__DIR__, "Sprite", "constants.jl"))
-    // include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
 
     
     class Sprite {
@@ -106,6 +104,9 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
 
         }
     }
+
+    // include(joinpath(@__DIR__, "Sprite", "constants.jl"))
+    // include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
     
     function Component_draw(self: InternalSprite, camera: any = null) {
         if (self.image == null || (globalThis as any).JulGame.Renderer == null) {
@@ -150,7 +151,7 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
         let position = self.parent.transform.position
     
         // Calculate source rectangle
-        let srcRect = (self.crop === null || (self.crop.x === 0 && self.crop.y === 0 && self.crop.z === 0 && self.crop.t === 0)) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(self.crop.x, self.crop.y, self.crop.z, self.crop.t)
+        let srcRect = (self.crop == null || (self.crop.x === 0 && self.crop.y === 0 && self.crop.z === 0 && self.crop.t === 0)) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(self.crop.x, self.crop.y, self.crop.z, self.crop.t)
     
         // Calculate pixels per unit
         let ppu = self.pixelsPerUnit > 0 ? self.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -160,8 +161,8 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
         
         // Always use original sprite size for positioning calculations
         let crop = self.crop == null ? {x: 0, y: 0, z: 0, t: 0} : self.crop
-        let cropWidth = srcRect == null ? self.size.x : crop.z
-        let cropHeight = srcRect == null ? self.size.y : crop.t
+        let cropWidth = srcRect == null ? (self.size?.x ?? 0) : crop.z
+        let cropHeight = srcRect == null ? (self.size?.y ?? 0) : crop.t
         let scaleX = self.parent.transform.scale.x
         let scaleY = self.parent.transform.scale.y
     

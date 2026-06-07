@@ -141,7 +141,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                         
                         if (!collider.isTrigger && !self.isTrigger) {
                                 self.parent.transform.position = {x: transform.position.x, y: transform.position.y - collision[1]}
-                                if (self.parent.rigidbody.velocity.y >= 0) {
+                                if (self.parent.rigidbody != null && self.parent.rigidbody.velocity.y >= 0) {
                                         self.parent.rigidbody.grounded = true
                                 }
                         }
@@ -152,15 +152,18 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                             eventToCall({ collider, direction: collision[0] })
                         }
                     }
-                    if (collision[2] && self.parent.rigidbody.grounded) {
+                    if (collision[2] && self.parent.rigidbody != null && self.parent.rigidbody.grounded) {
                         onGround = true
                     }
                 }
 
             }
 
-            self.parent.rigidbody.grounded = onGround
+            if (self.parent.rigidbody != null) {
 
+                self.parent.rigidbody.grounded = onGround
+
+            }
         return self.currentCollisions.length > 0
     }
 

@@ -4,12 +4,6 @@ module InputModule
     using ..JulGame.Math
     using Dates
     using Base64
-    include("api.jl")
-    include("clipboard.jl")
-    include("cursor.jl")
-    include("profile.jl")
-    include("test_helpers.jl")
-    include("ui.jl")
 
     export Input
     mutable struct Input
@@ -112,7 +106,7 @@ module InputModule
             this.button = 0
 
             this.cursorBank = Dict{String, SDL2.SDL_SystemCursor}()
-            #create_cursor_bank(this)
+            create_cursor_bank(this)
             this.defaultCursor = this.cursorBank["arrow"]
 
             this.isTestButtonClicked = false
@@ -122,6 +116,13 @@ module InputModule
             return this
         end
     end
+
+    include("api.jl")
+    include("clipboard.jl")
+    include("cursor.jl")
+    include("profile.jl")
+    include("test_helpers.jl")
+    include("ui.jl")
 
     function _refresh_logical_mouse!(this::Input, evt::SDL2.SDL_Event)
         x = Int32[1]
@@ -450,7 +451,7 @@ module InputModule
                 # _input_ui_hit_span!(prof, t_hm, :hit_mouse_evt_handle_mouse_event)
             end
 
-            _input_poll_accumulate!(prof, t0, :mouse_ui_hit_test_dispatch)
+            #_input_poll_accumulate!(prof, t0, :mouse_ui_hit_test_dispatch)
 
                 # if evt.jaxis.which == 0
                 #     this.jaxis = evt.jaxis
@@ -506,7 +507,7 @@ module InputModule
                 # end
             if evt.type == SDL2.SDL_QUIT
                 this.quit = true
-                _input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
+                #_input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
                 return -1
             end
             if evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3
@@ -517,7 +518,7 @@ module InputModule
             keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
             handle_key_event(this, keyboardState)
 
-            _input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
+            #_input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
         end
 
         # if this.isTestButtonClicked

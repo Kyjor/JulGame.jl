@@ -1,8 +1,18 @@
 import { Camera } from "../../../_generated/src/engine/Camera/Camera";
-import { Entity, JulGame_add_sprite } from "../../../_generated/src/engine/Entity";
+import {
+    Entity,
+    JulGame_add_animator,
+    JulGame_add_collider,
+    JulGame_add_rigidbody,
+    JulGame_add_sound_source,
+    JulGame_add_sprite,
+} from "../../../_generated/src/engine/Entity";
+import { Component_load_sound } from "../../../_generated/src/engine/Component/SoundSource";
 import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
+import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
+import { getScriptSoundPaths } from "./scriptRegistry";
 
 /** Minimal valid PNG (1×1) for MEMFS when project assets are missing locally. */
 const PNG_1X1 = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (ch) => ch.charCodeAt(0));
@@ -35,12 +45,16 @@ export const MINIMAL_STRIPPED_SCENE: SceneJson = {
 
 export type StrippedSceneLoadOptions = {
     sceneJsonUrl: string;
-    /** HTTP base whose `/assets/images/...` are fetched into MEMFS under `/game/assets/images/`. */
+    /** HTTP base whose `/assets/...` are fetched into MEMFS under `/game/assets/`. */
     memfsAssetBaseUrl: string;
     canvasWidth: number;
     canvasHeight: number;
     /** Cap entities deserialized (large editor scenes). */
     maxEntities?: number;
+    /** When true, instantiate transpiled scripts after entities are built. */
+    loadScripts?: boolean;
+    /** When true, only attach script instances — call `initializeAllScripts` later (e.g. after audio unlock). */
+    deferScriptInitialize?: boolean;
 };
 
 type EmMod = { FS?: { mkdirTree: (p: string) => void; writeFile: (p: string, d: Uint8Array) => void } };
@@ -54,6 +68,7 @@ export type SceneJson = {
         backgroundColor?: { r: number; g: number; b: number; a: number };
         zoom?: number;
     };
+    UIElements?: UIElementJson[];
 };
 
 type EntityJson = {
@@ -73,35 +88,219 @@ type ComponentJson = {
     isFlipped?: boolean;
     crop?: { x?: number; y?: number; z?: number; t?: number };
     pixelsPerUnit?: number;
+    layer?: number;
+    tag?: string;
+    offset?: { x: number; y: number };
+    enabled?: boolean;
+    size?: { x: number; y: number };
+    isPlatformerCollider?: boolean;
+    isTrigger?: boolean;
+    drag?: number;
+    mass?: number;
+    useGravity?: boolean;
+    animations?: Array<{ animatedFPS: number; frames: Array<{ x: number; y: number; z: number; t: number }> }>;
+    path?: string;
+    channel?: number;
+    volume?: number;
+    isMusic?: boolean;
+    playOnStart?: boolean;
 };
 
-async function syncSpriteAssetsToMemfs(
+type UIElementJson = {
+    type: string;
+    id?: string | number;
+    name?: string;
+    text?: string;
+    fontSize?: number;
+    fontPath?: string;
+    position?: { x: number; y: number };
+    size?: { x: number; y: number };
+    isActive?: boolean;
+    alpha?: number;
+    isCenteredX?: boolean;
+    isCenteredY?: boolean;
+};
+
+/** Lightweight UI element for score text (full TextBox wasm path optional). */
+export class SceneTextBox {
+    id: string | number;
+    name: string;
+    text: string;
+    fontSize: number;
+    fontPath: string;
+    position: { x: number; y: number };
+    size: { x: number; y: number };
+    isActive: boolean;
+    alpha: number;
+    isCenteredX: boolean;
+    isCenteredY: boolean;
+
+    constructor(json: UIElementJson) {
+        this.id = json.id ?? 0;
+        this.name = json.name ?? "TextBox";
+        this.text = json.text ?? "";
+        this.fontSize = json.fontSize ?? 24;
+        this.fontPath = json.fontPath ?? "";
+        this.position = json.position ?? { x: 0, y: 0 };
+        this.size = json.size ?? { x: 100, y: 24 };
+        this.isActive = json.isActive !== false;
+        this.alpha = json.alpha ?? 255;
+        this.isCenteredX = !!json.isCenteredX;
+        this.isCenteredY = !!json.isCenteredY;
+    }
+}
+
+async function syncAssetsToMemfs(
     emscriptenModule: EmMod,
     imagePaths: Set<string>,
+    soundPaths: Set<string>,
     memfsAssetBaseUrl: string,
 ): Promise<void> {
     const fs = emscriptenModule.FS;
     if (!fs) {
-        console.warn("SceneBuilder: Emscripten FS not available; IMG_Load may fail");
+        console.warn("SceneBuilder: Emscripten FS not available; asset load may fail");
         return;
     }
-    fs.mkdirTree("/game/assets/images");
+    const base = memfsAssetBaseUrl.replace(/\/$/, "");
 
+    fs.mkdirTree("/game/assets/images");
     for (const rel of imagePaths) {
         const memPath = `/game/assets/images/${rel}`;
-        const url = `${memfsAssetBaseUrl.replace(/\/$/, "")}/assets/images/${rel}`;
+        const url = `${base}/assets/images/${rel}`;
         try {
             const res = await fetch(url);
             if (!res.ok) {
                 throw new Error(String(res.status));
             }
-            const buf = new Uint8Array(await res.arrayBuffer());
-            fs.writeFile(memPath, buf);
+            fs.writeFile(memPath, new Uint8Array(await res.arrayBuffer()));
         } catch {
             fs.writeFile(memPath, PNG_1X1);
-            console.warn(`SceneBuilder: using 1×1 placeholder for missing asset: ${url}`);
+            console.warn(`SceneBuilder: using 1×1 placeholder for missing image: ${url}`);
         }
     }
+
+    if (soundPaths.size === 0) {
+        return;
+    }
+    fs.mkdirTree("/game/assets/sounds");
+    for (const rel of soundPaths) {
+        const memPath = `/game/assets/sounds/${rel}`;
+        const url = new URL(`assets/sounds/${rel}`, `${base}/`).href;
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error(String(res.status));
+            }
+            const data = new Uint8Array(await res.arrayBuffer());
+            fs.writeFile(memPath, data);
+            console.debug(`SceneBuilder: synced sound ${rel} (${data.byteLength} bytes)`);
+        } catch (e) {
+            console.warn(`SceneBuilder: missing sound asset: ${url}`, e);
+        }
+    }
+}
+
+function registerPhysics(scene: Scene, entity: Entity): void {
+    if (entity.collider && !scene.colliders.includes(entity.collider)) {
+        scene.colliders.push(entity.collider);
+    }
+    if (entity.rigidbody && !scene.rigidbodies.includes(entity.rigidbody)) {
+        scene.rigidbodies.push(entity.rigidbody);
+    }
+}
+
+function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
+    let transformComp: ComponentJson | null = null;
+    const otherComps: ComponentJson[] = [];
+    for (const c of ent.components ?? []) {
+        if (c.type === "Transform") {
+            transformComp = c;
+        } else {
+            otherComps.push(c);
+        }
+    }
+    if (!transformComp) {
+        console.debug(`SceneBuilder: skip entity ${ent.name} — no Transform`);
+        return null;
+    }
+
+    const pos = transformComp.position ?? { x: 0, y: 0 };
+    const sc = transformComp.scale ?? { x: 1, y: 1 };
+    const rot = transformComp.rotation ?? 0;
+    const tr = new Transform(
+        { x: pos.x, y: pos.y, z: 0 },
+        { x: sc.x, y: sc.y, z: 1 },
+        { x: 0, y: 0, z: rot },
+        null,
+    );
+    const entity = new Entity(ent.name, String(ent.id), tr, []);
+    entity.isActive = ent.isActive !== false;
+    entity.scripts = (ent.scripts ?? []) as never[];
+
+    for (const c of otherComps) {
+        if (c.type === "Sprite" && c.imagePath) {
+            const cr = c.crop;
+            const hasCrop =
+                cr &&
+                typeof cr.x === "number" &&
+                typeof cr.y === "number" &&
+                typeof cr.z === "number" &&
+                typeof cr.t === "number" &&
+                !(cr.x === 0 && cr.y === 0 && cr.z === 0 && cr.t === 0);
+            const crop = hasCrop ? { x: cr!.x!, y: cr!.y!, z: cr!.z!, t: cr!.t! } : null;
+            JulGame_add_sprite(entity, false, {
+                imagePath: c.imagePath,
+                crop,
+                isFlipped: !!c.isFlipped,
+                color: [255, 255, 255, 255],
+                pixelsPerUnit:
+                    typeof c.pixelsPerUnit === "number"
+                        ? c.pixelsPerUnit
+                        : ((globalThis as { JulGame?: { PIXELS_PER_UNIT?: number } }).JulGame?.PIXELS_PER_UNIT ??
+                          64),
+                position: { x: 0, y: 0 },
+                rotation: 0,
+                layer: c.layer ?? 0,
+                center: { x: 0.5, y: 0.5 },
+                anchor: "center",
+                offset: { x: 0, y: 0 },
+                isStatic: false,
+            });
+        } else if (c.type === "Collider") {
+            JulGame_add_collider(entity, {
+                size: c.size ?? { x: 1, y: 1 },
+                offset: c.offset ?? { x: 0, y: 0 },
+                tag: c.tag ?? "Default",
+                isTrigger: !!c.isTrigger,
+                isPlatformerCollider: !!c.isPlatformerCollider,
+                enabled: c.enabled !== false,
+            });
+        } else if (c.type === "Rigidbody") {
+            JulGame_add_rigidbody(entity, {
+                mass: c.mass ?? 1,
+                useGravity: c.useGravity !== false,
+            });
+            if (entity.rigidbody && typeof c.drag === "number") {
+                entity.rigidbody.drag = c.drag;
+            }
+        } else if (c.type === "Animator" && c.animations) {
+            JulGame_add_animator(entity, { animations: c.animations });
+        } else if (c.type === "SoundSource" && c.path) {
+            JulGame_add_sound_source(entity, {
+                path: c.path,
+                channel: c.channel ?? -1,
+                volume: c.volume ?? 100,
+                isMusic: !!c.isMusic,
+                playOnStart: !!c.playOnStart,
+            });
+            if (entity.soundSource) {
+                Component_load_sound(entity.soundSource, c.path, !!c.isMusic);
+            }
+        }
+    }
+
+    registerPhysics(scene, entity);
+    return entity;
 }
 
 /**
@@ -117,14 +316,25 @@ export async function applyStrippedSceneData(
     const list = (json.Entities ?? []).slice(0, max);
 
     const imagePaths = new Set<string>();
+    const soundPaths = new Set<string>();
     for (const ent of list) {
         for (const c of ent.components ?? []) {
             if (c.type === "Sprite" && typeof c.imagePath === "string") {
                 imagePaths.add(c.imagePath);
             }
+            if (c.type === "SoundSource" && typeof c.path === "string") {
+                soundPaths.add(c.path);
+            }
         }
     }
-    await syncSpriteAssetsToMemfs(emscriptenModule, imagePaths, opts.memfsAssetBaseUrl);
+    for (const p of getScriptSoundPaths()) {
+        soundPaths.add(p);
+    }
+    const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
+    if (jg) {
+        jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
+    }
+    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, opts.memfsAssetBaseUrl);
 
     scene.entities = [];
     scene.uiElements = [];
@@ -133,63 +343,16 @@ export async function applyStrippedSceneData(
     scene.batchedLayers = {};
 
     for (const ent of list) {
-        let transformComp: ComponentJson | null = null;
-        let spriteComp: ComponentJson | null = null;
-        for (const c of ent.components ?? []) {
-            if (c.type === "Transform") {
-                transformComp = c;
-            } else if (c.type === "Sprite") {
-                spriteComp = c;
-            }
+        const entity = buildEntityFromJson(ent, scene);
+        if (entity) {
+            scene.entities.push(entity);
         }
-        if (!transformComp) {
-            console.debug(`SceneBuilder: skip entity ${ent.name} — no Transform`);
-            continue;
+    }
+
+    for (const ui of json.UIElements ?? []) {
+        if (ui.type === "TextBox") {
+            scene.uiElements.push(new SceneTextBox(ui) as never);
         }
-
-        const pos = transformComp.position ?? { x: 0, y: 0 };
-        const sc = transformComp.scale ?? { x: 1, y: 1 };
-        const rot = transformComp.rotation ?? 0;
-        const tr = new Transform(
-            { x: pos.x, y: pos.y, z: 0 },
-            { x: sc.x, y: sc.y, z: 1 },
-            { x: 0, y: 0, z: rot },
-            null,
-        );
-        const entity = new Entity(ent.name, String(ent.id), tr, ent.scripts ?? []);
-        entity.isActive = ent.isActive !== false;
-
-        if (spriteComp && spriteComp.imagePath) {
-            const cr = spriteComp.crop;
-            const hasCrop =
-                cr &&
-                typeof cr.x === "number" &&
-                typeof cr.y === "number" &&
-                typeof cr.z === "number" &&
-                typeof cr.t === "number" &&
-                !(cr.x === 0 && cr.y === 0 && cr.z === 0 && cr.t === 0);
-            const crop = hasCrop ? { x: cr!.x!, y: cr!.y!, z: cr!.z!, t: cr!.t! } : null;
-            JulGame_add_sprite(entity, false, {
-                imagePath: spriteComp.imagePath,
-                crop,
-                isFlipped: !!spriteComp.isFlipped,
-                color: [255, 255, 255, 255],
-                pixelsPerUnit:
-                    typeof spriteComp.pixelsPerUnit === "number"
-                        ? spriteComp.pixelsPerUnit
-                        : ((globalThis as { JulGame?: { PIXELS_PER_UNIT?: number } }).JulGame
-                              ?.PIXELS_PER_UNIT ?? 64),
-                position: { x: 0, y: 0 },
-                rotation: 0,
-                layer: 0,
-                center: { x: 0.5, y: 0.5 },
-                anchor: "center",
-                offset: { x: 0, y: 0 },
-                isStatic: false,
-            });
-        }
-
-        scene.entities.push(entity);
     }
 
     if (json.Camera) {
@@ -209,6 +372,13 @@ export async function applyStrippedSceneData(
         scene.camera = cam;
     } else {
         attachDefaultCamera(scene, opts.canvasWidth, opts.canvasHeight);
+    }
+
+    if (opts.loadScripts !== false) {
+        instantiateScripts(scene.entities);
+        if (!opts.deferScriptInitialize) {
+            initializeAllScripts(scene.entities);
+        }
     }
 }
 

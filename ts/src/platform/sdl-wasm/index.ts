@@ -1,1 +1,1 @@
-export { SDLPlatform } from "./SDLPlatform";
+export { SDLPlatform, type ProjectConfig } from "./SDLPlatform";

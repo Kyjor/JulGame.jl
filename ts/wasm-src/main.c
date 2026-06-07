@@ -4,6 +4,7 @@
  */
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_mixer.h>
 #include <emscripten.h>
 #include <math.h>
 #include <stdint.h>
@@ -11,6 +12,19 @@
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
+static int mixer_open = 0;
+
+static int ensure_mixer(void) {
+    if (mixer_open) {
+        return 0;
+    }
+    if (Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 1024) != 0) {
+        SDL_SetError("Mix_OpenAudio: %s", Mix_GetError());
+        return -1;
+    }
+    mixer_open = 1;
+    return 0;
+}
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -20,8 +34,11 @@ int main(int argc, char **argv) {
 
 EMSCRIPTEN_KEEPALIVE
 int glue_init(int width, int height) {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         return -1;
+    }
+    if (Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3) == 0) {
+        fprintf(stderr, "Mix_Init: %s\n", Mix_GetError());
     }
     /* Emscripten: enable PNG/JPG in wasm-src/build.sh via -s SDL2_IMAGE_FORMATS=png,jpg
      * (USE_SDL_IMAGE=2 alone can omit decoders; IMG_Init then reports "PNG not supported"). */
@@ -314,6 +331,7 @@ int glue_input_get_mouse_y(void) {
 
 EMSCRIPTEN_KEEPALIVE
 const Uint8 *glue_input_get_keyboard_state(void) {
+    SDL_PumpEvents();
     return SDL_GetKeyboardState(NULL);
 }
 
@@ -327,6 +345,7 @@ int glue_input_get_num_scancodes(void) {
 EMSCRIPTEN_KEEPALIVE
 int glue_input_key_down(int scancode) {
     int num = 0;
+    SDL_PumpEvents();
     const Uint8 *state = SDL_GetKeyboardState(&num);
     if (!state || scancode < 0 || scancode >= num) {
         return 0;
@@ -342,4 +361,121 @@ int glue_SDL_Init_subsystem(Uint32 flags) {
 EMSCRIPTEN_KEEPALIVE
 int glue_SDL_NumJoysticks(void) {
     return SDL_NumJoysticks();
+}
+
+/* --- SDL_mixer glue (transpiled SoundSource.ts / MainLoop.ts) --- */
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize) {
+    if (mixer_open) {
+        return 0;
+    }
+    if (Mix_OpenAudio(frequency, format, channels, chunksize) != 0) {
+        SDL_SetError("Mix_OpenAudio: %s", Mix_GetError());
+        return -1;
+    }
+    mixer_open = 1;
+    return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_Mix_Quit(void) {
+    if (mixer_open) {
+        Mix_CloseAudio();
+        mixer_open = 0;
+    }
+    Mix_Quit();
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_Mix_LoadWAV(const char *path) {
+    if (ensure_mixer() != 0) {
+        return NULL;
+    }
+    Mix_Chunk *chunk = Mix_LoadWAV(path);
+    if (!chunk) {
+        SDL_SetError("Mix_LoadWAV(%s): %s", path ? path : "(null)", Mix_GetError());
+    }
+    return chunk;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_Mix_LoadMUS(const char *path) {
+    if (ensure_mixer() != 0) {
+        return NULL;
+    }
+    Mix_Music *music = Mix_LoadMUS(path);
+    if (!music) {
+        SDL_SetError("Mix_LoadMUS(%s): %s", path ? path : "(null)", Mix_GetError());
+    }
+    return music;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *glue_Mix_GetError(void) {
+    return Mix_GetError();
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_Mix_FreeChunk(void *chunk) {
+    if (chunk) {
+        Mix_FreeChunk((Mix_Chunk *)chunk);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_Mix_FreeMusic(void *music) {
+    if (music) {
+        Mix_FreeMusic((Mix_Music *)music);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_Volume(int channel, int volume) {
+    return Mix_Volume(channel, volume);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_VolumeMusic(int volume) {
+    return Mix_VolumeMusic(volume);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_MasterVolume(int volume) {
+    return Mix_MasterVolume(volume);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_PlayChannel(int channel, void *chunk, int loops) {
+    return Mix_PlayChannel(channel, (Mix_Chunk *)chunk, loops);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_PlayMusic(void *music, int loops) {
+    return Mix_PlayMusic((Mix_Music *)music, loops);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_PlayingMusic(void) {
+    return Mix_PlayingMusic();
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_PausedMusic(void) {
+    return Mix_PausedMusic();
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_Mix_PauseMusic(void) {
+    Mix_PauseMusic();
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_Mix_ResumeMusic(void) {
+    Mix_ResumeMusic();
+}
+
+EMSCRIPTEN_KEEPALIVE
+int glue_Mix_HaltMusic(void) {
+    return Mix_HaltMusic();
 }

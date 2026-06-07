@@ -104,6 +104,14 @@ function fix_poll_input_this_receiver(data::AbstractString)::String
     return string(head, replacement, tail)
 end
 
+"""Julia `keyboardState[scancode + 1]` → JS `keyboardState[scancode]` (0-based Uint8Array)."""
+function fix_keyboard_state_indexing(data::AbstractString)::String
+    s = String(data)
+    s = replace(s, r"let check_code = Number\(scanCode\) \+ 1" => "let check_code = Number(scanCode)")
+    s = replace(s, r"at index \$\{Number\(scanCode\) \+ 1\}" => "at index \${Number(scanCode)}")
+    return s
+end
+
 """Ensure keyboard state is read once per frame after the SDL event loop."""
 function ensure_keyboard_poll(data::AbstractString)::String
     s = String(data)
@@ -117,14 +125,25 @@ function ensure_keyboard_poll(data::AbstractString)::String
         r"let keyboardState = unsafe_wrap\(Array, \(globalThis as any\)\.JulGameSdl\.glue_SDL_GetKeyboardState\(null\), 300, false\)" =>
             "let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)",
     )
-    if occursin(r"handle_key_event\(self, keyboardState\)", s)
-        return s
-    end
+    # Transpiler keeps Julia's per-event keyboard poll inside the loop; wasm needs one sample per frame.
     s = replace(
         s,
-        r"(\n\s*// if this\.isTestButtonClicked)" =>
-            s"\n\n        let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)\n        handle_key_event(self, keyboardState)\1",
+        r"\n\s*let keyboardState = \(globalThis as any\)\.JulGameSdl\.glue_SDL_GetKeyboardState\(null\)\s*\n\s*handle_key_event\(self, keyboardState\)\s*\n\n\s*\}" =>
+            "\n\n        }",
     )
+    if !occursin(r"let keyboardState = \(globalThis as any\)\.JulGameSdl\.glue_SDL_GetKeyboardState\(null\)", s)
+        s = replace(
+            s,
+            r"(\n\s*// if self\.isTestButtonClicked)" =>
+                s"\n\n        let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)\n        handle_key_event(self, keyboardState)\1",
+        )
+    elseif !occursin(r"handle_key_event\(self, keyboardState\)", s)
+        s = replace(
+            s,
+            r"(\n\s*// if self\.isTestButtonClicked)" =>
+                s"\n\n        let keyboardState = (globalThis as any).JulGameSdl.glue_SDL_GetKeyboardState(null)\n        handle_key_event(self, keyboardState)\1",
+        )
+    end
     return s
 end
 
@@ -148,6 +167,21 @@ function finalize_input_exports(data::AbstractString)::String
     return s
 end
 
+"""`cursor.jl` is not in `files-needed.txt`; stub bank init for wasm."""
+function stub_cursor_bank(data::AbstractString)::String
+    s = String(data)
+    occursin(r"function create_cursor_bank\b", s) && return s
+    stub = """
+    function create_cursor_bank(self: Input): void {
+        self.defaultCursor = null
+    }
+
+"""
+    s = replace(s, r"\n    function check_scan_code" => "\n" * stub * "    function check_scan_code", count=1)
+    s = replace(s, r"\n\s*this\.defaultCursor = this\.cursorBank\[\"arrow\"\]" => "")
+    return s
+end
+
 """Post-process transpiled `Input.ts` after the generic convert pipeline."""
 function postprocess_input_ts(data::AbstractString, path_jl::AbstractString, path_ts::AbstractString)::String
     @assert is_input_source(path_jl)
@@ -157,7 +191,9 @@ function postprocess_input_ts(data::AbstractString, path_jl::AbstractString, pat
     s = replace_scancode_init(s)
     s = fix_poll_input_this_receiver(s)
     s = replace(s, r"handle_key_event\(this," => "handle_key_event(self,")
+    s = fix_keyboard_state_indexing(s)
     s = ensure_keyboard_poll(s)
+    s = stub_cursor_bank(s)
     s = finalize_input_exports(s)
     # Line rewrites above can run after the global ASI pass in `parse_file`.
     s = insert_semicolon_before_line_starting_with_open_paren(s)

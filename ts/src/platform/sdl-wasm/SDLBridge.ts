@@ -72,6 +72,23 @@ type JulGameSdlCApi = {
         cy: number,
         flip: number,
     ) => number;
+    glue_Mix_OpenAudio: (frequency: number, format: number, channels: number, chunksize: number) => number;
+    glue_Mix_Quit: () => void;
+    glue_Mix_LoadWAV: (path: string) => number;
+    glue_Mix_LoadMUS: (path: string) => number;
+    glue_Mix_FreeChunk: (chunk: number) => void;
+    glue_Mix_FreeMusic: (music: number) => void;
+    glue_Mix_Volume: (channel: number, volume: number) => number;
+    glue_Mix_VolumeMusic: (volume: number) => number;
+    glue_Mix_MasterVolume: (volume: number) => number;
+    glue_Mix_PlayChannel: (channel: number, chunk: number, loops: number) => number;
+    glue_Mix_PlayMusic: (music: number, loops: number) => number;
+    glue_Mix_PlayingMusic: () => number;
+    glue_Mix_PausedMusic: () => number;
+    glue_Mix_PauseMusic: () => void;
+    glue_Mix_ResumeMusic: () => void;
+    glue_Mix_HaltMusic: () => number;
+    glue_Mix_GetError: () => string;
 };
 
 function unpackRenderDrawColorPacked(packed: number): { r: number; g: number; b: number; a: number } {
@@ -85,6 +102,8 @@ function unpackRenderDrawColorPacked(packed: number): { r: number; g: number; b:
 
 /** API shape consumed by `_generated` engine code + wasm glue. */
 export type JulGameSdlApi = JulGameSdlCApi & {
+    /** Emscripten helper for decoding native string pointers (Julia `unsafe_string`). */
+    UTF8ToString: (ptr: number) => string;
     glue_SDL_GetRenderDrawColor: (
         _renderer: number,
         ..._legacyOut: unknown[]
@@ -117,7 +136,82 @@ export type JulGameSdlApi = JulGameSdlCApi & {
         flip: number,
     ) => number;
     glue_SDL_ALPHA_OPAQUE: number;
+    glue_SDL_IntersectRect: (
+        a: { x: number; y: number; w: number; h: number },
+        b: { x: number; y: number; w: number; h: number },
+        result: { x: number; y: number; w: number; h: number },
+    ) => number;
+    glue_SDL_IntersectRectAndLine: (
+        rect: { x: number; y: number; w: number; h: number },
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+    ) => number;
 };
+
+type SdlRect = { x: number; y: number; w: number; h: number };
+
+/** SDL_IntersectRect parity for transpiled Collider.ts (JS rect objects). */
+function intersectRect(a: SdlRect, b: SdlRect, result: SdlRect): number {
+    const x1 = Math.max(a.x, b.x);
+    const y1 = Math.max(a.y, b.y);
+    const x2 = Math.min(a.x + a.w, b.x + b.w);
+    const y2 = Math.min(a.y + a.h, b.y + b.h);
+    if (x2 <= x1 || y2 <= y1) {
+        result.x = 0;
+        result.y = 0;
+        result.w = 0;
+        result.h = 0;
+        return 0;
+    }
+    result.x = x1;
+    result.y = y1;
+    result.w = x2 - x1;
+    result.h = y2 - y1;
+    return 1;
+}
+
+function segmentsIntersect(
+    ax1: number,
+    ay1: number,
+    ax2: number,
+    ay2: number,
+    bx1: number,
+    by1: number,
+    bx2: number,
+    by2: number,
+): boolean {
+    const d = (ax2 - ax1) * (by2 - by1) - (ay2 - ay1) * (bx2 - bx1);
+    if (d === 0) {
+        return false;
+    }
+    const t = ((bx1 - ax1) * (by2 - by1) - (by1 - ay1) * (bx2 - bx1)) / d;
+    const u = ((bx1 - ax1) * (ay2 - ay1) - (by1 - ay1) * (ax2 - ax1)) / d;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+/** SDL_IntersectRectAndLine parity for grounded ray checks in Collider.ts. */
+function intersectRectAndLine(rect: SdlRect, x1: number, y1: number, x2: number, y2: number): number {
+    const rx2 = rect.x + rect.w;
+    const ry2 = rect.y + rect.h;
+    const inRect = (x: number, y: number) => x >= rect.x && x < rx2 && y >= rect.y && y < ry2;
+    if (inRect(x1, y1) || inRect(x2, y2)) {
+        return 1;
+    }
+    const edges: [number, number, number, number][] = [
+        [rect.x, rect.y, rx2, rect.y],
+        [rx2, rect.y, rx2, ry2],
+        [rx2, ry2, rect.x, ry2],
+        [rect.x, ry2, rect.x, rect.y],
+    ];
+    for (const [ex1, ey1, ex2, ey2] of edges) {
+        if (segmentsIntersect(x1, y1, x2, y2, ex1, ey1, ex2, ey2)) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 function wrapRenderCopyEx(
     c: JulGameSdlCApi["glue_render_copy_ex"],
@@ -269,6 +363,32 @@ export class SDLBridge {
                 "number",
                 "number",
             ]) as JulGameSdlCApi["glue_render_copy_ex_f"],
+            glue_Mix_OpenAudio: cwrap("glue_Mix_OpenAudio", "number", [
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_Mix_OpenAudio"],
+            glue_Mix_Quit: cwrap("glue_Mix_Quit", null, []) as JulGameSdlCApi["glue_Mix_Quit"],
+            glue_Mix_LoadWAV: cwrap("glue_Mix_LoadWAV", "number", ["string"]) as JulGameSdlCApi["glue_Mix_LoadWAV"],
+            glue_Mix_LoadMUS: cwrap("glue_Mix_LoadMUS", "number", ["string"]) as JulGameSdlCApi["glue_Mix_LoadMUS"],
+            glue_Mix_FreeChunk: cwrap("glue_Mix_FreeChunk", null, ["number"]) as JulGameSdlCApi["glue_Mix_FreeChunk"],
+            glue_Mix_FreeMusic: cwrap("glue_Mix_FreeMusic", null, ["number"]) as JulGameSdlCApi["glue_Mix_FreeMusic"],
+            glue_Mix_Volume: cwrap("glue_Mix_Volume", "number", ["number", "number"]) as JulGameSdlCApi["glue_Mix_Volume"],
+            glue_Mix_VolumeMusic: cwrap("glue_Mix_VolumeMusic", "number", ["number"]) as JulGameSdlCApi["glue_Mix_VolumeMusic"],
+            glue_Mix_MasterVolume: cwrap("glue_Mix_MasterVolume", "number", ["number"]) as JulGameSdlCApi["glue_Mix_MasterVolume"],
+            glue_Mix_PlayChannel: cwrap("glue_Mix_PlayChannel", "number", [
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_Mix_PlayChannel"],
+            glue_Mix_PlayMusic: cwrap("glue_Mix_PlayMusic", "number", ["number", "number"]) as JulGameSdlCApi["glue_Mix_PlayMusic"],
+            glue_Mix_PlayingMusic: cwrap("glue_Mix_PlayingMusic", "number", []) as JulGameSdlCApi["glue_Mix_PlayingMusic"],
+            glue_Mix_PausedMusic: cwrap("glue_Mix_PausedMusic", "number", []) as JulGameSdlCApi["glue_Mix_PausedMusic"],
+            glue_Mix_PauseMusic: cwrap("glue_Mix_PauseMusic", null, []) as JulGameSdlCApi["glue_Mix_PauseMusic"],
+            glue_Mix_ResumeMusic: cwrap("glue_Mix_ResumeMusic", null, []) as JulGameSdlCApi["glue_Mix_ResumeMusic"],
+            glue_Mix_HaltMusic: cwrap("glue_Mix_HaltMusic", "number", []) as JulGameSdlCApi["glue_Mix_HaltMusic"],
+            glue_Mix_GetError: cwrap("glue_Mix_GetError", "string", []) as JulGameSdlCApi["glue_Mix_GetError"],
         };
 
         const glue_SDL_FRect: JulGameSdlApi["glue_SDL_FRect"] = (x, y, w, h) => ({ x, y, w, h });
@@ -337,9 +457,12 @@ export class SDLBridge {
             }
         };
 
+        const utf8ToString = (ptr: number) => mod.UTF8ToString(ptr);
+
         this.api = attachSdlInputGlue(
             {
                 ...cApi,
+                UTF8ToString: utf8ToString,
                 glue_SDL_FRect,
                 glue_SDL_Rect,
                 glue_SDL_Point,
@@ -350,6 +473,8 @@ export class SDLBridge {
                 glue_SDL_GetTextureAlphaMod: glue_SDL_GetTextureAlphaModWrapped,
                 glue_SDL_RenderFillRectF: glue_SDL_RenderFillRectFWrapped as JulGameSdlApi["glue_SDL_RenderFillRectF"],
                 glue_SDL_ALPHA_OPAQUE: 255,
+                glue_SDL_IntersectRect: intersectRect,
+                glue_SDL_IntersectRectAndLine: intersectRectAndLine,
                 glue_SDL_RenderCopyEx: wrapRenderCopyEx(cApi.glue_render_copy_ex),
                 glue_SDL_RenderCopyExF: wrapRenderCopyExF(cApi.glue_render_copy_ex_f),
             },
