@@ -11,7 +11,7 @@ import { Component_load_sound } from "../../../_generated/src/engine/Component/S
 import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
-import { resolveSpritePixelsPerUnit } from "./projectConfig";
+import { commaSeparatedAssetPath, normalizeAssetPath, resolveSpritePixelsPerUnit } from "./projectConfig";
 import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
 
@@ -57,6 +57,14 @@ export type StrippedSceneLoadOptions = {
 };
 
 type EmMod = { FS?: { mkdirTree: (p: string) => void; writeFile: (p: string, d: Uint8Array) => void } };
+
+function writeMemfsFile(fs: NonNullable<EmMod["FS"]>, memPath: string, data: Uint8Array): void {
+    const slash = memPath.lastIndexOf("/");
+    if (slash > 0) {
+        fs.mkdirTree(memPath.slice(0, slash));
+    }
+    fs.writeFile(memPath, data);
+}
 
 export type SceneJson = {
     Entities?: EntityJson[];
@@ -146,7 +154,7 @@ export class SceneTextBox {
         this.name = json.name ?? "TextBox";
         this.text = json.text ?? "";
         this.fontSize = json.fontSize ?? 24;
-        this.fontPath = json.fontPath ?? "";
+        this.fontPath = json.fontPath ? normalizeAssetPath(json.fontPath) : "";
         this.position = json.position ?? { x: 0, y: 0 };
         this.size = json.size ?? { x: 100, y: 24 };
         this.isActive = json.isActive !== false;
@@ -164,9 +172,14 @@ export class SceneTextBox {
     }
 }
 
-function collectSceneAssetPaths(json: SceneJson): { imagePaths: Set<string>; soundPaths: Set<string> } {
+function collectSceneAssetPaths(json: SceneJson): {
+    imagePaths: Set<string>;
+    soundPaths: Set<string>;
+    fontPaths: Set<string>;
+} {
     const imagePaths = new Set<string>();
     const soundPaths = new Set<string>();
+    const fontPaths = new Set<string>();
     for (const ent of json.Entities ?? []) {
         for (const c of ent.components ?? []) {
             if (c.type === "Sprite" && typeof c.imagePath === "string") {
@@ -177,16 +190,22 @@ function collectSceneAssetPaths(json: SceneJson): { imagePaths: Set<string>; sou
             }
         }
     }
+    for (const ui of json.UIElements ?? []) {
+        if (ui.type === "TextBox" && typeof ui.fontPath === "string" && ui.fontPath) {
+            fontPaths.add(normalizeAssetPath(ui.fontPath));
+        }
+    }
     for (const p of getScriptSoundPaths()) {
         soundPaths.add(p);
     }
-    return { imagePaths, soundPaths };
+    return { imagePaths, soundPaths, fontPaths };
 }
 
 async function syncAssetsToMemfs(
     emscriptenModule: EmMod,
     imagePaths: Set<string>,
     soundPaths: Set<string>,
+    fontPaths: Set<string>,
     memfsAssetBaseUrl: string,
 ): Promise<void> {
     const fs = emscriptenModule.FS;
@@ -206,34 +225,59 @@ async function syncAssetsToMemfs(
                 throw new Error(String(res.status));
             }
             const data = new Uint8Array(await res.arrayBuffer());
-            fs.writeFile(memPath, data);
+            writeMemfsFile(fs, memPath, data);
             const jg = (globalThis as { JulGame?: { IMAGE_CACHE?: Record<string, Uint8Array>; get_comma_separated_path?: (p: string) => string } }).JulGame;
             if (jg?.IMAGE_CACHE && jg.get_comma_separated_path) {
                 jg.IMAGE_CACHE[jg.get_comma_separated_path(rel)] = data;
             }
         } catch {
-            fs.writeFile(memPath, PNG_1X1);
+            writeMemfsFile(fs, memPath, PNG_1X1);
             console.warn(`SceneBuilder: using 1×1 placeholder for missing image: ${url}`);
         }
     }
 
-    if (soundPaths.size === 0) {
+    if (soundPaths.size > 0) {
+        fs.mkdirTree("/game/assets/sounds");
+        for (const rel of soundPaths) {
+            const memPath = `/game/assets/sounds/${rel}`;
+            const url = new URL(`assets/sounds/${rel}`, `${base}/`).href;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error(String(res.status));
+                }
+                const data = new Uint8Array(await res.arrayBuffer());
+                writeMemfsFile(fs, memPath, data);
+                console.debug(`SceneBuilder: synced sound ${rel} (${data.byteLength} bytes)`);
+            } catch (e) {
+                console.warn(`SceneBuilder: missing sound asset: ${url}`, e);
+            }
+        }
+    }
+
+    if (fontPaths.size === 0) {
         return;
     }
-    fs.mkdirTree("/game/assets/sounds");
-    for (const rel of soundPaths) {
-        const memPath = `/game/assets/sounds/${rel}`;
-        const url = new URL(`assets/sounds/${rel}`, `${base}/`).href;
+    fs.mkdirTree("/game/assets/fonts");
+    for (const rel of fontPaths) {
+        const memPath = `/game/assets/fonts/${rel}`;
+        const url = `${base}/assets/fonts/${rel}`;
         try {
             const res = await fetch(url);
             if (!res.ok) {
                 throw new Error(String(res.status));
             }
             const data = new Uint8Array(await res.arrayBuffer());
-            fs.writeFile(memPath, data);
-            console.debug(`SceneBuilder: synced sound ${rel} (${data.byteLength} bytes)`);
+            const jg = (globalThis as {
+                JulGame?: { FONT_CACHE?: Record<string, Uint8Array> };
+            }).JulGame;
+            if (jg?.FONT_CACHE) {
+                jg.FONT_CACHE[commaSeparatedAssetPath(rel)] = data;
+            }
+            writeMemfsFile(fs, memPath, data);
+            console.debug(`SceneBuilder: synced font ${rel} (${data.byteLength} bytes)`);
         } catch (e) {
-            console.warn(`SceneBuilder: missing sound asset: ${url}`, e);
+            console.warn(`SceneBuilder: missing font asset: ${url}`, e);
         }
     }
 }
@@ -371,12 +415,12 @@ export async function applyStrippedSceneData(
     json: SceneJson,
     opts: StrippedSceneLoadOptions,
 ): Promise<void> {
-    const { imagePaths, soundPaths } = collectSceneAssetPaths(json);
+    const { imagePaths, soundPaths, fontPaths } = collectSceneAssetPaths(json);
     const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
     if (jg) {
         jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
     }
-    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, opts.memfsAssetBaseUrl);
+    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, fontPaths, opts.memfsAssetBaseUrl);
 
     scene.entities = [];
     scene.uiElements = [];
@@ -417,12 +461,12 @@ export async function mergeStrippedSceneData(
     json: SceneJson,
     opts: StrippedSceneLoadOptions,
 ): Promise<void> {
-    const { imagePaths, soundPaths } = collectSceneAssetPaths(json);
+    const { imagePaths, soundPaths, fontPaths } = collectSceneAssetPaths(json);
     const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
     if (jg) {
         jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
     }
-    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, opts.memfsAssetBaseUrl);
+    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, fontPaths, opts.memfsAssetBaseUrl);
 
     const existingEntityIds = new Set(scene.entities.map((e) => String((e as Entity).id)));
     const existingUiIds = new Set(scene.uiElements.map((u) => String((u as SceneTextBox).id)));

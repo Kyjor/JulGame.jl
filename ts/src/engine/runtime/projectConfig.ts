@@ -51,3 +51,15 @@ export function resolveSpritePixelsPerUnit(
     }
     return projectDefault;
 }
+
+/** Normalize Julia-style paths (`FiraCode//ttf//foo.ttf`) for HTTP/MEMFS. */
+export function normalizeAssetPath(path: string): string {
+    return path.replace(/\\/g, "/").replace(/\/+/g, "/");
+}
+
+export function commaSeparatedAssetPath(path: string): string {
+    return normalizeAssetPath(path)
+        .split("/")
+        .filter(Boolean)
+        .join(",");
+}

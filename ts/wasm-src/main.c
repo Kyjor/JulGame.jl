@@ -5,6 +5,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
+#include <SDL_ttf.h>
 #include <emscripten.h>
 #include <math.h>
 #include <stdint.h>
@@ -15,6 +16,7 @@
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 static int mixer_open = 0;
+static int ttf_open = 0;
 
 static int ensure_mixer(void) {
     if (mixer_open) {
@@ -52,6 +54,11 @@ int glue_init(int width, int height) {
     if (SDL_CreateWindowAndRenderer(width, height, 0, &window, &renderer) != 0) {
         return -2;
     }
+    if (TTF_Init() != 0) {
+        fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
+        return -3;
+    }
+    ttf_open = 1;
     return 0;
 }
 
@@ -503,4 +510,57 @@ void glue_Mix_ResumeMusic(void) {
 EMSCRIPTEN_KEEPALIVE
 int glue_Mix_HaltMusic(void) {
     return Mix_HaltMusic();
+}
+
+/* --- SDL_ttf glue (stripped UI TextBox rendering) --- */
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_TTF_OpenFont(const char *path, int ptsize) {
+    if (!ttf_open || path == NULL) {
+        return NULL;
+    }
+    TTF_Font *font = TTF_OpenFont(path, ptsize);
+    if (!font) {
+        SDL_SetError("TTF_OpenFont(%s): %s", path, TTF_GetError());
+    }
+    return font;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_TTF_OpenFontRW(void *rw, int freesrc, int ptsize) {
+    if (!ttf_open || rw == NULL) {
+        return NULL;
+    }
+    TTF_Font *font = TTF_OpenFontRW((SDL_RWops *)rw, freesrc, ptsize);
+    if (!font) {
+        SDL_SetError("TTF_OpenFontRW: %s", TTF_GetError());
+    }
+    return font;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_TTF_RenderUTF8_Blended(void *font, const char *text, int r, int g, int b, int a) {
+    if (!ttf_open || font == NULL || text == NULL) {
+        return NULL;
+    }
+    SDL_Color color = {(Uint8)r, (Uint8)g, (Uint8)b, (Uint8)a};
+    SDL_Surface *surface = TTF_RenderUTF8_Blended((TTF_Font *)font, text, color);
+    if (!surface) {
+        SDL_SetError("TTF_RenderUTF8_Blended: %s", TTF_GetError());
+    }
+    return surface;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_TTF_CloseFont(void *font) {
+    if (font) {
+        TTF_CloseFont((TTF_Font *)font);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+void glue_SDL_DestroyTexture(void *texture) {
+    if (texture) {
+        SDL_DestroyTexture((SDL_Texture *)texture);
+    }
 }

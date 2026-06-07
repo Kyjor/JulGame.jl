@@ -1,10 +1,12 @@
 import { cameraUpdate } from "../../../_generated/src/engine/Camera/Camera";
+import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
 import { Component_update as animatorUpdate } from "../../../_generated/src/engine/Component/Animator";
 import { Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
 import { Component_draw } from "../../../_generated/src/engine/Component/Sprite";
 import { JulGame_update } from "../../../_generated/src/engine/Entity";
 import type { SceneTextBox } from "./SceneBuilder";
 import { tickCoroutines } from "./coroutineRuntime";
+import { drawUiTextBoxes } from "./strippedUiText";
 import type { TranspiledInput } from "./transpiledInput";
 
 type SceneCamera = {
@@ -102,29 +104,6 @@ function spritesInLayerOrder(entities: SceneEntity[]): unknown[] {
     return items.map((item) => item.sprite);
 }
 
-function drawUiTextBoxes(
-    api: Record<string, unknown>,
-    uiElements: SceneTextBox[],
-    cam: SceneCamera | null,
-): void {
-    const setColor = api.glue_SDL_SetRenderDrawColor as (r: number, g: number, b: number, a: number) => void;
-    const fillRect = api.glue_SDL_RenderFillRectF as (x: number, y: number, w: number, h: number) => void;
-    if (!setColor || !fillRect) {
-        return;
-    }
-    for (const ui of uiElements) {
-        if (!ui.isActive) {
-            continue;
-        }
-        setColor(ui.color[0], ui.color[1], ui.color[2], ui.color[3]);
-        let x = ui.position.x;
-        if (ui.isCenteredX && cam) {
-            x -= ui.size.x / 2;
-        }
-        fillRect(x, ui.position.y, Math.max(8, ui.text.length * 8), ui.size.y);
-    }
-}
-
 /**
  * One SDL frame: input, physics, collisions, scripts, camera, sprites, UI, present.
  */
@@ -208,7 +187,7 @@ export function runGameFrame(editorMode = false): void {
     }
 
     if (cam && scene.uiElements?.length) {
-        drawUiTextBoxes(api, scene.uiElements, cam);
+        drawUiTextBoxes(api as JulGameSdlApi, scene.uiElements, cam);
     }
 
     (api.glue_SDL_RenderPresent as () => void)();

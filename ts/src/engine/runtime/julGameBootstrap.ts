@@ -77,6 +77,7 @@ export function bootstrapJulGameSdl(
     jg.GRAVITY = opts.gravity ?? 9.81;
     jg.PIXELS_PER_UNIT = opts.pixelsPerUnit ?? 16;
     jg.IMAGE_CACHE = {};
+    jg.FONT_CACHE = {};
     jg.TEXTURE_CACHE = {};
     jg.AUDIO_CACHE = {};
     jg.Coroutines = [];

@@ -36,6 +36,7 @@ type JulGameSdlCApi = {
     /** C glue uses static renderer; first arg from transpiled Julia is ignored. */
     glue_SDL_CreateTextureFromSurface: (_renderer: number, surface: number) => number;
     glue_SDL_FreeSurface: (surface: number) => void;
+    glue_SDL_DestroyTexture: (texture: number) => void;
     glue_SDL_GetError: () => string;
     glue_SDL_ClearError: () => void;
     glue_surface_w: (surface: number) => number;
@@ -92,7 +93,47 @@ type JulGameSdlCApi = {
     glue_Mix_ResumeMusic: () => void;
     glue_Mix_HaltMusic: () => number;
     glue_Mix_GetError: () => string;
+    glue_TTF_OpenFont?: (path: string, ptsize: number) => number;
+    glue_TTF_OpenFontRW?: (rw: number, freesrc: number, ptsize: number) => number;
+    glue_TTF_RenderUTF8_Blended?: (
+        font: number,
+        text: string,
+        r: number,
+        g: number,
+        b: number,
+        a: number,
+    ) => number;
+    glue_TTF_CloseFont?: (font: number) => void;
 };
+
+function wasmHasExport(mod: EmscriptenModuleShape, name: string): boolean {
+    const m = mod as Record<string, unknown>;
+    const exports = m.wasmExports as Record<string, unknown> | undefined;
+    if (exports && name in exports) {
+        return true;
+    }
+    // Emscripten 4 MODULARIZE: assignWasmExports sets Module["_glue_*"].
+    const underscored = `_${name}`;
+    if (typeof m[underscored] === "function") {
+        return true;
+    }
+    return typeof m[name] === "function";
+}
+
+/** cwrap returns a JS function even when the WASM export is missing; verify wasmExports first. */
+function bindGlueExport(
+    mod: EmscriptenModuleShape,
+    cwrap: Cwrap,
+    name: string,
+    returnType: string | null,
+    argTypes: string[],
+): ((...args: unknown[]) => unknown) | undefined {
+    if (!wasmHasExport(mod, name)) {
+        return undefined;
+    }
+    const fn = cwrap(name, returnType, argTypes);
+    return typeof fn === "function" ? fn : undefined;
+}
 
 function unpackRenderDrawColorPacked(packed: number): { r: number; g: number; b: number; a: number } {
     return {
@@ -282,7 +323,8 @@ export class SDLBridge {
         printErr: (text: string) => void,
     ): Promise<void> {
         this.module = (await loadSDLModule(canvas, print, printErr)) as EmscriptenModuleShape;
-        const cwrap = this.module.cwrap;
+        const mod = this.module;
+        const cwrap = mod.cwrap;
         if (typeof cwrap !== "function") {
             throw new Error("Emscripten module missing cwrap (add EXPORTED_RUNTIME_METHODS)");
         }
@@ -329,6 +371,7 @@ export class SDLBridge {
                 return (_renderer: number, surface: number) => create(surface);
             })(),
             glue_SDL_FreeSurface: cwrap("glue_SDL_FreeSurface", null, ["number"]) as JulGameSdlCApi["glue_SDL_FreeSurface"],
+            glue_SDL_DestroyTexture: cwrap("glue_SDL_DestroyTexture", null, ["number"]) as JulGameSdlCApi["glue_SDL_DestroyTexture"],
             glue_SDL_GetError: cwrap("glue_SDL_GetError", "string", []) as JulGameSdlCApi["glue_SDL_GetError"],
             glue_SDL_ClearError: cwrap("glue_SDL_ClearError", null, []) as JulGameSdlCApi["glue_SDL_ClearError"],
             glue_surface_w: cwrap("glue_surface_w", "number", ["number"]) as JulGameSdlCApi["glue_surface_w"],
@@ -401,7 +444,33 @@ export class SDLBridge {
             glue_Mix_ResumeMusic: cwrap("glue_Mix_ResumeMusic", null, []) as JulGameSdlCApi["glue_Mix_ResumeMusic"],
             glue_Mix_HaltMusic: cwrap("glue_Mix_HaltMusic", "number", []) as JulGameSdlCApi["glue_Mix_HaltMusic"],
             glue_Mix_GetError: cwrap("glue_Mix_GetError", "string", []) as JulGameSdlCApi["glue_Mix_GetError"],
+            glue_TTF_OpenFont: bindGlueExport(mod, cwrap, "glue_TTF_OpenFont", "number", [
+                "string",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_OpenFont"],
+            glue_TTF_OpenFontRW: bindGlueExport(mod, cwrap, "glue_TTF_OpenFontRW", "number", [
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_OpenFontRW"],
+            glue_TTF_RenderUTF8_Blended: bindGlueExport(mod, cwrap, "glue_TTF_RenderUTF8_Blended", "number", [
+                "number",
+                "string",
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_RenderUTF8_Blended"],
+            glue_TTF_CloseFont: bindGlueExport(mod, cwrap, "glue_TTF_CloseFont", null, [
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_CloseFont"],
         };
+
+        if (!wasmHasExport(mod, "glue_TTF_OpenFont")) {
+            console.warn(
+                "SDLBridge: julgame.js lacks SDL_ttf WASM exports — run `npm run build:wasm` in JulGame.jl/ts, then hard-refresh the browser",
+            );
+        }
 
         const glue_SDL_FRect: JulGameSdlApi["glue_SDL_FRect"] = (x, y, w, h) => ({ x, y, w, h });
         const glue_SDL_Rect: JulGameSdlApi["glue_SDL_Rect"] = (x, y, w, h) => ({ x, y, w, h });
@@ -469,7 +538,7 @@ export class SDLBridge {
             }
         };
 
-        const utf8ToString = (ptr: number) => mod.UTF8ToString(ptr);
+        const utf8ToString = (ptr: number) => (mod.UTF8ToString as (p: number) => string)(ptr);
 
         this.api = attachSdlInputGlue(
             {
