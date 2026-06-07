@@ -525,7 +525,7 @@ function JulGame.change_scene(sceneFileName::String)
 	persistentUIElements = []
 	# delete all UIElements
 	for uiElement in this.scene.uiElements
-		if uiElement.persistentBetweenScenes
+		if uiElement.persistentBetweenScenes && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
 			#println("Persistent uiElement: ", uiElement.name)
 			push!(persistentUIElements, uiElement)
 			skipcount += 1
