@@ -72,6 +72,17 @@ function applyCameraFollow(cam: SceneCamera, deltaTime: number): void {
     cam.position.y += (target.position.y - cam.position.y) * lerp;
 }
 
+/** Camera.update expects ITransform with `position` and `scale` (generated Camera.ts:82). */
+function ensureCameraTargetScale(cam: SceneCamera): void {
+    const target = cam.target as { scale?: { x: number; y: number; z: number } } | null | undefined;
+    if (!target) {
+        return;
+    }
+    if (!target.scale) {
+        target.scale = { x: 1, y: 1, z: 1 };
+    }
+}
+
 type SceneSprite = {
     layer?: number;
     isStatic?: boolean;
@@ -85,10 +96,6 @@ function spritesInLayerOrder(entities: SceneEntity[]): unknown[] {
             continue;
         }
         const sprite = entity.sprite as SceneSprite;
-        // Static tiles use batchedLayers in full runtime (not wired in stripped build yet).
-        if (sprite.isStatic) {
-            continue;
-        }
         items.push({ layer: sprite.layer ?? 0, sprite: entity.sprite });
     }
     items.sort((a, b) => a.layer - b.layer);
@@ -109,7 +116,7 @@ function drawUiTextBoxes(
         if (!ui.isActive) {
             continue;
         }
-        setColor(255, 255, 255, ui.alpha);
+        setColor(ui.color[0], ui.color[1], ui.color[2], ui.color[3]);
         let x = ui.position.x;
         if (ui.isCenteredX && cam) {
             x -= ui.size.x / 2;
@@ -192,6 +199,7 @@ export function runGameFrame(editorMode = false): void {
     (api.glue_SDL_RenderClear as () => void)();
 
     if (cam) {
+        ensureCameraTargetScale(cam);
         (cameraUpdate as (c: unknown, p: null) => void)(cam, null);
     }
 

@@ -71,6 +71,53 @@ function apply_game_script_fixups(data::AbstractString, name::AbstractString)::S
     )
     s = fix_argevent_collision_callbacks(s)
     s = fix_bare_main_identifiers(s)
+    s = fix_double_julgame_rewrite(s)
+    s = replace(s, r" extends Script" => "")
+    s = replace(s, r": EditorExport\{Float64\}" => ": number")
+    s = replace(s, r": EditorExport\{Int\}" => ": number")
+    s = replace(s, r": EditorExport\{Bool\}" => ": boolean")
+    s = replace(s, "function $name()" => "constructor()")
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGame\.Component_get_velocity" =>
+            "(globalThis as any).JulGame.RigidbodyModule.Component_get_velocity",
+    )
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGame\.Component_unload_sound" =>
+            "(globalThis as any).JulGame.Component.unload_sound",
+    )
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGame\.destroy\(" =>
+            "(globalThis as any).JulGame.destroy_entity((globalThis as any).MAIN, ",
+    )
+    s = replace(s, r"\babs\(" => "Math.abs(")
+    s = replace(s, r"\bsign\(" => "Math.sign(")
+    s = replace(s, r"split\(([^,]+),\s*\"/\"\)" => s"\1.split('/')")
+    s = replace(s, ".split('/')[1]" => ".split('/')[0]")
+    s = replace(s, ".split('/')[2]" => ".split('/')[1]")
+    s = replace(s, ".split('/')[3]" => ".split('/')[2]")
+    s = replace(
+        s,
+        r"(\.isCenteredX),\s*(\.isCenteredY)\s*=\s*true,\s*true" => s"\1 = true; \2 = true",
+    )
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGame\.SceneModule\.get_entity_by_name\(\"([^\"]+)\"\)" =>
+            s"(globalThis as any).JulGame.SceneModule.get_entity_by_name((globalThis as any).MAIN.scene, \"\1\")",
+    )
+    s = replace(
+        s,
+        r"self\.cameraTarget = \(globalThis as any\)\.JulGame\.TransformModule\.Transform\(\{x: ([^,]+), y: ([^,]+), z: ([^}]+)\}\)" =>
+            s"self.cameraTarget = { position: { x: \1, y: \2, z: \3 }, scale: { x: 1, y: 1, z: 1 } }",
+    )
+    # Transform already lowered to `{ position: ... }` before fixups run.
+    s = replace(
+        s,
+        r"(self\.cameraTarget = \{ position: \{[^}]+\}) \};" =>
+            s"\1, scale: { x: 1, y: 1, z: 1 } };",
+    )
     s = replace(
         s,
         "console.log(`freed \${notifyCondition(self.condition)} waiting for \${self.condition}`)" =>
@@ -126,6 +173,19 @@ function apply_game_script_fixups(data::AbstractString, name::AbstractString)::S
     return join(lines, '\n')
 end
 
+"""When a script `include("Easings.jl")`, prepend the easing helpers it calls."""
+function prepend_easings_helpers(data::AbstractString, path_jl::AbstractString)::String
+    src = read(path_jl, String)
+    occursin(r"include\s*\(\s*\"Easings\.jl\"\s*\)", src) || return data
+    helpers = """
+function ease_out_cubic(x: number): number {
+    return 1 - Math.pow(1 - x, 3);
+}
+
+"""
+    return helpers * String(data)
+end
+
 """Sound filenames referenced in `scripts/*.jl` (e.g. `InternalSoundSource(..., "Jump.wav")`)."""
 function collect_script_sound_paths(path_jl::AbstractString, transpiled::AbstractString)::Vector{String}
     paths = Set{String}()
@@ -143,6 +203,7 @@ function finalize_game_script_ts(data::AbstractString, path_jl::AbstractString, 
     name = game_script_name(path_jl)
     s = strip_script_module_wrapper(data)
     s = apply_game_script_fixups(s, name)
+    s = prepend_easings_helpers(s, path_jl)
     init_fn = "JulGame_initialize_$name"
     update_fn = "JulGame_update_$name"
     shutdown_fn = "JulGame_on_shutdown_$name"
@@ -185,6 +246,7 @@ function postprocess_game_script_ts(data::AbstractString, path_jl::AbstractStrin
     s = insert_semicolon_before_line_starting_with_open_paren(s)
     s = fix_argevent_collision_callbacks(s)
     s = fix_bare_main_identifiers(s)
+    s = fix_double_julgame_rewrite(s)
     s = fix_double_main_rewrite(s)
     return s
 end
@@ -195,7 +257,10 @@ function collect_project_script_files(project_root::AbstractString)::Vector{Stri
     out = String[]
     for f in readdir(scripts_dir)
         endswith(f, ".jl") || continue
-        push!(out, joinpath(scripts_dir, f))
+        path = joinpath(scripts_dir, f)
+        text = read(path, String)
+        occursin(r"<\s*:\s*Script", text) || continue
+        push!(out, path)
     end
     sort!(out)
     return out

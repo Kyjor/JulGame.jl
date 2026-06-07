@@ -5,7 +5,7 @@ import {
     Component_add_collision_event,
     Component_check_collisions,
 } from "../../../_generated/src/engine/Component/Collider";
-import { add_velocity, Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
+import { add_velocity, Component_get_velocity, Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
 import { Component_flip } from "../../../_generated/src/engine/Component/Sprite";
 import {
     Component_load_sound,
@@ -27,6 +27,8 @@ import { wireSceneApi } from "./scriptLoader";
 export type BootstrapOptions = {
     basePath?: string;
     gravity?: number;
+    /** Default sprite PPU when scene sprites use `-1` or omit the field (Julia `PIXELS_PER_UNIT`). */
+    pixelsPerUnit?: number;
 };
 
 export function bootstrapJulGameSdl(
@@ -73,7 +75,7 @@ export function bootstrapJulGameSdl(
     jg.IS_DEBUG = false;
     jg.BasePath = opts.basePath ?? "/game";
     jg.GRAVITY = opts.gravity ?? 9.81;
-    jg.PIXELS_PER_UNIT = 64;
+    jg.PIXELS_PER_UNIT = opts.pixelsPerUnit ?? 16;
     jg.IMAGE_CACHE = {};
     jg.TEXTURE_CACHE = {};
     jg.AUDIO_CACHE = {};
@@ -130,9 +132,24 @@ export function bootstrapJulGameSdl(
         toggle_sound: Component_toggle_sound,
         load_sound: Component_load_sound,
         flip: Component_flip,
+        unload_sound: (_source: unknown) => {
+            /* stripped WASM: no-op until sound unload is wired */
+        },
     };
-    jg.RigidbodyModule = { add_velocity, Component_update: rigidbodyUpdate };
+    jg.RigidbodyModule = { add_velocity, Component_update: rigidbodyUpdate, Component_get_velocity };
     jg.AnimatorModule = { force_frame_update };
+    jg.TransformModule = {
+        Transform: (v: { x: number; y: number; z: number }) => ({
+            position: v,
+            scale: { x: 1, y: 1, z: 1 },
+        }),
+    };
+    jg.change_scene = (sceneFileName: string) => {
+        console.warn(`change_scene("${sceneFileName}") — stripped scene runtime not installed yet`);
+    };
+    jg.set_batched_layer_offset = (_layer: number, _x: number, _y: number) => {
+        /* stripped WASM: StaticSpriteBatcher not wired */
+    };
     jg.Math = {
         Vector2f: (x: number, y: number) => ({ x, y }),
         Vector3f: (x: number, y: number, z: number) => ({ x, y, z }),

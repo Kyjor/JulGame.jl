@@ -10,6 +10,7 @@ const smokeTestProject: ProjectConfig = {
     sceneJsonUrl: new URL("../test/projects/SmokeTest/scenes/scene.json", import.meta.url).href,
     memfsAssetBaseUrl: new URL("../test/projects/SmokeTest", import.meta.url).href,
     basePath: "/game",
+    pixelsPerUnit: 16,
 };
 
 function getRequiredElement<T extends Element>(id: string, ctor: { new (): T }): T {

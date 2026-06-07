@@ -61,6 +61,12 @@ export function yieldTask(): Promise<void> {
     });
 }
 
+/** Port of Julia `cleanup_coroutines()` during scene change / shutdown. */
+export function cleanupCoroutines(): void {
+    tasks.clear();
+    frameResolvers = [];
+}
+
 /** Call once per frame after script updates. */
 export function tickCoroutines(): void {
     const resolvers = frameResolvers;

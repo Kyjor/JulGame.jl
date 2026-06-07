@@ -27,6 +27,15 @@ function fix_julia_one_based_variable_indices(data::AbstractString)::String
     return text
 end
 
+"""Repair duplicate JulGame rewrite: `(globalThis as any).JulGame.(globalThis as any).JulGame.` → `(globalThis as any).JulGame.`."""
+function fix_double_julgame_rewrite(data::AbstractString)::String
+    s = String(data)
+    while occursin(r"\(globalThis as any\)\.JulGame\.\(globalThis as any\)\.JulGame\.", s)
+        s = replace(s, r"\(globalThis as any\)\.JulGame\.\(globalThis as any\)\.JulGame\." => "(globalThis as any).JulGame.")
+    end
+    return s
+end
+
 """`@argevent` callbacks: `( (col: any) => fn(self, col))` / trailing `))` → valid arrow fn."""
 function fix_argevent_collision_callbacks(data::AbstractString)::String
     s = String(data)

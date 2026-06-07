@@ -2,6 +2,7 @@ import "../../engine/core/globalConstants";
 import type { Platform } from "../../engine/platform/Platform";
 import type { RenderCommand } from "../../engine/rendering/RenderCommands";
 import { bootstrapJulGameSdl } from "../../engine/runtime/julGameBootstrap";
+import { installStrippedSceneRuntime, tickSceneChange } from "../../engine/runtime/sceneChange";
 import { initializeAllScripts } from "../../engine/runtime/scriptLoader";
 import { loadStrippedScene } from "../../engine/runtime/SceneBuilder";
 import { playSoundsOnStart, reloadEntitySounds, tryOpenGameAudio } from "../../engine/runtime/memfsAudio";
@@ -13,6 +14,8 @@ export type ProjectConfig = {
     sceneJsonUrl: string;
     memfsAssetBaseUrl: string;
     basePath?: string;
+    /** Default sprite PPU; falls back to 16 (Julia `PIXELS_PER_UNIT`). */
+    pixelsPerUnit?: number;
 };
 
 export class SDLPlatform implements Platform {
@@ -40,6 +43,7 @@ export class SDLPlatform implements Platform {
 
         bootstrapJulGameSdl(api, this.canvas.width, this.canvas.height, this.canvas, {
             basePath: this.project.basePath ?? "/game",
+            pixelsPerUnit: this.project.pixelsPerUnit,
         });
 
         const mod = this.bridge.getModule();
@@ -52,6 +56,16 @@ export class SDLPlatform implements Platform {
             canvasHeight: this.canvas.height,
             loadScripts: true,
             deferScriptInitialize: false,
+        });
+        installStrippedSceneRuntime({
+            sceneJsonUrl: this.project.sceneJsonUrl,
+            scenesBaseUrl: new URL("./", this.project.sceneJsonUrl).href,
+            memfsAssetBaseUrl: this.project.memfsAssetBaseUrl,
+            canvasWidth: this.canvas.width,
+            canvasHeight: this.canvas.height,
+            emscriptenModule: mod,
+            api,
+            pendingSceneFileName: null,
         });
         const unlockAudio = (): void => {
             tryOpenGameAudio(api);
@@ -95,6 +109,10 @@ export class SDLPlatform implements Platform {
 
         const tick = (): void => {
             try {
+                if (tickSceneChange()) {
+                    requestAnimationFrame(tick);
+                    return;
+                }
                 runGameFrame();
             } catch (e) {
                 console.error("sdl-wasm: runGameFrame failed", e);

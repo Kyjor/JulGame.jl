@@ -11,6 +11,7 @@ import { Component_load_sound } from "../../../_generated/src/engine/Component/S
 import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
+import { resolveSpritePixelsPerUnit } from "./projectConfig";
 import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
 
@@ -73,6 +74,7 @@ type EntityJson = {
     id: string | number;
     name: string;
     isActive?: boolean;
+    persistentBetweenScenes?: boolean;
     scripts?: unknown[];
     components?: ComponentJson[];
 };
@@ -116,6 +118,8 @@ type UIElementJson = {
     size?: { x: number; y: number };
     isActive?: boolean;
     alpha?: number;
+    color?: { r: number; g: number; b: number; a: number };
+    persistentBetweenScenes?: boolean;
     isCenteredX?: boolean;
     isCenteredY?: boolean;
 };
@@ -130,7 +134,10 @@ export class SceneTextBox {
     position: { x: number; y: number };
     size: { x: number; y: number };
     isActive: boolean;
+    /** RGBA tuple matching full TextBox API (scripts mutate alpha via `color[3]`). */
+    color: [number, number, number, number];
     alpha: number;
+    persistentBetweenScenes: boolean;
     isCenteredX: boolean;
     isCenteredY: boolean;
 
@@ -143,10 +150,37 @@ export class SceneTextBox {
         this.position = json.position ?? { x: 0, y: 0 };
         this.size = json.size ?? { x: 100, y: 24 };
         this.isActive = json.isActive !== false;
-        this.alpha = json.alpha ?? 255;
+        const c = json.color;
+        if (c && typeof c.r === "number") {
+            this.color = [c.r, c.g, c.b, c.a];
+        } else {
+            const a = json.alpha ?? 255;
+            this.color = [255, 255, 255, a];
+        }
+        this.alpha = this.color[3];
+        this.persistentBetweenScenes = !!json.persistentBetweenScenes;
         this.isCenteredX = !!json.isCenteredX;
         this.isCenteredY = !!json.isCenteredY;
     }
+}
+
+function collectSceneAssetPaths(json: SceneJson): { imagePaths: Set<string>; soundPaths: Set<string> } {
+    const imagePaths = new Set<string>();
+    const soundPaths = new Set<string>();
+    for (const ent of json.Entities ?? []) {
+        for (const c of ent.components ?? []) {
+            if (c.type === "Sprite" && typeof c.imagePath === "string") {
+                imagePaths.add(c.imagePath);
+            }
+            if (c.type === "SoundSource" && typeof c.path === "string") {
+                soundPaths.add(c.path);
+            }
+        }
+    }
+    for (const p of getScriptSoundPaths()) {
+        soundPaths.add(p);
+    }
+    return { imagePaths, soundPaths };
 }
 
 async function syncAssetsToMemfs(
@@ -239,6 +273,7 @@ function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
     );
     const entity = new Entity(ent.name, String(ent.id), tr, []);
     entity.isActive = ent.isActive !== false;
+    entity.persistentBetweenScenes = !!ent.persistentBetweenScenes;
     entity.scripts = (ent.scripts ?? []) as never[];
 
     for (const c of otherComps) {
@@ -257,11 +292,10 @@ function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
                 crop,
                 isFlipped: !!c.isFlipped,
                 color: [255, 255, 255, 255],
-                pixelsPerUnit:
-                    typeof c.pixelsPerUnit === "number"
-                        ? c.pixelsPerUnit
-                        : ((globalThis as { JulGame?: { PIXELS_PER_UNIT?: number } }).JulGame?.PIXELS_PER_UNIT ??
-                          64),
+                pixelsPerUnit: resolveSpritePixelsPerUnit(
+                    c.pixelsPerUnit,
+                    (globalThis as { JulGame?: { PIXELS_PER_UNIT?: number } }).JulGame?.PIXELS_PER_UNIT ?? 16,
+                ),
                 position: { x: 0, y: 0 },
                 rotation: 0,
                 layer: c.layer ?? 0,
@@ -310,54 +344,7 @@ function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
 /**
  * Apply already-parsed scene JSON (fetch separately or use `MINIMAL_STRIPPED_SCENE`).
  */
-export async function applyStrippedSceneData(
-    scene: Scene,
-    emscriptenModule: EmMod,
-    json: SceneJson,
-    opts: StrippedSceneLoadOptions,
-): Promise<void> {
-    const list = json.Entities ?? [];
-
-    const imagePaths = new Set<string>();
-    const soundPaths = new Set<string>();
-    for (const ent of list) {
-        for (const c of ent.components ?? []) {
-            if (c.type === "Sprite" && typeof c.imagePath === "string") {
-                imagePaths.add(c.imagePath);
-            }
-            if (c.type === "SoundSource" && typeof c.path === "string") {
-                soundPaths.add(c.path);
-            }
-        }
-    }
-    for (const p of getScriptSoundPaths()) {
-        soundPaths.add(p);
-    }
-    const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
-    if (jg) {
-        jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
-    }
-    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, opts.memfsAssetBaseUrl);
-
-    scene.entities = [];
-    scene.uiElements = [];
-    scene.colliders = [];
-    scene.rigidbodies = [];
-    scene.batchedLayers = {};
-
-    for (const ent of list) {
-        const entity = buildEntityFromJson(ent, scene);
-        if (entity) {
-            scene.entities.push(entity);
-        }
-    }
-
-    for (const ui of json.UIElements ?? []) {
-        if (ui.type === "TextBox") {
-            scene.uiElements.push(new SceneTextBox(ui) as never);
-        }
-    }
-
+function applyCameraFromJson(scene: Scene, json: SceneJson, canvasWidth: number, canvasHeight: number): void {
     if (json.Camera) {
         const bg = json.Camera.backgroundColor;
         const cam = new Camera(
@@ -374,14 +361,99 @@ export async function applyStrippedSceneData(
         }
         scene.camera = cam;
     } else {
-        attachDefaultCamera(scene, opts.canvasWidth, opts.canvasHeight);
+        attachDefaultCamera(scene, canvasWidth, canvasHeight);
     }
+}
+
+export async function applyStrippedSceneData(
+    scene: Scene,
+    emscriptenModule: EmMod,
+    json: SceneJson,
+    opts: StrippedSceneLoadOptions,
+): Promise<void> {
+    const { imagePaths, soundPaths } = collectSceneAssetPaths(json);
+    const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
+    if (jg) {
+        jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
+    }
+    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, opts.memfsAssetBaseUrl);
+
+    scene.entities = [];
+    scene.uiElements = [];
+    scene.colliders = [];
+    scene.rigidbodies = [];
+    scene.batchedLayers = {};
+
+    for (const ent of json.Entities ?? []) {
+        const entity = buildEntityFromJson(ent, scene);
+        if (entity) {
+            scene.entities.push(entity);
+        }
+    }
+
+    for (const ui of json.UIElements ?? []) {
+        if (ui.type === "TextBox") {
+            scene.uiElements.push(new SceneTextBox(ui) as never);
+        }
+    }
+
+    applyCameraFromJson(scene, json, opts.canvasWidth, opts.canvasHeight);
 
     if (opts.loadScripts !== false) {
         instantiateScripts(scene.entities);
         if (!opts.deferScriptInitialize) {
             initializeAllScripts(scene.entities);
         }
+    }
+}
+
+/**
+ * Port of `SceneBuilder.deserialize_and_build_scene` — merge new scene JSON into the current
+ * scene, keeping persistent entities/UI (by id).
+ */
+export async function mergeStrippedSceneData(
+    scene: Scene,
+    emscriptenModule: EmMod,
+    json: SceneJson,
+    opts: StrippedSceneLoadOptions,
+): Promise<void> {
+    const { imagePaths, soundPaths } = collectSceneAssetPaths(json);
+    const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
+    if (jg) {
+        jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
+    }
+    await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, opts.memfsAssetBaseUrl);
+
+    const existingEntityIds = new Set(scene.entities.map((e) => String((e as Entity).id)));
+    const existingUiIds = new Set(scene.uiElements.map((u) => String((u as SceneTextBox).id)));
+
+    for (const ent of json.Entities ?? []) {
+        if (existingEntityIds.has(String(ent.id))) {
+            continue;
+        }
+        const entity = buildEntityFromJson(ent, scene);
+        if (entity) {
+            scene.entities.push(entity);
+        }
+    }
+
+    for (const ui of json.UIElements ?? []) {
+        if (ui.type !== "TextBox" || existingUiIds.has(String(ui.id ?? ""))) {
+            continue;
+        }
+        scene.uiElements.push(new SceneTextBox(ui) as never);
+    }
+
+    applyCameraFromJson(scene, json, opts.canvasWidth, opts.canvasHeight);
+
+    scene.colliders = [];
+    scene.rigidbodies = [];
+    for (const entity of scene.entities as Entity[]) {
+        registerPhysics(scene, entity);
+    }
+
+    if (opts.loadScripts !== false) {
+        instantiateScripts(scene.entities);
     }
 }
 
