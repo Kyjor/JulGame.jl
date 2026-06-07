@@ -6,8 +6,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "transpile": "julia {{CONVERT_SCRIPT}} --project-root . --all-scripts",
-    "transpile:engine": "julia {{CONVERT_SCRIPT}}",
+    "transpile": "julia tools/transpile.jl",
+    "transpile:engine": "julia tools/transpile.jl --engine-only",
+    "transpile:scripts": "julia tools/transpile.jl --scripts-only",
     "build:wasm": "npm run build:wasm --prefix {{JULGAME_TS_DIR}}"
   },
   "devDependencies": {
