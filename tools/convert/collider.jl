@@ -23,6 +23,33 @@ function postprocess_collider_ts(data::AbstractString)::String
         r"(?m)^(\s*)self\.parent\.rigidbody\.grounded = onGround\s*$" =>
             s"\1if (self.parent.rigidbody != null) {\n\1    self.parent.rigidbody.grounded = onGround\n\1}",
     )
+    # Landing sets grounded but onGround stays false unless foot rays hit — latch onGround on bottom contact.
+    s = replace(
+        s,
+        "self.parent.rigidbody.grounded = true\n                                }" =>
+            "self.parent.rigidbody.grounded = true\n                                        onGround = true\n                                }",
+    )
+    # Collider correction drops z; vecAdd treats z:undefined as immovable.
+    s = replace(
+        s,
+        r"self\.parent\.transform\.position = \{x: transform\.position\.x, y: transform\.position\.y \+ collision\[1\]\}" =>
+            "self.parent.transform.position = {x: transform.position.x, y: transform.position.y + collision[1], z: transform.position.z ?? 0}",
+    )
+    s = replace(
+        s,
+        r"self\.parent\.transform\.position = \{x: transform\.position\.x \+ collision\[1\], y: transform\.position\.y\}" =>
+            "self.parent.transform.position = {x: transform.position.x + collision[1], y: transform.position.y, z: transform.position.z ?? 0}",
+    )
+    s = replace(
+        s,
+        r"self\.parent\.transform\.position = \{x: transform\.position\.x - collision\[1\], y: transform\.position\.y\}" =>
+            "self.parent.transform.position = {x: transform.position.x - collision[1], y: transform.position.y, z: transform.position.z ?? 0}",
+    )
+    s = replace(
+        s,
+        r"self\.parent\.transform\.position = \{x: transform\.position\.x, y: transform\.position\.y - collision\[1\]\}" =>
+            "self.parent.transform.position = {x: transform.position.x, y: transform.position.y - collision[1], z: transform.position.z ?? 0}",
+    )
     # `globalConstants` assigns enums on `globalThis`, not as ESM bindings.
     for (name, val) in [("None", -1), ("Top", 1), ("Bottom", 2), ("Left", 3), ("Right", 4), ("Below", 2)]
         s = replace(s, Regex("\\b$name\\b") => string(val))

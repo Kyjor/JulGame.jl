@@ -10,29 +10,29 @@ function isNum(v: unknown): v is number {
     return typeof v === "number" && !Number.isNaN(v);
 }
 
-function isV2(v: unknown): v is { x: number; y: number } {
+function isXY(
+    v: unknown,
+): v is { x: number; y: number; z?: number } {
     return (
         typeof v === "object" &&
         v !== null &&
         "x" in v &&
         "y" in v &&
         typeof (v as { x: unknown }).x === "number" &&
-        typeof (v as { y: unknown }).y === "number" &&
-        !("z" in v)
+        typeof (v as { y: unknown }).y === "number"
     );
 }
 
+function isV2(v: unknown): v is { x: number; y: number } {
+    return isXY(v) && !("z" in v);
+}
+
 function isV3(v: unknown): v is { x: number; y: number; z: number } {
-    return (
-        typeof v === "object" &&
-        v !== null &&
-        "x" in v &&
-        "y" in v &&
-        "z" in v &&
-        typeof (v as { x: unknown }).x === "number" &&
-        typeof (v as { y: unknown }).y === "number" &&
-        typeof (v as { z: unknown }).z === "number"
-    );
+    return isXY(v) && "z" in v && typeof (v as { z: unknown }).z === "number";
+}
+
+function zOf(v: { x: number; y: number; z?: number }): number {
+    return typeof v.z === "number" ? v.z : 0;
 }
 
 export function vecNeg(v: unknown): VecResult {
@@ -46,8 +46,9 @@ export function vecAdd(a: unknown, b: unknown): VecResult {
     if (isNum(a) && isNum(b)) return a + b;
     if (isV3(a) && isV3(b)) return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
     if (isV2(a) && isV2(b)) return { x: a.x + b.x, y: a.y + b.y };
-    if (isV3(a) && isV2(b)) return { x: a.x + b.x, y: a.y + b.y, z: a.z };
+    if (isXY(a) && isV2(b)) return { x: a.x + b.x, y: a.y + b.y, z: zOf(a) };
     if (isV2(a) && isV3(b)) return { x: a.x + b.x, y: a.y + b.y };
+    if (isXY(a) && isV3(b)) return { x: a.x + b.x, y: a.y + b.y, z: zOf(a) + b.z };
     if (isV2(a) && isNum(b)) return { x: a.x + b, y: a.y + b };
     if (isNum(a) && isV2(b)) return { x: b.x + a, y: b.y + a };
     if (isV3(a) && isNum(b)) return { x: a.x + b, y: a.y + b, z: a.z + b };

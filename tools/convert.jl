@@ -1236,11 +1236,11 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r":\s*([A-Za-z_]\w*)\s*=\s*\(\s*([^()\n]*,[^()\n]*)\s*\)" => s": \1 = [\2]")
     # Vector2 / Vector2f / Vector3f / Vector4 constructor calls -> `{ x, y [, z [, t]] }` (handles nested parens in arguments).
     data = replace_math_vector_constructor_calls(data)
-    # Rigidbody: grounded snap keeps `z` from the integrated position (Julia `Vector2f(x,y)` drops `z` on the Julia side).
+    # Rigidbody: grounded snap keeps `z` (integrated position may be Vector2f with no z).
     data = replace(
         data,
         "newPosition = {x: newPosition.x, y: currentPosition.y}" =>
-            "newPosition = {x: newPosition.x, y: currentPosition.y, z: newPosition.z}",
+            "newPosition = {x: newPosition.x, y: currentPosition.y, z: newPosition.z ?? currentPosition.z ?? 0}",
     )
     # `a && return b` is valid Julia shorthand; TS needs an explicit if.
     data = replace(data, r"(?m)^(\s*)(.+?)\s*&&\s*return\s+(.+)$" => s"\1if (\2) { return \3 }")

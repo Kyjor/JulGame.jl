@@ -72,6 +72,29 @@ function applyCameraFollow(cam: SceneCamera, deltaTime: number): void {
     cam.position.y += (target.position.y - cam.position.y) * lerp;
 }
 
+type SceneSprite = {
+    layer?: number;
+    isStatic?: boolean;
+};
+
+/** Match Julia `render_scene_sprites_and_shapes`: draw by ascending `sprite.layer`. */
+function spritesInLayerOrder(entities: SceneEntity[]): unknown[] {
+    const items: { layer: number; sprite: unknown }[] = [];
+    for (const entity of entities) {
+        if (!entity.isActive || !entity.sprite) {
+            continue;
+        }
+        const sprite = entity.sprite as SceneSprite;
+        // Static tiles use batchedLayers in full runtime (not wired in stripped build yet).
+        if (sprite.isStatic) {
+            continue;
+        }
+        items.push({ layer: sprite.layer ?? 0, sprite: entity.sprite });
+    }
+    items.sort((a, b) => a.layer - b.layer);
+    return items.map((item) => item.sprite);
+}
+
 function drawUiTextBoxes(
     api: Record<string, unknown>,
     uiElements: SceneTextBox[],
@@ -172,10 +195,8 @@ export function runGameFrame(editorMode = false): void {
         (cameraUpdate as (c: unknown, p: null) => void)(cam, null);
     }
 
-    for (const e of scene.entities) {
-        if (e.isActive && e.sprite) {
-            (Component_draw as (s: unknown, c: unknown) => void)(e.sprite, cam);
-        }
+    for (const sprite of spritesInLayerOrder(scene.entities)) {
+        (Component_draw as (s: unknown, c: unknown) => void)(sprite, cam);
     }
 
     if (cam && scene.uiElements?.length) {

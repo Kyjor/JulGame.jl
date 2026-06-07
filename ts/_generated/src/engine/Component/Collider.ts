@@ -108,7 +108,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                         }
                         //Begin to overlap, correct position
                         if (!collider.isTrigger && !self.isTrigger) {
-                                self.parent.transform.position = {x: transform.position.x, y: transform.position.y + collision[1]}
+                                self.parent.transform.position = {x: transform.position.x, y: transform.position.y + collision[1], z: transform.position.z ?? 0}
                         }
                     }
                     if (collision[0] == 3) {
@@ -119,7 +119,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                         
                         if (!collider.isTrigger && !self.isTrigger) {
                                 //Begin to overlap, correct position
-                                self.parent.transform.position = {x: transform.position.x + collision[1], y: transform.position.y}
+                                self.parent.transform.position = {x: transform.position.x + collision[1], y: transform.position.y, z: transform.position.z ?? 0}
                         }
                     }
                     if (collision[0] == 4) {
@@ -129,7 +129,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                         }
                         //Begin to overlap, correct position
                         if (!collider.isTrigger && !self.isTrigger) {
-                                self.parent.transform.position = {x: transform.position.x - collision[1], y: transform.position.y}
+                                self.parent.transform.position = {x: transform.position.x - collision[1], y: transform.position.y, z: transform.position.z ?? 0}
                         }
                     }
                     if (collision[0] == 2) {
@@ -140,9 +140,10 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                         //Begin to overlap, correct position
                         
                         if (!collider.isTrigger && !self.isTrigger) {
-                                self.parent.transform.position = {x: transform.position.x, y: transform.position.y - collision[1]}
+                                self.parent.transform.position = {x: transform.position.x, y: transform.position.y - collision[1], z: transform.position.z ?? 0}
                                 if (self.parent.rigidbody != null && self.parent.rigidbody.velocity.y >= 0) {
                                         self.parent.rigidbody.grounded = true
+                                        onGround = true
                                 }
                         }
                     }

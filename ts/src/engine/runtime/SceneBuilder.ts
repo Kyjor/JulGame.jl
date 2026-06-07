@@ -89,6 +89,7 @@ type ComponentJson = {
     crop?: { x?: number; y?: number; z?: number; t?: number };
     pixelsPerUnit?: number;
     layer?: number;
+    isStatic?: boolean;
     tag?: string;
     offset?: { x: number; y: number };
     enabled?: boolean;
@@ -264,7 +265,7 @@ function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
                 center: { x: 0.5, y: 0.5 },
                 anchor: "center",
                 offset: { x: 0, y: 0 },
-                isStatic: false,
+                isStatic: !!c.isStatic,
             });
         } else if (c.type === "Collider") {
             JulGame_add_collider(entity, {
