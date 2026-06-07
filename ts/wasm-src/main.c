@@ -9,6 +9,8 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
@@ -144,6 +146,29 @@ void glue_SDL_RenderFillRectF(float x, float y, float w, float h) {
 EMSCRIPTEN_KEEPALIVE
 void *glue_IMG_Load(const char *path) {
     return IMG_Load(path);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_wasm_alloc_copy(const void *src, size_t len) {
+    if (src == NULL || len == 0) {
+        return NULL;
+    }
+    void *p = malloc(len);
+    if (p == NULL) {
+        return NULL;
+    }
+    memcpy(p, src, len);
+    return p;
+}
+
+EMSCRIPTEN_KEEPALIVE
+SDL_RWops *glue_SDL_RWFromConstMem(const void *mem, size_t size) {
+    return SDL_RWFromConstMem(mem, size);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *glue_IMG_Load_RW(SDL_RWops *src, int freesrc) {
+    return IMG_Load_RW(src, freesrc);
 }
 
 EMSCRIPTEN_KEEPALIVE

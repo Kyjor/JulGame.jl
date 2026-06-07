@@ -23,5 +23,34 @@ function postprocess_sprite_ts(data::AbstractString)::String
         r"let cropHeight = srcRect == null \? self\.size\.y" =>
             "let cropHeight = srcRect == null ? (self.size?.y ?? 0)",
     )
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGame\.IMAGE_CACHE\.length" =>
+            "Object.keys((globalThis as any).JulGame.IMAGE_CACHE).length",
+    )
+    # Transpiler strips module-level TEXTURE_CACHE; restore shared texture lookup.
+    s = replace(
+        s,
+        "        let _textureColor = (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render)" =>
+            "        if (texture_to_render == null) { return }\n        let _textureColor = (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render)",
+    )
+    s = replace(
+        s,
+        r"function get_or_create_texture\(imagePath: string, surface: any\) \{\n        let tex = \(globalThis as any\)\.JulGameSdl\.glue_SDL_CreateTextureFromSurface\(\(globalThis as any\)\.JulGame\.Renderer, surface\)\n        if \(tex != null\) \{\n\n            console\.debug\(`Created and cached texture for: \$\{imagePath\}`\)\n        \} else \{\n            console\.error\(`Failed to create texture for: \$\{imagePath\}`\)\n        \}\n        return tex\n    \}" =>
+        """
+        function get_or_create_texture(imagePath: string, surface: any) {
+        const cache = (globalThis as any).JulGame.TEXTURE_CACHE
+        if (cache[imagePath] != null) {
+            return cache[imagePath]
+        }
+        let tex = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, surface)
+        if (tex != null) {
+            cache[imagePath] = tex
+        } else {
+            console.error(`Failed to create texture for: \${imagePath}`)
+        }
+        return tex
+    }""",
+    )
     return s
 end

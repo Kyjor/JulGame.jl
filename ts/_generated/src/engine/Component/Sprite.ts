@@ -1,5 +1,5 @@
 export {}
-import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, pointer, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -132,6 +132,7 @@ import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../..
         }
     
         // Check and set color if necessary (for both regular and effect textures)
+        if (texture_to_render == null) { return }
         let _textureColor = (globalThis as any).JulGameSdl.glue_SDL_GetTextureColorMod(texture_to_render)
 
         let _textureAlpha = (globalThis as any).JulGameSdl.glue_SDL_GetTextureAlphaMod(texture_to_render)
@@ -272,16 +273,19 @@ import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../..
         self.isFlipped = !self.isFlipped
     }
 
-    function get_or_create_texture(imagePath: string, surface: any) {
-        let tex = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, surface)
-        if (tex != null) {
-
-            console.debug(`Created and cached texture for: ${imagePath}`)
-        } else {
-            console.error(`Failed to create texture for: ${imagePath}`)
-        }
-        return tex
+        function get_or_create_texture(imagePath: string, surface: any) {
+    const cache = (globalThis as any).JulGame.TEXTURE_CACHE
+    if (cache[imagePath] != null) {
+        return cache[imagePath]
     }
+    let tex = (globalThis as any).JulGameSdl.glue_SDL_CreateTextureFromSurface((globalThis as any).JulGame.Renderer, surface)
+    if (tex != null) {
+        cache[imagePath] = tex
+    } else {
+        console.error(`Failed to create texture for: ${imagePath}`)
+    }
+    return tex
+}
     
     // function load_fallback_image()
     //     rwops = (globalThis as any).JulGameSdl.glue_SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), FALLBACK_IMAGE_BYTES.length)
@@ -348,7 +352,7 @@ import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../..
                 return (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rw, 1)
             }
         }
-        console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
+        console.debug(`Loading image from disk ${fullPath} for sprite, there are ${Object.keys((globalThis as any).JulGame.IMAGE_CACHE).length} images in cache`)
 
         return (globalThis as any).JulGameSdl.glue_IMG_Load(fullPath)
     }

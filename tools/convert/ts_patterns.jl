@@ -1,5 +1,39 @@
 # Shared pattern-based TS postprocess helpers (included from tools/convert.jl).
 
+"""`@argevent` callbacks: `( (col: any) => fn(self, col))` / trailing `))` → valid arrow fn."""
+function fix_argevent_collision_callbacks(data::AbstractString)::String
+    s = String(data)
+    s = replace(
+        s,
+        r"=\s*\(\s*\((\w+):\s*any\)\s*=>\s*([\w.]+)\(self,\s*\1\)\)\s*\)\s*;" =>
+            s"= (\1: any) => \2(self, \1);",
+    )
+    s = replace(
+        s,
+        r"=\s*\(\s*\((\w+):\s*any\)\s*=>\s*([\w.]+)\(self,\s*\1\)\)\s*;" =>
+            s"= (\1: any) => \2(self, \1);",
+    )
+    s = replace(s, r"=>\s*handle_bullet_collisions\(self,\s*col\)\)\s*;" => "=> handle_bullet_collisions(self, col);")
+    s = replace(s, r"=>\s*handle_collisions\(self,\s*col\)\)\s*;" => "=> handle_collisions(self, col);")
+    return s
+end
+
+"""`destroy_entity(MAIN, …)` and other bare `MAIN` args (no trailing `.`)."""
+function fix_bare_main_identifiers(data::AbstractString)::String
+    s = String(data)
+    s = replace(s, r"\bdestroy_entity\(\s*MAIN\s*," => "destroy_entity((globalThis as any).MAIN,")
+    return s
+end
+
+"""Repair duplicate `MAIN` rewrite: `(globalThis as any).(globalThis as any).MAIN` → `(globalThis as any).MAIN`."""
+function fix_double_main_rewrite(data::AbstractString)::String
+    s = String(data)
+    while occursin(r"\(globalThis as any\)\.\(globalThis as any\)\.MAIN", s)
+        s = replace(s, r"\(globalThis as any\)\.\(globalThis as any\)\.MAIN" => "(globalThis as any).MAIN")
+    end
+    return s
+end
+
 """JS ASI: `glue_foo()\\n(globalThis...` parses as calling the return value. Add `;` after glue lines."""
 function fix_ts_asi_glue_semicolons(data::AbstractString)::String
     lines = split(String(data), '\n'; keepempty=true)

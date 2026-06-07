@@ -65,7 +65,7 @@ module PlayerMovementModule
                 if this.parent.rigidbody.grounded
                     # JulGame.Component.toggle_sound(this.jumpSound)
 
-                    JulGame.RigidbodyModule.set_velocity(this.parent.rigidbody, Vector2f(JulGame.Component.get_velocity(this.parent.rigidbody).x, 0))
+                    this.parent.rigidbody.velocity = Vector2f(this.parent.rigidbody.velocity.x, 0)
                     JulGame.RigidbodyModule.add_velocity(this.parent.rigidbody, Vector2f(0, this.jumpVelocity))
                     this.animator.currentAnimation = this.animator.animations[3]
                 end
@@ -78,7 +78,7 @@ module PlayerMovementModule
                     JulGame.Component.flip(this.parent.sprite)
                 end
                 
-                JulGame.RigidbodyModule.set_velocity(this.parent.rigidbody, Vector2f(x, JulGame.Component.get_velocity(this.parent.rigidbody).y))
+                this.parent.rigidbody.velocity = Vector2f(x, this.parent.rigidbody.velocity.y)
                 x = 0
                 this.isJump = false
                 if this.parent.transform.position.y > 8

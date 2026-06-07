@@ -226,12 +226,13 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
     need_unsafe_wrap = occursin(r"\bunsafe_wrap\s*\(", data)
     need_joinpath = occursin(r"\bjoinpath\s*\(", data)
     need_haskey = occursin(r"\bhaskey\s*\(", data)
+    need_pointer = occursin(r"\bpointer\s*\(", data)
     need_mix_volume = occursin(r"\bmixVolume\s*\(", data)
     need_time_ns = occursin(r"\btime_ns\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
-    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_haskey || need_mix_volume || need_time_ns
+    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_haskey || need_pointer || need_mix_volume || need_time_ns
         h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
         if isfile(h)
             rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
@@ -239,6 +240,7 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             syms = String[]
             need_clamp && push!(syms, "clamp")
             need_haskey && push!(syms, "haskey")
+            need_pointer && push!(syms, "pointer")
             need_mix_volume && push!(syms, "mixVolume")
             need_joinpath && push!(syms, "joinpath")
             need_time_ns && push!(syms, "time_ns")
@@ -2014,7 +2016,7 @@ function normalize_julgame_global_access(data::AbstractString)::String
         s,
         r"(?<!JulGame\.)(?<!\(globalThis as any\)\.)\bMAIN\." => "(globalThis as any).MAIN.",
     )
-    return s
+    return fix_double_main_rewrite(s)
 end
 
 function rewrite_sdl_calls_to_glue(data::AbstractString)::String
@@ -4069,9 +4071,15 @@ function main()
     # Smallest-first helps us iterate patterns safely from simpler files upward.
     sort!(files, by = f -> filesize(f))
     mkpath(default_out_dir())
+    transpiled_scripts = false
     for f in files
         isfile(f) || error("not a file: $f")
         println(transpile_file(f; repo_root = repo_root))
+        transpiled_scripts |= is_game_script_source(f)
+    end
+    if transpiled_scripts
+        idx = write_scripts_index(repo_root)
+        idx !== nothing && println(idx)
     end
 end
 

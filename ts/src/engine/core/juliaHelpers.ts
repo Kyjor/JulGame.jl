@@ -14,6 +14,17 @@ export function mixVolume(volume: number): number {
     return volume < 0 ? 128 : clamp(volume, 0, 128);
 }
 
+/** Julia `pointer(arr)` — copy bytes into wasm-owned memory for SDL_RWFromConstMem / similar. */
+export function pointer(data: Uint8Array | ArrayLike<number>): number {
+    const bytes = data instanceof Uint8Array ? data : Uint8Array.from(data as ArrayLike<number>);
+    const alloc = (globalThis as { JulGameSdl?: { glue_wasm_alloc_copy?: (buf: Uint8Array, len: number) => number } })
+        .JulGameSdl?.glue_wasm_alloc_copy;
+    if (!alloc) {
+        throw new Error("pointer(): glue_wasm_alloc_copy not available (rebuild wasm)");
+    }
+    return alloc(bytes, bytes.length);
+}
+
 /** Julia `haskey(dict, key)` — works for plain objects and `Map`. */
 export function haskey(collection: unknown, key: string | number): boolean {
     if (collection == null) {

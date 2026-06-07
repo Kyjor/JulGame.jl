@@ -532,6 +532,47 @@ let elementsOrderedByLayerDescending = (globalThis as any).JulGame.MAIN.scene.ui
         return false
     }
 
+    function get_element_position(element: any): { x: number; y: number } {
+        if (element?.position) {
+            return { x: element.position.x, y: element.position.y }
+        }
+        const sprite = element?.sprite
+        if (!sprite?.lastRenderedScreenPosition) {
+            return { x: 0, y: 0 }
+        }
+        const basePosition = sprite.lastRenderedScreenPosition
+        const baseSize = sprite.lastRenderedScreenSize ?? { x: 0, y: 0 }
+        const interactionScale = sprite.interactionScale ?? 1
+        if (interactionScale < 1) {
+            const sizeDiff = {
+                x: baseSize.x * (1 - interactionScale),
+                y: baseSize.y * (1 - interactionScale),
+            }
+            return {
+                x: basePosition.x + sizeDiff.x / 2,
+                y: basePosition.y + sizeDiff.y / 2,
+            }
+        }
+        return { x: basePosition.x, y: basePosition.y }
+    }
+
+    function get_element_size(element: any): { x: number; y: number } {
+        if (element?.size) {
+            return { x: element.size.x, y: element.size.y }
+        }
+        const sprite = element?.sprite
+        if (!sprite?.lastRenderedScreenSize) {
+            return { x: 0, y: 0 }
+        }
+        const baseSize = sprite.lastRenderedScreenSize
+        const interactionScale = sprite.interactionScale ?? 1
+        return { x: baseSize.x * interactionScale, y: baseSize.y * interactionScale }
+    }
+
+    function clicked_down_on_this_element(self: Input, element: unknown): boolean {
+        return self.elementsBeingClickedDownOn.includes(element)
+    }
+
     function handle_window_events(self: Input, event: any) {
         if (event.type != (globalThis as any).JulGameSdl.glue_SDL_WINDOWEVENT) {
             return

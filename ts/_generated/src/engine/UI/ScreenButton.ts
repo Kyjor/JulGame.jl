@@ -1,5 +1,5 @@
 export {}
-import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, pointer, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..UI.JulGame

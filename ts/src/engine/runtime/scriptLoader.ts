@@ -8,6 +8,7 @@ import {
 } from "../../../_generated/src/engine/Scene";
 import {
     createScript,
+    hasScript,
     initializeScript,
     shutdownScript,
     updateScript,
@@ -57,6 +58,10 @@ export function instantiateScripts(entities: Entity[]): void {
         for (const ref of raw) {
             if (!isScriptRef(ref)) {
                 instances.push(ref);
+                continue;
+            }
+            if (!hasScript(ref.name)) {
+                console.warn(`scriptLoader: skipping unregistered script "${ref.name}" on ${entity.name}`);
                 continue;
             }
             try {

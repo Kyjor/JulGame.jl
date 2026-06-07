@@ -167,6 +167,56 @@ function finalize_input_exports(data::AbstractString)::String
     return s
 end
 
+"""`ui.jl` helpers referenced by `poll_input` but not emitted into `Input.ts`."""
+function stub_ui_hit_test_helpers(data::AbstractString)::String
+    s = String(data)
+    occursin(r"function get_element_position\b", s) && return s
+    stub = """
+    function get_element_position(element: any): { x: number; y: number } {
+        if (element?.position) {
+            return { x: element.position.x, y: element.position.y }
+        }
+        const sprite = element?.sprite
+        if (!sprite?.lastRenderedScreenPosition) {
+            return { x: 0, y: 0 }
+        }
+        const basePosition = sprite.lastRenderedScreenPosition
+        const baseSize = sprite.lastRenderedScreenSize ?? { x: 0, y: 0 }
+        const interactionScale = sprite.interactionScale ?? 1
+        if (interactionScale < 1) {
+            const sizeDiff = {
+                x: baseSize.x * (1 - interactionScale),
+                y: baseSize.y * (1 - interactionScale),
+            }
+            return {
+                x: basePosition.x + sizeDiff.x / 2,
+                y: basePosition.y + sizeDiff.y / 2,
+            }
+        }
+        return { x: basePosition.x, y: basePosition.y }
+    }
+
+    function get_element_size(element: any): { x: number; y: number } {
+        if (element?.size) {
+            return { x: element.size.x, y: element.size.y }
+        }
+        const sprite = element?.sprite
+        if (!sprite?.lastRenderedScreenSize) {
+            return { x: 0, y: 0 }
+        }
+        const baseSize = sprite.lastRenderedScreenSize
+        const interactionScale = sprite.interactionScale ?? 1
+        return { x: baseSize.x * interactionScale, y: baseSize.y * interactionScale }
+    }
+
+    function clicked_down_on_this_element(self: Input, element: unknown): boolean {
+        return self.elementsBeingClickedDownOn.includes(element)
+    }
+
+"""
+    return replace(s, r"\n    function handle_window_events" => "\n" * stub * "    function handle_window_events", count=1)
+end
+
 """`cursor.jl` is not in `files-needed.txt`; stub bank init for wasm."""
 function stub_cursor_bank(data::AbstractString)::String
     s = String(data)
@@ -194,6 +244,7 @@ function postprocess_input_ts(data::AbstractString, path_jl::AbstractString, pat
     s = fix_keyboard_state_indexing(s)
     s = ensure_keyboard_poll(s)
     s = stub_cursor_bank(s)
+    s = stub_ui_hit_test_helpers(s)
     s = finalize_input_exports(s)
     # Line rewrites above can run after the global ASI pass in `parse_file`.
     s = insert_semicolon_before_line_starting_with_open_paren(s)

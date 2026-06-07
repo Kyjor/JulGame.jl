@@ -30,6 +30,9 @@ type JulGameSdlCApi = {
     glue_SDL_GetRenderDrawColor_packed: () => number;
     glue_SDL_RenderFillRectF: (x: number, y: number, w: number, h: number) => void;
     glue_IMG_Load: (path: string) => number;
+    glue_wasm_alloc_copy: (data: Uint8Array, len: number) => number;
+    glue_SDL_RWFromConstMem: (mem: number, size: number) => number;
+    glue_IMG_Load_RW: (src: number, freesrc: number) => number;
     /** C glue uses static renderer; first arg from transpiled Julia is ignored. */
     glue_SDL_CreateTextureFromSurface: (_renderer: number, surface: number) => number;
     glue_SDL_FreeSurface: (surface: number) => void;
@@ -310,6 +313,15 @@ export class SDLBridge {
                 "number",
             ]) as JulGameSdlCApi["glue_SDL_RenderFillRectF"],
             glue_IMG_Load: cwrap("glue_IMG_Load", "number", ["string"]) as JulGameSdlCApi["glue_IMG_Load"],
+            glue_wasm_alloc_copy: cwrap("glue_wasm_alloc_copy", "number", [
+                "array",
+                "number",
+            ]) as JulGameSdlCApi["glue_wasm_alloc_copy"],
+            glue_SDL_RWFromConstMem: cwrap("glue_SDL_RWFromConstMem", "number", [
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_RWFromConstMem"],
+            glue_IMG_Load_RW: cwrap("glue_IMG_Load_RW", "number", ["number", "number"]) as JulGameSdlCApi["glue_IMG_Load_RW"],
             glue_SDL_CreateTextureFromSurface: (() => {
                 const create = cwrap("glue_SDL_CreateTextureFromSurface", "number", ["number"]) as (
                     surface: number,

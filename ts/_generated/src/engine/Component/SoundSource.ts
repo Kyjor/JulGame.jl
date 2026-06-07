@@ -1,5 +1,5 @@
 export {}
-import { clamp, haskey, joinpath, mixVolume, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, mixVolume, pointer, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -45,7 +45,7 @@ import { clamp, haskey, joinpath, mixVolume, unsafe_string } from "../../../../s
             }
             
             // Convert channel and volume to Int32
-            isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(volume)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(channel, mixVolume( mixVolume(volume)))
+            isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(volume)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(channel, mixVolume(volume))
 
             this.channel = channel
             this.isMusic = isMusic

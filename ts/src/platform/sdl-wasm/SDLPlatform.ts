@@ -13,14 +13,6 @@ export type ProjectConfig = {
     sceneJsonUrl: string;
     memfsAssetBaseUrl: string;
     basePath?: string;
-    maxEntities?: number;
-};
-
-const DEFAULT_SMOKE_TEST: ProjectConfig = {
-    sceneJsonUrl: new URL("../../../../test/projects/SmokeTest/scenes/scene.json", import.meta.url).href,
-    memfsAssetBaseUrl: new URL("../../../../test/projects/SmokeTest", import.meta.url).href,
-    basePath: "/game",
-    maxEntities: 96,
 };
 
 export class SDLPlatform implements Platform {
@@ -30,7 +22,7 @@ export class SDLPlatform implements Platform {
     constructor(
         private readonly canvas: HTMLCanvasElement,
         private readonly status: HTMLElement,
-        private readonly project: ProjectConfig = DEFAULT_SMOKE_TEST,
+        private readonly project: ProjectConfig,
     ) {}
 
     async init(): Promise<void> {
@@ -58,7 +50,6 @@ export class SDLPlatform implements Platform {
             memfsAssetBaseUrl: this.project.memfsAssetBaseUrl,
             canvasWidth: this.canvas.width,
             canvasHeight: this.canvas.height,
-            maxEntities: this.project.maxEntities ?? 128,
             loadScripts: true,
             deferScriptInitialize: false,
         });
@@ -103,7 +94,11 @@ export class SDLPlatform implements Platform {
         this.loopStarted = true;
 
         const tick = (): void => {
-            runGameFrame();
+            try {
+                runGameFrame();
+            } catch (e) {
+                console.error("sdl-wasm: runGameFrame failed", e);
+            }
             const main = (globalThis as unknown as { MAIN?: { input?: { quit?: boolean } } }).MAIN;
             if (main?.input?.quit) {
                 this.setStatus("sdl-wasm: quit");

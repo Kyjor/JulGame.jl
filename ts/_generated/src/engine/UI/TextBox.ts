@@ -1,5 +1,5 @@
 export {}
-import { haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
+import { haskey, joinpath, pointer, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
 
 

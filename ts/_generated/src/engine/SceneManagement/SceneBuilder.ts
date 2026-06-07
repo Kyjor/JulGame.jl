@@ -1,5 +1,5 @@
 export {}
-import { haskey, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { haskey, joinpath, pointer, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ...JulGame

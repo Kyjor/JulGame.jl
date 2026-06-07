@@ -49,8 +49,6 @@ export type StrippedSceneLoadOptions = {
     memfsAssetBaseUrl: string;
     canvasWidth: number;
     canvasHeight: number;
-    /** Cap entities deserialized (large editor scenes). */
-    maxEntities?: number;
     /** When true, instantiate transpiled scripts after entities are built. */
     loadScripts?: boolean;
     /** When true, only attach script instances — call `initializeAllScripts` later (e.g. after audio unlock). */
@@ -173,7 +171,12 @@ async function syncAssetsToMemfs(
             if (!res.ok) {
                 throw new Error(String(res.status));
             }
-            fs.writeFile(memPath, new Uint8Array(await res.arrayBuffer()));
+            const data = new Uint8Array(await res.arrayBuffer());
+            fs.writeFile(memPath, data);
+            const jg = (globalThis as { JulGame?: { IMAGE_CACHE?: Record<string, Uint8Array>; get_comma_separated_path?: (p: string) => string } }).JulGame;
+            if (jg?.IMAGE_CACHE && jg.get_comma_separated_path) {
+                jg.IMAGE_CACHE[jg.get_comma_separated_path(rel)] = data;
+            }
         } catch {
             fs.writeFile(memPath, PNG_1X1);
             console.warn(`SceneBuilder: using 1×1 placeholder for missing image: ${url}`);
@@ -313,8 +316,7 @@ export async function applyStrippedSceneData(
     json: SceneJson,
     opts: StrippedSceneLoadOptions,
 ): Promise<void> {
-    const max = opts.maxEntities ?? 128;
-    const list = (json.Entities ?? []).slice(0, max);
+    const list = json.Entities ?? [];
 
     const imagePaths = new Set<string>();
     const soundPaths = new Set<string>();
@@ -390,6 +392,7 @@ export async function loadStrippedScene(
     opts: StrippedSceneLoadOptions,
 ): Promise<void> {
     let json: SceneJson = MINIMAL_STRIPPED_SCENE;
+    console.info(`SceneBuilder: loading ${opts.sceneJsonUrl}`);
     try {
         const res = await fetch(opts.sceneJsonUrl);
         if (res.ok) {

@@ -2,8 +2,15 @@ import "./src/engine/core/globalConstants";
 import { Engine } from "./src/engine/core/Engine";
 import { bootstrapWebInput } from "./src/engine/runtime/julGameBootstrap";
 import { BrowserPlatform } from "./src/platform/web/BrowserPlatform";
-import { SDLPlatform } from "./src/platform/sdl-wasm";
+import { SDLPlatform, type ProjectConfig } from "./src/platform/sdl-wasm";
 import { createGameMain } from "./src/game/GameMain";
+
+/** Engine dev only — games pass their own `ProjectConfig` from their entry `main.ts`. */
+const smokeTestProject: ProjectConfig = {
+    sceneJsonUrl: new URL("../test/projects/SmokeTest/scenes/scene.json", import.meta.url).href,
+    memfsAssetBaseUrl: new URL("../test/projects/SmokeTest", import.meta.url).href,
+    basePath: "/game",
+};
 
 function getRequiredElement<T extends Element>(id: string, ctor: { new (): T }): T {
     const el = document.getElementById(id);
@@ -20,7 +27,7 @@ async function boot() {
     const useSDL = url.searchParams.get("backend") !== "web";
 
     if (useSDL) {
-        const platform = new SDLPlatform(canvas, status);
+        const platform = new SDLPlatform(canvas, status, smokeTestProject);
         await platform.init();
         return;
     }
