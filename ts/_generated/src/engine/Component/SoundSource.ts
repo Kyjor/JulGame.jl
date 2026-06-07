@@ -45,7 +45,7 @@ import { clamp, haskey, joinpath, mixVolume, unsafe_string } from "../../../../s
             }
             
             // Convert channel and volume to Int32
-            isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(volume)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(channel, mixVolume(volume))
+            isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(volume)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(channel, mixVolume( mixVolume(volume)))
 
             this.channel = channel
             this.isMusic = isMusic
@@ -69,7 +69,7 @@ import { clamp, haskey, joinpath, mixVolume, unsafe_string } from "../../../../s
             if (self.isMusic) {
                 if ((globalThis as any).JulGameSdl.glue_Mix_PlayingMusic() == 0) {
                     (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(self.volume));
-                    (globalThis as any).JulGameSdl.glue_Mix_PlayMusic(self.sound, -1);
+                    (globalThis as any).JulGameSdl.glue_Mix_PlayMusic( self.sound, -1 )
                     self.isPlaying = true
                 } else {
                     if ((globalThis as any).JulGameSdl.glue_Mix_PausedMusic() == 1) {
@@ -167,10 +167,10 @@ import { clamp, haskey, joinpath, mixVolume, unsafe_string } from "../../../../s
         console.debug(`play: Playing sound from ${self.path}, isMusic: ${self.isMusic}, channel: ${self.channel}, loops: ${loops}`)
         if (self.isMusic) {
             (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(self.volume));
-            (globalThis as any).JulGameSdl.glue_Mix_PlayMusic(self.sound, -1);
+            (globalThis as any).JulGameSdl.glue_Mix_PlayMusic(self.sound, -1)
         } else {
             (globalThis as any).JulGameSdl.glue_Mix_Volume(self.channel, mixVolume(self.volume));
-            (globalThis as any).JulGameSdl.glue_Mix_PlayChannel(self.channel, self.sound, loops);
+            (globalThis as any).JulGameSdl.glue_Mix_PlayChannel(self.channel, self.sound, loops)
         }
     }
 

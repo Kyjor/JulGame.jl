@@ -6,6 +6,7 @@
 # Output path rule: <REPO_ROOT>/_generated/<mirror-of-relative-path>.ts
 
 const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
+include(joinpath(@__DIR__, "convert", "ts_patterns.jl"))
 include(joinpath(@__DIR__, "convert", "input.jl"))
 include(joinpath(@__DIR__, "convert", "script.jl"))
 include(joinpath(@__DIR__, "convert", "collider.jl"))
@@ -2851,6 +2852,7 @@ function replace_julia_ts_fixup_pass(data::AbstractString, path_jl::AbstractStri
     s = replace_sdl_get_texture_color_mod_calls(s)
     s = replace(s, r"\.glue_SDL_SetRenderDrawColor\(\s*\(globalThis as any\)\.JulGame\.Renderer\s*,\s*" => ".glue_SDL_SetRenderDrawColor(")
     s = replace_julia_assert_blocks(s)
+    s = fix_ts_asi_glue_semicolons(s)
     if is_entity_source(path_jl)
         s = simplify_entity_julgame_add_headers(s)
         s = omit_entity_untranspiled_components(s)
