@@ -4,7 +4,7 @@ import type { RenderCommand } from "../../engine/rendering/RenderCommands";
 import { bootstrapJulGameSdl } from "../../engine/runtime/julGameBootstrap";
 import { initializeAllScripts } from "../../engine/runtime/scriptLoader";
 import { loadStrippedScene } from "../../engine/runtime/SceneBuilder";
-import { reloadEntitySounds, tryOpenGameAudio } from "../../engine/runtime/memfsAudio";
+import { playSoundsOnStart, reloadEntitySounds, tryOpenGameAudio } from "../../engine/runtime/memfsAudio";
 import { runGameFrame } from "../../engine/runtime/MainLoop";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { SDLBridge } from "./SDLBridge";
@@ -65,10 +65,12 @@ export class SDLPlatform implements Platform {
         const unlockAudio = (): void => {
             tryOpenGameAudio(api);
             reloadEntitySounds(main.scene);
+            playSoundsOnStart(main.scene);
             this.setStatus("sdl-wasm: game loop");
         };
         if (audioReady) {
             reloadEntitySounds(main.scene);
+            playSoundsOnStart(main.scene);
         } else {
             this.setStatus("sdl-wasm: click canvas to enable audio");
             this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true });

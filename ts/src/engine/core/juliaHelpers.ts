@@ -9,6 +9,11 @@ export function clamp(val: number, min: number, max: number): number {
     return Math.min(Math.max(val, min), max);
 }
 
+/** SDL_mixer volume: Julia `-1` means default (128), not silent. */
+export function mixVolume(volume: number): number {
+    return volume < 0 ? 128 : clamp(volume, 0, 128);
+}
+
 /** Julia `haskey(dict, key)` — works for plain objects and `Map`. */
 export function haskey(collection: unknown, key: string | number): boolean {
     if (collection == null) {

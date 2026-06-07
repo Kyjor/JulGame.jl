@@ -43,9 +43,10 @@ import { Component_check_collisions } from "./Collider";
         let velocityMultiplier = {x: 1.0, y: 1.0}
         let transform = self.parent.transform
         let currentPosition = transform.position
+        
         let newPosition = vecAdd(vecAdd(transform.position, vecMul(self.velocity, dt)), vecMul(self.acceleration, vecMul(vecMul(dt, dt), 0.5))) as Vector3f
         if (self.grounded) {
-            newPosition = {x: newPosition.x, y: currentPosition.y, z: (newPosition as { z?: number }).z ?? currentPosition.z ?? 0}
+            newPosition = {x: newPosition.x, y: currentPosition.y, z: newPosition.z ?? currentPosition.z ?? 0}
             velocityMultiplier = {x: 1.0, y: 0.0}
         }
         let newAcceleration = Component_apply_forces(self)

@@ -9,6 +9,7 @@ const REPO_ROOT = normpath(joinpath(@__DIR__, ".."))
 include(joinpath(@__DIR__, "convert", "input.jl"))
 include(joinpath(@__DIR__, "convert", "script.jl"))
 include(joinpath(@__DIR__, "convert", "collider.jl"))
+include(joinpath(@__DIR__, "convert", "sound.jl"))
 include(joinpath(@__DIR__, "convert", "animator.jl"))
 include(joinpath(@__DIR__, "convert", "sprite.jl"))
 
@@ -179,6 +180,10 @@ function parse_file(
         data = postprocess_game_script_ts(data, path_jl, path_ts)
     else
         data = "export {}\n" * data
+        is_collider_source(path_jl) && (data = postprocess_collider_ts(data))
+        is_sound_source(path_jl) && (data = postprocess_sound_ts(data))
+        is_animator_source(path_jl) && (data = postprocess_animator_ts(data))
+        is_sprite_source(path_jl) && (data = postprocess_sprite_ts(data))
     end
     if !is_script
         data = prepend_generated_ts_imports(data, path_ts)
@@ -188,9 +193,6 @@ function parse_file(
         data = append_generated_module_exports(data)
     end
     is_camera_source(path_jl) && (data = finalize_camera_exports(data))
-    is_collider_source(path_jl) && (data = postprocess_collider_ts(data))
-    is_animator_source(path_jl) && (data = postprocess_animator_ts(data))
-    is_sprite_source(path_jl) && (data = postprocess_sprite_ts(data))
     open(path_ts, "w") do io
         print(io, data)
     end
@@ -223,11 +225,12 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
     need_unsafe_wrap = occursin(r"\bunsafe_wrap\s*\(", data)
     need_joinpath = occursin(r"\bjoinpath\s*\(", data)
     need_haskey = occursin(r"\bhaskey\s*\(", data)
+    need_mix_volume = occursin(r"\bmixVolume\s*\(", data)
     need_time_ns = occursin(r"\btime_ns\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
-    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_haskey || need_time_ns
+    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_haskey || need_mix_volume || need_time_ns
         h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
         if isfile(h)
             rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
@@ -235,6 +238,7 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
             syms = String[]
             need_clamp && push!(syms, "clamp")
             need_haskey && push!(syms, "haskey")
+            need_mix_volume && push!(syms, "mixVolume")
             need_joinpath && push!(syms, "joinpath")
             need_time_ns && push!(syms, "time_ns")
             need_unsafe_string && push!(syms, "unsafe_string")

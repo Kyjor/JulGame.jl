@@ -64,7 +64,7 @@ export {}
     function update(self: Camera, newPosition: null | Vector3f = null) {
         if (!(globalThis as any).JulGame.IS_EDITOR && (globalThis as any).JulGame.WindowManagerModule.get_logical_size().x != self.size.x || (globalThis as any).JulGame.WindowManagerModule.get_logical_size().y != self.size.y) {
             (globalThis as any).JulGame.WindowManagerModule.set_logical_size(self.size.x, self.size.y)
-            //console.debug(`Logical size changed to ${self.size}`)
+            console.debug(`Logical size changed to ${self.size}`)
         };
 (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawBlendMode_BLEND()
         let rgba = { r: 0, g: 0, b: 0, a: 255 };

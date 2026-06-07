@@ -1,5 +1,5 @@
 export {}
-import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, mixVolume, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -45,7 +45,7 @@ import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/c
             }
             
             // Convert channel and volume to Int32
-            isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(clamp(volume, 0, 128)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(channel, clamp(volume, 0, 128))
+            isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(volume)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(channel, mixVolume(volume))
 
             this.channel = channel
             this.isMusic = isMusic
@@ -68,7 +68,8 @@ import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/c
         try {
             if (self.isMusic) {
                 if ((globalThis as any).JulGameSdl.glue_Mix_PlayingMusic() == 0) {
-                    (globalThis as any).JulGameSdl.glue_Mix_PlayMusic( self.sound, -1 )
+                    (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(self.volume));
+                    (globalThis as any).JulGameSdl.glue_Mix_PlayMusic(self.sound, -1);
                     self.isPlaying = true
                 } else {
                     if ((globalThis as any).JulGameSdl.glue_Mix_PausedMusic() == 1) {
@@ -80,6 +81,7 @@ import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/c
                     }
                 }
             } else {
+                (globalThis as any).JulGameSdl.glue_Mix_Volume(self.channel, mixVolume(self.volume));
                 if ((globalThis as any).JulGameSdl.glue_Mix_PlayChannel(self.channel, self.sound, loops) == -1) {
                     console.error(`toggle_sound: Error playing channel ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
 
@@ -152,10 +154,10 @@ import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/c
     function Component_set_volume(self: InternalSoundSource, volume: number = 128, channel: number = -1) {
         console.debug(`set_volume: Setting volume for ${self.path}, isMusic: ${self.isMusic}, volume: ${volume}, channel: ${channel}`)
         // Convert volume to Int32 for SDL
-        self.volume = clamp(volume, 0, 128)
+        self.volume = mixVolume(volume)
         self.channel = clamp(channel, -1, 128)
         console.debug(`set_volume: Setting volume for ${self.path}, isMusic: ${self.isMusic}, volume: ${self.volume}, channel: ${self.channel}`)
-        self.isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(self.volume) : (globalThis as any).JulGameSdl.glue_Mix_Volume(self.channel, self.volume)
+        self.isMusic ? (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(self.volume)) : (globalThis as any).JulGameSdl.glue_Mix_Volume(self.channel, mixVolume(self.volume))
     }
 
     function Component_play(self: InternalSoundSource, loops: number = 0) {
@@ -164,16 +166,18 @@ import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/c
         
         console.debug(`play: Playing sound from ${self.path}, isMusic: ${self.isMusic}, channel: ${self.channel}, loops: ${loops}`)
         if (self.isMusic) {
-            (globalThis as any).JulGameSdl.glue_Mix_PlayMusic(self.sound, -1)
+            (globalThis as any).JulGameSdl.glue_Mix_VolumeMusic(mixVolume(self.volume));
+            (globalThis as any).JulGameSdl.glue_Mix_PlayMusic(self.sound, -1);
         } else {
-            (globalThis as any).JulGameSdl.glue_Mix_PlayChannel(self.channel, self.sound, loops)
+            (globalThis as any).JulGameSdl.glue_Mix_Volume(self.channel, mixVolume(self.volume));
+            (globalThis as any).JulGameSdl.glue_Mix_PlayChannel(self.channel, self.sound, loops);
         }
     }
 
     function set_master_volume(volume: number) {
         // Convert volume to Int32 and clamp between 0 and 128
         console.debug(`set_master_volume: Setting master volume to ${volume}`)
-        volume = clamp(volume, 0, 128);
+        volume = mixVolume(volume);
         (globalThis as any).JulGameSdl.glue_Mix_MasterVolume(volume)
     }
 

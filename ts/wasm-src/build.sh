@@ -10,7 +10,7 @@ emcc main.c -o "$OUT_DIR/julgame.js" \
   -s USE_SDL=2 \
   -s USE_SDL_IMAGE=2 \
   -s USE_SDL_MIXER=2 \
-  -s SDL2_MIXER_FORMATS='["mp3","ogg"]' \
+  -s SDL2_MIXER_FORMATS='["wav","mp3","ogg"]' \
   -s SDL2_IMAGE_FORMATS=png,jpg \
   -s USE_LIBPNG=1 \
   -s USE_ZLIB=1 \
