@@ -23,4 +23,6 @@ emcc main.c -o "$OUT_DIR/julgame.js" \
   -s FORCE_FILESYSTEM=1 \
   -s EXPORTED_FUNCTIONS="$FUNCS" \
   -s EXPORTED_RUNTIME_METHODS="['cwrap','FS','HEAPU8']" \
+  -s ALLOW_MEMORY_GROWTH=1 \
+  -s INITIAL_MEMORY=67108864 \
   -O2

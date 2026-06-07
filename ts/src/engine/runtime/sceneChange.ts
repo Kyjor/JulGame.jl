@@ -54,6 +54,7 @@ export function requestChangeScene(sceneFileName: string): void {
     console.debug(`Changing scene to: ${sceneFileName}`);
 
     teardownForSceneChange(main.scene);
+    purgeUnusedTextureCache(runtime.api, main.scene);
     cleanupCoroutines();
     clearUiTextTextureCache(runtime.api);
 
@@ -86,6 +87,29 @@ export function tickSceneChange(): boolean {
             });
     }
     return true;
+}
+
+/** Drop SDL textures for image paths no longer referenced by any remaining entity. */
+function purgeUnusedTextureCache(api: JulGameSdlApi, scene: Scene): void {
+    const inUse = new Set<string>();
+    for (const entity of scene.entities as Entity[]) {
+        const sp = entity.sprite as { imagePath?: string } | null;
+        if (sp?.imagePath) {
+            inUse.add(sp.imagePath);
+        }
+    }
+    const jg = (globalThis as unknown as { JulGame?: { TEXTURE_CACHE?: Record<string, number> } }).JulGame;
+    const cache = jg?.TEXTURE_CACHE;
+    const destroy = api.glue_SDL_DestroyTexture;
+    if (!cache || typeof destroy !== "function") {
+        return;
+    }
+    for (const [path, tex] of Object.entries(cache)) {
+        if (!inUse.has(path) && tex) {
+            destroy(tex);
+            delete cache[path];
+        }
+    }
 }
 
 function teardownForSceneChange(scene: Scene): void {

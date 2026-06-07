@@ -1,4 +1,6 @@
 import type { Entity } from "../../../_generated/src/engine/Entity";
+import { Component_destroy } from "../../../_generated/src/engine/Component/Sprite";
+import { Component_unload_sound } from "../../../_generated/src/engine/Component/SoundSource";
 import {
     get_entities_by_name,
     get_entity_by_id,
@@ -124,6 +126,13 @@ export function destroyEntity(entity: Entity): void {
     const main = (globalThis as unknown as { MAIN: { scene: { entities: Entity[]; colliders: unknown[]; rigidbodies: unknown[] } } }).MAIN;
     const scene = main.scene;
     shutdownAllScripts([entity]);
+    if (entity.sprite) {
+        Component_destroy(entity.sprite as never);
+    }
+    const ss = entity.soundSource as Parameters<typeof Component_unload_sound>[0] | null;
+    if (ss) {
+        Component_unload_sound(ss);
+    }
     entity.isActive = false;
     const ei = scene.entities.indexOf(entity);
     if (ei >= 0) {

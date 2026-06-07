@@ -52,5 +52,22 @@ function postprocess_sprite_ts(data::AbstractString)::String
         return tex
     }""",
     )
+    s = replace(
+        s,
+        r"function Component_destroy\(self: InternalSprite\) \{\n        if \(self\.image == null\) \{\n            return\n        \}\n\n        // Only destroy texture if it's not in the shared cache\n        self\.image = null\n        self\.texture = null\n    \}" =>
+        """
+        function Component_destroy(self: InternalSprite) {
+        if (self.image == null) {
+            return
+        }
+        const cache = (globalThis as any).JulGame.TEXTURE_CACHE
+        if (self.texture != null && cache[self.imagePath] == null) {
+            (globalThis as any).JulGameSdl.glue_SDL_DestroyTexture(self.texture)
+        }
+        (globalThis as any).JulGameSdl.glue_SDL_FreeSurface(self.image)
+        self.image = null
+        self.texture = null
+    }""",
+    )
     return s
 end
