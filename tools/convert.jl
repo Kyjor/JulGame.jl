@@ -153,7 +153,6 @@ function parse_file(
     data = replace_invokelatest_calls(data)
     data = replace_julia_semicolon_kw_calls_to_commas(data)
     data = replace_keyword_style_calls_to_object_args(data)
-    data = normalize_julgame_global_access(data)
     data = replace_animation_symbol(data)
     data = custom_function_removal(data, path_jl)
     data = replace_push_calls(data)
@@ -172,6 +171,7 @@ function parse_file(
     data = replace_ts_if_blocks_when_block_contains_substring(data)
     data = replace_entire_line_if_matches(data, path_jl)
     data = merge_main_scene_delegating_overloads(data)
+    data = normalize_julgame_global_access(data)
     is_script = is_game_script_source(path_jl)
     if is_input_source(path_jl)
         data = postprocess_input_ts(data, path_jl, path_ts)
@@ -222,17 +222,19 @@ function prepend_generated_ts_imports(data::AbstractString, path_ts::AbstractStr
     need_unsafe_string = occursin(r"\bunsafe_string\s*\(", data)
     need_unsafe_wrap = occursin(r"\bunsafe_wrap\s*\(", data)
     need_joinpath = occursin(r"\bjoinpath\s*\(", data)
+    need_haskey = occursin(r"\bhaskey\s*\(", data)
     need_time_ns = occursin(r"\btime_ns\s*\(", data)
     need_vec = occursin(r"\bvec(Add|Sub|Mul|Div|Neg)\(", data)
     ts_dir = dirname(abspath(path_ts))
     lines = String[]
-    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_time_ns
+    if need_clamp || need_unsafe_string || need_unsafe_wrap || need_joinpath || need_haskey || need_time_ns
         h = abspath(joinpath(REPO_ROOT, "ts", "src", "engine", "core", "juliaHelpers.ts"))
         if isfile(h)
             rel = replace(String(relpath(h, ts_dir)), '\\' => '/')
             rel = replace(rel, r"\.ts$" => "")
             syms = String[]
             need_clamp && push!(syms, "clamp")
+            need_haskey && push!(syms, "haskey")
             need_joinpath && push!(syms, "joinpath")
             need_time_ns && push!(syms, "time_ns")
             need_unsafe_string && push!(syms, "unsafe_string")
@@ -1993,8 +1995,20 @@ function normalize_julgame_global_access(data::AbstractString)::String
     # Cleanup old alias-based rewrites from previous converter versions.
     s = replace(s, r"(?m)^var JG = \(globalThis as any\)\.JulGame;\s*\n?" => "")
     s = replace(s, "JG." => "(globalThis as any).JulGame.")
-    occursin("JulGame.", s) || return s
-    s = replace(s, "JulGame." => "(globalThis as any).JulGame.")
+    # Repair when bare `MAIN.` rewrite ran inside `JulGame.MAIN.` (invalid TS).
+    s = replace(
+        s,
+        r"\(globalThis as any\)\.JulGame\.\(globalThis as any\)\.MAIN\." =>
+            "(globalThis as any).JulGame.MAIN.",
+    )
+    if occursin("JulGame.", s)
+        s = replace(s, "JulGame." => "(globalThis as any).JulGame.")
+    end
+    # Bare `MAIN.foo` only — not `(globalThis as any).JulGame.MAIN.foo`.
+    s = replace(
+        s,
+        r"(?<!JulGame\.)(?<!\(globalThis as any\)\.)\bMAIN\." => "(globalThis as any).MAIN.",
+    )
     return s
 end
 
@@ -3280,8 +3294,11 @@ function merge_main_scene_delegating_overloads(data::AbstractString)::String
         end
         deleg_end, deleg_body = _read_braced_block_lines(lines, j)
         deleg_text = join(deleg_body, '\n')
-        if !occursin("return $fname(MAIN.scene, $arg)", deleg_text) &&
-           !occursin("return $fname((globalThis as any).JulGame.MAIN.scene, $arg)", deleg_text)
+        main_scene_deleg =
+            occursin("return $fname(MAIN.scene, $arg)", deleg_text) ||
+            occursin("return $fname((globalThis as any).MAIN.scene, $arg)", deleg_text) ||
+            occursin("return $fname((globalThis as any).JulGame.MAIN.scene, $arg)", deleg_text)
+        if !main_scene_deleg
             append!(out, inst_body)
             i = inst_end
             continue
@@ -3303,7 +3320,7 @@ function merge_main_scene_delegating_overloads(data::AbstractString)::String
                 indent,
                 "        return ",
                 fname,
-                "(MAIN.scene, selfOrName)\n",
+                "((globalThis as any).MAIN.scene, selfOrName)\n",
                 indent,
                 "    }\n",
                 indent,

@@ -257,7 +257,7 @@ import { Transform } from "./Component/Transform";
         // sprite: InternalSprite | null
         if (self.sprite != null && self.sprite !== null) {
             newEntity.sprite = Component_duplicate(self.sprite, newEntity)
-        };
+        }
         
         (globalThis as any).JulGame.MAIN.scene.entities.push(newEntity)
         return newEntity

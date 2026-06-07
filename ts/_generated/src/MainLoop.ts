@@ -1,5 +1,5 @@
 export {}
-import { time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
+import { haskey, time_ns, unsafe_string } from "../../src/engine/core/juliaHelpers";
 import { Camera } from "./engine/Camera/Camera";
 import { InternalSprite } from "./engine/Component/Sprite";
 
@@ -148,7 +148,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
 			console.debug(`First initialize call for ${script_type} - ...compiling`)
 			this.knownScriptTypes.push(script_type)
 			this.scriptTimings[script_type] = []
-		};
+		}
 		
 		(globalThis as any).JulGame.initialize(script)
 	}
@@ -171,7 +171,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
 		
 		// Profile if requested
 		if (profile && haskey(this.scriptTimings, script_type)) {
-			let start_time = time_ns();
+			let start_time = time_ns()
 			(globalThis as any).JulGame.update(script, deltaTime)
 			let elapsed = (time_ns() - start_time) / 1e6
 			if (this.latencyProfiler !== null) {
@@ -199,7 +199,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
 		if (!(script_type in this.knownScriptTypes)) {
 			this.knownScriptTypes.push(script_type)
 			console.debug(`First shutdown call for ${script_type} - ...compiling`)
-		};
+		}
 		
 		// Always use invokelatest (fast after first compilation)
 		(globalThis as any).JulGame.on_shutdown(script)
@@ -261,7 +261,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
 
     function prepare_window_scripts_and_start_loop(size) {
         console.debug("Preparing window")
-		MAIN.windowManager.windowSize = size
+		(globalThis as any).MAIN.windowManager.windowSize = size
 		
 		console.debug("Initializing scripts and components")
         initialize_scripts_and_components()
@@ -291,7 +291,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
 		console.debug("Resetting camera position")
 		if (self.scene.camera === null return }) {
 
-        let cameraPosition = {x: 0.0, y: 0.0, z: 0.0};
+        let cameraPosition = {x: 0.0, y: 0.0, z: 0.0}
         (globalThis as any).JulGame.CameraModule.update(self.scene.camera, cameraPosition)
     }
 	
@@ -345,7 +345,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
             if (!self.shouldChangeScene) {
                 // Clean up all immediate UI components on game shutdown
                 (globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
-				console.debug("Cleaning up immediate UI components");
+				console.debug("Cleaning up immediate UI components")
 				(globalThis as any).JulGame.cleanup_sdl_resources()
 				return
             } else {
@@ -425,7 +425,7 @@ import { InternalSprite } from "./engine/Component/Sprite";
 			}
 			build_sprite_layers()
 
-			for (const entity of MAIN.scene.entities) {
+			for (const entity of (globalThis as any).MAIN.scene.entities) {
 				console.debug("Checking for a soundSource that needs to be activated")
 				if (entity.soundSource != null && entity.soundSource !== null && entity.soundSource.playOnStart && !entity.soundSource.isPlaying) {
 					console.debug(`Playing ${entity.name}'s (${entity.id}) sound source on start: ${entity.soundSource.path}`)
@@ -434,23 +434,23 @@ import { InternalSprite } from "./engine/Component/Sprite";
 			} 
 		}
 				
-		MAIN.scene.rigidbodies = []
-		MAIN.scene.colliders = []
-		for (const entity of MAIN.scene.entities) {
+		(globalThis as any).MAIN.scene.rigidbodies = []
+		(globalThis as any).MAIN.scene.colliders = []
+		for (const entity of (globalThis as any).MAIN.scene.entities) {
 			console.debug("adding rigidbodies to global list")
 			if (entity.rigidbody != null) {
-				MAIN.scene.rigidbodies.push(entity.rigidbody)
+				(globalThis as any).MAIN.scene.rigidbodies.push(entity.rigidbody)
 					}
 			console.debug("adding colliders to global list")
 			if (entity.collider != null) {
-				MAIN.scene.colliders.push(entity.collider)
+				(globalThis as any).MAIN.scene.colliders.push(entity.collider)
 			}
 		} 
 		
 		// Batch static sprites for performance
 		if (!(globalThis as any).JulGame.IS_EDITOR || this.isGameModeRunningInEditor) {
 			console.debug("Batching static sprites")
-			MAIN.scene.batchedLayers = (globalThis as any).JulGame.StaticSpriteBatcherModule.batch_static_sprites(MAIN.scene)
+			(globalThis as any).MAIN.scene.batchedLayers = (globalThis as any).JulGame.StaticSpriteBatcherModule.batch_static_sprites((globalThis as any).MAIN.scene)
 		}
 		
 		// Mark input layer order dirty after initialization
@@ -471,7 +471,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	this = MAIN
 	console.debug(`Changing scene to: ${sceneFileName}`)
 	this.close = true
-	this.shouldChangeScene = true;
+	this.shouldChangeScene = true
 	
 	// Clean up all immediate UI components
 	(globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
@@ -534,12 +534,12 @@ function JulGame_change_scene(sceneFileName: string) {
 			persistentUIElements.push(uiElement)
 			skipcount += 1
 			continue
-		};
+		}
         (globalThis as any).JulGame.destroy(uiElement)
 	}
 	
 	// Clean up batched static sprite textures
-	console.debug("Cleaning up batched sprite layers");
+	console.debug("Cleaning up batched sprite layers")
 	(globalThis as any).JulGame.StaticSpriteBatcherModule.cleanup_batched_layers(this.scene.batchedLayers)
 	
 	//load new scene 
@@ -553,7 +553,7 @@ function JulGame_change_scene(sceneFileName: string) {
 	
 	if ((globalThis as any).JulGame.IS_EDITOR) {
 		initialize_new_scene(this)
-	};
+	}
 	(globalThis as any).JulGame.IS_CHANGING_SCENE = false
 }
 
@@ -569,7 +569,7 @@ function build_sprite_layers() {
 	let layerDict = {}  // Int keys instead of String - no allocations!
 	let sortedLayers = []
 	
-	for (const entity of MAIN.scene.entities) {
+	for (const entity of (globalThis as any).MAIN.scene.entities) {
 		let entitySprite = entity.sprite
 		if (entitySprite != null) {
 			let layer = entitySprite.layer
@@ -637,7 +637,7 @@ function JulGame_destroy_entity(entity) {
 function JulGame_destroy_ui_element(self: MainLoop, uiElement) {
 	for i = eachindex(self.scene.uiElements)
 		if (self.scene.uiElements[i] == uiElement) {
-			(self.scene.uiElements).splice((i) - 1, 1);
+			(self.scene.uiElements).splice((i) - 1, 1)
 			(globalThis as any).JulGame.destroy(uiElement)
 			mark_input_layer_order_dirty(self)  // Cache needs rebuild
 			break
@@ -734,7 +734,7 @@ Parameters:
 - `lastPhysicsTime`: A reference to the last physics time of the game loop.
 */
 function _accum_ui_render_breakdown_ms(prof, t0, key: string)
-	if (prof === null) { return let t1 = time_ns() };
+	if (prof === null) { return let t1 = time_ns() }
 	(globalThis as any).JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms(prof, key, (t1 - t0) / 1e6)
 	t0 = t1
 	return
@@ -744,7 +744,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 	// Start frame profiling
 	if (this.latencyProfiler !== null) {
 		(globalThis as any).JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
-	};
+	}
 
 	(globalThis as any).JulGame.FrameCount += 1
 	if (this.shouldChangeScene && !(globalThis as any).JulGame.IS_EDITOR) {
@@ -761,7 +761,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			if (!(globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.IS_WEB) {
 				if (this.latencyProfiler !== null) {
 					(globalThis as any).JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, "input_poll")
-				};
+				}
 
 				(globalThis as any).JulGame.InputModule.poll_input(this.input)
 
@@ -808,7 +808,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				}
 				
 				let currentPhysicsTime = (globalThis as any).JulGameSdl.glue_SDL_GetTicks()
-				let deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0;
+				let deltaTime = (currentPhysicsTime - lastPhysicsTime) / 1000.0
 				(globalThis as any).JulGame.DELTA_TIME = deltaTime
 				if (this.testMode) {
 					this.currentTestTime += deltaTime
@@ -866,7 +866,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 							call_script_update(this, script, deltaTime, profile_scripts)
 						}
 						if (this.close && !this.isGameModeRunningInEditor) {
-							console.debug("Closing game");
+							console.debug("Closing game")
 							(globalThis as any).JulGame.engine_states.current_state = "quit"
 							return
 						}
@@ -1021,22 +1021,23 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 				]
 
 				// Draw a gray rect under the debug textboxes
-				let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer)
+				let rgba = { r: 0, g: 0, b: 0, a: 255 };
+				(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
 				let currentColor = [r = rgba.r, g = rgba.g, b = rgba.b, a = rgba.a];
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(100, 100, 100, 255);
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 100, 100, 100, 255);
 				(globalThis as any).JulGameSdl.glue_SDL_RenderFillRect((globalThis as any).JulGame.Renderer, (globalThis as any).JulGameSdl.glue_SDL_Rect(0, 35, 400, 35 * statTexts.length));
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(currentColor[0], currentColor[1], currentColor[2], currentColor[3])
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, currentColor[0], currentColor[1], currentColor[2], currentColor[3])
 
 				if (this.debugTextBoxes.length == 0) {
 					for i = eachindex(statTexts)
 				 		let textBox = UI.TextBoxModule.TextBox(statTexts[i], 24, {x: 0, y: 35 * i})
-				 		this.debugTextBoxes.push(textBox);
+				 		this.debugTextBoxes.push(textBox)
                          (globalThis as any).JulGame.initialize(textBox)
 				 	}
 				 } else {
 				 	for i = eachindex(this.debugTextBoxes)
                          let db_textbox = this.debugTextBoxes[i]
-                         db_textbox.text = statTexts[i];
+                         db_textbox.text = statTexts[i]
                          (globalThis as any).JulGame.render(db_textbox)
 			 	  	}
 				 }
@@ -1199,7 +1200,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 
 	function stop_game_in_editor(self: MainLoop) {
 		self.isGameModeRunningInEditor = false;
-		(globalThis as any).JulGameSdl.glue_Mix_HaltMusic();
+		(globalThis as any).JulGameSdl.glue_Mix_HaltMusic()
 		
 		// Clean up all immediate UI components when stopping the game in editor
 		(globalThis as any).JulGame.UI.ImmediateUIModule.cleanup_all_immediate_components()
@@ -1223,8 +1224,9 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			}
 	
 			if (entity.collider != null) {
-				let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer);
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 0, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
+				let rgba = { r: 0, g: 0, b: 0, a: 255 };
+        		(globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 0, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
 				let pos = entity.transform.position
 				let scale = entity.transform.scale
 	
@@ -1243,7 +1245,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 						
 				(globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, 
 				(globalThis as any).JulGameSdl.glue_SDL_FRect((pos.x + colOffset.x - cameraPosition.x) * S, (pos.y + colOffset.y - cameraPosition.y) * S, entity.transform.scale.x * colSize.x * S, entity.transform.scale.y * colSize.y * S));
-				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
+				(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 			}
 		}
 	}
@@ -1256,7 +1258,7 @@ function game_loop(self: MainLoop, startTime: Ref{UInt64} = 0, lastPhysicsTime =
 			(globalThis as any).JulGameSdl.glue_SDL_DestroyRenderer((globalThis as any).JulGame.Renderer)
 			if (unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError()) != "") {
 				console.error(`Failed to destroy renderer, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
-			};
+			}
 			(globalThis as any).JulGame.Renderer = null
 		} else {
 			console.debug("Renderer is already destroyed")

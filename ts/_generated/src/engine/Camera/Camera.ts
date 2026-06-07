@@ -67,10 +67,11 @@ export {}
             console.debug(`Logical size changed to ${self.size}`)
         };
 (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawBlendMode_BLEND()
-        let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer);
+        let rgba = { r: 0, g: 0, b: 0, a: 255 };
+        (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
         (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(self.backgroundColor[0], self.backgroundColor[1], self.backgroundColor[2], self.backgroundColor[3]);
         (globalThis as any).JulGameSdl.glue_SDL_RenderFillRectF((globalThis as any).JulGameSdl.glue_SDL_FRect(self.windowPos.x, self.windowPos.y, self.size.x, self.size.y));
-        (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
+        (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
         
         let center_pixels = {x: self.size.x / 2, y: self.size.y / 2}
         let center_world = {x: center_pixels.x / pixels_per_world_unit(self), y: center_pixels.y / pixels_per_world_unit(self)}

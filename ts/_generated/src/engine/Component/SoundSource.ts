@@ -1,5 +1,5 @@
 export {}
-import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -112,6 +112,15 @@ import { clamp, joinpath, unsafe_string } from "../../../../src/engine/core/juli
 
     function load_sound_sdl(soundPath: string, isMusic: boolean) {
         console.debug(`load_sound_sdl: Loading sound from ${soundPath}, isMusic: ${isMusic}`)
+        if (haskey((globalThis as any).JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))) {
+            let raw_data = (globalThis as any).JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
+            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
+            if (rw != null) {
+                console.debug("loading sound from cache")
+                console.debug("comma separated path: ", get_comma_separated_path(soundPath))
+                return isMusic ? (globalThis as any).JulGameSdl.glue_Mix_LoadMUS_RW(rw, 1) : (globalThis as any).JulGameSdl.glue_Mix_LoadWAV_RW(rw, 1)
+            }
+        }
         console.debug(`load_sound_sdl: Loading sound from disk, there are ${(globalThis as any).JulGame.AUDIO_CACHE.length} sounds in cache`)
 
         let fullPath = joinpath((globalThis as any).JulGame.BasePath, "assets", "sounds", soundPath)

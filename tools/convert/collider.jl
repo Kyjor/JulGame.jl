@@ -23,5 +23,9 @@ function postprocess_collider_ts(data::AbstractString)::String
         r"(?m)^(\s*)self\.parent\.rigidbody\.grounded = onGround\s*$" =>
             s"\1if (self.parent.rigidbody != null) {\n\1    self.parent.rigidbody.grounded = onGround\n\1}",
     )
+    # `globalConstants` assigns enums on `globalThis`, not as ESM bindings.
+    for (name, val) in [("None", -1), ("Top", 1), ("Bottom", 2), ("Left", 3), ("Right", 4), ("Below", 2)]
+        s = replace(s, Regex("\\b$name\\b") => string(val))
+    end
     return s
 end

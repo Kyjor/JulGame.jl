@@ -378,7 +378,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             return
         }
         
-        let camera = MAIN.scene.camera
+        let camera = (globalThis as any).MAIN.scene.camera
         
         // Calculate drawing coordinates based on world or screen position
         if (self.isWorldEntity && camera !== null) {
@@ -434,7 +434,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         } else {
             // Regular rectangle (no rounded corners)
             // Set new color
-            (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(Number(self.color[0]), 
+            (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(
+                (globalThis as any).JulGame.Renderer, 
+                Number(self.color[0]), 
                 Number(self.color[1]), 
                 Number(self.color[2]), 
                 Number(self.color[3])
@@ -450,7 +452,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             // Draw border if borderWidth > 0
             if (self.borderWidth > 0) {
                 // Set border color
-                (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(Number(self.borderColor[0]), 
+                (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(
+                    (globalThis as any).JulGame.Renderer, 
+                    Number(self.borderColor[0]), 
                     Number(self.borderColor[1]), 
                     Number(self.borderColor[2]), 
                     Number(self.borderColor[3])
@@ -470,7 +474,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         };
         
         // Restore original color
-        (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(r, g, b, a)
+        (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, r, g, b, a)
     }
     
     function UI_initialize(self: Rectangle) {
@@ -491,7 +495,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             self.effectTexture = null
         }
         
-        MAIN.scene.uiElements = filter(x => x !== self, MAIN.scene.uiElements)
+        (globalThis as any).MAIN.scene.uiElements = filter(x => x !== self, (globalThis as any).MAIN.scene.uiElements)
     }
     
     //  effects API
@@ -517,7 +521,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         // console.debug("render_rectangle_with_effects: Starting for rectangle $(self.name)")
         // console.debug("render_rectangle_with_effects: effectTexture=$(self.effectTexture)")
         
-        let camera = MAIN.scene.camera
+        let camera = (globalThis as any).MAIN.scene.camera
         
         // Calculate position
         if (self.isWorldEntity && camera !== null) {

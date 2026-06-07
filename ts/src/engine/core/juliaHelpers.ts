@@ -9,6 +9,20 @@ export function clamp(val: number, min: number, max: number): number {
     return Math.min(Math.max(val, min), max);
 }
 
+/** Julia `haskey(dict, key)` — works for plain objects and `Map`. */
+export function haskey(collection: unknown, key: string | number): boolean {
+    if (collection == null) {
+        return false;
+    }
+    if (collection instanceof Map) {
+        return collection.has(key);
+    }
+    if (typeof collection === "object") {
+        return Object.prototype.hasOwnProperty.call(collection, key);
+    }
+    return false;
+}
+
 /** Julia `unsafe_string` — decode a C string pointer, or pass through wasm cwrap `"string"` results. */
 export function unsafe_string(ptr: number | string | null | undefined): string {
     if (ptr == null) {

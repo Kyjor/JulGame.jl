@@ -1,4 +1,5 @@
 export {}
+import { haskey } from "../../../../src/engine/core/juliaHelpers";
 import { Camera } from "../Camera/Camera";
 import { Transform } from "../Component/Transform";
 
@@ -39,7 +40,7 @@ import { Transform } from "../Component/Transform";
                 return
             }
 
-            let scene = deserialize_scene(filePath);
+            let scene = deserialize_scene(filePath)
             (globalThis as any).JulGame.PRELOADED_SCENES[basename(filePath)] = [entities = scene[0], uiElements = scene[1], camera = scene[2]]
             console.debug(`Preloaded scene: ${basename(filePath)}`)
         } catch (e) {
@@ -73,7 +74,7 @@ import { Transform } from "../Component/Transform";
     
             let entityIdsInCurrentScene = []
             try {
-                entityIdsInCurrentScene = [e.id for e in MAIN.scene.entities]
+                entityIdsInCurrentScene = [e.id for e in (globalThis as any).MAIN.scene.entities]
             } catch (e) {
                 console.error(String(e))
 
@@ -136,7 +137,7 @@ import { Transform } from "../Component/Transform";
                         }
                         continue
                     } else if (typeof(component) == Shape) {
-                        console.debug(`Adding shape to entity: ${newEntity.name}, path: ${component.path}`);
+                        console.debug(`Adding shape to entity: ${newEntity.name}, path: ${component.path}`)
                         (globalThis as any).JulGame.add_shape(newEntity, component)
                         continue
                     } else if (typeof(component) == SoundSource) {

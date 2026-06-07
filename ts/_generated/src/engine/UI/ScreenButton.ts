@@ -1,5 +1,5 @@
 export {}
-import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..UI.JulGame
@@ -316,11 +316,20 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
         newButton.hoverExitEvents = self.hoverExitEvents
         
         UI.initialize(newButton)
-        MAIN.scene.uiElements.push(newButton)
+        (globalThis as any).MAIN.scene.uiElements.push(newButton)
         return newButton
     }
 
     function load_image_sdl(fullPath: string, imagePath: string) {
+        if (haskey((globalThis as any).JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))) {
+            let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
+            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
+            if (rw != null) {
+                console.debug(`loading image at ${imagePath} from cache`)
+                console.debug("comma separated path: ", get_comma_separated_path(imagePath))
+                return (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rw, 1)
+            }
+        }
         console.debug(`Loading image from disk, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 
         return CallSDLFunction((globalThis as any).JulGameSdl.glue_IMG_Load, joinpath(fullPath, imagePath))
@@ -357,7 +366,7 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
         self.textTexture = null
         self.currentTexture = null
 
-        MAIN.scene.uiElements = filter(x => x !== self, MAIN.scene.uiElements)
+        (globalThis as any).MAIN.scene.uiElements = filter(x => x !== self, (globalThis as any).MAIN.scene.uiElements)
     }
 
     /*

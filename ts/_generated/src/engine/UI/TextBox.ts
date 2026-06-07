@@ -1,5 +1,5 @@
 export {}
-import { joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
+import { haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
 import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/core/vectorOps";
 
 
@@ -171,7 +171,8 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         }
 
         if ((globalThis as any).JulGame.IS_DEBUG) {
-            let rgba = (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer);
+            let rgba = { r: 0, g: 0, b: 0, a: 255 };
+            (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
             (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 0, 255);
             (globalThis as any).JulGameSdl.glue_SDL_RenderDrawLines((globalThis as any).JulGame.Renderer, [;
                 (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y), 
@@ -179,10 +180,10 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x + self.size.x, self.position.y + self.size.y), 
                 (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y + self.size.y), 
                 (globalThis as any).JulGameSdl.glue_SDL_Point(self.position.x, self.position.y)], 5);
-            (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
+            (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
         }
 
-        let camera = MAIN.scene.camera;
+        let camera = (globalThis as any).MAIN.scene.camera;
         
         (globalThis as any).JulGameSdl.glue_SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         // Handle world coordinates for world entities, similar to Sprite component
@@ -509,7 +510,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         
         free_text_resources(self)
 
-        MAIN.scene.uiElements = filter(x => x !== self, MAIN.scene.uiElements)
+        (globalThis as any).MAIN.scene.uiElements = filter(x => x !== self, (globalThis as any).MAIN.scene.uiElements)
     }
     
     // Generate a stable string for effects to use in cache keys
@@ -671,7 +672,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let parent = self.parent
     )
         UI.initialize(newTextBox)
-        MAIN.scene.uiElements.push(newTextBox)
+        (globalThis as any).MAIN.scene.uiElements.push(newTextBox)
         return newTextBox
     }
 export { TextBox, UI_add_click_event, UI_apply_effects, UI_destroy, UI_duplicate, UI_handle_window_resize, UI_initialize, UI_load_font, UI_render, UI_request_effects_refresh, UI_rerender_text, UI_set_color, UI_update_font_size, apply_style, cache_effect_texture, clear_effects_cache, free_text_resources, generate_effect_cache_key, get_comma_separated_path, get_scale_mode_from_quality, get_true_font_size, get_wrap_words, load_font_sdl, serialize_effects, set_max_line_width, set_wrap_words, wrap_text }

@@ -29,7 +29,7 @@ import { Camera } from "./Camera/Camera";
 
     function get_entity_by_name(selfOrName: Scene | string, name?: string) {
         if (typeof selfOrName === "string") {
-            return get_entity_by_name(MAIN.scene, selfOrName)
+            return get_entity_by_name((globalThis as any).MAIN.scene, selfOrName)
         }
         const self = selfOrName
         for (const entity of self.entities) {
@@ -44,7 +44,7 @@ import { Camera } from "./Camera/Camera";
 
     function get_entities_by_name(selfOrName: Scene | string, name?: string) {
         if (typeof selfOrName === "string") {
-            return get_entities_by_name(MAIN.scene, selfOrName)
+            return get_entities_by_name((globalThis as any).MAIN.scene, selfOrName)
         }
         const self = selfOrName
         let entities = []
@@ -62,7 +62,7 @@ import { Camera } from "./Camera/Camera";
 
     function get_entity_by_id(selfOrName: Scene | string, id?: string) {
         if (typeof selfOrName === "string") {
-            return get_entity_by_id(MAIN.scene, selfOrName)
+            return get_entity_by_id((globalThis as any).MAIN.scene, selfOrName)
         }
         const self = selfOrName
         for (const entity of self.entities) {
@@ -77,7 +77,7 @@ import { Camera } from "./Camera/Camera";
 
     function get_ui_element_by_name(selfOrName: Scene | string, name?: string) {
         if (typeof selfOrName === "string") {
-            return get_ui_element_by_name(MAIN.scene, selfOrName)
+            return get_ui_element_by_name((globalThis as any).MAIN.scene, selfOrName)
         }
         const self = selfOrName
         for (const entity of self.uiElements) {
@@ -92,7 +92,7 @@ import { Camera } from "./Camera/Camera";
 
     function get_ui_element_by_id(selfOrName: Scene | string, id?: string) {
         if (typeof selfOrName === "string") {
-            return get_ui_element_by_id(MAIN.scene, selfOrName)
+            return get_ui_element_by_id((globalThis as any).MAIN.scene, selfOrName)
         }
         const self = selfOrName
         for (const element of self.uiElements) {

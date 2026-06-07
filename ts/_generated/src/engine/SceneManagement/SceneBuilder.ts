@@ -1,5 +1,5 @@
 export {}
-import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
+import { haskey, joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ...JulGame
@@ -26,11 +26,11 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             this.scene = sceneFileName
             this.srcPath = srcPath 
             this.type = type
-            let path = Base.load_path()[1];
+            let path = Base.load_path()[1]
             (globalThis as any).JulGame.IS_PACKAGE_COMPILED = occursin("share", path) && occursin("Project.toml", path)
             if (Sys.isapple() && (globalThis as any).JulGame.IS_PACKAGE_COMPILED) {
                 srcPath = joinpath(join(split(path, "/")[1:(() => { const a = split(path, "/"); const i = a.findIndex((x) => x === "Build"); return i < 0 ? null : i + 1; })()], "/"))
-            };
+            }
 
             (globalThis as any).JulGame.BasePath = srcPath
             if (type == "Web") {
@@ -46,7 +46,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
         isWindowResizable: boolean=false, 
         preloadAllScenes: boolean=false,
         scalingQuality: string="linear"
-    );
+    )
         (globalThis as any).JulGame.engine_states.current_state = "scene_change"
         if (config === null) {
             console.debug("Config is null, parsing config")
@@ -62,14 +62,14 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
         isResizable: boolean = isWindowResizable
         targetFrameRate: number = parse(Int, String(get(config, "FrameRate", DEFAULT_CONFIG["FrameRate"])))
         isFullscreen: boolean = get(config, "Fullscreen", DEFAULT_CONFIG["Fullscreen"]) == "1"
-        isVsyncEnabled: boolean = get(config, "Vsync", DEFAULT_CONFIG["Vsync"]) == "1";
+        isVsyncEnabled: boolean = get(config, "Vsync", DEFAULT_CONFIG["Vsync"]) == "1"
 
         (globalThis as any).JulGame.MAIN = main
-        MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
-        MAIN.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
-        MAIN.currentTestTime = 0.0
-        MAIN.level = this
-        MAIN.scene.name = split(this.scene, ".")[1]
+        (globalThis as any).MAIN.testMode = get(ENV, "TEST_MODE", "false") == "true"
+        (globalThis as any).MAIN.testLength = parse(Float64, get(ENV, "TEST_LENGTH", "20.0"))
+        (globalThis as any).MAIN.currentTestTime = 0.0
+        (globalThis as any).MAIN.level = this
+        (globalThis as any).MAIN.scene.name = split(this.scene, ".")[1]
 
         if (size == {x: 0, y: 0}) {
 			let displayMode = (globalThis as any).JulGameSdl.glue_SDL_DisplayMode[(globalThis as any).JulGameSdl.glue_SDL_DisplayMode(0x12345678, 800, 600, 60, null)];
@@ -98,16 +98,16 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
                 scalingQuality = "2"
             } else {
                 scalingQuality = "2"
-            };
+            }
             (globalThis as any).JulGame.SCALE_QUALITY = scalingQuality;
             // "0" or "nearest": Nearest pixel sampling
             // "1" or "linear": Linear filtering (supported by OpenGL and Direct3D)
             // "2" or "best": Currently this is the same as "linear"
 
-            (globalThis as any).JulGameSdl.glue_SDL_SetHint((globalThis as any).JulGameSdl.glue_SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality);
-            (globalThis as any).JulGame.Renderer = (globalThis as any).JulGameSdl.glue_SDL_CreateRenderer(MAIN.windowManager.window, -1, (globalThis as any).JulGameSdl.glue_SDL_RENDERER_ACCELERATED)
+            (globalThis as any).JulGameSdl.glue_SDL_SetHint((globalThis as any).JulGameSdl.glue_SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
+            (globalThis as any).JulGame.Renderer = (globalThis as any).JulGameSdl.glue_SDL_CreateRenderer((globalThis as any).MAIN.windowManager.window, -1, (globalThis as any).JulGameSdl.glue_SDL_RENDERER_ACCELERATED)
             if ((globalThis as any).JulGame.Renderer == null) {
-                console.error(`Failed to create renderer with window ${MAIN.windowManager.window}, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
+                console.error(`Failed to create renderer with window ${(globalThis as any).MAIN.windowManager.window}, ${unsafe_string((globalThis as any).JulGameSdl.glue_SDL_GetError())}`)
             return
             }
 
@@ -133,9 +133,9 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             (globalThis as any).JulGameSdl.glue_SDL_SetHint((globalThis as any).JulGameSdl.glue_SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
             
             // Apply additional window settings from config
-            console.debug(`Setting frame rate to ${targetFrameRate}`);
+            console.debug(`Setting frame rate to ${targetFrameRate}`)
             (globalThis as any).JulGame.WindowManagerModule.set_frame_rate(targetFrameRate)
-            console.debug(`Setting vsync to ${isVsyncEnabled}`);
+            console.debug(`Setting vsync to ${isVsyncEnabled}`)
             (globalThis as any).JulGame.WindowManagerModule.set_vsync(isVsyncEnabled)
             
             console.debug("Deserializing scene")
@@ -170,26 +170,26 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             }
         }
         
-        MAIN.scene.entities = scene[0]
-        MAIN.scene.uiElements = scene[1]
-        MAIN.scene.camera = scene[2]
+        (globalThis as any).MAIN.scene.entities = scene[0]
+        (globalThis as any).MAIN.scene.uiElements = scene[1]
+        (globalThis as any).MAIN.scene.camera = scene[2]
         
         if (!(globalThis as any).JulGame.IS_EDITOR && !(globalThis as any).JulGame.IS_WEB) {
-            console.debug(`Setting logical size to ${MAIN.scene.camera.size.x}x${MAIN.scene.camera.size.y}`);
-            (globalThis as any).JulGameSdl.glue_SDL_RenderSetLogicalSize((globalThis as any).JulGame.Renderer, MAIN.scene.camera.size.x, MAIN.scene.camera.size.y)
+            console.debug(`Setting logical size to ${(globalThis as any).MAIN.scene.camera.size.x}x${(globalThis as any).MAIN.scene.camera.size.y}`);
+            (globalThis as any).JulGameSdl.glue_SDL_RenderSetLogicalSize((globalThis as any).JulGame.Renderer, (globalThis as any).MAIN.scene.camera.size.x, (globalThis as any).MAIN.scene.camera.size.y)
         }
         
-        for (const uiElement of MAIN.scene.uiElements) {
+        for (const uiElement of (globalThis as any).MAIN.scene.uiElements) {
             if ("$(typeof(uiElement))" == "(globalThis as any).JulGame.UI.TextBoxModule.Textbox" && !uiElement.isWorldEntity) {
                 UI.align_to_anchor(uiElement)
             }
         }
 
-        MAIN.scene.rigidbodies = []
-        MAIN.scene.colliders = []
-        add_scripts_to_entities(BasePath);
+        (globalThis as any).MAIN.scene.rigidbodies = []
+        (globalThis as any).MAIN.scene.colliders = []
+        add_scripts_to_entities(BasePath)
 
-        (globalThis as any).JulGame.engine_states.current_state = "game_mode";
+        (globalThis as any).JulGame.engine_states.current_state = "game_mode"
         (globalThis as any).JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
     }
 
@@ -197,7 +197,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
         let scene = deserialize_scene(joinpath(BasePath, "scenes", self.scene))
         
         @debug String("Changing scene to $(self.scene)")
-        @debug String("Entities in main scene: $(MAIN.scene.entities.length)")
+        @debug String("Entities in main scene: $((globalThis as any).MAIN.scene.entities.length)")
 
         if (scene === null) {
             console.error("Error deserialize_and_build_scene")
@@ -205,39 +205,39 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
         }
 
         for (const entity of scene[0]) {
-            if (!any(e.id == entity.id for e in MAIN.scene.entities)) {
-                MAIN.scene.entities.push(entity)
+            if (!any(e.id == entity.id for e in (globalThis as any).MAIN.scene.entities)) {
+                (globalThis as any).MAIN.scene.entities.push(entity)
             } else {
                 console.debug("duplicate entity found (persistence)")
             }
         }
         
         for (const uiElement of scene[1]) {
-            if (!any(e.id == uiElement.id for e in MAIN.scene.uiElements)) {
-                MAIN.scene.uiElements.push(uiElement)
+            if (!any(e.id == uiElement.id for e in (globalThis as any).MAIN.scene.uiElements)) {
+                (globalThis as any).MAIN.scene.uiElements.push(uiElement)
             } else {
                 console.debug("duplicate ui element found (persistence)")
             }
         }
 
-        for (const uiElement of MAIN.scene.uiElements) {
+        for (const uiElement of (globalThis as any).MAIN.scene.uiElements) {
             if ("$(typeof(uiElement))" == "(globalThis as any).JulGame.UI.TextBoxModule.Textbox" && uiElement.isWorldEntity) {
                 UI.align_to_anchor(uiElement)
             }
         }
 
-        MAIN.scene.camera = scene[2]
+        (globalThis as any).MAIN.scene.camera = scene[2]
 
-        for (const entity of MAIN.scene.entities) {
+        for (const entity of (globalThis as any).MAIN.scene.entities) {
             if (entity.persistentBetweenScenes //TODO: Verify if the entity is in it's first scene. If it is, don't skip the scripts.) {
                 continue
             }
             
             if (entity.rigidbody != null) {
-                MAIN.scene.rigidbodies.push(entity.rigidbody)
+                (globalThis as any).MAIN.scene.rigidbodies.push(entity.rigidbody)
             }
             if (entity.collider != null) {
-                MAIN.scene.colliders.push(entity.collider)
+                (globalThis as any).MAIN.scene.colliders.push(entity.collider)
             }
         } 
 
@@ -255,14 +255,14 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
     */
     function create_new_entity(self: Scene) {
         let entity = new Entity("New entity")
-        MAIN.scene.entities.push(entity)
+        (globalThis as any).MAIN.scene.entities.push(entity)
         return entity
     }
 
     function create_new_text_box(self: Scene) {
-        let textBox = TextBox("TextBox");
+        let textBox = TextBox("TextBox")
         (globalThis as any).JulGame.UI.initialize(textBox)
-        MAIN.scene.uiElements.push(textBox)
+        (globalThis as any).MAIN.scene.uiElements.push(textBox)
         return textBox
     }
     
@@ -282,7 +282,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
         if (!screenButton.isInitialized) {
             (globalThis as any).JulGame.initialize(screenButton)
         }
-        MAIN.scene.uiElements.push(screenButton)
+        (globalThis as any).MAIN.scene.uiElements.push(screenButton)
         return screenButton
     }
 
@@ -293,7 +293,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             let position = {x: 100, y: 100},
             let color = [255, 255, 255, 100]  // Semi-transparent white
         )
-        MAIN.scene.uiElements.push(canvas)
+        (globalThis as any).MAIN.scene.uiElements.push(canvas)
         return canvas
     }
 
@@ -303,7 +303,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             let position = {x: 0, y: 0},
             let color = [255, 255, 255, 100]
         )
-        MAIN.scene.uiElements.push(image)
+        (globalThis as any).MAIN.scene.uiElements.push(image)
         return image
     }
 
@@ -313,14 +313,14 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             let size = {x: 400, y: 300},
             let position = {x: 0, y: 0},
         )
-        MAIN.scene.uiElements.push(rectangle)
+        (globalThis as any).MAIN.scene.uiElements.push(rectangle)
         return rectangle
     }
 
     function add_scripts_to_entities(path: string) {
         @debug String("Adding scripts to entities")
         @debug ["Path: ", path].join("")
-        @debug ["Entities: ", MAIN.scene.entities.length].join("")
+        @debug ["Entities: ", (globalThis as any).MAIN.scene.entities.length].join("")
         
         // Track which scripts we've already loaded
         
@@ -333,7 +333,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
                 if (!(file in (globalThis as any).JulGame.LoadedScripts)) {
                     console.debug(`Loading ${file}`)
                     @time Base.include((globalThis as any).JulGame.ScriptModule, file)
-                    console.debug(`Finished loading ${file}`);
+                    console.debug(`Finished loading ${file}`)
                     (globalThis as any).JulGame.LoadedScripts.push(file)
                 }
             } catch (e) {
@@ -351,7 +351,7 @@ import { joinpath, unsafe_string } from "../../../../src/engine/core/juliaHelper
             }
         }
 
-        for (const entity of MAIN.scene.entities) {
+        for (const entity of (globalThis as any).MAIN.scene.entities) {
             let scriptCounter = 1
             for (const script of entity.scripts) {
                 if (!isa(script, JSON3.Object)) {

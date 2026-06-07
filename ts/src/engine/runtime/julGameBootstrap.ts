@@ -74,8 +74,8 @@ export function bootstrapJulGameSdl(
     jg.BasePath = opts.basePath ?? "/game";
     jg.GRAVITY = opts.gravity ?? 9.81;
     jg.PIXELS_PER_UNIT = 64;
-    jg.IMAGE_CACHE = [];
-    jg.AUDIO_CACHE = [];
+    jg.IMAGE_CACHE = {};
+    jg.AUDIO_CACHE = {};
     jg.Coroutines = [];
     jg.FrameCount = 0;
     jg.DELTA_TIME = 0;
@@ -117,6 +117,7 @@ export function bootstrapJulGameSdl(
         },
         errorLogger: {},
         isGameModeRunningInEditor: false,
+        optimizeSpriteRendering: false,
     };
     jg.MAIN = root.MAIN;
     installTranspiledInput(jg, root.MAIN);

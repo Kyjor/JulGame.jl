@@ -73,7 +73,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
     }
 
     function Component_check_collisions(self: InternalCollider) {
-        let colliders = MAIN.scene.colliders
+        let colliders = (globalThis as any).MAIN.scene.colliders
         //Only check the player against other colliders
         let colliderSkipCount = 0
         let colliderCheckedCount = 0
@@ -92,7 +92,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             
             if (self != collider) {
                 // check if other collider is within range of self collider, if it isn't then skip it
-                if (collider.parent.transform.position.x > self.parent.transform.position.x + self.size.x || collider.parent.transform.position.x + collider.size.x < self.parent.transform.position.x && MAIN.optimizeSpriteRendering) {
+                if (collider.parent.transform.position.x > self.parent.transform.position.x + self.size.x || collider.parent.transform.position.x + collider.size.x < self.parent.transform.position.x && (globalThis as any).MAIN.optimizeSpriteRendering) {
                     colliderSkipCount += 1
                     continue
                 }
@@ -101,7 +101,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 let transform = self.parent.transform
                 let collision = check_collision(self, collider)
                     transform = self.parent.transform
-                    if (collision[0] == Top) {
+                    if (collision[0] == 1) {
                         self.currentCollisions.push(collider)
                         for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
@@ -111,7 +111,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                                 self.parent.transform.position = {x: transform.position.x, y: transform.position.y + collision[1]}
                         }
                     }
-                    if (collision[0] == Left) {
+                    if (collision[0] == 3) {
                         self.currentCollisions.push(collider)
                         for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
@@ -122,7 +122,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                                 self.parent.transform.position = {x: transform.position.x + collision[1], y: transform.position.y}
                         }
                     }
-                    if (collision[0] == Right) {
+                    if (collision[0] == 4) {
                         self.currentCollisions.push(collider)
                         for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
@@ -132,7 +132,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                                 self.parent.transform.position = {x: transform.position.x - collision[1], y: transform.position.y}
                         }
                     }
-                    if (collision[0] == Bottom) {
+                    if (collision[0] == 2) {
                         self.currentCollisions.push(collider)
                         for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
@@ -146,7 +146,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                                 }
                         }
                     }
-                    if (collision[0] == Below) {
+                    if (collision[0] == 2) {
                         self.currentCollisions.push(collider)
                         for (const eventToCall of self.collisionEvents) {
                             eventToCall({ collider, direction: collision[0] })
@@ -183,13 +183,13 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
         let b = (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.round(posB.x), Math.round(posB.y), Math.round(colliderBXSize), Math.round(colliderBYSize))
 
         let rgba = { r: 0, g: 0, b: 0, a: 255 }
-        // Object.assign(rgba, (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer))
-        // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(0, 255, 255, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
+        // (globalThis as any).JulGameSdl.glue_SDL_GetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a)
+        // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, 0, 255, 255, (globalThis as any).JulGameSdl.glue_SDL_ALPHA_OPAQUE)
         
         let result = (globalThis as any).JulGameSdl.glue_SDL_Rect(0,0,0,0)
         let isIntersection = (globalThis as any).JulGameSdl.glue_SDL_IntersectRect(a, b, result)
 
-        let camera = MAIN.scene.camera
+        let camera = (globalThis as any).MAIN.scene.camera
         let camS = (globalThis as any).JulGame.pixels_per_world_unit(camera)
         let cameraDiff = camera !== null ? 
         {x: (camera.position.x + camera.offset.x) * camS, y: (camera.position.y + camera.offset.y) * camS} : 
@@ -216,7 +216,7 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             let b1 = (globalThis as any).JulGameSdl.glue_SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
             // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, a1)
             // (globalThis as any).JulGameSdl.glue_SDL_RenderDrawRectF((globalThis as any).JulGame.Renderer, b1)
-            // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
+            // (globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 
             // console.log("col a (me): $(a)")
             // console.log("col b (other): $(b)")
@@ -225,14 +225,14 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
 
             let depthHorizontal = result.w
             let depthVertical = result.h
-            let horizontalCollisionDir = None
-            let verticalCollisionDir = None
+            let horizontalCollisionDir = -1
+            let verticalCollisionDir = -1
             if (result.x == b.x && !colliderB.isPlatformerCollider) {
                 console.debug(`colliding from left at depth ${depthHorizontal}`)
-                horizontalCollisionDir = Left
+                horizontalCollisionDir = 3
             } else if (result.x == a.x && !colliderB.isPlatformerCollider) {
                 console.debug(`colliding from right at depth ${depthHorizontal}`)
-                horizontalCollisionDir = Right
+                horizontalCollisionDir = 4
             }
             if (result.y == b.y) {
                 console.debug(`colliding from top at depth ${depthVertical}`)
@@ -240,17 +240,17 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
                 if (colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== null) {
                     // If moving upward (negative velocity in SDL coords), ignore collision
                     if (colliderA.parent.rigidbody.velocity.y < 0) {
-                        return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
+                        return [-1, 0.0, isLineIntersectionL || isLineIntersectionR]
                     }
                 }
-                verticalCollisionDir = Bottom
+                verticalCollisionDir = 2
             } else if (result.y == a.y) {
                 console.debug(`colliding from bottom at depth ${depthVertical}`) 
                 // Platformer colliders allow pass-through from below
                 if (colliderB.isPlatformerCollider) {
-                    return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
+                    return [-1, 0.0, isLineIntersectionL || isLineIntersectionR]
                 }
-                verticalCollisionDir = Top
+                verticalCollisionDir = 1
             }
             
             if (Math.min(depthHorizontal, depthVertical) == depthHorizontal) {
@@ -260,9 +260,9 @@ import { vecAdd, vecSub, vecMul, vecDiv, vecNeg } from "../../../../src/engine/c
             }
         }
 
-        //(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor(rgba.r, rgba.g, rgba.b, rgba.a);
+        //(globalThis as any).JulGameSdl.glue_SDL_SetRenderDrawColor((globalThis as any).JulGame.Renderer, rgba.r, rgba.g, rgba.b, rgba.a);
 
-        return [None, 0.0, isLineIntersectionL || isLineIntersectionR]
+        return [-1, 0.0, isLineIntersectionL || isLineIntersectionR]
     }
 
     function Component_duplicate(self: InternalCollider, parent: any) {

@@ -60,19 +60,18 @@ export class SDLPlatform implements Platform {
             canvasHeight: this.canvas.height,
             maxEntities: this.project.maxEntities ?? 128,
             loadScripts: true,
-            deferScriptInitialize: !audioReady,
+            deferScriptInitialize: false,
         });
-        const finishScriptAndAudio = (): void => {
+        const unlockAudio = (): void => {
             tryOpenGameAudio(api);
             reloadEntitySounds(main.scene);
-            initializeAllScripts(main.scene.entities);
             this.setStatus("sdl-wasm: game loop");
         };
         if (audioReady) {
             reloadEntitySounds(main.scene);
         } else {
             this.setStatus("sdl-wasm: click canvas to enable audio");
-            this.canvas.addEventListener("pointerdown", () => finishScriptAndAudio(), { once: true });
+            this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true });
         }
 
         const cam = main.scene.camera as { size?: { x: number; y: number } } | null;

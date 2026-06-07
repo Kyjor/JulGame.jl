@@ -1,5 +1,5 @@
 export {}
-import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
+import { clamp, haskey, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/engine/core/juliaHelpers";
 
 
     // using ..Component.JulGame
@@ -339,6 +339,15 @@ import { clamp, joinpath, unsafe_string, unsafe_wrap } from "../../../../src/eng
 
     function load_image_sdl(fullPath: string, imagePath: string) {
         let commaSeparatedPath = (globalThis as any).JulGame.get_comma_separated_path(imagePath)
+        if (haskey((globalThis as any).JulGame.IMAGE_CACHE, commaSeparatedPath)) {
+            let raw_data = (globalThis as any).JulGame.IMAGE_CACHE[commaSeparatedPath]
+            let rw = (globalThis as any).JulGameSdl.glue_SDL_RWFromConstMem(pointer(raw_data), raw_data.length)
+            if (rw != null) {
+                console.debug("loading image from cache")
+                console.debug("comma separated path: ", commaSeparatedPath)
+                return (globalThis as any).JulGameSdl.glue_IMG_Load_RW(rw, 1)
+            }
+        }
         console.debug(`Loading image from disk ${fullPath} for sprite, there are ${(globalThis as any).JulGame.IMAGE_CACHE.length} images in cache`)
 
         return (globalThis as any).JulGameSdl.glue_IMG_Load(fullPath)

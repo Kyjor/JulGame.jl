@@ -1,6 +1,5 @@
 import { cameraUpdate } from "../../../_generated/src/engine/Camera/Camera";
 import { Component_update as animatorUpdate } from "../../../_generated/src/engine/Component/Animator";
-import { Component_check_collisions } from "../../../_generated/src/engine/Component/Collider";
 import { Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
 import { Component_draw } from "../../../_generated/src/engine/Component/Sprite";
 import { JulGame_update } from "../../../_generated/src/engine/Entity";
@@ -45,6 +44,7 @@ type JulGameGlobals = {
 };
 
 let lastFrameMs = 0;
+let lastPerfMs = 0;
 
 function updateMouseWorld(
     input: TranspiledInput,
@@ -114,8 +114,12 @@ export function runGameFrame(editorMode = false): void {
     const api = root.JulGameSdl;
 
     const nowMs = (api.glue_SDL_GetTicks as () => number)();
-    const deltaTime = lastFrameMs === 0 ? 0 : (nowMs - lastFrameMs) / 1000;
+    const perfNow = performance.now();
+    const sdlDelta = lastFrameMs === 0 ? 0 : (nowMs - lastFrameMs) / 1000;
+    const perfDelta = lastPerfMs === 0 ? 0 : (perfNow - lastPerfMs) / 1000;
     lastFrameMs = nowMs;
+    lastPerfMs = perfNow;
+    const deltaTime = Math.max(sdlDelta, perfDelta);
     jg.DELTA_TIME = deltaTime;
     jg.FrameCount = (jg.FrameCount ?? 0) + 1;
 
@@ -128,27 +132,31 @@ export function runGameFrame(editorMode = false): void {
     const cam = scene.camera;
 
     if (!editorMode) {
-        for (const rb of scene.rigidbodies) {
-            if (rb) {
-                (rigidbodyUpdate as (r: unknown, dt: number) => void)(rb, deltaTime);
-            }
-        }
-        for (const col of scene.colliders) {
-            if (col) {
-                (Component_check_collisions as (c: unknown) => void)(col);
-            }
-        }
-        tickCoroutines();
+        // Scripts set velocity first; rigidbody update applies it (Collider checks run inside Rigidbody.update).
         for (const entity of scene.entities) {
             if (entity.isActive) {
                 JulGame_update(entity as never, deltaTime);
-                if (entity.animator) {
-                    (animatorUpdate as (a: unknown, t: number, dt: number) => void)(
-                        entity.animator,
-                        nowMs,
-                        deltaTime,
-                    );
-                }
+            }
+        }
+        tickCoroutines();
+        for (const rb of scene.rigidbodies) {
+            const body = rb as { parent?: { isActive?: boolean } } | null;
+            if (!body?.parent?.isActive) {
+                continue;
+            }
+            try {
+                (rigidbodyUpdate as (r: unknown, dt: number) => void)(body, deltaTime);
+            } catch (e) {
+                console.error("rigidbody update failed", e);
+            }
+        }
+        for (const entity of scene.entities) {
+            if (entity.isActive && entity.animator) {
+                (animatorUpdate as (a: unknown, t: number, dt: number) => void)(
+                    entity.animator,
+                    nowMs,
+                    deltaTime,
+                );
             }
         }
     }

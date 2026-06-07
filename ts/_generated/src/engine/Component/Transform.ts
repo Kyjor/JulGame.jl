@@ -20,7 +20,7 @@ export {}
             this.rotation = rotation
             this.screenPosition = {x: 0.0, y: 0.0}
             this.screenRotation = {x: 0.0, y: 0.0}
-            this.parent = parent;
+            this.parent = parent
 
 
         }   
