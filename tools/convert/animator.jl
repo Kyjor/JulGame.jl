@@ -5,18 +5,13 @@ function is_animator_source(path_jl::AbstractString)::Bool
     return endswith(norm, "/Component/Animator.jl") || endswith(norm, "Animator.jl")
 end
 
-"""Julia 1-based animation frame indices → TS 0-based."""
+"""Julia 1-based `lastFrame` wrap (variable `frames[i]` handled by `fix_julia_one_based_variable_indices`)."""
 function postprocess_animator_ts(data::AbstractString)::String
     s = String(data)
     s = replace(
         s,
         "self.sprite.crop = self.currentAnimation.frames[self.lastFrame]" =>
             "self.sprite.crop = self.currentAnimation.frames[self.lastFrame > 0 ? self.lastFrame - 1 : 0]",
-    )
-    s = replace(
-        s,
-        "self.sprite.crop = self.currentAnimation.frames[frameIndex]" =>
-            "self.sprite.crop = self.currentAnimation.frames[frameIndex - 1]",
     )
     return s
 end

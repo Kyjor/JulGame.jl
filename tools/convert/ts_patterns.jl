@@ -1,5 +1,32 @@
 # Shared pattern-based TS postprocess helpers (included from tools/convert.jl).
 
+"""Julia 1-based `arr[i]` when `i` is an identifier (literals handled by `rewrite_one_based_indices`)."""
+function fix_julia_one_based_variable_indices(data::AbstractString)::String
+    text = String(data)
+    for prop in ("animations", "uiElements", "frames")
+        pat = Regex("\\.$prop\\[([A-Za-z_]\\w*)\\](?!\\s*-\\s*1)")
+        io = IOBuffer()
+        idx = firstindex(text)
+        n = lastindex(text)
+        while idx <= n
+            rg = findnext(pat, text, idx)
+            if rg === nothing
+                write(io, SubString(text, idx))
+                break
+            end
+            f = first(rg)
+            f > idx && write(io, SubString(text, idx, prevind(text, f)))
+            m = match(pat, text, f)
+            m === nothing && break
+            ident = String(m.captures[1])
+            write(io, string(".", prop, "[", ident, " - 1]"))
+            idx = nextind(text, last(rg))
+        end
+        text = String(take!(io))
+    end
+    return text
+end
+
 """`@argevent` callbacks: `( (col: any) => fn(self, col))` / trailing `))` → valid arrow fn."""
 function fix_argevent_collision_callbacks(data::AbstractString)::String
     s = String(data)

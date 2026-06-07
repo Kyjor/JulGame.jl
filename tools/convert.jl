@@ -2073,7 +2073,8 @@ function rewrite_one_based_indices(s::AbstractString)::String
         end
         idx = nextind(text, last(rg))
     end
-    return String(take!(io))
+    s = String(take!(io))
+    return fix_julia_one_based_variable_indices(s)
 end
 
 # Avoid collision with DOM/Web Animation types in TS output.
