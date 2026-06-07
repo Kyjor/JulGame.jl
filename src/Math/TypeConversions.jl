@@ -23,7 +23,7 @@ module TypeConversions
             @debug "Clamped value: $value"
         end
 
-        return convert(Int32, floor(value))
+        return convert(Int32, round(value))
     end
 
     """
