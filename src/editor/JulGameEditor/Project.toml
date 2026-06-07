@@ -16,6 +16,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [sources]
 JulGame = {path = "../../../"}
+SimpleDirectMediaLayer = {url = "https://github.com/Kyjor/SimpleDirectMediaLayer.jl"}
 
 [compat]
 # add CImGui@2.0.0
