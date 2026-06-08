@@ -3,6 +3,7 @@ import type { Scene } from "../../../_generated/src/engine/Scene";
 import type { Entity } from "../../../_generated/src/engine/Entity";
 import { cleanupCoroutines } from "./coroutineRuntime";
 import { playSoundsOnStart, reloadEntitySounds } from "./memfsAudio";
+import { clearUiImageTextureCache } from "./strippedUiElements";
 import { clearUiTextTextureCache } from "./strippedUiText";
 import {
     mergeStrippedSceneData,
@@ -57,6 +58,7 @@ export function requestChangeScene(sceneFileName: string): void {
     purgeUnusedTextureCache(runtime.api, main.scene);
     cleanupCoroutines();
     clearUiTextTextureCache(runtime.api);
+    clearUiImageTextureCache(runtime.api);
 
     runtime.pendingSceneFileName = sceneFileName;
     main.shouldChangeScene = true;

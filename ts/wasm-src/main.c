@@ -421,7 +421,8 @@ void glue_Mix_Quit(void) {
 
 EMSCRIPTEN_KEEPALIVE
 void *glue_Mix_LoadWAV(const char *path) {
-    if (ensure_mixer() != 0) {
+    if (!mixer_open) {
+        SDL_SetError("Mix_OpenAudio not called");
         return NULL;
     }
     Mix_Chunk *chunk = Mix_LoadWAV(path);
@@ -433,7 +434,8 @@ void *glue_Mix_LoadWAV(const char *path) {
 
 EMSCRIPTEN_KEEPALIVE
 void *glue_Mix_LoadMUS(const char *path) {
-    if (ensure_mixer() != 0) {
+    if (!mixer_open) {
+        SDL_SetError("Mix_OpenAudio not called");
         return NULL;
     }
     Mix_Music *music = Mix_LoadMUS(path);

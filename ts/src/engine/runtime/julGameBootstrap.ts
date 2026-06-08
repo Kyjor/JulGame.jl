@@ -15,7 +15,6 @@ import {
 import { Entity, JulGame_add_script, JulGame_add_sprite, JulGame_update } from "../../../_generated/src/engine/Entity";
 import { Scene } from "../../../_generated/src/engine/Scene";
 import { installCoroutineGlobals } from "./coroutineRuntime";
-import { installTranspiledInput } from "./inputBootstrap";
 import { initializeScript, updateScript } from "./scriptRegistry";
 import { installStrippedInput } from "./StrippedInput";
 import { wireSceneApi } from "./scriptLoader";
@@ -35,7 +34,7 @@ export function bootstrapJulGameSdl(
     api: JulGameSdlApi,
     canvasWidth: number,
     canvasHeight: number,
-    _canvas: HTMLCanvasElement,
+    canvas: HTMLCanvasElement,
     opts: BootstrapOptions = {},
 ): void {
     const root = globalThis as unknown as {
@@ -73,6 +72,9 @@ export function bootstrapJulGameSdl(
     jg.IS_EDITOR = false;
     jg.IS_WEB = true;
     jg.IS_DEBUG = false;
+    jg.maybe_enable_latency_profiling_from_env = () => {
+        /* stripped WASM: latency profiling not wired */
+    };
     jg.BasePath = opts.basePath ?? "/game";
     jg.GRAVITY = opts.gravity ?? 9.81;
     jg.PIXELS_PER_UNIT = opts.pixelsPerUnit ?? 16;
@@ -107,6 +109,14 @@ export function bootstrapJulGameSdl(
         },
     };
 
+    jg.MainLoopModule = {
+        create_new_canvas: () => ({
+            isActive: false,
+            persistentBetweenScenes: false,
+            children: [] as unknown[],
+        }),
+    };
+
     jg.Renderer = api.glue_get_renderer();
 
     const scene = new Scene();
@@ -124,7 +134,8 @@ export function bootstrapJulGameSdl(
         optimizeSpriteRendering: false,
     };
     jg.MAIN = root.MAIN;
-    installTranspiledInput(jg, root.MAIN);
+    // DOM input — avoids transpiled Input.ts SDL_PollEvent + joystick init (WASM OOB on mouse/audio).
+    installStrippedInput(jg, root.MAIN, canvas);
     installCoroutineGlobals(jg);
     wireSceneApi(jg);
     jg.Component = {
@@ -158,6 +169,29 @@ export function bootstrapJulGameSdl(
     jg.SoundSourceModule = {
         InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
             new InternalSoundSource(...args),
+    };
+    jg.UserGlobals = jg.UserGlobals ?? { Module: {} };
+    jg.UI = {
+        add_click_event: (el: { onClick?: () => void }, event: () => void) => {
+            el.onClick = event;
+        },
+        add_hover_enter_event: (el: { onHoverEnter?: () => void }, event: () => void) => {
+            el.onHoverEnter = event;
+        },
+        add_hover_exit_event: (el: { onHoverExit?: () => void }, event: () => void) => {
+            el.onHoverExit = event;
+        },
+    };
+    jg.ImmediateUIModule = {
+        immediate_text: (
+            _id: string,
+            text: string,
+            _opts?: Record<string, unknown>,
+        ) => ({
+            text: String(text),
+            isActive: true,
+        }),
+        INFINITE_LIFETIME: -1,
     };
 }
 

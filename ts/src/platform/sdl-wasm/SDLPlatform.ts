@@ -48,7 +48,6 @@ export class SDLPlatform implements Platform {
 
         const mod = this.bridge.getModule();
         const main = (globalThis as unknown as { MAIN: { scene: Scene } }).MAIN;
-        const audioReady = tryOpenGameAudio(api);
         await loadStrippedScene(main.scene, mod, {
             sceneJsonUrl: this.project.sceneJsonUrl,
             memfsAssetBaseUrl: this.project.memfsAssetBaseUrl,
@@ -73,13 +72,8 @@ export class SDLPlatform implements Platform {
             playSoundsOnStart(main.scene);
             this.setStatus("sdl-wasm: game loop");
         };
-        if (audioReady) {
-            reloadEntitySounds(main.scene);
-            playSoundsOnStart(main.scene);
-        } else {
-            this.setStatus("sdl-wasm: click canvas to enable audio");
-            this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true });
-        }
+        this.setStatus("sdl-wasm: click canvas to enable audio");
+        this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true });
 
         const cam = main.scene.camera as { size?: { x: number; y: number } } | null;
         const cw = this.canvas.width;

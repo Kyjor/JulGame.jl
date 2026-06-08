@@ -1,6 +1,8 @@
 /** Minimal input state + DOM listeners for the stripped SDL/web runtime. */
 /** Fallback only — SDL path uses transpiled `_generated/Input/Input.ts` via `inputBootstrap.ts`. */
 
+import { dispatchUiPointer } from "./strippedUiElements";
+
 export type StrippedInputState = {
     buttonsPressedDown: string[];
     buttonsHeldDown: string[];
@@ -163,6 +165,12 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         }
         heldMouse.add(btn);
         onMouseMove(e);
+        const root = globalThis as { MAIN?: MainShape };
+        const scene = root.MAIN?.scene as { uiElements?: unknown[] } | undefined;
+        if (scene?.uiElements?.length) {
+            const pos = canvasMousePosition(canvas, e.clientX, e.clientY);
+            dispatchUiPointer(scene.uiElements, pos.x, pos.y, "click");
+        }
     };
 
     const onMouseUp = (e: MouseEvent): void => {

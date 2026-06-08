@@ -124,6 +124,9 @@ function parse_file(
     data = read(path_jl, String)
     # Drop UTF-8 BOMs copied from source files so generated TS starts cleanly.
     data = replace(data, "\ufeff" => "")
+    if is_game_script_source(path_jl)
+        data = expand_game_script_includes(data, path_jl)
+    end
     data = replace_module(data)
     data = replace_end(data)
     data = replace_exports(data)
@@ -4087,9 +4090,10 @@ function replace_entire_line_if_matches(data::AbstractString, path_jl::AbstractS
     return join(out, '\n')
 end
 
-function parse_cli_args()::Tuple{Vector{String}, AbstractString}
+function parse_cli_args()::Tuple{Vector{String}, AbstractString, Union{Nothing, String}}
     project_root = nothing
     all_scripts = false
+    scene_filter = nothing
     files = String[]
     i = 1
     while i <= length(ARGS)
@@ -4097,6 +4101,11 @@ function parse_cli_args()::Tuple{Vector{String}, AbstractString}
         if a == "--project-root"
             i + 1 > length(ARGS) && error("--project-root requires a path")
             project_root = abspath(ARGS[i + 1])
+            i += 2
+            continue
+        elseif a == "--scene"
+            i + 1 > length(ARGS) && error("--scene requires a scene json filename")
+            scene_filter = String(ARGS[i + 1])
             i += 2
             continue
         elseif a == "--all-scripts"
@@ -4124,11 +4133,11 @@ function parse_cli_args()::Tuple{Vector{String}, AbstractString}
     end
     isempty(files) && (files = [joinpath(REPO_ROOT, "src", "MainLoop.jl")])
     repo = project_root !== nothing ? project_root : REPO_ROOT
-    return unique(files), repo
+    return unique(files), repo, scene_filter
 end
 
 function main()
-    files, repo_root = parse_cli_args()
+    files, repo_root, scene_filter = parse_cli_args()
     # Smallest-first helps us iterate patterns safely from simpler files upward.
     sort!(files, by = f -> filesize(f))
     mkpath(default_out_dir())
@@ -4139,8 +4148,9 @@ function main()
         transpiled_scripts |= is_game_script_source(f)
     end
     if transpiled_scripts
-        idx = write_scripts_index(repo_root)
+        idx = write_scripts_index(repo_root; scene=scene_filter)
         idx !== nothing && println(idx)
+        run_transpile_project_postprocess(repo_root)
     end
 end
 

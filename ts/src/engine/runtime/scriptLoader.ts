@@ -64,6 +64,8 @@ export function instantiateScripts(entities: Entity[]): void {
             }
             if (!hasScript(ref.name)) {
                 console.warn(`scriptLoader: skipping unregistered script "${ref.name}" on ${entity.name}`);
+                // Keep scene JSON slot so transpiled scripts[N] indices stay aligned with Julia.
+                instances.push(null);
                 continue;
             }
             try {
@@ -73,6 +75,7 @@ export function instantiateScripts(entities: Entity[]): void {
                 instances.push(script);
             } catch (e) {
                 console.error(`scriptLoader: failed to create "${ref.name}" on ${entity.name}`, e);
+                instances.push(null);
             }
         }
         entity.scripts = instances;
@@ -85,6 +88,9 @@ export function initializeAllScripts(entities: Entity[]): void {
             continue;
         }
         for (const script of entity.scripts) {
+            if (script == null) {
+                continue;
+            }
             try {
                 initializeScript(script);
             } catch (e) {
@@ -100,6 +106,9 @@ export function updateAllScripts(entities: Entity[], deltaTime: number): void {
             continue;
         }
         for (const script of entity.scripts) {
+            if (script == null) {
+                continue;
+            }
             try {
                 updateScript(script, deltaTime);
             } catch (e) {
@@ -112,6 +121,9 @@ export function updateAllScripts(entities: Entity[], deltaTime: number): void {
 export function shutdownAllScripts(entities: Entity[]): void {
     for (const entity of entities) {
         for (const script of entity.scripts) {
+            if (script == null) {
+                continue;
+            }
             try {
                 shutdownScript(script);
             } catch {

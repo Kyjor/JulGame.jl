@@ -7,13 +7,18 @@ import {
     JulGame_add_sound_source,
     JulGame_add_sprite,
 } from "../../../_generated/src/engine/Entity";
-import { Component_load_sound } from "../../../_generated/src/engine/Component/SoundSource";
 import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
 import { commaSeparatedAssetPath, normalizeAssetPath, resolveSpritePixelsPerUnit } from "./projectConfig";
 import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
+import {
+    buildSceneCanvas,
+    buildSceneUiImage,
+    type SceneCanvas,
+    type SceneUiImage,
+} from "./strippedUiElements";
 
 /** Minimal valid PNG (1×1) for MEMFS when project assets are missing locally. */
 const PNG_1X1 = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (ch) => ch.charCodeAt(0));
@@ -122,15 +127,36 @@ type UIElementJson = {
     text?: string;
     fontSize?: number;
     fontPath?: string;
+    path?: string;
     position?: { x: number; y: number };
     size?: { x: number; y: number };
     isActive?: boolean;
     alpha?: number;
-    color?: { r: number; g: number; b: number; a: number };
+    color?: { r: number; g: number; b: number; a: number } | Record<string, number>;
     persistentBetweenScenes?: boolean;
     isCenteredX?: boolean;
     isCenteredY?: boolean;
+    layer?: number;
+    isFlipped?: boolean;
+    buttonUpSpritePath?: string;
+    buttonDownSpritePath?: string;
 };
+
+function buildUiElementFromJson(ui: UIElementJson): SceneTextBox | SceneUiImage | SceneCanvas | null {
+    if (ui.type === "TextBox") {
+        return new SceneTextBox(ui);
+    }
+    if (ui.type === "UIImage") {
+        return buildSceneUiImage(ui as Record<string, unknown>, "UIImage");
+    }
+    if (ui.type === "ScreenButton") {
+        return buildSceneUiImage(ui as Record<string, unknown>, "ScreenButton");
+    }
+    if (ui.type === "Canvas") {
+        return buildSceneCanvas(ui as Record<string, unknown>);
+    }
+    return null;
+}
 
 /** Lightweight UI element for score text (full TextBox wasm path optional). */
 export class SceneTextBox {
@@ -194,6 +220,17 @@ function collectSceneAssetPaths(json: SceneJson): {
         if (ui.type === "TextBox" && typeof ui.fontPath === "string" && ui.fontPath) {
             fontPaths.add(normalizeAssetPath(ui.fontPath));
         }
+        if (ui.type === "UIImage" && typeof ui.path === "string" && ui.path) {
+            imagePaths.add(ui.path);
+        }
+        if (ui.type === "ScreenButton") {
+            if (typeof ui.buttonUpSpritePath === "string" && ui.buttonUpSpritePath) {
+                imagePaths.add(ui.buttonUpSpritePath);
+            }
+            if (typeof ui.buttonDownSpritePath === "string" && ui.buttonDownSpritePath) {
+                imagePaths.add(ui.buttonDownSpritePath);
+            }
+        }
     }
     for (const p of getScriptSoundPaths()) {
         soundPaths.add(p);
@@ -226,10 +263,7 @@ async function syncAssetsToMemfs(
             }
             const data = new Uint8Array(await res.arrayBuffer());
             writeMemfsFile(fs, memPath, data);
-            const jg = (globalThis as { JulGame?: { IMAGE_CACHE?: Record<string, Uint8Array>; get_comma_separated_path?: (p: string) => string } }).JulGame;
-            if (jg?.IMAGE_CACHE && jg.get_comma_separated_path) {
-                jg.IMAGE_CACHE[jg.get_comma_separated_path(rel)] = data;
-            }
+            // Load sprites via MEMFS + glue_IMG_Load — skip IMAGE_CACHE (RWFromConstMem path).
         } catch {
             writeMemfsFile(fs, memPath, PNG_1X1);
             console.warn(`SceneBuilder: using 1×1 placeholder for missing image: ${url}`);
@@ -375,9 +409,7 @@ function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
                 isMusic: !!c.isMusic,
                 playOnStart: !!c.playOnStart,
             });
-            if (entity.soundSource) {
-                Component_load_sound(entity.soundSource, c.path, !!c.isMusic);
-            }
+            // SDL load deferred until Mix_OpenAudio (pointerdown) — see reloadEntitySounds.
         }
     }
 
@@ -436,8 +468,9 @@ export async function applyStrippedSceneData(
     }
 
     for (const ui of json.UIElements ?? []) {
-        if (ui.type === "TextBox") {
-            scene.uiElements.push(new SceneTextBox(ui) as never);
+        const built = buildUiElementFromJson(ui);
+        if (built) {
+            scene.uiElements.push(built as never);
         }
     }
 
@@ -482,10 +515,13 @@ export async function mergeStrippedSceneData(
     }
 
     for (const ui of json.UIElements ?? []) {
-        if (ui.type !== "TextBox" || existingUiIds.has(String(ui.id ?? ""))) {
+        if (existingUiIds.has(String(ui.id ?? ""))) {
             continue;
         }
-        scene.uiElements.push(new SceneTextBox(ui) as never);
+        const built = buildUiElementFromJson(ui);
+        if (built) {
+            scene.uiElements.push(built as never);
+        }
     }
 
     applyCameraFromJson(scene, json, opts.canvasWidth, opts.canvasHeight);

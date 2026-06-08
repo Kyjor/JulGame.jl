@@ -30,6 +30,9 @@ end
 """Repair duplicate JulGame rewrite: `(globalThis as any).JulGame.(globalThis as any).JulGame.` → `(globalThis as any).JulGame.`."""
 function fix_double_julgame_rewrite(data::AbstractString)::String
     s = String(data)
+    while occursin(r"\(globalThis as any\)\.\(globalThis as any\)\.JulGame\.", s)
+        s = replace(s, r"\(globalThis as any\)\.\(globalThis as any\)\.JulGame\." => "(globalThis as any).JulGame.")
+    end
     while occursin(r"\(globalThis as any\)\.JulGame\.\(globalThis as any\)\.JulGame\.", s)
         s = replace(s, r"\(globalThis as any\)\.JulGame\.\(globalThis as any\)\.JulGame\." => "(globalThis as any).JulGame.")
     end

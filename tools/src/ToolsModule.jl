@@ -16,6 +16,7 @@ function Transpile(;
     project_root::AbstractString = pwd(),
     engine::Bool = true,
     scripts::Bool = true,
+    scene::Union{Nothing, AbstractString} = nothing,
 )
     project_root = abspath(project_root)
     convert_script = joinpath(JULGAME_ROOT, "tools", "convert.jl")
@@ -27,7 +28,11 @@ function Transpile(;
     end
     if scripts
         println("=== Game scripts ===")
-        run(`$julia $convert_script --project-root $project_root --all-scripts`)
+        if scene === nothing
+            run(`$julia $convert_script --project-root $project_root --all-scripts`)
+        else
+            run(`$julia $convert_script --project-root $project_root --all-scripts --scene $scene`)
+        end
     end
     println("Transpile complete.")
     return nothing

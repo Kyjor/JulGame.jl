@@ -6,6 +6,7 @@ import { Component_draw } from "../../../_generated/src/engine/Component/Sprite"
 import { JulGame_update } from "../../../_generated/src/engine/Entity";
 import type { SceneTextBox } from "./SceneBuilder";
 import { tickCoroutines } from "./coroutineRuntime";
+import { drawUiImages } from "./strippedUiElements";
 import { drawUiTextBoxes } from "./strippedUiText";
 import type { TranspiledInput } from "./transpiledInput";
 
@@ -186,8 +187,11 @@ export function runGameFrame(editorMode = false): void {
         (Component_draw as (s: unknown, c: unknown) => void)(sprite, cam);
     }
 
-    if (cam && scene.uiElements?.length) {
-        drawUiTextBoxes(api as JulGameSdlApi, scene.uiElements, cam);
+    if (scene.uiElements?.length) {
+        drawUiImages(api as JulGameSdlApi, scene.uiElements);
+        if (cam) {
+            drawUiTextBoxes(api as JulGameSdlApi, scene.uiElements, cam);
+        }
     }
 
     (api.glue_SDL_RenderPresent as () => void)();
