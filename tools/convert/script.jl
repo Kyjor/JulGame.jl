@@ -391,6 +391,62 @@ function replace_int32_round(s::AbstractString)::String
     return String(take!(out))
 end
 
+"""True when the previous line opens or continues a kwargs/object-literal block."""
+function in_kwargs_context(prev::AbstractString)::Bool
+    isempty(prev) && return false
+    endswith(prev, ",") && return true
+    return occursin(r",\s*\{?\s*$", prev)
+end
+
+"""Undo `let key = expr` mistakenly emitted inside object-literal kwargs."""
+function relabel_let_as_kwargs_in_objects(s::AbstractString)::String
+    lines = split(String(s), '\n'; keepempty=true)
+    out = String[]
+    for line in lines
+        prev = length(out) > 0 ? strip(out[end]) : ""
+        m = match(r"^(\s+)let (\w+) = (.+)$", line)
+        if m !== nothing && in_kwargs_context(prev)
+            push!(out, "$(m.captures[1])$(m.captures[2]): $(m.captures[3])")
+        else
+            push!(out, line)
+        end
+    end
+    return join(out, '\n')
+end
+
+"""Restore `let x = expr` after kwargs pass wrongly lowered standalone locals to `x: expr`."""
+function restore_wrongly_labeled_locals(s::AbstractString)::String
+    lines = split(String(s), '\n'; keepempty=true)
+    out = String[]
+    for line in lines
+        m = match(r"^(\s+)([a-zA-Z_]\w*): (.+)$", line)
+        if m !== nothing
+            prev = length(out) > 0 ? strip(out[end]) : ""
+            in_kwargs = in_kwargs_context(prev)
+            val = strip(m.captures[3])
+            if in_kwargs ||
+               endswith(val, ",") ||
+               startswith(val, "{") || startswith(val, "[") ||
+               occursin(r"^[\"']", val) ||
+               occursin(r"^(true|false|null|-?\d)", val) ||
+               occursin(r"^\(\)\s*=>", val)
+                push!(out, line)
+                continue
+            end
+            rhs = val
+            if startswith(rhs, "globals.") ||
+               startswith(rhs, "self.") ||
+               startswith(rhs, "(globalThis as any)") ||
+               occursin(r"^\w+\(", rhs)
+                push!(out, "$(m.captures[1])let $(m.captures[2]) = $(m.captures[3])")
+                continue
+            end
+        end
+        push!(out, line)
+    end
+    return join(out, '\n')
+end
+
 """Replace `Int(round(expr))` → `Math.round(expr)`; preserves nested parens."""
 function replace_int_round(s::AbstractString)::String
     needle = "Int(round("
@@ -519,7 +575,7 @@ function fix_julia_typescript_residual_syntax(s::AbstractString)::String
             s"\1 {\n\2let \3 = ",
     )
     s = replace(s, r"unsafe_string\(" => "String(")
-    s = replace(s, r"(\n        )(\w+): (globals\.)" => s"\1let \2 = \3")
+    s = replace(s, r"(\n\s+)(\w+): (globals\.)" => s"\1let \2 = \3")
     s = replace(
         s,
         r"(\n\s+)(\w+): \(globalThis as any\)\.JulGame" =>
@@ -577,6 +633,8 @@ function fix_julia_typescript_residual_syntax(s::AbstractString)::String
     )
     s = replace(s, r"(\n\s+)let (\w+) = (\w+),\n" => s"\1\2: \3,\n")
     s = replace(s, r"(\n\s+)let (\w+) = (\{[^}]+\}),\n" => s"\1\2: \3,\n")
+    s = restore_wrongly_labeled_locals(s)
+    s = relabel_let_as_kwargs_in_objects(s)
     return s
 end
 
@@ -614,6 +672,15 @@ function apply_generic_game_script_fixups(s::AbstractString)::String
     s = replace(s, r"JulGame\.UI\.add_click_event" => "(globalThis as any).JulGame.UI.add_click_event")
     s = replace(s, r"JulGame\.UI\.add_hover_enter_event" => "(globalThis as any).JulGame.UI.add_hover_enter_event")
     s = replace(s, r"JulGame\.UI\.add_hover_exit_event" => "(globalThis as any).JulGame.UI.add_hover_exit_event")
+    s = replace(s, r"JulGame\.UI\.align_to_anchor" => "(globalThis as any).JulGame.UI.align_to_anchor")
+    s = replace(s, r"JulGame\.UI\.set_color" => "(globalThis as any).JulGame.UI.set_color")
+    s = replace(s, r"JulGame\.UI\.duplicate" => "(globalThis as any).JulGame.UI.duplicate")
+    s = replace(s, r"JulGame\.UI\.initialize" => "(globalThis as any).JulGame.UI.initialize")
+    s = replace(
+        s,
+        r"JulGame\.UI\.set_color\(([^,]+);\s*a\s*=\s*([^)]+)\)" =>
+            s"(globalThis as any).JulGame.UI.set_color(\1, \2)",
+    )
     s = replace(s, r"JulGame\.ImmediateUIModule\." => "(globalThis as any).JulGame.ImmediateUIModule.")
     s = replace(s, r"JulGame\.SceneModule\." => "(globalThis as any).JulGame.SceneModule.")
     s = replace(s, r"JulGame\.SDL2\.SDL_OpenURL\(" => "window.open(String(")

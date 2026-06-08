@@ -5,7 +5,7 @@ import { bootstrapJulGameSdl } from "../../engine/runtime/julGameBootstrap";
 import { installStrippedSceneRuntime, tickSceneChange } from "../../engine/runtime/sceneChange";
 import { initializeAllScripts } from "../../engine/runtime/scriptLoader";
 import { loadStrippedScene } from "../../engine/runtime/SceneBuilder";
-import { playSoundsOnStart, reloadEntitySounds, tryOpenGameAudio } from "../../engine/runtime/memfsAudio";
+import { unlockSceneAudio } from "../../engine/runtime/memfsAudio";
 import { runGameFrame } from "../../engine/runtime/MainLoop";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { SDLBridge } from "./SDLBridge";
@@ -67,9 +67,7 @@ export class SDLPlatform implements Platform {
             pendingSceneFileName: null,
         });
         const unlockAudio = (): void => {
-            tryOpenGameAudio(api);
-            reloadEntitySounds(main.scene);
-            playSoundsOnStart(main.scene);
+            unlockSceneAudio(api, main.scene);
             this.setStatus("sdl-wasm: game loop");
         };
         this.setStatus("sdl-wasm: click canvas to enable audio");

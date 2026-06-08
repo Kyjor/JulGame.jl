@@ -5,6 +5,10 @@ SoundSource.jl
 Sprite.jl
 Transform.jl
 Input.jl
+UiTypes.jl
+UIElement.jl
+Canvas.jl
+UIImage.jl
 TextBox.jl
 Entity.jl
 Scene.jl

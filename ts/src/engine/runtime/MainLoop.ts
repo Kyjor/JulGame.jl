@@ -4,10 +4,9 @@ import { Component_update as animatorUpdate } from "../../../_generated/src/engi
 import { Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
 import { Component_draw } from "../../../_generated/src/engine/Component/Sprite";
 import { JulGame_update } from "../../../_generated/src/engine/Entity";
-import type { SceneTextBox } from "./SceneBuilder";
 import { tickCoroutines } from "./coroutineRuntime";
-import { drawUiImages } from "./strippedUiElements";
-import { drawUiTextBoxes } from "./strippedUiText";
+import { flushUiDrawProfile } from "./uiDrawProfile";
+import { initializeSceneUi, renderSceneUi, type UiDrawStats } from "./uiRender";
 import type { TranspiledInput } from "./transpiledInput";
 
 type SceneCamera = {
@@ -31,7 +30,7 @@ type MainState = {
         entities: SceneEntity[];
         colliders: unknown[];
         rigidbodies: unknown[];
-        uiElements: SceneTextBox[];
+        uiElements: unknown[];
     };
     input: TranspiledInput | null;
 };
@@ -48,6 +47,11 @@ type JulGameGlobals = {
 
 let lastFrameMs = 0;
 let lastPerfMs = 0;
+let sceneUiInitialized = false;
+
+export function resetSceneUiInitialization(): void {
+    sceneUiInitialized = false;
+}
 
 function updateMouseWorld(
     input: TranspiledInput,
@@ -114,6 +118,12 @@ export function runStrippedGameFrame(): void {
 
 /** Full game loop frame (physics + scripts + coroutines). */
 export function runGameFrame(editorMode = false): void {
+    const marks: Record<string, number> = {};
+    const mark = (name: string) => {
+        marks[name] = performance.now();
+    };
+    mark("start");
+
     const root = globalThis as unknown as {
         MAIN: MainState;
         JulGame: JulGameGlobals;
@@ -137,6 +147,7 @@ export function runGameFrame(editorMode = false): void {
     if (input && jg.InputModule) {
         jg.InputModule.poll_input(input);
     }
+    mark("input");
 
     const scene = M.scene;
     const cam = scene.camera;
@@ -170,6 +181,7 @@ export function runGameFrame(editorMode = false): void {
             }
         }
     }
+    mark("scripts");
 
     if (cam && input && jg.InputModule) {
         applyCameraFollow(cam, deltaTime);
@@ -182,17 +194,59 @@ export function runGameFrame(editorMode = false): void {
         ensureCameraTargetScale(cam);
         (cameraUpdate as (c: unknown, p: null) => void)(cam, null);
     }
+    mark("camera");
 
     for (const sprite of spritesInLayerOrder(scene.entities)) {
         (Component_draw as (s: unknown, c: unknown) => void)(sprite, cam);
     }
+    mark("sprites");
 
+    let uiDrawStats: UiDrawStats | undefined = undefined;
+    const g = globalThis as { __JULGAME_PROFILE_UI_DRAW?: boolean };
+    if (g.__JULGAME_PROFILE_UI_DRAW !== false) {
+        g.__JULGAME_PROFILE_UI_DRAW = true;
+    }
     if (scene.uiElements?.length) {
-        drawUiImages(api as JulGameSdlApi, scene.uiElements);
-        if (cam) {
-            drawUiTextBoxes(api as JulGameSdlApi, scene.uiElements, cam);
+        const sdlApi = api as JulGameSdlApi;
+        if (!sceneUiInitialized) {
+            initializeSceneUi(sdlApi, scene.uiElements);
+            sceneUiInitialized = true;
         }
+        mark("uiInit");
+        uiDrawStats = renderSceneUi(sdlApi, scene.uiElements);
+    } else {
+        mark("uiInit");
+    }
+    mark("ui");
+    if (g.__JULGAME_PROFILE_UI_DRAW && uiDrawStats !== undefined) {
+        flushUiDrawProfile(marks.ui - marks.uiInit);
     }
 
     (api.glue_SDL_RenderPresent as () => void)();
+    mark("end");
+
+    const total = marks.end - marks.start;
+    if (total > 16) {
+        const seg = (from: string, to: string) => (marks[to] - marks[from]).toFixed(0);
+        const uiDrawMs = marks.ui - marks.uiInit;
+        const uiSuffix =
+            uiDrawStats !== undefined
+                ? ` drawn=${uiDrawStats.drawn}(img${uiDrawStats.images}/btn${uiDrawStats.buttons}/txt${uiDrawStats.textBoxes})` +
+                  ` skip=${uiDrawStats.skippedHidden}hidden+${uiDrawStats.skippedInactive}inactive` +
+                  (uiDrawStats.settingsMenuDrawn > 0
+                      ? ` WARN settingsDrawn=${uiDrawStats.settingsMenuDrawn}`
+                      : "") +
+                  (uiDrawStats.drawn > 0 ? ` ~${(uiDrawMs / uiDrawStats.drawn).toFixed(1)}ms/draw` : "")
+                : "";
+        console.log(
+            `frame ${total.toFixed(0)}ms`,
+            `input ${seg("start", "input")}`,
+            `scripts ${seg("input", "scripts")}`,
+            `camera ${seg("scripts", "camera")}`,
+            `sprites ${seg("camera", "sprites")}`,
+            `uiInit ${seg("sprites", "uiInit")}`,
+            `uiDraw ${uiDrawMs.toFixed(0)}${uiSuffix}`,
+            `present ${seg("ui", "end")}`,
+        );
+    }
 }

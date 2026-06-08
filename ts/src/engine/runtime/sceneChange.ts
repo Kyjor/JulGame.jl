@@ -2,15 +2,16 @@ import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import type { Entity } from "../../../_generated/src/engine/Entity";
 import { cleanupCoroutines } from "./coroutineRuntime";
-import { playSoundsOnStart, reloadEntitySounds } from "./memfsAudio";
-import { clearUiImageTextureCache } from "./strippedUiElements";
-import { clearUiTextTextureCache } from "./strippedUiText";
+import { playSceneMusic, playSoundsOnStart, reloadEntitySounds } from "./memfsAudio";
+import { clearUiImageTextureCache } from "../../../_generated/src/engine/UI/UIImage";
+import { clearUiTextTextureCache } from "../../../_generated/src/engine/UI/TextBox";
 import {
     mergeStrippedSceneData,
     type SceneJson,
     type SceneTextBox,
     type StrippedSceneLoadOptions,
 } from "./SceneBuilder";
+import { resetSceneUiInitialization } from "./MainLoop";
 import { destroyEntity, initializeAllScripts, shutdownAllScripts } from "./scriptLoader";
 
 type EmMod = { FS?: { mkdirTree: (p: string) => void; writeFile: (p: string, data: Uint8Array) => void } };
@@ -59,6 +60,7 @@ export function requestChangeScene(sceneFileName: string): void {
     cleanupCoroutines();
     clearUiTextTextureCache(runtime.api);
     clearUiImageTextureCache(runtime.api);
+    resetSceneUiInitialization();
 
     runtime.pendingSceneFileName = sceneFileName;
     main.shouldChangeScene = true;
@@ -187,6 +189,7 @@ async function loadAndMergeScene(sceneFileName: string): Promise<void> {
 
     initializeAllScripts(scene.entities as Entity[]);
     reloadEntitySounds(scene);
+    playSceneMusic(scene);
     playSoundsOnStart(scene);
     applyLogicalSize(rt.api, rt.canvasWidth, rt.canvasHeight, scene);
 }

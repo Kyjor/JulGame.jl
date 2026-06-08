@@ -13,6 +13,13 @@ include(joinpath(@__DIR__, "convert", "collider.jl"))
 include(joinpath(@__DIR__, "convert", "sound.jl"))
 include(joinpath(@__DIR__, "convert", "animator.jl"))
 include(joinpath(@__DIR__, "convert", "sprite.jl"))
+include(joinpath(@__DIR__, "convert", "uielement.jl"))
+include(joinpath(@__DIR__, "convert", "uiTypes.jl"))
+include(joinpath(@__DIR__, "convert", "canvas.jl"))
+include(joinpath(@__DIR__, "convert", "uiimage.jl"))
+include(joinpath(@__DIR__, "convert", "textbox.jl"))
+include(joinpath(@__DIR__, "convert", "screenbutton.jl"))
+include(joinpath(@__DIR__, "convert", "camera.jl"))
 
 # Generated TS calls Julia-style `InternalFoo(args)` on classes — emit `new InternalFoo(args)`.
 # Start with engine `Internal*` component types; append more names as other modules gain classes.
@@ -188,6 +195,12 @@ function parse_file(
         is_sound_source(path_jl) && (data = postprocess_sound_ts(data))
         is_animator_source(path_jl) && (data = postprocess_animator_ts(data))
         is_sprite_source(path_jl) && (data = postprocess_sprite_ts(data))
+        is_uielement_source(path_jl) && (data = postprocess_uielement_ts(data))
+        is_ui_types_source(path_jl) && (data = postprocess_ui_types_ts(data))
+        is_canvas_source(path_jl) && (data = postprocess_canvas_ts(data))
+        is_uiimage_source(path_jl) && (data = postprocess_uiimage_ts(data))
+        is_textbox_source(path_jl) && (data = postprocess_textbox_ts(data))
+        is_screenbutton_source(path_jl) && (data = postprocess_screenbutton_ts(data))
     end
     if !is_script
         data = prepend_generated_ts_imports(data, path_ts)
@@ -196,6 +209,7 @@ function parse_file(
     if !is_input_source(path_jl) && !is_script
         data = append_generated_module_exports(data)
     end
+    is_camera_source(path_jl) && (data = postprocess_camera_ts(data))
     is_camera_source(path_jl) && (data = finalize_camera_exports(data))
     open(path_ts, "w") do io
         print(io, data)

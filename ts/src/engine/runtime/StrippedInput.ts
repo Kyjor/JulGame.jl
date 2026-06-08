@@ -1,7 +1,7 @@
 /** Minimal input state + DOM listeners for the stripped SDL/web runtime. */
 /** Fallback only — SDL path uses transpiled `_generated/Input/Input.ts` via `inputBootstrap.ts`. */
 
-import { dispatchUiPointer } from "./strippedUiElements";
+import { dispatchUiPointer } from "./uiRender";
 
 export type StrippedInputState = {
     buttonsPressedDown: string[];

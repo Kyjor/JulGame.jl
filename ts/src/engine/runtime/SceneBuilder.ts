@@ -13,12 +13,15 @@ import { attachDefaultCamera } from "./julGameBootstrap";
 import { commaSeparatedAssetPath, normalizeAssetPath, resolveSpritePixelsPerUnit } from "./projectConfig";
 import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
+import { hydrateCanvasFromJson, type SceneCanvas } from "../../../_generated/src/engine/UI/Canvas";
+import { hydrateUiImageFromJson } from "../../../_generated/src/engine/UI/UIImage";
+import { hydrateScreenButtonFromJson } from "../../../_generated/src/engine/UI/ScreenButton";
 import {
-    buildSceneCanvas,
-    buildSceneUiImage,
-    type SceneCanvas,
-    type SceneUiImage,
-} from "./strippedUiElements";
+    hydrateTextBoxFromJson,
+    type TextBoxElement,
+} from "../../../_generated/src/engine/UI/TextBox";
+import type { JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
+import { UI_align_to_anchor } from "../../../_generated/src/engine/UI/UIElement";
 
 /** Minimal valid PNG (1×1) for MEMFS when project assets are missing locally. */
 const PNG_1X1 = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (ch) => ch.charCodeAt(0));
@@ -136,66 +139,36 @@ type UIElementJson = {
     persistentBetweenScenes?: boolean;
     isCenteredX?: boolean;
     isCenteredY?: boolean;
+    isWorldEntity?: boolean;
+    anchor?: string;
+    anchorOffset?: { x: number; y: number };
+    parent?: string | null;
     layer?: number;
     isFlipped?: boolean;
     buttonUpSpritePath?: string;
     buttonDownSpritePath?: string;
 };
 
-function buildUiElementFromJson(ui: UIElementJson): SceneTextBox | SceneUiImage | SceneCanvas | null {
+/** @deprecated Use `TextBoxElement` from transpiled TextBox.ts */
+export type SceneTextBox = TextBoxElement;
+
+export type SceneUiImage = import("../../../_generated/src/engine/UI/UIImage").UiImageElement;
+
+function buildUiElementFromJson(ui: UIElementJson): JulGameUiElement | null {
+    const raw = ui as Record<string, unknown>;
     if (ui.type === "TextBox") {
-        return new SceneTextBox(ui);
+        return hydrateTextBoxFromJson(raw);
     }
     if (ui.type === "UIImage") {
-        return buildSceneUiImage(ui as Record<string, unknown>, "UIImage");
+        return hydrateUiImageFromJson(raw);
     }
     if (ui.type === "ScreenButton") {
-        return buildSceneUiImage(ui as Record<string, unknown>, "ScreenButton");
+        return hydrateScreenButtonFromJson(raw);
     }
     if (ui.type === "Canvas") {
-        return buildSceneCanvas(ui as Record<string, unknown>);
+        return hydrateCanvasFromJson(raw);
     }
     return null;
-}
-
-/** Lightweight UI element for score text (full TextBox wasm path optional). */
-export class SceneTextBox {
-    id: string | number;
-    name: string;
-    text: string;
-    fontSize: number;
-    fontPath: string;
-    position: { x: number; y: number };
-    size: { x: number; y: number };
-    isActive: boolean;
-    /** RGBA tuple matching full TextBox API (scripts mutate alpha via `color[3]`). */
-    color: [number, number, number, number];
-    alpha: number;
-    persistentBetweenScenes: boolean;
-    isCenteredX: boolean;
-    isCenteredY: boolean;
-
-    constructor(json: UIElementJson) {
-        this.id = json.id ?? 0;
-        this.name = json.name ?? "TextBox";
-        this.text = json.text ?? "";
-        this.fontSize = json.fontSize ?? 24;
-        this.fontPath = json.fontPath ? normalizeAssetPath(json.fontPath) : "";
-        this.position = json.position ?? { x: 0, y: 0 };
-        this.size = json.size ?? { x: 100, y: 24 };
-        this.isActive = json.isActive !== false;
-        const c = json.color;
-        if (c && typeof c.r === "number") {
-            this.color = [c.r, c.g, c.b, c.a];
-        } else {
-            const a = json.alpha ?? 255;
-            this.color = [255, 255, 255, a];
-        }
-        this.alpha = this.color[3];
-        this.persistentBetweenScenes = !!json.persistentBetweenScenes;
-        this.isCenteredX = !!json.isCenteredX;
-        this.isCenteredY = !!json.isCenteredY;
-    }
 }
 
 function collectSceneAssetPaths(json: SceneJson): {
@@ -475,11 +448,64 @@ export async function applyStrippedSceneData(
     }
 
     applyCameraFromJson(scene, json, opts.canvasWidth, opts.canvasHeight);
+    resolveUiElementParents(scene.uiElements, scene.entities);
+    alignLoadedScreenTextBoxes(scene.uiElements);
 
     if (opts.loadScripts !== false) {
         instantiateScripts(scene.entities);
         if (!opts.deferScriptInitialize) {
             initializeAllScripts(scene.entities);
+        }
+    }
+}
+
+/** Port of `SceneReader` `id::Type` parent refs → live UI / entity instances. */
+function resolveUiElementParents(uiElements: unknown[], entities: unknown[]): void {
+    const uiById = new Map<string, unknown>();
+    for (const ui of uiElements) {
+        const id = (ui as { id?: string | number }).id;
+        if (id != null && id !== "") {
+            uiById.set(String(id), ui);
+        }
+    }
+    const entityById = new Map<string, unknown>();
+    for (const ent of entities) {
+        const id = (ent as { id?: string | number }).id;
+        if (id != null && id !== "") {
+            entityById.set(String(id), ent);
+        }
+    }
+    for (const ui of uiElements) {
+        const el = ui as { parent?: unknown };
+        const raw = el.parent;
+        if (typeof raw !== "string" || raw === "") {
+            continue;
+        }
+        const sep = raw.indexOf("::");
+        if (sep < 0) {
+            continue;
+        }
+        const parentId = raw.slice(0, sep);
+        const parentType = raw.slice(sep + 2);
+        if (parentType === "Entity") {
+            const resolved = entityById.get(parentId);
+            if (resolved) {
+                el.parent = resolved;
+            }
+        } else {
+            const resolved = uiById.get(parentId);
+            if (resolved) {
+                el.parent = resolved;
+            }
+        }
+    }
+}
+
+function alignLoadedScreenTextBoxes(uiElements: unknown[]): void {
+    for (const raw of uiElements) {
+        const el = raw as SceneTextBox;
+        if (el?.name && el.isWorldEntity === false && el.anchor?.current_state !== "none") {
+            UI_align_to_anchor(el);
         }
     }
 }
@@ -525,6 +551,8 @@ export async function mergeStrippedSceneData(
     }
 
     applyCameraFromJson(scene, json, opts.canvasWidth, opts.canvasHeight);
+    resolveUiElementParents(scene.uiElements, scene.entities);
+    alignLoadedScreenTextBoxes(scene.uiElements);
 
     scene.colliders = [];
     scene.rigidbodies = [];
@@ -556,4 +584,8 @@ export async function loadStrippedScene(
         console.warn("SceneBuilder: fetch failed, using minimal scene", e);
     }
     await applyStrippedSceneData(scene, emscriptenModule, json, opts);
+    const sceneFile = opts.sceneJsonUrl.split("/").pop() ?? "";
+    if (sceneFile) {
+        scene.name = sceneFile.replace(/\.json$/i, "");
+    }
 }

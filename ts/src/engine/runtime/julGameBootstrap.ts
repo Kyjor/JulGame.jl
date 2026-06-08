@@ -17,6 +17,13 @@ import { Scene } from "../../../_generated/src/engine/Scene";
 import { installCoroutineGlobals } from "./coroutineRuntime";
 import { initializeScript, updateScript } from "./scriptRegistry";
 import { installStrippedInput } from "./StrippedInput";
+import {
+    UI_add_click_event,
+    UI_add_hover_enter_event,
+    UI_add_hover_exit_event,
+    UI_align_to_anchor,
+    UI_set_color,
+} from "../../../_generated/src/engine/UI/UIElement";
 import { wireSceneApi } from "./scriptLoader";
 
 /**
@@ -99,28 +106,37 @@ export function bootstrapJulGameSdl(
             .filter(Boolean)
             .join(",");
 
+    let logicalSize = { x: canvasWidth, y: canvasHeight };
     jg.WindowManagerModule = {
-        get_logical_size: () => ({ x: canvasWidth, y: canvasHeight }),
-        set_logical_size: (_w: number, _h: number) => {
-            /* No WindowManager in stripped build */
+        get_logical_size: () => logicalSize,
+        set_logical_size: (w: number, h: number) => {
+            logicalSize = { x: w, y: h };
         },
         handle_window_event: (_event: number) => {
             /* No-op in stripped WASM runtime */
         },
     };
 
-    jg.MainLoopModule = {
-        create_new_canvas: () => ({
-            isActive: false,
-            persistentBetweenScenes: false,
-            children: [] as unknown[],
-        }),
-    };
-
     jg.Renderer = api.glue_get_renderer();
 
     const scene = new Scene();
     scene.name = "stripped";
+
+    jg.MainLoopModule = {
+        create_new_canvas: () => {
+            const canvas = {
+                type: "Canvas" as const,
+                id: (jg.generate_uuid as () => string)(),
+                name: "New Canvas",
+                isActive: false,
+                persistentBetweenScenes: false,
+                children: [] as unknown[],
+                layer: 0,
+            };
+            scene.uiElements.push(canvas as never);
+            return canvas;
+        },
+    };
 
     root.MAIN = {
         scene,
@@ -172,15 +188,25 @@ export function bootstrapJulGameSdl(
     };
     jg.UserGlobals = jg.UserGlobals ?? { Module: {} };
     jg.UI = {
-        add_click_event: (el: { onClick?: () => void }, event: () => void) => {
-            el.onClick = event;
+        align_to_anchor: UI_align_to_anchor,
+        set_color: (
+            el: Parameters<typeof UI_set_color>[0],
+            rOrOpts?: number | { r?: number; g?: number; b?: number; a?: number },
+            g?: number,
+            b?: number,
+            a?: number,
+        ) => {
+            if (typeof rOrOpts === "number" && g === undefined) {
+                UI_set_color(el, 255, 255, 255, rOrOpts);
+            } else if (typeof rOrOpts === "object" && rOrOpts !== null) {
+                UI_set_color(el, rOrOpts.r, rOrOpts.g, rOrOpts.b, rOrOpts.a);
+            } else {
+                UI_set_color(el, rOrOpts as number | undefined, g, b, a);
+            }
         },
-        add_hover_enter_event: (el: { onHoverEnter?: () => void }, event: () => void) => {
-            el.onHoverEnter = event;
-        },
-        add_hover_exit_event: (el: { onHoverExit?: () => void }, event: () => void) => {
-            el.onHoverExit = event;
-        },
+        add_click_event: UI_add_click_event,
+        add_hover_enter_event: UI_add_hover_enter_event,
+        add_hover_exit_event: UI_add_hover_exit_event,
     };
     jg.ImmediateUIModule = {
         immediate_text: (
