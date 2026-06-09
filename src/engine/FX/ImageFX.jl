@@ -578,7 +578,7 @@ module ImageFXModule
             end
             
             # Clean up previous image
-            if sprite.image != C_NULL && sprite.image != original_surface
+            if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
                 SDL2.SDL_FreeSurface(sprite.image)
             end
             
@@ -656,7 +656,7 @@ module ImageFXModule
         end
         
         # Clean up previous image
-        if sprite.image != C_NULL && sprite.image != original_surface
+        if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
             SDL2.SDL_FreeSurface(sprite.image)
         end
         
@@ -817,7 +817,7 @@ module ImageFXModule
         end
         
         # Clean up previous image
-        if sprite.image != C_NULL && sprite.image != original_surface
+        if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
             SDL2.SDL_FreeSurface(sprite.image)
         end
         

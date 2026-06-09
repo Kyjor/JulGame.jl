@@ -296,6 +296,38 @@ module SpriteModule
     # Shared texture cache for base images (keyed by image path)
     const TEXTURE_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
 
+    # Shared surface cache for base images (keyed by image path). Sprites that
+    # use the same image share one decoded surface instead of re-decoding the
+    # PNG on every spawn. Cached surfaces are owned by the cache: they must
+    # never be freed by individual sprites (see is_shared_surface guards).
+    const SURFACE_CACHE = Dict{String, Ptr{SDL2.LibSDL2.SDL_Surface}}()
+    const SURFACE_CACHE_PTRS = Set{Ptr{SDL2.LibSDL2.SDL_Surface}}()
+
+    is_shared_surface(surface)::Bool = surface in SURFACE_CACHE_PTRS
+
+    function get_or_load_surface(fullPath::String, imagePath::String)
+        cached = get(SURFACE_CACHE, imagePath, C_NULL)
+        if cached != C_NULL
+            return cached
+        end
+        surface = load_image_sdl(fullPath, imagePath)
+        if surface != C_NULL
+            SURFACE_CACHE[imagePath] = surface
+            push!(SURFACE_CACHE_PTRS, surface)
+        end
+        return surface
+    end
+
+    function clear_surface_cache()
+        for (_, surface) in SURFACE_CACHE
+            if surface != C_NULL
+                SDL2.SDL_FreeSurface(surface)
+            end
+        end
+        empty!(SURFACE_CACHE)
+        empty!(SURFACE_CACHE_PTRS)
+    end
+
     function get_or_create_texture(imagePath::String, surface::Ptr{SDL2.LibSDL2.SDL_Surface})
         if haskey(TEXTURE_CACHE, imagePath)
             @debug("Using cached texture for: $(imagePath)")
@@ -611,7 +643,7 @@ module SpriteModule
         SDL2.SDL_ClearError()
 
         fullPath = joinpath(BasePath, "assets", "images", imagePath)
-        this.image = load_image_sdl(fullPath, imagePath)
+        this.image = get_or_load_surface(fullPath, imagePath)
         error = unsafe_string(SDL2.SDL_GetError())
     
         if !isempty(error) || this.image == C_NULL
@@ -675,6 +707,11 @@ module SpriteModule
         # Only destroy texture if it's not in the shared cache
         if this.texture != C_NULL && !haskey(TEXTURE_CACHE, this.imagePath)
             SDL2.SDL_DestroyTexture(this.texture)
+        end
+        # Shared surfaces are owned by SURFACE_CACHE; only free sprite-owned
+        # surfaces (e.g. replaced by ImageFX, or the fallback image).
+        if !is_shared_surface(this.image)
+            SDL2.SDL_FreeSurface(this.image)
         end
         this.image = C_NULL
         this.texture = C_NULL

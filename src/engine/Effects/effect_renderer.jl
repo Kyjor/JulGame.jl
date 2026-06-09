@@ -1001,7 +1001,11 @@ module EffectRendererModule
         processed_surface = process_effects_to_surface(base_surface, effects, target)
         if processed_surface == C_NULL
             @error("Failed to apply effects")
-            SDL2.SDL_FreeSurface(base_surface)
+            # Same ownership rules as the cleanup below: surface/image/sprite
+            # targets own their base surface (sprites may share a cached one).
+            if !(target isa EffectsModule.SurfaceTarget || target isa EffectsModule.ImageTarget || target isa EffectsModule.SpriteTarget)
+                SDL2.SDL_FreeSurface(base_surface)
+            end
             return target
         end
         
