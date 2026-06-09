@@ -14,6 +14,17 @@ export function registerScript(name: string, hooks: ScriptHooks): void {
     registry.set(name, hooks);
 }
 
+/** Register a Julia `Scripts.FooModule` namespace on `JulGame.Scripts` (support / dual modules). */
+export function registerSupportModule(
+    moduleName: string,
+    exports: Record<string, unknown>,
+): void {
+    const root = globalThis as { JulGame?: { Scripts?: Record<string, Record<string, unknown>> } };
+    const jg = (root.JulGame ??= {});
+    const scripts = (jg.Scripts ??= {});
+    scripts[moduleName] = { ...scripts[moduleName], ...exports };
+}
+
 /** Declared by transpiled game scripts (`tools/convert/script.jl` scans `scripts/*.jl`). */
 export function registerScriptSounds(paths: string[]): void {
     for (const p of paths) {

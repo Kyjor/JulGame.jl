@@ -1808,6 +1808,7 @@ function insert_semicolon_before_line_starting_with_open_paren(data::AbstractStr
         endswith(cur, ';') && continue
         endswith(cur, '{') && continue
         endswith(cur, '(') && continue
+        endswith(cur, '[') && continue
         _ts_line_continues_expression(cur) && continue
         cur in _TS_ASI_SKIP_SINGLE_KEYWORDS && continue
         j = idx + 1
@@ -4152,6 +4153,7 @@ end
 
 function main()
     files, repo_root, scene_filter = parse_cli_args()
+    clear_project_transpile_cache!()
     # Smallest-first helps us iterate patterns safely from simpler files upward.
     sort!(files, by = f -> filesize(f))
     mkpath(default_out_dir())

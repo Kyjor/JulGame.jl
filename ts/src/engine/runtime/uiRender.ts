@@ -7,6 +7,7 @@ import { UI_initialize_ScreenButton, UI_render_ScreenButton } from "../../../_ge
 import type { UiImageElement } from "../../../_generated/src/engine/UI/UIImage";
 import { UI_initialize_UIImage, UI_render_UIImage } from "../../../_generated/src/engine/UI/UIImage";
 import type { JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
+import { UI_align_to_anchor } from "../../../_generated/src/engine/UI/UIElement";
 import {
     beginUiDrawProfileFrame,
     finishUiElementDraw,
@@ -15,13 +16,13 @@ import {
     type UiProfiledElement,
 } from "./uiDrawProfile";
 
-type UiRenderable = JulGameUiElement & { type: string };
+export type UiHoverTarget = JulGameUiElement & { type: string };
 
-function isRenderableUi(el: unknown): el is UiRenderable {
+function isRenderableUi(el: unknown): el is UiHoverTarget {
     if (!el || typeof el !== "object") {
         return false;
     }
-    const t = (el as UiRenderable).type;
+    const t = (el as UiHoverTarget).type;
     return t === "UIImage" || t === "ScreenButton" || t === "TextBox";
 }
 
@@ -66,7 +67,7 @@ export function renderSceneUi(api: JulGameSdlApi, uiElements: unknown[]): UiDraw
         textBoxes: 0,
         settingsMenuDrawn: 0,
     };
-    const items: UiRenderable[] = [];
+    const items: UiHoverTarget[] = [];
     const collectT0 = performance.now();
     const hiddenByCanvas = buildInactiveCanvasHiddenSet(uiElements);
     for (const raw of uiElements) {
@@ -119,13 +120,35 @@ export function renderSceneUi(api: JulGameSdlApi, uiElements: unknown[]): UiDraw
     return stats;
 }
 
-export function dispatchUiPointer(
-    uiElements: unknown[],
+/** Map canvas pixel coords to SDL logical UI space (matches Julia Input mouse scaling). */
+export function canvasPixelsToLogicalUiSpace(
+    canvasWidth: number,
+    canvasHeight: number,
     x: number,
     y: number,
-    kind: "click" | "hover",
-): boolean {
-    const items: UiRenderable[] = [];
+): { x: number; y: number } {
+    const root = globalThis as {
+        MAIN?: { scene?: { camera?: { size?: { x: number; y: number } } } };
+    };
+    const cam = root.MAIN?.scene?.camera?.size;
+    const logicalW = cam?.x && cam.x > 0 ? cam.x : canvasWidth;
+    const logicalH = cam?.y && cam.y > 0 ? cam.y : canvasHeight;
+    if (logicalW === canvasWidth && logicalH === canvasHeight) {
+        return { x, y };
+    }
+    const scale = Math.min(canvasWidth / logicalW, canvasHeight / logicalH);
+    const contentW = logicalW * scale;
+    const contentH = logicalH * scale;
+    const barX = (canvasWidth - contentW) / 2;
+    const barY = (canvasHeight - contentH) / 2;
+    return {
+        x: Math.max(0, Math.min(logicalW, (x - barX) / scale)),
+        y: Math.max(0, Math.min(logicalH, (y - barY) / scale)),
+    };
+}
+
+function collectHitTestableUi(uiElements: unknown[]): UiHoverTarget[] {
+    const items: UiHoverTarget[] = [];
     const hiddenByCanvas = buildInactiveCanvasHiddenSet(uiElements);
     for (const raw of uiElements) {
         if (!isRenderableUi(raw)) {
@@ -137,27 +160,86 @@ export function dispatchUiPointer(
         items.push(raw);
     }
     items.sort((a, b) => b.layer - a.layer);
+    return items;
+}
+
+function hitTestUiAt(items: UiHoverTarget[], x: number, y: number): UiHoverTarget | null {
     for (const ui of items) {
         const left = ui.position.x;
         const top = ui.position.y;
         const right = left + ui.size.x;
         const bottom = top + ui.size.y;
-        if (x < left || x > right || y < top || y > bottom) {
-            continue;
+        if (x >= left && x <= right && y >= top && y <= bottom) {
+            return ui;
         }
-        if (kind === "click") {
-            for (const fn of ui.clickEvents) {
-                fn();
-            }
-            return true;
+    }
+    return null;
+}
+
+function prepareUiHitTestItems(uiElements: unknown[]): UiHoverTarget[] {
+    const items = collectHitTestableUi(uiElements);
+    const alignOrder = [...items].sort((a, b) => a.layer - b.layer);
+    for (const ui of alignOrder) {
+        if (!ui.isWorldEntity) {
+            UI_align_to_anchor(ui);
         }
-        if (kind === "hover") {
-            for (const fn of ui.hoverEnterEvents) {
-                fn();
-            }
-            return true;
-        }
+    }
+    return items;
+}
+
+export function hitTestUiPointer(uiElements: unknown[], x: number, y: number): UiHoverTarget | null {
+    return hitTestUiAt(prepareUiHitTestItems(uiElements), x, y);
+}
+
+/** Fire registered click handlers (Julia fires these on mouseup after mousedown on the same element). */
+export function dispatchUiClick(hit: UiHoverTarget): void {
+    for (const fn of hit.clickEvents) {
+        fn();
+    }
+}
+
+export function dispatchUiPointer(
+    uiElements: unknown[],
+    x: number,
+    y: number,
+    kind: "click" | "hover",
+): boolean {
+    const hit = hitTestUiPointer(uiElements, x, y);
+    if (!hit) {
+        return false;
+    }
+    if (kind === "click") {
+        dispatchUiClick(hit);
         return true;
     }
-    return false;
+    for (const fn of hit.hoverEnterEvents) {
+        fn();
+    }
+    return true;
+}
+
+/** Fire hover enter/exit when the topmost hit target changes (Julia `isHovered` setter behavior). */
+export function updateUiPointerHover(
+    uiElements: unknown[],
+    x: number,
+    y: number,
+    lastHovered: UiHoverTarget | null,
+): UiHoverTarget | null {
+    const hit = hitTestUiPointer(uiElements, x, y);
+    if (hit === lastHovered) {
+        return lastHovered;
+    }
+    if (lastHovered) {
+        (lastHovered as UiHoverTarget & { isHovered?: boolean }).isHovered = false;
+        for (const fn of lastHovered.hoverExitEvents) {
+            fn();
+        }
+    }
+    if (hit) {
+        (hit as UiHoverTarget & { isHovered?: boolean }).isHovered = true;
+        for (const fn of hit.hoverEnterEvents) {
+            fn();
+        }
+    }
+    return hit;
 }

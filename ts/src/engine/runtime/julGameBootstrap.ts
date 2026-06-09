@@ -17,6 +17,7 @@ import { Scene } from "../../../_generated/src/engine/Scene";
 import { installCoroutineGlobals } from "./coroutineRuntime";
 import { initializeScript, updateScript } from "./scriptRegistry";
 import { installStrippedInput } from "./StrippedInput";
+import { installImmediateUi } from "./immediateUiRuntime";
 import {
     UI_add_click_event,
     UI_add_hover_enter_event,
@@ -24,7 +25,34 @@ import {
     UI_align_to_anchor,
     UI_set_color,
 } from "../../../_generated/src/engine/UI/UIElement";
+import { clamp, haskey, joinpath, time_ns } from "../core/juliaHelpers";
 import { wireSceneApi } from "./scriptLoader";
+
+/** Julia builtins referenced as bare identifiers in transpiled game scripts. */
+function installJuliaBuiltins(jg: Record<string, unknown>): void {
+    const g = globalThis as Record<string, unknown>;
+    g.clamp = clamp;
+    g.haskey = haskey;
+    g.joinpath = joinpath;
+    g.time_ns = time_ns;
+    g.isempty = (value: unknown): boolean => {
+        if (value == null) {
+            return true;
+        }
+        if (typeof value === "string" || Array.isArray(value)) {
+            return value.length === 0;
+        }
+        if (value instanceof Map) {
+            return value.size === 0;
+        }
+        if (typeof value === "object") {
+            return Object.keys(value as object).length === 0;
+        }
+        return false;
+    };
+    g.uppercase = (value: unknown): string => String(value).toUpperCase();
+    jg.clamp = clamp;
+}
 
 /**
  * SDL / wasm entry: attach `JulGame`, `JulGameSdl`, `MAIN`, and `Renderer` expected by `_generated` modules.
@@ -186,7 +214,9 @@ export function bootstrapJulGameSdl(
         InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
             new InternalSoundSource(...args),
     };
+    jg.Scripts = (jg.Scripts as Record<string, unknown> | undefined) ?? {};
     jg.UserGlobals = jg.UserGlobals ?? { Module: {} };
+    installJuliaBuiltins(jg);
     jg.UI = {
         align_to_anchor: UI_align_to_anchor,
         set_color: (
@@ -208,17 +238,7 @@ export function bootstrapJulGameSdl(
         add_hover_enter_event: UI_add_hover_enter_event,
         add_hover_exit_event: UI_add_hover_exit_event,
     };
-    jg.ImmediateUIModule = {
-        immediate_text: (
-            _id: string,
-            text: string,
-            _opts?: Record<string, unknown>,
-        ) => ({
-            text: String(text),
-            isActive: true,
-        }),
-        INFINITE_LIFETIME: -1,
-    };
+    installImmediateUi(jg);
 }
 
 /** DOM input fallback for `?backend=web` (no SDL). */
