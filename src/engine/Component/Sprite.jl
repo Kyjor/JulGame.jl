@@ -333,15 +333,19 @@ module SpriteModule
         return "[" * join(parts, ";") * "]"
     end
     
-    function generate_effect_cache_key(this::InternalSprite)::String
+    function generate_effect_cache_key(imagePath::String, size::Math.Vector2, effects::Vector{Any})::String
         # Cache key based on image path, size, and effects - NOT instance ID
         # This allows sharing effect textures across sprites with same visuals
         content = string(
-            this.imagePath, "|",
-            this.size.x, "x", this.size.y, "|",
-            serialize_effects(this.effects)
+            imagePath, "|",
+            size.x, "x", size.y, "|",
+            serialize_effects(effects)
         )
         return string(hash(content))
+    end
+
+    function generate_effect_cache_key(this::InternalSprite)::String
+        return generate_effect_cache_key(this.imagePath, this.size, this.effects)
     end
     
     #  effects API
@@ -407,6 +411,126 @@ module SpriteModule
         end
     end
     
+    # --- Async effect-texture prewarm -------------------------------------
+    # The expensive part of baking an effect texture (e.g. OuterGlow) is pure
+    # CPU surface processing. When Julia runs with more than one thread, that
+    # half runs on a worker thread; the renderer-bound half (texture upload)
+    # always runs on the main thread via pump_effect_prewarm!, which the game
+    # loop calls once per frame. With a single thread, jobs are processed one
+    # per frame to bound the hitch. Only CPU-only effects are supported
+    # (anything that needs the renderer, e.g. TextureFill, must not be used).
+    const EFFECT_PREWARM_RESULTS = Channel{Tuple{String, Ptr{SDL2.SDL_Surface}}}(Inf)
+    const EFFECT_PREWARM_SYNC_QUEUE = Vector{Tuple{String, Vector{Any}}}()
+    const EFFECT_PREWARM_SUBMITTED = Set{String}()
+    const EFFECT_PREWARM_PENDING = Threads.Atomic{Int}(0)
+
+    # Thread-safe half: loads a private copy of the image (never the live
+    # sprite surface) and runs the CPU-only effect pipeline.
+    function compute_effect_prewarm_surface(imagePath::String, effects::Vector{Any})::Union{Nothing, Tuple{String, Ptr{SDL2.SDL_Surface}}}
+        fullPath = joinpath(BasePath, "assets", "images", imagePath)
+        base = load_image_sdl(fullPath, imagePath)
+        if base == C_NULL
+            @warn "Effect prewarm: failed to load image $(imagePath)"
+            return nothing
+        end
+        arr = unsafe_wrap(Array, base, 10; own = false)
+        # NOTE: do not read SPRITE_EFFECT_CACHE here - this may run on a worker
+        # thread while the main thread mutates the Dict. Duplicates are dropped
+        # in finalize_effect_prewarm! on the main thread instead.
+        key = generate_effect_cache_key(imagePath, Math.Vector2(arr[1].w, arr[1].h), effects)
+        target = JG.EffectsModule.SurfaceTarget(base)
+        processed = JG.EffectRendererModule.process_effects_to_surface(base, effects, target)
+        if processed == C_NULL || processed == base
+            SDL2.SDL_FreeSurface(base)
+            return nothing
+        end
+        SDL2.SDL_FreeSurface(base)
+        return (key, processed)
+    end
+
+    # Main-thread half: upload a processed surface into the shared cache.
+    function finalize_effect_prewarm!(key::String, surface::Ptr{SDL2.SDL_Surface})
+        if haskey(SPRITE_EFFECT_CACHE, key)
+            # Something else (e.g. an actual hover) already baked this key
+            SDL2.SDL_FreeSurface(surface)
+            Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+            return
+        end
+        texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+        if texture != C_NULL
+            SDL2.SDL_SetTextureBlendMode(texture, SDL2.SDL_BLENDMODE_BLEND)
+            arr = unsafe_wrap(Array, surface, 10; own = false)
+            SPRITE_EFFECT_CACHE[key] = (texture, Math.Vector2(arr[1].w, arr[1].h))
+            @debug "Effect prewarm: cached texture" key=key
+        else
+            @error "Effect prewarm: failed to create texture: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
+        SDL2.SDL_FreeSurface(surface)
+        Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+    end
+
+    """
+        prewarm_effect_textures!(jobs)
+
+    Queue effect textures to be baked ahead of time so the first
+    `apply_effects!` on a matching sprite is a cache hit instead of a frame
+    spike. `jobs` is a vector of `(imagePath, effects)` tuples. Duplicate
+    submissions are ignored, so this is safe to call multiple times.
+    """
+    function prewarm_effect_textures!(jobs::Vector)
+        for (imagePath, effects) in jobs
+            effects_any = Any[e for e in effects]
+            signature = string(imagePath, "|", serialize_effects(effects_any))
+            if signature in EFFECT_PREWARM_SUBMITTED
+                continue
+            end
+            push!(EFFECT_PREWARM_SUBMITTED, signature)
+            Threads.atomic_add!(EFFECT_PREWARM_PENDING, 1)
+            if Threads.nthreads() > 1
+                Threads.@spawn begin
+                    try
+                        result = compute_effect_prewarm_surface(imagePath, effects_any)
+                        if result === nothing
+                            Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                        else
+                            put!(EFFECT_PREWARM_RESULTS, result)
+                        end
+                    catch e
+                        Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                        @error "Effect prewarm failed for $(imagePath): $e"
+                    end
+                end
+            else
+                push!(EFFECT_PREWARM_SYNC_QUEUE, (String(imagePath), effects_any))
+            end
+        end
+    end
+
+    # Called once per frame from the game loop (main thread).
+    function pump_effect_prewarm!()
+        while isready(EFFECT_PREWARM_RESULTS)
+            key, surface = take!(EFFECT_PREWARM_RESULTS)
+            finalize_effect_prewarm!(key, surface)
+        end
+        # Single-threaded fallback: bake one job per frame to bound the hitch.
+        if !isempty(EFFECT_PREWARM_SYNC_QUEUE)
+            imagePath, effects = popfirst!(EFFECT_PREWARM_SYNC_QUEUE)
+            try
+                result = compute_effect_prewarm_surface(imagePath, effects)
+                if result === nothing
+                    Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                else
+                    finalize_effect_prewarm!(result[1], result[2])
+                end
+            catch e
+                Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                @error "Effect prewarm failed for $(imagePath): $e"
+            end
+        end
+    end
+
+    effect_prewarm_pending() = EFFECT_PREWARM_PENDING[] > 0
+
     function clear_sprite_effects_cache()
         for (key, cached) in SPRITE_EFFECT_CACHE
             if cached[1] != C_NULL

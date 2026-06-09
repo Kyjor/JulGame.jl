@@ -35,7 +35,7 @@ module EffectRendererModule
         end
     end
 
-    export apply_effects!, to_surface, from_surface, apply_effects_chain!
+    export apply_effects!, to_surface, from_surface, apply_effects_chain!, process_effects_to_surface
 
     # Heuristic: determine if a surface's non-transparent pixels are nearly white
     function is_surface_nearly_white(surface::Ptr{SDL2.SDL_Surface})::Bool
@@ -944,26 +944,14 @@ module EffectRendererModule
         return work
     end
 
-    # Main API function
-    function apply_effects!(target::EffectsModule.EffectTarget, effects::Vector{Any})
-        @debug "Applying effects to target" target=target effects=effects
-        if isempty(effects)
-            return target
-        end
-        
-        # Convert to surface
-        base_surface = to_surface(target)
-        if base_surface == C_NULL
-            @error("Failed to convert target to surface")
-            return target
-        end
-        
+    # CPU-only effect processing (chain + drop shadows). Does not touch the
+    # renderer, so it is safe to run off the main thread for surface-based
+    # effects (e.g. for async effect-texture prewarming).
+    function process_effects_to_surface(base_surface::Ptr{SDL2.SDL_Surface}, effects::Vector{Any}, target::EffectsModule.EffectTarget)::Ptr{SDL2.SDL_Surface}
         # Apply effects
         processed_surface = apply_effects_chain!(base_surface, effects, target)
         if processed_surface == C_NULL
-            @error("Failed to apply effects")
-            SDL2.SDL_FreeSurface(base_surface)
-            return target
+            return C_NULL
         end
         
         # Handle drop shadows (final pass)
@@ -991,6 +979,30 @@ module EffectRendererModule
                     end
                 end
             end
+        end
+        
+        return processed_surface
+    end
+
+    # Main API function
+    function apply_effects!(target::EffectsModule.EffectTarget, effects::Vector{Any})
+        @debug "Applying effects to target" target=target effects=effects
+        if isempty(effects)
+            return target
+        end
+        
+        # Convert to surface
+        base_surface = to_surface(target)
+        if base_surface == C_NULL
+            @error("Failed to convert target to surface")
+            return target
+        end
+        
+        processed_surface = process_effects_to_surface(base_surface, effects, target)
+        if processed_surface == C_NULL
+            @error("Failed to apply effects")
+            SDL2.SDL_FreeSurface(base_surface)
+            return target
         end
         
         # Convert back to target type

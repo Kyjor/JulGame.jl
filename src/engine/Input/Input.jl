@@ -205,9 +205,16 @@ module InputModule
 
     # UI hit-test: timings go to LatencyProfiler (summed per frame, printed only on slow-frame CRITICAL/WARNING reports).
     # Optional live spam: JULGAME_TRACE_INPUT_UI_HIT=1 (every SDL mouse event). Per-element: JULGAME_TRACE_INPUT_UI_HIT_ITER=1.
+    # Cached: this is called from the per-element hit-test hot path, and an ENV
+    # read allocates and is slow (it was happening hundreds of times per mouse event)
+    const _trace_input_ui_hit_ref = Ref{Union{Nothing, Bool}}(nothing)
     function _input_ui_hit_stream_logs()
-        e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
-        return e in ("1", "true", "yes", "on")
+        v = _trace_input_ui_hit_ref[]
+        if v === nothing
+            e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
+            _trace_input_ui_hit_ref[] = e in ("1", "true", "yes", "on")
+        end
+        return _trace_input_ui_hit_ref[]::Bool
     end
 
     const _trace_input_ui_hit_iter_ref = Ref{Union{Nothing, Bool}}(nothing)
@@ -221,6 +228,9 @@ module InputModule
     end
 
     function _input_ui_hit_step!(prof, t_blk::Ref{UInt64}, key::Symbol; kvs...)
+        if prof === nothing && !_input_ui_hit_stream_logs()
+            return
+        end
         t1 = time_ns()
         dt = (t1 - t_blk[]) / 1e6
         t_blk[] = t1
@@ -238,6 +248,9 @@ module InputModule
     end
 
     function _input_ui_hit_span!(prof, t0::UInt64, key::Symbol; kvs...)
+        if prof === nothing && !_input_ui_hit_stream_logs()
+            return
+        end
         dt = (time_ns() - t0) / 1e6
         if prof !== nothing
             JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
@@ -252,13 +265,62 @@ module InputModule
         return
     end
 
+    # Reused hit-test buffers: rebuilding these per mouse event with
+    # filter/reverse/sort/vcat was allocating several KB per event (mouse motion
+    # happens every frame), creating GC pressure that shows up as frame dips.
+    const _hitTestCandidates = Any[]
+    const _inactiveCanvasChildren = Set{Any}()
+
+    # Build the layer-descending hit-test candidate list into the reused
+    # buffers, paring out elements that can never receive input (inactive,
+    # ignoring input, spriteless entities, children of inactive canvases) so
+    # they are neither sorted nor iterated.
+    # Elements are pushed in reverse scene order to preserve the previous
+    # reverse + stable-sort tie-break (later elements win within a layer).
+    function _build_hit_test_candidates!()
+        empty!(_inactiveCanvasChildren)
+        uiElements = MAIN.scene.uiElements
+        for ui in uiElements
+            if isa(ui, JulGame.ICanvas) && !ui.isActive
+                for child in ui.children
+                    push!(_inactiveCanvasChildren, child)
+                end
+            end
+        end
+
+        candidates = _hitTestCandidates
+        empty!(candidates)
+        for i in length(uiElements):-1:1
+            ui = uiElements[i]
+            if ui.isActive && !(ui in _inactiveCanvasChildren)
+                push!(candidates, ui)
+            end
+        end
+        nUI = length(candidates)
+        sort!(view(candidates, 1:nUI), by = uiElement -> uiElement.layer, rev = true)
+
+        entities = MAIN.scene.entities
+        for i in length(entities):-1:1
+            entity = entities[i]
+            if entity.isActive && !entity.ignoreInputEvents &&
+               entity.sprite !== nothing && entity.sprite !== C_NULL &&
+               !(entity in _inactiveCanvasChildren)
+                push!(candidates, entity)
+            end
+        end
+        if length(candidates) > nUI
+            sort!(view(candidates, nUI+1:length(candidates)), by = entity -> entity.sprite.layer, rev = true)
+        end
+        return candidates, nUI
+    end
+
     function poll_input(this::Input)
         prof = _input_latency_profiler()
         t0 = Ref(time_ns())
 
-        this.buttonsPressedDown = []
-        this.mouseButtonsPressedDown = []
-        this.mouseButtonsReleased = []  # Clear the released buttons each frame
+        empty!(this.buttonsPressedDown)
+        empty!(this.mouseButtonsPressedDown)
+        empty!(this.mouseButtonsReleased)  # Clear the released buttons each frame
         this.didMouseEventOccur = false
         this.didMouseMotionOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
@@ -280,14 +342,21 @@ module InputModule
                 _refresh_logical_mouse!(this, evt)
                 if evt.type == SDL2.SDL_MOUSEMOTION
                     coalesce_ref = Ref{SDL2.SDL_Event}()
+                    lastMotionEvent = nothing
                     while Bool(SDL2.SDL_PollEvent(coalesce_ref))
                         e2 = coalesce_ref[]
                         if e2.type == SDL2.SDL_MOUSEMOTION
-                            _refresh_logical_mouse!(this, e2)
+                            lastMotionEvent = e2
                             this.didMouseMotionOccur = true
                         else
                             push!(this.pending_sdl_events, e2)
                         end
+                    end
+                    # Refresh once for the newest motion; the intermediate
+                    # positions were overwritten anyway and the refresh does
+                    # window-size + letterbox math per call
+                    if lastMotionEvent !== nothing
+                        _refresh_logical_mouse!(this, lastMotionEvent)
                     end
                 end
             end
@@ -361,21 +430,11 @@ module InputModule
                     end
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_camera_ok)
 
-                    canvases = filter(x -> isa(x, JulGame.ICanvas), MAIN.scene.uiElements)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_canvases = length(canvases))
-
-                    # Use cached layer order instead of sorting every mouse event
-                    # This avoids expensive allocations (reverse, sort, filter, vcat) on every input event
-                    #elementsOrderedByLayerDescending = JulGame.MainLoopModule.get_input_layer_order(MAIN)
-                                        # uiElementsOrderedByLayerDescending = sort(reverse(allUIElements), by = uiElement -> uiElement.layer, rev = true)
-
-                    uiElementsOrderedByLayerDescending = sort(reverse(MAIN.scene.uiElements), by = uiElement -> uiElement.layer, rev = true)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = length(uiElementsOrderedByLayerDescending))
-
-                    entitiesWithSpritesOrderedByLayerDescending = sort(reverse(filter(entity -> entity.sprite !== nothing && entity.sprite !== C_NULL, MAIN.scene.entities)), by = entity -> entity.sprite.layer, rev = true)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(entitiesWithSpritesOrderedByLayerDescending), n_entities = length(MAIN.scene.entities))
-
-                    elementsOrderedByLayerDescending = vcat(uiElementsOrderedByLayerDescending, entitiesWithSpritesOrderedByLayerDescending)
+                    # Pared + sorted into reused buffers; see _build_hit_test_candidates!
+                    elementsOrderedByLayerDescending, nUICandidates = _build_hit_test_candidates!()
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_hidden = length(_inactiveCanvasChildren))
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = nUICandidates)
+                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(elementsOrderedByLayerDescending) - nUICandidates, n_entities = length(MAIN.scene.entities))
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
 
                     # TODO: add rest of entities without sprites in default order
@@ -398,14 +457,11 @@ module InputModule
                         if skipElement
                             n_skipped_inactive += 1
                         end
-                        if !skipElement
-                            for canvas in canvases
-                                if element in canvas.children && !canvas.isActive
-                                    skipElement = true
-                                    n_skipped_canvas += 1
-                                    break
-                                end
-                            end
+                        # Re-check here (despite build-time paring) because a click
+                        # handler earlier in this loop can deactivate a canvas
+                        if !skipElement && element in _inactiveCanvasChildren
+                            skipElement = true
+                            n_skipped_canvas += 1
                         end
                         if isa(element, JulGame.IEntity) && element.ignoreInputEvents
                             skipElement = true
@@ -616,8 +672,12 @@ module InputModule
                 JulGame.IS_DEBUG = !JulGame.IS_DEBUG
             end
 
-            keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
-            handle_key_event(this, keyboardState)
+            # Keyboard state only changes on key events; scanning ~300 scancodes
+            # for every mouse-motion event was wasted work
+            if evt.type == SDL2.SDL_KEYDOWN || evt.type == SDL2.SDL_KEYUP
+                keyboardState = unsafe_wrap(Array, SDL2.SDL_GetKeyboardState(C_NULL), 300; own = false)
+                handle_key_event(this, keyboardState)
+            end
 
             _input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
         end
@@ -694,10 +754,10 @@ module InputModule
         count = 1
         for scanCode in this.scanCodes
             button = scanCode[2]
-            if check_scan_code(this, keyboardState, 1, [scanCode[1]]) && !(button in this.buttonsHeldDown)
+            if check_scan_code(this, keyboardState, 1, (scanCode[1],)) && !(button in this.buttonsHeldDown)
                 push!(buttonsPressedDown, button)
                 push!(this.buttonsHeldDown, button)
-            elseif check_scan_code(this, keyboardState, 0, [scanCode[1]])
+            elseif check_scan_code(this, keyboardState, 0, (scanCode[1],))
                 if button in this.buttonsHeldDown
                     deleteat!(this.buttonsHeldDown, findfirst(x -> x == button, this.buttonsHeldDown))
                 end

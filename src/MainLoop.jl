@@ -437,7 +437,7 @@ module MainLoopModule
     function initialize_new_scene(this::MainLoop)
 		@debug "Initializing new scene"
 		@debug "Deserializing and building scene"
-        SceneBuilderModule.deserialize_and_build_scene(this.level)
+        @timev "Deserializing and building scene: $(this.level.scene)" SceneBuilderModule.deserialize_and_build_scene(this.level)
 
         initialize_scripts_and_components()
         
@@ -915,6 +915,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		return
 	end
 	try
+			# Upload any effect textures finished by the async prewarm worker
+			if !JulGame.IS_EDITOR
+				Component.SpriteModule.pump_effect_prewarm!()
+			end
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
 
