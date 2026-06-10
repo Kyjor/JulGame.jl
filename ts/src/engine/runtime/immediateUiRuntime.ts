@@ -11,6 +11,7 @@ type ImmediateCacheEntry = {
 };
 
 type ImmediateOpts = {
+    text?: string;
     fontSize?: number;
     anchor?: string;
     anchorOffset?: { x: number; y: number };
@@ -36,8 +37,95 @@ type ImmediateOpts = {
 };
 
 const cache = new Map<string, ImmediateCacheEntry>();
+/** Last `JulGame.FrameCount` when an immediate component was created/updated. */
+const frameCounts = new Map<string, number>();
+/** Last SDL tick (ms) when an immediate component was created/updated. */
+const timestamps = new Map<string, number>();
 
-export const INFINITE_LIFETIME = -1;
+/** Remove when not updated within 2 frames (Julia `DEFAULT_LIFETIME`). */
+export const DEFAULT_LIFETIME = -1;
+/** Never expire (Julia `INFINITE_LIFETIME`). */
+export const INFINITE_LIFETIME = -2;
+
+const DEFAULT_IMMEDIATE_FONT = "Century-Normal.ttf";
+
+function currentFrameCount(): number {
+    return (globalThis as { JulGame?: { FrameCount?: number } }).JulGame?.FrameCount ?? 0;
+}
+
+function currentTicks(): number {
+    const api = (globalThis as { JulGameSdl?: { glue_SDL_GetTicks?: () => number } }).JulGameSdl;
+    return api?.glue_SDL_GetTicks?.() ?? performance.now();
+}
+
+function touchImmediateComponent(compositeId: string): void {
+    frameCounts.set(compositeId, currentFrameCount());
+    timestamps.set(compositeId, currentTicks());
+}
+
+function removeFromScene(el: unknown): void {
+    const list = sceneUiElements();
+    const idx = list.indexOf(el);
+    if (idx >= 0) {
+        list.splice(idx, 1);
+    }
+}
+
+export function removeImmediateComponent(compositeId: string): void {
+    const entry = cache.get(compositeId);
+    if (!entry) {
+        return;
+    }
+    entry.element.isActive = false;
+    removeFromScene(entry.element);
+    cache.delete(compositeId);
+    frameCounts.delete(compositeId);
+    timestamps.delete(compositeId);
+}
+
+/**
+ * Expire immediate UI not touched recently. Julia `manage_all_immediate_components` cleanup pass.
+ * Call once per frame before the UI draw pass.
+ */
+export function manageAllImmediateComponents(): void {
+    const frameCount = currentFrameCount();
+    const now = currentTicks();
+    const expired: string[] = [];
+
+    for (const [compositeId, entry] of cache) {
+        const { element, lifetime } = entry;
+        if (lifetime === INFINITE_LIFETIME) {
+            continue;
+        }
+        if (lifetime === DEFAULT_LIFETIME) {
+            const lastFrame = frameCounts.get(compositeId);
+            if (lastFrame === undefined || Math.abs(lastFrame - frameCount) > 2) {
+                expired.push(compositeId);
+            }
+            continue;
+        }
+        if (lifetime >= 0) {
+            const last = timestamps.get(compositeId);
+            if (last === undefined || now - last > lifetime) {
+                expired.push(compositeId);
+            }
+            continue;
+        }
+        if (!element.isActive) {
+            expired.push(compositeId);
+        }
+    }
+
+    for (const id of expired) {
+        removeImmediateComponent(id);
+    }
+}
+
+export function cleanupAllImmediateComponents(): void {
+    for (const compositeId of [...cache.keys()]) {
+        removeImmediateComponent(compositeId);
+    }
+}
 
 function sceneUiElements(): unknown[] {
     const scene = (globalThis as { MAIN?: { scene?: { uiElements?: unknown[] } } }).MAIN?.scene;
@@ -121,24 +209,78 @@ function wireHover(el: JulGameUiElement, opts: ImmediateOpts): void {
     }
 }
 
-function immediateText(id: string, text: string, opts: ImmediateOpts = {}): TextBoxElement {
-    const compositeId = `text_${id}`;
+function parseImmediateTextArgs(
+    id: string,
+    text: string,
+    third?: unknown,
+    ...rest: unknown[]
+): { id: string; text: string; opts: ImmediateOpts } {
+    const opts: ImmediateOpts = {};
+    const tail = third !== undefined ? [third, ...rest] : [];
+    if (tail.length === 1 && isImmediateOptsObject(tail[0])) {
+        Object.assign(opts, tail[0]);
+        return { id, text, opts };
+    }
+    if (tail.length > 0) {
+        const [fontSize, anchor, anchorOffset, color, layer, parent] = tail;
+        if (typeof fontSize === "number") {
+            opts.fontSize = fontSize;
+        }
+        if (typeof anchor === "string") {
+            opts.anchor = anchor;
+        }
+        if (anchorOffset && typeof anchorOffset === "object") {
+            opts.anchorOffset = {
+                x: Number((anchorOffset as { x?: number }).x ?? 0),
+                y: Number((anchorOffset as { y?: number }).y ?? 0),
+            };
+        }
+        if (Array.isArray(color) && color.length >= 4) {
+            opts.color = [
+                Number(color[0]),
+                Number(color[1]),
+                Number(color[2]),
+                Number(color[3]),
+            ];
+        }
+        if (typeof layer === "number") {
+            opts.layer = layer;
+        }
+        if (parent !== undefined) {
+            opts.parent = parent;
+        }
+    }
+    return { id, text, opts };
+}
+
+function immediateText(id: string, text: string, opts: ImmediateOpts = {}): TextBoxElement;
+function immediateText(id: string, text: string, third: unknown, ...rest: unknown[]): TextBoxElement;
+function immediateText(id: string, text: string, third?: unknown, ...rest: unknown[]): TextBoxElement {
+    const parsed =
+        third !== undefined && (rest.length > 0 || isImmediateOptsObject(third))
+            ? parseImmediateTextArgs(id, text, third, ...rest)
+            : { id, text, opts: (third as ImmediateOpts | undefined) ?? {} };
+    const resolvedId = parsed.id;
+    const resolvedText = parsed.text;
+    const opts = parsed.opts;
+    const compositeId = `text_${resolvedId}`;
     const cached = cache.get(compositeId);
     if (cached?.element.type === "TextBox") {
         const el = cached.element as TextBoxElement;
-        applyTextOpts(el, opts, text);
+        applyTextOpts(el, opts, resolvedText);
         wireClick(el, opts);
         wireHover(el, opts);
+        touchImmediateComponent(compositeId);
         return el;
     }
     const el = hydrateTextBoxFromJson({
         id: compositeId,
-        name: id,
-        text,
+        name: resolvedId,
+        text: resolvedText,
         fontSize: opts.fontSize ?? 24,
         anchor: opts.anchor ?? "none",
         anchorOffset: opts.anchorOffset ?? { x: 0, y: 0 },
-        fontPath: opts.fontPath ?? "",
+        fontPath: opts.fontPath ?? DEFAULT_IMMEDIATE_FONT,
         color: opts.color ?? [255, 255, 255, 255],
         layer: opts.layer ?? 0,
         isActive: opts.isActive ?? true,
@@ -148,7 +290,9 @@ function immediateText(id: string, text: string, opts: ImmediateOpts = {}): Text
     });
     wireClick(el, opts);
     wireHover(el, opts);
-    cache.set(compositeId, { element: el, lifetime: opts.lifetime ?? 60 });
+    const lifetime = opts.lifetime ?? DEFAULT_LIFETIME;
+    cache.set(compositeId, { element: el, lifetime });
+    touchImmediateComponent(compositeId);
     ensureInScene(el);
     return el;
 }
@@ -180,7 +324,9 @@ function immediateImage(id: string, path: string, opts: ImmediateOpts = {}): UiI
     });
     wireClick(el, opts);
     wireHover(el, opts);
-    cache.set(compositeId, { element: el, lifetime: opts.lifetime ?? 60 });
+    const lifetime = opts.lifetime ?? DEFAULT_LIFETIME;
+    cache.set(compositeId, { element: el, lifetime });
+    touchImmediateComponent(compositeId);
     ensureInScene(el);
     return el;
 }
@@ -193,15 +339,125 @@ function immediateRect(id: string, opts: ImmediateOpts = {}): UiImageElement {
     });
 }
 
+function isImmediateOptsObject(value: unknown): value is ImmediateOpts {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return false;
+    }
+    const o = value as Record<string, unknown>;
+    return (
+        "text" in o ||
+        "fontSize" in o ||
+        "anchor" in o ||
+        "anchorOffset" in o ||
+        "size" in o ||
+        "layer" in o ||
+        "parent" in o ||
+        "color" in o
+    );
+}
+
+function parseSize(value: unknown): { x: number; y: number } | undefined {
+    if (!value || typeof value !== "object") {
+        return undefined;
+    }
+    const o = value as { x?: number; y?: number };
+    if (typeof o.x === "number" && typeof o.y === "number") {
+        return { x: o.x, y: o.y };
+    }
+    return undefined;
+}
+
+/** Julia `immediate_button` — clickable panel + centered label (stripped ScreenButton stand-in). */
+function immediateButton(
+    id: string,
+    clickEvent?: (() => void) | null,
+    third?: unknown,
+    ...rest: unknown[]
+): UiImageElement {
+    const opts: ImmediateOpts = {};
+    if (typeof clickEvent === "function") {
+        opts.clickEvent = clickEvent;
+    }
+
+    const tail = third !== undefined ? [third, ...rest] : [];
+    if (tail.length === 1 && isImmediateOptsObject(tail[0])) {
+        Object.assign(opts, tail[0]);
+    } else if (tail.length > 0) {
+        const [text, fontSize, size, anchor, anchorOffset, color, layer, parent] = tail;
+        if (typeof text === "string") {
+            opts.text = text;
+        }
+        if (typeof fontSize === "number") {
+            opts.fontSize = fontSize;
+        }
+        const parsedSize = parseSize(size);
+        if (parsedSize) {
+            opts.size = parsedSize;
+        }
+        if (typeof anchor === "string") {
+            opts.anchor = anchor;
+        }
+        if (anchorOffset && typeof anchorOffset === "object") {
+            opts.anchorOffset = {
+                x: Number((anchorOffset as { x?: number }).x ?? 0),
+                y: Number((anchorOffset as { y?: number }).y ?? 0),
+            };
+        }
+        if (Array.isArray(color) && color.length >= 4) {
+            opts.color = [
+                Number(color[0]),
+                Number(color[1]),
+                Number(color[2]),
+                Number(color[3]),
+            ];
+        }
+        if (typeof layer === "number") {
+            opts.layer = layer;
+        }
+        if (parent !== undefined) {
+            opts.parent = parent;
+        }
+    }
+
+    const button = immediateImage(id, "ui-newgamebox-0000.png", {
+        ...opts,
+        size: opts.size ?? { x: 200, y: 60 },
+        forceClickCheck: opts.forceClickCheck ?? true,
+    });
+
+    const label = opts.text ?? "";
+    if (label.length > 0) {
+        immediateText(`${id}_label`, label, {
+            fontSize: opts.fontSize ?? 24,
+            anchor: "center",
+            color: [255, 255, 255, 255],
+            layer: (opts.layer ?? 0) + 1,
+            parent: button,
+            isActive: opts.isActive,
+            persistentBetweenScenes: opts.persistentBetweenScenes,
+        });
+    }
+
+    return button;
+}
+
 export function installImmediateUi(jg: Record<string, unknown>): void {
     jg.ImmediateUIModule = {
+        DEFAULT_LIFETIME,
         INFINITE_LIFETIME,
         immediate_text: immediateText,
         immediate_image: immediateImage,
         immediate_rect: immediateRect,
+        immediate_button: immediateButton,
+        manage_all_immediate_components: manageAllImmediateComponents,
+        cleanup_all_immediate_components: cleanupAllImmediateComponents,
+        remove_immediate_component: removeImmediateComponent,
     };
 }
 
 export function clearImmediateUiCache(): void {
+    cleanupAllImmediateComponents();
     cache.clear();
+    frameCounts.clear();
+    timestamps.clear();
 }

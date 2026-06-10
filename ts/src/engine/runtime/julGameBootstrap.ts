@@ -9,6 +9,9 @@ import { add_velocity, Component_get_velocity, Component_update as rigidbodyUpda
 import { Component_flip } from "../../../_generated/src/engine/Component/Sprite";
 import {
     Component_load_sound,
+    Component_play,
+    Component_set_volume,
+    Component_stop_music,
     Component_toggle_sound,
     InternalSoundSource,
 } from "../../../_generated/src/engine/Component/SoundSource";
@@ -25,16 +28,54 @@ import {
     UI_align_to_anchor,
     UI_set_color,
 } from "../../../_generated/src/engine/UI/UIElement";
-import { clamp, haskey, joinpath, time_ns } from "../core/juliaHelpers";
+import { UI_initialize_UIImage, type UiImageElement } from "../../../_generated/src/engine/UI/UIImage";
+import {
+    clamp,
+    collect,
+    dirname,
+    filter,
+    get,
+    haskey,
+    hasproperty,
+    isdir,
+    isfile,
+    joinpath,
+    lowercase,
+    mkpath,
+    mod,
+    objectid,
+    replace,
+    split,
+    startswith,
+    strip,
+    time_ns,
+    uppercase,
+} from "../core/juliaHelpers";
 import { wireSceneApi } from "./scriptLoader";
 
 /** Julia builtins referenced as bare identifiers in transpiled game scripts. */
 function installJuliaBuiltins(jg: Record<string, unknown>): void {
     const g = globalThis as Record<string, unknown>;
     g.clamp = clamp;
+    g.collect = collect;
+    g.dirname = dirname;
+    g.filter = filter;
+    g.get = get;
     g.haskey = haskey;
+    g.hasproperty = hasproperty;
+    g.isdir = isdir;
+    g.isfile = isfile;
     g.joinpath = joinpath;
+    g.lowercase = lowercase;
+    g.mkpath = mkpath;
+    g.mod = mod;
+    g.objectid = objectid;
+    g.replace = replace;
+    g.split = split;
+    g.startswith = startswith;
+    g.strip = strip;
     g.time_ns = time_ns;
+    g.uppercase = uppercase;
     g.isempty = (value: unknown): boolean => {
         if (value == null) {
             return true;
@@ -50,8 +91,18 @@ function installJuliaBuiltins(jg: Record<string, unknown>): void {
         }
         return false;
     };
-    g.uppercase = (value: unknown): string => String(value).toUpperCase();
     jg.clamp = clamp;
+}
+
+/** Julia `UIImage` — duck-type `instanceof` for stripped immediate UI images (`type === "UIImage"`). */
+class UIImage {
+    static [Symbol.hasInstance](value: unknown): boolean {
+        return (
+            value != null &&
+            typeof value === "object" &&
+            (value as { type?: string }).type === "UIImage"
+        );
+    }
 }
 
 /**
@@ -80,6 +131,20 @@ export function bootstrapJulGameSdl(
 
     root.JulGameSdl = api;
     const jg = (root.JulGame ??= {}) as Record<string, unknown>;
+
+    /** Julia `ENV` — merge with values set earlier (e.g. `battlerBootstrap` / Vite). */
+    const envDefaults: Record<string, string> = {
+        TEST_MODE: "false",
+        BUILD_MODE_TEST: "false",
+        ANALYTICS_ENABLED: "",
+        SKIP: "false",
+        SCENE: "title_scene.json",
+        PROFILE: "0",
+        SKIP_PRECOMPILE: "false",
+        ALWAYS_PRECOMPILE: "true",
+        SHOULD_BUILD: "false",
+    };
+    jg.ENV = { ...envDefaults, ...(jg.ENV as Record<string, string> | undefined) };
 
     jg.generate_uuid = () => {
         if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -187,6 +252,9 @@ export function bootstrapJulGameSdl(
         check_collisions: Component_check_collisions,
         toggle_sound: Component_toggle_sound,
         load_sound: Component_load_sound,
+        set_volume: Component_set_volume,
+        play: Component_play,
+        stop_music: Component_stop_music,
         flip: Component_flip,
         unload_sound: (_source: unknown) => {
             /* stripped WASM: no-op until sound unload is wired */
@@ -237,6 +305,17 @@ export function bootstrapJulGameSdl(
         add_click_event: UI_add_click_event,
         add_hover_enter_event: UI_add_hover_enter_event,
         add_hover_exit_event: UI_add_hover_exit_event,
+        initialize: (el: UiImageElement) => {
+            if (el?.type === "UIImage") {
+                UI_initialize_UIImage(api, el);
+            }
+        },
+        UIImageModule: {
+            UIImage,
+            update_effects: (_el: unknown) => {
+                /* stripped WASM: effect bake noop until EffectRenderer wired */
+            },
+        },
     };
     installImmediateUi(jg);
 }

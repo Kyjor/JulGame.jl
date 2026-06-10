@@ -1,4 +1,4 @@
-import type { Entity } from "../../../_generated/src/engine/Entity";
+import { Entity } from "../../../_generated/src/engine/Entity";
 import { Component_destroy } from "../../../_generated/src/engine/Component/Sprite";
 import { Component_unload_sound } from "../../../_generated/src/engine/Component/SoundSource";
 import {
@@ -134,6 +134,22 @@ export function shutdownAllScripts(entities: Entity[]): void {
 }
 
 /** Minimal `JulGame.destroy_entity` for game scripts. */
+/** Port of `JulGame.create_entity` — add a runtime-spawned entity to the active scene. */
+export function createEntity(entity: Entity): Entity {
+    const main = (globalThis as unknown as {
+        MAIN: { scene: { entities: Entity[]; colliders: unknown[]; rigidbodies: unknown[] } };
+    }).MAIN;
+    const scene = main.scene;
+    scene.entities.push(entity);
+    if (entity.rigidbody) {
+        scene.rigidbodies.push(entity.rigidbody);
+    }
+    if (entity.collider) {
+        scene.colliders.push(entity.collider);
+    }
+    return entity;
+}
+
 export function destroyEntity(entity: Entity): void {
     const main = (globalThis as unknown as { MAIN: { scene: { entities: Entity[]; colliders: unknown[]; rigidbodies: unknown[] } } }).MAIN;
     const scene = main.scene;
@@ -165,6 +181,11 @@ export function destroyEntity(entity: Entity): void {
 }
 
 export function wireSceneApi(jg: Record<string, unknown>): void {
+    jg.EntityModule = {
+        /** Julia `EntityModule.Entity(name)` — callable without `new`. */
+        Entity: (name = "New entity") => new Entity(name),
+    };
+    jg.create_entity = (entity: Entity) => createEntity(entity);
     jg.SceneModule = {
         get_entity_by_id: (sceneOrId: unknown, id?: string) => get_entity_by_id(sceneOrId as never, id),
         get_entity_by_name: (sceneOrName: unknown, name?: string) =>

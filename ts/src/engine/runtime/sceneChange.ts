@@ -1,6 +1,7 @@
 import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import type { Entity } from "../../../_generated/src/engine/Entity";
+import { cleanupAllImmediateComponents } from "./immediateUiRuntime";
 import { cleanupCoroutines } from "./coroutineRuntime";
 import { playSceneMusic, playSoundsOnStart, reloadEntitySounds } from "./memfsAudio";
 import { clearUiImageTextureCache } from "../../../_generated/src/engine/UI/UIImage";
@@ -38,6 +39,7 @@ export function installStrippedSceneRuntime(config: StrippedSceneRuntime): void 
     main.shouldChangeScene = false;
     const jg = (globalThis as unknown as { JulGame: Record<string, unknown> }).JulGame;
     jg.change_scene = requestChangeScene;
+    jg.emscriptenModule = config.emscriptenModule;
 }
 
 /** Port of `JulGame.change_scene` — sync teardown; load happens on next frame(s). */
@@ -57,6 +59,7 @@ export function requestChangeScene(sceneFileName: string): void {
 
     teardownForSceneChange(main.scene);
     purgeUnusedTextureCache(runtime.api, main.scene);
+    cleanupAllImmediateComponents();
     cleanupCoroutines();
     clearUiTextTextureCache(runtime.api);
     clearUiImageTextureCache(runtime.api);

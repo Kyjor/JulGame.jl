@@ -5,6 +5,7 @@ import { Component_update as rigidbodyUpdate } from "../../../_generated/src/eng
 import { Component_draw } from "../../../_generated/src/engine/Component/Sprite";
 import { JulGame_update } from "../../../_generated/src/engine/Entity";
 import { tickCoroutines } from "./coroutineRuntime";
+import { manageAllImmediateComponents } from "./immediateUiRuntime";
 import { flushUiDrawProfile } from "./uiDrawProfile";
 import { initializeSceneUi, renderSceneUi, type UiDrawStats } from "./uiRender";
 import type { TranspiledInput } from "./transpiledInput";
@@ -206,6 +207,7 @@ export function runGameFrame(editorMode = false): void {
     if (g.__JULGAME_PROFILE_UI_DRAW !== false) {
         g.__JULGAME_PROFILE_UI_DRAW = true;
     }
+    manageAllImmediateComponents();
     if (scene.uiElements?.length) {
         const sdlApi = api as JulGameSdlApi;
         if (!sceneUiInitialized) {

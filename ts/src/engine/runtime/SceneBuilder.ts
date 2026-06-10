@@ -10,6 +10,7 @@ import {
 import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
+import { flushPendingImageFetches } from "./memfsImage";
 import { commaSeparatedAssetPath, normalizeAssetPath, resolveSpritePixelsPerUnit } from "./projectConfig";
 import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
@@ -207,6 +208,14 @@ function collectSceneAssetPaths(json: SceneJson): {
     }
     for (const p of getScriptSoundPaths()) {
         soundPaths.add(p);
+    }
+    const jg = (globalThis as { JulGame?: { getExtraSceneImagePaths?: () => string[] } }).JulGame;
+    if (typeof jg?.getExtraSceneImagePaths === "function") {
+        for (const p of jg.getExtraSceneImagePaths()) {
+            if (p) {
+                imagePaths.add(p);
+            }
+        }
     }
     return { imagePaths, soundPaths, fontPaths };
 }
@@ -424,8 +433,10 @@ export async function applyStrippedSceneData(
     const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
     if (jg) {
         jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
+        jg.emscriptenModule = emscriptenModule;
     }
     await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, fontPaths, opts.memfsAssetBaseUrl);
+    flushPendingImageFetches();
 
     scene.entities = [];
     scene.uiElements = [];
@@ -524,8 +535,10 @@ export async function mergeStrippedSceneData(
     const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
     if (jg) {
         jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
+        jg.emscriptenModule = emscriptenModule;
     }
     await syncAssetsToMemfs(emscriptenModule, imagePaths, soundPaths, fontPaths, opts.memfsAssetBaseUrl);
+    flushPendingImageFetches();
 
     const existingEntityIds = new Set(scene.entities.map((e) => String((e as Entity).id)));
     const existingUiIds = new Set(scene.uiElements.map((u) => String((u as SceneTextBox).id)));

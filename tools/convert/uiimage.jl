@@ -7,6 +7,7 @@ end
 function postprocess_uiimage_ts(_data::AbstractString)::String
     return """
 import type { JulGameSdlApi } from "../../../../src/platform/sdl-wasm/SDLBridge";
+import { scheduleImageFetch } from "../../../../src/engine/runtime/memfsImage";
 import { normalizeAssetPath } from "../../../../src/engine/runtime/projectConfig";
 import type { UiProfiledElement } from "../../../../src/engine/runtime/uiDrawProfile";
 import { UI_align_to_anchor } from "./UIElement";
@@ -56,9 +57,12 @@ export function loadUiTextureFromPath(api: JulGameSdlApi, imagePath: string): nu
         return cached;
     }
     const fullPath = "/game/assets/images/" + imagePath;
-    const surface = api.glue_IMG_Load(fullPath);
+    let surface = api.glue_IMG_Load(fullPath);
     if (!surface) {
-        console.warn("UIImage: failed to load " + fullPath);
+        scheduleImageFetch(imagePath);
+        surface = api.glue_IMG_Load(fullPath);
+    }
+    if (!surface) {
         return null;
     }
     const tex = api.glue_SDL_CreateTextureFromSurface(0, surface);

@@ -528,11 +528,20 @@ function replace_int32_round(s::AbstractString)::String
     return String(take!(out))
 end
 
+"""Strip trailing `//` comments before kwargs-context heuristics."""
+function strip_ts_line_comment(line::AbstractString)::String
+    s = strip(String(line))
+    m = match(r"^(.*?)(?:\s*//.*)?$", s)
+    return m === nothing ? s : strip(m.captures[1])
+end
+
 """True when the previous line opens or continues a kwargs/object-literal block."""
 function in_kwargs_context(prev::AbstractString)::Bool
     isempty(prev) && return false
-    endswith(prev, ",") && return true
-    return occursin(r",\s*\{?\s*$", prev)
+    bare = strip_ts_line_comment(prev)
+    isempty(bare) && return false
+    endswith(bare, ",") && return true
+    return occursin(r",\s*\{?\s*$", bare)
 end
 
 """Undo `let key = expr` mistakenly emitted inside object-literal kwargs."""
@@ -549,6 +558,30 @@ function relabel_let_as_kwargs_in_objects(s::AbstractString)::String
         end
     end
     return join(out, '\n')
+end
+
+"""RHS looks like a TS field type (`characters: unknown[]`), not a statement assignment."""
+function is_type_annotation_rhs(rhs::AbstractString)::Bool
+    bare = strip_ts_line_comment(rhs)
+    bare in ("string", "number", "boolean", "unknown", "any", "void") && return true
+    match(r"^(string|number|boolean|unknown|any)\[\]$", bare) !== nothing && return true
+    startswith(bare, "Record<") && return true
+    occursin(" | ", bare) && return true
+    return false
+end
+
+"""RHS is an expression assignment (`tr = td[key]`), not an object-literal value or `any[]` type."""
+function looks_like_statement_assignment(rhs::AbstractString)::Bool
+    bare = strip_ts_line_comment(rhs)
+    isempty(bare) && return false
+    is_type_annotation_rhs(bare) && return false
+    startswith(bare, "self.") && return true
+    startswith(bare, "globals.") && return true
+    startswith(bare, "(globalThis") && return true
+    startswith(bare, "new ") && return true
+    occursin(r"^\w+\[[^\]]+\]", bare) && return true
+    occursin(r"^\w+\(", bare) && return true
+    return false
 end
 
 """Restore `let x = expr` after kwargs pass wrongly lowered standalone locals to `x: expr`."""
@@ -575,12 +608,23 @@ function restore_wrongly_labeled_locals(s::AbstractString)::String
                 push!(out, line)
                 continue
             end
+            if !in_kwargs && (occursin(r"^[\"'`]", val) || occursin(r"^\d", val))
+                push!(out, "$(m.captures[1])let $(m.captures[2]) = $(m.captures[3])")
+                continue
+            end
             rhs = val
             if startswith(rhs, "globals.") ||
                startswith(rhs, "self.") ||
                startswith(rhs, "(globalThis as any)") ||
                occursin(r"^\(\)\s*=>", rhs) ||
-               occursin(r"^\w+\(", rhs)
+               occursin(r"^\w+\(", rhs) ||
+               (occursin(r"^\w+\[[^\]]+\]", rhs) && !is_type_annotation_rhs(rhs))
+                push!(out, "$(m.captures[1])let $(m.captures[2]) = $(m.captures[3])")
+                continue
+            end
+            if !in_kwargs &&
+               looks_like_statement_assignment(rhs) &&
+               !is_type_annotation_rhs(rhs)
                 push!(out, "$(m.captures[1])let $(m.captures[2]) = $(m.captures[3])")
                 continue
             end
@@ -671,6 +715,14 @@ function fix_julia_file_io_residuals(s::AbstractString)::String
         r"open\(([^,]+), \"([^\"]+)\"\) do \w+\n\s+JSON3\.write\(\w+, ([^\)]+)\)\n\s+\}" =>
             s"(globalThis as any).JulGame.PrefHandlerModule?.write_text?.(\1, JSON.stringify(\3))",
     )
+    # `Dict{...}(... for (k,v) in pairs(data))` after JSON.parse often transpiles to `{}`
+    s = replace(
+        s,
+        Regex(
+            "(const data = JSON\\.parse\\([^\\n]+\\)[^\\n]*\\n\\s*// Convert symbol keys to strings\\n\\s*)(\\w+\\.\\w+) = \\{\\}",
+        ) =>
+            s"\1\2 = Object.fromEntries(Object.entries(data).map(([k, v]) => [String(k), Boolean(v)]))",
+    )
     return s
 end
 
@@ -713,7 +765,11 @@ function fix_julia_typescript_residual_syntax(s::AbstractString)::String
     s = replace(s, r": null \| Function\b" => ": (() => void) | null")
     s = replace(s, r": Function\b" => ": () => void")
     s = replace(s, r"\bstartswith\((\w+),\s*(\w+)\)" => s"\1.startsWith(\2)")
-    s = replace(s, r"get\(ENV,\s*\"([^\"]+)\",\s*\"([^\"]*)\"\)" => s"\"\2\"")
+    s = replace(
+        s,
+        r"get\(ENV,\s*\"([^\"]+)\",\s*\"([^\"]*)\"\)" =>
+            s"get((globalThis as any).JulGame.ENV, \"\1\", \"\2\")",
+    )
     s = replace(s, r"([\d.]+)f0\b" => s"\1")
     s = replace(s, r": UIElement\[\]" => ": any[]")
     s = replace(s, r": null \| UIElement\b" => ": any")
@@ -832,6 +888,7 @@ function fix_julia_typescript_residual_syntax(s::AbstractString)::String
     s = replace(s, r"(\n\s+)let (\w+) = (\w+),\n" => s"\1\2: \3,\n")
     s = replace(s, r"(\n\s+)let (\w+) = (\{[^}]+\}),\n" => s"\1\2: \3,\n")
     s = restore_wrongly_labeled_locals(s)
+    s = add_let_after_continue(s)
     s = relabel_let_as_kwargs_in_objects(s)
     s = fix_julia_format_string_helper(s)
     return s
@@ -854,8 +911,21 @@ function fix_this_to_self_in_script_functions(s::AbstractString)::String
     return regex_map_replace(
         s,
         r"constructor\(\) \{([\s\S]*?)\n        \}\n    \}",
-        m -> "constructor() {" * replace(m.captures[1], "self." => "this.") * "\n        }\n    }",
+        function (m)
+            body = String(m.captures[1])
+            body = replace(body, "self." => "this.")
+            body = replace(body, "(self)" => "(this)")
+            body = replace(body, "(self," => "(this,")
+            body = replace(body, ", self)" => ", this)")
+            body = replace(body, ", self," => ", this,")
+            return "constructor() {" * body * "\n        }\n    }"
+        end,
     )
+end
+
+"""After `continue`, Julia loop locals emit as bare `x = expr` — add `let`."""
+function add_let_after_continue(s::AbstractString)::String
+    return replace(s, r"continue\n(\s+)([a-zA-Z_]\w*) = " => s"continue\n\1let \2 = ")
 end
 
 function fix_multiline_dict_literals(s::AbstractString)::String
@@ -1008,6 +1078,34 @@ function prefer_esm_import_over_scripts_registry(s::AbstractString, path_jl::Abs
     return s
 end
 
+"""Julia `using .FooModule` → qualify bare exported function calls as `FooModule.foo(...)`."""
+function qualify_esm_import_bare_calls(s::AbstractString, path_jl::AbstractString)::String
+    project_root = game_project_root_from_script(path_jl)
+    project_root === nothing && return s
+    transpile_set = get_project_transpile_set(project_root)
+    skip = skip_game_script_inline_files(path_jl)
+    base = dirname(abspath(path_jl))
+    for m in eachmatch(r"include\s*\(\s*\"([^\"]+)\"\s*\)", read(path_jl, String))
+        rel = String(m.captures[1])
+        inc_abs = abspath(isabspath(rel) ? rel : joinpath(base, rel))
+        inc_abs in transpile_set || continue
+        basename(inc_abs) in skip && continue
+        mod_name = parse_julia_module_name(read(inc_abs, String))
+        mod_name === nothing && (mod_name = splitext(basename(inc_abs))[1] * "Module")
+        for sym in parse_julia_exports(read(inc_abs, String))
+            startswith(sym, "#") && continue
+            isempty(sym) && continue
+            # Types/constants — only qualify lowercase function exports.
+            if match(r"^[A-Z_]", sym) !== nothing
+                continue
+            end
+            pat = Regex("(?<![\\w\\.])\\b" * sym * "\\s*\\(")
+            s = replace(s, pat => "$mod_name.$sym(")
+        end
+    end
+    return s
+end
+
 """Bare `FooModule.bar` from skipped/transpile includes → `(globalThis as any).JulGame.Scripts.FooModule.bar`."""
 function rewrite_external_support_module_refs(s::AbstractString, path_jl::AbstractString)::String
     imported = Set{String}()
@@ -1154,7 +1252,7 @@ function apply_generic_game_script_fixups(s::AbstractString)::String
     s = replace(s, "Object.Object.values" => "Object.values")
     s = replace(s, r"(?<!Object\.)\bvalues\(" => "Object.values(")
     # Julia 1-based indices on JS arrays (enumerate / character select fields).
-    for field in ("selectedCharacterIndex", "iconIndex")
+    for field in ("selectedCharacterIndex", "iconIndex", "current_index")
         pat_self = Regex("(\\w+)\\[self\\." * field * "\\](?!\\s*-)")
         pat_local = Regex("(\\w+)\\[" * field * "\\](?!\\s*-)")
         s = replace(s, pat_self => SubstitutionString("\\1[self.$field - 1]"))
@@ -1229,7 +1327,12 @@ function apply_game_script_fixups(
     s = replace(s, "function JulGame_initialize(self: $name" => "function $init_fn(self: $name")
     s = replace(s, "function JulGame_update(self: $name" => "function $update_fn(self: $name")
     s = replace(s, "function JulGame_on_shutdown(self: $name" => "function $shutdown_fn(self: $name")
-    if !occursin("export class $name", s) && occursin("class $name", s)
+    kind = classify_script_file(path_jl)
+    if kind == :support
+        # Support modules register types on JulGame.Scripts — keep plain `class` so
+        # `export { Foo }` + registerSupportModule match the AcknowledgmentManager pattern.
+        s = replace(s, "export class $name" => "class $name")
+    elseif !occursin("export class $name", s) && occursin("class $name", s)
         s = replace(s, "class $name" => "export class $name")
     end
     s = replace(s, r"\(globalThis as any\)\.JulGame\.Component_add_collision_event" =>
@@ -1375,22 +1478,39 @@ end
 function symbol_defined_in_ts(s::AbstractString, sym::AbstractString)::Bool
     sym = String(sym)
     occursin(Regex("export class $(sym)\\b"), s) && return true
-    occursin(Regex("(?m)^function $(sym)\\("), s) && return true
-    occursin(Regex("(?m)^async function $(sym)\\("), s) && return true
-    occursin(Regex("(?m)^const $(sym)\\b"), s) && return true
-    occursin(Regex("(?m)^class $(sym)\\b"), s) && return true
+    occursin(Regex("(?m)^\\s*export class $(sym)\\b"), s) && return true
+    occursin(Regex("(?m)^\\s*function $(sym)\\("), s) && return true
+    occursin(Regex("(?m)^\\s*async function $(sym)\\("), s) && return true
+    occursin(Regex("(?m)^\\s*const $(sym)\\b"), s) && return true
+    occursin(Regex("(?m)^\\s*class $(sym)\\b"), s) && return true
     return false
+end
+
+"""`mutable struct` / `struct` names from a Julia support module."""
+function collect_julia_type_exports(src::AbstractString)::Vector{String}
+    out = String[]
+    for m in eachmatch(r"mutable struct (\w+)", src)
+        push!(out, String(m.captures[1]))
+    end
+    for m in eachmatch(r"(?m)^\s*struct (\w+)", src)
+        push!(out, String(m.captures[1]))
+    end
+    return unique(out)
 end
 
 """Resolve TS symbols to register on JulGame.Scripts.FooModule."""
 function detect_support_module_exports(
     s::AbstractString,
     julia_exports::Vector{String},
-    name::AbstractString,
+    name::AbstractString;
+    julia_src::AbstractString = "",
 )::Vector{String}
     symbols = String[]
     for sym in julia_exports
         symbol_defined_in_ts(s, sym) && push!(symbols, sym)
+    end
+    for sym in collect_julia_type_exports(julia_src)
+        sym in symbols || push!(symbols, sym)
     end
     for m in eachmatch(r"export class (\w+)", s)
         sym = String(m.captures[1])
@@ -1499,7 +1619,7 @@ function finalize_game_script_ts(data::AbstractString, path_jl::AbstractString, 
         println(reg, "});")
     end
     if kind in (:support, :dual) && module_name !== nothing
-        exports = detect_support_module_exports(s, julia_exports, name)
+        exports = detect_support_module_exports(s, julia_exports, name; julia_src=src)
         if !isempty(exports)
             esm_exports = filter(sym -> !symbol_already_exported_in_ts(s, sym), exports)
             if !isempty(esm_exports)
@@ -1515,7 +1635,8 @@ function finalize_game_script_ts(data::AbstractString, path_jl::AbstractString, 
     if !isempty(sound_paths)
         println(reg, "registerScriptSounds([$(join(map(p -> "\"$p\"", sound_paths), ", "))]);")
     end
-    return prefer_esm_import_over_scripts_registry(String(take!(reg)), path_jl)
+    s = prefer_esm_import_over_scripts_registry(String(take!(reg)), path_jl)
+    return qualify_esm_import_bare_calls(s, path_jl)
 end
 
 function postprocess_game_script_ts(data::AbstractString, path_jl::AbstractString, path_ts::AbstractString)::String
@@ -1551,9 +1672,73 @@ function collect_project_script_files(project_root::AbstractString)::Vector{Stri
     return sort!(collect(out))
 end
 
+"""Julia struct ctor `this.x =` often transpiles as `self.x =` inside `constructor()` — fix TDZ/global leaks."""
+function fix_constructor_self_to_this(s::AbstractString)::String
+    out = IOBuffer()
+    in_ctor = false
+    brace_depth = 0
+    for line in split(s, '\n', keepempty=true)
+        bare = chomp(line)
+        if !in_ctor && occursin(r"^\s*constructor\s*\(", bare)
+            in_ctor = true
+            brace_depth = 0
+        end
+        if in_ctor
+            line = replace(line, r"\bself\." => "this.")
+            brace_depth += count("{", line)
+            brace_depth -= count("}", line)
+            if brace_depth <= 0 && occursin("}", bare)
+                in_ctor = false
+            end
+        end
+        print(out, line, '\n')
+    end
+    return String(take!(out))
+end
+
+"""Second `let x =` for the same name inside a while/for body → reassignment (`x =`)."""
+function fix_duplicate_let_in_loop_blocks(s::AbstractString)::String
+    out = IOBuffer()
+    loop_vars = Set{String}()
+    loop_indent = -1
+    for line in split(s, '\n', keepempty=true)
+        bare = chomp(line)
+        stripped = strip(bare)
+        indent = length(bare) - length(lstrip(bare))
+
+        if loop_indent >= 0 && indent <= loop_indent && stripped != ""
+            if stripped == "}" ||
+               (indent == loop_indent && !startswith(stripped, "while") && !startswith(stripped, "for"))
+                loop_indent = -1
+                empty!(loop_vars)
+            end
+        end
+
+        if startswith(stripped, "while ") || startswith(stripped, "for ")
+            loop_indent = indent
+            empty!(loop_vars)
+        end
+
+        let_m = match(r"^(\s+)let (\w+) = (.+)$", bare)
+        if let_m !== nothing && loop_indent >= 0 && indent > loop_indent
+            name = let_m.captures[2]
+            if name in loop_vars
+                line = "$(let_m.captures[1])$(name) = $(let_m.captures[3])"
+            else
+                push!(loop_vars, name)
+            end
+        end
+
+        print(out, line, '\n')
+    end
+    return String(take!(out))
+end
+
 """Last generic syntax pass — also run after project postprocess (project hooks may re-mangle)."""
 function finalize_transpiled_script_syntax(s::AbstractString)::String
     s = fix_julia_file_io_residuals(s)
+    s = fix_constructor_self_to_this(s)
+    s = fix_duplicate_let_in_loop_blocks(s)
     return fix_mangled_julia_function_signatures(s)
 end
 
