@@ -216,6 +216,11 @@ export function bootstrapJulGameSdl(
     scene.name = "stripped";
 
     jg.MainLoopModule = {
+        create_new_entity: (_main?: unknown) => {
+            const entity = new Entity("New entity");
+            scene.entities.push(entity);
+            return entity;
+        },
         create_new_canvas: () => {
             const canvas = {
                 type: "Canvas" as const,
@@ -281,6 +286,52 @@ export function bootstrapJulGameSdl(
     jg.SoundSourceModule = {
         InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
             new InternalSoundSource(...args),
+    };
+    jg.SpriteModule = {
+        InternalSprite: (
+            entity: Entity,
+            imagePath: string,
+            crop: { x: number; y: number; z: number; t: number } | null = null,
+            isFlipped = false,
+            color: number[] = [255, 255, 255, 255],
+            isCreatedInEditor = false,
+            optsOrPixels?: unknown,
+            layerMaybe?: unknown,
+        ) => {
+            let pixelsPerUnit = (jg.PIXELS_PER_UNIT as number) ?? 16;
+            let layer = 0;
+            let offset = { x: 0, y: 0 };
+            const hasCrop =
+                crop != null && !(crop.x === 0 && crop.y === 0 && crop.z === 0 && crop.t === 0);
+            if (optsOrPixels != null && typeof optsOrPixels === "object" && !Array.isArray(optsOrPixels)) {
+                const o = optsOrPixels as {
+                    pixelsPerUnit?: number;
+                    layer?: number;
+                    offset?: { x: number; y: number };
+                };
+                if (typeof o.pixelsPerUnit === "number") pixelsPerUnit = o.pixelsPerUnit;
+                if (typeof o.layer === "number") layer = o.layer;
+                if (o.offset) offset = o.offset;
+            } else {
+                if (typeof optsOrPixels === "number") pixelsPerUnit = optsOrPixels;
+                if (typeof layerMaybe === "number") layer = layerMaybe;
+            }
+            JulGame_add_sprite(entity, isCreatedInEditor, {
+                imagePath,
+                crop: hasCrop ? crop : null,
+                isFlipped,
+                color,
+                pixelsPerUnit,
+                position: { x: 0, y: 0 },
+                rotation: 0,
+                layer,
+                center: { x: 0.5, y: 0.5 },
+                anchor: "center",
+                offset,
+                isStatic: false,
+            });
+            return entity.sprite;
+        },
     };
     jg.Scripts = (jg.Scripts as Record<string, unknown> | undefined) ?? {};
     jg.UserGlobals = jg.UserGlobals ?? { Module: {} };

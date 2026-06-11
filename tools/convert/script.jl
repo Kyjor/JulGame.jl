@@ -1438,6 +1438,7 @@ function apply_game_script_fixups(
     s = replace(s, r"\bistaskdone\s*\(\s*([^)]+)\)" => s"isTaskDone(\1)")
     s = replace(s, r"(?m)^\s*@testset\b.*$" => "")
     s = replace(s, r"(?m)^\s*@test\b.*$" => "")
+    s = replace(s, r"(?m)^test\s*$" => "")
     s = call_project_script_fixups(s, name, path_jl)
     s = strip_broken_transpile_preamble(s)
     s = fix_julia_typescript_residual_syntax(s)

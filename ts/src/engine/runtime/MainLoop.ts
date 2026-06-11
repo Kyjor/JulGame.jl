@@ -5,6 +5,7 @@ import { Component_update as rigidbodyUpdate } from "../../../_generated/src/eng
 import { Component_draw } from "../../../_generated/src/engine/Component/Sprite";
 import { JulGame_update } from "../../../_generated/src/engine/Entity";
 import { tickCoroutines } from "./coroutineRuntime";
+import { flushPendingImageFetches } from "./memfsImage";
 import { manageAllImmediateComponents } from "./immediateUiRuntime";
 import { flushUiDrawProfile } from "./uiDrawProfile";
 import { initializeSceneUi, renderSceneUi, type UiDrawStats } from "./uiRender";
@@ -133,6 +134,8 @@ export function runGameFrame(editorMode = false): void {
     const M = root.MAIN;
     const jg = root.JulGame;
     const api = root.JulGameSdl;
+
+    flushPendingImageFetches();
 
     const nowMs = (api.glue_SDL_GetTicks as () => number)();
     const perfNow = performance.now();
