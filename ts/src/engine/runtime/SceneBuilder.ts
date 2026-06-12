@@ -16,6 +16,7 @@ import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
 import { hydrateCanvasFromJson, type SceneCanvas } from "../../../_generated/src/engine/UI/Canvas";
 import { hydrateUiImageFromJson } from "../../../_generated/src/engine/UI/UIImage";
+import { hydrateRectangleFromJson } from "../../../_generated/src/engine/UI/Rectangle";
 import { hydrateScreenButtonFromJson } from "../../../_generated/src/engine/UI/ScreenButton";
 import {
     hydrateTextBoxFromJson,
@@ -168,6 +169,9 @@ function buildUiElementFromJson(ui: UIElementJson): JulGameUiElement | null {
     }
     if (ui.type === "Canvas") {
         return hydrateCanvasFromJson(raw);
+    }
+    if (ui.type === "Rectangle") {
+        return hydrateRectangleFromJson(raw);
     }
     return null;
 }

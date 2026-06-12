@@ -3,8 +3,9 @@
 
 import {
     canvasPixelsToLogicalUiSpace,
-    dispatchUiClick,
-    hitTestUiPointer,
+    dispatchUiMouseUpClicks,
+    hitTestUiInteractive,
+    hitTestUiTopmost,
     updateUiPointerHover,
     type UiHoverTarget,
 } from "./uiRender";
@@ -190,7 +191,8 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         const scene = root.MAIN?.scene as { uiElements?: unknown[] } | undefined;
         if (scene?.uiElements?.length) {
             const uiPos = uiPointerPos(e);
-            uiClickPressTarget = hitTestUiPointer(scene.uiElements, uiPos.x, uiPos.y);
+            // Julia: topmost element at mousedown wins (overlay blocks even without handlers).
+            uiClickPressTarget = hitTestUiTopmost(scene.uiElements, uiPos.x, uiPos.y);
         }
     };
 
@@ -206,12 +208,9 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         const scene = root.MAIN?.scene as { uiElements?: unknown[] } | undefined;
         const pressTarget = uiClickPressTarget;
         uiClickPressTarget = null;
-        if (pressTarget && scene?.uiElements?.length) {
+        if (scene?.uiElements?.length) {
             const uiPos = uiPointerPos(e);
-            const releaseHit = hitTestUiPointer(scene.uiElements, uiPos.x, uiPos.y);
-            if (releaseHit === pressTarget) {
-                dispatchUiClick(releaseHit);
-            }
+            dispatchUiMouseUpClicks(scene.uiElements, uiPos.x, uiPos.y, pressTarget);
         }
     };
 

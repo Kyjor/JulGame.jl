@@ -41,6 +41,8 @@ int glue_init(int width, int height) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         return -1;
     }
+    /* Must be set before SDL_CreateRenderer (Julia SceneBuilder scalingQuality "best"). */
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
     if (Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3) == 0) {
         fprintf(stderr, "Mix_Init: %s\n", Mix_GetError());
     }

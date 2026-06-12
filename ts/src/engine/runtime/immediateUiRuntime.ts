@@ -1,9 +1,10 @@
 import { hydrateTextBoxFromJson, type TextBoxElement } from "../../../_generated/src/engine/UI/TextBox";
 import { hydrateUiImageFromJson, type UiImageElement } from "../../../_generated/src/engine/UI/UIImage";
+import { hydrateRectangleFromJson, type RectangleElement } from "../../../_generated/src/engine/UI/Rectangle";
 import { UI_add_click_event } from "../../../_generated/src/engine/UI/UIElement";
 import type { JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
 
-export type ImmediateUiElement = TextBoxElement | UiImageElement;
+export type ImmediateUiElement = TextBoxElement | UiImageElement | RectangleElement;
 
 type ImmediateCacheEntry = {
     element: ImmediateUiElement;
@@ -34,6 +35,9 @@ type ImmediateOpts = {
     position?: { x: number; y: number };
     borderWidth?: number;
     borderColor?: [number, number, number, number] | number[];
+    borderRadius?: number;
+    fillMode?: boolean;
+    name?: string;
 };
 
 const cache = new Map<string, ImmediateCacheEntry>();
@@ -305,6 +309,7 @@ function immediateImage(id: string, path: string, opts: ImmediateOpts = {}): UiI
         applyImageOpts(el, opts, path);
         wireClick(el, opts);
         wireHover(el, opts);
+        touchImmediateComponent(compositeId);
         return el;
     }
     const el = hydrateUiImageFromJson({
@@ -331,12 +336,133 @@ function immediateImage(id: string, path: string, opts: ImmediateOpts = {}): UiI
     return el;
 }
 
-/** Colored hit/visual panel — uses a tinted box texture until Rectangle immediate UI exists. */
-function immediateRect(id: string, opts: ImmediateOpts = {}): UiImageElement {
-    return immediateImage(id, "ui-newgamebox-0000.png", {
-        ...opts,
-        forceClickCheck: opts.forceClickCheck ?? true,
+function applyRectOpts(el: RectangleElement, opts: ImmediateOpts): void {
+    if (opts.anchor !== undefined) el.anchor.current_state = opts.anchor;
+    if (opts.anchorOffset !== undefined) el.anchorOffset = { ...opts.anchorOffset };
+    if (opts.position !== undefined) el.position = { ...opts.position };
+    if (opts.size !== undefined) el.size = { ...opts.size };
+    if (opts.color !== undefined) el.color = parseColor(opts.color, el.color);
+    if (opts.borderColor !== undefined) el.borderColor = parseColor(opts.borderColor, el.borderColor);
+    if (opts.borderWidth !== undefined) el.borderWidth = opts.borderWidth;
+    if (opts.borderRadius !== undefined) el.borderRadius = opts.borderRadius;
+    if (opts.fillMode !== undefined) el.fillMode = opts.fillMode;
+    if (opts.layer !== undefined) el.layer = opts.layer;
+    if (opts.isActive !== undefined) el.isActive = opts.isActive;
+    if (opts.parent !== undefined) el.parent = opts.parent;
+    if (opts.forceClickCheck !== undefined) el.forceClickCheck = opts.forceClickCheck;
+    if (opts.persistentBetweenScenes !== undefined) {
+        el.persistentBetweenScenes = opts.persistentBetweenScenes;
+    }
+    if (opts.isWorldEntity !== undefined) el.isWorldEntity = opts.isWorldEntity;
+}
+
+function parseImmediateRectArgs(
+    id: string,
+    second?: unknown,
+    ...rest: unknown[]
+): { id: string; opts: ImmediateOpts } {
+    const opts: ImmediateOpts = {};
+    if (second !== undefined && isImmediateOptsObject(second)) {
+        Object.assign(opts, second);
+        return { id, opts };
+    }
+
+    const tail = second !== undefined ? [second, ...rest] : [];
+    if (tail.length === 0) {
+        return { id, opts };
+    }
+
+    const [a, b, c, d, e, f, g] = tail;
+    if (typeof a === "string") {
+        opts.anchor = a;
+        const anchorOffset = parseSize(b);
+        if (anchorOffset) {
+            opts.anchorOffset = anchorOffset;
+        }
+        const size = parseSize(c);
+        if (size) {
+            opts.size = size;
+        }
+        if (Array.isArray(d) && d.length >= 4) {
+            opts.color = [Number(d[0]), Number(d[1]), Number(d[2]), Number(d[3])];
+        }
+        if (typeof e === "number") {
+            opts.layer = e;
+        }
+        return { id, opts };
+    }
+
+    const position = parseSize(a);
+    if (position) {
+        opts.position = position;
+    }
+    const size = parseSize(b);
+    if (size) {
+        opts.size = size;
+    }
+    if (Array.isArray(c) && c.length >= 4) {
+        opts.color = [Number(c[0]), Number(c[1]), Number(c[2]), Number(c[3])];
+    }
+    if (typeof d === "number") {
+        opts.borderWidth = d;
+    }
+    if (Array.isArray(e) && e.length >= 4) {
+        opts.borderColor = [Number(e[0]), Number(e[1]), Number(e[2]), Number(e[3])];
+    }
+    if (typeof f === "number") {
+        opts.layer = f;
+    }
+    if (typeof g === "number") {
+        opts.borderRadius = g;
+    }
+    return { id, opts };
+}
+
+function immediateRect(id: string, opts?: ImmediateOpts): RectangleElement;
+function immediateRect(id: string, second: unknown, ...rest: unknown[]): RectangleElement;
+function immediateRect(id: string, second?: unknown, ...rest: unknown[]): RectangleElement {
+    const parsed =
+        second !== undefined && (rest.length > 0 || isImmediateOptsObject(second))
+            ? parseImmediateRectArgs(id, second, ...rest)
+            : { id, opts: (second as ImmediateOpts | undefined) ?? {} };
+    const resolvedId = parsed.id;
+    const opts = parsed.opts;
+    const compositeId = `rect_${resolvedId}`;
+    const cached = cache.get(compositeId);
+    if (cached?.element.type === "Rectangle") {
+        const el = cached.element as RectangleElement;
+        applyRectOpts(el, opts);
+        wireClick(el, opts);
+        wireHover(el, opts);
+        touchImmediateComponent(compositeId);
+        return el;
+    }
+    const el = hydrateRectangleFromJson({
+        id: `immediate_${resolvedId}`,
+        name: opts.name ?? resolvedId,
+        anchor: opts.anchor ?? "none",
+        anchorOffset: opts.anchorOffset ?? { x: 0, y: 0 },
+        position: opts.position ?? { x: 0, y: 0 },
+        size: opts.size ?? { x: 1, y: 1 },
+        color: opts.color ?? [255, 255, 255, 255],
+        borderColor: opts.borderColor ?? [0, 0, 0, 255],
+        borderWidth: opts.borderWidth ?? 0,
+        borderRadius: opts.borderRadius ?? 0,
+        fillMode: opts.fillMode ?? true,
+        layer: opts.layer ?? 0,
+        isActive: opts.isActive ?? true,
+        parent: opts.parent ?? null,
+        forceClickCheck: opts.forceClickCheck ?? false,
+        isWorldEntity: opts.isWorldEntity ?? false,
+        persistentBetweenScenes: opts.persistentBetweenScenes ?? false,
     });
+    wireClick(el, opts);
+    wireHover(el, opts);
+    const lifetime = opts.lifetime ?? DEFAULT_LIFETIME;
+    cache.set(compositeId, { element: el, lifetime });
+    touchImmediateComponent(compositeId);
+    ensureInScene(el);
+    return el;
 }
 
 function isImmediateOptsObject(value: unknown): value is ImmediateOpts {
@@ -352,7 +478,10 @@ function isImmediateOptsObject(value: unknown): value is ImmediateOpts {
         "size" in o ||
         "layer" in o ||
         "parent" in o ||
-        "color" in o
+        "color" in o ||
+        "position" in o ||
+        "borderWidth" in o ||
+        "borderRadius" in o
     );
 }
 
@@ -422,6 +551,7 @@ function immediateButton(
     const button = immediateImage(id, "ui-newgamebox-0000.png", {
         ...opts,
         size: opts.size ?? { x: 200, y: 60 },
+        layer: (opts.layer ?? 0) + 1,
         forceClickCheck: opts.forceClickCheck ?? true,
     });
 
@@ -431,7 +561,7 @@ function immediateButton(
             fontSize: opts.fontSize ?? 24,
             anchor: "center",
             color: [255, 255, 255, 255],
-            layer: (opts.layer ?? 0) + 1,
+            layer: opts.layer ?? 0,
             parent: button,
             isActive: opts.isActive,
             persistentBetweenScenes: opts.persistentBetweenScenes,

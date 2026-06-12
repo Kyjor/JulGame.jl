@@ -172,6 +172,8 @@ export function bootstrapJulGameSdl(
     jg.IS_EDITOR = false;
     jg.IS_WEB = true;
     jg.IS_DEBUG = false;
+    /** Julia `JulGame.SCALE_QUALITY` — "2" / best (matches SceneBuilder `scalingQuality="best"`). */
+    jg.SCALE_QUALITY = "2";
     jg.maybe_enable_latency_profiling_from_env = () => {
         /* stripped WASM: latency profiling not wired */
     };
