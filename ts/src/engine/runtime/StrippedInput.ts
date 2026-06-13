@@ -2,10 +2,13 @@
 /** Fallback only — SDL path uses transpiled `_generated/Input/Input.ts` via `inputBootstrap.ts`. */
 
 import {
+    dispatchSceneMouseUpClicks,
+    hitTestScenePressTarget,
+    updateSceneEntityHover,
+    type SceneShape,
+} from "./scenePointerInput";
+import {
     canvasPixelsToLogicalUiSpace,
-    dispatchUiMouseUpClicks,
-    hitTestUiInteractive,
-    hitTestUiTopmost,
     updateUiPointerHover,
     type UiHoverTarget,
 } from "./uiRender";
@@ -114,6 +117,20 @@ function canvasMousePosition(canvas: HTMLCanvasElement, clientX: number, clientY
     };
 }
 
+function isPointerInsideCanvas(canvas: HTMLCanvasElement, clientX: number, clientY: number): boolean {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+        return true;
+    }
+    const pad = 2;
+    return (
+        clientX >= rect.left - pad &&
+        clientX <= rect.right + pad &&
+        clientY >= rect.top - pad &&
+        clientY <= rect.bottom + pad
+    );
+}
+
 export type DomInputBinding = {
     detach: () => void;
     heldKeys: Set<string>;
@@ -124,10 +141,11 @@ export type DomInputBinding = {
     releasedMouse: Set<number>;
 };
 
-/** Attach keyboard/mouse listeners to `canvas` (and window blur reset). */
+/** Attach keyboard/pointer listeners for stripped SDL/web runtime (itch iframe-safe). */
 export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
     canvas.tabIndex = 0;
     canvas.style.outline = "none";
+    canvas.style.touchAction = "none";
 
     const heldKeys = new Set<string>();
     const heldMouse = new Set<number>();
@@ -136,7 +154,7 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
     const pressedMouse = new Set<number>();
     const releasedMouse = new Set<number>();
     let lastUiHover: UiHoverTarget | null = null;
-    let uiClickPressTarget: UiHoverTarget | null = null;
+    let pointerPressTarget: unknown | null = null;
 
     const focusCanvas = (): void => {
         canvas.focus({ preventScroll: true });
@@ -159,58 +177,84 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         releasedKeys.add(name);
     };
 
-    const uiPointerPos = (e: MouseEvent): { x: number; y: number } => {
-        const canvasPos = canvasMousePosition(canvas, e.clientX, e.clientY);
+    const uiPointerPos = (clientX: number, clientY: number): { x: number; y: number } => {
+        const canvasPos = canvasMousePosition(canvas, clientX, clientY);
         return canvasPixelsToLogicalUiSpace(canvas.width, canvas.height, canvasPos.x, canvasPos.y);
     };
 
-    const onMouseMove = (e: MouseEvent): void => {
+    const applyPointerMove = (clientX: number, clientY: number): void => {
         const root = globalThis as { MAIN?: MainShape };
         const input = root.MAIN?.input;
         if (!input) return;
-        const uiPos = uiPointerPos(e);
+        const uiPos = uiPointerPos(clientX, clientY);
         input.mousePosition = uiPos;
-        const scene = root.MAIN?.scene as { uiElements?: unknown[] } | undefined;
-        if (scene?.uiElements?.length) {
-            lastUiHover = updateUiPointerHover(scene.uiElements, uiPos.x, uiPos.y, lastUiHover);
+        const scene = root.MAIN?.scene as SceneShape | undefined;
+        if (scene) {
+            lastUiHover = updateUiPointerHover(scene.uiElements ?? [], uiPos.x, uiPos.y, lastUiHover);
+            updateSceneEntityHover(scene, uiPos.x, uiPos.y);
         }
     };
 
-    const onMouseDown = (e: MouseEvent): void => {
+    const onPointerMove = (e: PointerEvent): void => {
+        if (!isPointerInsideCanvas(canvas, e.clientX, e.clientY)) {
+            return;
+        }
+        applyPointerMove(e.clientX, e.clientY);
+    };
+
+    const onPointerDown = (e: PointerEvent): void => {
+        if (!isPointerInsideCanvas(canvas, e.clientX, e.clientY)) {
+            return;
+        }
+        e.preventDefault();
         focusCanvas();
+        try {
+            canvas.setPointerCapture(e.pointerId);
+        } catch {
+            // ignore — some embed contexts reject capture
+        }
+
         const btn = domButtonToSdl(e.button);
         if (!heldMouse.has(btn)) {
             pressedMouse.add(btn);
         }
         heldMouse.add(btn);
-        onMouseMove(e);
+        applyPointerMove(e.clientX, e.clientY);
+
         if (e.button !== 0) {
             return;
         }
         const root = globalThis as { MAIN?: MainShape };
-        const scene = root.MAIN?.scene as { uiElements?: unknown[] } | undefined;
-        if (scene?.uiElements?.length) {
-            const uiPos = uiPointerPos(e);
-            // Julia: topmost element at mousedown wins (overlay blocks even without handlers).
-            uiClickPressTarget = hitTestUiTopmost(scene.uiElements, uiPos.x, uiPos.y);
+        const scene = root.MAIN?.scene as SceneShape | undefined;
+        if (scene) {
+            const uiPos = uiPointerPos(e.clientX, e.clientY);
+            pointerPressTarget = hitTestScenePressTarget(scene, uiPos.x, uiPos.y);
         }
     };
 
-    const onMouseUp = (e: MouseEvent): void => {
+    const onPointerUp = (e: PointerEvent): void => {
         const btn = domButtonToSdl(e.button);
         heldMouse.delete(btn);
         releasedMouse.add(btn);
-        onMouseMove(e);
+        applyPointerMove(e.clientX, e.clientY);
+
         if (e.button !== 0) {
             return;
         }
         const root = globalThis as { MAIN?: MainShape };
-        const scene = root.MAIN?.scene as { uiElements?: unknown[] } | undefined;
-        const pressTarget = uiClickPressTarget;
-        uiClickPressTarget = null;
-        if (scene?.uiElements?.length) {
-            const uiPos = uiPointerPos(e);
-            dispatchUiMouseUpClicks(scene.uiElements, uiPos.x, uiPos.y, pressTarget);
+        const scene = root.MAIN?.scene as SceneShape | undefined;
+        const pressTarget = pointerPressTarget;
+        pointerPressTarget = null;
+        if (scene) {
+            const uiPos = uiPointerPos(e.clientX, e.clientY);
+            dispatchSceneMouseUpClicks(scene, uiPos.x, uiPos.y, pressTarget);
+        }
+        try {
+            if (canvas.hasPointerCapture(e.pointerId)) {
+                canvas.releasePointerCapture(e.pointerId);
+            }
+        } catch {
+            // ignore
         }
     };
 
@@ -223,7 +267,7 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
             releasedMouse.add(b);
         }
         heldMouse.clear();
-        uiClickPressTarget = null;
+        pointerPressTarget = null;
         if (lastUiHover) {
             for (const fn of lastUiHover.hoverExitEvents) {
                 fn();
@@ -232,13 +276,15 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    canvas.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-    canvas.addEventListener("mousemove", onMouseMove);
-    canvas.addEventListener("click", focusCanvas);
+    const pointerOpts: AddEventListenerOptions = { capture: true, passive: false };
+    window.addEventListener("pointerdown", onPointerDown, pointerOpts);
+    window.addEventListener("pointerup", onPointerUp, pointerOpts);
+    window.addEventListener("pointermove", onPointerMove, pointerOpts);
+    window.addEventListener("pointercancel", onPointerUp, pointerOpts);
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
+    canvas.addEventListener("click", focusCanvas);
 
     return {
         heldKeys,
@@ -248,13 +294,14 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         pressedMouse,
         releasedMouse,
         detach: () => {
-            window.removeEventListener("keydown", onKeyDown);
-            window.removeEventListener("keyup", onKeyUp);
-            canvas.removeEventListener("mousedown", onMouseDown);
-            window.removeEventListener("mouseup", onMouseUp);
-            canvas.removeEventListener("mousemove", onMouseMove);
-            canvas.removeEventListener("click", focusCanvas);
+            window.removeEventListener("pointerdown", onPointerDown, pointerOpts);
+            window.removeEventListener("pointerup", onPointerUp, pointerOpts);
+            window.removeEventListener("pointermove", onPointerMove, pointerOpts);
+            window.removeEventListener("pointercancel", onPointerUp, pointerOpts);
+            document.removeEventListener("keydown", onKeyDown);
+            document.removeEventListener("keyup", onKeyUp);
             window.removeEventListener("blur", onBlur);
+            canvas.removeEventListener("click", focusCanvas);
         },
     };
 }
@@ -327,6 +374,24 @@ export const StrippedInputModule = {
     get_mouse_position_in_world_space(input?: StrippedInputState): { x: number; y: number } {
         const state = input ?? getMainInput();
         return state?.mousePositionWorld ?? { x: 0, y: 0 };
+    },
+
+    simulate_mouse_click(_inputOrX: StrippedInputState | number, y?: number): void {
+        const root = globalThis as { MAIN?: { scene?: SceneShape; input?: StrippedInputState } };
+        const scene = root.MAIN?.scene;
+        if (!scene) {
+            return;
+        }
+        let x: number;
+        if (typeof _inputOrX === "number") {
+            x = _inputOrX;
+        } else {
+            x = root.MAIN?.input?.mousePosition.x ?? 0;
+            y = y ?? root.MAIN?.input?.mousePosition.y ?? 0;
+        }
+        const yy = y ?? 0;
+        const target = hitTestScenePressTarget(scene, x, yy);
+        dispatchSceneMouseUpClicks(scene, x, yy, target);
     },
 };
 

@@ -66,30 +66,29 @@ export class SDLPlatform implements Platform {
             api,
             pendingSceneFileName: null,
         });
-        const unlockAudio = (): void => {
-            unlockSceneAudio(api, main.scene);
-            this.setStatus("sdl-wasm: game loop");
-        };
-        this.setStatus("sdl-wasm: click canvas to enable audio");
-        this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true });
 
+        // Match canvas backing store to scene camera so UI layout + pointer coords align (1920×1080 scenes).
+        const jg = (globalThis as unknown as { JulGame: Record<string, unknown> }).JulGame;
         const cam = main.scene.camera as { size?: { x: number; y: number } } | null;
-        const cw = this.canvas.width;
-        const ch = this.canvas.height;
         if (cam?.size && cam.size.x > 0 && cam.size.y > 0) {
             const w = Math.floor(cam.size.x);
             const h = Math.floor(cam.size.y);
-            /* Same as canvas: leave logical scaling OFF (SDL can misbehave if set equal to window). */
-            if (w !== cw || h !== ch) {
-                api.glue_SDL_RenderSetLogicalSize(w, h);
-            } else {
-                api.glue_SDL_RenderSetLogicalSize(0, 0);
-            }
+            this.canvas.width = w;
+            this.canvas.height = h;
+            jg.EditorGameViewSize = { x: w, y: h };
+            api.glue_SDL_RenderSetLogicalSize(0, 0);
         } else {
             api.glue_SDL_RenderSetLogicalSize(0, 0);
         }
 
-        this.setStatus("sdl-wasm: game loop");
+        const unlockAudio = (): void => {
+            unlockSceneAudio(api, main.scene);
+            this.setStatus("");
+        };
+        this.setStatus("Click to play");
+        this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true, capture: true });
+
+        this.setStatus("");
         this.canvas.tabIndex = 0;
         this.canvas.focus({ preventScroll: true });
         this.startLoop(api);

@@ -171,7 +171,7 @@ function collectHitTestableUi(uiElements: unknown[]): UiHoverTarget[] {
     return items;
 }
 
-function pointInUiRect(ui: UiHoverTarget, x: number, y: number): boolean {
+export function pointInUiRect(ui: UiHoverTarget, x: number, y: number): boolean {
     const left = ui.position.x;
     const top = ui.position.y;
     const right = left + ui.size.x;
@@ -202,7 +202,7 @@ export function hitTestUiInteractive(uiElements: unknown[], x: number, y: number
     return null;
 }
 
-function shouldParticipateInUiHitTest(ui: UiHoverTarget): boolean {
+export function shouldParticipateInUiHitTest(ui: UiHoverTarget): boolean {
     // Decorative labels (e.g. immediate_button text) must not steal clicks from the button below.
     if (ui.type === "TextBox" && !isUiInteractiveTarget(ui)) {
         return false;
@@ -225,7 +225,7 @@ function hitTestUiAt(items: UiHoverTarget[], x: number, y: number, interactiveOn
     return null;
 }
 
-function prepareUiHitTestItems(uiElements: unknown[]): UiHoverTarget[] {
+export function prepareUiHitTestItems(uiElements: unknown[]): UiHoverTarget[] {
     const items = collectHitTestableUi(uiElements);
     const alignOrder = [...items].sort((a, b) => a.layer - b.layer);
     for (const ui of alignOrder) {

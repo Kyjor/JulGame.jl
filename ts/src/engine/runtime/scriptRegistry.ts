@@ -9,6 +9,14 @@ export type ScriptHooks = {
 
 const registry = new Map<string, ScriptHooks>();
 const scriptSoundPaths = new Set<string>();
+const SCRIPT_NAME_KEY = "__julgameScriptName";
+
+function getScriptName(script: unknown): string {
+    if (script && typeof script === "object" && SCRIPT_NAME_KEY in script) {
+        return (script as Record<string, string>)[SCRIPT_NAME_KEY];
+    }
+    return (script as { constructor?: { name?: string } })?.constructor?.name ?? "";
+}
 
 export function registerScript(name: string, hooks: ScriptHooks): void {
     registry.set(name, hooks);
@@ -43,17 +51,25 @@ export function createScript(name: string): unknown {
     if (!hooks) {
         throw new Error(`scriptRegistry: unknown script "${name}"`);
     }
-    return hooks.create();
+    const script = hooks.create();
+    if (script && typeof script === "object") {
+        Object.defineProperty(script, SCRIPT_NAME_KEY, {
+            value: name,
+            writable: false,
+            enumerable: false,
+            configurable: false,
+        });
+    }
+    return script;
 }
 
 export function initializeScript(script: unknown): void {
-    const name = script?.constructor?.name ?? "";
-    const hooks = registry.get(name);
+    const hooks = registry.get(getScriptName(script));
     hooks?.initialize?.(script);
 }
 
 export function updateScript(script: unknown, deltaTime: number): void {
-    const name = script?.constructor?.name ?? "";
+    const name = getScriptName(script);
     const hooks = registry.get(name);
     const result = hooks?.update?.(script, deltaTime);
     if (result instanceof Promise) {
@@ -62,8 +78,7 @@ export function updateScript(script: unknown, deltaTime: number): void {
 }
 
 export function shutdownScript(script: unknown): void {
-    const name = script?.constructor?.name ?? "";
-    const hooks = registry.get(name);
+    const hooks = registry.get(getScriptName(script));
     hooks?.onShutdown?.(script);
 }
 

@@ -83,7 +83,14 @@ export function instantiateScripts(entities: Entity[]): void {
 }
 
 export function initializeAllScripts(entities: Entity[]): void {
-    for (const entity of entities) {
+    const initOrder = (name: string): number => {
+        if (name === "User") return 0;
+        if (name === "TitleManager") return 1;
+        return 2;
+    };
+    const sorted = [...entities].sort((a, b) => initOrder(a.name) - initOrder(b.name));
+
+    for (const entity of sorted) {
         if (!entity.isActive) {
             continue;
         }

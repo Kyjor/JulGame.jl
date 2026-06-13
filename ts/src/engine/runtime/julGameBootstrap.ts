@@ -303,6 +303,7 @@ export function bootstrapJulGameSdl(
             let pixelsPerUnit = (jg.PIXELS_PER_UNIT as number) ?? 16;
             let layer = 0;
             let offset = { x: 0, y: 0 };
+            let rotation = 0;
             const hasCrop =
                 crop != null && !(crop.x === 0 && crop.y === 0 && crop.z === 0 && crop.t === 0);
             if (optsOrPixels != null && typeof optsOrPixels === "object" && !Array.isArray(optsOrPixels)) {
@@ -310,10 +311,12 @@ export function bootstrapJulGameSdl(
                     pixelsPerUnit?: number;
                     layer?: number;
                     offset?: { x: number; y: number };
+                    rotation?: number;
                 };
                 if (typeof o.pixelsPerUnit === "number") pixelsPerUnit = o.pixelsPerUnit;
                 if (typeof o.layer === "number") layer = o.layer;
                 if (o.offset) offset = o.offset;
+                if (typeof o.rotation === "number") rotation = o.rotation;
             } else {
                 if (typeof optsOrPixels === "number") pixelsPerUnit = optsOrPixels;
                 if (typeof layerMaybe === "number") layer = layerMaybe;
@@ -325,7 +328,7 @@ export function bootstrapJulGameSdl(
                 color,
                 pixelsPerUnit,
                 position: { x: 0, y: 0 },
-                rotation: 0,
+                rotation,
                 layer,
                 center: { x: 0.5, y: 0.5 },
                 anchor: "center",
