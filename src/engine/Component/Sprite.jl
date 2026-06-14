@@ -281,6 +281,41 @@ module SpriteModule
         this.isFlipped = !this.isFlipped
     end
 
+    # Shared texture cache for base images (keyed by image path)
+    const TEXTURE_CACHE = Dict{String, Ptr{SDL2.SDL_Texture}}()
+
+    # Shared surface cache for base images (keyed by image path). Sprites that
+    # use the same image share one decoded surface instead of re-decoding the
+    # PNG on every spawn. Cached surfaces are owned by the cache: they must
+    # never be freed by individual sprites (see is_shared_surface guards).
+    const SURFACE_CACHE = Dict{String, Ptr{SDL2.LibSDL2.SDL_Surface}}()
+    const SURFACE_CACHE_PTRS = Set{Ptr{SDL2.LibSDL2.SDL_Surface}}()
+
+    is_shared_surface(surface)::Bool = surface in SURFACE_CACHE_PTRS
+
+    function get_or_load_surface(fullPath::String, imagePath::String)
+        cached = get(SURFACE_CACHE, imagePath, C_NULL)
+        if cached != C_NULL
+            return cached
+        end
+        surface = load_image_sdl(fullPath, imagePath)
+        if surface != C_NULL
+            SURFACE_CACHE[imagePath] = surface
+            push!(SURFACE_CACHE_PTRS, surface)
+        end
+        return surface
+    end
+
+    function clear_surface_cache()
+        for (_, surface) in SURFACE_CACHE
+            if surface != C_NULL
+                SDL2.SDL_FreeSurface(surface)
+            end
+        end
+        empty!(SURFACE_CACHE)
+        empty!(SURFACE_CACHE_PTRS)
+    end
+
     function get_or_create_texture(imagePath::String, surface::Ptr{SDL2.LibSDL2.SDL_Surface})
         if haskey(TEXTURE_CACHE, imagePath)
             @debug("Using cached texture for: $(imagePath)")
@@ -296,21 +331,240 @@ module SpriteModule
         return tex
     end
     
-    # function load_fallback_image()
-    #     rwops = SDL2.SDL_RWFromMem(pointer(FALLBACK_IMAGE_BYTES), length(FALLBACK_IMAGE_BYTES))
-    #     if rwops == C_NULL
-    #         @error("Failed to create SDL_RWops for fallback image.")
-    #         return C_NULL
-    #     end
-    #     image = SDL2.IMG_Load_RW(rwops, 1)  # Load directly from memory and free rwops after use
-    #     return image
-    # end
+    function serialize_effects(effects::Vector{Any})::String
+        if isempty(effects)
+            return "[]"
+        end
+        parts = String[]
+        for eff in effects
+            T = typeof(eff)
+            fnames = fieldnames(T)
+            vals = String[]
+            for f in fnames
+                v = getfield(eff, f)
+                if v isa Ptr
+                    push!(vals, string(f, "=Ptr"))
+                else
+                    push!(vals, string(f, "=", v))
+                end
+            end
+            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
+        end
+        return "[" * join(parts, ";") * "]"
+    end
+    
+    function generate_effect_cache_key(imagePath::String, size::Math.Vector2, effects::Vector{Any})::String
+        # Cache key based on image path, size, and effects - NOT instance ID
+        # This allows sharing effect textures across sprites with same visuals
+        content = string(
+            imagePath, "|",
+            size.x, "x", size.y, "|",
+            serialize_effects(effects)
+        )
+        return string(hash(content))
+    end
+
+    function generate_effect_cache_key(this::InternalSprite)::String
+        return generate_effect_cache_key(this.imagePath, this.size, this.effects)
+    end
+    
+    #  effects API
+    function Component.apply_effects!(this::InternalSprite, effects::Vector)
+        this.effects = Any[effect for effect in effects]  # Convert to Vector{Any}
+        
+        # Generate cache key and check if we need to recompute
+        newKey = generate_effect_cache_key(this)
+        if this.effectCacheKey == newKey && this.effectTexture != C_NULL
+            # Already have this effect cached on this sprite
+            @debug "Sprite.apply_effects!: cache key unchanged; skipping recompute" path=this.imagePath
+            return this
+        end
+        
+        this.effectCacheKey = newKey
+        this.needsEffectUpdate = true
+        update_effects(this)
+        return this
+    end
+    
+    function apply_style!(this::InternalSprite, style)
+        return apply_effects!(this, style.effects)
+    end
+    
+    function update_effects(this::InternalSprite)
+        if isempty(this.effects) || !this.needsEffectUpdate
+            return
+        end
+        
+        # Check shared cache first
+        if haskey(SPRITE_EFFECT_CACHE, this.effectCacheKey)
+            cached = SPRITE_EFFECT_CACHE[this.effectCacheKey]
+            this.effectTexture = cached[1]
+            this.effectSize = cached[2]
+            this.needsEffectUpdate = false
+            @debug "Sprite using cached effect texture" path=this.imagePath key=this.effectCacheKey
+            return
+        end
+        
+        # Create target for effects
+        target = JG.EffectsModule.SpriteTarget(this)
+        
+        # Apply effects
+        try
+            result = JG.EffectRendererModule.apply_effects!(target, this.effects)
+            if result isa JG.EffectsModule.SpriteTarget
+                # Effect texture should be updated by the renderer
+                # Query the effect texture size and store it
+                if this.effectTexture != C_NULL
+                    w = Ref{Cint}(0); h = Ref{Cint}(0)
+                    fmt = Ref{UInt32}(0); access = Ref{Cint}(0)
+                    SDL2.SDL_QueryTexture(this.effectTexture, fmt, access, w, h)
+                    this.effectSize = Math.Vector2(w[], h[])
+                    
+                    # Cache the result for other sprites with same visuals
+                    SPRITE_EFFECT_CACHE[this.effectCacheKey] = (this.effectTexture, this.effectSize)
+                    @debug "Cached sprite effect texture" path=this.imagePath key=this.effectCacheKey
+                end
+                this.needsEffectUpdate = false
+            end
+        catch e
+            @error("Failed to apply effects to sprite: $e")
+        end
+    end
+    
+    # --- Async effect-texture prewarm -------------------------------------
+    # The expensive part of baking an effect texture (e.g. OuterGlow) is pure
+    # CPU surface processing. When Julia runs with more than one thread, that
+    # half runs on a worker thread; the renderer-bound half (texture upload)
+    # always runs on the main thread via pump_effect_prewarm!, which the game
+    # loop calls once per frame. With a single thread, jobs are processed one
+    # per frame to bound the hitch. Only CPU-only effects are supported
+    # (anything that needs the renderer, e.g. TextureFill, must not be used).
+    const EFFECT_PREWARM_RESULTS = Channel{Tuple{String, Ptr{SDL2.SDL_Surface}}}(Inf)
+    const EFFECT_PREWARM_SYNC_QUEUE = Vector{Tuple{String, Vector{Any}}}()
+    const EFFECT_PREWARM_SUBMITTED = Set{String}()
+    const EFFECT_PREWARM_PENDING = Threads.Atomic{Int}(0)
+
+    # Thread-safe half: loads a private copy of the image (never the live
+    # sprite surface) and runs the CPU-only effect pipeline.
+    function compute_effect_prewarm_surface(imagePath::String, effects::Vector{Any})::Union{Nothing, Tuple{String, Ptr{SDL2.SDL_Surface}}}
+        fullPath = joinpath(BasePath, "assets", "images", imagePath)
+        base = load_image_sdl(fullPath, imagePath)
+        if base == C_NULL
+            @warn "Effect prewarm: failed to load image $(imagePath)"
+            return nothing
+        end
+        arr = unsafe_wrap(Array, base, 10; own = false)
+        # NOTE: do not read SPRITE_EFFECT_CACHE here - this may run on a worker
+        # thread while the main thread mutates the Dict. Duplicates are dropped
+        # in finalize_effect_prewarm! on the main thread instead.
+        key = generate_effect_cache_key(imagePath, Math.Vector2(arr[1].w, arr[1].h), effects)
+        target = JG.EffectsModule.SurfaceTarget(base)
+        processed = JG.EffectRendererModule.process_effects_to_surface(base, effects, target)
+        if processed == C_NULL || processed == base
+            SDL2.SDL_FreeSurface(base)
+            return nothing
+        end
+        SDL2.SDL_FreeSurface(base)
+        return (key, processed)
+    end
+
+    # Main-thread half: upload a processed surface into the shared cache.
+    function finalize_effect_prewarm!(key::String, surface::Ptr{SDL2.SDL_Surface})
+        if haskey(SPRITE_EFFECT_CACHE, key)
+            # Something else (e.g. an actual hover) already baked this key
+            SDL2.SDL_FreeSurface(surface)
+            Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+            return
+        end
+        texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+        if texture != C_NULL
+            SDL2.SDL_SetTextureBlendMode(texture, SDL2.SDL_BLENDMODE_BLEND)
+            arr = unsafe_wrap(Array, surface, 10; own = false)
+            SPRITE_EFFECT_CACHE[key] = (texture, Math.Vector2(arr[1].w, arr[1].h))
+            @debug "Effect prewarm: cached texture" key=key
+        else
+            @error "Effect prewarm: failed to create texture: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
+        SDL2.SDL_FreeSurface(surface)
+        Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+    end
+
+    """
+        prewarm_effect_textures!(jobs)
+
+    Queue effect textures to be baked ahead of time so the first
+    `apply_effects!` on a matching sprite is a cache hit instead of a frame
+    spike. `jobs` is a vector of `(imagePath, effects)` tuples. Duplicate
+    submissions are ignored, so this is safe to call multiple times.
+    """
+    function prewarm_effect_textures!(jobs::Vector)
+        for (imagePath, effects) in jobs
+            effects_any = Any[e for e in effects]
+            signature = string(imagePath, "|", serialize_effects(effects_any))
+            if signature in EFFECT_PREWARM_SUBMITTED
+                continue
+            end
+            push!(EFFECT_PREWARM_SUBMITTED, signature)
+            Threads.atomic_add!(EFFECT_PREWARM_PENDING, 1)
+            if Threads.nthreads() > 1
+                Threads.@spawn begin
+                    try
+                        result = compute_effect_prewarm_surface(imagePath, effects_any)
+                        if result === nothing
+                            Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                        else
+                            put!(EFFECT_PREWARM_RESULTS, result)
+                        end
+                    catch e
+                        Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                        @error "Effect prewarm failed for $(imagePath): $e"
+                    end
+                end
+            else
+                push!(EFFECT_PREWARM_SYNC_QUEUE, (String(imagePath), effects_any))
+            end
+        end
+    end
+
+    # Called once per frame from the game loop (main thread).
+    function pump_effect_prewarm!()
+        while isready(EFFECT_PREWARM_RESULTS)
+            key, surface = take!(EFFECT_PREWARM_RESULTS)
+            finalize_effect_prewarm!(key, surface)
+        end
+        # Single-threaded fallback: bake one job per frame to bound the hitch.
+        if !isempty(EFFECT_PREWARM_SYNC_QUEUE)
+            imagePath, effects = popfirst!(EFFECT_PREWARM_SYNC_QUEUE)
+            try
+                result = compute_effect_prewarm_surface(imagePath, effects)
+                if result === nothing
+                    Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                else
+                    finalize_effect_prewarm!(result[1], result[2])
+                end
+            catch e
+                Threads.atomic_sub!(EFFECT_PREWARM_PENDING, 1)
+                @error "Effect prewarm failed for $(imagePath): $e"
+            end
+        end
+    end
+
+    effect_prewarm_pending() = EFFECT_PREWARM_PENDING[] > 0
+
+    function clear_sprite_effects_cache()
+        for (key, cached) in SPRITE_EFFECT_CACHE
+            if cached[1] != C_NULL
+                SDL2.SDL_DestroyTexture(cached[1])
+            end
+        end
+        empty!(SPRITE_EFFECT_CACHE)
+    end
 
     function Component.load_image(this::InternalSprite, imagePath::String)
         SDL2.SDL_ClearError()
 
-        fullPath = joinpath(JulGame.BasePath, "assets", "images", imagePath)
-        this.image = load_image_sdl(fullPath, imagePath)
+        fullPath = joinpath(BasePath, "assets", "images", imagePath)
+        this.image = get_or_load_surface(fullPath, imagePath)
         error = unsafe_string(SDL2.SDL_GetError())
     
         # if length(error) > 0 || this.image == C_NULL
@@ -374,6 +628,11 @@ module SpriteModule
         # Only destroy texture if it's not in the shared cache
         if this.texture != C_NULL && !haskey(TEXTURE_CACHE, this.imagePath)
             SDL2.SDL_DestroyTexture(this.texture)
+        end
+        # Shared surfaces are owned by SURFACE_CACHE; only free sprite-owned
+        # surfaces (e.g. replaced by ImageFX, or the fallback image).
+        if !is_shared_surface(this.image)
+            SDL2.SDL_FreeSurface(this.image)
         end
         this.image = C_NULL
         this.texture = C_NULL
