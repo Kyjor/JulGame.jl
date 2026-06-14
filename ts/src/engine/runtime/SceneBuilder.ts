@@ -11,6 +11,8 @@ import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
 import { flushPendingImageFetches } from "./memfsImage";
+import { invalidateTextureCachesForImagePath } from "./textureCache";
+import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
 import { commaSeparatedAssetPath, normalizeAssetPath, resolveSpritePixelsPerUnit } from "./projectConfig";
 import { initializeAllScripts, instantiateScripts } from "./scriptLoader";
 import { getScriptSoundPaths } from "./scriptRegistry";
@@ -56,6 +58,8 @@ export const MINIMAL_STRIPPED_SCENE: SceneJson = {
 
 export type StrippedSceneLoadOptions = {
     sceneJsonUrl: string;
+    /** Basename of scene JSON (e.g. `title_scene.json`) — selects deferred preload sets. */
+    sceneFileName?: string;
     /** HTTP base whose `/assets/...` are fetched into MEMFS under `/game/assets/`. */
     memfsAssetBaseUrl: string;
     canvasWidth: number;
@@ -66,7 +70,49 @@ export type StrippedSceneLoadOptions = {
     deferScriptInitialize?: boolean;
 };
 
-type EmMod = { FS?: { mkdirTree: (p: string) => void; writeFile: (p: string, d: Uint8Array) => void } };
+type EmMod = {
+    FS?: {
+        mkdirTree: (p: string) => void;
+        writeFile: (p: string, d: Uint8Array) => void;
+        analyzePath?: (p: string) => { exists: boolean };
+    };
+};
+
+const MEMFS_FETCH_CONCURRENCY = 24;
+
+function sceneFileNameFromUrl(sceneJsonUrl: string): string {
+    try {
+        return new URL(sceneJsonUrl).pathname.split("/").pop() ?? "";
+    } catch {
+        return "";
+    }
+}
+
+function resolveSceneFileName(opts: StrippedSceneLoadOptions): string {
+    return opts.sceneFileName ?? sceneFileNameFromUrl(opts.sceneJsonUrl);
+}
+
+/** Settings panel + runtime-only assets — lazy-loaded after the scene is interactive. */
+function isDeferredUiAsset(ui: UIElementJson): boolean {
+    return String(ui.name ?? "").includes("SettingsMenu_");
+}
+
+function addUiImagePaths(imagePaths: Set<string>, ui: UIElementJson): void {
+    if (ui.type === "UIImage" && typeof ui.path === "string" && ui.path) {
+        if (/^screen-/i.test(ui.path)) {
+            return;
+        }
+        imagePaths.add(ui.path);
+    }
+    if (ui.type === "ScreenButton") {
+        if (typeof ui.buttonUpSpritePath === "string" && ui.buttonUpSpritePath) {
+            imagePaths.add(ui.buttonUpSpritePath);
+        }
+        if (typeof ui.buttonDownSpritePath === "string" && ui.buttonDownSpritePath) {
+            imagePaths.add(ui.buttonDownSpritePath);
+        }
+    }
+}
 
 function writeMemfsFile(fs: NonNullable<EmMod["FS"]>, memPath: string, data: Uint8Array): void {
     const slash = memPath.lastIndexOf("/");
@@ -74,6 +120,66 @@ function writeMemfsFile(fs: NonNullable<EmMod["FS"]>, memPath: string, data: Uin
         fs.mkdirTree(memPath.slice(0, slash));
     }
     fs.writeFile(memPath, data);
+}
+
+function memfsPathExists(fs: NonNullable<EmMod["FS"]>, memPath: string): boolean {
+    if (!fs.analyzePath) {
+        return false;
+    }
+    try {
+        return fs.analyzePath(memPath).exists;
+    } catch {
+        return false;
+    }
+}
+
+function memfsFileSize(fs: NonNullable<EmMod["FS"]>, memPath: string): number | null {
+    try {
+        const stat = (fs as { stat?: (path: string) => { size: number } }).stat?.(memPath);
+        return stat?.size ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Allow deferred loads to replace 1×1 placeholders written for missing assets. */
+function isMemfsPlaceholder(fs: NonNullable<EmMod["FS"]>, memPath: string): boolean {
+    return memfsFileSize(fs, memPath) === PNG_1X1.byteLength;
+}
+
+function sdlApi(): JulGameSdlApi | null {
+    return (globalThis as { JulGameSdl?: JulGameSdlApi }).JulGameSdl ?? null;
+}
+
+async function mapWithConcurrency<T>(
+    items: Iterable<T>,
+    concurrency: number,
+    fn: (item: T) => Promise<void>,
+): Promise<void> {
+    const queue = [...items];
+    if (queue.length === 0) {
+        return;
+    }
+    const workerCount = Math.min(concurrency, queue.length);
+    await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+            while (queue.length > 0) {
+                const item = queue.shift();
+                if (item === undefined) {
+                    break;
+                }
+                await fn(item);
+            }
+        }),
+    );
+}
+
+async function fetchAssetBytes(url: string): Promise<Uint8Array> {
+    const res = await fetch(url);
+    if (!res.ok) {
+        throw new Error(String(res.status));
+    }
+    return new Uint8Array(await res.arrayBuffer());
 }
 
 export type SceneJson = {
@@ -176,7 +282,7 @@ function buildUiElementFromJson(ui: UIElementJson): JulGameUiElement | null {
     return null;
 }
 
-function collectSceneAssetPaths(json: SceneJson): {
+function collectSceneAssetPaths(json: SceneJson, sceneFileName = ""): {
     imagePaths: Set<string>;
     soundPaths: Set<string>;
     fontPaths: Set<string>;
@@ -185,6 +291,9 @@ function collectSceneAssetPaths(json: SceneJson): {
     const soundPaths = new Set<string>();
     const fontPaths = new Set<string>();
     for (const ent of json.Entities ?? []) {
+        if (ent.isActive === false) {
+            continue;
+        }
         for (const c of ent.components ?? []) {
             if (c.type === "Sprite" && typeof c.imagePath === "string") {
                 imagePaths.add(c.imagePath);
@@ -195,33 +304,65 @@ function collectSceneAssetPaths(json: SceneJson): {
         }
     }
     for (const ui of json.UIElements ?? []) {
+        if (ui.isActive === false) {
+            continue;
+        }
         if (ui.type === "TextBox" && typeof ui.fontPath === "string" && ui.fontPath) {
             fontPaths.add(normalizeAssetPath(ui.fontPath));
         }
-        if (ui.type === "UIImage" && typeof ui.path === "string" && ui.path) {
-            imagePaths.add(ui.path);
+        if (isDeferredUiAsset(ui)) {
+            continue;
         }
-        if (ui.type === "ScreenButton") {
-            if (typeof ui.buttonUpSpritePath === "string" && ui.buttonUpSpritePath) {
-                imagePaths.add(ui.buttonUpSpritePath);
-            }
-            if (typeof ui.buttonDownSpritePath === "string" && ui.buttonDownSpritePath) {
-                imagePaths.add(ui.buttonDownSpritePath);
-            }
-        }
+        addUiImagePaths(imagePaths, ui);
     }
     for (const p of getScriptSoundPaths()) {
         soundPaths.add(p);
     }
-    const jg = (globalThis as { JulGame?: { getExtraSceneImagePaths?: () => string[] } }).JulGame;
-    if (typeof jg?.getExtraSceneImagePaths === "function") {
-        for (const p of jg.getExtraSceneImagePaths()) {
+    const jgBlock = (globalThis as {
+        JulGame?: { getBlockingExtraSceneImagePaths?: (sceneFileName?: string) => string[] };
+    }).JulGame;
+    if (typeof jgBlock?.getBlockingExtraSceneImagePaths === "function") {
+        for (const p of jgBlock.getBlockingExtraSceneImagePaths(sceneFileName)) {
             if (p) {
                 imagePaths.add(p);
             }
         }
     }
     return { imagePaths, soundPaths, fontPaths };
+}
+
+function collectDeferredImagePaths(json: SceneJson, sceneFileName: string): Set<string> {
+    const imagePaths = new Set<string>();
+    for (const ui of json.UIElements ?? []) {
+        if (!isDeferredUiAsset(ui)) {
+            continue;
+        }
+        addUiImagePaths(imagePaths, ui);
+    }
+    const jg = (globalThis as {
+        JulGame?: { getDeferredExtraSceneImagePaths?: (sceneFileName?: string) => string[] };
+    }).JulGame;
+    if (typeof jg?.getDeferredExtraSceneImagePaths === "function") {
+        for (const p of jg.getDeferredExtraSceneImagePaths(sceneFileName)) {
+            if (p) {
+                imagePaths.add(p);
+            }
+        }
+    }
+    return imagePaths;
+}
+
+/** Fire-and-forget MEMFS sync — sprites/UI retry load once files arrive. */
+export function scheduleBackgroundAssetsToMemfs(
+    emscriptenModule: EmMod,
+    imagePaths: Iterable<string>,
+    memfsAssetBaseUrl: string,
+): void {
+    const paths = [...imagePaths];
+    if (paths.length === 0) {
+        return;
+    }
+    void syncAssetsToMemfs(emscriptenModule, new Set(paths), new Set(), new Set(), memfsAssetBaseUrl);
 }
 
 async function syncAssetsToMemfs(
@@ -237,69 +378,79 @@ async function syncAssetsToMemfs(
         return;
     }
     const base = memfsAssetBaseUrl.replace(/\/$/, "");
+    const loadStarted = performance.now();
 
-    fs.mkdirTree("/game/assets/images");
-    for (const rel of imagePaths) {
-        const memPath = `/game/assets/images/${rel}`;
-        const url = `${base}/assets/images/${rel}`;
-        try {
-            const res = await fetch(url);
-            if (!res.ok) {
-                throw new Error(String(res.status));
-            }
-            const data = new Uint8Array(await res.arrayBuffer());
-            writeMemfsFile(fs, memPath, data);
-            // Load sprites via MEMFS + glue_IMG_Load — skip IMAGE_CACHE (RWFromConstMem path).
-        } catch {
-            writeMemfsFile(fs, memPath, PNG_1X1);
-            console.warn(`SceneBuilder: using 1×1 placeholder for missing image: ${url}`);
-        }
+    if (imagePaths.size > 0) {
+        fs.mkdirTree("/game/assets/images");
     }
-
     if (soundPaths.size > 0) {
         fs.mkdirTree("/game/assets/sounds");
-        for (const rel of soundPaths) {
+    }
+    if (fontPaths.size > 0) {
+        fs.mkdirTree("/game/assets/fonts");
+    }
+
+    await Promise.all([
+        mapWithConcurrency(imagePaths, MEMFS_FETCH_CONCURRENCY, async (rel) => {
+            const memPath = `/game/assets/images/${rel}`;
+            if (memfsPathExists(fs, memPath) && !isMemfsPlaceholder(fs, memPath)) {
+                return;
+            }
+            const url = `${base}/assets/images/${rel}`;
+            const hadPlaceholder = isMemfsPlaceholder(fs, memPath);
+            try {
+                const data = await fetchAssetBytes(url);
+                writeMemfsFile(fs, memPath, data);
+                const api = sdlApi();
+                if (api && hadPlaceholder) {
+                    invalidateTextureCachesForImagePath(rel, api);
+                }
+            } catch {
+                if (!memfsPathExists(fs, memPath)) {
+                    writeMemfsFile(fs, memPath, PNG_1X1);
+                    console.warn(`SceneBuilder: using 1×1 placeholder for missing image: ${url}`);
+                }
+            }
+        }),
+        mapWithConcurrency(soundPaths, MEMFS_FETCH_CONCURRENCY, async (rel) => {
             const memPath = `/game/assets/sounds/${rel}`;
+            if (memfsPathExists(fs, memPath)) {
+                return;
+            }
             const url = new URL(`assets/sounds/${rel}`, `${base}/`).href;
             try {
-                const res = await fetch(url);
-                if (!res.ok) {
-                    throw new Error(String(res.status));
-                }
-                const data = new Uint8Array(await res.arrayBuffer());
+                const data = await fetchAssetBytes(url);
                 writeMemfsFile(fs, memPath, data);
                 console.debug(`SceneBuilder: synced sound ${rel} (${data.byteLength} bytes)`);
             } catch (e) {
                 console.warn(`SceneBuilder: missing sound asset: ${url}`, e);
             }
-        }
-    }
+        }),
+        mapWithConcurrency(fontPaths, MEMFS_FETCH_CONCURRENCY, async (rel) => {
+            const memPath = `/game/assets/fonts/${rel}`;
+            if (memfsPathExists(fs, memPath)) {
+                return;
+            }
+            const url = `${base}/assets/fonts/${rel}`;
+            try {
+                const data = await fetchAssetBytes(url);
+                const jg = (globalThis as {
+                    JulGame?: { FONT_CACHE?: Record<string, Uint8Array> };
+                }).JulGame;
+                if (jg?.FONT_CACHE) {
+                    jg.FONT_CACHE[commaSeparatedAssetPath(rel)] = data;
+                }
+                writeMemfsFile(fs, memPath, data);
+                console.debug(`SceneBuilder: synced font ${rel} (${data.byteLength} bytes)`);
+            } catch (e) {
+                console.warn(`SceneBuilder: missing font asset: ${url}`, e);
+            }
+        }),
+    ]);
 
-    if (fontPaths.size === 0) {
-        return;
-    }
-    fs.mkdirTree("/game/assets/fonts");
-    for (const rel of fontPaths) {
-        const memPath = `/game/assets/fonts/${rel}`;
-        const url = `${base}/assets/fonts/${rel}`;
-        try {
-            const res = await fetch(url);
-            if (!res.ok) {
-                throw new Error(String(res.status));
-            }
-            const data = new Uint8Array(await res.arrayBuffer());
-            const jg = (globalThis as {
-                JulGame?: { FONT_CACHE?: Record<string, Uint8Array> };
-            }).JulGame;
-            if (jg?.FONT_CACHE) {
-                jg.FONT_CACHE[commaSeparatedAssetPath(rel)] = data;
-            }
-            writeMemfsFile(fs, memPath, data);
-            console.debug(`SceneBuilder: synced font ${rel} (${data.byteLength} bytes)`);
-        } catch (e) {
-            console.warn(`SceneBuilder: missing font asset: ${url}`, e);
-        }
-    }
+    console.debug(
+        `SceneBuilder: synced ${imagePaths.size} images, ${soundPaths.size} sounds, ${fontPaths.size} fonts in ${Math.round(performance.now() - loadStarted)}ms`,
+    );
 }
 
 function registerPhysics(scene: Scene, entity: Entity): void {
@@ -433,7 +584,9 @@ export async function applyStrippedSceneData(
     json: SceneJson,
     opts: StrippedSceneLoadOptions,
 ): Promise<void> {
-    const { imagePaths, soundPaths, fontPaths } = collectSceneAssetPaths(json);
+    const sceneFileName = resolveSceneFileName(opts);
+    const { imagePaths, soundPaths, fontPaths } = collectSceneAssetPaths(json, sceneFileName);
+    const deferredImages = collectDeferredImagePaths(json, sceneFileName);
     const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
     if (jg) {
         jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
@@ -472,6 +625,8 @@ export async function applyStrippedSceneData(
             initializeAllScripts(scene.entities);
         }
     }
+
+    scheduleBackgroundAssetsToMemfs(emscriptenModule, deferredImages, opts.memfsAssetBaseUrl);
 }
 
 /** Port of `SceneReader` `id::Type` parent refs → live UI / entity instances. */
@@ -535,7 +690,9 @@ export async function mergeStrippedSceneData(
     json: SceneJson,
     opts: StrippedSceneLoadOptions,
 ): Promise<void> {
-    const { imagePaths, soundPaths, fontPaths } = collectSceneAssetPaths(json);
+    const sceneFileName = resolveSceneFileName(opts);
+    const { imagePaths, soundPaths, fontPaths } = collectSceneAssetPaths(json, sceneFileName);
+    const deferredImages = collectDeferredImagePaths(json, sceneFileName);
     const jg = (globalThis as { JulGame?: Record<string, unknown> }).JulGame;
     if (jg) {
         jg.memfsAssetBaseUrl = opts.memfsAssetBaseUrl;
@@ -580,6 +737,8 @@ export async function mergeStrippedSceneData(
     if (opts.loadScripts !== false) {
         instantiateScripts(scene.entities);
     }
+
+    scheduleBackgroundAssetsToMemfs(emscriptenModule, deferredImages, opts.memfsAssetBaseUrl);
 }
 
 /** Fetch JSON then apply; on failure uses `MINIMAL_STRIPPED_SCENE`. */

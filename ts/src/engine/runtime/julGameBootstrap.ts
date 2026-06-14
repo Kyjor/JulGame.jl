@@ -16,6 +16,8 @@ import {
     InternalSoundSource,
 } from "../../../_generated/src/engine/Component/SoundSource";
 import { Entity, JulGame_add_script, JulGame_add_sprite, JulGame_update } from "../../../_generated/src/engine/Entity";
+import { duplicateEntity } from "./duplicateEntity";
+import { duplicateUiElement } from "./duplicateUiElement";
 import { Scene } from "../../../_generated/src/engine/Scene";
 import { installCoroutineGlobals } from "./coroutineRuntime";
 import { initializeScript, updateScript } from "./scriptRegistry";
@@ -35,6 +37,7 @@ import {
     dirname,
     filter,
     get,
+    hasfield,
     haskey,
     hasproperty,
     isdir,
@@ -62,6 +65,7 @@ function installJuliaBuiltins(jg: Record<string, unknown>): void {
     g.filter = filter;
     g.get = get;
     g.haskey = haskey;
+    g.hasfield = hasfield;
     g.hasproperty = hasproperty;
     g.isdir = isdir;
     g.isfile = isfile;
@@ -152,6 +156,7 @@ export function bootstrapJulGameSdl(
         }
         return `id-${Math.random().toString(36).slice(2, 11)}`;
     };
+    jg.duplicate = duplicateEntity;
     jg.add_script = JulGame_add_script;
     jg.add_sprite = JulGame_add_sprite;
     jg.update = (obj: unknown, deltaTime = 0) => {
@@ -161,8 +166,8 @@ export function bootstrapJulGameSdl(
             updateScript(obj, deltaTime);
         }
     };
-    jg.initialize = (script: unknown) => {
-        initializeScript(script);
+    jg.initialize = (script: unknown, ...args: unknown[]) => {
+        initializeScript(script, ...args);
     };
     jg.updateScript = (script: unknown, deltaTime: number) => {
         updateScript(script, deltaTime);
@@ -267,6 +272,27 @@ export function bootstrapJulGameSdl(
             /* stripped WASM: no-op until sound unload is wired */
         },
     };
+    jg.Component_is_mouse_hovering = (transform: {
+        position?: { x?: number; y?: number };
+        scale?: { x?: number; y?: number };
+    } | null | undefined) => {
+        if (transform?.position == null) {
+            return false;
+        }
+        const mouse = (root.MAIN as { input?: { mousePositionWorld?: { x: number; y: number } } }).input
+            ?.mousePositionWorld;
+        if (mouse == null) {
+            return false;
+        }
+        const pos = transform.position;
+        const scale = transform.scale ?? { x: 1, y: 1 };
+        return (
+            mouse.x >= Number(pos.x) &&
+            mouse.x <= Number(pos.x) + Number(scale.x ?? 1) &&
+            mouse.y >= Number(pos.y) &&
+            mouse.y <= Number(pos.y) + Number(scale.y ?? 1)
+        );
+    };
     jg.RigidbodyModule = { add_velocity, Component_update: rigidbodyUpdate, Component_get_velocity };
     jg.AnimatorModule = { force_frame_update };
     jg.TransformModule = {
@@ -288,6 +314,13 @@ export function bootstrapJulGameSdl(
     jg.SoundSourceModule = {
         InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
             new InternalSoundSource(...args),
+        SoundSource: (
+            channel: number,
+            isMusic: boolean,
+            path: string,
+            playOnStart: boolean,
+            volume: number,
+        ) => ({ channel, isMusic, path, playOnStart, volume }),
     };
     jg.SpriteModule = {
         InternalSprite: (
@@ -342,6 +375,7 @@ export function bootstrapJulGameSdl(
     jg.UserGlobals = jg.UserGlobals ?? { Module: {} };
     installJuliaBuiltins(jg);
     jg.UI = {
+        duplicate: duplicateUiElement,
         align_to_anchor: UI_align_to_anchor,
         set_color: (
             el: Parameters<typeof UI_set_color>[0],

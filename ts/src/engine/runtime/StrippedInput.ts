@@ -23,6 +23,8 @@ export type StrippedInputState = {
     mousePosition: { x: number; y: number };
     mousePositionWorld: { x: number; y: number };
     mousePositionEditorGameWindowOffset: { x: number; y: number };
+    /** Set when the pointer moves; cleared at end of each game frame (Julia `MAIN.input.didMouseMotionOccur`). */
+    didMouseMotionOccur: boolean;
     quit: boolean;
     debug: boolean;
     main: unknown;
@@ -75,6 +77,7 @@ export function createStrippedInput(): StrippedInputState {
         mousePosition: { x: 0, y: 0 },
         mousePositionWorld: { x: 0, y: 0 },
         mousePositionEditorGameWindowOffset: { x: 0, y: 0 },
+        didMouseMotionOccur: false,
         quit: false,
         debug: false,
         main: null,
@@ -188,6 +191,7 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         if (!input) return;
         const uiPos = uiPointerPos(clientX, clientY);
         input.mousePosition = uiPos;
+        input.didMouseMotionOccur = true;
         const scene = root.MAIN?.scene as SceneShape | undefined;
         if (scene) {
             lastUiHover = updateUiPointerHover(scene.uiElements ?? [], uiPos.x, uiPos.y, lastUiHover);

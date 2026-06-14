@@ -2,7 +2,7 @@
 
 export type ScriptHooks = {
     create: () => unknown;
-    initialize?: (script: unknown) => void;
+    initialize?: (script: unknown, ...args: unknown[]) => void;
     update?: (script: unknown, deltaTime: number) => void;
     onShutdown?: (script: unknown) => void;
 };
@@ -63,9 +63,9 @@ export function createScript(name: string): unknown {
     return script;
 }
 
-export function initializeScript(script: unknown): void {
+export function initializeScript(script: unknown, ...args: unknown[]): void {
     const hooks = registry.get(getScriptName(script));
-    hooks?.initialize?.(script);
+    hooks?.initialize?.(script, ...args);
 }
 
 export function updateScript(script: unknown, deltaTime: number): void {

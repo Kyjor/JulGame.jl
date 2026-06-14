@@ -88,6 +88,13 @@ export function scheduleImageFetch(relPath: string): void {
             }
             const data = new Uint8Array(await res.arrayBuffer());
             writeMemfsFile(fs, memfsImagePath(relPath), data);
+            const api = (globalThis as { JulGameSdl?: { glue_SDL_DestroyTexture?: (t: number) => void } })
+                .JulGameSdl;
+            if (api) {
+                void import("./textureCache").then(({ invalidateTextureCachesForImagePath }) => {
+                    invalidateTextureCachesForImagePath(relPath, api as never);
+                });
+            }
         })
         .catch(() => {
             failed.add(relPath);

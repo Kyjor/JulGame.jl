@@ -69,5 +69,14 @@ function postprocess_sprite_ts(data::AbstractString)::String
         self.texture = null
     }""",
     )
+    s = replace(
+        s,
+        r"if \(renderFn\(\(globalThis as any\)\.JulGame\.Renderer, texture_to_render, srcRect, dstRect, self\.rotation, rotationCenter, self\.isFlipped \? 1 : 0\) != 0\) \{\n            let error = unsafe_string\(\(globalThis as any\)\.JulGameSdl\.glue_SDL_GetError\(\)\)\n            console\.error\(`Failed to render sprite: \$\{error\}`\)\n        \}" =>
+        """
+        if (renderFn((globalThis as any).JulGame.Renderer, texture_to_render, srcRect, dstRect, self.rotation, rotationCenter, self.isFlipped ? 1 : 0) != 0) {
+            self.texture = null
+            return
+        }""",
+    )
     return s
 end

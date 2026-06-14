@@ -6,6 +6,7 @@ import { cleanupCoroutines } from "./coroutineRuntime";
 import { playSceneMusic, playSoundsOnStart, reloadEntitySounds } from "./memfsAudio";
 import { clearUiImageTextureCache } from "../../../_generated/src/engine/UI/UIImage";
 import { clearUiTextTextureCache } from "../../../_generated/src/engine/UI/TextBox";
+import { clearStaleSpriteTextureRefs, clearUiElementTextureRefs } from "./textureCache";
 import {
     mergeStrippedSceneData,
     type SceneJson,
@@ -58,6 +59,7 @@ export function requestChangeScene(sceneFileName: string): void {
     console.debug(`Changing scene to: ${sceneFileName}`);
 
     teardownForSceneChange(main.scene);
+    clearUiElementTextureRefs(main.scene);
     purgeUnusedTextureCache(runtime.api, main.scene);
     cleanupAllImmediateComponents();
     cleanupCoroutines();
@@ -117,6 +119,7 @@ function purgeUnusedTextureCache(api: JulGameSdlApi, scene: Scene): void {
             delete cache[path];
         }
     }
+    clearStaleSpriteTextureRefs(scene);
 }
 
 function teardownForSceneChange(scene: Scene): void {
@@ -180,6 +183,8 @@ async function loadAndMergeScene(sceneFileName: string): Promise<void> {
     json = (await res.json()) as SceneJson;
 
     await mergeStrippedSceneData(scene, rt.emscriptenModule, json, {
+        sceneJsonUrl,
+        sceneFileName,
         memfsAssetBaseUrl: rt.memfsAssetBaseUrl,
         canvasWidth: rt.canvasWidth,
         canvasHeight: rt.canvasHeight,

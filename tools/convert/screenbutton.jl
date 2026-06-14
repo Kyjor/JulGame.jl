@@ -10,7 +10,7 @@ import type { JulGameSdlApi } from "../../../../src/platform/sdl-wasm/SDLBridge"
 import { normalizeAssetPath } from "../../../../src/engine/runtime/projectConfig";
 import { UI_align_to_anchor } from "./UIElement";
 import { parseJuliaUiColor, type JulGameUiElement } from "./uiTypes";
-import { loadUiTextureFromPath } from "./UIImage";
+import { loadUiTextureFromPath, isUiTextureHandleCurrent } from "./UIImage";
 
 export type ScreenButtonElement = JulGameUiElement & {
     type: "ScreenButton";
@@ -93,7 +93,11 @@ export function UI_render_ScreenButton(api: JulGameSdlApi, self: ScreenButtonEle
     if (!self.isActive || (globalThis as any).JulGame.IS_CHANGING_SCENE) {
         return;
     }
-    if (!self.isInitialized) {
+    if (!self.isInitialized || !isUiTextureHandleCurrent(self.buttonUpSpritePath, self.buttonUpTexture)) {
+        self.isInitialized = false;
+        self.buttonUpTexture = null;
+        self.buttonDownTexture = null;
+        self.currentTexture = null;
         UI_initialize_ScreenButton(api, self);
     }
     if (!self.currentTexture) {

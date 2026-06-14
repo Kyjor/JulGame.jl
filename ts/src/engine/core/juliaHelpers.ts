@@ -149,6 +149,17 @@ export function hasproperty(obj: unknown, key: string | number): boolean {
     return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
+/**
+ * Julia `hasfield(T, :field)` — transpiled code often passes `typeof(x)` (a string).
+ * For string first args, treat as the Julia compile-time check (field exists on instances).
+ */
+export function hasfield(typeOrObj: unknown, field: string | number): boolean {
+    if (typeOrObj != null && typeof typeOrObj === "object") {
+        return hasproperty(typeOrObj, field);
+    }
+    return typeof typeOrObj === "string";
+}
+
 /** Julia `haskey(dict, key)` — works for plain objects and `Map`. */
 export function haskey(collection: unknown, key: string | number): boolean {
     if (collection == null) {

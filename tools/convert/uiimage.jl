@@ -24,6 +24,18 @@ export type UiImageElement = JulGameUiElement & {
 
 const imageTextures = new Map<string, number>();
 
+export function evictUiImageTextureForPath(api: JulGameSdlApi, imagePath: string): void {
+    if (!imagePath) {
+        return;
+    }
+    const tex = imageTextures.get(imagePath);
+    if (!tex) {
+        return;
+    }
+    api.glue_SDL_DestroyTexture?.(tex);
+    imageTextures.delete(imagePath);
+}
+
 export function hydrateUiImageFromJson(json: Record<string, unknown>): UiImageElement {
     return {
         type: "UIImage",
@@ -52,6 +64,9 @@ export function hydrateUiImageFromJson(json: Record<string, unknown>): UiImageEl
 }
 
 export function loadUiTextureFromPath(api: JulGameSdlApi, imagePath: string): number | null {
+    if (!imagePath) {
+        return null;
+    }
     const cached = imageTextures.get(imagePath);
     if (cached) {
         return cached;
@@ -73,6 +88,17 @@ export function loadUiTextureFromPath(api: JulGameSdlApi, imagePath: string): nu
     }
     imageTextures.set(imagePath, tex);
     return tex;
+}
+
+function isUiImageTextureCurrent(self: UiImageElement): boolean {
+    return isUiTextureHandleCurrent(self.path, self.texture);
+}
+
+export function isUiTextureHandleCurrent(imagePath: string, texture: number | null): boolean {
+    if (!imagePath || !texture) {
+        return false;
+    }
+    return imageTextures.get(imagePath) === texture;
 }
 
 export function UI_initialize_UIImage(api: JulGameSdlApi, self: UiImageElement): void {
@@ -114,7 +140,8 @@ export function UI_render_UIImage(api: JulGameSdlApi, self: UiImageElement): voi
         return;
     }
     step("init", () => {
-        if (!self.texture && self.path) {
+        if (!isUiImageTextureCurrent(self) && self.path) {
+            self.texture = null;
             UI_initialize_UIImage(api, self);
         }
     });

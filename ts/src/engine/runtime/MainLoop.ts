@@ -156,6 +156,10 @@ export function runGameFrame(editorMode = false): void {
     const scene = M.scene;
     const cam = scene.camera;
 
+    if (cam && input && jg.InputModule) {
+        updateMouseWorld(input, cam, jg.pixels_per_world_unit);
+    }
+
     if (!editorMode) {
         // Scripts set velocity first; rigidbody update applies it (Collider checks run inside Rigidbody.update).
         for (const entity of scene.entities) {
@@ -189,7 +193,10 @@ export function runGameFrame(editorMode = false): void {
 
     if (cam && input && jg.InputModule) {
         applyCameraFollow(cam, deltaTime);
-        updateMouseWorld(input, cam, jg.pixels_per_world_unit);
+    }
+
+    if (input) {
+        input.didMouseMotionOccur = false;
     }
 
     (api.glue_SDL_RenderClear as () => void)();
