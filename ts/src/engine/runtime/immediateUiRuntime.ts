@@ -2,7 +2,7 @@ import { hydrateTextBoxFromJson, type TextBoxElement } from "../../../_generated
 import { hydrateUiImageFromJson, type UiImageElement } from "../../../_generated/src/engine/UI/UIImage";
 import { hydrateRectangleFromJson, type RectangleElement } from "../../../_generated/src/engine/UI/Rectangle";
 import { UI_add_click_event } from "../../../_generated/src/engine/UI/UIElement";
-import type { JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
+import type { JulGameUiElement } from "../../../_generated/src/engine/UI/UiTypes";
 
 export type ImmediateUiElement = TextBoxElement | UiImageElement | RectangleElement;
 
