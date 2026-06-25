@@ -48,3 +48,7 @@ src/editor/Build/
 *.log
 
 *.so
+
+*.zip
+
+ts/_generated/

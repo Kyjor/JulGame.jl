@@ -1,6 +1,7 @@
 module SoundSourceModule
     using ..Component.JulGame
     import ..Component
+    include(joinpath(@__DIR__, "SoundSource", "constants.jl"))
     
     export SoundSource
     struct SoundSource
@@ -27,17 +28,16 @@ module SoundSourceModule
             this = new()
 
             SDL2.SDL_ClearError()
-            fullPath = joinpath(BasePath, "assets", "sounds", path)
-            if length(path) < 1
-                sound = C_NULL    
-            else
+            fullPath = joinpath(JulGame.BasePath, "assets", "sounds", path)
+            sound = C_NULL
+            if length(path) > 0
                 sound = load_sound_sdl(path, isMusic)
             end
             error = unsafe_string(SDL2.SDL_GetError())
 
-            if (sound == C_NULL || !isempty(error)) && length(path) > 0
+            if (sound == C_NULL || length(error) > 0) && length(path) > 0
                 println(fullPath)
-                error("Error loading file at $path. SDL Error: $(error)")
+                println("Error loading file at $path. SDL Error: $(error)")
                 SDL2.SDL_ClearError()
             end
             
@@ -99,7 +99,7 @@ module SoundSourceModule
         SDL2.SDL_ClearError()
         this.sound = load_sound_sdl(soundPath, isMusic)
         error = unsafe_string(SDL2.SDL_GetError())
-        if !isempty(error)
+        if length(error) > 0
             println(string("Couldn't open sound! SDL Error: ", error))
             SDL2.SDL_ClearError()
             this.sound = C_NULL
@@ -121,7 +121,7 @@ module SoundSourceModule
         end
         @debug "load_sound_sdl: Loading sound from disk, there are $(length(JulGame.AUDIO_CACHE)) sounds in cache"
 
-        fullPath = joinpath(BasePath, "assets", "sounds", soundPath)
+        fullPath = joinpath(JulGame.BasePath, "assets", "sounds", soundPath)
         return isMusic ? SDL2.Mix_LoadMUS(fullPath) : SDL2.Mix_LoadWAV(fullPath)
     end
 
@@ -132,7 +132,7 @@ module SoundSourceModule
         # Split the path into components
         parts = split(normalized_path, '/')
         
-        result = join(parts[1:end], ",")
+        result = join(parts[1:length(parts)], ",")
     
         return result  
     end

@@ -232,7 +232,7 @@ function UI.align_to_anchor(this::JulGame.IUIElement)
             parent_pos.y + size.y - this.size.y + this.anchorOffset.y
         )
     elseif this.anchor.current_state == :none
-        @debug "No anchor set for textbox $(this.name)"
+        #@debug "No anchor set for textbox $(this.name)"
     else
         @error "Invalid anchor state: $(this.anchor.current_state)"
     end

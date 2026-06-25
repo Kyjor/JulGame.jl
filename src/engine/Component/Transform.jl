@@ -11,7 +11,7 @@ module TransformModule
         screenRotation::Math.Vector2
         parent
 
-        function Transform(position::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), scale::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(1.0, 1.0, 1.0), rotation::Union{Math.Vector3f, Math.Vector2f} = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
+        function Transform(position::Math.Vector3f = Math.Vector3f(0.0, 0.0, 0.0), scale::Math.Vector3f = Math.Vector3f(1.0, 1.0, 1.0), rotation::Math.Vector3f = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
             this = new()
             
             this.position = position
@@ -29,10 +29,6 @@ module TransformModule
     function Component.duplicate(this::Transform, parent::Any)
         newTransform = Transform(this.position, this.scale, this.rotation, this.parent)
         return newTransform
-    end
-
-    function Component.set_position(this::Transform, position::Union{Math.Vector3f, Math.Vector2f})
-        this.position = position
     end
 
     function Component.is_mouse_hovering(this::Transform)
