@@ -5,10 +5,6 @@
     struct Rigidbody
         mass::Float64
         useGravity::Bool
-
-        function Rigidbody(;mass::Float64 = 1.0, useGravity::Bool = true)
-            return new(mass, useGravity)
-        end
     end
 
     export InternalRigidbody
@@ -22,7 +18,7 @@
         useGravity::Bool
         velocity::Math.Vector2f
 
-        function InternalRigidbody(parent::Any; mass::Float64 = 1.0, useGravity::Bool = true)
+        function InternalRigidbody(parent::Any, mass::Float64 = 1.0, useGravity::Bool = true)
             this = new()
             
             this.acceleration = Math.Vector2f()
@@ -52,8 +48,8 @@
         newAcceleration = Component.apply_forces(this)
         newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
-        Component.set_position(transform, newPosition)
-        set_velocity(this, newVelocity * velocityMultiplier)
+        transform.position = newPosition
+        this.velocity = newVelocity * velocityMultiplier
         this.acceleration = newAcceleration
 
         if this.parent.collider != C_NULL
@@ -62,7 +58,7 @@
     end
 
     function Component.apply_forces(this::InternalRigidbody)
-        gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? GRAVITY : 0.0)
+        gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? JulGame.GRAVITY : 0.0)
         dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
         dragAcceleration = dragForce / this.mass
         return gravityAcceleration - dragAcceleration
@@ -91,26 +87,9 @@
         end
     end
     export add_velocity
-    
-    """
-    set_velocity(this::Rigidbody, velocity::Math.Vector2f)
-
-    Set the velocity of the Rigidbody component.
-
-    # Arguments
-    - `this::Rigidbody`: The Rigidbody component to set the velocity for.
-    - `velocity::Vector2f`: The velocity to set.
-    """
-    function set_velocity(this::InternalRigidbody, velocity::Math.Vector2f)
-        this.velocity = velocity
-        if(velocity.y < 0)
-            #this.grounded = false
-        end
-    end
-    export set_velocity
 
     function Component.duplicate(this::InternalRigidbody, parent::Any)
-        newRigidbody = InternalRigidbody(parent, mass=this.mass, useGravity=this.useGravity)
+        newRigidbody = InternalRigidbody(parent, this.mass, this.useGravity)
         newRigidbody.acceleration = this.acceleration
         newRigidbody.drag = this.drag
         newRigidbody.grounded = this.grounded

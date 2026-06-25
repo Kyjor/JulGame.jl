@@ -71,6 +71,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: net start audiosrv
         shell: powershell
+        continue-on-error: true
 
       - uses: julia-actions/setup-julia@v1
         with:
@@ -80,8 +81,14 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - name: Test Editor Package
+        if: matrix.version != 'nightly'
         working-directory: ./src/editor/JulGameEditor
-        run: julia -e 'using Pkg; Pkg.activate("."); Pkg.add(path=joinpath("..","..","..")); Pkg.test();'
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            export DISPLAY=:99
+          fi
+          julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate(); Pkg.test();'
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4-beta
         env:

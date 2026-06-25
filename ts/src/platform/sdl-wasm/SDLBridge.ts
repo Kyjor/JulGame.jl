@@ -1,0 +1,579 @@
+import { loadSDLModule } from "./sdlModule";
+import { attachSdlInputGlue } from "./sdlInputGlue";
+
+type Cwrap = (
+    ident: string,
+    returnType: string | null,
+    argTypes: string[],
+) => (...args: unknown[]) => unknown;
+
+type EmscriptenModuleShape = Record<string, unknown> & {
+    cwrap?: Cwrap;
+    FS?: {
+        mkdirTree: (path: string) => void;
+        writeFile: (path: string, data: Uint8Array | string, opts?: { canOwn?: boolean }) => void;
+    };
+};
+
+/** Low-level C exports; TS layer adds rect helpers expected by generated JulGame code. */
+type JulGameSdlCApi = {
+    glue_init: (width: number, height: number) => number;
+    glue_render_square_frame: () => void;
+    glue_poll_quit: () => number;
+    glue_SDL_GetTicks: () => number;
+    glue_get_renderer: () => number;
+    glue_SDL_RenderClear: () => void;
+    glue_SDL_RenderPresent: () => void;
+    glue_SDL_RenderSetLogicalSize: (w: number, h: number) => void;
+    glue_SDL_SetRenderDrawBlendMode_BLEND: () => void;
+    glue_SDL_SetRenderDrawColor: (r: number, g: number, b: number, a: number) => void;
+    glue_SDL_GetRenderDrawColor_packed: () => number;
+    glue_SDL_RenderFillRectF: (x: number, y: number, w: number, h: number) => void;
+    glue_IMG_Load: (path: string) => number;
+    glue_wasm_alloc_copy: (data: Uint8Array, len: number) => number;
+    glue_SDL_RWFromConstMem: (mem: number, size: number) => number;
+    glue_IMG_Load_RW: (src: number, freesrc: number) => number;
+    /** C glue uses static renderer; first arg from transpiled Julia is ignored. */
+    glue_SDL_CreateTextureFromSurface: (_renderer: number, surface: number) => number;
+    glue_SDL_FreeSurface: (surface: number) => void;
+    glue_SDL_DestroyTexture: (texture: number) => void;
+    glue_SDL_GetError: () => string;
+    glue_SDL_ClearError: () => void;
+    glue_surface_w: (surface: number) => number;
+    glue_surface_h: (surface: number) => number;
+    glue_SDL_SetTextureColorMod: (tex: number, r: number, g: number, b: number) => void;
+    glue_SDL_SetTextureAlphaMod: (tex: number, a: number) => void;
+    glue_SDL_GetTextureColorMod_packed: (tex: number) => number;
+    glue_render_copy_ex: (
+        texture: number,
+        has_src: number,
+        sx: number,
+        sy: number,
+        sw: number,
+        sh: number,
+        dx: number,
+        dy: number,
+        dw: number,
+        dh: number,
+        angle: number,
+        cx: number,
+        cy: number,
+        flip: number,
+    ) => number;
+    glue_render_copy_ex_f: (
+        texture: number,
+        has_src: number,
+        sx: number,
+        sy: number,
+        sw: number,
+        sh: number,
+        dx: number,
+        dy: number,
+        dw: number,
+        dh: number,
+        angle: number,
+        cx: number,
+        cy: number,
+        flip: number,
+    ) => number;
+    glue_Mix_OpenAudio: (frequency: number, format: number, channels: number, chunksize: number) => number;
+    glue_Mix_Quit: () => void;
+    glue_Mix_LoadWAV: (path: string) => number;
+    glue_Mix_LoadMUS: (path: string) => number;
+    glue_Mix_FreeChunk: (chunk: number) => void;
+    glue_Mix_FreeMusic: (music: number) => void;
+    glue_Mix_Volume: (channel: number, volume: number) => number;
+    glue_Mix_VolumeMusic: (volume: number) => number;
+    glue_Mix_MasterVolume: (volume: number) => number;
+    glue_Mix_PlayChannel: (channel: number, chunk: number, loops: number) => number;
+    glue_Mix_PlayMusic: (music: number, loops: number) => number;
+    glue_Mix_PlayingMusic: () => number;
+    glue_Mix_PausedMusic: () => number;
+    glue_Mix_PauseMusic: () => void;
+    glue_Mix_ResumeMusic: () => void;
+    glue_Mix_HaltMusic: () => number;
+    glue_Mix_GetError: () => string;
+    glue_TTF_OpenFont?: (path: string, ptsize: number) => number;
+    glue_TTF_OpenFontRW?: (rw: number, freesrc: number, ptsize: number) => number;
+    glue_TTF_RenderUTF8_Blended?: (
+        font: number,
+        text: string,
+        r: number,
+        g: number,
+        b: number,
+        a: number,
+    ) => number;
+    glue_TTF_CloseFont?: (font: number) => void;
+};
+
+function wasmHasExport(mod: EmscriptenModuleShape, name: string): boolean {
+    const m = mod as Record<string, unknown>;
+    const exports = m.wasmExports as Record<string, unknown> | undefined;
+    if (exports && name in exports) {
+        return true;
+    }
+    // Emscripten 4 MODULARIZE: assignWasmExports sets Module["_glue_*"].
+    const underscored = `_${name}`;
+    if (typeof m[underscored] === "function") {
+        return true;
+    }
+    return typeof m[name] === "function";
+}
+
+/** cwrap returns a JS function even when the WASM export is missing; verify wasmExports first. */
+function bindGlueExport(
+    mod: EmscriptenModuleShape,
+    cwrap: Cwrap,
+    name: string,
+    returnType: string | null,
+    argTypes: string[],
+): ((...args: unknown[]) => unknown) | undefined {
+    if (!wasmHasExport(mod, name)) {
+        return undefined;
+    }
+    const fn = cwrap(name, returnType, argTypes);
+    return typeof fn === "function" ? fn : undefined;
+}
+
+function unpackRenderDrawColorPacked(packed: number): { r: number; g: number; b: number; a: number } {
+    return {
+        r: packed & 0xff,
+        g: (packed >> 8) & 0xff,
+        b: (packed >> 16) & 0xff,
+        a: (packed >>> 24) & 0xff,
+    };
+}
+
+/** API shape consumed by `_generated` engine code + wasm glue. */
+export type JulGameSdlApi = JulGameSdlCApi & {
+    /** Emscripten helper for decoding native string pointers (Julia `unsafe_string`). */
+    UTF8ToString: (ptr: number) => string;
+    glue_SDL_GetRenderDrawColor: (
+        _renderer: number,
+        ..._legacyOut: unknown[]
+    ) => { r: number; g: number; b: number; a: number } | void;
+    glue_SDL_GetTextureColorMod: (
+        tex: number,
+        ..._legacyOut: unknown[]
+    ) => { r: number; g: number; b: number } | void;
+    glue_SDL_GetTextureAlphaMod: (tex: number, ..._legacyOut: unknown[]) => number | void;
+    glue_SDL_FRect: (x: number, y: number, w: number, h: number) => { x: number; y: number; w: number; h: number };
+    glue_SDL_Rect: (x: number, y: number, w: number, h: number) => { x: number; y: number; w: number; h: number };
+    glue_SDL_Point: (x: number, y: number) => { x: number; y: number };
+    glue_SDL_FPoint: (x: number, y: number) => { x: number; y: number };
+    glue_SDL_RenderCopyEx: (
+        _renderer: number,
+        texture: number,
+        srcRect: { x: number; y: number; w: number; h: number } | null,
+        dstRect: { x: number; y: number; w: number; h: number },
+        angle: number,
+        center: { x: number; y: number },
+        flip: number,
+    ) => number;
+    glue_SDL_RenderCopyExF: (
+        _renderer: number,
+        texture: number,
+        srcRect: { x: number; y: number; w: number; h: number } | null,
+        dstRect: { x: number; y: number; w: number; h: number },
+        angle: number,
+        center: { x: number; y: number },
+        flip: number,
+    ) => number;
+    glue_SDL_ALPHA_OPAQUE: number;
+    glue_SDL_IntersectRect: (
+        a: { x: number; y: number; w: number; h: number },
+        b: { x: number; y: number; w: number; h: number },
+        result: { x: number; y: number; w: number; h: number },
+    ) => number;
+    glue_SDL_IntersectRectAndLine: (
+        rect: { x: number; y: number; w: number; h: number },
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+    ) => number;
+};
+
+type SdlRect = { x: number; y: number; w: number; h: number };
+
+/** SDL_IntersectRect parity for transpiled Collider.ts (JS rect objects). */
+function intersectRect(a: SdlRect, b: SdlRect, result: SdlRect): number {
+    const x1 = Math.max(a.x, b.x);
+    const y1 = Math.max(a.y, b.y);
+    const x2 = Math.min(a.x + a.w, b.x + b.w);
+    const y2 = Math.min(a.y + a.h, b.y + b.h);
+    if (x2 <= x1 || y2 <= y1) {
+        result.x = 0;
+        result.y = 0;
+        result.w = 0;
+        result.h = 0;
+        return 0;
+    }
+    result.x = x1;
+    result.y = y1;
+    result.w = x2 - x1;
+    result.h = y2 - y1;
+    return 1;
+}
+
+function segmentsIntersect(
+    ax1: number,
+    ay1: number,
+    ax2: number,
+    ay2: number,
+    bx1: number,
+    by1: number,
+    bx2: number,
+    by2: number,
+): boolean {
+    const d = (ax2 - ax1) * (by2 - by1) - (ay2 - ay1) * (bx2 - bx1);
+    if (d === 0) {
+        return false;
+    }
+    const t = ((bx1 - ax1) * (by2 - by1) - (by1 - ay1) * (bx2 - bx1)) / d;
+    const u = ((bx1 - ax1) * (ay2 - ay1) - (by1 - ay1) * (ax2 - ax1)) / d;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+}
+
+/** SDL_IntersectRectAndLine parity for grounded ray checks in Collider.ts. */
+function intersectRectAndLine(rect: SdlRect, x1: number, y1: number, x2: number, y2: number): number {
+    const rx2 = rect.x + rect.w;
+    const ry2 = rect.y + rect.h;
+    const inRect = (x: number, y: number) => x >= rect.x && x < rx2 && y >= rect.y && y < ry2;
+    if (inRect(x1, y1) || inRect(x2, y2)) {
+        return 1;
+    }
+    const edges: [number, number, number, number][] = [
+        [rect.x, rect.y, rx2, rect.y],
+        [rx2, rect.y, rx2, ry2],
+        [rx2, ry2, rect.x, ry2],
+        [rect.x, ry2, rect.x, rect.y],
+    ];
+    for (const [ex1, ey1, ex2, ey2] of edges) {
+        if (segmentsIntersect(x1, y1, x2, y2, ex1, ey1, ex2, ey2)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+function wrapRenderCopyEx(
+    c: JulGameSdlCApi["glue_render_copy_ex"],
+): JulGameSdlApi["glue_SDL_RenderCopyEx"] {
+    return (_renderer, texture, srcRect, dstRect, angle, center, flip) => {
+        const hasSrc = srcRect && srcRect.w > 0 && srcRect.h > 0 ? 1 : 0;
+        const sx = srcRect?.x ?? 0;
+        const sy = srcRect?.y ?? 0;
+        const sw = srcRect?.w ?? 0;
+        const sh = srcRect?.h ?? 0;
+        return c(
+            texture,
+            hasSrc,
+            sx,
+            sy,
+            sw,
+            sh,
+            Math.round(dstRect.x),
+            Math.round(dstRect.y),
+            Math.round(dstRect.w),
+            Math.round(dstRect.h),
+            angle,
+            Math.round(center.x),
+            Math.round(center.y),
+            flip,
+        );
+    };
+}
+
+function wrapRenderCopyExF(
+    c: JulGameSdlCApi["glue_render_copy_ex_f"],
+): JulGameSdlApi["glue_SDL_RenderCopyExF"] {
+    return (_renderer, texture, srcRect, dstRect, angle, center, flip) => {
+        const hasSrc = srcRect && srcRect.w > 0 && srcRect.h > 0 ? 1 : 0;
+        const sx = srcRect?.x ?? 0;
+        const sy = srcRect?.y ?? 0;
+        const sw = srcRect?.w ?? 0;
+        const sh = srcRect?.h ?? 0;
+        return c(
+            texture,
+            hasSrc,
+            sx,
+            sy,
+            sw,
+            sh,
+            dstRect.x,
+            dstRect.y,
+            dstRect.w,
+            dstRect.h,
+            angle,
+            center.x,
+            center.y,
+            flip,
+        );
+    };
+}
+
+export class SDLBridge {
+    private module: EmscriptenModuleShape | null = null;
+    private api: JulGameSdlApi | null = null;
+
+    async init(
+        canvas: HTMLCanvasElement,
+        print: (text: string) => void,
+        printErr: (text: string) => void,
+    ): Promise<void> {
+        this.module = (await loadSDLModule(canvas, print, printErr)) as EmscriptenModuleShape;
+        const mod = this.module;
+        const cwrap = mod.cwrap;
+        if (typeof cwrap !== "function") {
+            throw new Error("Emscripten module missing cwrap (add EXPORTED_RUNTIME_METHODS)");
+        }
+        const cApi: JulGameSdlCApi = {
+            glue_init: cwrap("glue_init", "number", ["number", "number"]) as JulGameSdlCApi["glue_init"],
+            glue_render_square_frame: cwrap("glue_render_square_frame", null, []) as JulGameSdlCApi["glue_render_square_frame"],
+            glue_poll_quit: cwrap("glue_poll_quit", "number", []) as JulGameSdlCApi["glue_poll_quit"],
+            glue_SDL_GetTicks: cwrap("glue_SDL_GetTicks", "number", []) as JulGameSdlCApi["glue_SDL_GetTicks"],
+            glue_get_renderer: cwrap("glue_get_renderer", "number", []) as JulGameSdlCApi["glue_get_renderer"],
+            glue_SDL_RenderClear: cwrap("glue_SDL_RenderClear", null, []) as JulGameSdlCApi["glue_SDL_RenderClear"],
+            glue_SDL_RenderPresent: cwrap("glue_SDL_RenderPresent", null, []) as JulGameSdlCApi["glue_SDL_RenderPresent"],
+            glue_SDL_RenderSetLogicalSize: cwrap("glue_SDL_RenderSetLogicalSize", null, [
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_RenderSetLogicalSize"],
+            glue_SDL_SetRenderDrawBlendMode_BLEND: cwrap("glue_SDL_SetRenderDrawBlendMode_BLEND", null, []) as JulGameSdlCApi["glue_SDL_SetRenderDrawBlendMode_BLEND"],
+            glue_SDL_SetRenderDrawColor: cwrap("glue_SDL_SetRenderDrawColor", null, [
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_SetRenderDrawColor"],
+            glue_SDL_GetRenderDrawColor_packed: cwrap("glue_SDL_GetRenderDrawColor_packed", "number", []) as JulGameSdlCApi["glue_SDL_GetRenderDrawColor_packed"],
+            glue_SDL_RenderFillRectF: cwrap("glue_SDL_RenderFillRectF", null, [
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_RenderFillRectF"],
+            glue_IMG_Load: cwrap("glue_IMG_Load", "number", ["string"]) as JulGameSdlCApi["glue_IMG_Load"],
+            glue_wasm_alloc_copy: cwrap("glue_wasm_alloc_copy", "number", [
+                "array",
+                "number",
+            ]) as JulGameSdlCApi["glue_wasm_alloc_copy"],
+            glue_SDL_RWFromConstMem: cwrap("glue_SDL_RWFromConstMem", "number", [
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_RWFromConstMem"],
+            glue_IMG_Load_RW: cwrap("glue_IMG_Load_RW", "number", ["number", "number"]) as JulGameSdlCApi["glue_IMG_Load_RW"],
+            glue_SDL_CreateTextureFromSurface: (() => {
+                const create = cwrap("glue_SDL_CreateTextureFromSurface", "number", ["number"]) as (
+                    surface: number,
+                ) => number;
+                return (_renderer: number, surface: number) => create(surface);
+            })(),
+            glue_SDL_FreeSurface: cwrap("glue_SDL_FreeSurface", null, ["number"]) as JulGameSdlCApi["glue_SDL_FreeSurface"],
+            glue_SDL_DestroyTexture: cwrap("glue_SDL_DestroyTexture", null, ["number"]) as JulGameSdlCApi["glue_SDL_DestroyTexture"],
+            glue_SDL_GetError: cwrap("glue_SDL_GetError", "string", []) as JulGameSdlCApi["glue_SDL_GetError"],
+            glue_SDL_ClearError: cwrap("glue_SDL_ClearError", null, []) as JulGameSdlCApi["glue_SDL_ClearError"],
+            glue_surface_w: cwrap("glue_surface_w", "number", ["number"]) as JulGameSdlCApi["glue_surface_w"],
+            glue_surface_h: cwrap("glue_surface_h", "number", ["number"]) as JulGameSdlCApi["glue_surface_h"],
+            glue_SDL_SetTextureColorMod: cwrap("glue_SDL_SetTextureColorMod", null, [
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_SetTextureColorMod"],
+            glue_SDL_SetTextureAlphaMod: cwrap("glue_SDL_SetTextureAlphaMod", null, ["number", "number"]) as JulGameSdlCApi["glue_SDL_SetTextureAlphaMod"],
+            glue_SDL_GetTextureColorMod_packed: cwrap("glue_SDL_GetTextureColorMod_packed", "number", [
+                "number",
+            ]) as JulGameSdlCApi["glue_SDL_GetTextureColorMod_packed"],
+            glue_render_copy_ex: cwrap("glue_render_copy_ex", "number", [
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_render_copy_ex"],
+            glue_render_copy_ex_f: cwrap("glue_render_copy_ex_f", "number", [
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_render_copy_ex_f"],
+            glue_Mix_OpenAudio: cwrap("glue_Mix_OpenAudio", "number", [
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_Mix_OpenAudio"],
+            glue_Mix_Quit: cwrap("glue_Mix_Quit", null, []) as JulGameSdlCApi["glue_Mix_Quit"],
+            glue_Mix_LoadWAV: cwrap("glue_Mix_LoadWAV", "number", ["string"]) as JulGameSdlCApi["glue_Mix_LoadWAV"],
+            glue_Mix_LoadMUS: cwrap("glue_Mix_LoadMUS", "number", ["string"]) as JulGameSdlCApi["glue_Mix_LoadMUS"],
+            glue_Mix_FreeChunk: cwrap("glue_Mix_FreeChunk", null, ["number"]) as JulGameSdlCApi["glue_Mix_FreeChunk"],
+            glue_Mix_FreeMusic: cwrap("glue_Mix_FreeMusic", null, ["number"]) as JulGameSdlCApi["glue_Mix_FreeMusic"],
+            glue_Mix_Volume: cwrap("glue_Mix_Volume", "number", ["number", "number"]) as JulGameSdlCApi["glue_Mix_Volume"],
+            glue_Mix_VolumeMusic: cwrap("glue_Mix_VolumeMusic", "number", ["number"]) as JulGameSdlCApi["glue_Mix_VolumeMusic"],
+            glue_Mix_MasterVolume: cwrap("glue_Mix_MasterVolume", "number", ["number"]) as JulGameSdlCApi["glue_Mix_MasterVolume"],
+            glue_Mix_PlayChannel: cwrap("glue_Mix_PlayChannel", "number", [
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_Mix_PlayChannel"],
+            glue_Mix_PlayMusic: cwrap("glue_Mix_PlayMusic", "number", ["number", "number"]) as JulGameSdlCApi["glue_Mix_PlayMusic"],
+            glue_Mix_PlayingMusic: cwrap("glue_Mix_PlayingMusic", "number", []) as JulGameSdlCApi["glue_Mix_PlayingMusic"],
+            glue_Mix_PausedMusic: cwrap("glue_Mix_PausedMusic", "number", []) as JulGameSdlCApi["glue_Mix_PausedMusic"],
+            glue_Mix_PauseMusic: cwrap("glue_Mix_PauseMusic", null, []) as JulGameSdlCApi["glue_Mix_PauseMusic"],
+            glue_Mix_ResumeMusic: cwrap("glue_Mix_ResumeMusic", null, []) as JulGameSdlCApi["glue_Mix_ResumeMusic"],
+            glue_Mix_HaltMusic: cwrap("glue_Mix_HaltMusic", "number", []) as JulGameSdlCApi["glue_Mix_HaltMusic"],
+            glue_Mix_GetError: cwrap("glue_Mix_GetError", "string", []) as JulGameSdlCApi["glue_Mix_GetError"],
+            glue_TTF_OpenFont: bindGlueExport(mod, cwrap, "glue_TTF_OpenFont", "number", [
+                "string",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_OpenFont"],
+            glue_TTF_OpenFontRW: bindGlueExport(mod, cwrap, "glue_TTF_OpenFontRW", "number", [
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_OpenFontRW"],
+            glue_TTF_RenderUTF8_Blended: bindGlueExport(mod, cwrap, "glue_TTF_RenderUTF8_Blended", "number", [
+                "number",
+                "string",
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_RenderUTF8_Blended"],
+            glue_TTF_CloseFont: bindGlueExport(mod, cwrap, "glue_TTF_CloseFont", null, [
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_CloseFont"],
+        };
+
+        if (!wasmHasExport(mod, "glue_TTF_OpenFont")) {
+            console.warn(
+                "SDLBridge: julgame.js lacks SDL_ttf WASM exports — run `npm run build:wasm` in JulGame.jl/ts, then hard-refresh the browser",
+            );
+        }
+
+        const glue_SDL_FRect: JulGameSdlApi["glue_SDL_FRect"] = (x, y, w, h) => ({ x, y, w, h });
+        const glue_SDL_Rect: JulGameSdlApi["glue_SDL_Rect"] = (x, y, w, h) => ({ x, y, w, h });
+        const glue_SDL_Point: JulGameSdlApi["glue_SDL_Point"] = (x, y) => ({ x, y });
+        const glue_SDL_FPoint: JulGameSdlApi["glue_SDL_FPoint"] = (x, y) => ({ x, y });
+
+        const glue_SDL_GetRenderDrawColorWrapped: JulGameSdlApi["glue_SDL_GetRenderDrawColor"] = (
+            _renderer,
+            ...legacyOut
+        ) => {
+            const color = unpackRenderDrawColorPacked(cApi.glue_SDL_GetRenderDrawColor_packed());
+            // Legacy transpiled out-params (rgba.r, …) — caller keeps its preset `rgba` object.
+            if (legacyOut.length >= 4) {
+                return;
+            }
+            return color;
+        };
+
+        const glue_SDL_SetRenderDrawColorWrapped = (
+            a: number,
+            b?: number,
+            c?: number,
+            d?: number,
+            e?: number,
+        ): void => {
+            if (b !== undefined && c !== undefined && d !== undefined && e !== undefined) {
+                cApi.glue_SDL_SetRenderDrawColor(b, c, d, e);
+                return;
+            }
+            if (b !== undefined && c !== undefined && d !== undefined) {
+                cApi.glue_SDL_SetRenderDrawColor(a, b, c, d);
+            }
+        };
+
+        const glue_SDL_GetTextureColorModWrapped: JulGameSdlApi["glue_SDL_GetTextureColorMod"] = (
+            tex,
+            ...legacyOut
+        ) => {
+            const { r, g, b } = unpackRenderDrawColorPacked(cApi.glue_SDL_GetTextureColorMod_packed(tex));
+            if (legacyOut.length > 0) {
+                return;
+            }
+            return { r, g, b };
+        };
+
+        const glue_SDL_GetTextureAlphaModWrapped: JulGameSdlApi["glue_SDL_GetTextureAlphaMod"] = (
+            tex,
+            ...legacyOut
+        ) => {
+            const { a } = unpackRenderDrawColorPacked(cApi.glue_SDL_GetTextureColorMod_packed(tex));
+            if (legacyOut.length > 0) {
+                return;
+            }
+            return a;
+        };
+
+        const glue_SDL_RenderFillRectFWrapped = (a: unknown, b?: number, cArg?: number, d?: number): void => {
+            if (typeof b === "number" && typeof cArg === "number" && typeof d === "number" && typeof a === "number") {
+                cApi.glue_SDL_RenderFillRectF(a, b, cArg, d);
+                return;
+            }
+            if (a !== null && typeof a === "object" && "x" in (a as object) && "w" in (a as object)) {
+                const r = a as { x: number; y: number; w: number; h: number };
+                cApi.glue_SDL_RenderFillRectF(r.x, r.y, r.w, r.h);
+            }
+        };
+
+        const utf8ToString = (ptr: number) => (mod.UTF8ToString as (p: number) => string)(ptr);
+
+        this.api = attachSdlInputGlue(
+            {
+                ...cApi,
+                UTF8ToString: utf8ToString,
+                glue_SDL_FRect,
+                glue_SDL_Rect,
+                glue_SDL_Point,
+                glue_SDL_FPoint,
+                glue_SDL_GetRenderDrawColor: glue_SDL_GetRenderDrawColorWrapped,
+                glue_SDL_SetRenderDrawColor: glue_SDL_SetRenderDrawColorWrapped,
+                glue_SDL_GetTextureColorMod: glue_SDL_GetTextureColorModWrapped,
+                glue_SDL_GetTextureAlphaMod: glue_SDL_GetTextureAlphaModWrapped,
+                glue_SDL_RenderFillRectF: glue_SDL_RenderFillRectFWrapped as JulGameSdlApi["glue_SDL_RenderFillRectF"],
+                glue_SDL_ALPHA_OPAQUE: 255,
+                glue_SDL_IntersectRect: intersectRect,
+                glue_SDL_IntersectRectAndLine: intersectRectAndLine,
+                glue_SDL_RenderCopyEx: wrapRenderCopyEx(cApi.glue_render_copy_ex),
+                glue_SDL_RenderCopyExF: wrapRenderCopyExF(cApi.glue_render_copy_ex_f),
+            },
+            this.module as Parameters<typeof attachSdlInputGlue>[1],
+        );
+    }
+
+    getApi(): JulGameSdlApi {
+        if (!this.api) {
+            throw new Error("SDL bridge not initialized");
+        }
+        return this.api;
+    }
+
+    getModule(): EmscriptenModuleShape {
+        if (!this.module) {
+            throw new Error("SDL module is not initialized");
+        }
+        return this.module;
+    }
+}

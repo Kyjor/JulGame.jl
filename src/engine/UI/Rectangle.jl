@@ -520,7 +520,7 @@ module RectangleModule
         @debug("update_effects: Starting for rectangle $(this.name)")
         @debug("update_effects: Rectangle state - size=$(this.size), position=$(this.position), color=$(this.color)")
         
-        if isempty(this.effects)
+        if length(this.effects) < 1
             @debug("update_effects: No effects to apply")
             return
         end

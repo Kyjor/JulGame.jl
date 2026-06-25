@@ -43,7 +43,7 @@ module ColliderModule
 
             if this.size.x < 0 || this.size.y < 0
                 println("Collider size cannot be negative")
-                return nothing
+                this.size = Math.Vector2f(1, 1)
             end
 
             return this
@@ -90,7 +90,7 @@ module ColliderModule
             
             if this != collider
                 # check if other collider is within range of this collider, if it isn't then skip it
-                if collider.parent.transform.position.x > this.parent.transform.position.x + Component.get_size(this).x || collider.parent.transform.position.x + Component.get_size(collider).x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering
+                if collider.parent.transform.position.x > this.parent.transform.position.x + this.size.x || collider.parent.transform.position.x + collider.size.x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering
                     colliderSkipCount += 1
                     continue
                 end
@@ -167,12 +167,12 @@ module ColliderModule
     end        
 
     function check_collision(colliderA::InternalCollider, colliderB::InternalCollider)
-        posA = (colliderA.parent.transform.position + colliderA.offset) * SCALE_UNITS
-        posB = (colliderB.parent.transform.position + colliderB.offset) * SCALE_UNITS
-        colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * SCALE_UNITS
-        colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * SCALE_UNITS
-        colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * SCALE_UNITS
-        colliderBYSize = colliderB.parent.transform.scale.y * colliderB.size.y * SCALE_UNITS
+        posA = (colliderA.parent.transform.position + colliderA.offset) * JulGame.SCALE_UNITS
+        posB = (colliderB.parent.transform.position + colliderB.offset) * JulGame.SCALE_UNITS
+        colliderAXSize = colliderA.parent.transform.scale.x * colliderA.size.x * JulGame.SCALE_UNITS
+        colliderAYSize = colliderA.parent.transform.scale.y * colliderA.size.y * JulGame.SCALE_UNITS
+        colliderBXSize = colliderB.parent.transform.scale.x * colliderB.size.x * JulGame.SCALE_UNITS
+        colliderBYSize = colliderB.parent.transform.scale.y * colliderB.size.y * JulGame.SCALE_UNITS
 
         a = SDL2.SDL_Rect(round(posA.x), round(posA.y), round(colliderAXSize), round(colliderAYSize))
         b = SDL2.SDL_Rect(round(posB.x), round(posB.y), round(colliderBXSize), round(colliderBYSize))
@@ -194,19 +194,19 @@ module ColliderModule
 
         isLineIntersectionR = SDL2.SDL_IntersectRectAndLine(Ref(b), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 32))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.x + colliderAXSize))), Ref(Math.TypeConversions.safe_int32_convert(round(posA.y + 80))))
         #SDL2.SDL_RenderDrawLine(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 32 - cameraDiff.y), round(posA.x - cameraDiff.x + colliderAXSize), round(posA.y + 80 - cameraDiff.y))
-        if isLineIntersectionL == SDL2.SDL_TRUE
+        if isLineIntersectionL == UInt32(1)
             isLineIntersectionL = true
         else
             isLineIntersectionL = false
         end
 
-        if isLineIntersectionR == SDL2.SDL_TRUE
+        if isLineIntersectionR == UInt32(1)
             isLineIntersectionR = true
         else
             isLineIntersectionR = false
         end
 
-        if isIntersection == SDL2.SDL_TRUE
+        if isIntersection == UInt32(1)
             a1 = SDL2.SDL_FRect(posA.x, posA.y, colliderAXSize, colliderAYSize)
             b1 = SDL2.SDL_FRect(posB.x, posB.y, colliderBXSize, colliderBYSize)
             # SDL2.SDL_RenderDrawRectF(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, Ref(a1))
@@ -249,9 +249,9 @@ module ColliderModule
             end
             
             if min(depthHorizontal, depthVertical) == depthHorizontal
-                return (horizontalCollisionDir, -depthHorizontal/SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return (horizontalCollisionDir, -depthHorizontal/JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             else
-                return (verticalCollisionDir, depthVertical/SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
+                return (verticalCollisionDir, depthVertical/JulGame.SCALE_UNITS, isLineIntersectionL || isLineIntersectionR)
             end
         end
 

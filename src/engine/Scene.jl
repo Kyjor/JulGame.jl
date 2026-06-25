@@ -36,11 +36,11 @@
         return nothing
     end
 
-    function get_entity_by_name(name)
+    function get_entity_by_name(name::String)
         return get_entity_by_name(MAIN.scene, name)
     end
 
-    function get_entities_by_name(this::Scene, name)
+    function get_entities_by_name(this::Scene, name::String)
         entities = []
         for entity in this.entities
             if entity.name == name
@@ -54,11 +54,11 @@
         return entities
     end
 
-    function get_entities_by_name(name)
+    function get_entities_by_name(name::String)
         return get_entities_by_name(MAIN.scene, name)
     end
 
-    function get_entity_by_id(this::Scene, id)
+    function get_entity_by_id(this::Scene, id::String)
         for entity in this.entities
             if entity.id == id
                 return entity
@@ -73,7 +73,7 @@
         return get_entity_by_id(MAIN.scene, id)
     end
 
-    function get_ui_element_by_name(this::Scene, name)
+    function get_ui_element_by_name(this::Scene, name::String)
         for entity in this.uiElements
             if entity.name == name
                 return entity
@@ -84,11 +84,11 @@
         return nothing
     end
 
-    function get_ui_element_by_name(name)
+    function get_ui_element_by_name(name::String)
         return get_ui_element_by_name(MAIN.scene, name)
     end
 
-    function get_ui_element_by_id(this::Scene, id)
+    function get_ui_element_by_id(this::Scene, id::String)
         for element in this.uiElements
             if element.id == id
                 return element

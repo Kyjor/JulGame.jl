@@ -50,7 +50,7 @@ module TestScriptModule
             newRigidbody = C_NULL
             @testset "Engine Rigidbody Tests" begin
                 @testset "Rigidbody constructor" begin
-                    newRigidbody = RigidbodyModule.Rigidbody()
+                    newRigidbody = RigidbodyModule.Rigidbody(1.0, true)
                     @test newRigidbody != C_NULL && newRigidbody !== nothing
                 end
             end
@@ -110,13 +110,28 @@ module TestScriptModule
             @testset "UI Tests" begin
                 @testset "ScreenButton constructor" begin
                     
-                    newScreenButton = ScreenButtonModule.ScreenButton("Name", "ButtonUp.png", "ButtonDown.png", Math.Vector2(256, 64), Math.Vector2(), joinpath("FiraCode-Regular.ttf"), "test")
+                    newScreenButton = ScreenButtonModule.ScreenButton(;
+                        name="Name",
+                        buttonUpSpritePath="ButtonUp.png",
+                        buttonDownSpritePath="ButtonDown.png",
+                        size=Math.Vector2(256, 64),
+                        fontPath=joinpath("FiraCode-Regular.ttf"),
+                        text="test"
+                    )
                     push!(MAIN.scene.uiElements, newScreenButton)
                     @test newScreenButton != C_NULL && newScreenButton !== nothing
                 end
 
                 @testset "TextBox constructor" begin
-                    newTextBox = TextBoxModule.TextBox("test", joinpath("FiraCode-Regular.ttf"), 64, Math.Vector2(), "test", true, true; isWorldEntity=true)
+                    newTextBox = TextBoxModule.TextBox("test";
+                        fontPath=joinpath("FiraCode-Regular.ttf"),
+                        fontSize=64,
+                        position=Math.Vector2(),
+                        name="test",
+                        wrapWords=true,
+                        isDynamic=true,
+                        isWorldEntity=true
+                    )
                     push!(MAIN.scene.uiElements, newTextBox)
                     @test newTextBox != C_NULL && newTextBox !== nothing
                 end

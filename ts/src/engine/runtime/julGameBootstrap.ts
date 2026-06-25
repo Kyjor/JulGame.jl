@@ -1,0 +1,434 @@
+import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
+import { Camera, cameraPixelsPerWorldUnit, cameraUpdate } from "../../../_generated/src/engine/Camera/Camera";
+import { force_frame_update } from "../../../_generated/src/engine/Component/Animator";
+import {
+    Component_add_collision_event,
+    Component_check_collisions,
+} from "../../../_generated/src/engine/Component/Collider";
+import { add_velocity, Component_get_velocity, Component_update as rigidbodyUpdate } from "../../../_generated/src/engine/Component/Rigidbody";
+import { Component_flip } from "../../../_generated/src/engine/Component/Sprite";
+import {
+    Component_load_sound,
+    Component_play,
+    Component_set_volume,
+    Component_stop_music,
+    Component_toggle_sound,
+    InternalSoundSource,
+} from "../../../_generated/src/engine/Component/SoundSource";
+import { Entity, JulGame_add_script, JulGame_add_sprite, JulGame_update } from "../../../_generated/src/engine/Entity";
+import { duplicateEntity } from "./duplicateEntity";
+import { duplicateUiElement } from "./duplicateUiElement";
+import { Scene } from "../../../_generated/src/engine/Scene";
+import { installCoroutineGlobals } from "./coroutineRuntime";
+import { initializeScript, updateScript } from "./scriptRegistry";
+import { installStrippedInput } from "./StrippedInput";
+import { installImmediateUi } from "./immediateUiRuntime";
+import {
+    UI_add_click_event,
+    UI_add_hover_enter_event,
+    UI_add_hover_exit_event,
+    UI_align_to_anchor,
+    UI_set_color,
+} from "../../../_generated/src/engine/UI/UIElement";
+import { UI_initialize_UIImage, type UiImageElement } from "../../../_generated/src/engine/UI/UIImage";
+import {
+    clamp,
+    collect,
+    dirname,
+    filter,
+    get,
+    hasfield,
+    haskey,
+    hasproperty,
+    isdir,
+    isfile,
+    joinpath,
+    lowercase,
+    mkpath,
+    mod,
+    objectid,
+    replace,
+    split,
+    startswith,
+    strip,
+    time_ns,
+    uppercase,
+} from "../core/juliaHelpers";
+import { wireSceneApi } from "./scriptLoader";
+
+/** Julia builtins referenced as bare identifiers in transpiled game scripts. */
+function installJuliaBuiltins(jg: Record<string, unknown>): void {
+    const g = globalThis as Record<string, unknown>;
+    g.clamp = clamp;
+    g.collect = collect;
+    g.dirname = dirname;
+    g.filter = filter;
+    g.get = get;
+    g.haskey = haskey;
+    g.hasfield = hasfield;
+    g.hasproperty = hasproperty;
+    g.isdir = isdir;
+    g.isfile = isfile;
+    g.joinpath = joinpath;
+    g.lowercase = lowercase;
+    g.mkpath = mkpath;
+    g.mod = mod;
+    g.objectid = objectid;
+    g.replace = replace;
+    g.split = split;
+    g.startswith = startswith;
+    g.strip = strip;
+    g.time_ns = time_ns;
+    g.uppercase = uppercase;
+    g.isempty = (value: unknown): boolean => {
+        if (value == null) {
+            return true;
+        }
+        if (typeof value === "string" || Array.isArray(value)) {
+            return value.length === 0;
+        }
+        if (value instanceof Map) {
+            return value.size === 0;
+        }
+        if (typeof value === "object") {
+            return Object.keys(value as object).length === 0;
+        }
+        return false;
+    };
+    jg.clamp = clamp;
+}
+
+/** Julia `UIImage` — duck-type `instanceof` for stripped immediate UI images (`type === "UIImage"`). */
+class UIImage {
+    static [Symbol.hasInstance](value: unknown): boolean {
+        return (
+            value != null &&
+            typeof value === "object" &&
+            (value as { type?: string }).type === "UIImage"
+        );
+    }
+}
+
+/**
+ * SDL / wasm entry: attach `JulGame`, `JulGameSdl`, `MAIN`, and `Renderer` expected by `_generated` modules.
+ * Call after `JulGameSdl` c API is ready and before loading scenes or running frames.
+ */
+export type BootstrapOptions = {
+    basePath?: string;
+    gravity?: number;
+    /** Default sprite PPU when scene sprites use `-1` or omit the field (Julia `PIXELS_PER_UNIT`). */
+    pixelsPerUnit?: number;
+};
+
+export function bootstrapJulGameSdl(
+    api: JulGameSdlApi,
+    canvasWidth: number,
+    canvasHeight: number,
+    canvas: HTMLCanvasElement,
+    opts: BootstrapOptions = {},
+): void {
+    const root = globalThis as unknown as {
+        JulGameSdl: JulGameSdlApi;
+        JulGame: Record<string, unknown>;
+        MAIN: Record<string, unknown>;
+    };
+
+    root.JulGameSdl = api;
+    const jg = (root.JulGame ??= {}) as Record<string, unknown>;
+
+    /** Julia `ENV` — merge with values set earlier (e.g. `battlerBootstrap` / Vite). */
+    const envDefaults: Record<string, string> = {
+        TEST_MODE: "false",
+        BUILD_MODE_TEST: "false",
+        ANALYTICS_ENABLED: "",
+        SKIP: "false",
+        SCENE: "title_scene.json",
+        PROFILE: "0",
+        SKIP_PRECOMPILE: "false",
+        ALWAYS_PRECOMPILE: "true",
+        SHOULD_BUILD: "false",
+    };
+    jg.ENV = { ...envDefaults, ...(jg.ENV as Record<string, string> | undefined) };
+
+    jg.generate_uuid = () => {
+        if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+            return crypto.randomUUID();
+        }
+        return `id-${Math.random().toString(36).slice(2, 11)}`;
+    };
+    jg.duplicate = duplicateEntity;
+    jg.add_script = JulGame_add_script;
+    jg.add_sprite = JulGame_add_sprite;
+    jg.update = (obj: unknown, deltaTime = 0) => {
+        if (obj && typeof obj === "object" && "scripts" in obj) {
+            JulGame_update(obj as Entity, deltaTime);
+        } else {
+            updateScript(obj, deltaTime);
+        }
+    };
+    jg.initialize = (script: unknown, ...args: unknown[]) => {
+        initializeScript(script, ...args);
+    };
+    jg.updateScript = (script: unknown, deltaTime: number) => {
+        updateScript(script, deltaTime);
+    };
+    jg.pixels_per_world_unit = cameraPixelsPerWorldUnit;
+    jg.CameraModule = { update: cameraUpdate };
+    jg.IS_EDITOR = false;
+    jg.IS_WEB = true;
+    jg.IS_DEBUG = false;
+    /** Julia `JulGame.SCALE_QUALITY` — "2" / best (matches SceneBuilder `scalingQuality="best"`). */
+    jg.SCALE_QUALITY = "2";
+    jg.maybe_enable_latency_profiling_from_env = () => {
+        /* stripped WASM: latency profiling not wired */
+    };
+    jg.BasePath = opts.basePath ?? "/game";
+    jg.GRAVITY = opts.gravity ?? 9.81;
+    jg.PIXELS_PER_UNIT = opts.pixelsPerUnit ?? 16;
+    jg.IMAGE_CACHE = {};
+    jg.FONT_CACHE = {};
+    jg.TEXTURE_CACHE = {};
+    jg.AUDIO_CACHE = {};
+    jg.Coroutines = [];
+    jg.FrameCount = 0;
+    jg.DELTA_TIME = 0;
+    jg.EditorGameViewPosition = { x: 0, y: 0 };
+    jg.EditorGameViewSize = { x: canvasWidth, y: canvasHeight };
+    jg.ErrorLoggingModule = {
+        log_error: (_logger: unknown, msg: string, _ex?: unknown) => {
+            console.error(msg);
+        },
+    };
+    jg.get_comma_separated_path = (p: string) =>
+        String(p)
+            .replace(/\\/g, "/")
+            .split("/")
+            .filter(Boolean)
+            .join(",");
+
+    let logicalSize = { x: canvasWidth, y: canvasHeight };
+    jg.WindowManagerModule = {
+        get_logical_size: () => logicalSize,
+        set_logical_size: (w: number, h: number) => {
+            logicalSize = { x: w, y: h };
+        },
+        handle_window_event: (_event: number) => {
+            /* No-op in stripped WASM runtime */
+        },
+    };
+
+    jg.Renderer = api.glue_get_renderer();
+
+    const scene = new Scene();
+    scene.name = "stripped";
+
+    jg.MainLoopModule = {
+        create_new_entity: (_main?: unknown) => {
+            const entity = new Entity("New entity");
+            scene.entities.push(entity);
+            return entity;
+        },
+        create_new_canvas: () => {
+            const canvas = {
+                type: "Canvas" as const,
+                id: (jg.generate_uuid as () => string)(),
+                name: "New Canvas",
+                isActive: false,
+                persistentBetweenScenes: false,
+                children: [] as unknown[],
+                layer: 0,
+            };
+            scene.uiElements.push(canvas as never);
+            return canvas;
+        },
+    };
+
+    root.MAIN = {
+        scene,
+        windowManager: {
+            window: 0,
+            isWindowFocused: true,
+            windowSize: { x: canvasWidth, y: canvasHeight },
+        },
+        errorLogger: {},
+        isGameModeRunningInEditor: false,
+        optimizeSpriteRendering: false,
+    };
+    jg.MAIN = root.MAIN;
+    // DOM input — avoids transpiled Input.ts SDL_PollEvent + joystick init (WASM OOB on mouse/audio).
+    installStrippedInput(jg, root.MAIN, canvas);
+    installCoroutineGlobals(jg);
+    wireSceneApi(jg);
+    jg.Component = {
+        add_collision_event: Component_add_collision_event,
+        check_collisions: Component_check_collisions,
+        toggle_sound: Component_toggle_sound,
+        load_sound: Component_load_sound,
+        set_volume: Component_set_volume,
+        play: Component_play,
+        stop_music: Component_stop_music,
+        flip: Component_flip,
+        unload_sound: (_source: unknown) => {
+            /* stripped WASM: no-op until sound unload is wired */
+        },
+    };
+    jg.Component_is_mouse_hovering = (transform: {
+        position?: { x?: number; y?: number };
+        scale?: { x?: number; y?: number };
+    } | null | undefined) => {
+        if (transform?.position == null) {
+            return false;
+        }
+        const mouse = (root.MAIN as { input?: { mousePositionWorld?: { x: number; y: number } } }).input
+            ?.mousePositionWorld;
+        if (mouse == null) {
+            return false;
+        }
+        const pos = transform.position;
+        const scale = transform.scale ?? { x: 1, y: 1 };
+        return (
+            mouse.x >= Number(pos.x) &&
+            mouse.x <= Number(pos.x) + Number(scale.x ?? 1) &&
+            mouse.y >= Number(pos.y) &&
+            mouse.y <= Number(pos.y) + Number(scale.y ?? 1)
+        );
+    };
+    jg.RigidbodyModule = { add_velocity, Component_update: rigidbodyUpdate, Component_get_velocity };
+    jg.AnimatorModule = { force_frame_update };
+    jg.TransformModule = {
+        Transform: (v: { x: number; y: number; z: number }) => ({
+            position: v,
+            scale: { x: 1, y: 1, z: 1 },
+        }),
+    };
+    jg.change_scene = (sceneFileName: string) => {
+        console.warn(`change_scene("${sceneFileName}") — stripped scene runtime not installed yet`);
+    };
+    jg.set_batched_layer_offset = (_layer: number, _x: number, _y: number) => {
+        /* stripped WASM: StaticSpriteBatcher not wired */
+    };
+    jg.Math = {
+        Vector2f: (x: number, y: number) => ({ x, y }),
+        Vector3f: (x: number, y: number, z: number) => ({ x, y, z }),
+    };
+    jg.SoundSourceModule = {
+        InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
+            new InternalSoundSource(...args),
+        SoundSource: (
+            channel: number,
+            isMusic: boolean,
+            path: string,
+            playOnStart: boolean,
+            volume: number,
+        ) => ({ channel, isMusic, path, playOnStart, volume }),
+    };
+    jg.SpriteModule = {
+        InternalSprite: (
+            entity: Entity,
+            imagePath: string,
+            crop: { x: number; y: number; z: number; t: number } | null = null,
+            isFlipped = false,
+            color: number[] = [255, 255, 255, 255],
+            isCreatedInEditor = false,
+            optsOrPixels?: unknown,
+            layerMaybe?: unknown,
+        ) => {
+            let pixelsPerUnit = (jg.PIXELS_PER_UNIT as number) ?? 16;
+            let layer = 0;
+            let offset = { x: 0, y: 0 };
+            let rotation = 0;
+            const hasCrop =
+                crop != null && !(crop.x === 0 && crop.y === 0 && crop.z === 0 && crop.t === 0);
+            if (optsOrPixels != null && typeof optsOrPixels === "object" && !Array.isArray(optsOrPixels)) {
+                const o = optsOrPixels as {
+                    pixelsPerUnit?: number;
+                    layer?: number;
+                    offset?: { x: number; y: number };
+                    rotation?: number;
+                };
+                if (typeof o.pixelsPerUnit === "number") pixelsPerUnit = o.pixelsPerUnit;
+                if (typeof o.layer === "number") layer = o.layer;
+                if (o.offset) offset = o.offset;
+                if (typeof o.rotation === "number") rotation = o.rotation;
+            } else {
+                if (typeof optsOrPixels === "number") pixelsPerUnit = optsOrPixels;
+                if (typeof layerMaybe === "number") layer = layerMaybe;
+            }
+            JulGame_add_sprite(entity, isCreatedInEditor, {
+                imagePath,
+                crop: hasCrop ? crop : null,
+                isFlipped,
+                color,
+                pixelsPerUnit,
+                position: { x: 0, y: 0 },
+                rotation,
+                layer,
+                center: { x: 0.5, y: 0.5 },
+                anchor: "center",
+                offset,
+                isStatic: false,
+            });
+            return entity.sprite;
+        },
+    };
+    jg.Scripts = (jg.Scripts as Record<string, unknown> | undefined) ?? {};
+    jg.UserGlobals = jg.UserGlobals ?? { Module: {} };
+    installJuliaBuiltins(jg);
+    jg.UI = {
+        duplicate: duplicateUiElement,
+        align_to_anchor: UI_align_to_anchor,
+        set_color: (
+            el: Parameters<typeof UI_set_color>[0],
+            rOrOpts?: number | { r?: number; g?: number; b?: number; a?: number },
+            g?: number,
+            b?: number,
+            a?: number,
+        ) => {
+            if (typeof rOrOpts === "number" && g === undefined) {
+                UI_set_color(el, 255, 255, 255, rOrOpts);
+            } else if (typeof rOrOpts === "object" && rOrOpts !== null) {
+                UI_set_color(el, rOrOpts.r, rOrOpts.g, rOrOpts.b, rOrOpts.a);
+            } else {
+                UI_set_color(el, rOrOpts as number | undefined, g, b, a);
+            }
+        },
+        add_click_event: UI_add_click_event,
+        add_hover_enter_event: UI_add_hover_enter_event,
+        add_hover_exit_event: UI_add_hover_exit_event,
+        initialize: (el: UiImageElement) => {
+            if (el?.type === "UIImage") {
+                UI_initialize_UIImage(api, el);
+            }
+        },
+        UIImageModule: {
+            UIImage,
+            update_effects: (_el: unknown) => {
+                /* stripped WASM: effect bake noop until EffectRenderer wired */
+            },
+        },
+    };
+    installImmediateUi(jg);
+}
+
+/** DOM input fallback for `?backend=web` (no SDL). */
+export function bootstrapWebInput(canvas: HTMLCanvasElement): void {
+    const root = globalThis as unknown as {
+        JulGame: Record<string, unknown>;
+        MAIN: Record<string, unknown>;
+    };
+    const jg = (root.JulGame ??= {});
+    const main = (root.MAIN ??= {});
+    jg.MAIN = main;
+    installStrippedInput(jg, main, canvas);
+}
+
+export function attachDefaultCamera(scene: Scene, width: number, height: number): Camera {
+    const cam = new Camera(
+        { x: width, y: height },
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0 },
+        null,
+    );
+    scene.camera = cam;
+    return cam;
+}

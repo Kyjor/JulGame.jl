@@ -384,7 +384,17 @@ module SceneReaderModule
     function deserialize_component(component)
         try
             if component.type == "Transform"
-                newComponent = Transform(Vector2f(component.position.x, component.position.y), Vector2f(component.scale.x, component.scale.y))
+                position = Vector3f(
+                    component.position.x,
+                    component.position.y,
+                    haskey(component.position, "z") ? component.position.z : 0.0,
+                )
+                scale = Vector3f(
+                    component.scale.x,
+                    component.scale.y,
+                    haskey(component.scale, "z") ? component.scale.z : 1.0,
+                )
+                newComponent = Transform(position, scale)
             elseif component.type == "Animator"
                 newAnimations = Animation[]
                 for animation in component.animations
@@ -404,7 +414,9 @@ module SceneReaderModule
             elseif component.type == "CircleCollider"
                 newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Vector2f(component.offset.x, component.offset.y), component.tag)
             elseif component.type == "Rigidbody"
-                newComponent = Rigidbody(; mass = convert(Float64, component.mass), useGravity = !haskey(component, "useGravity") ? true : component.useGravity)
+                mass = !haskey(component, "mass") ? 1.0 : convert(Float64, component.mass)
+                useGravity = !haskey(component, "useGravity") ? true : component.useGravity
+                newComponent = Rigidbody(mass, useGravity)
             elseif component.type == "SoundSource"
                 newComponent = SoundSource(component.channel, component.isMusic, component.path, get(component, "playOnStart", false), component.volume)
             elseif component.type == "Sprite"

@@ -1,0 +1,16 @@
+{
+  "name": "julgame-ts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:wasm": "bash wasm-src/build.sh",
+    "transpile:engine": "julia ../tools/convert.jl",
+    "preview": "vite preview",
+    "itch:zip": "cd dist && zip -r ../itch-web.zip ."
+  },
+  "devDependencies": {
+    "vite": "latest"
+  }
+}

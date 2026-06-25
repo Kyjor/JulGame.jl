@@ -138,13 +138,13 @@ module EntityModule
         return this.circleCollider
     end
 
-    function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody())
+    function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody(1.0, true))
         if this.rigidbody != C_NULL
             println("Rigidbody already exists on entity named ", this.name)
             return
         end
 
-        this.rigidbody = InternalRigidbody(this::Entity; rigidbody.mass, rigidbody.useGravity)
+        this.rigidbody = InternalRigidbody(this::Entity, rigidbody.mass, rigidbody.useGravity)
         
         return this.rigidbody
     end

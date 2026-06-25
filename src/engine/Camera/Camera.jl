@@ -59,17 +59,13 @@ module CameraModule
         inv_delta = inv(S_old) - inv(S_new)
         dx = half_w * inv_delta
         dy = half_h * inv_delta
-        camera.position = Vector3f(
-            camera.position.x + dx,
-            camera.position.y + dy,
-            camera.position.z,
-        )
+        camera.position = Vector3f(camera.position.x + dx, camera.position.y + dy, camera.position.z)
         camera.zoom = new_zoom
         return camera
     end
 
     function update(this::Camera, newPosition::Union{Nothing, Vector3f} = nothing)
-        if !JulGame.IS_EDITOR && JulGame.WindowManagerModule.get_logical_size() != this.size
+        if !JulGame.IS_EDITOR && JulGame.WindowManagerModule.get_logical_size().x != this.size.x || JulGame.WindowManagerModule.get_logical_size().y != this.size.y
             JulGame.WindowManagerModule.set_logical_size(this.size.x, this.size.y)
             @debug "Logical size changed to $(this.size)"
         end
