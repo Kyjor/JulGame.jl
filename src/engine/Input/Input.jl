@@ -327,8 +327,8 @@ module InputModule
     end
 
     function poll_input(this::Input)
-        # prof = _input_latency_profiler()
-        # t0 = Ref(time_ns())
+        prof = _input_latency_profiler()
+        t0 = Ref(time_ns())
 
         empty!(this.buttonsPressedDown)
         empty!(this.mouseButtonsPressedDown)
