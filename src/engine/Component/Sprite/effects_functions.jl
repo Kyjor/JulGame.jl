@@ -1,5 +1,5 @@
 function serialize_effects(effects::Vector{Any})::String
-    if length(effects) < 1
+    if isempty(effects)
         return "[]"
     end
     parts = String[]
@@ -20,15 +20,17 @@ function serialize_effects(effects::Vector{Any})::String
     return "[" * join(parts, ";") * "]"
 end
 
-function generate_effect_cache_key(this::InternalSprite)::String
-    # Cache key based on image path, size, and effects - NOT instance ID
-    # This allows sharing effect textures across sprites with same visuals
+function generate_effect_cache_key(imagePath::String, size::Math.Vector2, effects::Vector{Any})::String
     content = string(
-        this.imagePath, "|",
-        this.size.x, "x", this.size.y, "|",
-        serialize_effects(this.effects)
+        imagePath, "|",
+        size.x, "x", size.y, "|",
+        serialize_effects(effects)
     )
     return string(hash(content))
+end
+
+function generate_effect_cache_key(this::InternalSprite)::String
+    return generate_effect_cache_key(this.imagePath, this.size, this.effects)
 end
 
 #  effects API
@@ -54,7 +56,7 @@ function apply_style!(this::InternalSprite, style)
 end
 
 function update_effects(this::InternalSprite)
-    if length(this.effects) < 1 || !this.needsEffectUpdate
+    if isempty(this.effects) || !this.needsEffectUpdate
         return
     end
     

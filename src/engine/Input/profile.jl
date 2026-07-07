@@ -14,9 +14,16 @@ end
 
 # UI hit-test: timings go to LatencyProfiler (summed per frame, printed only on slow-frame CRITICAL/WARNING reports).
 # Optional live spam: JULGAME_TRACE_INPUT_UI_HIT=1 (every SDL mouse event). Per-element: JULGAME_TRACE_INPUT_UI_HIT_ITER=1.
+# Cached: this is called from the per-element hit-test hot path, and an ENV
+# read allocates and is slow (it was happening hundreds of times per mouse event)
+const _trace_input_ui_hit_ref = Ref{Union{Nothing, Bool}}(nothing)
 function _input_ui_hit_stream_logs()
-    e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
-    return e in ("1", "true", "yes", "on")
+    v = _trace_input_ui_hit_ref[]
+    if v === nothing
+        e = lowercase(strip(get(ENV, "JULGAME_TRACE_INPUT_UI_HIT", "")))
+        _trace_input_ui_hit_ref[] = e in ("1", "true", "yes", "on")
+    end
+    return _trace_input_ui_hit_ref[]::Bool
 end
 
 const _trace_input_ui_hit_iter_ref = Ref{Union{Nothing, Bool}}(nothing)
@@ -30,6 +37,9 @@ function _input_ui_hit_iter_stream_logs()
 end
 
 function _input_ui_hit_step!(prof, t_blk::Ref{UInt64}, key::Symbol; kvs...)
+    if prof === nothing && !_input_ui_hit_stream_logs()
+        return
+    end
     t1 = time_ns()
     dt = (t1 - t_blk[]) / 1e6
     t_blk[] = t1
@@ -47,6 +57,9 @@ function _input_ui_hit_step!(prof, t_blk::Ref{UInt64}, key::Symbol; kvs...)
 end
 
 function _input_ui_hit_span!(prof, t0::UInt64, key::Symbol; kvs...)
+    if prof === nothing && !_input_ui_hit_stream_logs()
+        return
+    end
     dt = (time_ns() - t0) / 1e6
     if prof !== nothing
         JulGame.LatencyProfilerModule.accumulate_input_ui_hit_detail_ms!(prof, key, dt)
