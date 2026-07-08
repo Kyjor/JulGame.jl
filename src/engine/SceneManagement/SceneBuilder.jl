@@ -321,9 +321,23 @@ module SceneBuilderModule
         @debug string("Entities: ", length(MAIN.scene.entities))
         
         # Track which scripts we've already loaded
-        
-        # Only load scripts for non-persistent entities or if package is not compiled
-        if !JulGame.IS_PACKAGE_COMPILED
+        project_scripts_found = false
+        if JulGame.ProjectModule != ""
+            @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
+            scripts_mod = filter(
+                x -> occursin(r"\.Scripts$", string(x)),
+                ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)")))
+            )
+            if scripts_mod !== nothing && length(scripts_mod) > 0
+                JulGame.ScriptModule = scripts_mod[1]
+                project_scripts_found = true
+            end
+        end
+
+        # Only load scripts from the scene folder when we don't already have
+        # the project's `Scripts` module available. This avoids re-including
+        # the same files (which is wasted work in dev/non-compiled runs).
+        if !JulGame.IS_PACKAGE_COMPILED && !project_scripts_found
             @debug "Package not compiled, loading scripts"
             @time begin
                 count = 0
@@ -339,14 +353,6 @@ module SceneBuilderModule
                 end, filter(contains(r".jl$"), readdir(joinpath(path, "scripts"); join=true)))
             end
             @debug "Finished loading scripts"
-        end
-
-        if JulGame.ProjectModule != ""
-            @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
-            scripts_mod = filter(x -> occursin(r"\.Scripts$", string(x)), ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)"))))
-            if scripts_mod !== nothing && length(scripts_mod) > 0
-                JulGame.ScriptModule = scripts_mod[1]
-            end
         end
 
         for entity in MAIN.scene.entities

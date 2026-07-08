@@ -141,3 +141,21 @@ function clear_texture_cache()
     end
     empty!(TEXTURE_CACHE)
 end
+
+"""
+    release_sprite_texture_for_mutation!(sprite::InternalSprite)
+
+Drop this sprite's texture before pixel-mutating effects (e.g. clock-hand sweep).
+The shared `TEXTURE_CACHE` entry is left untouched — other sprites with the same
+`imagePath` (which may never mutate) keep rendering from it. Only textures that
+are not referenced by the cache (i.e. private, from a previous mutation) are
+destroyed. The sprite then gets its own private texture on the next update.
+"""
+function release_sprite_texture_for_mutation!(sprite::InternalSprite)
+    tex = sprite.texture
+    tex == C_NULL && return
+    if !(tex in values(TEXTURE_CACHE))
+        SDL2.SDL_DestroyTexture(tex)
+    end
+    sprite.texture = C_NULL
+end

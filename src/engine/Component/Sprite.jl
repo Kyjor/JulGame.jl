@@ -128,6 +128,10 @@ module SpriteModule
             end
             texture_to_render = this.texture
         end
+
+        if texture_to_render == C_NULL
+            return
+        end
     
         # Check and set color if necessary (for both regular and effect textures)
         colorRefs = (Ref(UInt8(0)), Ref(UInt8(0)), Ref(UInt8(0)))
@@ -265,7 +269,15 @@ module SpriteModule
         renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if renderFn(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, texture_to_render, srcRect, dstRect, this.rotation, rotationCenter, this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE) != 0
             error = unsafe_string(SDL2.SDL_GetError())
-            @error("Failed to render sprite: $error")
+            @error("Failed to render sprite $(this.imagePath): $error")
+            # Self-heal: drop the (likely dangling) texture so the next draw
+            # recreates it from this.image instead of erroring every frame.
+            if texture_to_render == this.texture
+                if get(TEXTURE_CACHE, this.imagePath, C_NULL) == this.texture
+                    delete!(TEXTURE_CACHE, this.imagePath)
+                end
+                this.texture = C_NULL
+            end
         end
     end
 
