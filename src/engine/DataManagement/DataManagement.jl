@@ -1,5 +1,6 @@
 module DataManagement
     include("PrefHandler.jl")
-    
-    export PrefHandlerModule
+    include("SaveSystem.jl")
+
+    export PrefHandlerModule, SaveSystemModule
 end

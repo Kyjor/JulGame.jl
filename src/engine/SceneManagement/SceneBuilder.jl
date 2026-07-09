@@ -79,7 +79,7 @@ module SceneBuilderModule
         scene = nothing
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             # Initialize window manager
-            windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
+            @time "scene load: create window" windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
             if !windowCreated
                 @error "Failed to create window"
                 return
@@ -103,7 +103,8 @@ module SceneBuilderModule
             # "2" or "best": Currently this is the same as "linear"
 
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            @time "scene load: create renderer" createdRenderer = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = createdRenderer
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
             return
@@ -142,7 +143,7 @@ module SceneBuilderModule
                 @debug "Using preloaded scene: $(this.scene)"
                 scene = JulGame.PRELOADED_SCENES[this.scene]
             else
-                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+                @time "scene load: deserialize scene" scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
             end
             camera = scene[3]
             # Set logical rendering size based on camera
@@ -185,7 +186,7 @@ module SceneBuilderModule
 
         MAIN.scene.rigidbodies = InternalRigidbody[]
         MAIN.scene.colliders = InternalCollider[]
-        add_scripts_to_entities(BasePath)
+        @time "scene load: add_scripts_to_entities" add_scripts_to_entities(BasePath)
 
         JulGame.engine_states.current_state = :game_mode
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
@@ -369,7 +370,7 @@ module SceneBuilderModule
                 try
                     module_name = getfield(JulGame.ScriptModule, Symbol("$(script.name)Module"))
                     constructor = Base.invokelatest(getfield, module_name, Symbol(script.name)) 
-                    newScript = Base.invokelatest(constructor)
+                    @time "script construct: $(script.name)" newScript = Base.invokelatest(constructor)
                     scriptFields = get(script, "fields", Dict())
                     @debug("getting fields for: $(script)")
                     for (key, value) in scriptFields

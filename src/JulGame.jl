@@ -134,8 +134,8 @@ module JulGame
     EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
 
     include("engine/DataManagement/DataManagement.jl")
-    using .DataManagement: PrefHandlerModule
-    export PrefHandlerModule
+    using .DataManagement: PrefHandlerModule, SaveSystemModule
+    export PrefHandlerModule, SaveSystemModule
 
     include("engine/Resource/Resource.jl")
     using .ResourceModule
