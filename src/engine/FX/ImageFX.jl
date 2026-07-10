@@ -571,23 +571,19 @@ module ImageFXModule
             # Unlock the surface
             SDL2.SDL_UnlockSurface(new_surface)
             
-            # Clean up existing texture
-            if sprite.texture != C_NULL
-                SDL2.SDL_DestroyTexture(sprite.texture)
-                sprite.texture = C_NULL
-            end
+            SpriteModule.release_sprite_texture_for_mutation!(sprite)
             
             # Clean up previous image
             if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
                 SDL2.SDL_FreeSurface(sprite.image)
             end
             
-            # Update sprite with new surface
+            # Update sprite with new surface (private; do not add to TEXTURE_CACHE)
             sprite.image = new_surface
             sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-            
-            # Enable alpha blending
-            SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+            if sprite.texture != C_NULL
+                SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+            end
             
             _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = percentage
             return sprite
@@ -649,23 +645,19 @@ module ImageFXModule
         # Unlock the surface
         SDL2.SDL_UnlockSurface(new_surface)
         
-        # Clean up existing texture
-        if sprite.texture != C_NULL
-            SDL2.SDL_DestroyTexture(sprite.texture)
-            sprite.texture = C_NULL
-        end
+        SpriteModule.release_sprite_texture_for_mutation!(sprite)
         
         # Clean up previous image
         if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
             SDL2.SDL_FreeSurface(sprite.image)
         end
         
-        # Update sprite with new surface
+        # Update sprite with new surface (private; do not add to TEXTURE_CACHE)
         sprite.image = new_surface
         sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-        
-        # Enable alpha blending
-        SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+        if sprite.texture != C_NULL
+            SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+        end
         
         _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = percentage
         return sprite

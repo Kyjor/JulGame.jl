@@ -79,7 +79,7 @@ module SceneBuilderModule
         scene = nothing
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             # Initialize window manager
-            windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
+            @time "scene load: create window" windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
             if !windowCreated
                 @error "Failed to create window"
                 return
@@ -103,7 +103,8 @@ module SceneBuilderModule
             # "2" or "best": Currently this is the same as "linear"
 
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
-            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            @time "scene load: create renderer" createdRenderer = SDL2.SDL_CreateRenderer(MAIN.windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = createdRenderer
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(MAIN.windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
             return
@@ -142,7 +143,7 @@ module SceneBuilderModule
                 @debug "Using preloaded scene: $(this.scene)"
                 scene = JulGame.PRELOADED_SCENES[this.scene]
             else
-                scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+                @time "scene load: deserialize scene" scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
             end
             camera = scene[3]
             # Set logical rendering size based on camera
@@ -185,7 +186,7 @@ module SceneBuilderModule
 
         MAIN.scene.rigidbodies = InternalRigidbody[]
         MAIN.scene.colliders = InternalCollider[]
-        add_scripts_to_entities(BasePath)
+        @time "scene load: add_scripts_to_entities" add_scripts_to_entities(BasePath)
 
         JulGame.engine_states.current_state = :game_mode
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
@@ -321,9 +322,23 @@ module SceneBuilderModule
         @debug string("Entities: ", length(MAIN.scene.entities))
         
         # Track which scripts we've already loaded
-        
-        # Only load scripts for non-persistent entities or if package is not compiled
-        if !JulGame.IS_PACKAGE_COMPILED
+        project_scripts_found = false
+        if JulGame.ProjectModule != ""
+            @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
+            scripts_mod = filter(
+                x -> occursin(r"\.Scripts$", string(x)),
+                ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)")))
+            )
+            if scripts_mod !== nothing && length(scripts_mod) > 0
+                JulGame.ScriptModule = scripts_mod[1]
+                project_scripts_found = true
+            end
+        end
+
+        # Only load scripts from the scene folder when we don't already have
+        # the project's `Scripts` module available. This avoids re-including
+        # the same files (which is wasted work in dev/non-compiled runs).
+        if !JulGame.IS_PACKAGE_COMPILED && !project_scripts_found
             @debug "Package not compiled, loading scripts"
             @time "load all scripts" begin
                 count = 0
@@ -341,14 +356,6 @@ module SceneBuilderModule
             @debug "Finished loading scripts"
         end
 
-        if JulGame.ProjectModule != ""
-            @debug "Loading scripts from project module: $(JulGame.ProjectModule)"
-            scripts_mod = filter(x -> occursin(r"\.Scripts$", string(x)), ccall(:jl_module_usings, Any, (Any,), getfield(Main, Symbol("$(JulGame.ProjectModule)"))))
-            if scripts_mod !== nothing && length(scripts_mod) > 0
-                JulGame.ScriptModule = scripts_mod[1]
-            end
-        end
-
         for entity in MAIN.scene.entities
             scriptCounter = 1
             for script in entity.scripts
@@ -363,7 +370,7 @@ module SceneBuilderModule
                 try
                     module_name = getfield(JulGame.ScriptModule, Symbol("$(script.name)Module"))
                     constructor = Base.invokelatest(getfield, module_name, Symbol(script.name)) 
-                    newScript = Base.invokelatest(constructor)
+                    @time "script construct: $(script.name)" newScript = Base.invokelatest(constructor)
                     scriptFields = get(script, "fields", Dict())
                     @debug("getting fields for: $(script)")
                     for (key, value) in scriptFields

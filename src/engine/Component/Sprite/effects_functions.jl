@@ -1,5 +1,5 @@
 function serialize_effects(effects::Vector{Any})::String
-    if length(effects) < 1
+    if isempty(effects)
         return "[]"
     end
     parts = String[]
@@ -20,15 +20,17 @@ function serialize_effects(effects::Vector{Any})::String
     return "[" * join(parts, ";") * "]"
 end
 
-function generate_effect_cache_key(this::InternalSprite)::String
-    # Cache key based on image path, size, and effects - NOT instance ID
-    # This allows sharing effect textures across sprites with same visuals
+function generate_effect_cache_key(imagePath::String, size::Math.Vector2, effects::Vector{Any})::String
     content = string(
-        this.imagePath, "|",
-        this.size.x, "x", this.size.y, "|",
-        serialize_effects(this.effects)
+        imagePath, "|",
+        size.x, "x", size.y, "|",
+        serialize_effects(effects)
     )
     return string(hash(content))
+end
+
+function generate_effect_cache_key(this::InternalSprite)::String
+    return generate_effect_cache_key(this.imagePath, this.size, this.effects)
 end
 
 #  effects API
@@ -54,7 +56,7 @@ function apply_style!(this::InternalSprite, style)
 end
 
 function update_effects(this::InternalSprite)
-    if length(this.effects) < 1 || !this.needsEffectUpdate
+    if isempty(this.effects) || !this.needsEffectUpdate
         return
     end
     
@@ -138,4 +140,22 @@ function clear_texture_cache()
         end
     end
     empty!(TEXTURE_CACHE)
+end
+
+"""
+    release_sprite_texture_for_mutation!(sprite::InternalSprite)
+
+Drop this sprite's texture before pixel-mutating effects (e.g. clock-hand sweep).
+The shared `TEXTURE_CACHE` entry is left untouched — other sprites with the same
+`imagePath` (which may never mutate) keep rendering from it. Only textures that
+are not referenced by the cache (i.e. private, from a previous mutation) are
+destroyed. The sprite then gets its own private texture on the next update.
+"""
+function release_sprite_texture_for_mutation!(sprite::InternalSprite)
+    tex = sprite.texture
+    tex == C_NULL && return
+    if !(tex in values(TEXTURE_CACHE))
+        SDL2.SDL_DestroyTexture(tex)
+    end
+    sprite.texture = C_NULL
 end

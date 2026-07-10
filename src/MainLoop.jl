@@ -258,9 +258,9 @@ module MainLoopModule
     function prepare_window_scripts_and_start_loop(size)
         @debug "Preparing window"
 		MAIN.windowManager.windowSize = size
-		
+
 		@debug "Initializing scripts and components"
-        initialize_scripts_and_components()
+        @time "scene init: total (scripts and components)" initialize_scripts_and_components()
 
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			@debug "Starting non editor loop"
@@ -296,9 +296,17 @@ module MainLoopModule
 			this.close = false
             startTime = Ref(UInt64(0))
             lastPhysicsTime = Ref(UInt64(SDL2.SDL_GetTicks()))
+            isFirstFrame = true
             while !this.close
                 try
-                    game_loop(this, startTime, lastPhysicsTime)
+                    if isFirstFrame
+                        # First frame lazily bakes effect textures for visible
+                        # elements and JIT-compiles the render path.
+                        @time "first frame" game_loop(this, startTime, lastPhysicsTime)
+                        isFirstFrame = false
+                    else
+                        game_loop(this, startTime, lastPhysicsTime)
+                    end
                 catch e
                     if this.testMode
                         throw(e)
@@ -398,18 +406,18 @@ module MainLoopModule
 		end
 
 		if !this.isGameModeRunningInEditor
-			for uiElement in this.scene.uiElements
+			@time "scene init: uiElements ($(length(this.scene.uiElements)))" for uiElement in this.scene.uiElements
 				JulGame.initialize(uiElement)
 			end
 		end
 
 		this.spriteLayers = build_sprite_layers()
-		
+
 		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 
 			for script in scripts
 				try
-					call_script_initialize(this, script)
+					@time "scene init: script $(typeof(script))" call_script_initialize(this, script)
 				catch e
 					if this.testMode
 						rethrow(e)
@@ -421,7 +429,7 @@ module MainLoopModule
 			end
 			build_sprite_layers()
 
-			for entity in MAIN.scene.entities
+			@time "scene init: play-on-start sounds" for entity in MAIN.scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
 				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
 					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
