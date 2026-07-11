@@ -29,7 +29,6 @@ module EntityModule
         parent::Union{Entity, Nothing}
 
         function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
-            # The interaction state lives in always-present Ark components, seeded here.
             arkid = Ark.new_entity!(JulGame.ECS_WORLD, (
                 transform,
                 ClickEvents(clickEvents), HoverEnterEvents(Function[]), HoverExitEvents(Function[]),
