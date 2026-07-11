@@ -46,14 +46,25 @@ module EntityModule
 
     @inline ark_id(this::Entity) = getfield(this, :_arkid)
 
-    @inline function _get_or_nothing(::Type{T}, id::Ark.Entity) where {T}
+    # Canonical component accessors. These take the wrapper `Entity` and resolve
+    # the Ark id themselves, so they can be called directly at hot call sites
+    # (e.g. `_get_or_nothing(InternalRigidbody, entity)`) as well as via the
+    # `getproperty`/`setproperty!` shims below.
+    @inline function _get_or_nothing(::Type{T}, this::Entity) where {T}
         w = JulGame.ECS_WORLD
+        id = getfield(this, :_arkid)
         return Ark.has_components(w, id, (T,)) ? Ark.get_components(w, id, (T,))[1] : nothing
     end
 
-    @inline function _set_slot!(::Type{T}, id::Ark.Entity, value) where {T}
+    # Transform is always present, so it returns `Transform` (never `nothing`).
+    @inline function _get_transform(this::Entity)
+        return Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (Transform,))[1]
+    end
+
+    @inline function _set_slot!(::Type{T}, this::Entity, value) where {T}
         w = JulGame.ECS_WORLD
-        if value === nothing || value === C_NULL || value isa Ptr
+        id = getfield(this, :_arkid)
+        if value === nothing
             Ark.has_components(w, id, (T,)) && Ark.remove_components!(w, id, (T,))
         elseif Ark.has_components(w, id, (T,))
             Ark.set_components!(w, id, (value,))
@@ -63,56 +74,58 @@ module EntityModule
         return value
     end
 
+    @inline function _set_transform!(this::Entity, value)
+        Ark.set_components!(JulGame.ECS_WORLD, getfield(this, :_arkid), (value,))
+        return value
+    end
+
     Base.@constprop :aggressive function Base.getproperty(this::Entity, name::Symbol)
-        id = getfield(this, :_arkid)
         if name === :transform
-            return Ark.get_components(JulGame.ECS_WORLD, id, (Transform,))[1]
+            return _get_transform(this)
         elseif name === :sprite
-            return _get_or_nothing(InternalSprite, id)
+            return _get_or_nothing(InternalSprite, this)
         elseif name === :rigidbody
-            return _get_or_nothing(InternalRigidbody, id)
+            return _get_or_nothing(InternalRigidbody, this)
         elseif name === :collider
-            return _get_or_nothing(InternalCollider, id)
+            return _get_or_nothing(InternalCollider, this)
         elseif name === :circleCollider
-            return _get_or_nothing(InternalCircleCollider, id)
+            return _get_or_nothing(InternalCircleCollider, this)
         elseif name === :animator
-            return _get_or_nothing(InternalAnimator, id)
+            return _get_or_nothing(InternalAnimator, this)
         elseif name === :shape
-            return _get_or_nothing(InternalShape, id)
+            return _get_or_nothing(InternalShape, this)
         elseif name === :soundSource
-            return _get_or_nothing(InternalSoundSource, id)
+            return _get_or_nothing(InternalSoundSource, this)
         elseif name === :mesh3d
-            return _get_or_nothing(Mesh3D, id)
+            return _get_or_nothing(Mesh3D, this)
         elseif name === :softwareRenderer3d
-            return _get_or_nothing(SoftwareRenderer3D, id)
+            return _get_or_nothing(SoftwareRenderer3D, this)
         else
             return getfield(this, name)
         end
     end
 
     Base.@constprop :aggressive function Base.setproperty!(this::Entity, name::Symbol, value)
-        id = getfield(this, :_arkid)
         if name === :transform
-            Ark.set_components!(JulGame.ECS_WORLD, id, (value,))
-            return value
+            return _set_transform!(this, value)
         elseif name === :sprite
-            return _set_slot!(InternalSprite, id, value)
+            return _set_slot!(InternalSprite, this, value)
         elseif name === :rigidbody
-            return _set_slot!(InternalRigidbody, id, value)
+            return _set_slot!(InternalRigidbody, this, value)
         elseif name === :collider
-            return _set_slot!(InternalCollider, id, value)
+            return _set_slot!(InternalCollider, this, value)
         elseif name === :circleCollider
-            return _set_slot!(InternalCircleCollider, id, value)
+            return _set_slot!(InternalCircleCollider, this, value)
         elseif name === :animator
-            return _set_slot!(InternalAnimator, id, value)
+            return _set_slot!(InternalAnimator, this, value)
         elseif name === :shape
-            return _set_slot!(InternalShape, id, value)
+            return _set_slot!(InternalShape, this, value)
         elseif name === :soundSource
-            return _set_slot!(InternalSoundSource, id, value)
+            return _set_slot!(InternalSoundSource, this, value)
         elseif name === :mesh3d
-            return _set_slot!(Mesh3D, id, value)
+            return _set_slot!(Mesh3D, this, value)
         elseif name === :softwareRenderer3d
-            return _set_slot!(SoftwareRenderer3D, id, value)
+            return _set_slot!(SoftwareRenderer3D, this, value)
         else
             ty = fieldtype(Entity, name)
             return setfield!(this, name, value isa ty ? value : convert(ty, value))
