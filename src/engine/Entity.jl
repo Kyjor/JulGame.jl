@@ -19,7 +19,7 @@ module EntityModule
     export Entity
 
     mutable struct Entity <: JulGame.IEntity
-        _arkid::Ark.Entity
+        const _arkid::Ark.Entity
         id::String
         name::String
         isActive::Bool
@@ -59,7 +59,7 @@ module EntityModule
     @inline function _set_slot!(::Type{T}, this::Entity, value) where {T}
         w = JulGame.ECS_WORLD
         id = getfield(this, :_arkid)
-        if value === nothing
+        if value === nothing || value === C_NULL
             Ark.has_components(w, id, (T,)) && Ark.remove_components!(w, id, (T,))
         elseif Ark.has_components(w, id, (T,))
             Ark.set_components!(w, id, (value,))
