@@ -168,12 +168,7 @@ module JulGame
         allow_mutable = true,
     )
 
-    """
-        current_world()
-
-    The Ark `World` backing all entities/components. Type-stable (`const`).
-    """
-    @inline current_world() = ECS_WORLD
+    current_world() = ECS_WORLD
     export current_world
 
     include("engine/Effects/Effects.jl")
