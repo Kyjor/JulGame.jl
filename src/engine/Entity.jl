@@ -126,6 +126,7 @@ module EntityModule
     end
 
     function JulGame.add_script(this::Entity, script)
+        @debug(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
         push!(this.scripts, script)
         script.parent = this
         try
