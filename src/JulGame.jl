@@ -164,7 +164,13 @@ module JulGame
         SoundSourceModule.InternalSoundSource,
         AnimatorModule.InternalAnimator,
         Mesh3DModule.Mesh3D,
-        SoftwareRenderer3DModule.SoftwareRenderer3D;
+        SoftwareRenderer3DModule.SoftwareRenderer3D,
+        InteractionComponentsModule.ClickEvents,
+        InteractionComponentsModule.HoverEnterEvents,
+        InteractionComponentsModule.HoverExitEvents,
+        InteractionComponentsModule.IsHovered,
+        InteractionComponentsModule.ForceClickCheck,
+        InteractionComponentsModule.IgnoreInputEvents;
         allow_mutable = true,
     )
 

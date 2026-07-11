@@ -12,6 +12,7 @@ module EntityModule
     using ..JulGame.TransformModule
     using ..JulGame.Mesh3DModule
     using ..JulGame.SoftwareRenderer3DModule
+    using ..JulGame.InteractionComponentsModule
     import ..JulGame: Component
     import ..JulGame
     import Ark
@@ -26,16 +27,15 @@ module EntityModule
         persistentBetweenScenes::Bool
         scripts::Vector{Any}
         parent::Union{Entity, Nothing}
-        clickEvents::Vector{Function}
-        hoverEnterEvents::Vector{Function}
-        hoverExitEvents::Vector{Function}
-        isHovered::Bool
-        forceClickCheck::Bool
-        ignoreInputEvents::Bool
 
         function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
-            arkid = Ark.new_entity!(JulGame.ECS_WORLD, (transform,))
-            this = new(arkid, id, name, true, false, Any[], nothing, clickEvents, Function[], Function[], false, forceClickCheck, ignoreInputEvents)
+            # The interaction state lives in always-present Ark components, seeded here.
+            arkid = Ark.new_entity!(JulGame.ECS_WORLD, (
+                transform,
+                ClickEvents(clickEvents), HoverEnterEvents(Function[]), HoverExitEvents(Function[]),
+                IsHovered(false), ForceClickCheck(forceClickCheck), IgnoreInputEvents(ignoreInputEvents),
+            ))
+            this = new(arkid, id, name, true, false, Any[], nothing)
             Ark.get_components(JulGame.ECS_WORLD, arkid, (Transform,))[1].parent = this
             for script in scripts
                 JulGame.add_script(this, script)
@@ -74,6 +74,15 @@ module EntityModule
         return value
     end
 
+    @inline function _get_meta(::Type{T}, this::Entity) where {T}
+        return Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (T,))[1].value
+    end
+
+    @inline function _set_meta!(::Type{T}, this::Entity, value) where {T}
+        Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (T,))[1].value = value
+        return value
+    end
+
     Base.@constprop :aggressive function Base.getproperty(this::Entity, name::Symbol)
         if name === :transform
             return _get_transform(this)
@@ -95,6 +104,18 @@ module EntityModule
             return _get_or_nothing(Mesh3D, this)
         elseif name === :softwareRenderer3d
             return _get_or_nothing(SoftwareRenderer3D, this)
+        elseif name === :clickEvents
+            return _get_meta(ClickEvents, this)
+        elseif name === :hoverEnterEvents
+            return _get_meta(HoverEnterEvents, this)
+        elseif name === :hoverExitEvents
+            return _get_meta(HoverExitEvents, this)
+        elseif name === :isHovered
+            return _get_meta(IsHovered, this)
+        elseif name === :forceClickCheck
+            return _get_meta(ForceClickCheck, this)
+        elseif name === :ignoreInputEvents
+            return _get_meta(IgnoreInputEvents, this)
         else
             return getfield(this, name)
         end
@@ -121,6 +142,18 @@ module EntityModule
             return _set_slot!(Mesh3D, this, value)
         elseif name === :softwareRenderer3d
             return _set_slot!(SoftwareRenderer3D, this, value)
+        elseif name === :clickEvents
+            return _set_meta!(ClickEvents, this, value)
+        elseif name === :hoverEnterEvents
+            return _set_meta!(HoverEnterEvents, this, value)
+        elseif name === :hoverExitEvents
+            return _set_meta!(HoverExitEvents, this, value)
+        elseif name === :isHovered
+            return _set_meta!(IsHovered, this, value)
+        elseif name === :forceClickCheck
+            return _set_meta!(ForceClickCheck, this, value)
+        elseif name === :ignoreInputEvents
+            return _set_meta!(IgnoreInputEvents, this, value)
         else
             ty = fieldtype(Entity, name)
             return setfield!(this, name, value isa ty ? value : convert(ty, value))
