@@ -46,17 +46,12 @@ module EntityModule
 
     @inline ark_id(this::Entity) = getfield(this, :_arkid)
 
-    # Canonical component accessors. These take the wrapper `Entity` and resolve
-    # the Ark id themselves, so they can be called directly at hot call sites
-    # (e.g. `_get_or_nothing(InternalRigidbody, entity)`) as well as via the
-    # `getproperty`/`setproperty!` shims below.
     @inline function _get_or_nothing(::Type{T}, this::Entity) where {T}
         w = JulGame.ECS_WORLD
         id = getfield(this, :_arkid)
         return Ark.has_components(w, id, (T,)) ? Ark.get_components(w, id, (T,))[1] : nothing
     end
 
-    # Transform is always present, so it returns `Transform` (never `nothing`).
     @inline function _get_transform(this::Entity)
         return Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (Transform,))[1]
     end
