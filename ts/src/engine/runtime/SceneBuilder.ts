@@ -223,7 +223,11 @@ type ComponentJson = {
     drag?: number;
     mass?: number;
     useGravity?: boolean;
-    animations?: Array<{ animatedFPS: number; frames: Array<{ x: number; y: number; z: number; t: number }> }>;
+    animations?: Array<{
+        animatedFPS: number;
+        frames: Array<{ x: number; y: number; z: number; t: number }>;
+        framePaths?: string[];
+    }>;
     path?: string;
     channel?: number;
     volume?: number;

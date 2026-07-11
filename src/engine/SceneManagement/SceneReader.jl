@@ -402,7 +402,8 @@ module SceneReaderModule
                 for animationFrame in animation.frames
                     push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
                     end
-                    push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS))
+                    framePaths = haskey(animation, "framePaths") ? String.(animation.framePaths) : String[]
+                    push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS, framePaths))
                 end
                 newComponent = Animator(newAnimations)
             elseif component.type == "Collider"
