@@ -239,7 +239,7 @@ module InputModule
         for i in length(entities):-1:1
             entity = entities[i]
             if entity.isActive && !entity.ignoreInputEvents &&
-               entity.sprite !== nothing && entity.sprite !== C_NULL &&
+               entity.sprite !== nothing && entity.sprite !== nothing &&
                !(entity in _inactiveCanvasChildren)
                 push!(candidates, entity)
             end
@@ -339,7 +339,7 @@ module InputModule
                     _input_ui_hit_step!(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
 
                     # TODO: add rest of entities without sprites in default order
-                    # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === C_NULL, JulGame.MAIN.scene.entities)
+                    # restOfEntities = filter(entity -> entity.sprite === nothing || entity.sprite === nothing, JulGame.MAIN.scene.entities)
                     # append!(elementsOrderedByLayerDescending, restOfEntities)
                     clickedAnElementAlready = false
                     hoveredAnElementAlready = false

@@ -12,67 +12,157 @@ module EntityModule
     using ..JulGame.TransformModule
     using ..JulGame.Mesh3DModule
     using ..JulGame.SoftwareRenderer3DModule
+    using ..JulGame.InteractionComponentsModule
     import ..JulGame: Component
     import ..JulGame
+    import Ark
 
     export Entity
+
     mutable struct Entity <: JulGame.IEntity
+        const _arkid::Ark.Entity
         id::String
         name::String
         isActive::Bool
         persistentBetweenScenes::Bool
-        transform::Transform
         scripts::Vector{Any}
         parent::Union{Entity, Nothing}
-        animator::Union{InternalAnimator, Ptr{Nothing}}
-        collider::Union{InternalCollider, Ptr{Nothing}}
-        circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
-        mesh3d::Union{Mesh3D, Ptr{Nothing}}
-        softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
-        rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
-        shape::Union{InternalShape, Ptr{Nothing}}
-        soundSource::Union{InternalSoundSource, Ptr{Nothing}}
-        sprite::Union{InternalSprite, Ptr{Nothing}}
-
-        clickEvents::Vector{Function}
-        hoverEnterEvents::Vector{Function}
-        hoverExitEvents::Vector{Function}
-        isHovered::Bool
-        forceClickCheck::Bool
-        ignoreInputEvents::Bool
 
         function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
-            this = new()
-
-            this.id = id
-            this.name = name
-            this.animator = C_NULL
-            this.circleCollider = C_NULL
-            this.collider = C_NULL
-            this.isActive = true
-            this.mesh3d = C_NULL
-            this.softwareRenderer3d = C_NULL
-            this.scripts = []
-            this.transform = transform
-            this.transform.parent = this
+            arkid = Ark.new_entity!(JulGame.ECS_WORLD, (
+                transform,
+                ClickEvents(clickEvents), HoverEnterEvents(Function[]), HoverExitEvents(Function[]),
+                IsHovered(false), ForceClickCheck(forceClickCheck), IgnoreInputEvents(ignoreInputEvents),
+            ))
+            this = new(arkid, id, name, true, false, Any[], nothing)
+            Ark.get_components(JulGame.ECS_WORLD, arkid, (Transform,))[1].parent = this
             for script in scripts
                 JulGame.add_script(this, script)
             end
-            this.shape = C_NULL
-            this.soundSource = C_NULL
-            this.sprite = C_NULL
-            this.persistentBetweenScenes = false
-            this.rigidbody = C_NULL
-            this.parent = nothing
-            this.isHovered = false
-            this.clickEvents = clickEvents
-            this.hoverEnterEvents = Function[]
-            this.hoverExitEvents = Function[]
-            this.forceClickCheck = forceClickCheck
-            this.ignoreInputEvents = ignoreInputEvents
-
             return this
         end
+    end
+
+    @inline ark_id(this::Entity) = getfield(this, :_arkid)
+
+    @inline function _get_or_nothing(::Type{T}, this::Entity) where {T}
+        w = JulGame.ECS_WORLD
+        id = getfield(this, :_arkid)
+        return Ark.has_components(w, id, (T,)) ? Ark.get_components(w, id, (T,))[1] : nothing
+    end
+
+    @inline function _get_transform(this::Entity)
+        return Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (Transform,))[1]
+    end
+
+    @inline function _set_slot!(::Type{T}, this::Entity, value) where {T}
+        w = JulGame.ECS_WORLD
+        id = getfield(this, :_arkid)
+        if value === nothing || value === C_NULL
+            Ark.has_components(w, id, (T,)) && Ark.remove_components!(w, id, (T,))
+        elseif Ark.has_components(w, id, (T,))
+            Ark.set_components!(w, id, (value,))
+        else
+            Ark.add_components!(w, id, (value,))
+        end
+        return value
+    end
+
+    @inline function _set_transform!(this::Entity, value)
+        Ark.set_components!(JulGame.ECS_WORLD, getfield(this, :_arkid), (value,))
+        return value
+    end
+
+    @inline function _get_meta(::Type{T}, this::Entity) where {T}
+        return Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (T,))[1].value
+    end
+
+    @inline function _set_meta!(::Type{T}, this::Entity, value) where {T}
+        Ark.get_components(JulGame.ECS_WORLD, getfield(this, :_arkid), (T,))[1].value = value
+        return value
+    end
+
+    Base.@constprop :aggressive function Base.getproperty(this::Entity, name::Symbol)
+        if name === :transform
+            return _get_transform(this)
+        elseif name === :sprite
+            return _get_or_nothing(InternalSprite, this)
+        elseif name === :rigidbody
+            return _get_or_nothing(InternalRigidbody, this)
+        elseif name === :collider
+            return _get_or_nothing(InternalCollider, this)
+        elseif name === :circleCollider
+            return _get_or_nothing(InternalCircleCollider, this)
+        elseif name === :animator
+            return _get_or_nothing(InternalAnimator, this)
+        elseif name === :shape
+            return _get_or_nothing(InternalShape, this)
+        elseif name === :soundSource
+            return _get_or_nothing(InternalSoundSource, this)
+        elseif name === :mesh3d
+            return _get_or_nothing(Mesh3D, this)
+        elseif name === :softwareRenderer3d
+            return _get_or_nothing(SoftwareRenderer3D, this)
+        elseif name === :clickEvents
+            return _get_meta(ClickEvents, this)
+        elseif name === :hoverEnterEvents
+            return _get_meta(HoverEnterEvents, this)
+        elseif name === :hoverExitEvents
+            return _get_meta(HoverExitEvents, this)
+        elseif name === :isHovered
+            return _get_meta(IsHovered, this)
+        elseif name === :forceClickCheck
+            return _get_meta(ForceClickCheck, this)
+        elseif name === :ignoreInputEvents
+            return _get_meta(IgnoreInputEvents, this)
+        else
+            return getfield(this, name)
+        end
+    end
+
+    Base.@constprop :aggressive function Base.setproperty!(this::Entity, name::Symbol, value)
+        if name === :transform
+            return _set_transform!(this, value)
+        elseif name === :sprite
+            return _set_slot!(InternalSprite, this, value)
+        elseif name === :rigidbody
+            return _set_slot!(InternalRigidbody, this, value)
+        elseif name === :collider
+            return _set_slot!(InternalCollider, this, value)
+        elseif name === :circleCollider
+            return _set_slot!(InternalCircleCollider, this, value)
+        elseif name === :animator
+            return _set_slot!(InternalAnimator, this, value)
+        elseif name === :shape
+            return _set_slot!(InternalShape, this, value)
+        elseif name === :soundSource
+            return _set_slot!(InternalSoundSource, this, value)
+        elseif name === :mesh3d
+            return _set_slot!(Mesh3D, this, value)
+        elseif name === :softwareRenderer3d
+            return _set_slot!(SoftwareRenderer3D, this, value)
+        elseif name === :clickEvents
+            return _set_meta!(ClickEvents, this, value)
+        elseif name === :hoverEnterEvents
+            return _set_meta!(HoverEnterEvents, this, value)
+        elseif name === :hoverExitEvents
+            return _set_meta!(HoverExitEvents, this, value)
+        elseif name === :isHovered
+            return _set_meta!(IsHovered, this, value)
+        elseif name === :forceClickCheck
+            return _set_meta!(ForceClickCheck, this, value)
+        elseif name === :ignoreInputEvents
+            return _set_meta!(IgnoreInputEvents, this, value)
+        else
+            ty = fieldtype(Entity, name)
+            return setfield!(this, name, value isa ty ? value : convert(ty, value))
+        end
+    end
+
+    function JulGame.free_entity!(this::Entity)
+        id = getfield(this, :_arkid)
+        Ark.is_alive(JulGame.ECS_WORLD, id) && Ark.remove_entity!(JulGame.ECS_WORLD, id)
+        return nothing
     end
 
     function JulGame.add_script(this::Entity, script)
@@ -103,13 +193,13 @@ module EntityModule
     end
 
     function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
-        if this.animator != C_NULL
+        if this.animator !== nothing
             println("Animator already exists on entity named ", this.name)
             return
         end
 
         this.animator = InternalAnimator(this::Entity, animator.animations)
-        if this.sprite != C_NULL 
+        if this.sprite !== nothing 
             this.animator.sprite = this.sprite
         end
 
@@ -117,7 +207,7 @@ module EntityModule
     end
 
     function JulGame.add_collider(this::Entity, collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
-        if this.collider != C_NULL || this.circleCollider != C_NULL
+        if this.collider !== nothing || this.circleCollider !== nothing
             println("Collider already exists on entity named ", this.name)
             return
         end
@@ -128,7 +218,7 @@ module EntityModule
     end
 
     function JulGame.add_circle_collider(this::Entity, collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
-        if this.collider != C_NULL || this.circleCollider != C_NULL
+        if this.collider !== nothing || this.circleCollider !== nothing
             println("Collider already exists on entity named ", this.name)
             return
         end
@@ -139,7 +229,7 @@ module EntityModule
     end
 
     function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody(1.0, true))
-        if this.rigidbody != C_NULL
+        if this.rigidbody !== nothing
             println("Rigidbody already exists on entity named ", this.name)
             return
         end
@@ -150,7 +240,7 @@ module EntityModule
     end
 
     function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
-        if this.soundSource != C_NULL
+        if this.soundSource !== nothing
             println("SoundSource already exists on entity named ", this.name)
             return
         end
@@ -166,13 +256,13 @@ module EntityModule
     end
 
     function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite((255, 255, 255, 255), C_NULL, false, "", 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center, false))
-        if this.sprite != C_NULL
+        if this.sprite !== nothing
             println("Sprite already exists on entity named ", this.name)
             return
         end
 
         this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset, isStatic=sprite.isStatic)
-        if this.animator != C_NULL
+        if this.animator !== nothing
             this.animator.sprite = this.sprite
         end
         Component.initialize(this.sprite)
@@ -181,7 +271,7 @@ module EntityModule
     end
 
     function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255))
-        if this.shape != C_NULL
+        if this.shape !== nothing
             println("Shape already exists on entity named ", this.name)
             return
         end
@@ -192,7 +282,7 @@ module EntityModule
     end
 
     function JulGame.add_mesh3d(this::Entity, mesh3d::Mesh3D = Mesh3D())
-        if this.mesh3d != C_NULL
+        if this.mesh3d !== nothing
             println("Mesh3D already exists on entity named ", this.name)
             return
         end
@@ -205,7 +295,7 @@ module EntityModule
     end
 
     function JulGame.add_software_renderer3d(this::Entity, softwareRenderer3d::SoftwareRenderer3D = SoftwareRenderer3D())
-        if this.softwareRenderer3d != C_NULL
+        if this.softwareRenderer3d !== nothing
             println("SoftwareRenderer3D already exists on entity named ", this.name)
             return
         end
@@ -219,48 +309,36 @@ module EntityModule
 
     function JulGame.duplicate(this::Entity, id::String = JulGame.generate_uuid())
         newEntity = Entity(this.name, id, Component.duplicate(this.transform, nothing))
-        # animator::Union{InternalAnimator, Ptr{Nothing}}
-        if this.animator != C_NULL && this.animator !== nothing
+        if this.animator !== nothing
             newEntity.animator = Component.duplicate(this.animator, newEntity)
         end
-        # collider::Union{InternalCollider, Ptr{Nothing}}
-        if this.collider != C_NULL && this.collider !== nothing
+        if this.collider !== nothing
             newEntity.collider = Component.duplicate(this.collider, newEntity)
         end
-        # circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
-        # if this.circleCollider != C_NULL && this.circleCollider !== nothing
+        # if this.circleCollider !== nothing
         #     newEntity.circleCollider = Component.duplicate(this.circleCollider, newEntity)
         # end
-        # isActive::Bool
         newEntity.isActive = this.isActive
-        # mesh3d::Union{Mesh3D, Ptr{Nothing}}
-        if this.mesh3d != C_NULL && this.mesh3d !== nothing
-            #newEntity.mesh3d = Component.duplicate(this.mesh3d, newEntity)
-        end
-        # softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
-        if this.softwareRenderer3d != C_NULL && this.softwareRenderer3d !== nothing
+        # if this.mesh3d !== nothing
+        #     newEntity.mesh3d = Component.duplicate(this.mesh3d, newEntity)
+        # end
+        if this.softwareRenderer3d !== nothing
             newEntity.softwareRenderer3d = this.softwareRenderer3d
         end
-        # persistentBetweenScenes::Bool
         newEntity.persistentBetweenScenes = this.persistentBetweenScenes
-        # rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
-        if this.rigidbody != C_NULL && this.rigidbody !== nothing
+        if this.rigidbody !== nothing
             newEntity.rigidbody = Component.duplicate(this.rigidbody, newEntity)
         end
-        # scripts::Vector{Any}
         # for script in this.scripts
         #     JulGame.add_script(newEntity, script)
         # end
-        # shape::Union{InternalShape, Ptr{Nothing}}
-        if this.shape != C_NULL && this.shape !== nothing
+        if this.shape !== nothing
             newEntity.shape = Component.duplicate(this.shape, newEntity)
         end
-        # soundSource::Union{InternalSoundSource, Ptr{Nothing}}
-        if this.soundSource != C_NULL && this.soundSource !== nothing
+        if this.soundSource !== nothing
             newEntity.soundSource = Component.duplicate(this.soundSource, newEntity)
         end
-        # sprite::Union{InternalSprite, Ptr{Nothing}}
-        if this.sprite != C_NULL && this.sprite !== nothing
+        if this.sprite !== nothing
             newEntity.sprite = Component.duplicate(this.sprite, newEntity)
         end
         

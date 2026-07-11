@@ -52,7 +52,7 @@
         this.velocity = newVelocity * velocityMultiplier
         this.acceleration = newAcceleration
 
-        if this.parent.collider != C_NULL
+        if this.parent.collider !== nothing
             Component.check_collisions(this.parent.collider)
         end
     end
@@ -81,7 +81,7 @@
         this.velocity = this.velocity + velocity
         if(velocity.y < 0)
             this.grounded = false
-            if this.parent.collider != C_NULL
+            if this.parent.collider !== nothing
                 this.parent.collider.currentRests = []
             end
         end

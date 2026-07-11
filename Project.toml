@@ -5,6 +5,7 @@ repo = "https://github.com/Kyjor/JulGame.jl.git"
 version = "0.1.0"
 
 [deps]
+Ark = "56664e29-41e4-4ea5-ab0e-825499acc647"
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
@@ -20,6 +21,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 SimpleDirectMediaLayer = {url = "https://github.com/Kyjor/SimpleDirectMediaLayer.jl"}
 
 [compat]
+Ark = "0.5"
 Base64 = "^1"
 JSON3 = "^1"
 SHA = "0.7, 1"

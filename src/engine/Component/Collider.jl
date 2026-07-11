@@ -232,7 +232,7 @@ module ColliderModule
             if result[].y == b.y
                 @debug "colliding from top at depth $(depthVertical)"
                 # Check if moving upward through a platformer - if so, ignore to prevent snap-to-top
-                if colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== C_NULL
+                if colliderB.isPlatformerCollider && colliderA.parent.rigidbody !== nothing
                     # If moving upward (negative velocity in SDL coords), ignore collision
                     if colliderA.parent.rigidbody.velocity.y < 0
                         return (None::CollisionDirection, 0.0, isLineIntersectionL || isLineIntersectionR)
