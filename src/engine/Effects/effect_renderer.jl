@@ -165,7 +165,7 @@ module EffectRendererModule
             return EffectsModule.TextureTarget(texture)
         elseif target isa EffectsModule.SpriteTarget
             # Update sprite's effect texture (not base texture)
-            if target.sprite.effectTexture != C_NULL
+            if target.sprite.effectTexture !== nothing
                 SDL2.SDL_DestroyTexture(target.sprite.effectTexture)
             end
             target.sprite.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)

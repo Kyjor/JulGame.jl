@@ -66,7 +66,7 @@ function get_static_sprites_by_layer()
     
     for entity in JulGame.MAIN.scene.entities
         sprite = entity.sprite
-        if sprite != C_NULL && sprite !== nothing && sprite.isStatic
+        if sprite !== nothing && sprite.isStatic
             layer = sprite.layer
             if !haskey(layer_sprites, layer)
                 layer_sprites[layer] = []

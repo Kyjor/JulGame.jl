@@ -153,6 +153,29 @@ module JulGame
     using .Component
     export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule, SoftwareRenderer3DModule
 
+    import Ark
+    const ECS_WORLD = Ark.World(
+        TransformModule.Transform,
+        SpriteModule.InternalSprite,
+        ColliderModule.InternalCollider,
+        CircleColliderModule.InternalCircleCollider,
+        RigidbodyModule.InternalRigidbody,
+        ShapeModule.InternalShape,
+        SoundSourceModule.InternalSoundSource,
+        AnimatorModule.InternalAnimator,
+        Mesh3DModule.Mesh3D,
+        SoftwareRenderer3DModule.SoftwareRenderer3D;
+        allow_mutable = true,
+    )
+
+    """
+        current_world()
+
+    The Ark `World` backing all entities/components. Type-stable (`const`).
+    """
+    @inline current_world() = ECS_WORLD
+    export current_world
+
     include("engine/Effects/Effects.jl")
     using .Effects
     export EffectsModule, EffectRendererModule, EffectCacheModule, EffectAlgorithmsModule, EffectExamplesModule

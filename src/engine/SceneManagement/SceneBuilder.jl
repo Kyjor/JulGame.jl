@@ -232,10 +232,10 @@ module SceneBuilderModule
                 continue
             end
             
-            if entity.rigidbody != C_NULL
+            if entity.rigidbody !== nothing
                 push!(MAIN.scene.rigidbodies, entity.rigidbody)
             end
-            if entity.collider != C_NULL
+            if entity.collider !== nothing
                 push!(MAIN.scene.colliders, entity.collider)
             end
         end 

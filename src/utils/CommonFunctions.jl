@@ -28,6 +28,7 @@ function destroy_ui_element end
 function draw end
 function duplicate end
 function flip end
+function free_entity! end
 function generate_uuid end
 function get_offset end
 function get_position end

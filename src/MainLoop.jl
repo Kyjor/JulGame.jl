@@ -431,7 +431,7 @@ module MainLoopModule
 
 			@time "scene init: play-on-start sounds" for entity in MAIN.scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
-				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
+				if entity.soundSource !== nothing && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
 					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
 					Component.toggle_sound(entity.soundSource)
 				end
@@ -442,11 +442,11 @@ module MainLoopModule
 		MAIN.scene.colliders = []
 		for entity in MAIN.scene.entities
 			@debug "adding rigidbodies to global list"
-			if entity.rigidbody != C_NULL
+			if entity.rigidbody !== nothing
 				push!(MAIN.scene.rigidbodies, entity.rigidbody)
 					end
 			@debug "adding colliders to global list"
-			if entity.collider != C_NULL
+			if entity.collider !== nothing
 				push!(MAIN.scene.colliders, entity.collider)
 			end
 		end 
@@ -575,7 +575,7 @@ function build_sprite_layers()
 	
 	for entity in MAIN.scene.entities
 		entitySprite = entity.sprite
-		if entitySprite != C_NULL
+		if entitySprite !== nothing
 			layer = entitySprite.layer
 			if !haskey(layerDict, layer)  # No string interpolation!
 				push!(sortedLayers, layer)
@@ -620,6 +620,7 @@ function JulGame.destroy_entity(this::MainLoop, entity)
 			if entity_index !== nothing
 				deleteat!(this.selectedEntities, entity_index)
 			end
+			JulGame.free_entity!(entity)
 			mark_input_layer_order_dirty!(this)  # Cache needs rebuild
 			break
 		end
@@ -651,7 +652,7 @@ end
 
 function destroy_entity_components(this::MainLoop, entity)
 	entitySprite = entity.sprite
-	if entitySprite != C_NULL
+	if entitySprite !== nothing
 		layer = entitySprite.layer
 		if haskey(this.spriteLayers.layers, layer)  # No string interpolation!
 			for j = eachindex(this.spriteLayers.layers[layer])
@@ -665,27 +666,27 @@ function destroy_entity_components(this::MainLoop, entity)
 	end
 
 	entityRigidbody = entity.rigidbody
-	if entityRigidbody != C_NULL
+	if entityRigidbody !== nothing
 		filter!(rb -> rb != entityRigidbody, this.scene.rigidbodies)
 	end
 
 	entityCollider = entity.collider
-	if entityCollider != C_NULL
+	if entityCollider !== nothing
 		filter!(col -> col != entityCollider, this.scene.colliders)
 	end
 
 	entitySoundSource = entity.soundSource
-	if entitySoundSource != C_NULL
+	if entitySoundSource !== nothing
 		Component.unload_sound(entitySoundSource)
 	end
 
 	entityMesh3D = entity.mesh3d
-	if entityMesh3D != C_NULL
+	if entityMesh3D !== nothing
 		Component.destroy(entityMesh3D)
 	end
 
 	entitySoftwareRenderer3D = entity.softwareRenderer3d
-	if entitySoftwareRenderer3D != C_NULL
+	if entitySoftwareRenderer3D !== nothing
 		Component.destroy(entitySoftwareRenderer3D)
 	end
 end
@@ -703,7 +704,7 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 function JulGame.create_entity(entity)
 	this::MainLoop = MAIN
 	push!(this.scene.entities, entity)
-	if entity.sprite != C_NULL
+	if entity.sprite !== nothing
 		layer = entity.sprite.layer
 		if !haskey(this.spriteLayers.layers, layer)  # No string interpolation!
 			push!(this.spriteLayers.sorted, layer)
@@ -714,11 +715,11 @@ function JulGame.create_entity(entity)
 		end
 	end
 
-	if entity.rigidbody != C_NULL
+	if entity.rigidbody !== nothing
 		push!(this.scene.rigidbodies, entity.rigidbody)
 	end
 
-	if entity.collider != C_NULL
+	if entity.collider !== nothing
 		push!(this.scene.colliders, entity.collider)
 	end
 	
@@ -889,7 +890,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						end
 					end
 					entityAnimator = entity.animator
-					if entityAnimator != C_NULL
+					if entityAnimator !== nothing
                         Base.invokelatest(JulGame.update, entityAnimator, currentRenderTime, deltaTime)
 					end
 				end
@@ -1093,10 +1094,10 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		rendercount = 0
 		renderOrder = []
 		for entity in this.scene.entities
-			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
-			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
-			mesh3dExists = entity.mesh3d != C_NULL && entity.mesh3d !== nothing
-			softwareRenderer3dExists = entity.softwareRenderer3d != C_NULL && entity.softwareRenderer3d !== nothing
+			spriteExists = entity.sprite !== nothing
+			shapeExists = entity.shape !== nothing
+			mesh3dExists = entity.mesh3d !== nothing
+			softwareRenderer3dExists = entity.softwareRenderer3d !== nothing
 			if !entity.isActive || (!spriteExists && !shapeExists && !mesh3dExists && !softwareRenderer3dExists)
 				continue
 			end
@@ -1232,7 +1233,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				continue
 			end
 	
-			if entity.collider != C_NULL
+			if entity.collider !== nothing
 				rgba = (r = Ref(UInt8(0)), g = Ref(UInt8(0)), b = Ref(UInt8(0)), a = Ref(UInt8(255)))
         		SDL2.SDL_GetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r, rgba.g, rgba.b, rgba.a)
 				SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, 0, 255, 0, SDL2.SDL_ALPHA_OPAQUE)

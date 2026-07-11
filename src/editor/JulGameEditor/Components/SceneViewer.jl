@@ -347,7 +347,7 @@ function get_nearest_entity(main, canvas_p0, camPos, mouse_pos_in_canvas_zoom_ad
     
     for entity in entities
         size = entity.transform.scale
-        # entity.collider != C_NULL ? Component.get_size(entity.collider) : entity.transform.scale
+        # entity.collider !== nothing ? Component.get_size(entity.collider) : entity.transform.scale
         
         # get the nearest entity
         if clicked_pos.x >= entity.transform.position.x && clicked_pos.x <= entity.transform.position.x + size.x && clicked_pos.y >= entity.transform.position.y && clicked_pos.y <= entity.transform.position.y + size.y

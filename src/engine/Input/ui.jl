@@ -1,5 +1,5 @@
 function get_element_size(element::JulGame.IEntity)
-    if element.sprite === nothing || element.sprite === C_NULL
+    if element.sprite === nothing || element.sprite === nothing
         return Math.Vector2(0, 0)
     end
     baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
@@ -17,7 +17,7 @@ function get_element_position(element::JulGame.IUIElement)
 end
 
 function get_element_position(element::JulGame.IEntity)
-    if element.sprite === nothing || element.sprite === C_NULL
+    if element.sprite === nothing || element.sprite === nothing
         return Math.Vector2(0, 0)
     end
     basePosition = element.sprite.lastRenderedScreenPosition === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
