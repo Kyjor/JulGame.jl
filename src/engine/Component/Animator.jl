@@ -36,20 +36,38 @@
     end
 
     function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
-        if this.currentAnimation === nothing || this.currentAnimation.animatedFPS < 1 || (this.playOnce && this.lastFrame == length(this.currentAnimation.frames)) || this.sprite == nothing
+        if this.currentAnimation === nothing || this.currentAnimation.animatedFPS < 1 || this.sprite == nothing
             return
         end
+        frameCount = isempty(this.currentAnimation.framePaths) ?
+            length(this.currentAnimation.frames) :
+            length(this.currentAnimation.framePaths)
+        if frameCount == 0 || (this.playOnce && this.lastFrame == frameCount)
+            return
+        end
+
         deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
-        framesToUpdate = floor(deltaTime / (1.0 / this.currentAnimation.animatedFPS))
-        if framesToUpdate > 0
+        framesToUpdate = floor(Int, deltaTime / (1.0 / this.currentAnimation.animatedFPS))
+        if this.lastFrame == 0
+            this.lastFrame = 1
+            this.lastUpdate = currentRenderTime
+        elseif framesToUpdate > 0
             this.lastFrame = this.lastFrame + framesToUpdate
             this.lastUpdate = currentRenderTime
         end
-        frameCount = length(this.currentAnimation.frames)
         if this.lastFrame > frameCount
-            this.lastFrame = 1
+            this.lastFrame = this.playOnce ?
+                frameCount :
+                ((this.lastFrame - 1) % frameCount) + 1
         end
-        this.sprite.crop = this.currentAnimation.frames[this.lastFrame]
+
+        if !isempty(this.currentAnimation.framePaths)
+            this.sprite.imagePath = this.currentAnimation.framePaths[this.lastFrame]
+        end
+        if !isempty(this.currentAnimation.frames)
+            frameIndex = min(this.lastFrame, length(this.currentAnimation.frames))
+            this.sprite.crop = this.currentAnimation.frames[frameIndex]
+        end
     end
 
     function Component.append_array(this::InternalAnimator)
@@ -99,8 +117,13 @@
         if this.currentAnimation === nothing || this.sprite === nothing
             return
         end
-        frameIndex = frameIndex
-        this.sprite.crop = this.currentAnimation.frames[frameIndex]
+        if !isempty(this.currentAnimation.framePaths)
+            this.sprite.imagePath = this.currentAnimation.framePaths[frameIndex]
+        end
+        if !isempty(this.currentAnimation.frames)
+            this.sprite.crop = this.currentAnimation.frames[frameIndex]
+        end
+        this.lastFrame = frameIndex
     end
     export force_frame_update    
 end

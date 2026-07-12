@@ -2,7 +2,7 @@ export {};
 
 declare global {
   type AnyValue = any;
-  type JulGameAnimation = { animatedFPS: number; frames: Vector4[] };
+  type JulGameAnimation = { animatedFPS: number; frames: Vector4[]; framePaths?: string[] };
   type Vector2 = { x: number; y: number };
   type Vector2f = { x: number; y: number };
   type Vector3f = { x: number; y: number; z: number };

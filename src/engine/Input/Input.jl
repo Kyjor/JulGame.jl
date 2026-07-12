@@ -37,6 +37,9 @@ module InputModule
         numButtons
         numHats
         button
+        prevGamepadButton::Bool
+        prevXDir::Int
+        prevYDir::Int
 
         # Cursor bank
         cursorBank::Dict{String, Ptr{SDL2.SDL_SystemCursor}} # Key is the name of the cursor, value is the SDL2 cursor
@@ -78,6 +81,7 @@ module InputModule
             end
 
             SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
+            this.joystick = C_NULL
             if SDL2.SDL_NumJoysticks() < 1
                 @debug("Warning: No joysticks connected!")
                 this.numAxes = 0
@@ -104,6 +108,9 @@ module InputModule
             this.xDir = 0
             this.yDir = 0
             this.button = 0
+            this.prevGamepadButton = false
+            this.prevXDir = 0
+            this.prevYDir = 0
 
             this.cursorBank = Dict{String, SDL2.SDL_SystemCursor}()
             create_cursor_bank(this)
@@ -582,9 +589,71 @@ module InputModule
             #_input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
         end
 
+        update_joystick_state!(this)
+
         # if this.isTestButtonClicked
         #     lift_mouse_after_simulated_click(this)
         # end
+    end
+
+    const JOYSTICK_DEAD_ZONE = Int16(8000)
+
+    """
+    Sample stick / D-pad / face button once per frame (not only on joystick SDL events)
+    so axes don't stick. Direction edges push LEFT/RIGHT/UP/DOWN into buttonsPressedDown;
+    South/A (button 0) rising edge pushes GAMEPAD_CONFIRM.
+    """
+    function update_joystick_state!(this::Input)
+        this.xDir = 0
+        this.yDir = 0
+        this.button = 0
+        this.joystick == C_NULL && return
+
+        if this.numAxes > 0
+            axisX = SDL2.SDL_JoystickGetAxis(this.joystick, 0)
+            if axisX < -JOYSTICK_DEAD_ZONE
+                this.xDir = -1
+            elseif axisX > JOYSTICK_DEAD_ZONE
+                this.xDir = 1
+            end
+        end
+        if this.numAxes > 1
+            axisY = SDL2.SDL_JoystickGetAxis(this.joystick, 1)
+            if axisY < -JOYSTICK_DEAD_ZONE
+                this.yDir = -1
+            elseif axisY > JOYSTICK_DEAD_ZONE
+                this.yDir = 1
+            end
+        end
+
+        if this.numHats > 0
+            hat = SDL2.SDL_JoystickGetHat(this.joystick, 0)
+            (hat & SDL2.SDL_HAT_LEFT) != 0 && (this.xDir = -1)
+            (hat & SDL2.SDL_HAT_RIGHT) != 0 && (this.xDir = 1)
+            (hat & SDL2.SDL_HAT_UP) != 0 && (this.yDir = -1)
+            (hat & SDL2.SDL_HAT_DOWN) != 0 && (this.yDir = 1)
+        end
+
+        # Rising-edge digital directions (match keyboard get_button_pressed feel)
+        if this.xDir == -1 && this.prevXDir != -1
+            push!(this.buttonsPressedDown, "LEFT")
+        elseif this.xDir == 1 && this.prevXDir != 1
+            push!(this.buttonsPressedDown, "RIGHT")
+        end
+        if this.yDir == -1 && this.prevYDir != -1
+            push!(this.buttonsPressedDown, "UP")
+        elseif this.yDir == 1 && this.prevYDir != 1
+            push!(this.buttonsPressedDown, "DOWN")
+        end
+        this.prevXDir = this.xDir
+        this.prevYDir = this.yDir
+
+        buttonHeld = this.numButtons > 0 && SDL2.SDL_JoystickGetButton(this.joystick, 0) != 0
+        this.button = buttonHeld ? 1 : 0
+        if buttonHeld && !this.prevGamepadButton
+            push!(this.buttonsPressedDown, "GAMEPAD_CONFIRM")
+        end
+        this.prevGamepadButton = buttonHeld
     end
 
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
