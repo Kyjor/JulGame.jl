@@ -114,7 +114,16 @@
     ```
     """
     function force_frame_update(this::InternalAnimator, frameIndex::Int)
-        @warn "test"
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_force_frame_update, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int32),
+                pointer_from_objref(this),
+                Int32(frameIndex),
+            )
+            return
+        end
         if this.currentAnimation === nothing || this.sprite === nothing
             return
         end

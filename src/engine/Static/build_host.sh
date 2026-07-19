@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Build / verify libjg_static shared lib (Julia StaticCompiler output, no SDL).
-# Produces: lib_desktop/libjg_static.{dylib|so|dll}, lib_desktop/libjg_static.a, lib_desktop/jg_static.h
+# Produces: lib_desktop/libjg_static.{dylib|so|dll}, lib_desktop/libjg_static.a
+# Hand-maintained header: jg_static.h (Static/, not regenerated)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$ROOT/lib_desktop"
-HEADER="$LIB_DIR/jg_static.h"
+HEADER="$ROOT/jg_static.h"
 LIB_A="$LIB_DIR/libjg_static.a"
 
 case "$(uname -s)" in
@@ -15,10 +16,8 @@ case "$(uname -s)" in
 esac
 LIB_SHARED="$LIB_DIR/libjg_static.$LIB_EXT"
 
-if [[ "${REBUILD:-0}" == "1" || ! -f "$LIB_SHARED" ]]; then
-    echo "🔨 Compiling Julia static library (desktop)..."
-    (cd "$ROOT" && julia --project=. compile_library.jl desktop)
-fi
+echo "🔨 Compiling Julia static library (desktop)..."
+(cd "$ROOT" && julia --project=. compile_library.jl desktop)
 
 if [[ ! -f "$LIB_SHARED" ]]; then
     echo "❌ Missing $LIB_SHARED"
@@ -35,7 +34,6 @@ if ! nm -gU "$LIB_SHARED" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?stat
     if ! nm -D "$LIB_SHARED" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
         if ! nm "$LIB_SHARED" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
             echo "❌ $LIB_SHARED is missing static_is_mouse_inside_element"
-            echo "   Rebuild: REBUILD=1 $0"
             exit 1
         fi
     fi

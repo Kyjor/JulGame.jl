@@ -47,6 +47,42 @@ function static_play_animation_once(animator::Ptr{Cvoid}, animation_index::Int32
 end
 
 function static_force_frame_update(animator::Ptr{Cvoid}, frame_index::Int32)
-    printf(c"test\n")
+    if animator == C_NULL
+        return
+    end
+
+    a = Ptr{AnimatorLayout}(animator)
+    current_animation = a.current_animation
+    if ptr_is_julia_nothing(current_animation)
+        return
+    end
+
+    sprite = a.sprite
+    if ptr_is_julia_nothing(sprite)
+        return
+    end
+
+    anim = Ptr{AnimationLayout}(current_animation)
+
+    # if !isempty(framePaths) → imagePath = framePaths[i]
+    # Skipped for now: String assign needs write barrier + load_image.
+    # frame_paths = anim.frame_paths
+    # if !array_isempty(frame_paths)
+    #     # TODO: sprite.imagePath = frame_paths[frame_index]
+    # end
+
+    frames = anim.frames
+    if !array_isempty(frames)
+        n = array_length(frames)
+        if frame_index >= Int32(1) && Int64(frame_index) <= n
+            data = array_data(Vector4i32, frames)
+            crop = unsafe_load(data, Int64(frame_index))
+            unsafe_store!(Ptr{Vector4i32}(Ptr{UInt8}(sprite) + SPRITE_CROP_OFF), crop)
+            unsafe_store!(Ptr{UInt8}(Ptr{UInt8}(sprite) + SPRITE_CROP_TAG_OFF), UNION_TAG_VECTOR4)
+        end
+    end
+
+    a.last_frame = Int64(frame_index)
+    return
 end
 # endregion Animator
