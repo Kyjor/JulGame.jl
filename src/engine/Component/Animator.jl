@@ -114,6 +114,7 @@
     ```
     """
     function force_frame_update(this::InternalAnimator, frameIndex::Int)
+        @warn "test"
         if this.currentAnimation === nothing || this.sprite === nothing
             return
         end

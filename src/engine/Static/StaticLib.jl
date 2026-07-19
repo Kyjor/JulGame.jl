@@ -1,5 +1,6 @@
 using StaticTools
 
+# region Input 
 # element_right / element_bottom are precomputed by the caller (x+width, y+height).
 @inline function static_is_mouse_inside_element(
     mouse_x::Int32, mouse_y::Int32,
@@ -30,3 +31,22 @@ function static_ui_hit_test_batch(
     end
     return Int32(-1)
 end
+
+# endregion Input 
+
+# region Camera
+
+
+# endregion Camera
+
+# region Animator
+
+function static_play_animation_once(animator::Ptr{Cvoid}, animation_index::Int32)
+    printf(c"test\n")
+    return Cvoid()
+end
+
+function static_force_frame_update(animator::Ptr{Cvoid}, frame_index::Int32)
+    printf(c"test\n")
+end
+# endregion Animator

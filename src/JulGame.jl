@@ -112,6 +112,14 @@ module JulGame
     using .WindowManagerModule: WindowManager
     export WindowManager
 
+    include("engine/Static/JGStatic.jl")
+    using .JGStaticModule
+    export JGStaticModule
+
+    include("engine/Static/UIHitTest.jl")
+    using .UIHitTestModule
+    export UIHitTestModule
+
     include("engine/Input/Input.jl")
     using .InputModule: Input
     export Input

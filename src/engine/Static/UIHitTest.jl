@@ -1,30 +1,20 @@
 # Julia-side UI hit testing: reference implementation, HitTestBuffer, and optional native calls.
 module UIHitTestModule
 
-const _LIB_EXT = Sys.iswindows() ? "dll" : Sys.isapple() ? "dylib" : "so"
-const LIBSC_GAME_PATH = normpath(joinpath(@__DIR__, "lib_desktop", "libsc_game.$(_LIB_EXT)"))
-const LIBSC_GAME_AVAILABLE = isfile(LIBSC_GAME_PATH)
+using ..JGStaticModule
+
+const LIB_PATH = JGStaticModule.LIB_PATH
+const LIB_AVAILABLE = JGStaticModule.LIB_AVAILABLE
 
 # Batch path: one ccall per mouse event (set JULGAME_STATIC_UI_HIT_BATCH=1).
 const USE_STATIC_UI_HIT_BATCH =
-    get(ENV, "JULGAME_STATIC_UI_HIT_BATCH", "0") == "1" && LIBSC_GAME_AVAILABLE
-
+    get(ENV, "JULGAME_STATIC_UI_HIT_BATCH", "0") == "1" && LIB_AVAILABLE
 
 # Scalar path: per-element ccall for A/B debugging (set JULGAME_STATIC_UI_HIT_SCALAR_DEBUG=1).
 const USE_STATIC_UI_HIT_SCALAR_DEBUG =
-    get(ENV, "JULGAME_STATIC_UI_HIT_SCALAR_DEBUG", "0") == "1" && LIBSC_GAME_AVAILABLE
+    get(ENV, "JULGAME_STATIC_UI_HIT_SCALAR_DEBUG", "0") == "1" && LIB_AVAILABLE
 
-function libsc_game_path()::String
-    LIBSC_GAME_PATH
-end
-
-@info "LIBSC_GAME_PATH: $LIBSC_GAME_PATH"
-@info "LIBSC_GAME_AVAILABLE: $LIBSC_GAME_AVAILABLE"
 @info "USE_STATIC_UI_HIT_BATCH: $USE_STATIC_UI_HIT_BATCH"
-
-function libsc_game_available()::Bool
-    LIBSC_GAME_AVAILABLE
-end
 
 function use_static_ui_hit_batch()::Bool
     USE_STATIC_UI_HIT_BATCH
@@ -53,7 +43,7 @@ function is_mouse_inside_element_scalar_static(
     element_right::Real, element_bottom::Real,
 )::Bool
     hit = ccall(
-        (:static_is_mouse_inside_element, LIBSC_GAME_PATH),
+        (:static_is_mouse_inside_element, LIB_PATH),
         Int32,
         (Int32, Int32, Int32, Int32, Int32, Int32),
         Int32(round(mouse_x)), Int32(round(mouse_y)),
@@ -116,7 +106,7 @@ function run_static_hit_test_batch!(buf::HitTestBuffer, mouse_x::Real, mouse_y::
     n = buf.count
     n == 0 && return -1
     idx = ccall(
-        (:static_ui_hit_test_batch, LIBSC_GAME_PATH),
+        (:static_ui_hit_test_batch, LIB_PATH),
         Int32,
         (Int32, Int32, Ptr{Int32}, Ptr{Int32}, Ptr{Int32}, Ptr{Int32}, Int32),
         Int32(round(mouse_x)), Int32(round(mouse_y)),
@@ -146,8 +136,6 @@ export HitTestBuffer,
        first_hit_index_julia,
        is_mouse_inside_element_julia,
        is_mouse_inside_element_scalar_static,
-       libsc_game_path,
-       libsc_game_available,
        use_static_ui_hit_batch,
        use_static_ui_hit_scalar_debug
 

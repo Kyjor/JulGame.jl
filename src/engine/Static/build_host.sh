@@ -1,35 +1,43 @@
 #!/usr/bin/env bash
-# Build / verify libsc_game.so (Julia StaticCompiler output, no SDL).
-# Produces: lib_desktop/libsc_game.so, lib_desktop/libsc_game.a, lib_desktop/sc_game.h
+# Build / verify libjg_static shared lib (Julia StaticCompiler output, no SDL).
+# Produces: lib_desktop/libjg_static.{dylib|so|dll}, lib_desktop/libjg_static.a, lib_desktop/jg_static.h
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$ROOT/lib_desktop"
-LIB_SO="$LIB_DIR/libsc_game.so"
-LIB_A="$LIB_DIR/libsc_game.a"
-HEADER="$LIB_DIR/sc_game.h"
+HEADER="$LIB_DIR/jg_static.h"
+LIB_A="$LIB_DIR/libjg_static.a"
 
-if [[ "${REBUILD:-0}" == "1" || ! -f "$LIB_SO" ]]; then
+case "$(uname -s)" in
+    Darwin) LIB_EXT="dylib" ;;
+    MINGW*|MSYS*|CYGWIN*|Windows_NT) LIB_EXT="dll" ;;
+    *) LIB_EXT="so" ;;
+esac
+LIB_SHARED="$LIB_DIR/libjg_static.$LIB_EXT"
+
+if [[ "${REBUILD:-0}" == "1" || ! -f "$LIB_SHARED" ]]; then
     echo "🔨 Compiling Julia static library (desktop)..."
     (cd "$ROOT" && julia --project=. compile_library.jl desktop)
 fi
 
-if [[ ! -f "$LIB_SO" ]]; then
-    echo "❌ Missing $LIB_SO"
+if [[ ! -f "$LIB_SHARED" ]]; then
+    echo "❌ Missing $LIB_SHARED"
     echo "   Run: (cd $ROOT && julia --project=. compile_library.jl desktop)"
     echo "   Needs Julia 1.11 + Project.toml StaticCompiler (not global 0.7.2 on 1.11)."
     exit 1
 fi
 
 if [[ ! -f "$LIB_A" ]]; then
-    echo "⚠️  Missing $LIB_A (shared .so exists)"
+    echo "⚠️  Missing $LIB_A (shared lib exists)"
 fi
 
-if ! nm -D "$LIB_SO" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
-    if ! nm "$LIB_SO" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
-        echo "❌ $LIB_SO is missing static_is_mouse_inside_element"
-        echo "   Rebuild: REBUILD=1 $0"
-        exit 1
+if ! nm -gU "$LIB_SHARED" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
+    if ! nm -D "$LIB_SHARED" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
+        if ! nm "$LIB_SHARED" 2>/dev/null | grep -qE '[[:space:]]T[[:space:]]+_?static_is_mouse_inside_element$'; then
+            echo "❌ $LIB_SHARED is missing static_is_mouse_inside_element"
+            echo "   Rebuild: REBUILD=1 $0"
+            exit 1
+        fi
     fi
 fi
 
@@ -37,16 +45,24 @@ if [[ -f "$HEADER" ]]; then
     echo "✅ Header: $HEADER"
 fi
 
-echo "✅ Built: $LIB_SO (no SDL)"
-ls -lh "$LIB_SO"
-if command -v ldd >/dev/null 2>&1; then
-    if ldd "$LIB_SO" 2>/dev/null | grep -qi sdl; then
+echo "✅ Built: $LIB_SHARED (no SDL)"
+ls -lh "$LIB_SHARED"
+if [[ "$(uname -s)" == "Darwin" ]] && command -v otool >/dev/null 2>&1; then
+    if otool -L "$LIB_SHARED" 2>/dev/null | grep -qi sdl; then
         echo "⚠️  unexpected SDL dependency:"
-        ldd "$LIB_SO" | grep -i sdl || true
+        otool -L "$LIB_SHARED" | grep -i sdl || true
         exit 1
     fi
     echo "   dynamic deps:"
-    ldd "$LIB_SO" 2>/dev/null | sed 's/^/      /' || true
+    otool -L "$LIB_SHARED" 2>/dev/null | sed 's/^/      /' || true
+elif command -v ldd >/dev/null 2>&1; then
+    if ldd "$LIB_SHARED" 2>/dev/null | grep -qi sdl; then
+        echo "⚠️  unexpected SDL dependency:"
+        ldd "$LIB_SHARED" | grep -i sdl || true
+        exit 1
+    fi
+    echo "   dynamic deps:"
+    ldd "$LIB_SHARED" 2>/dev/null | sed 's/^/      /' || true
 fi
 
 # --- SDL host executable (disabled) ---
@@ -56,4 +72,4 @@ fi
 # ... vendored SDL2 / SDL2_image / SDL2_mixer ...
 # gcc ... -o "$ROOT/host" "$ROOT/host.c" -I"$LIB_DIR" "$LIB_A" ... SDL libs ...
 #
-# Called from Julia via ccall((:static_is_mouse_inside_element, path_to_libsc_game.so), ...)
+# Called from Julia via ccall((:static_is_mouse_inside_element, path_to_libjg_static), ...)

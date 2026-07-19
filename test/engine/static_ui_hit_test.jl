@@ -1,7 +1,9 @@
 using Test
 
 const STATIC_DIR = joinpath(@__DIR__, "..", "..", "src", "engine", "Static")
+include(joinpath(STATIC_DIR, "JGStatic.jl"))
 include(joinpath(STATIC_DIR, "UIHitTest.jl"))
+using .JGStaticModule
 using .UIHitTestModule
 
 @testset "UI hit test reference (Julia)" begin
@@ -24,7 +26,7 @@ end
     @test first_hit_index_julia(buf, 15, 15) == -1
 end
 
-if UIHitTestModule.LIBSC_GAME_AVAILABLE
+if JGStaticModule.LIB_AVAILABLE
     @testset "native scalar vs Julia" begin
         cases = [
             (5, 5, 0, 0, 10, 10, true),
@@ -54,7 +56,7 @@ if UIHitTestModule.LIBSC_GAME_AVAILABLE
         end
     end
 else
-    @testset "native libsc_game (skipped)" begin
-        @test_broken UIHitTestModule.LIBSC_GAME_AVAILABLE
+    @testset "native JGStatic lib (skipped)" begin
+        @test_broken JGStaticModule.LIB_AVAILABLE
     end
 end
