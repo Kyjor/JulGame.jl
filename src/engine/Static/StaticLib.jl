@@ -42,8 +42,27 @@ end
 # region Animator
 
 function static_play_animation_once(animator::Ptr{Cvoid}, animation_index::Int32)
-    printf(c"test\n")
-    return Cvoid()
+    if animator == C_NULL
+        return
+    end
+
+    a = Ptr{AnimatorLayout}(animator)
+    animations = a.animations
+    if array_isempty(animations)
+        return
+    end
+
+    n = array_length(animations)
+    if animation_index < Int32(1) || Int64(animation_index) > n
+        printf(c"Animation index out of bounds\n")
+        return
+    end
+
+    data = array_data(Ptr{Cvoid}, animations)
+    a.current_animation = unsafe_load(data, Int64(animation_index))
+    a.play_once = true
+    a.last_frame = Int64(1)
+    return
 end
 
 function static_force_frame_update(animator::Ptr{Cvoid}, frame_index::Int32)

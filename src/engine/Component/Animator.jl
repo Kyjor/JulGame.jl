@@ -75,14 +75,22 @@
     end
     
     function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_play_animation_once, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int32),
+                pointer_from_objref(this),
+                Int32(animationIndex),
+            )
+            return
+        end
         if animationIndex > 0 && animationIndex <= length(this.animations)
             this.currentAnimation = this.animations[animationIndex]
             this.playOnce = true
             this.lastFrame = 1
-
             return
         end
-
         @warn "Animation index out of bounds"
     end
 

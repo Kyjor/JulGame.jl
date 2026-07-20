@@ -52,6 +52,7 @@ functions_to_compile = [
     (static_is_mouse_inside_element, (Int32, Int32, Int32, Int32, Int32, Int32), "static_is_mouse_inside_element"),
     (static_ui_hit_test_batch, _BATCH_SIG, "static_ui_hit_test_batch"),
     (static_force_frame_update, (Ptr{Cvoid}, Int32), "static_force_frame_update"),
+    (static_play_animation_once, (Ptr{Cvoid}, Int32), "static_play_animation_once"),
 ]
 
 compile_ok = true
