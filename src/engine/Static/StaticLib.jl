@@ -42,3 +42,7 @@ end
 # region Animator
 include("Component/Animator.jl")
 # endregion Animator
+
+# region Rigidbody
+include("Component/Rigidbody.jl")
+# endregion Rigidbody

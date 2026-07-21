@@ -78,11 +78,25 @@
     - `velocity::Math.Vector2f`: The velocity to set.
     """
     function add_velocity(this::InternalRigidbody, velocity::Math.Vector2f)
-        this.velocity = this.velocity + velocity
-        if(velocity.y < 0)
-            this.grounded = false
-            if this.parent.collider != C_NULL
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_add_velocity, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int64, Int64),
+                pointer_from_objref(this),
+                reinterpret(Int64, velocity.x),
+                reinterpret(Int64, velocity.y),
+            )
+            if velocity.y < 0 && this.parent.collider != C_NULL
                 this.parent.collider.currentRests = []
+            end
+        else
+            this.velocity = this.velocity + velocity
+            if velocity.y < 0
+                this.grounded = false
+                if this.parent.collider != C_NULL
+                    this.parent.collider.currentRests = []
+                end
             end
         end
     end

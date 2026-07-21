@@ -54,6 +54,7 @@ functions_to_compile = [
     (static_force_frame_update, (Ptr{Cvoid}, Int32), "static_force_frame_update"),
     (static_play_animation_once, (Ptr{Cvoid}, Int32), "static_play_animation_once"),
     (static_update, (Ptr{Cvoid}, Int32), "static_update"),
+    (static_add_velocity, (Ptr{Cvoid}, Int64, Int64), "static_add_velocity"),
 ]
 
 compile_ok = true
