@@ -23,6 +23,7 @@ int32_t static_ui_hit_test_batch(
 
 void static_play_animation_once(void *animator, int32_t animation_index);
 void static_force_frame_update(void *animator, int32_t frame_index);
+void static_update(void *animator, int32_t current_render_time);
 
 /* Julia nothing sentinel (Union{T,Nothing} bit pattern). Call once from Julia. */
 void static_set_julia_nothing(void *p);

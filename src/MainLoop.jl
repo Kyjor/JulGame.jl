@@ -852,7 +852,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :entity_updates)
 		end
 		
-		currentRenderTime = SDL2.SDL_GetTicks()
+		currentRenderTime::UInt32 = SDL2.SDL_GetTicks()
 		if this.scene.camera !== nothing && !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			JulGame.CameraModule.update(this.scene.camera)
 		end
@@ -890,7 +890,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					end
 					entityAnimator = entity.animator
 					if entityAnimator != C_NULL
-                        Base.invokelatest(JulGame.update, entityAnimator, currentRenderTime, deltaTime)
+                        Base.invokelatest(JulGame.update, entityAnimator, currentRenderTime)
 					end
 				end
 			end

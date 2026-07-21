@@ -53,6 +53,7 @@ functions_to_compile = [
     (static_ui_hit_test_batch, _BATCH_SIG, "static_ui_hit_test_batch"),
     (static_force_frame_update, (Ptr{Cvoid}, Int32), "static_force_frame_update"),
     (static_play_animation_once, (Ptr{Cvoid}, Int32), "static_play_animation_once"),
+    (static_update, (Ptr{Cvoid}, Int32), "static_update"),
 ]
 
 compile_ok = true
