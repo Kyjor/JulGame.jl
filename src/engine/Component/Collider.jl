@@ -50,26 +50,6 @@ module ColliderModule
         end
     end
 
-    function Component.get_size(this::InternalCollider)
-        return this.size
-    end
-
-    function Component.set_size(this::InternalCollider, size::Math.Vector2f)
-        this.size = size
-    end
-
-    function Component.get_offset(this::InternalCollider)
-        return this.offset
-    end
-
-    function Component.set_offset(this::InternalCollider, offset::Math.Vector2f)
-        this.offset = offset
-    end
-
-    function Component.get_tag(this::InternalCollider)
-        return this.tag
-    end
-
     function Component.check_collisions(this::InternalCollider)
         colliders = MAIN.scene.colliders
         #Only check the player against other colliders
