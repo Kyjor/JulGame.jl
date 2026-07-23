@@ -55,6 +55,17 @@ functions_to_compile = [
     (static_play_animation_once, (Ptr{Cvoid}, Int32), "static_play_animation_once"),
     (static_update, (Ptr{Cvoid}, Int32), "static_update"),
     (static_add_velocity, (Ptr{Cvoid}, Int64, Int64), "static_add_velocity"),
+    # Phase 0 shell
+    (j_sdl_init, (), "j_sdl_init"),
+    (j_sdl_quit, (), "j_sdl_quit"),
+    (jg_engine_init, (), "jg_engine_init"),
+    (jg_frame, (), "jg_frame"),
+    (jg_engine_shutdown, (), "jg_engine_shutdown"),
+    # Phase 1 world
+    (jg_world_create, (), "jg_world_create"),
+    (jg_world_destroy, (Ptr{Cvoid},), "jg_world_destroy"),
+    (jg_transform_set_pos, (Ptr{Cvoid}, Int32, Int64, Int64), "jg_transform_set_pos"),
+    (jg_transform_get_pos, (Ptr{Cvoid}, Int32, Ptr{Int64}, Ptr{Int64}), "jg_transform_get_pos"),
 ]
 
 compile_ok = true

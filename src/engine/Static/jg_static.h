@@ -34,6 +34,21 @@ int32_t static_ptr_is_julia_nothing(void *p);
 /* x_bits/y_bits are Float64 bit patterns (reinterpret), not integer values */
 void static_add_velocity(void *rigidbody, int64_t x_bits, int64_t y_bits);
 
+/* Phase 0 shell — SDL via llvmcall inside StaticCompiler objects */
+int32_t j_sdl_init(void);
+int32_t j_sdl_quit(void);
+int32_t jg_engine_init(void);
+int32_t jg_frame(void); /* 1 = continue, 0 = stop (quit) */
+int32_t jg_engine_shutdown(void);
+
+/* Phase 1 — World (host owns ptr; pass into later APIs) */
+void *jg_world_create(void);
+int32_t jg_world_destroy(void *world);
+
+/* Transform slab — x_bits/y_bits are Float64 bit patterns */
+int32_t jg_transform_set_pos(void *world, int32_t index, int64_t x_bits, int64_t y_bits);
+int32_t jg_transform_get_pos(void *world, int32_t index, int64_t *out_x_bits, int64_t *out_y_bits);
+
 #ifdef __cplusplus
 }
 #endif

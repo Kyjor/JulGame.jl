@@ -1,15 +1,22 @@
 #include <stdio.h>
-#include <stdint.h>
+#include <SDL.h>
+#include "jg_static.h"
 
+/* Demo/smoke host — owns the loop. Library only exposes init/frame/shutdown. */
 int main(void)
 {
-#ifdef __EMSCRIPTEN__
-    /* sc_engine_init from index.js after runtime is ready */
+    if (jg_engine_init() != 0) {
+        fprintf(stderr, "jg_engine_init failed\n");
+        return 1;
+    }
+
+    /* Timed exit for automated smoke; window-close also stops via jg_frame. */
+    const Uint32 start = SDL_GetTicks();
+    while (jg_frame() != 0) {
+        if (SDL_GetTicks() - start >= 3000)
+            break;
+    }
+
+    jg_engine_shutdown();
     return 0;
-#else
-    int32_t code = sc_run();
-    if (code != 0)
-        fprintf(stderr, "sc_run failed (%d)\n", code);
-    return code;
-#endif
 }

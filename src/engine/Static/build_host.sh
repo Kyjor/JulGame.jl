@@ -64,7 +64,7 @@ elif command -v ldd >/dev/null 2>&1; then
 fi
 
 # --- SDL host executable (disabled) ---
-# When you need a test binary again, restore host.c + sc_run and uncomment below.
+# Smoke/demo host loop lives in host.c; use build_host_shell.sh for Phase 0.
 #
 # source "$ROOT/deps/sdl2_paths.sh"
 # ... vendored SDL2 / SDL2_image / SDL2_mixer ...
