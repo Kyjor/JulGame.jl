@@ -78,8 +78,11 @@ function static_update(animator::Ptr{Cvoid}, current_render_time::Int32)
     end
 
     frames = anim.frames
-    # TODO: use frame_paths length when that path is supported
-    frame_count::Int64 = array_isempty(frames) ? Int64(0) : array_length(frames)
+    frame_paths = anim.frame_paths
+    # Match Julia: prefer framePaths length when non-empty, else frames
+    frame_count::Int64 = array_isempty(frame_paths) ?
+        (array_isempty(frames) ? Int64(0) : array_length(frames)) :
+        array_length(frame_paths)
     if frame_count == Int64(0) || (a.play_once && a.last_frame == frame_count)
         return
     end
@@ -105,6 +108,9 @@ function static_update(animator::Ptr{Cvoid}, current_render_time::Int32)
             # ((last_frame - 1) % frame_count) + 1
             last_frame = ((last_frame - Int64(1)) % frame_count) + Int64(1)
         end
+    end
+    if last_frame == Int64(0)
+        last_frame = Int64(1)
     end
     a.last_frame = last_frame
 
