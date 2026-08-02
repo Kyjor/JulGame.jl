@@ -27,7 +27,7 @@ Because I find Julia interesting and I've always wanted to create a game engine.
 
 ## Why JulGame?
 
-I thought that JulGame would be a great play on Pygame. I also think it just rolls off the tongue. Also, I recently found out that "Jul" is the etymological root of “[jolly](https://en.m.wiktionary.org/wiki/j%C3%B3l#Icelandic)”, so it makes for a great pun :)
+I thought that JulGame would be a great play on Pygame. I also think it just rolls off the tongue. Also, "Jul" is the etymological root of “[jolly](https://en.m.wiktionary.org/wiki/j%C3%B3l#Icelandic)”, so it makes for a great pun :)
 
 ## How to get started?
 
@@ -68,14 +68,15 @@ Navigate to your project, and cd to the directory with `Run.jl`, and run `julia 
 - [ ] Implement box2d support
 - [ ] Raycasting
 #### Animation
-- [ ] Animate all properties of entites
+- [ ] Animate all properties of entities
+- [ ] Animation timeline
 #### Input
 - [ ] Controller support
 #### Scene Management
 - [x] Multiple scene support
 #### Editor Features
 - [x] Sprite cropping tool for animations
-- [ ] Hot reloading with [Revise.jl](https://github.com/timholy/Revise.jl) if possible
+- [ ] Hot reloading
 - [ ] Profiling 
 - [x] Debug console
 - [x] SDLRenderer Backend

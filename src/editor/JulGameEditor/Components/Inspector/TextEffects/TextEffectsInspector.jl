@@ -31,6 +31,11 @@ function _fx_effect_code(eff)::String
         return "JulGame.EffectsModule.RoughEdgeEffect(; amount=$(eff.amount), seed=$(eff.seed), erosion=$(eff.erosion))"
     elseif eff isa EM.InvertEffect
         return "JulGame.EffectsModule.InvertEffect(; invert_red=$(eff.invert_red), invert_green=$(eff.invert_green), invert_blue=$(eff.invert_blue), invert_alpha=$(eff.invert_alpha))"
+    elseif eff isa EM.FrayTintEffect
+        return "JulGame.EffectsModule.FrayTintEffect(; desaturate=$(eff.desaturate), brightness=$(eff.brightness), tint=$(_fx_tuple4(eff.tint)), tint_strength=$(eff.tint_strength), noise=$(eff.noise), seed=$(eff.seed))"
+    elseif eff isa EM.NibbleOverlayEffect
+        paths = "String[" * join([_fx_qstr(p) for p in eff.texture_paths], ", ") * "]"
+        return "JulGame.EffectsModule.NibbleOverlayEffect(; seed=$(eff.seed), count=$(eff.count), texture_paths=$paths, punch_alpha=$(eff.punch_alpha), overlay=$(eff.overlay), opacity=$(eff.opacity), threshold=$(eff.threshold), min_scale=$(eff.min_scale), max_scale=$(eff.max_scale), min_separation=$(eff.min_separation), rim_min=$(eff.rim_min), rim_max=$(eff.rim_max))"
     elseif eff isa EM.BevelEffect
         return "JulGame.EffectsModule.BevelEffect(; depth=$(eff.depth), angle=$(eff.angle), highlight_color=$(_fx_tuple4(eff.highlight_color)), shadow_color=$(_fx_tuple4(eff.shadow_color)), intensity=$(eff.intensity))"
     elseif eff isa EM.TextureFillEffect
@@ -73,6 +78,8 @@ function _text_fx_push_new!(target, ix0::Int)
         EM.TextureFillEffect()
     elseif ix0 == 10
         EM.BevelEffect1()
+    elseif ix0 == 11
+        EM.NibbleOverlayEffect()
     else
         return
     end
