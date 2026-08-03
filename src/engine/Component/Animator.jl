@@ -35,30 +35,40 @@
         end
     end
 
-    function Component.update(this::InternalAnimator, currentRenderTime, deltaTime)
-        if this.currentAnimation === nothing || this.currentAnimation.animatedFPS < 1 || this.sprite == nothing
-            return
-        end
-        frameCount = isempty(this.currentAnimation.framePaths) ?
-            length(this.currentAnimation.frames) :
-            length(this.currentAnimation.framePaths)
-        if frameCount == 0 || (this.playOnce && this.lastFrame == frameCount)
-            return
-        end
-
-        deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
-        framesToUpdate = floor(Int, deltaTime / (1.0 / this.currentAnimation.animatedFPS))
-        if this.lastFrame == 0
-            this.lastFrame = 1
-            this.lastUpdate = currentRenderTime
-        elseif framesToUpdate > 0
-            this.lastFrame = this.lastFrame + framesToUpdate
-            this.lastUpdate = currentRenderTime
-        end
-        if this.lastFrame > frameCount
-            this.lastFrame = this.playOnce ?
-                frameCount :
-                ((this.lastFrame - 1) % frameCount) + 1
+    function Component.update(this::InternalAnimator, currentRenderTime::UInt32)
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_update, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int32),
+                pointer_from_objref(this),
+                reinterpret(Int32, UInt32(currentRenderTime)),
+            )
+        else 
+            if this.currentAnimation === nothing || this.currentAnimation.animatedFPS < 1 || this.sprite === nothing
+                return
+            end
+            frameCount = isempty(this.currentAnimation.framePaths) ?
+                length(this.currentAnimation.frames) :
+                length(this.currentAnimation.framePaths)
+            if frameCount == 0 || (this.playOnce && this.lastFrame == frameCount)
+                return
+            end
+    
+            deltaTime = (currentRenderTime - this.lastUpdate) / 1000.0
+            framesToUpdate = floor(Int, deltaTime / (1.0 / this.currentAnimation.animatedFPS))
+            if this.lastFrame == 0
+                this.lastFrame = 1
+                this.lastUpdate = currentRenderTime
+            elseif framesToUpdate > 0
+                this.lastFrame = this.lastFrame + framesToUpdate
+                this.lastUpdate = currentRenderTime
+            end
+            if this.lastFrame > frameCount
+                this.lastFrame = this.playOnce ?
+                    frameCount :
+                    ((this.lastFrame - 1) % frameCount) + 1
+            end
         end
 
         if !isempty(this.currentAnimation.framePaths)
@@ -75,14 +85,23 @@
     end
     
     function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
-        if animationIndex > 0 && animationIndex <= length(this.animations)
-            this.currentAnimation = this.animations[animationIndex]
-            this.playOnce = true
-            this.lastFrame = 1
-
-            return
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_play_animation_once, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int32),
+                pointer_from_objref(this),
+                Int32(animationIndex),
+            )
+            
+        else
+            if animationIndex > 0 && animationIndex <= length(this.animations)
+                this.currentAnimation = this.animations[animationIndex]
+                this.playOnce = true
+                this.lastFrame = 1
+                return
+            end
         end
-
         @warn "Animation index out of bounds"
     end
 
@@ -114,16 +133,27 @@
     ```
     """
     function force_frame_update(this::InternalAnimator, frameIndex::Int)
-        if this.currentAnimation === nothing || this.sprite === nothing
-            return
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_force_frame_update, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int32),
+                pointer_from_objref(this),
+                Int32(frameIndex),
+            )
+            
+        else
+            if this.currentAnimation === nothing || this.sprite === nothing
+                return
+            end
+            if !isempty(this.currentAnimation.framePaths)
+                this.sprite.imagePath = this.currentAnimation.framePaths[frameIndex]
+            end
+            if !isempty(this.currentAnimation.frames)
+                this.sprite.crop = this.currentAnimation.frames[frameIndex]
+            end
+            this.lastFrame = frameIndex
         end
-        if !isempty(this.currentAnimation.framePaths)
-            this.sprite.imagePath = this.currentAnimation.framePaths[frameIndex]
-        end
-        if !isempty(this.currentAnimation.frames)
-            this.sprite.crop = this.currentAnimation.frames[frameIndex]
-        end
-        this.lastFrame = frameIndex
     end
     export force_frame_update    
 end

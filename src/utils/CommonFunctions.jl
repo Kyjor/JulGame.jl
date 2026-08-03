@@ -29,12 +29,10 @@ function draw end
 function duplicate end
 function flip end
 function generate_uuid end
-function get_offset end
 function get_position end
 function get_rotation end
 function get_scale end
 function get_size end
-function get_tag end
 function get_type end
 function get_velocity end
 function get_window_size end
@@ -53,7 +51,6 @@ function play_animation_once end
 function render end
 function rerender_text end
 function set_color end
-function set_offset end
 function set_position end
 function set_rotation end
 function set_scale end

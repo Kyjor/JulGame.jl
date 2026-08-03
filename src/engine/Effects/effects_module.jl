@@ -8,9 +8,9 @@ module EffectsModule
     export Effect, EffectTarget, EffectStyle
     export BevelEffect, BevelEffect1, BevelEmbossEffect, DropShadowEffect, OuterGlowEffect
     export InnerGlowEffect, StrokeEffect, GradientEffect
-    export TextureFillEffect, RoughEdgeEffect, InvertEffect
+    export TextureFillEffect, RoughEdgeEffect, InvertEffect, FrayTintEffect, NibbleOverlayEffect
     export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget, Mesh3DTarget
-    export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style
+    export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style, create_nibble_style
     export INHERIT_COLOR, BevelType, GradientStop
     export EmbossLayerStyle, BevelEmbossBlendMode, identity_emboss_lut
     export LAYER_OUTER_BEVEL, LAYER_INNER_BEVEL, LAYER_EMBOSS, LAYER_PILLOW
@@ -345,6 +345,87 @@ module EffectsModule
             new(invert_red, invert_green, invert_blue, invert_alpha)
         end
     end
+
+    """
+    Desaturate + dirt tint + light noise for a worn / frayed look.
+    """
+    mutable struct FrayTintEffect <: Effect
+        desaturate::Float64
+        brightness::Float64
+        tint::NTuple{4, Int}
+        tint_strength::Float64
+        noise::Float64
+        seed::Int
+        function FrayTintEffect(;
+            desaturate::Float64 = 0.45,
+            brightness::Float64 = 0.88,
+            tint::NTuple{4, Int} = (110, 95, 75, 255),
+            tint_strength::Float64 = 0.18,
+            noise::Float64 = 0.07,
+            seed::Int = 12345,
+        )
+            new(
+                clamp(desaturate, 0.0, 1.0),
+                clamp(brightness, 0.0, 2.0),
+                tint,
+                clamp(tint_strength, 0.0, 1.0),
+                clamp(noise, 0.0, 1.0),
+                Math.TypeConversions.safe_int32_convert(seed),
+            )
+        end
+    end
+
+    """
+    Stamp nibble/bite masks onto a sprite so it looks chewed (max 5 bites).
+    Stamp masks use alpha only. Interior bites paint black; edge bites punch
+    transparent with a 2–4px black rim. Bites are spaced by `min_separation`.
+    """
+    mutable struct NibbleOverlayEffect <: Effect
+        seed::Int
+        count::Int
+        texture_paths::Vector{String}
+        punch_alpha::Bool
+        overlay::Bool
+        opacity::Int
+        threshold::Int
+        min_scale::Float64
+        max_scale::Float64
+        min_separation::Float64  # fraction of min(sprite dim) between bite centers
+        rim_min::Int
+        rim_max::Int
+        function NibbleOverlayEffect(;
+            seed::Int = 12345,
+            count::Int = 3,
+            texture_paths::Vector{String} = String[
+                "effect-nibble1-0000.png",
+                "effect-nibble2-0000.png",
+            ],
+            punch_alpha::Bool = false,
+            overlay::Bool = false,
+            opacity::Int = 255,
+            threshold::Int = 40,
+            min_scale::Float64 = 0.28,
+            max_scale::Float64 = 0.55,
+            min_separation::Float64 = 0.38,
+            rim_min::Int = 2,
+            rim_max::Int = 4,
+        )
+            new(
+                Math.TypeConversions.safe_int32_convert(seed),
+                Math.TypeConversions.safe_int32_convert(clamp(count, 1, 5)),
+                texture_paths,
+                punch_alpha,
+                overlay,
+                Math.TypeConversions.safe_int32_convert(clamp(opacity, 0, 255)),
+                Math.TypeConversions.safe_int32_convert(clamp(threshold, 0, 255)),
+                min_scale,
+                max_scale,
+                max(0.0, min_separation),
+                Math.TypeConversions.safe_int32_convert(clamp(rim_min, 1, 16)),
+                Math.TypeConversions.safe_int32_convert(clamp(max(rim_min, rim_max), 1, 16)),
+            )
+        end
+    end
     
     # Effect style for reusable combinations
     mutable struct EffectStyle
@@ -383,6 +464,12 @@ module EffectsModule
         ])
     end
     
+    function create_nibble_style(; seed::Int = 12345, count::Int = 3)
+        return EffectStyle("Nibble", [
+            NibbleOverlayEffect(; seed = seed, count = count),
+        ])
+    end
+
     function create_distressed_style()
         return EffectStyle("Distressed", [
             RoughEdgeEffect(amount=4, seed=123, erosion=true),

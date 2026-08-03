@@ -7,7 +7,7 @@ module EffectAlgorithmsModule
 
     include("effect_bevel_emboss.jl")
 
-    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_bevel_effect_1, apply_bevel_emboss_psd, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect, apply_gaussian_blur
+    export create_outer_glow_surface, create_inner_glow_surface, offset_blit!, stroke_expand_surface!, apply_bevel_effect, apply_bevel_effect_1, apply_bevel_emboss_psd, apply_gradient_effect, apply_texture_fill, apply_rough_edge, apply_invert_effect, apply_fray_tint, apply_gaussian_blur, apply_nibble_overlay
 
     function offset_blit!(dst::Ptr{SDL2.SDL_Surface}, src::Ptr{SDL2.SDL_Surface}, dx::Int, dy::Int)
         rect = SDL2.SDL_Rect(dx, dy, 0, 0)
@@ -1934,5 +1934,298 @@ module EffectAlgorithmsModule
         SDL2.SDL_UnlockSurface(result_surface)
         
         return result_surface
+    end
+
+    function _load_nibble_stamp(path::String)::Ptr{SDL2.SDL_Surface}
+        candidates = (
+            joinpath(JulGame.BasePath, "assets", "images", path),
+            joinpath(JulGame.BasePath, "assets", "textures", path),
+            path,
+        )
+        for full_path in candidates
+            isfile(full_path) || continue
+            surf = SDL2.IMG_Load(full_path)
+            surf != C_NULL && return surf
+        end
+        return C_NULL
+    end
+
+    """
+    Desaturate, darken, dirt-tint, and lightly noise opaque pixels.
+    """
+    function apply_fray_tint(base::Ptr{SDL2.SDL_Surface}, effect::EffectsModule.FrayTintEffect)
+        if base == C_NULL
+            return base
+        end
+
+        result = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        result == C_NULL && return base
+
+        if SDL2.SDL_LockSurface(result) != 0
+            SDL2.SDL_FreeSurface(result)
+            return base
+        end
+
+        result_arr = unsafe_wrap(Array, result, 10; own=false)
+        w = Int(result_arr[1].w)
+        h = Int(result_arr[1].h)
+        pitch = Int(result_arr[1].pitch ÷ 4)
+        pixels = Ptr{UInt32}(result_arr[1].pixels)
+
+        desat = effect.desaturate
+        bright = effect.brightness
+        tint_s = effect.tint_strength
+        tr = Float64(effect.tint[1])
+        tg = Float64(effect.tint[2])
+        tb = Float64(effect.tint[3])
+        noise_amt = effect.noise
+        rng = Ref(UInt32(effect.seed == 0 ? 0x1 : UInt32(effect.seed % typemax(UInt32))))
+        function fray_rand()::UInt32
+            rng[] = (rng[] * 1664525 + 1013904223) % typemax(UInt32)
+            return rng[]
+        end
+
+        for y in 0:(h - 1)
+            for x in 0:(w - 1)
+                idx = y * pitch + x + 1
+                pixel = unsafe_load(pixels, idx)
+                a = UInt8((pixel >> 24) & 0xFF)
+                a == 0 && continue
+
+                r = Float64(pixel & 0xFF)
+                g = Float64((pixel >> 8) & 0xFF)
+                b = Float64((pixel >> 16) & 0xFF)
+
+                lum = 0.299 * r + 0.587 * g + 0.114 * b
+                r = r + (lum - r) * desat
+                g = g + (lum - g) * desat
+                b = b + (lum - b) * desat
+
+                r *= bright
+                g *= bright
+                b *= bright
+
+                r = r + (tr - r) * tint_s
+                g = g + (tg - g) * tint_s
+                b = b + (tb - b) * tint_s
+
+                if noise_amt > 0.0
+                    n = (Float64(fray_rand() % 1001) / 1000.0 - 0.5) * 2.0 * noise_amt * 40.0
+                    r += n
+                    g += n
+                    b += n
+                end
+
+                out_r = UInt8(clamp(round(Int, r), 0, 255))
+                out_g = UInt8(clamp(round(Int, g), 0, 255))
+                out_b = UInt8(clamp(round(Int, b), 0, 255))
+                unsafe_store!(
+                    pixels,
+                    (UInt32(a) << 24) | (UInt32(out_b) << 16) | (UInt32(out_g) << 8) | UInt32(out_r),
+                    idx,
+                )
+            end
+        end
+
+        SDL2.SDL_UnlockSurface(result)
+        return result
+    end
+
+    """
+    Stamp nibble masks onto `base` using stamp alpha as the bite silhouette.
+    - Interior bite (fully surrounded by opaque pixels): paint black.
+    - Edge bite (touches silhouette exterior): punch transparent + black rim.
+    Placement is deterministic from `effect.seed`.
+    """
+    function apply_nibble_overlay(base::Ptr{SDL2.SDL_Surface}, effect::EffectsModule.NibbleOverlayEffect)
+        if base == C_NULL || effect.count <= 0 || isempty(effect.texture_paths)
+            return base
+        end
+
+        result = SDL2.SDL_ConvertSurfaceFormat(base, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        result == C_NULL && return base
+
+        # Preload / convert stamps
+        stamps = Ptr{SDL2.SDL_Surface}[]
+        for path in effect.texture_paths
+            raw = _load_nibble_stamp(path)
+            raw == C_NULL && continue
+            rgba = SDL2.SDL_ConvertSurfaceFormat(raw, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+            SDL2.SDL_FreeSurface(raw)
+            rgba != C_NULL && push!(stamps, rgba)
+        end
+        if isempty(stamps)
+            SDL2.SDL_FreeSurface(result)
+            return base
+        end
+
+        if SDL2.SDL_LockSurface(result) != 0
+            for s in stamps
+                SDL2.SDL_FreeSurface(s)
+            end
+            SDL2.SDL_FreeSurface(result)
+            return base
+        end
+
+        result_arr = unsafe_wrap(Array, result, 10; own=false)
+        w = Int(result_arr[1].w)
+        h = Int(result_arr[1].h)
+        result_pixels = Ptr{UInt32}(result_arr[1].pixels)
+        pitch = Int(result_arr[1].pitch ÷ 4)
+
+        rng = Ref(UInt32(effect.seed == 0 ? 0x1 : UInt32(effect.seed % typemax(UInt32))))
+        function nibble_rand()::UInt32
+            rng[] = (rng[] * 1664525 + 1013904223) % typemax(UInt32)
+            return rng[]
+        end
+        function nibble_unit()::Float64
+            return Float64(nibble_rand() % 10000) / 10000.0
+        end
+
+        function pixel_alpha(rx::Int, ry::Int)::UInt8
+            (rx < 0 || ry < 0 || rx >= w || ry >= h) && return UInt8(0)
+            return UInt8((unsafe_load(result_pixels, ry * pitch + rx + 1) >> 24) & 0xFF)
+        end
+
+        function touches_exterior(rx::Int, ry::Int)::Bool
+            return pixel_alpha(rx - 1, ry) == 0 ||
+                   pixel_alpha(rx + 1, ry) == 0 ||
+                   pixel_alpha(rx, ry - 1) == 0 ||
+                   pixel_alpha(rx, ry + 1) == 0
+        end
+
+        function paint_black!(idx::Int, ba::UInt8)
+            unsafe_store!(result_pixels, UInt32(ba) << 24, idx)
+        end
+
+        thresh = UInt8(effect.threshold)
+        max_bites = clamp(effect.count, 1, 5)
+        min_sep = max(12.0, Float64(min(w, h)) * effect.min_separation)
+        min_sep2 = min_sep * min_sep
+        placed_centers = Tuple{Float64,Float64}[]
+        accepted = 0
+        # Extra attempts so spacing rejects don't starve the bite count.
+        max_attempts = max_bites * 12
+
+        for _ in 1:max_attempts
+            accepted >= max_bites && break
+
+            stamp = stamps[(nibble_rand() % length(stamps)) + 1]
+            if SDL2.SDL_LockSurface(stamp) != 0
+                continue
+            end
+            stamp_arr = unsafe_wrap(Array, stamp, 10; own=false)
+            sw = Int(stamp_arr[1].w)
+            sh = Int(stamp_arr[1].h)
+            stamp_pixels = Ptr{UInt32}(stamp_arr[1].pixels)
+            stamp_pitch = Int(stamp_arr[1].pitch ÷ 4)
+
+            # Scale relative to the target sprite so bites stay visible on small icons.
+            cover = effect.min_scale + nibble_unit() * max(0.0, effect.max_scale - effect.min_scale)
+            target_span = max(8, round(Int, min(w, h) * cover))
+            scale = Float64(target_span) / Float64(max(sw, sh))
+            dw = max(1, round(Int, sw * scale))
+            dh = max(1, round(Int, sh * scale))
+            # Bias stamps toward edges so bites read as chewed corners/sides.
+            ox = round(Int, (nibble_unit() * 1.4 - 0.2) * (w - dw))
+            oy = round(Int, (nibble_unit() * 1.4 - 0.2) * (h - dh))
+
+            # Collect stamp overlap on opaque item pixels first, then classify.
+            bite_xy = Tuple{Int,Int}[]
+            bite_idx = Int[]
+            is_edge_bite = false
+            cx = 0.0
+            cy = 0.0
+            for dy in 0:(dh - 1)
+                for dx in 0:(dw - 1)
+                    sx = clamp(Int(floor(dx / scale)), 0, sw - 1)
+                    sy = clamp(Int(floor(dy / scale)), 0, sh - 1)
+                    stamp_pixel = unsafe_load(stamp_pixels, sy * stamp_pitch + sx + 1)
+                    # Alpha-only mask: transparent stamp pixels are often white RGB.
+                    Int((stamp_pixel >> 24) & 0xFF) < Int(thresh) && continue
+
+                    rx = ox + dx
+                    ry = oy + dy
+                    (rx < 0 || ry < 0 || rx >= w || ry >= h) && continue
+
+                    idx = ry * pitch + rx + 1
+                    ba = UInt8((unsafe_load(result_pixels, idx) >> 24) & 0xFF)
+                    ba == 0 && continue
+
+                    push!(bite_xy, (rx, ry))
+                    push!(bite_idx, idx)
+                    cx += Float64(rx)
+                    cy += Float64(ry)
+                    if !is_edge_bite && touches_exterior(rx, ry)
+                        is_edge_bite = true
+                    end
+                end
+            end
+
+            if isempty(bite_idx)
+                SDL2.SDL_UnlockSurface(stamp)
+                continue
+            end
+
+            n = Float64(length(bite_idx))
+            cx /= n
+            cy /= n
+            too_close = false
+            for (px, py) in placed_centers
+                dx = cx - px
+                dy = cy - py
+                if dx * dx + dy * dy < min_sep2
+                    too_close = true
+                    break
+                end
+            end
+            if too_close
+                SDL2.SDL_UnlockSurface(stamp)
+                continue
+            end
+
+            if is_edge_bite
+                # Chew from the rim: clear bite, then thick black border along the cut.
+                for idx in bite_idx
+                    unsafe_store!(result_pixels, UInt32(0), idx)
+                end
+                rim = effect.rim_min
+                if effect.rim_max > effect.rim_min
+                    rim += Int(nibble_rand() % UInt32(effect.rim_max - effect.rim_min + 1))
+                end
+                rim2 = rim * rim
+                for (rx, ry) in bite_xy
+                    for dy in (-rim):rim
+                        for dx in (-rim):rim
+                            (dx * dx + dy * dy > rim2) && continue
+                            (dx == 0 && dy == 0) && continue
+                            nx = rx + dx
+                            ny = ry + dy
+                            (nx < 0 || ny < 0 || nx >= w || ny >= h) && continue
+                            nidx = ny * pitch + nx + 1
+                            na = UInt8((unsafe_load(result_pixels, nidx) >> 24) & 0xFF)
+                            na == 0 && continue
+                            paint_black!(nidx, na)
+                        end
+                    end
+                end
+            else
+                # Interior / fully surrounded: paint bite black (keeps alpha).
+                for idx in bite_idx
+                    ba = UInt8((unsafe_load(result_pixels, idx) >> 24) & 0xFF)
+                    paint_black!(idx, ba)
+                end
+            end
+
+            push!(placed_centers, (cx, cy))
+            accepted += 1
+            SDL2.SDL_UnlockSurface(stamp)
+        end
+
+        SDL2.SDL_UnlockSurface(result)
+        for s in stamps
+            SDL2.SDL_FreeSurface(s)
+        end
+        return result
     end
 end

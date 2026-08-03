@@ -14,6 +14,7 @@ include(joinpath(PROFILINGTESTDIR, "Platformer", "src", "Platformer.jl"))
     end
 
     include("math/mathtests.jl")
+    include("engine/static_ui_hit_test.jl")
     
     cd(joinpath(SMOKETESTDIR, "src"))
     @test SmokeTest.run(SMOKETESTDIR, Test) == 0

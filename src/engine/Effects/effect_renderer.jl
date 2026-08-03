@@ -936,6 +936,28 @@ module EffectRendererModule
                     SDL2.SDL_FreeSurface(work)
                 end
                 work = inverted
+            elseif eff isa EffectsModule.FrayTintEffect
+                frayed = apply_fray_tint(work, eff)
+                if frayed == C_NULL
+                    @debug("Failed to create fray tint surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return baseSurface
+                end
+                if frayed != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = frayed
+            elseif eff isa EffectsModule.NibbleOverlayEffect
+                nibbled = apply_nibble_overlay(work, eff)
+                if nibbled == C_NULL
+                    @debug("Failed to create nibble overlay surface")
+                    SDL2.SDL_FreeSurface(work)
+                    return baseSurface
+                end
+                if nibbled != work
+                    SDL2.SDL_FreeSurface(work)
+                end
+                work = nibbled
             elseif eff isa EffectsModule.DropShadowEffect
                 # Shadow is composed during final pass; skip here.
                 continue
