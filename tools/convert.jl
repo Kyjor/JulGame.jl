@@ -19,6 +19,7 @@ include(joinpath(@__DIR__, "convert", "canvas.jl"))
 include(joinpath(@__DIR__, "convert", "uiimage.jl"))
 include(joinpath(@__DIR__, "convert", "textbox.jl"))
 include(joinpath(@__DIR__, "convert", "screenbutton.jl"))
+include(joinpath(@__DIR__, "convert", "rectangle.jl"))
 include(joinpath(@__DIR__, "convert", "camera.jl"))
 
 # Generated TS calls Julia-style `InternalFoo(args)` on classes — emit `new InternalFoo(args)`.
@@ -181,6 +182,7 @@ function parse_file(
     data = rename_julia_this_receiver_to_self(data)
     data = replace_julia_ts_fixup_pass(data, path_jl)
     data = replace_ts_if_blocks_when_block_contains_substring(data)
+    data = unwrap_jgstatic_lib_available_else_bodies(data)
     data = replace_entire_line_if_matches(data, path_jl)
     data = merge_main_scene_delegating_overloads(data)
     data = normalize_julgame_global_access(data)
@@ -201,6 +203,7 @@ function parse_file(
         is_uiimage_source(path_jl) && (data = postprocess_uiimage_ts(data))
         is_textbox_source(path_jl) && (data = postprocess_textbox_ts(data))
         is_screenbutton_source(path_jl) && (data = postprocess_screenbutton_ts(data))
+        is_rectangle_source(path_jl) && (data = postprocess_rectangle_ts(data))
     end
     if !is_script
         data = prepend_generated_ts_imports(data, path_ts)
@@ -214,7 +217,82 @@ function parse_file(
     open(path_ts, "w") do io
         print(io, data)
     end
+    # UI modules import `./uiTypes`; emit a symlink beside `UiTypes.ts` (Linux case-sensitive).
+    if endswith(path_ts, "UiTypes.ts")
+        link = joinpath(dirname(path_ts), "uiTypes.ts")
+        if !isfile(link) && !islink(link)
+            symlink("UiTypes.ts", link)
+        end
+    end
     path_ts
+end
+
+"""Keep the `else` body of `if (JGStaticModule.LIB_AVAILABLE) { … } else { BODY }` for wasm."""
+function unwrap_jgstatic_lib_available_else_bodies(data::AbstractString)::String
+    occursin("JGStaticModule.LIB_AVAILABLE", data) || return String(data)
+    lines = collect(String.(split(String(data), '\n'; keepempty = true)))
+    changed = true
+    while changed
+        changed = false
+        for i in 1:length(lines)
+            occursin(r"^\s*if\s*\(\s*JGStaticModule\.LIB_AVAILABLE\s*\)", lines[i]) || continue
+            if_rg = _find_ts_if_block_line_range(lines, i)
+            if_rg === nothing && continue
+            _, if_hi = if_rg
+            # `} else {` may share the if-close line.
+            else_on_if_close = occursin(r"\}\s*else\s*\{", lines[if_hi])
+            else_li = else_on_if_close ? if_hi : if_hi + 1
+            else_li <= length(lines) || continue
+            occursin(r"else\s*\{", lines[else_li]) || continue
+            # Find else-block close by brace depth from the else `{`.
+            depth = 0
+            started = false
+            else_hi = 0
+            for li in else_li:length(lines)
+                cur = lines[li]
+                # On `} else {`, ignore braces before `else`.
+                scan = if li == else_li && else_on_if_close
+                    eg = findfirst(r"else\s*\{", cur)
+                    eg === nothing ? cur : String(SubString(cur, first(eg), lastindex(cur)))
+                else
+                    cur
+                end
+                for c in scan
+                    if c == '{'
+                        depth += 1
+                        started = true
+                    elseif c == '}'
+                        depth -= 1
+                        if started && depth == 0
+                            else_hi = li
+                            break
+                        end
+                    end
+                end
+                else_hi != 0 && break
+            end
+            else_hi == 0 && continue
+            # Body is lines after else `{` through before else close.
+            body = lines[(else_li + 1):(else_hi - 1)]
+            splice!(lines, i:else_hi, body)
+            changed = true
+            break
+        end
+        # Also drop lone `if (JGStaticModule.LIB_AVAILABLE) { ccall… }` with no else.
+        if !changed
+            for i in 1:length(lines)
+                occursin(r"^\s*if\s*\(\s*JGStaticModule\.LIB_AVAILABLE\s*\)", lines[i]) || continue
+                if_rg = _find_ts_if_block_line_range(lines, i)
+                if_rg === nothing && continue
+                lo, hi = if_rg
+                (hi + 1 > length(lines) || !occursin(r"^\s*else\b", lines[hi + 1])) || continue
+                splice!(lines, lo:hi, String[])
+                changed = true
+                break
+            end
+        end
+    end
+    return join(lines, '\n')
 end
 
 function _line_is_julia_style_internal_ctor_decl(line::AbstractString)::Bool
@@ -1278,6 +1356,9 @@ function replace_julia_ts_literals(data::AbstractString)
     data = replace(data, r"::[A-Za-z_][A-Za-z0-9_\.]*(?:\{[^}]*\})?" => "")
     # Drop redundant int32 conversion helper in generated TS (any nesting).
     data = strip_safe_int32_convert_calls(data)
+    # `let x = safe_int32_convert(x)` → `let x = x` after strip; drop no-ops.
+    data = replace(data, r"(?m)^\s*let (\w+) = \1\s*$\n?" => "")
+    data = replace(data, r":\s*Int\b" => ": number")
     data = strip_uint32_constructor_calls(data)
     # `UInt8(n)` / `UInt8(expr)` — same idea as UInt32 (SDL color components).
     data = replace(data, r"\bUInt8\(\s*(\d+)\s*\)" => s"\1")
@@ -2093,6 +2174,12 @@ function normalize_julgame_global_access(data::AbstractString)::String
     s = replace(
         s,
         r"(?<!JulGame\.)(?<!\(globalThis as any\)\.)\bMAIN\." => "(globalThis as any).MAIN.",
+    )
+    # Bare `BasePath` (Julia global) → `JulGame.BasePath`.
+    s = replace(
+        s,
+        r"(?<!JulGame\.)(?<!\(globalThis as any\)\.)\bBasePath\b" =>
+            "(globalThis as any).JulGame.BasePath",
     )
     return fix_double_main_rewrite(s)
 end
@@ -3049,7 +3136,7 @@ function replace_constructor(data::AbstractString)
     # Julia inner ctor is `function ClassName(args)` (no `{`). Only the ctor whose name
     # matches a `class Name {` in this file becomes `constructor(args)`.
     seen = Set{String}()
-    for m in eachmatch(r"class\s+(\w+)\s*\{", data)
+    for m in eachmatch(r"class\s+(\w+)\b", data)
         name = m.captures[1]::AbstractString
         name in seen && continue
         push!(seen, name)
@@ -3057,12 +3144,60 @@ function replace_constructor(data::AbstractString)
         pat = Regex("function\\s+" * string(name) * "\\s*\\(")
         data = replace(data, pat => "constructor(")
     end
-    # TS needs `{` before the body; do this line-wise so nested `)` in defaults do not break.
-    lines = split(String(data), '\n'; keepempty = true)
-    lines = map(lines) do line
-        startswith(strip(line), "constructor(") || return line
-        occursin('{', line) && return line
-        return line * " {"
+
+    # Append `{` on the line that closes the constructor param list (supports multiline ctors).
+    # Never append `{` onto a bare `constructor(` line — that becomes `constructor() {` via repair.
+    lines = collect(String.(split(String(data), '\n'; keepempty = true)))
+    i = 1
+    while i <= length(lines)
+        line = lines[i]
+        if !startswith(strip(line), "constructor(") || occursin('{', line)
+            i += 1
+            continue
+        end
+        oi_rg = findfirst("constructor(", line)
+        oi_rg === nothing && (i += 1; continue)
+        depth = 1
+        j = nextind(line, last(oi_rg))
+        li = i
+        close_li = 0
+        close_idx = 0
+        while li <= length(lines)
+            cur = lines[li]
+            n = lastindex(cur)
+            while j <= n
+                c = cur[j]
+                if c == '('
+                    depth += 1
+                elseif c == ')'
+                    depth -= 1
+                    if depth == 0
+                        close_li = li
+                        close_idx = j
+                        break
+                    end
+                end
+                j = nextind(cur, j)
+            end
+            depth == 0 && break
+            li += 1
+            li > length(lines) && break
+            j = firstindex(lines[li])
+        end
+        if close_li != 0
+            cur = lines[close_li]
+            # Insert `{` after the closing `)` (and any trailing whitespace/comments stay after).
+            head = String(SubString(cur, 1, close_idx))
+            tail = String(SubString(cur, nextind(cur, close_idx), lastindex(cur)))
+            if !occursin('{', head * tail)
+                lines[close_li] = rstrip(head) * " {" * tail
+            end
+            # Julia kw-only `;` in the param list → commas (multiline-safe).
+            for k in i:close_li
+                lines[k] = replace(lines[k], r"\s*;\s*" => ", ")
+            end
+        end
+        i = (close_li != 0 ? close_li : i) + 1
     end
     data = join(lines, '\n')
 
@@ -3070,6 +3205,8 @@ function replace_constructor(data::AbstractString)
     # Only the ctor idiom `return this` on its own line — not `return this.foo`.
     data = replace(data, r"(?m)^\s*return this\s*$" => "")
     data = replace_constructor_param_list_semicolons_to_commas(data)
+    # Julia kw-only `function Foo(; a=…)` → leading comma after `;`→`,` rewrite.
+    data = replace(data, r"constructor\(\s*,\s*" => "constructor(")
     data = repair_constructor_headers_missing_close_paren(data)
     return data
 end
@@ -3952,7 +4089,12 @@ function source_files_from_manifest(; repo_root::AbstractString = REPO_ROOT)::Ve
     for name in wanted
         matches = get(by_name, name, String[])
         isempty(matches) && error("files-needed entry not found in src/: $name")
-        length(matches) > 1 && error("files-needed entry is ambiguous in src/: $name")
+        if length(matches) > 1
+            # Prefer the live engine tree over Static/ JuliaC mirrors.
+            non_static = filter(m -> !occursin("/Static/", m), matches)
+            length(non_static) == 1 || error("files-needed entry is ambiguous in src/: $name")
+            matches = non_static
+        end
         push!(selected, first(matches))
     end
     return selected

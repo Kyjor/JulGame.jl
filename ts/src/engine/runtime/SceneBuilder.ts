@@ -24,7 +24,7 @@ import {
     hydrateTextBoxFromJson,
     type TextBoxElement,
 } from "../../../_generated/src/engine/UI/TextBox";
-import type { JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
+import { parseJuliaUiColor, type JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
 import { UI_align_to_anchor } from "../../../_generated/src/engine/UI/UIElement";
 
 /** Minimal valid PNG (1×1) for MEMFS when project assets are missing locally. */
@@ -97,9 +97,18 @@ function isDeferredUiAsset(ui: UIElementJson): boolean {
     return String(ui.name ?? "").includes("SettingsMenu_");
 }
 
-function addUiImagePaths(imagePaths: Set<string>, ui: UIElementJson): void {
+function isScreenUiImage(ui: UIElementJson): boolean {
+    return ui.type === "UIImage" && typeof ui.path === "string" && /^screen-/i.test(ui.path);
+}
+
+function addUiImagePaths(
+    imagePaths: Set<string>,
+    ui: UIElementJson,
+    opts?: { includeScreen?: boolean },
+): void {
     if (ui.type === "UIImage" && typeof ui.path === "string" && ui.path) {
-        if (/^screen-/i.test(ui.path)) {
+        // Large full-screen art — eager-skip unless deferred collector opts in.
+        if (/^screen-/i.test(ui.path) && !opts?.includeScreen) {
             return;
         }
         imagePaths.add(ui.path);
@@ -295,12 +304,13 @@ function collectSceneAssetPaths(json: SceneJson, sceneFileName = ""): {
     const soundPaths = new Set<string>();
     const fontPaths = new Set<string>();
     for (const ent of json.Entities ?? []) {
-        if (ent.isActive === false) {
-            continue;
-        }
+        // Include inactive entities — battle scripts activate Enemy/Intent/etc. at runtime.
         for (const c of ent.components ?? []) {
             if (c.type === "Sprite" && typeof c.imagePath === "string") {
                 imagePaths.add(c.imagePath);
+            }
+            if (ent.isActive === false) {
+                continue;
             }
             if (c.type === "SoundSource" && typeof c.path === "string") {
                 soundPaths.add(c.path);
@@ -322,13 +332,25 @@ function collectSceneAssetPaths(json: SceneJson, sceneFileName = ""): {
     for (const p of getScriptSoundPaths()) {
         soundPaths.add(p);
     }
+    // ImmediateUI defaults to Century-Normal even when scene TextBoxes omit fontPath.
+    fontPaths.add("Century-Normal.ttf");
     const jgBlock = (globalThis as {
-        JulGame?: { getBlockingExtraSceneImagePaths?: (sceneFileName?: string) => string[] };
+        JulGame?: {
+            getBlockingExtraSceneImagePaths?: (sceneFileName?: string) => string[];
+            getExtraSceneFontPaths?: (sceneFileName?: string) => string[];
+        };
     }).JulGame;
     if (typeof jgBlock?.getBlockingExtraSceneImagePaths === "function") {
         for (const p of jgBlock.getBlockingExtraSceneImagePaths(sceneFileName)) {
             if (p) {
                 imagePaths.add(p);
+            }
+        }
+    }
+    if (typeof jgBlock?.getExtraSceneFontPaths === "function") {
+        for (const p of jgBlock.getExtraSceneFontPaths(sceneFileName)) {
+            if (p) {
+                fontPaths.add(normalizeAssetPath(p));
             }
         }
     }
@@ -338,10 +360,14 @@ function collectSceneAssetPaths(json: SceneJson, sceneFileName = ""): {
 function collectDeferredImagePaths(json: SceneJson, sceneFileName: string): Set<string> {
     const imagePaths = new Set<string>();
     for (const ui of json.UIElements ?? []) {
-        if (!isDeferredUiAsset(ui)) {
+        if (ui.isActive === false) {
             continue;
         }
-        addUiImagePaths(imagePaths, ui);
+        // Settings menus + screen-* overlays (skipped from eager preload).
+        if (!isDeferredUiAsset(ui) && !isScreenUiImage(ui)) {
+            continue;
+        }
+        addUiImagePaths(imagePaths, ui, { includeScreen: true });
     }
     const jg = (globalThis as {
         JulGame?: { getDeferredExtraSceneImagePaths?: (sceneFileName?: string) => string[] };
@@ -510,7 +536,7 @@ function buildEntityFromJson(ent: EntityJson, scene: Scene): Entity | null {
                 imagePath: c.imagePath,
                 crop,
                 isFlipped: !!c.isFlipped,
-                color: [255, 255, 255, 255],
+                color: parseJuliaUiColor(c.color),
                 pixelsPerUnit: resolveSpritePixelsPerUnit(
                     c.pixelsPerUnit,
                     (globalThis as { JulGame?: { PIXELS_PER_UNIT?: number } }).JulGame?.PIXELS_PER_UNIT ?? 16,

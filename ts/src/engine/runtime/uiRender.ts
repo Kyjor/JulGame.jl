@@ -207,6 +207,15 @@ export function shouldParticipateInUiHitTest(ui: UiHoverTarget): boolean {
     if (ui.type === "TextBox" && !isUiInteractiveTarget(ui)) {
         return false;
     }
+    // Child images (reward icons, nested chrome) without handlers must not steal
+    // presses from their interactive parent (pressTarget must match the clickable).
+    if (
+        ui.type === "UIImage" &&
+        !isUiInteractiveTarget(ui) &&
+        (ui as { parent?: unknown }).parent != null
+    ) {
+        return false;
+    }
     return true;
 }
 

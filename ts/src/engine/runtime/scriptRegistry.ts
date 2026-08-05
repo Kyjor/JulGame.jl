@@ -10,16 +10,31 @@ export type ScriptHooks = {
 const registry = new Map<string, ScriptHooks>();
 const scriptSoundPaths = new Set<string>();
 const SCRIPT_NAME_KEY = "__julgameScriptName";
+/** Survives Vite minify: `new Piece()` still resolves to registry name "Piece". */
+const constructorToName = new WeakMap<object, string>();
 
 function getScriptName(script: unknown): string {
     if (script && typeof script === "object" && SCRIPT_NAME_KEY in script) {
         return (script as Record<string, string>)[SCRIPT_NAME_KEY];
     }
-    return (script as { constructor?: { name?: string } })?.constructor?.name ?? "";
+    const ctor = (script as { constructor?: object })?.constructor;
+    if (ctor && constructorToName.has(ctor)) {
+        return constructorToName.get(ctor)!;
+    }
+    return (ctor as { name?: string } | undefined)?.name ?? "";
 }
 
 export function registerScript(name: string, hooks: ScriptHooks): void {
     registry.set(name, hooks);
+    try {
+        const probe = hooks.create();
+        const ctor = (probe as { constructor?: object } | null)?.constructor;
+        if (ctor) {
+            constructorToName.set(ctor, name);
+        }
+    } catch {
+        /* create may require args; constructor mapping skipped */
+    }
 }
 
 /** Register a Julia `Scripts.FooModule` namespace on `JulGame.Scripts` (support / dual modules). */

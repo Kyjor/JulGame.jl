@@ -15,7 +15,15 @@ import {
     Component_toggle_sound,
     InternalSoundSource,
 } from "../../../_generated/src/engine/Component/SoundSource";
-import { Entity, JulGame_add_script, JulGame_add_sprite, JulGame_update } from "../../../_generated/src/engine/Entity";
+import {
+    Entity,
+    JulGame_add_animator,
+    JulGame_add_script,
+    JulGame_add_sound_source,
+    JulGame_add_sprite,
+    JulGame_update,
+} from "../../../_generated/src/engine/Entity";
+import { JulGameAnimation } from "../../../_generated/src/engine/Component/Animation";
 import { duplicateEntity } from "./duplicateEntity";
 import { duplicateUiElement } from "./duplicateUiElement";
 import { Scene } from "../../../_generated/src/engine/Scene";
@@ -23,6 +31,7 @@ import { installCoroutineGlobals } from "./coroutineRuntime";
 import { initializeScript, updateScript } from "./scriptRegistry";
 import { installStrippedInput } from "./StrippedInput";
 import { installImmediateUi } from "./immediateUiRuntime";
+import { installImageFx } from "./imageFx";
 import {
     UI_add_click_event,
     UI_add_hover_enter_event,
@@ -159,6 +168,8 @@ export function bootstrapJulGameSdl(
     jg.duplicate = duplicateEntity;
     jg.add_script = JulGame_add_script;
     jg.add_sprite = JulGame_add_sprite;
+    jg.add_animator = JulGame_add_animator;
+    jg.add_sound_source = JulGame_add_sound_source;
     jg.update = (obj: unknown, deltaTime = 0) => {
         if (obj && typeof obj === "object" && "scripts" in obj) {
             JulGame_update(obj as Entity, deltaTime);
@@ -294,7 +305,17 @@ export function bootstrapJulGameSdl(
         );
     };
     jg.RigidbodyModule = { add_velocity, Component_update: rigidbodyUpdate, Component_get_velocity };
-    jg.AnimatorModule = { force_frame_update };
+    jg.AnimatorModule = {
+        force_frame_update,
+        Animator: (animations: unknown[]) => ({ animations }),
+    };
+    jg.AnimationModule = {
+        Animation: (
+            frames: unknown[],
+            animatedFPS: number,
+            framePaths: string[] = [],
+        ) => new JulGameAnimation(frames as never, animatedFPS, framePaths),
+    };
     jg.TransformModule = {
         Transform: (v: { x: number; y: number; z: number }) => ({
             position: v,
@@ -307,9 +328,23 @@ export function bootstrapJulGameSdl(
     jg.set_batched_layer_offset = (_layer: number, _x: number, _y: number) => {
         /* stripped WASM: StaticSpriteBatcher not wired */
     };
+    const lerp = (a: number, b: number, t: number): number => {
+        const tt = t < 0 ? 0 : t > 1 ? 1 : t;
+        return a + tt * (b - a);
+    };
+    /** Julia `Math.SmoothLerp` — cosine ease-in-out lerp. */
+    const smoothLerp = (start: number, stop: number, t: number): number => {
+        const tt = t < 0 ? 0 : t > 1 ? 1 : t;
+        const eased = 0.5 - 0.5 * Math.cos(Math.PI * tt);
+        return (1.0 - eased) * start + eased * stop;
+    };
+    jg.Lerp = lerp;
+    jg.SmoothLerp = smoothLerp;
     jg.Math = {
         Vector2f: (x: number, y: number) => ({ x, y }),
         Vector3f: (x: number, y: number, z: number) => ({ x, y, z }),
+        Lerp: lerp,
+        SmoothLerp: smoothLerp,
     };
     jg.SoundSourceModule = {
         InternalSoundSource: (...args: ConstructorParameters<typeof InternalSoundSource>) =>
@@ -408,6 +443,7 @@ export function bootstrapJulGameSdl(
         },
     };
     installImmediateUi(jg);
+    installImageFx(jg);
 }
 
 /** DOM input fallback for `?backend=web` (no SDL). */

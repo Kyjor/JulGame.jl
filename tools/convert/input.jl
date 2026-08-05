@@ -246,6 +246,43 @@ function postprocess_input_ts(data::AbstractString, path_jl::AbstractString, pat
     s = stub_cursor_bank(s)
     s = stub_ui_hit_test_helpers(s)
     s = finalize_input_exports(s)
+    # Recent Input.jl hit-test buffers still emit Julia Set / range syntax.
+    s = replace(s, r"Set\{Any\}\(\)" => "new Set()")
+    s = replace(s, r"\bempty\(_inactiveCanvasChildren\)" => "_inactiveCanvasChildren.clear()")
+    s = replace(s, r"\bempty\((_hitTestCandidates|candidates)\)" => s"\1.length = 0")
+    s = replace(s, r"for \(const i of (\w+)\.length:-1:1\)" => s"for (let i = \1.length - 1; i >= 0; i--)")
+    s = replace(s, r"\bisa\((\w+),\s*\(globalThis as any\)\.JulGame\.ICanvas\)" => s"(\1?.children != null)")
+    s = replace(s, r"_inactiveCanvasChildren\.push\(" => "_inactiveCanvasChildren.add(")
+    s = replace(s, r"!\(_inactiveCanvasChildren\.includes\((\w+)\)\)" => s"!_inactiveCanvasChildren.has(\1)")
+    s = replace(
+        s,
+        r"sort\(view\(candidates, 1:nUI\), by = uiElement => uiElement\.layer, rev = true\)" =>
+            "candidates.sort((a, b) => (b.layer ?? 0) - (a.layer ?? 0))",
+    )
+    s = replace(
+        s,
+        r"sort\(view\(candidates, nUI\+1:candidates\.length\), by = entity => entity\.sprite\.layer, rev = true\)" =>
+            "candidates.slice(nUI).sort((a, b) => (b.sprite?.layer ?? 0) - (a.sprite?.layer ?? 0)); candidates.splice(nUI, candidates.length - nUI, ...candidates.slice(nUI))",
+    )
+    # Broken transpile of `entity.sprite !== null && …` after `&&)`.
+    s = replace(
+        s,
+        r"if \(entity\.isActive && !entity\.ignoreInputEvents &&\) \{\n\s*entity\.sprite !== null && entity\.sprite !== null &&\n\s*!(_inactiveCanvasChildren\.has\(entity\))\n\s*candidates\.push\(entity\)\n\s*\}" =>
+            "if (entity.isActive && !entity.ignoreInputEvents && entity.sprite != null && !_inactiveCanvasChildren.has(entity)) {\n                candidates.push(entity)\n            }",
+    )
+    s = replace(s, r"return candidates, nUI" => "return [candidates, nUI] as const")
+    s = replace(s, r"for \(const i of 1:(\w+)\)" => s"for (let i = 1; i <= \1; i++)")
+    s = replace(s, r"for \(const i of 1:(\w+\.\w+)\)" => s"for (let i = 1; i <= \1; i++)")
+    s = replace(s, r"\blib_available\(\)" => "false")
+    s = replace(s, r":\s*Int\b" => ": number")
+    s = replace(s, r"\blet (\w+) = \1\s*\n" => "")
+    s = replace(
+        s,
+        r"if \(self\.joystick == null\) \{ return if \(self\.numAxes > 0\) \{ \}" =>
+            "if (self.joystick == null) { return }\n        if (self.numAxes > 0) {",
+    )
+    # Julia 1-tuples in call args: `(scanCode[0],)` → `scanCode[0]`
+    s = replace(s, r"\((\w+(?:\[[^\]]+\])?),\)" => s"\1")
     # Line rewrites above can run after the global ASI pass in `parse_file`.
     s = insert_semicolon_before_line_starting_with_open_paren(s)
     return s

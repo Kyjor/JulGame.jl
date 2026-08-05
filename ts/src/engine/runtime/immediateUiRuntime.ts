@@ -162,6 +162,7 @@ function applyTextOpts(el: TextBoxElement, opts: ImmediateOpts, text: string): v
     if (opts.maxLineWidth !== undefined) el.maxLineWidth = opts.maxLineWidth;
     if (opts.wrapWords !== undefined) el.wrapWords = opts.wrapWords;
     if (opts.parent !== undefined) el.parent = opts.parent;
+    if (opts.position !== undefined) el.position = { ...opts.position };
     if (opts.persistentBetweenScenes !== undefined) {
         el.persistentBetweenScenes = opts.persistentBetweenScenes;
     }
@@ -291,6 +292,7 @@ function immediateText(id: string, text: string, third?: unknown, ...rest: unkno
         maxLineWidth: opts.maxLineWidth ?? 0,
         wrapWords: opts.wrapWords ?? true,
         parent: opts.parent ?? null,
+        position: opts.position ?? { x: 0, y: 0 },
     });
     wireClick(el, opts);
     wireHover(el, opts);

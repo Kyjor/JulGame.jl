@@ -78,6 +78,9 @@ export function loadUiTextureFromPath(api: JulGameSdlApi, imagePath: string): nu
         surface = api.glue_IMG_Load(fullPath);
     }
     if (!surface) {
+        // Don't leave a stale "Couldn't open …" on the SDL error queue —
+        // later RenderCopyEx failures would misreport this path.
+        api.glue_SDL_ClearError?.();
         return null;
     }
     const tex = api.glue_SDL_CreateTextureFromSurface(0, surface);

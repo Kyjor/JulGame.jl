@@ -6,6 +6,7 @@ import { installStrippedSceneRuntime, tickSceneChange } from "../../engine/runti
 import { initializeAllScripts } from "../../engine/runtime/scriptLoader";
 import { loadStrippedScene } from "../../engine/runtime/SceneBuilder";
 import { unlockSceneAudio } from "../../engine/runtime/memfsAudio";
+import { isConsoleErrorBudgetExceeded } from "../../engine/runtime/consoleErrorBudget";
 import { runGameFrame } from "../../engine/runtime/MainLoop";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { SDLBridge } from "./SDLBridge";
@@ -98,15 +99,29 @@ export class SDLPlatform implements Platform {
         if (this.loopStarted) return;
         this.loopStarted = true;
 
+        const maxFrameErrors = 8;
+        let frameErrors = 0;
+
         const tick = (): void => {
+            if (isConsoleErrorBudgetExceeded()) {
+                this.setStatus("Stopped — console.error budget exceeded");
+                return;
+            }
             try {
                 if (tickSceneChange()) {
                     requestAnimationFrame(tick);
                     return;
                 }
                 runGameFrame();
+                frameErrors = 0;
             } catch (e) {
+                frameErrors += 1;
                 console.error("sdl-wasm: runGameFrame failed", e);
+                if (frameErrors >= maxFrameErrors) {
+                    console.error(`sdl-wasm: stopping after ${frameErrors} frame errors`);
+                    this.setStatus(`Stopped after ${frameErrors} frame errors — see console`);
+                    return;
+                }
             }
             const main = (globalThis as unknown as { MAIN?: { input?: { quit?: boolean } } }).MAIN;
             if (main?.input?.quit) {
