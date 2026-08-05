@@ -38,6 +38,9 @@ type ImmediateOpts = {
     borderRadius?: number;
     fillMode?: boolean;
     name?: string;
+    /** Julia ScreenButton art — honored by `immediate_button`. */
+    buttonUpPath?: string;
+    buttonDownPath?: string;
 };
 
 const cache = new Map<string, ImmediateCacheEntry>();
@@ -483,7 +486,9 @@ function isImmediateOptsObject(value: unknown): value is ImmediateOpts {
         "color" in o ||
         "position" in o ||
         "borderWidth" in o ||
-        "borderRadius" in o
+        "borderRadius" in o ||
+        "buttonUpPath" in o ||
+        "buttonDownPath" in o
     );
 }
 
@@ -550,7 +555,11 @@ function immediateButton(
         }
     }
 
-    const button = immediateImage(id, "ui-newgamebox-0000.png", {
+    const artPath =
+        (typeof opts.buttonUpPath === "string" && opts.buttonUpPath) ||
+        (typeof opts.buttonDownPath === "string" && opts.buttonDownPath) ||
+        "ui-newgamebox-0000.png";
+    const button = immediateImage(id, artPath, {
         ...opts,
         size: opts.size ?? { x: 200, y: 60 },
         layer: (opts.layer ?? 0) + 1,
