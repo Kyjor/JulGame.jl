@@ -191,6 +191,20 @@ async function fetchAssetBytes(url: string): Promise<Uint8Array> {
     return new Uint8Array(await res.arrayBuffer());
 }
 
+/** Opaque PNGs may be shipped as JPG after web compress; retry `.jpg` when `.png` 404s. */
+async function fetchImageAssetBytes(base: string, rel: string): Promise<Uint8Array> {
+    const url = `${base}/assets/images/${rel}`;
+    try {
+        return await fetchAssetBytes(url);
+    } catch (err) {
+        if (!/\.png$/i.test(rel)) {
+            throw err;
+        }
+        const jpgRel = rel.replace(/\.png$/i, ".jpg");
+        return await fetchAssetBytes(`${base}/assets/images/${jpgRel}`);
+    }
+}
+
 export type SceneJson = {
     Entities?: EntityJson[];
     Camera?: {
@@ -426,10 +440,10 @@ async function syncAssetsToMemfs(
             if (memfsPathExists(fs, memPath) && !isMemfsPlaceholder(fs, memPath)) {
                 return;
             }
-            const url = `${base}/assets/images/${rel}`;
+                const url = `${base}/assets/images/${rel}`;
             const hadPlaceholder = isMemfsPlaceholder(fs, memPath);
             try {
-                const data = await fetchAssetBytes(url);
+                const data = await fetchImageAssetBytes(base, rel);
                 writeMemfsFile(fs, memPath, data);
                 const api = sdlApi();
                 if (api && hadPlaceholder) {

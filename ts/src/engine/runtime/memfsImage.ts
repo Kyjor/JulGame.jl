@@ -81,8 +81,15 @@ export function scheduleImageFetch(relPath: string): void {
         return;
     }
     pending.add(relPath);
-    void fetch(url)
-        .then(async (res) => {
+    void (async () => {
+        try {
+            let res = await fetch(url);
+            if (!res.ok && /\.png$/i.test(relPath)) {
+                const jpgUrl = assetFetchUrl(relPath.replace(/\.png$/i, ".jpg"));
+                if (jpgUrl) {
+                    res = await fetch(jpgUrl);
+                }
+            }
             if (!res.ok) {
                 throw new Error(String(res.status));
             }
@@ -95,12 +102,11 @@ export function scheduleImageFetch(relPath: string): void {
                     invalidateTextureCachesForImagePath(relPath, api as never);
                 });
             }
-        })
-        .catch(() => {
+        } catch {
             failed.add(relPath);
             console.warn(`memfsImage: missing ${url}`);
-        })
-        .finally(() => {
+        } finally {
             pending.delete(relPath);
-        });
+        }
+    })();
 }
