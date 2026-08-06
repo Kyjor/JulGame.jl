@@ -37,6 +37,13 @@ const openFonts = new Map<string, number>();
 const textTextures = new Map<string, CachedTextTexture>();
 let ttfMissingWarned = false;
 
+/** Julia `SDL_ScaleModeBest` — best filtering when text textures are scaled. */
+const SDL_SCALE_MODE_BEST = 2;
+
+function applyTextTextureScaleMode(api: JulGameSdlApi, texture: number): void {
+    api.glue_SDL_SetTextureScaleMode?.(texture, SDL_SCALE_MODE_BEST);
+}
+
 function ttfAvailable(api: JulGameSdlApi): boolean {
     return (
         typeof api.glue_TTF_OpenFont === "function" &&
@@ -132,6 +139,7 @@ function getOrCreateTextTexture(
     if (!texture) {
         return null;
     }
+    applyTextTextureScaleMode(api, texture);
     if (cached?.texture) {
         api.glue_SDL_DestroyTexture?.(cached.texture);
     }
@@ -196,6 +204,7 @@ export function UI_render_TextBox(api: JulGameSdlApi, self: TextBoxElement): voi
         return;
     }
     step("colorMod", () => {
+        applyTextTextureScaleMode(api, tex.texture);
         api.glue_SDL_SetTextureColorMod?.(tex.texture, 255, 255, 255);
         api.glue_SDL_SetTextureAlphaMod?.(tex.texture, self.color[3]);
     });

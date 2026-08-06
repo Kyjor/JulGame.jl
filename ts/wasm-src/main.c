@@ -252,6 +252,15 @@ void glue_SDL_SetTextureAlphaMod(void *texture, int a) {
     SDL_SetTextureAlphaMod((SDL_Texture *)texture, (Uint8)a);
 }
 
+/* Match Julia TextBox: SDL_ScaleModeNearest=0, Linear=1, Best=2. */
+EMSCRIPTEN_KEEPALIVE
+int glue_SDL_SetTextureScaleMode(void *texture, int mode) {
+    if (!texture) {
+        return -1;
+    }
+    return SDL_SetTextureScaleMode((SDL_Texture *)texture, (SDL_ScaleMode)mode);
+}
+
 /* Packed r,g,b,a from SDL_GetTextureColorMod + SDL_GetTextureAlphaMod. */
 EMSCRIPTEN_KEEPALIVE
 unsigned glue_SDL_GetTextureColorMod_packed(void *texture) {

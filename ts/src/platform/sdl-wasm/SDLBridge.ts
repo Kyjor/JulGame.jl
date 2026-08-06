@@ -42,6 +42,8 @@ type JulGameSdlCApi = {
     glue_surface_w: (surface: number) => number;
     glue_surface_h: (surface: number) => number;
     glue_SDL_SetTextureColorMod: (tex: number, r: number, g: number, b: number) => void;
+    /** SDL_ScaleModeNearest=0, Linear=1, Best=2 — Julia TextBox uses Best. */
+    glue_SDL_SetTextureScaleMode?: (tex: number, mode: number) => number;
     glue_SDL_SetTextureAlphaMod: (tex: number, a: number) => void;
     glue_SDL_GetTextureColorMod_packed: (tex: number) => number;
     glue_render_copy_ex: (
@@ -383,6 +385,9 @@ export class SDLBridge {
                 "number",
             ]) as JulGameSdlCApi["glue_SDL_SetTextureColorMod"],
             glue_SDL_SetTextureAlphaMod: cwrap("glue_SDL_SetTextureAlphaMod", null, ["number", "number"]) as JulGameSdlCApi["glue_SDL_SetTextureAlphaMod"],
+            glue_SDL_SetTextureScaleMode: wasmHasExport(mod, "glue_SDL_SetTextureScaleMode")
+                ? (cwrap("glue_SDL_SetTextureScaleMode", "number", ["number", "number"]) as JulGameSdlCApi["glue_SDL_SetTextureScaleMode"])
+                : undefined,
             glue_SDL_GetTextureColorMod_packed: cwrap("glue_SDL_GetTextureColorMod_packed", "number", [
                 "number",
             ]) as JulGameSdlCApi["glue_SDL_GetTextureColorMod_packed"],
