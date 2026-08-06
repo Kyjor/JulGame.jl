@@ -158,7 +158,11 @@ export function canvasPixelsToLogicalUiSpace(
 function collectHitTestableUi(uiElements: unknown[]): UiHoverTarget[] {
     const items: UiHoverTarget[] = [];
     const hiddenByCanvas = buildInactiveCanvasHiddenSet(uiElements);
-    for (const raw of uiElements) {
+    // Reverse scene order before stable layer sort so later same-layer elements
+    // win ties — matches Julia Input.jl `_build_hit_test_candidates!`.
+    // (Reward slots are duplicated after Reward_Border at the same layer.)
+    for (let i = uiElements.length - 1; i >= 0; i--) {
+        const raw = uiElements[i];
         if (!isRenderableUi(raw)) {
             continue;
         }
