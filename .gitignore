@@ -51,6 +51,4 @@ src/editor/Build/
 
 *.zip
 
-ts/_generated/
-
 src/engine/Static/lib_desktop/

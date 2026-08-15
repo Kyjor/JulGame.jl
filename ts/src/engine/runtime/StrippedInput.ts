@@ -25,6 +25,8 @@ export type StrippedInputState = {
     mousePositionEditorGameWindowOffset: { x: number; y: number };
     /** Set when the pointer moves; cleared at end of each game frame (Julia `MAIN.input.didMouseMotionOccur`). */
     didMouseMotionOccur: boolean;
+    /** Wheel delta in pixels this frame (positive = scroll down). Reset each poll. */
+    mouseScrollY: number;
     quit: boolean;
     debug: boolean;
     main: unknown;
@@ -78,6 +80,7 @@ export function createStrippedInput(): StrippedInputState {
         mousePositionWorld: { x: 0, y: 0 },
         mousePositionEditorGameWindowOffset: { x: 0, y: 0 },
         didMouseMotionOccur: false,
+        mouseScrollY: 0,
         quit: false,
         debug: false,
         main: null,
@@ -142,6 +145,7 @@ export type DomInputBinding = {
     releasedKeys: Set<string>;
     pressedMouse: Set<number>;
     releasedMouse: Set<number>;
+    pendingWheelY: number;
 };
 
 /** Attach keyboard/pointer listeners for stripped SDL/web runtime (itch iframe-safe). */
@@ -156,6 +160,7 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
     const releasedKeys = new Set<string>();
     const pressedMouse = new Set<number>();
     const releasedMouse = new Set<number>();
+    let pendingWheelY = 0;
     let lastUiHover: UiHoverTarget | null = null;
     let pointerPressTarget: unknown | null = null;
 
@@ -262,6 +267,20 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         }
     };
 
+    const onWheel = (e: WheelEvent): void => {
+        if (!isPointerInsideCanvas(canvas, e.clientX, e.clientY)) {
+            return;
+        }
+        let dy = e.deltaY;
+        if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+            dy *= 16;
+        } else if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+            dy *= canvas.height;
+        }
+        pendingWheelY += dy;
+        e.preventDefault();
+    };
+
     const onBlur = (): void => {
         for (const k of heldKeys) {
             releasedKeys.add(k);
@@ -289,6 +308,7 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
     document.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
     canvas.addEventListener("click", focusCanvas);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
 
     return {
         heldKeys,
@@ -297,6 +317,12 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
         releasedKeys,
         pressedMouse,
         releasedMouse,
+        get pendingWheelY() {
+            return pendingWheelY;
+        },
+        set pendingWheelY(value: number) {
+            pendingWheelY = value;
+        },
         detach: () => {
             window.removeEventListener("pointerdown", onPointerDown, pointerOpts);
             window.removeEventListener("pointerup", onPointerUp, pointerOpts);
@@ -306,6 +332,7 @@ export function attachDomInput(canvas: HTMLCanvasElement): DomInputBinding {
             document.removeEventListener("keyup", onKeyUp);
             window.removeEventListener("blur", onBlur);
             canvas.removeEventListener("click", focusCanvas);
+            canvas.removeEventListener("wheel", onWheel);
         },
     };
 }
@@ -332,6 +359,13 @@ export const StrippedInputModule = {
             binding.pressedMouse,
             binding.releasedMouse,
         );
+        input.mouseScrollY = binding.pendingWheelY;
+        binding.pendingWheelY = 0;
+    },
+
+    get_mouse_scroll(input?: StrippedInputState): number {
+        const state = input ?? getMainInput();
+        return state?.mouseScrollY ?? 0;
     },
 
     get_button_held_down(inputOrButton: StrippedInputState | string, button?: string): boolean {
