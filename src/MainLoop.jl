@@ -761,6 +761,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			# Upload any effect textures finished by the async prewarm worker
 			if !JulGame.IS_EDITOR
 				Component.SpriteModule.pump_effect_prewarm!()
+				UI.TextBoxModule.pump_text_effect_prewarm!()
 			end
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()

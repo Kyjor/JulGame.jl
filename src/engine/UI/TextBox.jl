@@ -530,18 +530,30 @@ module TextBoxModule
         return "[" * join(parts, ";") * "]"
     end
 
-    # Generate cache key for effects based on content
-    function generate_effect_cache_key(this::TextBox)::String
-        # Include all factors that affect the final rendered result
+    function generate_effect_cache_key_from_parts(
+        text::AbstractString,
+        color::NTuple{4, Int},
+        fontPath::AbstractString,
+        fontSize::Int,
+        effects::Vector{Any},
+        size,
+    )::String
         content = string(
-            this.text, "|",
-            this.color, "|", 
-            this.fontPath, "|",
-            this.fontSize, "|",
-            serialize_effects(this.effects), "|",
-            this.size
+            text, "|",
+            color, "|",
+            fontPath, "|",
+            fontSize, "|",
+            serialize_effects(effects), "|",
+            size,
         )
         return string(hash(content))
+    end
+
+    # Generate cache key for effects based on content
+    function generate_effect_cache_key(this::TextBox)::String
+        return generate_effect_cache_key_from_parts(
+            this.text, this.color, this.fontPath, this.fontSize, this.effects, this.size
+        )
     end
     
     #  effects API
@@ -563,6 +575,21 @@ module TextBoxModule
         # Try to apply effects now, but don't fail if renderer isn't ready
         update_effects(this)
         return this
+    end
+
+    """Apply effects only if the texture is already cached. Returns false without baking."""
+    function try_apply_effects_from_cache!(this::TextBox, effects::Vector)::Bool
+        previous_effects = this.effects
+        this.effects = Any[effect for effect in effects]
+        newCacheKey = generate_effect_cache_key(this)
+        if haskey(EFFECT_CACHE, newCacheKey)
+            this.effectCacheKey = newCacheKey
+            this.needsEffectUpdate = true
+            update_effects(this)
+            return true
+        end
+        this.effects = previous_effects
+        return false
     end
 
     """
@@ -824,4 +851,144 @@ module TextBoxModule
         push!(MAIN.scene.uiElements, newTextBox)
         return newTextBox
     end
+
+    # --- Async text-effect prewarm (own worker + channel; not the sprite prewarm) ---
+    # CPU surface bake on a worker thread; renderer upload on the main thread via
+    # pump_text_effect_prewarm!. Requires Threads.nthreads() > 1.
+    struct TextEffectPrewarmJob
+        text::String
+        fontPath::String
+        fontSize::Int
+        color::NTuple{4, Int}
+        maxLineWidth::Int
+        wrapWords::Bool
+        effects::Vector{Any}
+    end
+
+    const TEXT_EFFECT_PREWARM_RESULTS = Channel{Tuple{String, Ptr{SDL2.SDL_Surface}}}(Inf)
+    const TEXT_EFFECT_PREWARM_SUBMITTED = Set{String}()
+    const TEXT_EFFECT_PREWARM_PENDING = Threads.Atomic{Int}(0)
+
+    function _prewarm_job_signature(job::TextEffectPrewarmJob)::String
+        return string(job.text, "|", job.color, "|", job.fontPath, "|", job.fontSize, "|", serialize_effects(job.effects), "|", job.maxLineWidth, "|", job.wrapWords)
+    end
+
+    function _open_font_for_prewarm(fontPath::String, fontSize::Int)
+        size32 = Math.TypeConversions.safe_int32_convert(fontSize)
+        if fontPath == "Default" || fontPath == ""
+            raw_data = JulGame.BUILT_IN_ASSETS["Font"]
+            rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
+            rw == C_NULL && return C_NULL
+            return SDL2.TTF_OpenFontRW(rw, 1, size32)
+        end
+        basePath = joinpath(JulGame.BasePath, "assets", "fonts")
+        return SDL2.TTF_OpenFont(joinpath(basePath, fontPath), size32)
+    end
+
+    function compute_text_effect_prewarm_surface(job::TextEffectPrewarmJob)::Union{Nothing, Tuple{String, Ptr{SDL2.SDL_Surface}}}
+        font = _open_font_for_prewarm(job.fontPath, job.fontSize)
+        if font == C_NULL
+            @warn "Text effect prewarm: failed to open font $(job.fontPath)"
+            return nothing
+        end
+        color = SDL2.SDL_Color(
+            Math.TypeConversions.safe_int32_convert(job.color[1]),
+            Math.TypeConversions.safe_int32_convert(job.color[2]),
+            Math.TypeConversions.safe_int32_convert(job.color[3]),
+            Math.TypeConversions.safe_int32_convert(job.color[4]),
+        )
+        text = job.text == "" ? " " : job.text
+        base = try
+            if job.maxLineWidth > 0
+                SDL2.TTF_RenderUTF8_Blended_Wrapped(
+                    font,
+                    job.wrapWords ? text : wrap_text(text, font, job.maxLineWidth, job.wrapWords),
+                    color,
+                    Math.TypeConversions.safe_int32_convert(job.maxLineWidth),
+                )
+            else
+                SDL2.TTF_RenderUTF8_Blended(font, text, color)
+            end
+        finally
+            SDL2.TTF_CloseFont(font)
+        end
+        if base == C_NULL
+            @warn "Text effect prewarm: failed to render text"
+            return nothing
+        end
+        arr = unsafe_wrap(Array, base, 10; own = false)
+        size = Math.Vector2(arr[1].w, arr[1].h)
+        key = generate_effect_cache_key_from_parts(text, job.color, job.fontPath, job.fontSize, job.effects, size)
+        target = EffectsModule.SurfaceTarget(base, job.color)
+        processed = EffectRendererModule.process_effects_to_surface(base, job.effects, target)
+        if processed == C_NULL
+            SDL2.SDL_FreeSurface(base)
+            return nothing
+        end
+        if processed != base
+            SDL2.SDL_FreeSurface(base)
+        end
+        return (key, processed)
+    end
+
+    function finalize_text_effect_prewarm!(key::String, surface::Ptr{SDL2.SDL_Surface})
+        if haskey(EFFECT_CACHE, key)
+            SDL2.SDL_FreeSurface(surface)
+            Threads.atomic_sub!(TEXT_EFFECT_PREWARM_PENDING, 1)
+            return
+        end
+        texture = CallSDLFunction(SDL2.SDL_CreateTextureFromSurface, JulGame.Renderer, surface)
+        if texture != C_NULL
+            SDL2.SDL_SetTextureScaleMode(texture, get_scale_mode_from_quality())
+            cache_effect_texture(key, texture)
+        else
+            @error "Text effect prewarm: failed to create texture: $(unsafe_string(SDL2.SDL_GetError()))"
+        end
+        SDL2.SDL_FreeSurface(surface)
+        Threads.atomic_sub!(TEXT_EFFECT_PREWARM_PENDING, 1)
+    end
+
+    """
+    Queue CPU-only text effect bakes on a dedicated worker thread. Uploads happen
+    on the main thread via `pump_text_effect_prewarm!`. No-op if Julia has a
+    single thread (avoids stealing battle frames). Duplicate jobs are ignored.
+    """
+    function prewarm_text_effect_textures!(jobs::Vector{TextEffectPrewarmJob})
+        Threads.nthreads() <= 1 && return
+        pending = TextEffectPrewarmJob[]
+        for job in jobs
+            sig = _prewarm_job_signature(job)
+            if sig in TEXT_EFFECT_PREWARM_SUBMITTED
+                continue
+            end
+            push!(TEXT_EFFECT_PREWARM_SUBMITTED, sig)
+            push!(pending, job)
+        end
+        isempty(pending) && return
+        Threads.atomic_add!(TEXT_EFFECT_PREWARM_PENDING, length(pending))
+        Threads.@spawn begin
+            for job in pending
+                try
+                    result = compute_text_effect_prewarm_surface(job)
+                    if result === nothing
+                        Threads.atomic_sub!(TEXT_EFFECT_PREWARM_PENDING, 1)
+                    else
+                        put!(TEXT_EFFECT_PREWARM_RESULTS, result)
+                    end
+                catch e
+                    Threads.atomic_sub!(TEXT_EFFECT_PREWARM_PENDING, 1)
+                    @error "Text effect prewarm failed: $e"
+                end
+            end
+        end
+    end
+
+    function pump_text_effect_prewarm!()
+        while isready(TEXT_EFFECT_PREWARM_RESULTS)
+            key, surface = take!(TEXT_EFFECT_PREWARM_RESULTS)
+            finalize_text_effect_prewarm!(key, surface)
+        end
+    end
+
+    text_effect_prewarm_pending() = TEXT_EFFECT_PREWARM_PENDING[] > 0
 end
