@@ -13,8 +13,15 @@ function static_add_velocity(rigidbody::Ptr{Cvoid}, x_bits::Int64, y_bits::Int64
 
     if y < 0.0
         rb.grounded = false
-        # TODO: Implement collider.currentRests = []
-        # parent.collider.currentRests = [] needs alloc — leave in Julia if required
+        parent_ptr::Ptr{Cvoid} = rb.parent
+        if !ptr_is_julia_nothing(parent_ptr)
+            ent = Ptr{EntityLayout}(parent_ptr)
+            collider::Ptr{Cvoid} = ent.collider
+            if !ptr_is_julia_nothing(collider)
+                col = Ptr{ColliderLayout}(collider)
+                array_empty!(col.currentRests)
+            end
+        end
     end
     return
 end

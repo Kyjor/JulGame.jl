@@ -25,6 +25,15 @@ end
     return arr == C_NULL || array_length(arr) == Int64(0)
 end
 
+# In-place empty! (length = 0). Same Vector object; no alloc.
+@inline function array_empty!(arr::Ptr{Cvoid})
+    if array_isempty(arr)
+        return
+    end
+    unsafe_store!(Ptr{Int64}(Ptr{UInt8}(arr) + JL_ARRAY_LENGTH_OFF), Int64(0))
+    return
+end
+
 # Linked from jg_static_runtime.c (same dylib).
 @inline function ptr_is_julia_nothing(p::Ptr{Cvoid})::Bool
     return ccall(:static_ptr_is_julia_nothing, Int32, (Ptr{Cvoid},), p) != Int32(0)

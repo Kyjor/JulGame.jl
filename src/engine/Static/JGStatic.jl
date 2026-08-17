@@ -20,6 +20,12 @@ mutable struct _NothingProbe
     x::Union{_NothingProbeMut, Nothing}
 end
 
+# Union{Mutable,Ptr{Nothing}}(C_NULL) boxes a new Ptr{Nothing}; capture its type tag.
+mutable struct _CnullProbeMut end
+mutable struct _CnullProbe
+    x::Union{_CnullProbeMut, Ptr{Nothing}}
+end
+
 function lib_path()::String
     LIB_PATH
 end
@@ -47,6 +53,10 @@ function ensure_julia_nothing_sentinel!()
     probe = _NothingProbe(nothing)
     bits = unsafe_load(Ptr{Ptr{Cvoid}}(Ptr{UInt8}(pointer_from_objref(probe)) + fieldoffset(_NothingProbe, 1)))
     ccall((:static_set_julia_nothing, LIB_PATH), Cvoid, (Ptr{Cvoid},), bits)
+    cprobe = _CnullProbe(C_NULL)
+    boxed = unsafe_load(Ptr{Ptr{Cvoid}}(Ptr{UInt8}(pointer_from_objref(cprobe)) + fieldoffset(_CnullProbe, 1)))
+    ty = unsafe_load(Ptr{Ptr{Cvoid}}(Ptr{UInt8}(boxed) - sizeof(Ptr{Cvoid})))
+    ccall((:static_set_julia_ptr_nothing_type, LIB_PATH), Cvoid, (Ptr{Cvoid},), ty)
     _NOTHING_SENTINEL_SET[] = true
     return
 end

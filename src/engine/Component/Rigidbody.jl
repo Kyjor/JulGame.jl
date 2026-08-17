@@ -87,9 +87,6 @@
                 reinterpret(Int64, velocity.x),
                 reinterpret(Int64, velocity.y),
             )
-            if velocity.y < 0 && this.parent.collider != C_NULL
-                this.parent.collider.currentRests = []
-            end
         else
             this.velocity = this.velocity + velocity
             if velocity.y < 0

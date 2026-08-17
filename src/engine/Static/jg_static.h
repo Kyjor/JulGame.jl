@@ -27,6 +27,8 @@ void static_update(void *animator, int32_t current_render_time);
 
 /* Julia nothing sentinel (Union{T,Nothing} bit pattern). Call once from Julia. */
 void static_set_julia_nothing(void *p);
+/* Type tag of boxed Ptr{Nothing} (Union{Mutable,Ptr{Nothing}} == C_NULL). */
+void static_set_julia_ptr_nothing_type(void *p);
 void *static_get_julia_nothing(void);
 int32_t static_ptr_is_julia_nothing(void *p);
 

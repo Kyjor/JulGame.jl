@@ -39,3 +39,23 @@ struct RigidbodyLayout
     useGravity::Bool
     velocity::Vector2f
 end
+
+# Field offsets must match fieldoffset(Entity). Stop at collider; later fields unused.
+struct EntityLayout
+    id::Ptr{Cvoid}
+    name::Ptr{Cvoid}
+    isActive::Bool
+    persistentBetweenScenes::Bool
+    transform::Ptr{Cvoid}
+    scripts::Ptr{Cvoid}
+    parent::Ptr{Cvoid}
+    animator::Ptr{Cvoid}
+    collider::Ptr{Cvoid}
+end
+
+# Field offsets must match fieldoffset(InternalCollider). Stop at currentRests.
+struct ColliderLayout
+    collisionEvents::Ptr{Cvoid}
+    currentCollisions::Ptr{Cvoid}
+    currentRests::Ptr{Cvoid}
+end
