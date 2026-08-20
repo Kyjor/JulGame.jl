@@ -8,7 +8,6 @@ ToolTips = Dict{Symbol, String}(
     :parent => "The parent of the entity. The parent of the entity is the entity that contains the entity.",
     :animator => "The animator of the entity. The animator is used to animate the entity.",
     :collider => "The collider of the entity",
-    :mesh3d => "The mesh3d of the entity. The mesh3d is used to render the entity.",
     :softwareRenderer3d => "The software renderer3d of the entity. The software renderer3d is used to render the entity.",
     :rigidbody => "The rigidbody of the entity",
     :shape => "The shape of the entity",

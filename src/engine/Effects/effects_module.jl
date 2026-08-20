@@ -9,7 +9,7 @@ module EffectsModule
     export BevelEffect, BevelEffect1, BevelEmbossEffect, DropShadowEffect, OuterGlowEffect
     export InnerGlowEffect, StrokeEffect, GradientEffect
     export TextureFillEffect, RoughEdgeEffect, InvertEffect, FrayTintEffect, NibbleOverlayEffect
-    export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget, Mesh3DTarget
+    export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget
     export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style, create_nibble_style
     export INHERIT_COLOR, BevelType, GradientStop
     export EmbossLayerStyle, BevelEmbossBlendMode, identity_emboss_lut
@@ -113,13 +113,6 @@ module EffectsModule
         image::Any  # UIImage
         function ImageTarget(image::Any)
             new(image)
-        end
-    end
-    
-    mutable struct Mesh3DTarget <: EffectTarget
-        mesh::Any  # Mesh3D
-        function Mesh3DTarget(mesh::Any)
-            new(mesh)
         end
     end
     

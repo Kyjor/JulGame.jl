@@ -5,7 +5,6 @@ function add_collider end
 function add_collision_event end
 function add_hover_enter_event end
 function add_hover_exit_event end
-function add_mesh3d end
 function add_rigidbody end
 function add_script end
 function add_shape end

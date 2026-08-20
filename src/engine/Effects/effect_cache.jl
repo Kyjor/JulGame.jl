@@ -70,9 +70,6 @@ module EffectCacheModule
         elseif target isa EffectsModule.ImageTarget
             push!(parts, hash("ImageTarget"))
             push!(parts, hash(target.image.id))
-        elseif target isa EffectsModule.Mesh3DTarget
-            push!(parts, hash("Mesh3DTarget"))
-            push!(parts, hash(target.mesh.id))
         end
         
         # Add effects hash

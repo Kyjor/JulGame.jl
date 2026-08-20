@@ -35,7 +35,6 @@
     end
 
     function Component.update(this::InternalRigidbody, dt)
-        dt = clamp(dt, 0, .5)
         if JGStaticModule.LIB_AVAILABLE
             ccall(
                 (:static_apply_forces, JGStaticModule.LIB_PATH),

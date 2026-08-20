@@ -678,16 +678,6 @@ function destroy_entity_components(this::MainLoop, entity)
 	if entitySoundSource != C_NULL
 		Component.unload_sound(entitySoundSource)
 	end
-
-	entityMesh3D = entity.mesh3d
-	if entityMesh3D != C_NULL
-		Component.destroy(entityMesh3D)
-	end
-
-	entitySoftwareRenderer3D = entity.softwareRenderer3d
-	if entitySoftwareRenderer3D != C_NULL
-		Component.destroy(entitySoftwareRenderer3D)
-	end
 end
 
 export create_entity
@@ -1096,9 +1086,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		for entity in this.scene.entities
 			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
 			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
-			mesh3dExists = entity.mesh3d != C_NULL && entity.mesh3d !== nothing
-			softwareRenderer3dExists = entity.softwareRenderer3d != C_NULL && entity.softwareRenderer3d !== nothing
-			if !entity.isActive || (!spriteExists && !shapeExists && !mesh3dExists && !softwareRenderer3dExists)
+			if !entity.isActive || (!spriteExists && !shapeExists)
 				continue
 			end
 
@@ -1106,13 +1094,9 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			size = entity.transform.scale
 			sprite = entity.sprite
 			shape = entity.shape
-			mesh3d = entity.mesh3d
-			softwareRenderer3d = entity.softwareRenderer3d
 
 			skipSprite = false
 			skipShape = false
-			skipMesh3d = false
-			skipSoftwareRenderer3d = false
 
 			# TODO: consider offset
 			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && this.optimizeSpriteRendering 
@@ -1134,12 +1118,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 			if !skipShape && shapeExists
 				push!(renderOrder, (shape.layer, shape))
-			end
-			if !skipMesh3d && mesh3dExists
-				push!(renderOrder, (mesh3d.layer, mesh3d))
-			end
-			if !skipSoftwareRenderer3d && softwareRenderer3dExists
-				push!(renderOrder, (softwareRenderer3d.layer, softwareRenderer3d))
 			end
 			if skipSprite && spriteExists
 				sprite.lastRenderedScreenPosition = nothing
@@ -1166,19 +1144,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		for i = eachindex(renderOrder)
 			try
 				rendercount += 1
-			if renderOrder[i][2] isa Component.Mesh3DModule.Mesh3D
-				Component.render(renderOrder[i][2], this)
-			elseif renderOrder[i][2] isa Component.SoftwareRenderer3DModule.SoftwareRenderer3D
-				Component.render(renderOrder[i][2], this)
-			elseif renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
+			if renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
 				Component.draw(renderOrder[i][2], camera)
 			elseif renderOrder[i][2] isa NamedTuple
 				# get the params	
 				func = renderOrder[i][2].function_to_call
 				Base.invokelatest(func)
-			elseif hasproperty(renderOrder[i][2], :textures) && hasproperty(renderOrder[i][2], :layer)
-				# Render batched static sprite layer
-				JulGame.StaticSpriteBatcherModule.render_batched_layer(renderOrder[i][2], camera)
 			else
 				println("Unknown item type: ", typeof(renderOrder[i][2]))
 			end

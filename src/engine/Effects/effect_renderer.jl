@@ -19,8 +19,6 @@ module EffectRendererModule
             return target.line.color
         elseif target isa EffectsModule.ImageTarget
             return (255, 255, 255, 255)  # Images don't have a color property
-        elseif target isa EffectsModule.Mesh3DTarget
-            return (255, 255, 255, 255)  # 3D meshes don't have a simple color property
         else
             return (255, 255, 255, 255)
         end
@@ -147,8 +145,6 @@ module EffectRendererModule
                 @error("UIImage has no surface or texture for effects processing")
                 return C_NULL
             end
-        elseif target isa EffectsModule.Mesh3DTarget
-            return render_mesh3d_to_surface(target.mesh)
         else
             @error("Unknown target type: $(typeof(target))")
             return C_NULL
@@ -199,13 +195,6 @@ module EffectRendererModule
             # Note: UIImage now manages its own texture lifecycle, so we don't destroy here
             # The old texture cleanup is handled in UIImage.update_effects()
             target.image.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
-            return target
-        elseif target isa EffectsModule.Mesh3DTarget
-            # Update mesh's effect texture
-            if target.mesh.effectTexture != C_NULL
-                SDL2.SDL_DestroyTexture(target.mesh.effectTexture)
-            end
-            target.mesh.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         else
             @error("Unknown target type: $(typeof(target))")
@@ -705,49 +694,6 @@ module EffectRendererModule
         if surface != C_NULL
             arr = unsafe_wrap(Array, surface, 10; own=false)
             SDL2.SDL_RenderFlush(renderer)
-            SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32, arr[1].pixels, arr[1].pitch)
-        end
-        
-        # Restore and cleanup
-        SDL2.SDL_SetRenderTarget(renderer, old_target)
-        SDL2.SDL_DestroyTexture(target_tex)
-        return surface
-    end
-
-    # Render Mesh3D to surface (simplified)
-    function render_mesh3d_to_surface(mesh::Any)::Ptr{SDL2.SDL_Surface}
-        if mesh == nothing
-            return C_NULL
-        end
-        
-        # Get the renderer
-        renderer = JulGame.Renderer
-        if renderer == C_NULL
-            @error("No renderer available for mesh3d effects")
-            return C_NULL
-        end
-        
-        local width = 100
-        local height = 100
-        target_tex = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_RGBA32, SDL2.SDL_TEXTUREACCESS_TARGET, width, height)
-        if target_tex == C_NULL
-            @error("render_mesh3d_to_surface: Failed to create target texture")
-            return C_NULL
-        end
-        old_target = SDL2.SDL_GetRenderTarget(renderer)
-        SDL2.SDL_SetRenderTarget(renderer, target_tex)
-        SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_BLEND)
-        SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
-        SDL2.SDL_RenderClear(renderer)
-        
-        # Draw a simple placeholder (in real implementation, render the 3D mesh)
-        SDL2.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255)
-        SDL2.SDL_RenderFillRectF(renderer, Ref(SDL2.SDL_FRect(10, 10, 80, 80)))
-        
-        # Read pixels back into a surface
-        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if surface != C_NULL
-            arr = unsafe_wrap(Array, surface, 10; own=false)
             SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32, arr[1].pixels, arr[1].pitch)
         end
         

@@ -9,8 +9,6 @@ module EntityModule
     using ..JulGame.SoundSourceModule
     using ..JulGame.SpriteModule
     using ..JulGame.TransformModule
-    using ..JulGame.Mesh3DModule
-    using ..JulGame.SoftwareRenderer3DModule
     import ..JulGame: Component
     import ..JulGame
 
@@ -25,8 +23,6 @@ module EntityModule
         parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
-        mesh3d::Union{Mesh3D, Ptr{Nothing}}
-        softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
         shape::Union{InternalShape, Ptr{Nothing}}
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
@@ -47,8 +43,6 @@ module EntityModule
             this.animator = C_NULL
             this.collider = C_NULL
             this.isActive = true
-            this.mesh3d = C_NULL
-            this.softwareRenderer3d = C_NULL
             this.scripts = []
             this.transform = transform
             this.transform.parent = this
@@ -177,32 +171,6 @@ module EntityModule
         return this.shape
     end
 
-    function JulGame.add_mesh3d(this::Entity, mesh3d::Mesh3D = Mesh3D())
-        if this.mesh3d != C_NULL
-            println("Mesh3D already exists on entity named ", this.name)
-            return
-        end
-
-        this.mesh3d = mesh3d
-        mesh3d.parent = this
-        Component.initialize(mesh3d, JulGame.MAIN)
-
-        return this.mesh3d
-    end
-
-    function JulGame.add_software_renderer3d(this::Entity, softwareRenderer3d::SoftwareRenderer3D = SoftwareRenderer3D())
-        if this.softwareRenderer3d != C_NULL
-            println("SoftwareRenderer3D already exists on entity named ", this.name)
-            return
-        end
-
-        this.softwareRenderer3d = softwareRenderer3d
-        softwareRenderer3d.parent = this
-        Component.initialize(softwareRenderer3d, JulGame.MAIN)
-
-        return this.softwareRenderer3d
-    end
-
     function JulGame.duplicate(this::Entity, id::String = JulGame.generate_uuid())
         newEntity = Entity(this.name, id, Component.duplicate(this.transform, nothing))
         # animator::Union{InternalAnimator, Ptr{Nothing}}
@@ -215,14 +183,6 @@ module EntityModule
         end
         # isActive::Bool
         newEntity.isActive = this.isActive
-        # mesh3d::Union{Mesh3D, Ptr{Nothing}}
-        if this.mesh3d != C_NULL && this.mesh3d !== nothing
-            #newEntity.mesh3d = Component.duplicate(this.mesh3d, newEntity)
-        end
-        # softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
-        if this.softwareRenderer3d != C_NULL && this.softwareRenderer3d !== nothing
-            newEntity.softwareRenderer3d = this.softwareRenderer3d
-        end
         # persistentBetweenScenes::Bool
         newEntity.persistentBetweenScenes = this.persistentBetweenScenes
         # rigidbody::Union{InternalRigidbody, Ptr{Nothing}}

@@ -154,11 +154,6 @@ function is_font_file(filepath::String)
     return ext in [".ttf", ".otf", ".woff", ".woff2"]
 end
 
-function is_3d_model_file(filepath::String)
-    ext = lowercase(splitext(filepath)[2])
-    return ext in [".obj", ".fbx", ".gltf", ".glb", ".dae"]
-end
-
 function is_config_file(filepath::String)
     ext = lowercase(splitext(filepath)[2])
     return ext in [".toml", ".yaml", ".yml", ".ini", ".cfg", ".config"]
@@ -178,8 +173,6 @@ function get_file_type(filepath::String)::Symbol
         return :scene
     elseif is_font_file(filepath)
         return :font
-    elseif is_3d_model_file(filepath)
-        return :model
     elseif is_config_file(filepath)
         return :config
     else
@@ -195,7 +188,6 @@ function get_file_type_color(file_type::Symbol)::ImVec4
         :script => ImVec4(1.0, 0.8, 0.3, 1.0),       # Yellow
         :scene => ImVec4(0.3, 0.8, 0.8, 1.0),        # Cyan
         :font => ImVec4(0.8, 0.6, 0.3, 1.0),         # Orange
-        :model => ImVec4(0.6, 0.3, 0.8, 1.0),        # Purple
         :config => ImVec4(0.8, 0.8, 0.8, 1.0),       # Gray
         :unknown => ImVec4(0.6, 0.6, 0.6, 1.0)       # Dark gray
     )
@@ -210,7 +202,6 @@ function get_file_type_icon(file_type::Symbol)::String
         :script => "Script",
         :scene => "Scene",
         :font => "Font",
-        :model => "Model",
         :config => "Config",
         :unknown => "Unknown"
     )

@@ -430,18 +430,6 @@ module SceneReaderModule
                 position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
                 alpha = !haskey(component, "alpha") ? 255 : component.alpha
                 newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, size::Vector2f, alpha::Int)
-            elseif component.type == "Mesh3D"
-                vCamera = vec3d(component.vCamera.x, component.vCamera.y, component.vCamera.z, component.vCamera.w)
-                vLookDir = vec3d(component.vLookDir.x, component.vLookDir.y, component.vLookDir.z, component.vLookDir.w)
-                newComponent = Mesh3D()
-                newComponent.fNear = get(component, "fNear", 0.1)
-                newComponent.fFar = get(component, "fFar", 1000.0)
-                newComponent.fFov = get(component, "fFov", 90.0)
-                newComponent.fYaw = get(component, "fYaw", 0.0)
-                newComponent.fTheta = get(component, "fTheta", 0.0)
-                newComponent.fAspectRatio = get(component, "fAspectRatio", 0.0)
-                newComponent.vCamera = vCamera
-                newComponent.vLookDir = vLookDir
             end
             
             return newComponent
