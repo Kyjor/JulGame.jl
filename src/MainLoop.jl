@@ -30,8 +30,6 @@ module MainLoopModule
 		empty!(JulGame.Coroutines)
 	end
 
-	include("profiling/profiling_functions.jl")
-
 	export MainLoop, mark_input_layer_order_dirty!
 	mutable struct MainLoop
 		close::Bool
@@ -41,7 +39,6 @@ module MainLoopModule
 		errorLogger::ErrorLoggingModule.ErrorLogger
 		input::Input
 		isGameModeRunningInEditor::Bool
-		latencyProfiler::Union{JulGame.LatencyProfilerModule.LatencyProfiler, Nothing}
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
@@ -52,9 +49,7 @@ module MainLoopModule
 		testMode::Bool
 		windowManager::WindowManager
 		
-		# Script tracking for profiling and debugging
 		knownScriptTypes::Set{DataType}
-		scriptTimings::Dict{DataType, Vector{Float64}}  # For profiling per script type
 		
 		cachedInputLayerOrder::Vector{Any}
 		# Cached input layer order (rebuilt only when layers change)
@@ -95,7 +90,6 @@ module MainLoopModule
 			this.coroutine_condition = Condition()
 			this.errorLogger = ErrorLoggingModule.ErrorLogger()
 			this.spriteLayers = (layers = Dict{Int, Vector{Any}}(), sorted = Int[])
-			this.latencyProfiler = nothing  # Disabled by default, enable with enable_profiling()
 
 			this.windowManager = WindowManager()
 			
@@ -109,7 +103,6 @@ module MainLoopModule
 			
 			# Initialize script tracking
 			this.knownScriptTypes = Set{DataType}()
-			this.scriptTimings = Dict{DataType, Vector{Float64}}()
 
 			return this
 		end
@@ -128,13 +121,13 @@ module MainLoopModule
 	# ============================================================================
 	# SCRIPT LIFECYCLE CALLS
 	# Wrapper functions for calling dynamically-loaded script methods.
-	# Uses Base.invokelatest to handle world age issues. Tracks first calls for profiling.
+	# Uses Base.invokelatest to handle world age issues.
 	# ============================================================================
 	
 	"""
 		call_script_initialize(this::MainLoop, script)
 	
-	Call script initialization method. Tracks first call for profiling/debugging.
+	Call script initialization method.
 	"""
 	@inline function call_script_initialize(this::MainLoop, script)
 		script_type = typeof(script)
@@ -143,45 +136,27 @@ module MainLoopModule
 			# First time: JIT compiles the method (slow but only once)
 			@debug "First initialize call for $(script_type) - compiling..."
 			push!(this.knownScriptTypes, script_type)
-			this.scriptTimings[script_type] = Float64[]
 		end
 		
 		Base.invokelatest(JulGame.initialize, script)
 	end
 	
 	"""
-		call_script_update(this::MainLoop, script, deltaTime, profile::Bool=false)
+		call_script_update(this::MainLoop, script, deltaTime)
 	
-	Call script update method with optional per-script profiling.
-	When profiling is enabled, tracks execution time per script type.
+		Call script update method.
 	"""
-	@inline function call_script_update(this::MainLoop, script, deltaTime::Float64, profile::Bool=false)
+	@inline function call_script_update(this::MainLoop, script, deltaTime::Float64)
 		script_type = typeof(script)
 		
 		if !(script_type in this.knownScriptTypes)
 			# First call: register type (compilation happens here)
 			@debug "First update call for $(script_type) - compiling..."
 			push!(this.knownScriptTypes, script_type)
-			this.scriptTimings[script_type] = Float64[]
 		end
 		
-		# Profile if requested
-		if profile && haskey(this.scriptTimings, script_type)
-			start_time = time_ns()
-			Base.invokelatest(JulGame.update, script, deltaTime)
-			elapsed = (time_ns() - start_time) / 1e6
-			if this.latencyProfiler !== nothing
-				JulGame.LatencyProfilerModule.accumulate_script_update_ms!(this.latencyProfiler, script_type, elapsed)
-			end
-			v = this.scriptTimings[script_type]
-			push!(v, elapsed)
-			# Cap growth when profiling stays on for long sessions (avoids unbounded vectors / GC pressure).
-			if length(v) > 25_000
-				deleteat!(v, 1:10_000)
-			end
-		else
-			Base.invokelatest(JulGame.update, script, deltaTime)
-		end
+	
+		Base.invokelatest(JulGame.update, script, deltaTime)
 	end
 	
 	"""
@@ -200,75 +175,21 @@ module MainLoopModule
 		# Always use invokelatest (fast after first compilation)
 		Base.invokelatest(JulGame.on_shutdown, script)
 	end
-	
-	
-	"""
-		print_script_profiling_report(this::MainLoop)
-	
-	Print profiling statistics for each script type showing mean, P95, P99, and max execution times.
-	"""
-	function print_script_profiling_report(this::MainLoop)
-		if isempty(this.scriptTimings)
-			println("No script profiling data available")
-			return
-		end
-		
-		println("\n" * "="^80)
-		println("📊 SCRIPT PERFORMANCE REPORT")
-		println("="^80)
-		
-		# Sort by mean time (slowest first)
-		sorted_scripts = sort(collect(this.scriptTimings), by = kv -> isempty(kv[2]) ? 0.0 : Statistics.mean(kv[2]), rev=true)
-		
-		for (script_type, timings) in sorted_scripts
-			if isempty(timings)
-				continue
-			end
-			
-			mean_time = mean(timings)
-			p95 = quantile(timings, 0.95)
-			p99 = quantile(timings, 0.99)
-			max_time = maximum(timings)
-			
-			println("\n📜 $(script_type)")
-			println("  ├─ Calls: $(length(timings))")
-			println("  ├─ Mean:  $(round(mean_time, digits=3)) ms")
-			println("  ├─ P95:   $(round(p95, digits=3)) ms")
-			println("  ├─ P99:   $(round(p99, digits=3)) ms")
-			println("  └─ Max:   $(round(max_time, digits=3)) ms")
-		end
-		
-		println("\n" * "="^80)
-	end
-	
-	"""
-		clear_script_profiling_data!(this::MainLoop)
-	
-	Clear all script profiling data.
-	"""
-	function clear_script_profiling_data!(this::MainLoop)
-		for (_, timings) in this.scriptTimings
-			empty!(timings)
-		end
-	end
-	
-	export call_script_initialize, call_script_update, call_script_shutdown
-	export print_script_profiling_report, clear_script_profiling_data!
 
-    function prepare_window_scripts_and_start_loop(size)
-        @debug "Preparing window"
+	function prepare_window_scripts_and_start_loop(size)
+		@debug "Preparing window"
 		MAIN.windowManager.windowSize = size
 
 		@debug "Initializing scripts and components"
-        @time "scene init: total (scripts and components)" initialize_scripts_and_components()
+		@time "scene init: total (scripts and components)" initialize_scripts_and_components()
 
-        if !JulGame.IS_EDITOR && !JulGame.IS_WEB
+		if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			@debug "Starting non editor loop"
-            full_loop(MAIN)
-            return
-        end
-    end
-
+			full_loop(MAIN)
+			return
+		end
+	end
+	
     function initialize_new_scene(this::MainLoop)
 		@debug "Initializing new scene"
 		@debug "Deserializing and building scene"
@@ -450,15 +371,6 @@ module MainLoopModule
 				push!(MAIN.scene.colliders, entity.collider)
 			end
 		end 
-		
-		# Batch static sprites for performance
-		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
-			@debug "Batching static sprites"
-			MAIN.scene.batchedLayers = JulGame.StaticSpriteBatcherModule.batch_static_sprites(MAIN.scene)
-		end
-		
-		# Mark input layer order dirty after initialization
-		mark_input_layer_order_dirty!(this)
 	end
 
 export change_scene
@@ -541,10 +453,6 @@ function JulGame.change_scene(sceneFileName::String)
 		end
         JulGame.destroy(uiElement)
 	end
-	
-	# Clean up batched static sprite textures
-	@debug "Cleaning up batched sprite layers"
-	JulGame.StaticSpriteBatcherModule.cleanup_batched_layers(this.scene.batchedLayers)
 	
 	#load new scene 
 	camera = this.scene.camera
@@ -730,17 +638,11 @@ Parameters:
 @inline function _accum_ui_render_breakdown_ms!(prof, t0::Ref{UInt64}, key::Symbol)
 	prof === nothing && return
 	t1 = time_ns()
-	JulGame.LatencyProfilerModule.accumulate_ui_render_breakdown_ms!(prof, key, (t1 - t0[]) / 1e6)
 	t0[] = t1
 	return
 end
 
 function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), lastPhysicsTime::Ref{UInt64} = Ref(UInt64(0)), windowPos::Math.Vector2 = Math.Vector2(0,0), windowSize::Math.Vector2 = Math.Vector2(0,0))
-	# Start frame profiling
-	if this.latencyProfiler !== nothing
-		JulGame.LatencyProfilerModule.start_frame(this.latencyProfiler)
-	end
-
 	JulGame.FrameCount += 1
 	if this.shouldChangeScene && !JulGame.IS_EDITOR
 		this.shouldChangeScene = false
@@ -759,28 +661,14 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			DEBUG = false
 			#region Input
 			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :input_poll)
-				end
-
 				JulGame.InputModule.poll_input(this.input)
-
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
-				end
 
 				this.close = this.input.quit
 				if this.close
 					JulGame.engine_states.current_state = :quit
 				end
 
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :render_clear)
-				end
 				SDL2.SDL_RenderClear(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
-				end
 			end
 
 			DEBUG = this.input.debug
@@ -803,10 +691,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 			#region Physics
 			if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :physics)
-				end
-				
 				currentPhysicsTime = SDL2.SDL_GetTicks()
 				deltaTime = (currentPhysicsTime - lastPhysicsTime[]) / 1000.0
 				JulGame.DELTA_TIME = deltaTime
@@ -833,26 +717,14 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				lastPhysicsTime[] =  currentPhysicsTime
 				
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
-				end
 			end
 
 		#region Rendering
-		if this.latencyProfiler !== nothing
-			JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :entity_updates)
-		end
-		
 		currentRenderTime::UInt32 = SDL2.SDL_GetTicks()
 		if this.scene.camera !== nothing && !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			JulGame.CameraModule.update(this.scene.camera)
 		end
 		
-		# Check if static sprite batches need regeneration
-		if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
-			JulGame.StaticSpriteBatcherModule.check_and_rebatch_if_needed(this.scene)
-		end
-
 			for entity in this.scene.entities
 				if !entity.isActive
 					continue
@@ -860,10 +732,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
 					try
-						# Call scripts with optional per-script profiling
 						for script in entity.scripts
-							profile_scripts = this.latencyProfiler !== nothing
-							call_script_update(this, script, deltaTime, profile_scripts)
+							call_script_update(this, script, deltaTime)
 						end
 						if this.close && !this.isGameModeRunningInEditor
 							@debug "Closing game"
@@ -902,39 +772,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				deleteat!(JulGame.Coroutines, findfirst(x -> x == coroutine_to_remove, JulGame.Coroutines))
 			end
 			
-			if this.latencyProfiler !== nothing
-				JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
-			end
-			
-			if !JulGame.IS_EDITOR && !JulGame.IS_WEB
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :sprite_rendering)
-				end
-				
+			if !JulGame.IS_EDITOR	
 				render_scene_sprites_and_shapes(this, this.scene.camera)
-				
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
-				end
 			end
 			
 			if JulGame.IS_DEBUG
 				render_scene_debug(this, cameraPosition, cameraSize)
 			end
 
-			#region UI
-			if this.latencyProfiler !== nothing
-				JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :ui_rendering)
-			end
-			
-			# Sort UI elements by layer before rendering
 			uiRenderingOrder = []
-			prof_ui = this.latencyProfiler
-			t_ui = Ref(time_ns())
 			canvases = filter(x -> isa(x, JulGame.ICanvas), this.scene.uiElements)
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_filter_canvases)
 			immediate_scene_skip = UI.ImmediateUIModule.immediate_ui_managed_scene_skip_ids()
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_skip_ids_build)
 			for uiElement in this.scene.uiElements
 				if Base.objectid(uiElement) in immediate_scene_skip
 					continue
@@ -945,22 +793,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 					push!(uiRenderingOrder, (uiElement.layer, uiElement))
 				#end
 			end
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_scene_elements_scan)
 			render_functions_to_call = filter(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			filter!(x -> x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 			for render_function in render_functions_to_call
 				push!(uiRenderingOrder, (render_function.layer, render_function))
 			end
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_render_functions_push)
 			immediateUIComponents = UI.ImmediateUIModule.manage_all_immediate_components()
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_manage_all)
 			for immediateUIComponent in immediateUIComponents
 				push!(uiRenderingOrder, (immediateUIComponent.layer, immediateUIComponent))
 			end
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_immediate_append_order)
 
 			sort!(uiRenderingOrder, by = x -> x[1])
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_sort_render_order)
 			for i = eachindex(uiRenderingOrder)
 				try
 					skipCanvasChild = false
@@ -974,15 +817,11 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						continue
 					end
 					tgt = uiRenderingOrder[i][2]
-					t_r = prof_ui === nothing ? UInt64(0) : time_ns()
 					if tgt isa NamedTuple
 						func = tgt.function_to_call
 						Base.invokelatest(func)
 					else
 						JulGame.render(tgt)
-					end
-					if prof_ui !== nothing
-						JulGame.LatencyProfilerModule.accumulate_ui_render_invoke_ms!(prof_ui, tgt, (time_ns() - t_r) / 1e6)
 					end
 				catch e
 					if this.testMode
@@ -999,11 +838,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						Base.show_backtrace(stdout, catch_backtrace())
 					end
 				end
-			end
-			_accum_ui_render_breakdown_ms!(prof_ui, t_ui, :ui_invoke_render_loop)
-			
-			if this.latencyProfiler !== nothing
-				JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
 			end
 			
 			pos1::Math.Vector2 = windowPos !== nothing ? windowPos : Math.Vector2(0, 0)
@@ -1049,16 +883,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 			if !JulGame.IS_EDITOR
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.start_section(this.latencyProfiler, :present_and_delay)
-				end
-				
 				SDL2.SDL_RenderPresent(JulGame.Renderer::Ptr{SDL2.SDL_Renderer})
 				SDL2.SDL_framerateDelay(this.windowManager.fpsManager)
-				
-				if this.latencyProfiler !== nothing
-					JulGame.LatencyProfilerModule.end_section(this.latencyProfiler)
-				end
 			end
 		catch e
 			if this.testMode
@@ -1069,10 +895,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 		end
 		
-		# End frame profiling
-		if this.latencyProfiler !== nothing
-			JulGame.LatencyProfilerModule.end_frame(this.latencyProfiler)
-		end
     end
 
 	function render_scene_sprites_and_shapes(this::MainLoop, camera::Camera)
@@ -1109,12 +931,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			end
 
 			if !skipSprite && spriteExists
-				# Skip static sprites in-game (they're rendered via batched textures)
-				# BUT always render them in editor scene viewer for manipulation
-				should_batch = sprite.isStatic && (!JulGame.IS_EDITOR || this.isGameModeRunningInEditor)
-				if !should_batch
-					push!(renderOrder, (sprite.layer, sprite))
-				end
+				push!(renderOrder, (sprite.layer, sprite))
 			end
 			if !skipShape && shapeExists
 				push!(renderOrder, (shape.layer, shape))
@@ -1129,14 +946,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 	filter!(x -> !x.isWorldEntity, JulGame.RENDER_FUNCTIONS)
 	for render_function in render_functions_to_call
 		push!(renderOrder, (render_function.layer, render_function))
-	end
-	
-	# Add batched static sprite layers to render order
-	# Only render batched layers when NOT in editor scene viewer
-	if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
-		for (layer, batched_layer) in this.scene.batchedLayers
-			push!(renderOrder, (layer, batched_layer))
-		end
 	end
 	
 	sort!(renderOrder, by = x -> x[1])

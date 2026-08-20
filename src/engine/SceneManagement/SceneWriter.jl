@@ -250,7 +250,6 @@ module SceneWriterModule
                     "center" => Dict("x" => component.center.x, "y" => component.center.y),
                     "color" => Dict("x" => component.color[1], "y" => component.color[2], "z" => component.color[3], "t" => component.color[4]),
                     "size" => Dict("x" => component.size.x, "y" => component.size.y),
-                    "isStatic" => component.isStatic,
                 )
                 push!(componentsDict, serializedComponent)
             elseif "$componentType" != "Ptr"

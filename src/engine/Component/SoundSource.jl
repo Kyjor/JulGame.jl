@@ -1,7 +1,6 @@
 module SoundSourceModule
     using ..Component.JulGame
     import ..Component
-    include(joinpath(@__DIR__, "SoundSource", "constants.jl"))
     
     export SoundSource
     struct SoundSource

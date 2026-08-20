@@ -1,4 +1,4 @@
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           module UI
+module UI
     using ..JulGame
     using ..JulGame.Math
 
@@ -42,34 +42,29 @@
         :none
     )
 
-    #include("Draggable.jl")
     include("UIElement.jl")
     include("ScreenButton.jl")
     include("TextBox.jl")
     include("Rectangle.jl")
-    include("Line.jl")
-    include("Circle.jl")
-    include("ProgressBar.jl")
     include("Canvas.jl")
     include("UIImage.jl")
     include("ImmediateUI.jl")
-    include("Factory.jl")
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
-    export TextStyleModule
+
+    using .ScreenButtonModule: ScreenButton
+    using .TextBoxModule: TextBox
+    using .RectangleModule: Rectangle
+    using .CanvasModule: Canvas
+    using .UIImageModule: UIImage
+
     export ScreenButtonModule
     export TextBoxModule
     export ImmediateUIModule
-    #export DraggableModule
     export RectangleModule
-    export LineModule
-    export CircleModule
-    export ProgressBarModule
     export CanvasModule
     export UIImageModule
 
-    export create_text_box, create_screen_button, create_rectangle, create_line, create_circle, create_progress_bar, make_draggable
     export constrain_to_window, constrain_to_rect
 
     # Re-export UI components
-    export TextBox, ScreenButton, Rectangle, Line, Circle, ProgressBar, Canvas, UIImage#, Draggable
+    export TextBox, ScreenButton, Rectangle, Canvas, UIImage
 end

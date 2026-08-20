@@ -131,7 +131,6 @@ module InputModule
     include("api.jl")
     include("clipboard.jl")
     include("cursor.jl")
-    include("profile.jl")
     include("test_helpers.jl")
     include("ui.jl")
 
@@ -262,9 +261,6 @@ module InputModule
     end
 
     function poll_input(this::Input)
-        prof = _input_latency_profiler()
-        t0 = Ref(time_ns())
-
         empty!(this.buttonsPressedDown)
         empty!(this.mouseButtonsPressedDown)
         empty!(this.mouseButtonsReleased)  # Clear the released buttons each frame
@@ -278,7 +274,6 @@ module InputModule
             elseif SDL2.SDL_PollEvent(event_ref) == 0
                 break
             end
-            # _input_poll_accumulate!(prof, t0, :sdl_PollEvent)
 
             evt = event_ref[]
             handle_window_events(this, evt)
@@ -316,10 +311,7 @@ module InputModule
             _handle_dropped_files(this, evt)
             _handle_clipboard_paste(this, evt)
 
-            # _input_poll_accumulate!(prof, t0, :window_routing)
-
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
-                t_ms_blk = time_ns()
                 this.didMouseEventOccur = true
                 if evt.type == SDL2.SDL_MOUSEMOTION
                     this.didMouseMotionOccur = true
@@ -330,24 +322,13 @@ module InputModule
 
                 ui_hit_active = JulGame.MAIN.scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !JulGame.MAIN.isGameModeRunningInEditor)
                 if ui_hit_active
-                    # _input_ui_hit_span!(prof, t_ms_blk, :hit_mouse_evt_preamble)
-                    t_ui_wall = time_ns()
-                    t_hit = Ref(time_ns())
-                    # _input_ui_hit_step!(prof, t_hit, :hit_ui_enter; evt = evt.type, mouse = (this.mousePosition.x, this.mousePosition.y), n_ui = length(MAIN.scene.uiElements))
                     if JulGame.MAIN.scene.camera === nothing
-                        # _input_ui_hit_step!(prof, t_hit, :hit_ui_abort_camera)
                         @warn ("Camera is not set in the main scene.")
-                        # _input_poll_accumulate!(prof, t0, :mouse_ui_aborted_no_camera)
                         continue
                     end
-                    # _input_ui_hit_step!(prof, t_hit, :hit_ui_camera_ok)
 
                     # Pared + sorted into reused buffers; see _build_hit_test_candidates!
                     elementsOrderedByLayerDescending, nUICandidates = _build_hit_test_candidates!()
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_filter_canvas; n_hidden = length(_inactiveCanvasChildren))
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_ui; n = nUICandidates)
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_sort_entities; n = length(elementsOrderedByLayerDescending) - nUICandidates, n_entities = length(MAIN.scene.entities))
-                    _input_ui_hit_step!(prof, t_hit, :hit_ui_vcat; n_total = length(elementsOrderedByLayerDescending))
 
                     clickedAnElementAlready = false
                     hoveredAnElementAlready = false
@@ -418,16 +399,10 @@ module InputModule
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP
                         this.elementsBeingClickedDownOn = []
                     end
-                else
-                    # _input_ui_hit_span!(prof, t_ms_blk, :hit_mouse_evt_skip_ui_hit_path)
                 end
 
-                t_hm = time_ns()
                 handle_mouse_event(this, evt)
-                # _input_ui_hit_span!(prof, t_hm, :hit_mouse_evt_handle_mouse_event)
             end
-
-            #_input_poll_accumulate!(prof, t0, :mouse_ui_hit_test_dispatch)
 
                 # if evt.jaxis.which == 0
                 #     this.jaxis = evt.jaxis
@@ -483,7 +458,6 @@ module InputModule
                 # end
             if evt.type == SDL2.SDL_QUIT
                 this.quit = true
-                #_input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
                 return -1
             end
             if evt.type == SDL2.SDL_KEYDOWN && evt.key.keysym.scancode == SDL2.SDL_SCANCODE_F3
@@ -498,7 +472,6 @@ module InputModule
                 handle_key_event(this, keyboardState)
             end
 
-            #_input_poll_accumulate!(prof, t0, :joystick_keyboard_state)
         end
 
         update_joystick_state!(this)

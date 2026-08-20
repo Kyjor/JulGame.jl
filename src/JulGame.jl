@@ -28,7 +28,6 @@ module JulGame
 
     include("engine/Diagnostics/Diagnostics.jl")
     using .Diagnostics
-    export LatencyProfilerModule
 
     include("ModuleExtensions/SDL2Extension.jl")
     const SDL2E = SDL2Extension
@@ -159,16 +158,9 @@ module JulGame
     using .Rendering
     export Rendering
 
-    include("engine/Rendering/StaticSpriteBatcher.jl")
-    using .StaticSpriteBatcherModule
-    export StaticSpriteBatcherModule
-    
-    include("engine/Rendering/StaticSpriteBatcherHelpers.jl")
-    export set_batched_layer_offset, get_batched_layer_offset, get_batched_layer_info, list_batched_layers
-
     include("MainLoop.jl") 
-    using .MainLoopModule: MainLoop, enable_profiling, disable_profiling, print_profiling_report, export_profiling_data, maybe_enable_latency_profiling_from_env!, mark_input_layer_order_dirty!
-    export MainLoop, enable_profiling, disable_profiling, print_profiling_report, export_profiling_data, maybe_enable_latency_profiling_from_env!, mark_input_layer_order_dirty!
+    using .MainLoopModule: MainLoop, mark_input_layer_order_dirty!
+    export MainLoop, mark_input_layer_order_dirty!
 
     include("utils/Exports.jl")
 end

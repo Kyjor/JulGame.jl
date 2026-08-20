@@ -18,7 +18,6 @@ module SpriteModule
         pixelsPerUnit::Int
         center::Math.Vector2f
         anchor::Symbol
-        isStatic::Bool
     end
 
     export InternalSprite
@@ -41,7 +40,6 @@ module SpriteModule
         texture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
         position::Math.Vector2f
         anchor::Symbol
-        isStatic::Bool
         #  effects support
         effects::Vector{Any}  # Will hold Effect objects
         effectTexture::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2.SDL_Texture}}
@@ -51,7 +49,7 @@ module SpriteModule
         useEffectTexture::Bool  # Toggle to enable/disable effect texture rendering
         interactionScale::Float64  # Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
         
-        function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0), isStatic::Bool = false)
+        function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0))
             this = new()
 
             this.offset = offset
@@ -73,8 +71,6 @@ module SpriteModule
             this.lastRenderedScreenSize = nothing
             this.anchor = anchor
 
-            this.isStatic = isStatic
-            
             # Initialize effects
             this.effects = Any[]
             this.effectTexture = C_NULL
@@ -546,7 +542,7 @@ module SpriteModule
     end
 
     function Component.duplicate(this::InternalSprite, parent::Any)
-        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset, isStatic=this.isStatic)
+        newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
         newSprite.interactionScale = this.interactionScale
         Component.initialize(newSprite)
         return newSprite
@@ -560,34 +556,17 @@ module SpriteModule
     function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")
         try
-            # Track if this is a static sprite property change that requires rebatching
-            needs_rebatch = false
-            
             if s == :imagePath
                 @debug("setting imagePath to: $(x)")
                 if !isdefined(this, :imagePath) || (this.imagePath != x && length(x) > 0)
                     # Reload the image, cleaning up the old one first
                     setfield!(this, s, String(x))
                     Component.load_image(this, String(x))
-                    needs_rebatch = isdefined(this, :isStatic) && this.isStatic
-                end
-                if needs_rebatch && JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
-                    JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch(JulGame.MAIN.scene, this.layer)
                 end
                 return
             end
             
-            # Check if property affects rendering and sprite is static
-            if isdefined(this, :isStatic) && this.isStatic && s in [:position, :rotation, :color, :crop, :isFlipped, :offset, :layer, :pixelsPerUnit]
-                needs_rebatch = true
-            end
-            
             setfield!(this, s, x)
-            
-            # Mark layer for rebatch if needed
-            if needs_rebatch && JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
-                JulGame.StaticSpriteBatcherModule.mark_layer_for_rebatch(JulGame.MAIN.scene, this.layer)
-            end
         catch e
             @error "Error setting sprite property $(s) to: $(x)"
             @error "Error: $e"

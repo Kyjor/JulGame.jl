@@ -14,8 +14,4 @@ module Effects
     include("effect_cache.jl")
     using .EffectCacheModule
     export EffectCacheModule
-
-    include("effect_examples.jl")
-    using .EffectExamplesModule
-    export EffectExamplesModule
 end
