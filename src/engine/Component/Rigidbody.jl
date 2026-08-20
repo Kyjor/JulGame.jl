@@ -36,21 +36,31 @@
 
     function Component.update(this::InternalRigidbody, dt)
         dt = clamp(dt, 0, .5)
-        velocityMultiplier = Math.Vector2f(1.0, 1.0)
-        transform = this.parent.transform
-        currentPosition = transform.position
-        
-        newPosition = transform.position + this.velocity*dt + this.acceleration*(dt*dt*0.5)
-        if this.grounded
-            newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
-            velocityMultiplier = Math.Vector2f(1.0, 0.0)
-        end
-        newAcceleration = Component.apply_forces(this)
-        newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_apply_forces, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int64, Int64),
+                pointer_from_objref(this),
+                reinterpret(Int64, Float64(dt)),
+                reinterpret(Int64, Float64(JulGame.GRAVITY)),
+            )
+        else
+            velocityMultiplier = Math.Vector2f(1.0, 1.0)
+            transform = this.parent.transform
+            currentPosition = transform.position
+            newPosition = transform.position + this.velocity*dt + this.acceleration*(dt*dt*0.5)
+            if this.grounded
+                newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
+                velocityMultiplier = Math.Vector2f(1.0, 0.0)
+            end
+            newAcceleration = Component.apply_forces(this)
+            newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
-        transform.position = newPosition
-        this.velocity = newVelocity * velocityMultiplier
-        this.acceleration = newAcceleration
+            transform.position = newPosition
+            this.velocity = newVelocity * velocityMultiplier
+            this.acceleration = newAcceleration
+        end
 
         if this.parent.collider != C_NULL
             Component.check_collisions(this.parent.collider)
@@ -62,10 +72,6 @@
         dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
         dragAcceleration = dragForce / this.mass
         return gravityAcceleration - dragAcceleration
-    end
-
-    function Component.get_velocity(this::InternalRigidbody)
-        return this.velocity
     end
 
     """

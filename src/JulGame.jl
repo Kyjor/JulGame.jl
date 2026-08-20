@@ -3,7 +3,7 @@ module JulGame
     include("Globals.jl")
 
     include("utils/Interfaces.jl")
-    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, ICircleCollider, IMesh3D, ISoftwareRenderer3D, IObserver, IHistory, ICanvas
+    export IEntity, IUIElement, ITransform, IShape, ISoundSource, ISprite, IAnimator, ICollider, IMesh3D, ISoftwareRenderer3D, IObserver, IHistory, ICanvas
    
     include("engine/Events/Events.jl")
     using .EventsModule
@@ -126,7 +126,7 @@ module JulGame
 
     include("engine/Component/Component.jl")
     using .Component
-    export AnimationModule, AnimatorModule, ColliderModule, CircleColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule, SoftwareRenderer3DModule
+    export AnimationModule, AnimatorModule, ColliderModule, RigidbodyModule, ShapeModule, SoundSourceModule, SpriteModule, TransformModule, SoftwareRenderer3DModule
 
     include("engine/Effects/Effects.jl")
     using .Effects

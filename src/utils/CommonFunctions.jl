@@ -34,7 +34,6 @@ function get_rotation end
 function get_scale end
 function get_size end
 function get_type end
-function get_velocity end
 function get_window_size end
 function handle_event end
 function handle_hover_event end

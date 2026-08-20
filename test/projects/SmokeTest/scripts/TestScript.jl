@@ -33,14 +33,8 @@ module TestScriptModule
                 end
             end
 
-            newCircleCollider = C_NULL
             newCollider = C_NULL
             @testset "Engine Collider Tests" begin
-                @testset "CircleCollider constructor" begin
-                    newCircleCollider = CircleColliderModule.CircleCollider(1.0, true, false, Math.Vector2f(0,0), "Default")
-                    @test newCircleCollider != C_NULL && newCircleCollider !== nothing
-                end
-
                 @testset "Collider constructor" begin
                     newCollider = ColliderModule.Collider(true, false, false, Math.Vector2f(0,0), Math.Vector2f(1,1), "Default")
                     @test newCollider != C_NULL && newCollider !== nothing
@@ -74,12 +68,6 @@ module TestScriptModule
                 @testset "Entity addAnimator" begin
                     JulGame.add_animator(newEntity, newAnimator)
                     @test newEntity.animator != C_NULL && newEntity.animator !== nothing
-                end
-
-                @testset "Entity addCircleCollider" begin
-                    JulGame.add_circle_collider(newEntity, newCircleCollider)
-                    @test newEntity.circleCollider != C_NULL && newEntity.circleCollider !== nothing
-                    newEntity.circleCollider = C_NULL # Reset for next test
                 end
 
                 @testset "Entity addCollider" begin

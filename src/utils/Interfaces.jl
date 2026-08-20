@@ -14,8 +14,6 @@ abstract type IAnimator end
 export IAnimator
 abstract type ICollider end
 export ICollider
-abstract type ICircleCollider end
-export ICircleCollider
 abstract type IMesh3D end
 export IMesh3D
 abstract type ISoftwareRenderer3D end

@@ -29,7 +29,7 @@ module SceneWriterModule
                 "isActive" => entity.isActive, 
                 "name" => entity.name, 
                 "persistentBetweenScenes" => entity.persistentBetweenScenes,
-                "components" => serialize_entity_components([entity.animator, entity.collider, entity.circleCollider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), 
+                "components" => serialize_entity_components([entity.animator, entity.collider, entity.rigidbody, entity.shape, entity.soundSource, entity.sprite, entity.transform]), 
                 "scripts" => serialize_entity_scripts(entity.scripts)))
             count += 1
         end

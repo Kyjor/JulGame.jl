@@ -4,7 +4,6 @@ module SceneReaderModule
     using ...AnimationModule
     using ...CameraModule
     using ...ColliderModule
-    using ...CircleColliderModule
     using ...EntityModule
     using ...Math
     using ...RigidbodyModule
@@ -110,15 +109,6 @@ module SceneReaderModule
                             JulGame.add_collider(newEntity, component::Collider)
                         catch e
                             @error "Failed to add collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue
-                    elseif typeof(component) == CircleCollider
-                        @debug "Adding circle collider to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            JulGame.add_circle_collider(newEntity, component::CircleCollider)
-                        catch e
-                            @error "Failed to add circle collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
                             Base.show_backtrace(stderr, catch_backtrace())
                         end
                         continue
@@ -412,8 +402,6 @@ module SceneReaderModule
                 isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
                 offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
                 newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
-            elseif component.type == "CircleCollider"
-                newComponent = CircleCollider(convert(Float64, component.diameter), component.enabled, component.isTrigger, Vector2f(component.offset.x, component.offset.y), component.tag)
             elseif component.type == "Rigidbody"
                 mass = !haskey(component, "mass") ? 1.0 : convert(Float64, component.mass)
                 useGravity = !haskey(component, "useGravity") ? true : component.useGravity

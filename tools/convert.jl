@@ -3030,7 +3030,6 @@ end
 
 # `(field, internal_type, JulGame_add_* function)` — no generated TS module yet.
 const _ENTITY_OMITTED_TS_COMPONENTS = [
-    ("circleCollider", "InternalCircleCollider", "JulGame_add_circle_collider"),
     ("shape", "InternalShape", "JulGame_add_shape"),
 ]
 

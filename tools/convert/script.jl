@@ -1355,12 +1355,6 @@ function apply_game_script_fixups(
     s = replace(s, r": EditorExport\{Bool\}" => ": boolean")
     s = replace(s, "function $name()" => "constructor()")
     s = replace(
-        s,
-        r"\(globalThis as any\)\.JulGame\.Component_get_velocity" =>
-            "(globalThis as any).JulGame.RigidbodyModule.Component_get_velocity",
-    )
-    s = replace(
-        s,
         r"\(globalThis as any\)\.JulGame\.Component_unload_sound" =>
             "(globalThis as any).JulGame.Component.unload_sound",
     )

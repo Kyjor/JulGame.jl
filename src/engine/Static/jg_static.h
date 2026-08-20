@@ -35,6 +35,7 @@ int32_t static_ptr_is_julia_nothing(void *p);
 // Rigidbody
 /* x_bits/y_bits are Float64 bit patterns (reinterpret), not integer values */
 void static_add_velocity(void *rigidbody, int64_t x_bits, int64_t y_bits);
+void static_apply_forces(void *rigidbody, int64_t dt_bits, int64_t gravity_bits);
 
 #ifdef __cplusplus
 }

@@ -22,6 +22,12 @@ struct Vector2f
     y::Float64
 end
 
+struct Vector3f
+    x::Float64
+    y::Float64
+    z::Float64
+end
+
 struct Vector4i32
     x::Int32
     y::Int32
@@ -38,6 +44,11 @@ struct RigidbodyLayout
     parent::Ptr{Cvoid}
     useGravity::Bool
     velocity::Vector2f
+end
+
+# Field offsets must match fieldoffset(Transform). Stop at position.
+struct TransformLayout
+    position::Vector3f
 end
 
 # Field offsets must match fieldoffset(Entity). Stop at collider; later fields unused.

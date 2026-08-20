@@ -3,7 +3,6 @@ module EntityModule
     using ..JulGame.AnimationModule
     using ..JulGame.AnimatorModule
     using ..JulGame.ColliderModule
-    using ..JulGame.CircleColliderModule
     using ..JulGame.Math
     using ..JulGame.RigidbodyModule
     using ..JulGame.ShapeModule
@@ -26,7 +25,6 @@ module EntityModule
         parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
-        circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
         mesh3d::Union{Mesh3D, Ptr{Nothing}}
         softwareRenderer3d::Union{SoftwareRenderer3D, Ptr{Nothing}}
         rigidbody::Union{InternalRigidbody, Ptr{Nothing}}
@@ -47,7 +45,6 @@ module EntityModule
             this.id = id
             this.name = name
             this.animator = C_NULL
-            this.circleCollider = C_NULL
             this.collider = C_NULL
             this.isActive = true
             this.mesh3d = C_NULL
@@ -117,7 +114,7 @@ module EntityModule
     end
 
     function JulGame.add_collider(this::Entity, collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
-        if this.collider != C_NULL || this.circleCollider != C_NULL
+        if this.collider != C_NULL
             println("Collider already exists on entity named ", this.name)
             return
         end
@@ -125,17 +122,6 @@ module EntityModule
         this.collider = InternalCollider(this::Entity, collider.size::Vector2f, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.isPlatformerCollider::Bool, collider.enabled::Bool)
 
         return this.collider
-    end
-
-    function JulGame.add_circle_collider(this::Entity, collider::CircleCollider = CircleCollider(1.0, true, false, Vector2f(0,0), "Default"))
-        if this.collider != C_NULL || this.circleCollider != C_NULL
-            println("Collider already exists on entity named ", this.name)
-            return
-        end
-
-        this.circleCollider = InternalCircleCollider(this::Entity, collider.diameter, collider.offset::Vector2f, collider.tag::String, collider.isTrigger::Bool, collider.enabled::Bool)
-
-        return this.circleCollider
     end
 
     function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody(1.0, true))
@@ -227,10 +213,6 @@ module EntityModule
         if this.collider != C_NULL && this.collider !== nothing
             newEntity.collider = Component.duplicate(this.collider, newEntity)
         end
-        # circleCollider::Union{InternalCircleCollider, Ptr{Nothing}}
-        # if this.circleCollider != C_NULL && this.circleCollider !== nothing
-        #     newEntity.circleCollider = Component.duplicate(this.circleCollider, newEntity)
-        # end
         # isActive::Bool
         newEntity.isActive = this.isActive
         # mesh3d::Union{Mesh3D, Ptr{Nothing}}

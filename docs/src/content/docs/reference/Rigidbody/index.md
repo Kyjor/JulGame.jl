@@ -159,5 +159,4 @@ end
 ## See Also
 
 - [Collider](/JulGame.jl/reference/Collider/) - For collision detection
-- [CircleCollider](/JulGame.jl/reference/CircleCollider/) - For circular collision areas
 - [Transform](/JulGame.jl/reference/Transform/) - For positioning entities 
