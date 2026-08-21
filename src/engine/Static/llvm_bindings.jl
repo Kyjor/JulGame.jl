@@ -90,3 +90,16 @@ function llvm_SDL_RenderFillRectF(renderer::Ptr{Cvoid}, rect::Ptr{Cvoid})::Int32
     }
     """, "main"), Int32, Tuple{Ptr{Cvoid}, Ptr{Cvoid}}, renderer, rect)
 end
+
+# Original C signature: int SDL_RenderDrawRectF(SDL_Renderer * renderer, const SDL_FRect * rect)
+function llvm_SDL_RenderDrawRectF(renderer::Ptr{Cvoid}, rect::Ptr{Cvoid})::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_RenderDrawRectF(i8*, i8*) nounwind
+
+    define i32 @main(i8* %renderer, i8* %rect) {
+    entry:
+        %result = call i32 @SDL_RenderDrawRectF(i8* %renderer, i8* %rect)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, Ptr{Cvoid}}, renderer, rect)
+end

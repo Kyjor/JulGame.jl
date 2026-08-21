@@ -56,12 +56,15 @@ module ShapeModule
         end
 
         if JGStaticModule.LIB_AVAILABLE
+            camera_ptr = camera === nothing ? C_NULL : pointer_from_objref(camera)
             ccall(
                 (:static_draw_shape, JGStaticModule.LIB_PATH),
                 Cvoid,
-                (Ptr{Cvoid}, Ptr{Cvoid}),
+                (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Int64),
                 pointer_from_objref(this),
                 JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
+                camera_ptr,
+                reinterpret(Int64, Float64(JulGame.SCALE_UNITS)),
             )
             return
         end

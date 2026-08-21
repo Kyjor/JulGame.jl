@@ -27,6 +27,13 @@ struct Vector2i32
     y::Int32
 end
 
+# InternalShape.color is Math.Vector3 = _Vector3{Int32}, not Vector3f.
+struct Vector3i32
+    x::Int32
+    y::Int32
+    z::Int32
+end
+
 struct Color4i64
     r::Int64
     g::Int64
@@ -85,7 +92,7 @@ struct EntityLayout
     name::Ptr{Cvoid}
     isActive::Bool
     persistentBetweenScenes::Bool
-    transform::Ptr{Cvoid}
+    transform::Ptr{TransformLayout}
     scripts::Ptr{Cvoid}
     parent::Ptr{Cvoid}
     animator::Ptr{Cvoid}
@@ -104,7 +111,7 @@ struct ShapeLayout
     isFilled::Bool
     isWorldEntity::Bool
     layer::Int
-    color::Vector3f
+    color::Vector3i32
     alpha::Int
     offset::Vector2f
     parent::Ptr{Cvoid}
