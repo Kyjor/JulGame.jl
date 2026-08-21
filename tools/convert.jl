@@ -3425,10 +3425,6 @@ end
 
 function custom_function_removal(data::AbstractString, path_jl::AbstractString = "")
     functions_to_remove = [
-        "Component_update_array_value",
-        "Component_append_array",
-        "Component_get_type",
-
         # MainLoop
 
         # Transform

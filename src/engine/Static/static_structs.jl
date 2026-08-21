@@ -22,6 +22,18 @@ struct Vector2f
     y::Float64
 end
 
+struct Vector2i32
+    x::Int32
+    y::Int32
+end
+
+struct Color4i64
+    r::Int64
+    g::Int64
+    b::Int64
+    a::Int64
+end
+
 struct Vector3f
     x::Float64
     y::Float64
@@ -46,9 +58,25 @@ struct RigidbodyLayout
     velocity::Vector2f
 end
 
-# Field offsets must match fieldoffset(Transform). Stop at position.
+# Field offsets must match fieldoffset(Transform). Stop at scale.
 struct TransformLayout
     position::Vector3f
+    scale::Vector3f
+end
+
+# Field offsets must match fieldoffset(Camera).
+struct CameraLayout
+    id::Ptr{Cvoid}
+    name::Ptr{Cvoid}
+    backgroundColor::Color4i64
+    offset::Vector2f
+    position::Vector3f
+    size::Vector2i32
+    zoom::Float64
+    yaw::Float64
+    pitch::Float64
+    target::Ptr{Cvoid}
+    windowPos::Vector2i32
 end
 
 # Field offsets must match fieldoffset(Entity). Stop at collider; later fields unused.

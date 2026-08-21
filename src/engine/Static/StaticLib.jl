@@ -35,8 +35,7 @@ end
 # endregion Input 
 
 # region Camera
-
-
+include("Camera/Camera.jl")
 # endregion Camera
 
 # region Animator

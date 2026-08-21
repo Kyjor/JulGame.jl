@@ -53,7 +53,7 @@
                 newPosition = Math.Vector2f(newPosition.x, currentPosition.y)
                 velocityMultiplier = Math.Vector2f(1.0, 0.0)
             end
-            newAcceleration = Component.apply_forces(this)
+            newAcceleration = apply_forces(this)
             newVelocity = this.velocity + (this.acceleration+newAcceleration)*(dt*0.5)
 
             transform.position = newPosition
@@ -66,7 +66,7 @@
         end
     end
 
-    function Component.apply_forces(this::InternalRigidbody)
+    function apply_forces(this::InternalRigidbody)
         gravityAcceleration = Math.Vector2f(0.0, this.useGravity ? JulGame.GRAVITY : 0.0)
         dragForce = 0.5 * this.drag * (this.velocity * this.velocity)
         dragAcceleration = dragForce / this.mass

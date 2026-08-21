@@ -1,8 +1,6 @@
 # Declare Common Functions so that they can be dispatched from ModuleExtensions
 import ..JulGame: add_collision_event,
-    append_array,
     apply_effects!,
-    apply_forces,
     check_collisions,
     destroy,
     draw,
@@ -12,7 +10,6 @@ import ..JulGame: add_collision_event,
     get_rotation,
     get_scale,
     get_size,
-    get_type,
     initialize,
     is_mouse_hovering,
     load_image,
@@ -29,5 +26,5 @@ import ..JulGame: add_collision_event,
     stop_music,
     toggle_sound,
     unload_sound,
-    update,
-    update_array_value
+    update
+

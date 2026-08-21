@@ -37,6 +37,10 @@ int32_t static_ptr_is_julia_nothing(void *p);
 void static_add_velocity(void *rigidbody, int64_t x_bits, int64_t y_bits);
 void static_apply_forces(void *rigidbody, int64_t dt_bits, int64_t gravity_bits);
 
+// Camera
+/* scale_units_bits is a Float64 bit pattern (reinterpret) */
+void static_update_camera(void *camera, void *renderer, int64_t scale_units_bits);
+
 #ifdef __cplusplus
 }
 #endif

@@ -80,10 +80,6 @@
         end
     end
 
-    function Component.append_array(this::InternalAnimator)
-        push!(this.animations, Animation([Math.Vector4(0,0,0,0)], 60))
-    end
-    
     function Component.play_animation_once(this::InternalAnimator, animationIndex::Int)
         if JGStaticModule.LIB_AVAILABLE
             ccall(

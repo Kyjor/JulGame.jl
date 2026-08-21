@@ -140,8 +140,8 @@ module JulGame
     export ImageFXModule, BackgroundFXModule
     
     include("engine/Camera/Camera.jl")
-    using .CameraModule: Camera, pixels_per_world_unit, apply_zoom_to_center!
-    export pixels_per_world_unit, apply_zoom_to_center!
+    using .CameraModule: Camera, pixels_per_world_unit
+    export pixels_per_world_unit
     
     include("engine/Entity.jl") 
     using .EntityModule   

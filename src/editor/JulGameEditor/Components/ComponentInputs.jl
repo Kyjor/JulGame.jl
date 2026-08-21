@@ -25,7 +25,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                 animations = animator.animations
                 currentRenderTime = SDL2.SDL_GetTicks()
 
-                CImGui.Button("Add Animation") && Component.append_array(animator)
+                CImGui.Button("Add Animation") && push!(animations, Animation([Math.Vector4(0,0,0,0)], 60))
                 for i = eachindex(animations) 
                     if animator.parent.sprite != C_NULL && animator.parent.sprite !== nothing
                         animator_preview_dict_key = "animation-$(animator.parent.id)-$(i)"
@@ -48,7 +48,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                                 animator.animations[i].animatedFPS = x
                             elseif animationFieldString == "frames"
                                 try
-                                    CImGui.Button("Add Frame") && Component.append_array(animations[i])
+                                    CImGui.Button("Add Frame") && push!(animations[i].frames, Math.Vector4(0,0,0,0))
                                     CImGui.Button("Delete") && (deleteat!(animations, i); break;)
                                     for k = eachindex(animations[i].frames)
                                         vec = animations[i].frames[k]
@@ -92,7 +92,7 @@ function show_animator_properties(animator, animation_window_dict, animator_prev
                                             CImGui.InputInt4("frame input $(k)", vec4i)
                                             window_info[]["points"][][1] = ImVec2(vec4i[1], vec4i[2])
                                             window_info[]["points"][][2] = ImVec2(round(vec4i[1] + vec4i[3]), round(vec4i[2] + vec4i[4]))
-                                            Component.update_array_value(animations[i], JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4])), animationFields[j], Int32(k))
+                                            animations[i].frames[k] = JulGame.Math.Vector4(Int32(vec4i[1]), Int32(vec4i[2]), Int32(vec4i[3]), Int32(vec4i[4]))
                                             CImGui.TreePop()
                                         end
                                     end

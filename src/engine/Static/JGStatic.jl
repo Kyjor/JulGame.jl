@@ -34,6 +34,16 @@ function lib_available()::Bool
     LIB_AVAILABLE
 end
 
+"""Promote libsdl2 into the global symbol table so llvmcall SDL_* externs resolve."""
+function ensure_sdl_global!()
+    if Sys.iswindows()
+        return
+    end
+    lib = _sdl2_lib()
+    ccall(:dlopen, Ptr{Cvoid}, (Cstring, Cint), lib, _RTLD_LAZY | _RTLD_GLOBAL)
+    return
+end
+
 """Open libjg_static with RTLD_GLOBAL before any ccall."""
 function ensure_lib_opened!()
     LIB_AVAILABLE || return
@@ -41,8 +51,17 @@ function ensure_lib_opened!()
         # LoadLibrary is process-global; Julia's ccall path is enough.
         return
     end
+    ensure_sdl_global!()
     ccall(:dlopen, Ptr{Cvoid}, (Cstring, Cint), LIB_PATH, _RTLD_LAZY | _RTLD_GLOBAL)
     return
+end
+
+function _sdl2_lib()
+    lib = parentmodule(@__MODULE__).SDL2.LibSDL2.libsdl2
+    if isa(lib, Function)
+        return lib()
+    end
+    return lib
 end
 
 """Capture Julia's nothing sentinel once so the static lib can null-check Union fields."""

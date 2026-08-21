@@ -207,9 +207,7 @@ module MainLoopModule
     function reset_camera_position(this::MainLoop)
 		@debug "Resetting camera position"
 		if this.scene.camera === nothing return end
-
-        cameraPosition = Math.Vector3f(0.0, 0.0, 0.0)
-        JulGame.CameraModule.update(this.scene.camera, cameraPosition)
+        this.scene.camera.position = Math.Vector3f(0.0, 0.0, 0.0)
     end
 	
     function full_loop(this::MainLoop)
