@@ -45,3 +45,7 @@ include("Component/Animator.jl")
 # region Rigidbody
 include("Component/Rigidbody.jl")
 # endregion Rigidbody
+
+# region Shape
+include("Component/Shape.jl")
+# endregion Shape

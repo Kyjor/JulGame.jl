@@ -41,6 +41,9 @@ void static_apply_forces(void *rigidbody, int64_t dt_bits, int64_t gravity_bits)
 /* scale_units_bits is a Float64 bit pattern (reinterpret) */
 void static_update_camera(void *camera, void *renderer, int64_t scale_units_bits);
 
+// Shape
+void static_draw_shape(void *shape, void *renderer);
+
 #ifdef __cplusplus
 }
 #endif

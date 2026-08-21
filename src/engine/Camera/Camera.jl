@@ -71,7 +71,7 @@ module CameraModule
             center_pixels = Vector2f(this.size.x / 2, this.size.y / 2)
             center_world = center_pixels / pixels_per_world_unit(this)
 
-            if this.target !== nothing && this.target !== C_NULL && newPosition === nothing
+            if this.target !== nothing && this.target !== C_NULL
                 targetPos::Vector3f = this.target.position
                 targetScale::Vector2f = this.target.scale
                 this.position = Vector3f(targetPos.x - center_world.x + 0.5 * targetScale.x + this.offset.x,

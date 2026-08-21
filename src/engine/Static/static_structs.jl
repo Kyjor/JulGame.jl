@@ -98,3 +98,15 @@ struct ColliderLayout
     currentCollisions::Ptr{Cvoid}
     currentRests::Ptr{Cvoid}
 end
+
+struct ShapeLayout
+    position::Vector2f
+    isFilled::Bool
+    isWorldEntity::Bool
+    layer::Int
+    color::Vector3f
+    alpha::Int
+    offset::Vector2f
+    parent::Ptr{Cvoid}
+    size::Vector2f
+end

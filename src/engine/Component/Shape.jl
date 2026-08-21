@@ -50,10 +50,22 @@ module ShapeModule
         return new(layer, alpha)
     end
 
-    function Component.draw(this::InternalShape, camera = nothing)
+    function Component.draw(this::InternalShape, camera)
         if JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
             return                    
         end
+
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_draw_shape, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Ptr{Cvoid}),
+                pointer_from_objref(this),
+                JulGame.Renderer::Ptr{SDL2.SDL_Renderer},
+            )
+            return
+        end
+        @info "Drawing shape"
 
         parentTransform = this.parent.transform
 

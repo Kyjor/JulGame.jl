@@ -102,7 +102,7 @@ module SpriteModule
     include(joinpath(@__DIR__, "Sprite", "constants.jl"))
     include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
     
-    function Component.draw(this::InternalSprite, camera = nothing)
+    function Component.draw(this::InternalSprite, camera)
         if this.image == C_NULL || JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
             return
         end

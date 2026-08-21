@@ -57,6 +57,7 @@ functions_to_compile = [
     (static_add_velocity, (Ptr{Cvoid}, Int64, Int64), "static_add_velocity"),
     (static_apply_forces, (Ptr{Cvoid}, Int64, Int64), "static_apply_forces"),
     (static_update_camera, (Ptr{Cvoid}, Ptr{Cvoid}, Int64), "static_update_camera"),
+    (static_draw_shape, (Ptr{Cvoid}, Ptr{Cvoid}), "static_draw_shape"),
 ]
 
 compile_ok = true
