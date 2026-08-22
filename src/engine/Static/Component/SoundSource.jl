@@ -82,36 +82,10 @@ function static_load_sound(
     base_path::Ptr{UInt8},
     sound_path::Ptr{UInt8},
 )::Ptr{Cvoid}
-    if base_path == C_NULL || sound_path == C_NULL
+    full_path::Ptr{UInt8} = malloc_joined_path(base_path, sound_path, ASSETS_SOUNDS_INFIX)
+    if full_path == C_NULL
         return C_NULL
     end
-
-    base_len::UInt32 = cstring_length(base_path)
-    sound_len::UInt32 = cstring_length(sound_path)
-    slash::UInt8 = 0x2f
-    needs_slash::Bool = true
-    if base_len > UInt32(0)
-        last_base::UInt8 = unsafe_load(base_path + (base_len - UInt32(1)))
-        if last_base == slash || last_base == 0x5c
-            needs_slash = false
-        end
-    end
-    slash_len::UInt32 = needs_slash ? UInt32(1) : UInt32(0)
-
-    assets_dir = c"assets/sounds/"
-    assets_len::UInt32 = cstring_length(pointer(assets_dir))
-    full_len::UInt32 = base_len + slash_len + assets_len + sound_len + UInt32(1)
-    full_path::Ptr{UInt8} = Ptr{UInt8}(wasm_malloc(full_len))
-
-    write_at::UInt32 = copy_cstring_bytes(full_path, UInt32(0), base_path)
-    if needs_slash
-        unsafe_store!(full_path + write_at, slash)
-        write_at += UInt32(1)
-    end
-    write_at = copy_cstring_bytes(full_path, write_at, pointer(assets_dir))
-    write_at = copy_cstring_bytes(full_path, write_at, sound_path)
-    unsafe_store!(full_path + write_at, 0x00)
-
     loaded::Ptr{Cvoid} = C_NULL
     if is_music != Int32(0)
         loaded = llvm_Mix_LoadMUS(full_path)

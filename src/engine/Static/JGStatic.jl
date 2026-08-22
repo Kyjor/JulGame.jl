@@ -34,13 +34,14 @@ function lib_available()::Bool
     LIB_AVAILABLE
 end
 
-"""Promote libsdl2 + libsdl2_mixer into the global symbol table so llvmcall SDL_*/Mix_* externs resolve."""
+"""Promote libsdl2 + libsdl2_mixer + libsdl2_image into the global symbol table so llvmcall SDL_*/Mix_*/IMG_* externs resolve."""
 function ensure_sdl_global!()
     if Sys.iswindows()
         return
     end
     ccall(:dlopen, Ptr{Cvoid}, (Cstring, Cint), _sdl2_lib(), _RTLD_LAZY | _RTLD_GLOBAL)
     ccall(:dlopen, Ptr{Cvoid}, (Cstring, Cint), _sdl2_mixer_lib(), _RTLD_LAZY | _RTLD_GLOBAL)
+    ccall(:dlopen, Ptr{Cvoid}, (Cstring, Cint), _sdl2_image_lib(), _RTLD_LAZY | _RTLD_GLOBAL)
     return
 end
 
@@ -66,6 +67,14 @@ end
 
 function _sdl2_mixer_lib()
     lib = parentmodule(@__MODULE__).SDL2.LibSDL2.libsdl2_mixer
+    if isa(lib, Function)
+        return lib()
+    end
+    return lib
+end
+
+function _sdl2_image_lib()
+    lib = parentmodule(@__MODULE__).SDL2.LibSDL2.libsdl2_image
     if isa(lib, Function)
         return lib()
     end

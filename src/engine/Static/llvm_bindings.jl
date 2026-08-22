@@ -10,6 +10,23 @@ struct SDL_FRect
     h::Float32
 end
 
+struct SDL_Rect
+    x::Int32
+    y::Int32
+    w::Int32
+    h::Int32
+end
+
+struct SDL_Point
+    x::Int32
+    y::Int32
+end
+
+struct SDL_FPoint
+    x::Float32
+    y::Float32
+end
+
 function wasm_malloc(size::UInt32)::Ptr{Cvoid}
     Base.llvmcall(("""
         declare noalias i8* @malloc(i32) nounwind
@@ -317,4 +334,159 @@ function llvm_Mix_LoadWAV(file_path::Ptr{UInt8})::Ptr{Cvoid}
         ret i8* %result
     }
     """, "main"), Ptr{Cvoid}, Tuple{Ptr{UInt8}}, file_path)
+end
+
+# Original C signature: SDL_Surface * IMG_Load(const char * file)
+function llvm_IMG_Load(file_path::Ptr{UInt8})::Ptr{Cvoid}
+    Base.llvmcall(("""
+    declare i8* @IMG_Load(i8*) nounwind
+
+    define i8* @main(i8* %file_path) {
+    entry:
+        %result = call i8* @IMG_Load(i8* %file_path)
+        ret i8* %result
+    }
+    """, "main"), Ptr{Cvoid}, Tuple{Ptr{UInt8}}, file_path)
+end
+
+# Original C signature: SDL_Texture * SDL_CreateTextureFromSurface(SDL_Renderer * renderer, SDL_Surface * surface)
+function llvm_SDL_CreateTextureFromSurface(renderer::Ptr{Cvoid}, surface::Ptr{Cvoid})::Ptr{Cvoid}
+    Base.llvmcall(("""
+    declare i8* @SDL_CreateTextureFromSurface(i8*, i8*) nounwind
+
+    define i8* @main(i8* %renderer, i8* %surface) {
+    entry:
+        %result = call i8* @SDL_CreateTextureFromSurface(i8* %renderer, i8* %surface)
+        ret i8* %result
+    }
+    """, "main"), Ptr{Cvoid}, Tuple{Ptr{Cvoid}, Ptr{Cvoid}}, renderer, surface)
+end
+
+# Original C signature: void SDL_DestroyTexture(SDL_Texture * texture)
+function llvm_SDL_DestroyTexture(texture::Ptr{Cvoid})
+    Base.llvmcall(("""
+    declare void @SDL_DestroyTexture(i8*) nounwind
+
+    define void @main(i8* %texture) {
+    entry:
+        call void @SDL_DestroyTexture(i8* %texture)
+        ret void
+    }
+    """, "main"), Nothing, Tuple{Ptr{Cvoid}}, texture)
+    return
+end
+
+# Original C signature: void SDL_FreeSurface(SDL_Surface * surface)
+function llvm_SDL_FreeSurface(surface::Ptr{Cvoid})
+    Base.llvmcall(("""
+    declare void @SDL_FreeSurface(i8*) nounwind
+
+    define void @main(i8* %surface) {
+    entry:
+        call void @SDL_FreeSurface(i8* %surface)
+        ret void
+    }
+    """, "main"), Nothing, Tuple{Ptr{Cvoid}}, surface)
+    return
+end
+
+# Original C signature: int SDL_SetTextureColorMod(SDL_Texture * texture, Uint8 r, Uint8 g, Uint8 b)
+function llvm_SDL_SetTextureColorMod(texture::Ptr{Cvoid}, r::UInt8, g::UInt8, b::UInt8)::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_SetTextureColorMod(i8*, i8, i8, i8) nounwind
+
+    define i32 @main(i8* %texture, i8 %r, i8 %g, i8 %b) {
+    entry:
+        %result = call i32 @SDL_SetTextureColorMod(i8* %texture, i8 %r, i8 %g, i8 %b)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, UInt8, UInt8, UInt8}, texture, r, g, b)
+end
+
+# Original C signature: int SDL_SetTextureAlphaMod(SDL_Texture * texture, Uint8 alpha)
+function llvm_SDL_SetTextureAlphaMod(texture::Ptr{Cvoid}, alpha::UInt8)::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_SetTextureAlphaMod(i8*, i8) nounwind
+
+    define i32 @main(i8* %texture, i8 %alpha) {
+    entry:
+        %result = call i32 @SDL_SetTextureAlphaMod(i8* %texture, i8 %alpha)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, UInt8}, texture, alpha)
+end
+
+# Original C signature: int SDL_GetTextureColorMod(SDL_Texture * texture, Uint8 * r, Uint8 * g, Uint8 * b)
+function llvm_SDL_GetTextureColorMod(
+    texture::Ptr{Cvoid}, r::Ptr{UInt8}, g::Ptr{UInt8}, b::Ptr{UInt8},
+)::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_GetTextureColorMod(i8*, i8*, i8*, i8*) nounwind
+
+    define i32 @main(i8* %texture, i8* %r, i8* %g, i8* %b) {
+    entry:
+        %result = call i32 @SDL_GetTextureColorMod(i8* %texture, i8* %r, i8* %g, i8* %b)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, Ptr{UInt8}, Ptr{UInt8}, Ptr{UInt8}}, texture, r, g, b)
+end
+
+# Original C signature: int SDL_GetTextureAlphaMod(SDL_Texture * texture, Uint8 * alpha)
+function llvm_SDL_GetTextureAlphaMod(texture::Ptr{Cvoid}, alpha::Ptr{UInt8})::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_GetTextureAlphaMod(i8*, i8*) nounwind
+
+    define i32 @main(i8* %texture, i8* %alpha) {
+    entry:
+        %result = call i32 @SDL_GetTextureAlphaMod(i8* %texture, i8* %alpha)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, Ptr{UInt8}}, texture, alpha)
+end
+
+# angle_bits is a Float64 bit pattern; bitcast in IR (Ptr+double llvmcall ABI is broken).
+# Original C signature: int SDL_RenderCopyEx(SDL_Renderer*, SDL_Texture*, const SDL_Rect*, const SDL_Rect*, double, const SDL_Point*, SDL_RendererFlip)
+function llvm_SDL_RenderCopyEx(
+    renderer::Ptr{Cvoid},
+    texture::Ptr{Cvoid},
+    source_rect::Ptr{Cvoid},
+    dest_rect::Ptr{Cvoid},
+    angle_bits::Int64,
+    rotation_center::Ptr{Cvoid},
+    flip::Int32,
+)::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_RenderCopyEx(i8*, i8*, i8*, i8*, double, i8*, i32) nounwind
+
+    define i32 @main(i8* %renderer, i8* %texture, i8* %source_rect, i8* %dest_rect, i64 %angle_bits, i8* %rotation_center, i32 %flip) {
+    entry:
+        %angle = bitcast i64 %angle_bits to double
+        %result = call i32 @SDL_RenderCopyEx(i8* %renderer, i8* %texture, i8* %source_rect, i8* %dest_rect, double %angle, i8* %rotation_center, i32 %flip)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Int64, Ptr{Cvoid}, Int32},
+        renderer, texture, source_rect, dest_rect, angle_bits, rotation_center, flip)
+end
+
+# Original C signature: int SDL_RenderCopyExF(..., const SDL_FRect * dstrect, double angle, const SDL_FPoint * center, ...)
+function llvm_SDL_RenderCopyExF(
+    renderer::Ptr{Cvoid},
+    texture::Ptr{Cvoid},
+    source_rect::Ptr{Cvoid},
+    dest_rect::Ptr{Cvoid},
+    angle_bits::Int64,
+    rotation_center::Ptr{Cvoid},
+    flip::Int32,
+)::Int32
+    Base.llvmcall(("""
+    declare i32 @SDL_RenderCopyExF(i8*, i8*, i8*, i8*, double, i8*, i32) nounwind
+
+    define i32 @main(i8* %renderer, i8* %texture, i8* %source_rect, i8* %dest_rect, i64 %angle_bits, i8* %rotation_center, i32 %flip) {
+    entry:
+        %angle = bitcast i64 %angle_bits to double
+        %result = call i32 @SDL_RenderCopyExF(i8* %renderer, i8* %texture, i8* %source_rect, i8* %dest_rect, double %angle, i8* %rotation_center, i32 %flip)
+        ret i32 %result
+    }
+    """, "main"), Int32, Tuple{Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Int64, Ptr{Cvoid}, Int32},
+        renderer, texture, source_rect, dest_rect, angle_bits, rotation_center, flip)
 end

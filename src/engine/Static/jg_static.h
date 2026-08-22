@@ -59,6 +59,22 @@ void *static_load_sound(int32_t is_music, const uint8_t *base_path, const uint8_
 /* Sets isMusic, Mix-loads, returns C_NULL on SDL error (already printed). */
 void *static_load_sound_source(void *sound_source, int32_t is_music, const uint8_t *base_path, const uint8_t *sound_path);
 
+// Sprite (non-effect). Concatenates base_path + /assets/images/ + image_path.
+void *static_load_image(const uint8_t *base_path, const uint8_t *image_path);
+void *static_create_texture_from_surface(void *renderer, void *surface);
+void static_destroy_texture(void *texture);
+void static_free_surface(void *surface);
+void static_surface_size(void *surface, int32_t *out_width_height);
+void static_set_texture_color(void *texture, int32_t red, int32_t green, int32_t blue, int32_t alpha);
+void static_sdl_clear_error(void);
+int32_t static_draw_sprite(
+    void *sprite, void *renderer, void *camera, void *texture, void *transform,
+    int64_t scale_units_bits, int64_t default_pixels_per_unit,
+    int32_t has_crop, int32_t crop_x, int32_t crop_y, int32_t crop_z, int32_t crop_t,
+    int32_t size_x, int32_t size_y,
+    int64_t pixels_per_unit, int32_t is_flipped, int32_t is_float_precision, int32_t anchor,
+    double *screen_rect);
+
 #ifdef __cplusplus
 }
 #endif

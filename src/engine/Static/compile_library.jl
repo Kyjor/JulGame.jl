@@ -66,6 +66,21 @@ functions_to_compile = [
     (static_set_master_volume, (Int32,), "static_set_master_volume"),
     (static_load_sound, (Int32, Ptr{UInt8}, Ptr{UInt8}), "static_load_sound"),
     (static_load_sound_source, (Ptr{Cvoid}, Int32, Ptr{UInt8}, Ptr{UInt8}), "static_load_sound_source"),
+    (static_load_image, (Ptr{UInt8}, Ptr{UInt8}), "static_load_image"),
+    (static_create_texture_from_surface, (Ptr{Cvoid}, Ptr{Cvoid}), "static_create_texture_from_surface"),
+    (static_destroy_texture, (Ptr{Cvoid},), "static_destroy_texture"),
+    (static_free_surface, (Ptr{Cvoid},), "static_free_surface"),
+    (static_surface_size, (Ptr{Cvoid}, Ptr{Int32}), "static_surface_size"),
+    (static_set_texture_color, (Ptr{Cvoid}, Int32, Int32, Int32, Int32), "static_set_texture_color"),
+    (static_sdl_clear_error, (), "static_sdl_clear_error"),
+    (static_draw_sprite, (
+        Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid},
+        Int64, Int64,
+        Int32, Int32, Int32, Int32, Int32,
+        Int32, Int32,
+        Int64, Int32, Int32, Int32,
+        Ptr{Float64},
+    ), "static_draw_sprite"),
 ]
 
 compile_ok = true

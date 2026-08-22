@@ -101,9 +101,81 @@ module SpriteModule
 
     include(joinpath(@__DIR__, "Sprite", "constants.jl"))
     include(joinpath(@__DIR__, "Sprite", "effects_functions.jl"))
+
+    function _static_sprite_anchor(anchor::Symbol)::Int32
+        anchor === :top && return Int32(1)
+        anchor === :bottom && return Int32(2)
+        anchor === :left && return Int32(3)
+        anchor === :right && return Int32(4)
+        anchor === :topleft && return Int32(5)
+        anchor === :topright && return Int32(6)
+        anchor === :bottomleft && return Int32(7)
+        anchor === :bottomright && return Int32(8)
+        return Int32(0)
+    end
     
     function Component.draw(this::InternalSprite, camera)
         if this.image == C_NULL || JulGame.Renderer::Ptr{SDL2.SDL_Renderer} == C_NULL
+            return
+        end
+
+        using_effect_texture = this.useEffectTexture && length(this.effects) > 0 && this.effectTexture != C_NULL
+        if JGStaticModule.LIB_AVAILABLE && !(length(this.effects) > 0 && this.needsEffectUpdate) && !using_effect_texture
+            if this.texture == C_NULL && this.image != C_NULL
+                this.texture = get_or_create_texture(this.imagePath, this.image)
+                Component.set_color(this)
+            end
+            if this.texture == C_NULL
+                return
+            end
+            has_crop = Int32(0)
+            crop_x = Int32(0)
+            crop_y = Int32(0)
+            crop_z = Int32(0)
+            crop_t = Int32(0)
+            if this.crop != C_NULL && this.crop != Math.Vector4(0, 0, 0, 0)
+                has_crop = Int32(1)
+                crop_x = Int32(this.crop.x)
+                crop_y = Int32(this.crop.y)
+                crop_z = Int32(this.crop.z)
+                crop_t = Int32(this.crop.t)
+            end
+            camera_ptr = camera === nothing ? C_NULL : pointer_from_objref(camera)
+            screen_rect = Vector{Float64}(undef, 4)
+            render_status = GC.@preserve screen_rect ccall(
+                (:static_draw_sprite, JGStaticModule.LIB_PATH),
+                Int32,
+                (
+                    Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid},
+                    Int64, Int64,
+                    Int32, Int32, Int32, Int32, Int32,
+                    Int32, Int32,
+                    Int64, Int32, Int32, Int32,
+                    Ptr{Float64},
+                ),
+                pointer_from_objref(this),
+                Ptr{Cvoid}(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}),
+                camera_ptr,
+                Ptr{Cvoid}(this.texture),
+                pointer_from_objref(this.parent.transform),
+                reinterpret(Int64, Float64(JulGame.SCALE_UNITS)),
+                Int64(JulGame.PIXELS_PER_UNIT),
+                has_crop, crop_x, crop_y, crop_z, crop_t,
+                Int32(this.size.x), Int32(this.size.y),
+                Int64(this.pixelsPerUnit),
+                Int32(this.isFlipped),
+                Int32(this.isFloatPrecision),
+                _static_sprite_anchor(this.anchor),
+                pointer(screen_rect),
+            )
+            this.lastRenderedScreenPosition = Math.Vector2f(screen_rect[1], screen_rect[2])
+            this.lastRenderedScreenSize = Math.Vector2f(screen_rect[3], screen_rect[4])
+            if render_status != 0
+                if get(TEXTURE_CACHE, this.imagePath, C_NULL) == this.texture
+                    delete!(TEXTURE_CACHE, this.imagePath)
+                end
+                this.texture = C_NULL
+            end
             return
         end
         
@@ -301,6 +373,26 @@ module SpriteModule
     is_shared_surface(surface)::Bool = surface in SURFACE_CACHE_PTRS
 
     function get_or_load_surface(fullPath::String, imagePath::String)
+        if JGStaticModule.LIB_AVAILABLE
+            cached = get(SURFACE_CACHE, imagePath, C_NULL)
+            if cached != C_NULL
+                return cached
+            end
+            base_path = JulGame.BasePath
+            surface = GC.@preserve base_path imagePath ccall(
+                (:static_load_image, JGStaticModule.LIB_PATH),
+                Ptr{Cvoid},
+                (Ptr{UInt8}, Ptr{UInt8}),
+                pointer(base_path),
+                pointer(imagePath),
+            )
+            if surface != C_NULL
+                typed_surface = Ptr{SDL2.LibSDL2.SDL_Surface}(surface)
+                SURFACE_CACHE[imagePath] = typed_surface
+                push!(SURFACE_CACHE_PTRS, typed_surface)
+            end
+            return surface == C_NULL ? Ptr{SDL2.LibSDL2.SDL_Surface}(C_NULL) : Ptr{SDL2.LibSDL2.SDL_Surface}(surface)
+        end
         cached = get(SURFACE_CACHE, imagePath, C_NULL)
         if cached != C_NULL
             return cached
@@ -327,6 +419,23 @@ module SpriteModule
         if haskey(TEXTURE_CACHE, imagePath)
             @debug("Using cached texture for: $(imagePath)")
             return TEXTURE_CACHE[imagePath]
+        end
+        if JGStaticModule.LIB_AVAILABLE
+            tex = ccall(
+                (:static_create_texture_from_surface, JGStaticModule.LIB_PATH),
+                Ptr{Cvoid},
+                (Ptr{Cvoid}, Ptr{Cvoid}),
+                Ptr{Cvoid}(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}),
+                Ptr{Cvoid}(surface),
+            )
+            if tex != C_NULL
+                typed_texture = Ptr{SDL2.LibSDL2.SDL_Texture}(tex)
+                @debug("Created and cached texture for: $(imagePath)")
+                return typed_texture
+            else
+                @error("Failed to create texture for: $(imagePath)")
+            end
+            return C_NULL
         end
         tex = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, surface)
         if tex != C_NULL
@@ -459,6 +568,30 @@ module SpriteModule
     effect_prewarm_pending() = EFFECT_PREWARM_PENDING[] > 0
 
     function Component.load_image(this::InternalSprite, imagePath::String)
+        if JGStaticModule.LIB_AVAILABLE
+            ccall((:static_sdl_clear_error, JGStaticModule.LIB_PATH), Cvoid, ())
+            this.image = get_or_load_surface(imagePath, imagePath)
+            if this.image != C_NULL
+                size_xy = Vector{Int32}(undef, 2)
+                GC.@preserve size_xy ccall(
+                    (:static_surface_size, JGStaticModule.LIB_PATH),
+                    Cvoid,
+                    (Ptr{Cvoid}, Ptr{Int32}),
+                    Ptr{Cvoid}(this.image),
+                    pointer(size_xy),
+                )
+                this.size = Math.Vector2(size_xy[1], size_xy[2])
+            end
+            this.image = Ptr{SDL2.LibSDL2.SDL_Surface}(this.image)
+            this.texture = get_or_create_texture(this.imagePath, this.image)
+            if this.texture == C_NULL
+                @error("Failed to create texture from image.")
+                Base.show_backtrace(stdout, catch_backtrace())
+                return
+            end
+            Component.set_color(this)
+            return
+        end
         SDL2.SDL_ClearError()
 
         fullPath = joinpath(BasePath, "assets", "images", imagePath)
@@ -503,6 +636,16 @@ module SpriteModule
     end
 
     function load_image_sdl(fullPath::String, imagePath::String)
+        if JGStaticModule.LIB_AVAILABLE
+            base_path = JulGame.BasePath
+            return GC.@preserve base_path imagePath ccall(
+                (:static_load_image, JGStaticModule.LIB_PATH),
+                Ptr{Cvoid},
+                (Ptr{UInt8}, Ptr{UInt8}),
+                pointer(base_path),
+                pointer(imagePath),
+            )
+        end
         commaSeparatedPath = JulGame.get_comma_separated_path(imagePath)
         if haskey(JulGame.IMAGE_CACHE, commaSeparatedPath)
             raw_data = JulGame.IMAGE_CACHE[commaSeparatedPath]
@@ -523,6 +666,17 @@ module SpriteModule
             return
         end
 
+        if JGStaticModule.LIB_AVAILABLE
+            if this.texture != C_NULL && !haskey(TEXTURE_CACHE, this.imagePath)
+                ccall((:static_destroy_texture, JGStaticModule.LIB_PATH), Cvoid, (Ptr{Cvoid},), Ptr{Cvoid}(this.texture))
+            end
+            if !is_shared_surface(this.image)
+                ccall((:static_free_surface, JGStaticModule.LIB_PATH), Cvoid, (Ptr{Cvoid},), Ptr{Cvoid}(this.image))
+            end
+            this.image = C_NULL
+            this.texture = C_NULL
+            return
+        end
         # Only destroy texture if it's not in the shared cache
         if this.texture != C_NULL && !haskey(TEXTURE_CACHE, this.imagePath)
             SDL2.SDL_DestroyTexture(this.texture)
@@ -537,6 +691,19 @@ module SpriteModule
     end
 
     function Component.set_color(this::InternalSprite)
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_set_texture_color, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Int32, Int32, Int32, Int32),
+                Ptr{Cvoid}(this.texture),
+                Int32(this.color[1]),
+                Int32(this.color[2]),
+                Int32(this.color[3]),
+                Int32(this.color[4]),
+            )
+            return
+        end
         SDL2.SDL_SetTextureColorMod(this.texture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
         SDL2.SDL_SetTextureAlphaMod(this.texture, UInt8(clamp(this.color[4], 0, 255)));
     end

@@ -53,3 +53,7 @@ include("Component/Shape.jl")
 # region SoundSource
 include("Component/SoundSource.jl")
 # endregion SoundSource
+
+# region Sprite
+include("Component/Sprite.jl")
+# endregion Sprite

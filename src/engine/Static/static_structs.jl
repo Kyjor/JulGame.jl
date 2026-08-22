@@ -125,3 +125,13 @@ struct ShapeLayout
     parent::Ptr{Cvoid}
     size::Vector2f
 end
+
+# Field offsets must match fieldoffset(InternalSprite). Stop at color (crop is a Union).
+struct SpriteLayout
+    imagePath::Ptr{Cvoid}
+    layer::Int
+    offset::Vector2f
+    center::Vector2f
+    rotation::Float64
+    color::Color4i64
+end
