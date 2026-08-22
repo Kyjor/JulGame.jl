@@ -62,6 +62,17 @@ module SoundSourceModule
             return
         end
         @debug("toggle_sound: Toggling sound from $(this.path), isMusic: $(this.isMusic), loops: $(loops)")
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_toggle_sound, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Ptr{Cvoid}, Int32),
+                pointer_from_objref(this),
+                Ptr{Cvoid}(this.sound),
+                Int32(loops),
+            )
+            return
+        end
         try
             if this.isMusic
                 if SDL2.Mix_PlayingMusic() == 0
@@ -89,11 +100,33 @@ module SoundSourceModule
     
     function Component.stop_music(this::InternalSoundSource)
         @debug("stop_music: Stopping music from $(this.path)")
+        if JGStaticModule.LIB_AVAILABLE
+            ccall((:static_stop_music, JGStaticModule.LIB_PATH), Int32, ())
+            return
+        end
         SDL2.Mix_HaltMusic()
     end
 
     function Component.load_sound(this::InternalSoundSource, soundPath::String, isMusic::Bool)
         @debug("load_sound: Loading sound from $(soundPath), isMusic: $(isMusic)")
+        if JGStaticModule.LIB_AVAILABLE
+            base_path = JulGame.BasePath
+            loaded = GC.@preserve base_path soundPath ccall(
+                (:static_load_sound_source, JGStaticModule.LIB_PATH),
+                Ptr{Cvoid},
+                (Ptr{Cvoid}, Int32, Ptr{UInt8}, Ptr{UInt8}),
+                pointer_from_objref(this),
+                Int32(isMusic),
+                pointer(base_path),
+                pointer(soundPath),
+            )
+            this.sound = loaded
+            if loaded == C_NULL
+                return
+            end
+            this.path = soundPath
+            return
+        end
         this.isMusic = isMusic
         SDL2.SDL_ClearError()
         this.sound = load_sound_sdl(soundPath, isMusic)
@@ -108,7 +141,18 @@ module SoundSourceModule
     end
 
     function load_sound_sdl(soundPath::String, isMusic::Bool)
-        @debug("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
+        @info("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
+        if JGStaticModule.LIB_AVAILABLE
+            base_path = JulGame.BasePath
+            return GC.@preserve base_path soundPath ccall(
+                (:static_load_sound, JGStaticModule.LIB_PATH),
+                Ptr{Cvoid},
+                (Int32, Ptr{UInt8}, Ptr{UInt8}),
+                Int32(isMusic),
+                pointer(base_path),
+                pointer(soundPath),
+            )
+        end
         if haskey(JulGame.AUDIO_CACHE, get_comma_separated_path(soundPath))
             raw_data = JulGame.AUDIO_CACHE[get_comma_separated_path(soundPath)]
             rw = SDL2.SDL_RWFromConstMem(pointer(raw_data), length(raw_data))
@@ -138,6 +182,17 @@ module SoundSourceModule
 
     function Component.unload_sound(this::InternalSoundSource)
         @debug("unload_sound: Unloading sound from $(this.path), isMusic: $(this.isMusic)")
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_unload_sound, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Int32, Ptr{Cvoid}),
+                Int32(this.isMusic),
+                Ptr{Cvoid}(this.sound),
+            )
+            this.sound = C_NULL
+            return
+        end
         if this.isMusic
             SDL2.Mix_FreeMusic(this.sound)
         else
@@ -152,6 +207,17 @@ module SoundSourceModule
         this.volume = clamp(volume, 0, 128)
         this.channel = clamp(channel, -1, 128)
         @debug "set_volume: Setting volume for $(this.path), isMusic: $(this.isMusic), volume: $(this.volume), channel: $(this.channel)"
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_set_volume, JGStaticModule.LIB_PATH),
+                Int32,
+                (Int32, Int32, Int32),
+                Int32(this.isMusic),
+                Int32(this.channel),
+                Int32(this.volume),
+            )
+            return
+        end
         this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 
@@ -160,6 +226,18 @@ module SoundSourceModule
         loops = Math.TypeConversions.safe_int32_convert(loops)
         
         @debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
+        if JGStaticModule.LIB_AVAILABLE
+            ccall(
+                (:static_play_sound, JGStaticModule.LIB_PATH),
+                Int32,
+                (Int32, Ptr{Cvoid}, Int32, Int32),
+                Int32(this.isMusic),
+                Ptr{Cvoid}(this.sound),
+                Int32(this.channel),
+                Int32(loops),
+            )
+            return
+        end
         if this.isMusic
             SDL2.Mix_PlayMusic(this.sound, -1)
         else
@@ -171,6 +249,10 @@ module SoundSourceModule
         # Convert volume to Int32 and clamp between 0 and 128
         @debug("set_master_volume: Setting master volume to $(volume)")
         volume = Math.TypeConversions.safe_int32_convert(clamp(volume, 0, 128))
+        if JGStaticModule.LIB_AVAILABLE
+            ccall((:static_set_master_volume, JGStaticModule.LIB_PATH), Int32, (Int32,), Int32(volume))
+            return
+        end
         SDL2.Mix_MasterVolume(volume)
     end
 

@@ -58,6 +58,14 @@ functions_to_compile = [
     (static_apply_forces, (Ptr{Cvoid}, Int64, Int64), "static_apply_forces"),
     (static_update_camera, (Ptr{Cvoid}, Ptr{Cvoid}, Int64), "static_update_camera"),
     (static_draw_shape, (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Int64), "static_draw_shape"),
+    (static_toggle_sound, (Ptr{Cvoid}, Ptr{Cvoid}, Int32), "static_toggle_sound"),
+    (static_stop_music, (), "static_stop_music"),
+    (static_unload_sound, (Int32, Ptr{Cvoid}), "static_unload_sound"),
+    (static_set_volume, (Int32, Int32, Int32), "static_set_volume"),
+    (static_play_sound, (Int32, Ptr{Cvoid}, Int32, Int32), "static_play_sound"),
+    (static_set_master_volume, (Int32,), "static_set_master_volume"),
+    (static_load_sound, (Int32, Ptr{UInt8}, Ptr{UInt8}), "static_load_sound"),
+    (static_load_sound_source, (Ptr{Cvoid}, Int32, Ptr{UInt8}, Ptr{UInt8}), "static_load_sound_source"),
 ]
 
 compile_ok = true

@@ -45,6 +45,20 @@ void static_update_camera(void *camera, void *renderer, int64_t scale_units_bits
 /* scale_units_bits is a Float64 bit pattern (reinterpret) */
 void static_draw_shape(void *shape, void *renderer, void *camera, int64_t scale_units_bits);
 
+// SoundSource (SDL_mixer)
+void static_toggle_sound(void *sound_source, void *sound, int32_t loops);
+int32_t static_stop_music(void);
+/* Caller must set sound = NULL afterward. */
+void static_unload_sound(int32_t is_music, void *sound);
+/* volume/channel must be pre-clamped by the caller. */
+int32_t static_set_volume(int32_t is_music, int32_t channel, int32_t volume);
+int32_t static_play_sound(int32_t is_music, void *sound, int32_t channel, int32_t loops);
+int32_t static_set_master_volume(int32_t volume);
+/* Disk load only. Concatenates base_path + /assets/sounds/ + sound_path. */
+void *static_load_sound(int32_t is_music, const uint8_t *base_path, const uint8_t *sound_path);
+/* Sets isMusic, Mix-loads, returns C_NULL on SDL error (already printed). */
+void *static_load_sound_source(void *sound_source, int32_t is_music, const uint8_t *base_path, const uint8_t *sound_path);
+
 #ifdef __cplusplus
 }
 #endif

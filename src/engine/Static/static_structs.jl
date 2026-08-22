@@ -106,6 +106,14 @@ struct ColliderLayout
     currentRests::Ptr{Cvoid}
 end
 
+# Field offsets must match fieldoffset(InternalSoundSource). Stop at isPlaying.
+struct SoundSourceLayout
+    path::Ptr{Cvoid}
+    isMusic::Bool
+    channel::Int
+    isPlaying::Bool
+end
+
 struct ShapeLayout
     position::Vector2f
     isFilled::Bool

@@ -49,3 +49,7 @@ include("Component/Rigidbody.jl")
 # region Shape
 include("Component/Shape.jl")
 # endregion Shape
+
+# region SoundSource
+include("Component/SoundSource.jl")
+# endregion SoundSource
