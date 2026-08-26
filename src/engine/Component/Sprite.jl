@@ -55,9 +55,9 @@ module SpriteModule
             this.offset = offset
             this.isFlipped = isFlipped
             @debug "attemping to load sprite with path: $(imagePath)"
+            this.color = color
             this.imagePath = imagePath
             this.center = center
-            this.color = color
             this.crop = crop
             this.image = C_NULL
             this.layer = layer
@@ -141,7 +141,7 @@ module SpriteModule
                 crop_t = Int32(this.crop.t)
             end
             camera_ptr = camera === nothing ? C_NULL : pointer_from_objref(camera)
-            screen_rect = Vector{Float64}(undef, 4)
+            screen_rect = zeros(Float64, 4)
             render_status = GC.@preserve screen_rect ccall(
                 (:static_draw_sprite, JGStaticModule.LIB_PATH),
                 Int32,
@@ -168,8 +168,13 @@ module SpriteModule
                 _static_sprite_anchor(this.anchor),
                 pointer(screen_rect),
             )
-            this.lastRenderedScreenPosition = Math.Vector2f(screen_rect[1], screen_rect[2])
-            this.lastRenderedScreenSize = Math.Vector2f(screen_rect[3], screen_rect[4])
+            if all(isfinite, screen_rect)
+                this.lastRenderedScreenPosition = Math.Vector2f(screen_rect[1], screen_rect[2])
+                this.lastRenderedScreenSize = Math.Vector2f(screen_rect[3], screen_rect[4])
+            else
+                this.lastRenderedScreenPosition = nothing
+                this.lastRenderedScreenSize = nothing
+            end
             if render_status != 0
                 if get(TEXTURE_CACHE, this.imagePath, C_NULL) == this.texture
                     delete!(TEXTURE_CACHE, this.imagePath)

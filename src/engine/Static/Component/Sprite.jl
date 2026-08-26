@@ -44,14 +44,17 @@ function static_load_image(base_path::Ptr{UInt8}, image_path::Ptr{UInt8})::Ptr{C
     if full_path == C_NULL
         return C_NULL
     end
-    printf(c"Loading image from %s\n", full_path)
+   # printf(c"Loading image from %s\n", full_path)
     
     surface::Ptr{Cvoid} = llvm_IMG_Load(full_path)
     # get error message
     error_message::Ptr{UInt8} = llvm_SDL_GetError()
     if error_message != C_NULL
+        # TODO: check length of error message
         printf(c"Error loading image: %s\n", error_message)
     end
+    # clear error message
+    llvm_SDL_ClearError()
     wasm_free(Ptr{Cvoid}(full_path))
     return surface
 end
@@ -139,6 +142,12 @@ function static_draw_sprite(
     screen_rect::Ptr{Float64},
 )::Int32
     if sprite == C_NULL || renderer == C_NULL || texture == C_NULL || transform == C_NULL
+        if screen_rect != C_NULL
+            unsafe_store!(screen_rect, Float64(0.0))
+            unsafe_store!(screen_rect + 1, Float64(0.0))
+            unsafe_store!(screen_rect + 2, Float64(0.0))
+            unsafe_store!(screen_rect + 3, Float64(0.0))
+        end
         return Int32(0)
     end
 

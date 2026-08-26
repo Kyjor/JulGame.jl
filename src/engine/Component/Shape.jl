@@ -68,7 +68,6 @@ module ShapeModule
             )
             return
         end
-        @info "Drawing shape"
 
         parentTransform = this.parent.transform
 
