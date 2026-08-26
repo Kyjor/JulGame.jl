@@ -5,7 +5,15 @@ const LIB_EXT = Sys.iswindows() ? "dll" : Sys.isapple() ? "dylib" : "so"
 const LIB_DIR = normpath(joinpath(@__DIR__, "lib_desktop"))
 # Built artifact name from compile_library.jl / build_host.sh
 const LIB_PATH = joinpath(LIB_DIR, "libjg_static.$LIB_EXT")
-const LIB_AVAILABLE = isfile(LIB_PATH)
+
+function _static_requested()::Bool
+    ("--static" in ARGS) && return true
+    v = lowercase(strip(get(ENV, "JULGAME_STATIC", "0")))
+    return v in ("1", "true", "yes", "on")
+end
+
+# Opt-in via JULGAME_STATIC=1 or --static (off by default). Set in __init__ so precompile does not bake it in.
+LIB_AVAILABLE = false
 
 # Match Libdl.jl: bare StaticCompiler ccalls use RTLD_DEFAULT, which only sees
 # libraries opened with RTLD_GLOBAL.
@@ -32,6 +40,10 @@ end
 
 function lib_available()::Bool
     LIB_AVAILABLE
+end
+
+function lib_present()::Bool
+    isfile(LIB_PATH)
 end
 
 """Promote libsdl2 + libsdl2_mixer + libsdl2_image into the global symbol table so llvmcall SDL_*/Mix_*/IMG_* externs resolve."""
@@ -98,13 +110,13 @@ function ensure_julia_nothing_sentinel!()
 end
 
 function __init__()
+    global LIB_AVAILABLE = isfile(LIB_PATH) && _static_requested()
     # Must run at runtime: top-level during precompile sets the Ref but the dylib global resets.
     _NOTHING_SENTINEL_SET[] = false
     ensure_lib_opened!()
     ensure_julia_nothing_sentinel!()
+    @info "JGStatic" path=LIB_PATH available=LIB_AVAILABLE
 end
-
-@info "JGStatic" path=LIB_PATH available=LIB_AVAILABLE
 
 export LIB_EXT,
        LIB_DIR,
@@ -112,6 +124,7 @@ export LIB_EXT,
        LIB_AVAILABLE,
        lib_path,
        lib_available,
+       lib_present,
        ensure_julia_nothing_sentinel!
 
 end

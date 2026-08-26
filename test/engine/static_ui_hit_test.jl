@@ -26,7 +26,7 @@ end
     @test first_hit_index_julia(buf, 15, 15) == -1
 end
 
-if JGStaticModule.LIB_AVAILABLE
+if JGStaticModule.lib_present()
     @testset "native scalar vs Julia" begin
         cases = [
             (5, 5, 0, 0, 10, 10, true),
@@ -57,6 +57,6 @@ if JGStaticModule.LIB_AVAILABLE
     end
 else
     @testset "native JGStatic lib (skipped)" begin
-        @test_broken JGStaticModule.LIB_AVAILABLE
+        @test_broken JGStaticModule.lib_present()
     end
 end

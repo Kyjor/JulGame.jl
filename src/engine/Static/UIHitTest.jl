@@ -4,24 +4,15 @@ module UIHitTestModule
 using ..JGStaticModule
 
 const LIB_PATH = JGStaticModule.LIB_PATH
-const LIB_AVAILABLE = JGStaticModule.LIB_AVAILABLE
 
-# Batch path: one ccall per mouse event (set JULGAME_STATIC_UI_HIT_BATCH=1).
-const USE_STATIC_UI_HIT_BATCH =
-    get(ENV, "JULGAME_STATIC_UI_HIT_BATCH", "0") == "1" && LIB_AVAILABLE
-
-# Scalar path: per-element ccall for A/B debugging (set JULGAME_STATIC_UI_HIT_SCALAR_DEBUG=1).
-const USE_STATIC_UI_HIT_SCALAR_DEBUG =
-    get(ENV, "JULGAME_STATIC_UI_HIT_SCALAR_DEBUG", "0") == "1" && LIB_AVAILABLE
-
-@info "USE_STATIC_UI_HIT_BATCH: $USE_STATIC_UI_HIT_BATCH"
-
+# Batch path: one ccall per mouse event (set JULGAME_STATIC=1 and JULGAME_STATIC_UI_HIT_BATCH=1).
 function use_static_ui_hit_batch()::Bool
-    USE_STATIC_UI_HIT_BATCH
+    get(ENV, "JULGAME_STATIC_UI_HIT_BATCH", "0") == "1" && JGStaticModule.LIB_AVAILABLE
 end
 
+# Scalar path: per-element ccall for A/B debugging (set JULGAME_STATIC_UI_HIT_SCALAR_DEBUG=1).
 function use_static_ui_hit_scalar_debug()::Bool
-    USE_STATIC_UI_HIT_SCALAR_DEBUG
+    get(ENV, "JULGAME_STATIC_UI_HIT_SCALAR_DEBUG", "0") == "1" && JGStaticModule.LIB_AVAILABLE
 end
 
 """Julia reference — production default when batch/static flags are off."""
