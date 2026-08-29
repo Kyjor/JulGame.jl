@@ -13,12 +13,22 @@ end
 
 # Start - Runs when a scene starts, scene_name will be passed through from julgame
 function jg_start(scene_name::Ptr{UInt8}) 
-    julgame.globals.set("PlayerName", "P1")
+    julgame.globals.set("PlayerName", "P1", "level_1")
+    # (variable_name, value, scope (optional)) scope is the name of the scene in which this variable will stay alive. may need to do multiple.
 end 
 
 function jg_update()
     if julgame.input.is_button_pressed_this_frame("SPACE")
 
+
+end
+
+function jg_end()
+
+end
+
+
+function jg_shutdown()
 
 end
 ```
