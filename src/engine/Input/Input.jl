@@ -343,7 +343,7 @@ module InputModule
                         if !skipElement && element in _inactiveCanvasChildren
                             skipElement = true
                         end
-                        if isa(element, JulGame.IEntity) && element.ignoreInputEvents
+                        if (isa(element, JulGame.IEntity) || isa(element, JulGame.IUIElement)) && element.ignoreInputEvents
                             skipElement = true
                         end
                         if skipElement
