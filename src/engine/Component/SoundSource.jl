@@ -141,7 +141,7 @@ module SoundSourceModule
     end
 
     function load_sound_sdl(soundPath::String, isMusic::Bool)
-        @info("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
+        @debug("load_sound_sdl: Loading sound from $(soundPath), isMusic: $(isMusic)")
         if JGStaticModule.LIB_AVAILABLE
             base_path = JulGame.BasePath
             return GC.@preserve base_path soundPath ccall(
