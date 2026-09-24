@@ -55,6 +55,14 @@ function apply_style!(this::InternalSprite, style)
     return apply_effects!(this, style.effects)
 end
 
+function _effect_texture_is_cached(tex)::Bool
+    tex == C_NULL && return false
+    for cached in values(SPRITE_EFFECT_CACHE)
+        cached[1] == tex && return true
+    end
+    return false
+end
+
 function update_effects(this::InternalSprite)
     if isempty(this.effects) || !this.needsEffectUpdate
         return
@@ -68,6 +76,12 @@ function update_effects(this::InternalSprite)
         this.needsEffectUpdate = false
         @debug "Sprite using cached effect texture" path=this.imagePath key=this.effectCacheKey
         return
+    end
+
+    # from_surface destroys sprite.effectTexture. If that pointer is still in
+    # the shared cache, leave it alive and detach.
+    if _effect_texture_is_cached(this.effectTexture)
+        this.effectTexture = C_NULL
     end
     
     # Create target for effects

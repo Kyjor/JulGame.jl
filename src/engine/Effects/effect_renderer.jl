@@ -160,11 +160,17 @@ module EffectRendererModule
             texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return EffectsModule.TextureTarget(texture)
         elseif target isa EffectsModule.SpriteTarget
-            # Update sprite's effect texture (not base texture)
+            # Update sprite's effect texture (not base texture).
+            # Skip destroy when update_effects already detached a cached texture
+            # (effectTexture == C_NULL). Destroying a shared cache entry leaves
+            # a dangling texture and the sprite draws blank.
             if target.sprite.effectTexture != C_NULL
                 SDL2.SDL_DestroyTexture(target.sprite.effectTexture)
             end
             target.sprite.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            if target.sprite.effectTexture != C_NULL
+                SDL2.SDL_SetTextureBlendMode(target.sprite.effectTexture, SDL2.SDL_BLENDMODE_BLEND)
+            end
             return target
         elseif target isa EffectsModule.RectangleTarget
             # Update rectangle's effect texture

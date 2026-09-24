@@ -14,6 +14,61 @@ module EffectAlgorithmsModule
         SDL2.SDL_BlitSurface(src, C_NULL, dst, Ref(rect))
     end
 
+    """Source-over src onto dst. Zero-alpha source pixels are left unchanged."""
+    function blit_over!(dst::Ptr{SDL2.SDL_Surface}, src::Ptr{SDL2.SDL_Surface}, dx::Int, dy::Int)
+        dst == C_NULL && return
+        src == C_NULL && return
+        SDL2.SDL_LockSurface(dst) != 0 && return
+        if SDL2.SDL_LockSurface(src) != 0
+            SDL2.SDL_UnlockSurface(dst)
+            return
+        end
+        dst_arr = unsafe_wrap(Array, dst, 10; own=false)
+        src_arr = unsafe_wrap(Array, src, 10; own=false)
+        dw = dst_arr[1].w
+        dh = dst_arr[1].h
+        sw = src_arr[1].w
+        sh = src_arr[1].h
+        dst_pixels = Ptr{UInt32}(dst_arr[1].pixels)
+        src_pixels = Ptr{UInt32}(src_arr[1].pixels)
+        dst_pitch = dst_arr[1].pitch ÷ 4
+        src_pitch = src_arr[1].pitch ÷ 4
+        for y in 0:(sh - 1)
+            dy_px = dy + y
+            (dy_px < 0 || dy_px >= dh) && continue
+            dst_row = dy_px * dst_pitch
+            src_row = y * src_pitch
+            for x in 0:(sw - 1)
+                dx_px = dx + x
+                (dx_px < 0 || dx_px >= dw) && continue
+                s = unsafe_load(src_pixels, src_row + x + 1)
+                sa = Int((s >> 24) & 0xFF)
+                sa == 0 && continue
+                di = dst_row + dx_px + 1
+                if sa == 255
+                    unsafe_store!(dst_pixels, s, di)
+                    continue
+                end
+                d = unsafe_load(dst_pixels, di)
+                da = Int((d >> 24) & 0xFF)
+                inv = 255 - sa
+                out_a = sa + (da * inv) ÷ 255
+                sr = Int(s & 0xFF)
+                sg = Int((s >> 8) & 0xFF)
+                sb = Int((s >> 16) & 0xFF)
+                dr = Int(d & 0xFF)
+                dg = Int((d >> 8) & 0xFF)
+                db = Int((d >> 16) & 0xFF)
+                out_r = (sr * sa + dr * inv) ÷ 255
+                out_g = (sg * sa + dg * inv) ÷ 255
+                out_b = (sb * sa + db * inv) ÷ 255
+                unsafe_store!(dst_pixels, UInt32(out_a) << 24 | UInt32(out_b) << 16 | UInt32(out_g) << 8 | UInt32(out_r), di)
+            end
+        end
+        SDL2.SDL_UnlockSurface(src)
+        SDL2.SDL_UnlockSurface(dst)
+    end
+
     """
         create_outer_glow_surface(base::Ptr{SDL2.SDL_Surface}, radius::Int, color::NTuple{4, Int})
     
@@ -53,13 +108,16 @@ module EffectAlgorithmsModule
                 colored_arr = unsafe_wrap(Array, colored, 10; own=false)
                 pixels = Ptr{UInt32}(colored_arr[1].pixels)
                 pitch = colored_arr[1].pitch ÷ 4
-                
-                for i in 1:(w * h)
-                    pixel = unsafe_load(pixels, i)
-                    pixel_alpha = (pixel >> 24) & 0xFF
-                    # Keep only alpha, set RGB to white
-                    white_pixel = UInt32(pixel_alpha) << 24 | 0x00FFFFFF
-                    unsafe_store!(pixels, white_pixel, i)
+                # Row pitch can be wider than `w`. A packed w*h walk reads into the next row.
+                for y in 0:(h - 1)
+                    row = y * pitch
+                    for x in 0:(w - 1)
+                        i = row + x + 1
+                        pixel = unsafe_load(pixels, i)
+                        pixel_alpha = (pixel >> 24) & 0xFF
+                        white_pixel = UInt32(pixel_alpha) << 24 | 0x00FFFFFF
+                        unsafe_store!(pixels, white_pixel, i)
+                    end
                 end
                 
                 SDL2.SDL_UnlockSurface(colored)
@@ -97,9 +155,6 @@ module EffectAlgorithmsModule
             
             SDL2.SDL_FreeSurface(colored)
         end
-        
-        # Blit original text on top (centered)
-        offset_blit!(glow_surface, base, radius * 2, radius * 2)
         
         # Apply distance transform-based fade for smooth, contour-hugging glow
         # This calculates distance from ACTUAL shape pixels, not bounding box
@@ -189,7 +244,10 @@ module EffectAlgorithmsModule
             SDL2.SDL_UnlockSurface(base)
             SDL2.SDL_UnlockSurface(glow_surface)
         end
-        
+
+        # Lay the source over the glow. Transparent source pixels keep the halo.
+        blit_over!(glow_surface, base, radius * 2, radius * 2)
+
         return glow_surface
     end
 
