@@ -254,7 +254,13 @@ module TextBoxModule
         end
 
         # Use high-quality font rendering with or without effects
-        this.renderText = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
+        this.renderText = render_blended_text(
+            this.font,
+            this.text,
+            SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])),
+            this.maxLineWidth,
+            this.wrapWords,
+        )
         if this.renderText == C_NULL
             error("Failed to render text for textbox $(this.name)")
             return
@@ -336,15 +342,8 @@ module TextBoxModule
             this.text = " "
         end
 
-        # Check if we need to wrap text
         color = SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4]))
-        this.renderText = if this.maxLineWidth > 0 && this.font != C_NULL && this.text != ""
-            SDL2.TTF_RenderUTF8_Blended_Wrapped(this.font, this.wrapWords ? this.text : wrap_text(this.text, this.font, this.maxLineWidth, this.wrapWords), color, Math.TypeConversions.safe_int32_convert(this.maxLineWidth))
-        elseif this.font != C_NULL && this.text != ""
-            this.renderText = SDL2.TTF_RenderUTF8_Blended(this.font, this.text, color)
-        else
-            C_NULL
-        end
+        this.renderText = render_blended_text(this.font, this.text, color, this.maxLineWidth, this.wrapWords)
         if this.renderText == C_NULL
             @debug("Failed to render text for textbox $(this.name)")
             return
@@ -437,6 +436,21 @@ module TextBoxModule
         end
         
         return join(lines, "\n")
+    end
+
+    # Blended does not treat newline as a break, so the font draws a missing glyph.
+    # Wrapped with length 0 breaks on newlines only.
+    function render_blended_text(font, text::String, color, maxLineWidth::Int, wrapWords::Bool)
+        font == C_NULL && return C_NULL
+        text == "" && return C_NULL
+        if occursin('\r', text)
+            text = replace(replace(text, "\r\n" => "\n"), '\r' => '\n')
+        end
+        if maxLineWidth > 0 || occursin('\n', text)
+            body = maxLineWidth > 0 && !wrapWords ? wrap_text(text, font, maxLineWidth, wrapWords) : text
+            return SDL2.TTF_RenderUTF8_Blended_Wrapped(font, body, color, Math.TypeConversions.safe_int32_convert(max(maxLineWidth, 0)))
+        end
+        return SDL2.TTF_RenderUTF8_Blended(font, text, color)
     end
 
     function UI.set_color(this::TextBox; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
@@ -697,7 +711,13 @@ module TextBoxModule
         end
         
         # Create a fresh base surface for effects processing (like the old system does)
-        baseSurface = CallSDLFunction(SDL2.TTF_RenderUTF8_Blended, this.font, this.text, SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])))
+        baseSurface = render_blended_text(
+            this.font,
+            this.text,
+            SDL2.SDL_Color(Math.TypeConversions.safe_int32_convert(this.color[1]), Math.TypeConversions.safe_int32_convert(this.color[2]), Math.TypeConversions.safe_int32_convert(this.color[3]), Math.TypeConversions.safe_int32_convert(this.color[4])),
+            this.maxLineWidth,
+            this.wrapWords,
+        )
         if baseSurface == C_NULL
             @error("Failed to create base surface for effects", name=this.name)
             return
@@ -899,16 +919,7 @@ module TextBoxModule
         )
         text = job.text == "" ? " " : job.text
         base = try
-            if job.maxLineWidth > 0
-                SDL2.TTF_RenderUTF8_Blended_Wrapped(
-                    font,
-                    job.wrapWords ? text : wrap_text(text, font, job.maxLineWidth, job.wrapWords),
-                    color,
-                    Math.TypeConversions.safe_int32_convert(job.maxLineWidth),
-                )
-            else
-                SDL2.TTF_RenderUTF8_Blended(font, text, color)
-            end
+            render_blended_text(font, text, color, job.maxLineWidth, job.wrapWords)
         finally
             SDL2.TTF_CloseFont(font)
         end
