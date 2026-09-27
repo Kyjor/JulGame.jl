@@ -13,7 +13,7 @@ type SpriteLike = {
 
 const originalImages = new Map<string, HTMLImageElement>();
 const loadingImages = new Set<string>();
-const lastPercent = new WeakMap<object, number>();
+const lastStamp = new WeakMap<object, string>();
 
 function clamp01(v: number): number {
     return Math.min(1, Math.max(0, v));
@@ -88,16 +88,36 @@ function destroyPrivateTex(sprite: SpriteLike): void {
 }
 
 /** Apply clock-hand sweep; percentage 1 = full visible, 0 = fully hidden. */
+function paintWedge(
+    ctx: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    radius: number,
+    startRad: number,
+    sweepRad: number,
+    clockwise: boolean,
+): void {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startRad, clockwise ? startRad + sweepRad : startRad - sweepRad, !clockwise);
+    ctx.closePath();
+    ctx.fill();
+}
+
 export function gfx_clock_hand_sweep(
     sprite: SpriteLike | null | undefined,
     percentage: number,
     startAngle = 0.0,
     clockwise = true,
+    highlightBelow = -1,
+    bakeTint?: [number, number, number],
 ): void {
     if (sprite == null || !sprite.imagePath) return;
     const pct = clamp01(Number(percentage) || 0);
-    const prev = lastPercent.get(sprite);
-    if (prev === pct) return;
+    const highlight = highlightBelow < 0 ? -1 : clamp01(highlightBelow);
+    const bakeKey = bakeTint ? bakeTint.join(",") : "";
+    const stamp = `${pct}:${highlight}:${bakeKey}`;
+    if (lastStamp.get(sprite) === stamp) return;
 
     const img = ensureOriginalImage(sprite.imagePath) ?? originalImages.get(sprite.imagePath);
     if (!img?.complete || img.naturalWidth <= 0) return;
@@ -113,23 +133,27 @@ export function gfx_clock_hand_sweep(
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0);
 
-    if (pct < 1.0) {
-        const cx = w / 2;
-        const cy = h / 2;
-        // Match Julia: 0° at top; hide from start across (1-pct)*360°
-        const startRad = ((startAngle - 90) * Math.PI) / 180;
-        const sweepRad = ((360.0 * (1.0 - pct)) * Math.PI) / 180;
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.max(w, h);
+    const startRad = ((startAngle - 90) * Math.PI) / 180;
+    const outer = highlight >= 0 ? Math.max(pct, highlight) : pct;
+    const inner = highlight >= 0 ? Math.min(pct, highlight) : pct;
+    if (highlight >= 0 && inner < outer) {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-atop";
+        if (bakeTint) {
+            ctx.fillStyle = `rgb(${bakeTint[0]}, ${bakeTint[1]}, ${bakeTint[2]})`;
+            ctx.fillRect(0, 0, w, h);
+        }
+        ctx.fillStyle = "#ffffff";
+        paintWedge(ctx, cx, cy, radius, startRad, ((360.0 * (1.0 - inner)) * Math.PI) / 180, clockwise);
+        ctx.restore();
+    }
+    if (outer < 1.0) {
         ctx.save();
         ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        if (clockwise) {
-            ctx.arc(cx, cy, Math.max(w, h), startRad, startRad + sweepRad, false);
-        } else {
-            ctx.arc(cx, cy, Math.max(w, h), startRad, startRad - sweepRad, true);
-        }
-        ctx.closePath();
-        ctx.fill();
+        paintWedge(ctx, cx, cy, radius, startRad, ((360.0 * (1.0 - outer)) * Math.PI) / 180, clockwise);
         ctx.restore();
     }
 
@@ -142,7 +166,7 @@ export function gfx_clock_hand_sweep(
     // Keep sprite.image (surface) so Component_draw doesn't early-out / reload;
     // private texture overrides the shared TEXTURE_CACHE entry for this instance.
     sprite.texture = tex;
-    lastPercent.set(sprite, pct);
+    lastStamp.set(sprite, stamp);
     sprite.__clockSweepPercent = pct;
 }
 
@@ -152,13 +176,20 @@ export function installImageFx(jg: Record<string, unknown>): void {
         gfx_clock_hand_sweep: (
             sprite: SpriteLike,
             percentage: number,
-            opts?: { start_angle?: number; clockwise?: boolean },
+            opts?: {
+                start_angle?: number;
+                clockwise?: boolean;
+                highlight_below?: number;
+                bake_tint?: [number, number, number];
+            },
         ) =>
             gfx_clock_hand_sweep(
                 sprite,
                 percentage,
                 opts?.start_angle ?? 0,
                 opts?.clockwise ?? true,
+                opts?.highlight_below ?? -1,
+                opts?.bake_tint,
             ),
     };
     jg.FX = fx;

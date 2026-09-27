@@ -344,7 +344,7 @@ module ImageFXModule
     # Global cache to store original textures for sprites
     const ORIGINAL_SPRITE_CACHE = Dict{String, Ptr{SDL2.LibSDL2.SDL_Surface}}()
     # Skip redundant full-surface work when call sites pass the same percentage every frame.
-    const _CLOCK_SWEEP_LAST_PERCENT = Dict{Tuple{UInt, String}, Float64}()
+    const _CLOCK_SWEEP_LAST_PERCENT = Dict{Tuple{UInt, String}, Tuple{Float64, Float64}}()
     
     export gfx_filter_health_bar
     """
@@ -480,12 +480,15 @@ module ImageFXModule
     - `percentage::Float64`: Visibility percentage (0.0 = fully hidden, 1.0 = fully visible)
     - `start_angle::Float64`: Starting angle in degrees (0 = top/12 o'clock, 90 = right/3 o'clock, etc.)
     - `clockwise::Bool`: Direction of sweep (true = clockwise, false = counterclockwise)
+    - `highlight_below::Float64`: When >= 0, the wedge between this ratio and `percentage` is solid white
+    - `bake_tint::NTuple{3, Int}`: RGB multiplied into the remaining pixels while that wedge is white. Pair with a white color modulation so the wedge stays white.
     
     # Returns
     - The sprite with modified pixel data
     """
-    function gfx_clock_hand_sweep(sprite::SpriteModule.InternalSprite, percentage::Float64; start_angle::Float64=0.0, clockwise::Bool=true)
+    function gfx_clock_hand_sweep(sprite::SpriteModule.InternalSprite, percentage::Float64; start_angle::Float64=0.0, clockwise::Bool=true, highlight_below::Float64=-1.0, bake_tint::NTuple{3, Int}=(255, 255, 255))
         percentage = clamp(percentage, 0.0, 1.0)
+        highlight_below = highlight_below < 0.0 ? -1.0 : clamp(highlight_below, 0.0, 1.0)
         
         if sprite.image == C_NULL
             @error "Cannot apply clock hand sweep: sprite has no image"
@@ -495,7 +498,8 @@ module ImageFXModule
         # Create cache key from sprite's image path
         cache_key = sprite.imagePath
         sweep_ck = (objectid(sprite), cache_key)
-        if haskey(_CLOCK_SWEEP_LAST_PERCENT, sweep_ck) && _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] === percentage
+        sweep_stamp = (percentage, highlight_below)
+        if get(_CLOCK_SWEEP_LAST_PERCENT, sweep_ck, nothing) == sweep_stamp
             return sprite
         end
         
@@ -564,7 +568,7 @@ module ImageFXModule
         dest_buffer .= src_buffer
         
         # Early exit if nothing should be hidden (percentage = 1.0)
-        if percentage >= 1.0
+        if percentage >= 1.0 && highlight_below < 0.0
             # Copy our processed buffer back to the surface
             unsafe_copyto!(pixels_ptr, pointer(dest_buffer), total_bytes)
             
@@ -585,56 +589,55 @@ module ImageFXModule
                 SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
             end
             
-            _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = percentage
+            _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = sweep_stamp
             return sprite
+        end
+
+        start_angle_norm = start_rad < 0 ? start_rad + 2π : start_rad
+        function hides(fill::Float64, pixel_angle::Float64)::Bool
+            fill >= 1.0 && return false
+            sweep = deg2rad(360.0 * (1.0 - fill))
+            if clockwise
+                end_angle = start_angle_norm + sweep
+                if end_angle <= 2π
+                    return pixel_angle >= start_angle_norm && pixel_angle <= end_angle
+                end
+                return pixel_angle >= start_angle_norm || pixel_angle <= end_angle - 2π
+            end
+            end_angle = start_angle_norm - sweep
+            if end_angle >= 0
+                return pixel_angle >= end_angle && pixel_angle <= start_angle_norm
+            end
+            return pixel_angle >= end_angle + 2π || pixel_angle <= start_angle_norm
         end
         
         # Process each pixel
         @inbounds for y in 0:(height-1)
             for x in 0:(width-1)
-                # Calculate angle from center to this pixel
                 dx = x - center_x
                 dy = y - center_y
                 pixel_angle = atan(dy, dx)
-                
-                # Normalize angle to [0, 2π]
                 pixel_angle = pixel_angle < 0 ? pixel_angle + 2π : pixel_angle
-                start_angle_norm = start_rad < 0 ? start_rad + 2π : start_rad
-                
-                # Calculate if this pixel should be hidden based on sweep
-                should_hide = false
-                
-                if clockwise
-                    # For clockwise sweep, hide pixels between start_angle and (start_angle + sweep_angle)
-                    end_angle = start_angle_norm + sweep_angle_rad
-                    if end_angle <= 2π
-                        # No wraparound
-                        should_hide = pixel_angle >= start_angle_norm && pixel_angle <= end_angle
-                    else
-                        # Wraparound case
-                        end_angle_wrapped = end_angle - 2π
-                        should_hide = pixel_angle >= start_angle_norm || pixel_angle <= end_angle_wrapped
-                    end
-                else
-                    # For counterclockwise sweep, hide pixels between (start_angle - sweep_angle) and start_angle
-                    end_angle = start_angle_norm - sweep_angle_rad
-                    if end_angle >= 0
-                        # No wraparound
-                        should_hide = pixel_angle >= end_angle && pixel_angle <= start_angle_norm
-                    else
-                        # Wraparound case
-                        end_angle_wrapped = end_angle + 2π
-                        should_hide = pixel_angle >= end_angle_wrapped || pixel_angle <= start_angle_norm
-                    end
-                end
-                
-                # Get the pixel's byte index
+
                 pixel_index = (y * width + x) * bpp
                 alpha_index = pixel_index + (bpp - 1)
-                
-                if should_hide && alpha_index < length(dest_buffer)
-                    # Hard edge - simply make pixel fully transparent
+                alpha_index >= length(dest_buffer) && continue
+
+                tinting = highlight_below >= 0.0
+                outer_fill = tinting ? max(percentage, highlight_below) : percentage
+                inner_fill = tinting ? min(percentage, highlight_below) : percentage
+                if hides(outer_fill, pixel_angle)
                     dest_buffer[alpha_index + 1] = 0
+                elseif tinting && inner_fill < outer_fill && hides(inner_fill, pixel_angle)
+                    for byte_offset in 0:(bpp-2)
+                        dest_buffer[pixel_index + byte_offset + 1] = 0xFF
+                    end
+                elseif tinting
+                    channels = min(3, bpp - 1)
+                    for byte_offset in 0:(channels-1)
+                        src = dest_buffer[pixel_index + byte_offset + 1]
+                        dest_buffer[pixel_index + byte_offset + 1] = UInt8(clamp(round(Int, src * bake_tint[byte_offset + 1] / 255), 0, 255))
+                    end
                 end
             end
         end
@@ -659,7 +662,7 @@ module ImageFXModule
             SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
         end
         
-        _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = percentage
+        _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = sweep_stamp
         return sprite
     end
 
