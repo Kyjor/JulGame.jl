@@ -59,6 +59,8 @@ function isSdlPtr(p: unknown): p is number {
         needsEffectUpdate: boolean
         useEffectTexture: boolean  // Toggle to enable/disable effect texture rendering
         interactionScale: number  // Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
+        // Visual-only scale drawn about the sprite's rendered center; transform.scale is untouched.
+        renderScale: Vector2f
         
         constructor(parent: IEntity, imagePath: string, crop: null | Vector4=null, isFlipped: boolean=false, color: [number, number, number, number] = [255,255,255,255], isCreatedInEditor: boolean=false, pixelsPerUnit: number=0, position = {x: 0, y: 0}, rotation: number = 0.0, layer: number = 0, center = {x: 0.5, y: 0.5}, anchor: string = "center", offset = {x: 0, y: 0}, isStatic: boolean = false) {
             
@@ -92,6 +94,7 @@ function isSdlPtr(p: unknown): p is number {
             this.needsEffectUpdate = false
             this.useEffectTexture = true  // Default to showing effects when applied
             this.interactionScale = 1.0  // Default to full-size hitbox
+            this.renderScale = {x: 1.0, y: 1.0}
 
             // Early returns
             if (isCreatedInEditor) {
@@ -245,6 +248,15 @@ function isSdlPtr(p: unknown): p is number {
         }
         
         // AFTER anchor positioning: expand render size for effect texture and offset to center it
+
+        let rsX = self.renderScale?.x ?? 1.0
+        let rsY = self.renderScale?.y ?? 1.0
+        if (rsX != 1.0 || rsY != 1.0) {
+            centeredX += scaledWidth * (1.0 - rsX) / 2
+            centeredY += scaledHeight * (1.0 - rsY) / 2
+            scaledWidth *= rsX
+            scaledHeight *= rsY
+        }
     
         // Select float or integer precision
         let dstRect = (globalThis as any).JulGameSdl.glue_SDL_FRect(centeredX, centeredY, scaledWidth, scaledHeight)
@@ -429,6 +441,7 @@ function Component_load_image(self: InternalSprite, imagePath: string) {
     function Component_duplicate(self: InternalSprite, parent: any) {
         let newSprite = new InternalSprite(parent, self.imagePath, self.crop, self.isFlipped, self.color, false, self.pixelsPerUnit, self.position, self.rotation, self.layer, self.center, self.anchor, self.offset, self.isStatic)
         newSprite.interactionScale = self.interactionScale
+        newSprite.renderScale = {...self.renderScale}
         Component_initialize(newSprite)
         return newSprite
     }

@@ -48,6 +48,9 @@ module SpriteModule
         needsEffectUpdate::Bool
         useEffectTexture::Bool  # Toggle to enable/disable effect texture rendering
         interactionScale::Float64  # Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
+        # Visual-only scale drawn about the sprite's rendered center; transform.scale is untouched.
+        # Must stay after the fields mirrored by Static SpriteLayout.
+        renderScale::Math.Vector2f
         
         function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0))
             this = new()
@@ -79,6 +82,7 @@ module SpriteModule
             this.needsEffectUpdate = false
             this.useEffectTexture = true  # Default to showing effects when applied
             this.interactionScale = 1.0  # Default to full-size hitbox
+            this.renderScale = Math.Vector2f(1.0, 1.0)
 
             # Early returns
             if isCreatedInEditor
@@ -120,7 +124,9 @@ module SpriteModule
         end
 
         using_effect_texture = this.useEffectTexture && length(this.effects) > 0 && this.effectTexture != C_NULL
-        if JGStaticModule.LIB_AVAILABLE && !(length(this.effects) > 0 && this.needsEffectUpdate) && !using_effect_texture
+        # The static draw path does not know about renderScale.
+        has_render_scale = this.renderScale.x != 1.0 || this.renderScale.y != 1.0
+        if JGStaticModule.LIB_AVAILABLE && !(length(this.effects) > 0 && this.needsEffectUpdate) && !using_effect_texture && !has_render_scale
             if this.texture == C_NULL && this.image != C_NULL
                 this.texture = get_or_create_texture(this.imagePath, this.image)
                 Component.set_color(this)
@@ -317,6 +323,13 @@ module SpriteModule
             # Use effect dimensions for rendering
             scaledWidth = effectScaledWidth
             scaledHeight = effectScaledHeight
+        end
+
+        if has_render_scale
+            centeredX += scaledWidth * (1.0 - this.renderScale.x) / 2
+            centeredY += scaledHeight * (1.0 - this.renderScale.y) / 2
+            scaledWidth *= this.renderScale.x
+            scaledHeight *= this.renderScale.y
         end
     
         # Select float or integer precision
@@ -716,6 +729,7 @@ module SpriteModule
     function Component.duplicate(this::InternalSprite, parent::Any)
         newSprite = InternalSprite(parent, this.imagePath, this.crop, this.isFlipped, this.color, false; pixelsPerUnit=this.pixelsPerUnit, position=this.position, rotation=this.rotation, layer=this.layer, center=this.center, anchor=this.anchor, offset=this.offset)
         newSprite.interactionScale = this.interactionScale
+        newSprite.renderScale = this.renderScale
         Component.initialize(newSprite)
         return newSprite
     end
