@@ -32,6 +32,7 @@ import { initializeScript, updateScript } from "./scriptRegistry";
 import { installStrippedInput } from "./StrippedInput";
 import { installImmediateUi } from "./immediateUiRuntime";
 import { installImageFx } from "./imageFx";
+import { queue_render_function } from "./renderQueue";
 import {
     UI_add_click_event,
     UI_add_hover_enter_event,
@@ -266,6 +267,7 @@ export function bootstrapJulGameSdl(
         optimizeSpriteRendering: false,
     };
     jg.MAIN = root.MAIN;
+    jg.Rendering = { queue_render_function };
     // DOM input — avoids transpiled Input.ts SDL_PollEvent + joystick init (WASM OOB on mouse/audio).
     installStrippedInput(jg, root.MAIN, canvas);
     installCoroutineGlobals(jg);

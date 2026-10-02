@@ -105,7 +105,24 @@ type JulGameSdlCApi = {
         b: number,
         a: number,
     ) => number;
+    glue_TTF_RenderUTF8_Blended_Wrapped?: (
+        font: number,
+        text: string,
+        r: number,
+        g: number,
+        b: number,
+        a: number,
+        wrapLength: number,
+    ) => number;
     glue_TTF_CloseFont?: (font: number) => void;
+    glue_render_geometry_colored?: (
+        xyPtr: number,
+        rgbaPtr: number,
+        numVertices: number,
+        indicesPtr: number,
+        numIndices: number,
+    ) => number;
+    glue_surface_alpha?: (surface: number, outPtr: number, capacity: number) => number;
 };
 
 function wasmHasExport(mod: EmscriptenModuleShape, name: string): boolean {
@@ -163,6 +180,10 @@ export type JulGameSdlApi = JulGameSdlCApi & {
     glue_SDL_Rect: (x: number, y: number, w: number, h: number) => { x: number; y: number; w: number; h: number };
     glue_SDL_Point: (x: number, y: number) => { x: number; y: number };
     glue_SDL_FPoint: (x: number, y: number) => { x: number; y: number };
+    /** Untextured colored triangles (Julia `SDL_RenderGeometry` with `C_NULL` texture). */
+    glue_render_geometry?: (xy: Float32Array, rgba: Uint8Array, indices: Int32Array) => void;
+    /** Row-major alpha (w*h bytes) of an SDL surface, or null. */
+    glue_surface_alpha_mask?: (surface: number) => Uint8Array | null;
     glue_SDL_RenderCopyEx: (
         _renderer: number,
         texture: number,
@@ -466,6 +487,27 @@ export class SDLBridge {
                 "number",
                 "number",
             ]) as JulGameSdlCApi["glue_TTF_RenderUTF8_Blended"],
+            glue_TTF_RenderUTF8_Blended_Wrapped: bindGlueExport(mod, cwrap, "glue_TTF_RenderUTF8_Blended_Wrapped", "number", [
+                "number",
+                "string",
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_TTF_RenderUTF8_Blended_Wrapped"],
+            glue_render_geometry_colored: bindGlueExport(mod, cwrap, "glue_render_geometry_colored", "number", [
+                "number",
+                "number",
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_render_geometry_colored"],
+            glue_surface_alpha: bindGlueExport(mod, cwrap, "glue_surface_alpha", "number", [
+                "number",
+                "number",
+                "number",
+            ]) as JulGameSdlCApi["glue_surface_alpha"],
             glue_TTF_CloseFont: bindGlueExport(mod, cwrap, "glue_TTF_CloseFont", null, [
                 "number",
             ]) as JulGameSdlCApi["glue_TTF_CloseFont"],
@@ -545,6 +587,59 @@ export class SDLBridge {
 
         const utf8ToString = (ptr: number) => (mod.UTF8ToString as (p: number) => string)(ptr);
 
+        const renderGeometryColored = cApi.glue_render_geometry_colored;
+        const wasmMalloc = mod._malloc as ((n: number) => number) | undefined;
+        const wasmFree = mod._free as ((p: number) => void) | undefined;
+        const glue_render_geometry: JulGameSdlApi["glue_render_geometry"] =
+            renderGeometryColored && wasmMalloc && wasmFree
+                ? (xy, rgba, indices) => {
+                      const numVertices = xy.length / 2;
+                      if (numVertices <= 0 || indices.length === 0) {
+                          return;
+                      }
+                      // Layout keeps 4-byte alignment: floats, then int32 indices, then rgba bytes.
+                      const ptr = wasmMalloc(xy.byteLength + indices.byteLength + rgba.byteLength);
+                      if (!ptr) {
+                          return;
+                      }
+                      try {
+                          // Re-read HEAPU8 after malloc (ALLOW_MEMORY_GROWTH may replace the buffer).
+                          const heap = mod.HEAPU8 as Uint8Array;
+                          const indicesPtr = ptr + xy.byteLength;
+                          const rgbaPtr = indicesPtr + indices.byteLength;
+                          heap.set(new Uint8Array(xy.buffer, xy.byteOffset, xy.byteLength), ptr);
+                          heap.set(new Uint8Array(indices.buffer, indices.byteOffset, indices.byteLength), indicesPtr);
+                          heap.set(rgba, rgbaPtr);
+                          renderGeometryColored(ptr, rgbaPtr, numVertices, indicesPtr, indices.length);
+                      } finally {
+                          wasmFree(ptr);
+                      }
+                  }
+                : undefined;
+
+        const surfaceAlpha = cApi.glue_surface_alpha;
+        const glue_surface_alpha_mask: JulGameSdlApi["glue_surface_alpha_mask"] =
+            surfaceAlpha && wasmMalloc && wasmFree
+                ? (surface) => {
+                      const n = cApi.glue_surface_w(surface) * cApi.glue_surface_h(surface);
+                      if (!(n > 0)) {
+                          return null;
+                      }
+                      const ptr = wasmMalloc(n);
+                      if (!ptr) {
+                          return null;
+                      }
+                      try {
+                          if (surfaceAlpha(surface, ptr, n) !== n) {
+                              return null;
+                          }
+                          return (mod.HEAPU8 as Uint8Array).slice(ptr, ptr + n);
+                      } finally {
+                          wasmFree(ptr);
+                      }
+                  }
+                : undefined;
+
         this.api = attachSdlInputGlue(
             {
                 ...cApi,
@@ -553,6 +648,8 @@ export class SDLBridge {
                 glue_SDL_Rect,
                 glue_SDL_Point,
                 glue_SDL_FPoint,
+                glue_render_geometry,
+                glue_surface_alpha_mask,
                 glue_SDL_GetRenderDrawColor: glue_SDL_GetRenderDrawColorWrapped,
                 glue_SDL_SetRenderDrawColor: glue_SDL_SetRenderDrawColorWrapped,
                 glue_SDL_GetTextureColorMod: glue_SDL_GetTextureColorModWrapped,

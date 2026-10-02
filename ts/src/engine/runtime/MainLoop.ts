@@ -7,6 +7,7 @@ import { JulGame_update } from "../../../_generated/src/engine/Entity";
 import { tickCoroutines } from "./coroutineRuntime";
 import { flushPendingImageFetches } from "./memfsImage";
 import { manageAllImmediateComponents } from "./immediateUiRuntime";
+import { callQueuedRender, takeQueuedRenders, type QueuedRender } from "./renderQueue";
 import { flushUiDrawProfile } from "./uiDrawProfile";
 import { initializeSceneUi, renderSceneUi, type UiDrawStats } from "./uiRender";
 import type { TranspiledInput } from "./transpiledInput";
@@ -97,9 +98,11 @@ type SceneSprite = {
     isStatic?: boolean;
 };
 
-/** Match Julia `render_scene_sprites_and_shapes`: draw by ascending `sprite.layer`. */
-function spritesInLayerOrder(entities: SceneEntity[]): unknown[] {
-    const items: { layer: number; sprite: unknown }[] = [];
+type WorldDrawItem = { layer: number; sprite?: unknown; render?: QueuedRender };
+
+/** Match Julia `render_scene_sprites_and_shapes`: sprites + world render functions by ascending layer. */
+function worldDrawsInLayerOrder(entities: SceneEntity[], worldRenders: QueuedRender[]): WorldDrawItem[] {
+    const items: WorldDrawItem[] = [];
     for (const entity of entities) {
         if (!entity.isActive || !entity.sprite) {
             continue;
@@ -107,8 +110,11 @@ function spritesInLayerOrder(entities: SceneEntity[]): unknown[] {
         const sprite = entity.sprite as SceneSprite;
         items.push({ layer: sprite.layer ?? 0, sprite: entity.sprite });
     }
+    for (const render of worldRenders) {
+        items.push({ layer: render.layer, render });
+    }
     items.sort((a, b) => a.layer - b.layer);
-    return items.map((item) => item.sprite);
+    return items;
 }
 
 /**
@@ -207,8 +213,12 @@ export function runGameFrame(editorMode = false): void {
     }
     mark("camera");
 
-    for (const sprite of spritesInLayerOrder(scene.entities)) {
-        (Component_draw as (s: unknown, c: unknown) => void)(sprite, cam);
+    for (const item of worldDrawsInLayerOrder(scene.entities, takeQueuedRenders(true))) {
+        if (item.render) {
+            callQueuedRender(item.render);
+        } else {
+            (Component_draw as (s: unknown, c: unknown) => void)(item.sprite, cam);
+        }
     }
     mark("sprites");
 
@@ -218,6 +228,7 @@ export function runGameFrame(editorMode = false): void {
         g.__JULGAME_PROFILE_UI_DRAW = true;
     }
     manageAllImmediateComponents();
+    const screenRenders = takeQueuedRenders(false);
     if (scene.uiElements?.length) {
         const sdlApi = api as JulGameSdlApi;
         if (!sceneUiInitialized) {
@@ -225,9 +236,10 @@ export function runGameFrame(editorMode = false): void {
             sceneUiInitialized = true;
         }
         mark("uiInit");
-        uiDrawStats = renderSceneUi(sdlApi, scene.uiElements);
+        uiDrawStats = renderSceneUi(sdlApi, scene.uiElements, screenRenders);
     } else {
         mark("uiInit");
+        screenRenders.forEach(callQueuedRender);
     }
     mark("ui");
     if (g.__JULGAME_PROFILE_UI_DRAW && uiDrawStats !== undefined) {

@@ -32,7 +32,7 @@ function isSdlPtr(p: unknown): p is number {
 
     
     class InternalSprite { 
-        imagePath: string
+        _imagePath: string
         layer: number
         offset: Vector2f
         center: Vector2f
@@ -59,7 +59,6 @@ function isSdlPtr(p: unknown): p is number {
         needsEffectUpdate: boolean
         useEffectTexture: boolean  // Toggle to enable/disable effect texture rendering
         interactionScale: number  // Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
-        // Visual-only scale drawn about the sprite's rendered center; transform.scale is untouched.
         renderScale: Vector2f
         
         constructor(parent: IEntity, imagePath: string, crop: null | Vector4=null, isFlipped: boolean=false, color: [number, number, number, number] = [255,255,255,255], isCreatedInEditor: boolean=false, pixelsPerUnit: number=0, position = {x: 0, y: 0}, rotation: number = 0.0, layer: number = 0, center = {x: 0.5, y: 0.5}, anchor: string = "center", offset = {x: 0, y: 0}, isStatic: boolean = false) {
@@ -68,7 +67,7 @@ function isSdlPtr(p: unknown): p is number {
             this.offset = offset
             this.isFlipped = isFlipped
             console.debug(`attemping to load sprite with path: ${imagePath}`)
-            this.imagePath = imagePath
+            this._imagePath = imagePath
             this.center = center
             this.color = color
             this.crop = crop
@@ -109,6 +108,18 @@ function isSdlPtr(p: unknown): p is number {
             let surface = unsafe_wrap(Array, this.image, 10, false)
             this.size = {x: surface[0].w, y: surface[0].h}
 
+        }
+
+        get imagePath(): string {
+            return this._imagePath
+        }
+
+        // Mirrors Julia's setproperty!(::InternalSprite, :imagePath): assigning a new path reloads the image.
+        set imagePath(path: string) {
+            if (path == null || path === this._imagePath || String(path).length === 0) {
+                return
+            }
+            Component_load_image(this, String(path))
         }
     }
 
@@ -371,7 +382,7 @@ function Component_load_image(self: InternalSprite, imagePath: string) {
         (globalThis as any).JulGameSdl.glue_SDL_ClearError()
 
         let fullPath = joinpath((globalThis as any).JulGame.BasePath, "assets", "images", imagePath)
-        self.imagePath = imagePath
+        self._imagePath = imagePath
         self.image = get_or_load_surface(fullPath, imagePath)
         if (!isSdlPtr(self.image)) {
             self.texture = null

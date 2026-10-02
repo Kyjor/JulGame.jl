@@ -12,6 +12,8 @@ export type UiImageElement = JulGameUiElement & {
     isFlipped: boolean;
     texture: number | null;
     forceClickCheck?: boolean;
+    /** Set by `gfx_filter_health_bar`: only `percent` of the image is drawn, emptied from `direction`'s end. */
+    fillCrop?: { percent: number; direction: string } | null;
 };
 
 const imageTextures = new Map<string, number>();
@@ -171,10 +173,51 @@ export function UI_render_UIImage(api: JulGameSdlApi, self: UiImageElement): voi
     const y = Math.round(self.position.y);
     const w = Math.round(self.size.x);
     const h = Math.round(self.size.y);
+    const flip = self.isFlipped ? 1 : 0;
     step("renderCopy", () => {
-        renderCopy(texture, 0, 0, 0, 0, 0, x, y, w, h, 0, 0, 0, self.isFlipped ? 1 : 0);
+        if (self.fillCrop != null) {
+            renderFillCropped(api, texture, self.fillCrop, x, y, w, h, flip);
+        } else {
+            renderCopy(texture, 0, 0, 0, 0, 0, x, y, w, h, 0, 0, 0, flip);
+        }
     });
     stashProfile();
+}
+
+/** Mirrors ImageFX.jl `_gfx_filter_health_bar`: "RightToLeft" empties columns from the right, etc. */
+function renderFillCropped(
+    api: JulGameSdlApi,
+    texture: number,
+    crop: { percent: number; direction: string },
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    flip: number,
+): void {
+    const tw = api.glue_texture_w?.(texture) ?? 0;
+    const th = api.glue_texture_h?.(texture) ?? 0;
+    if (tw <= 0 || th <= 0) {
+        return;
+    }
+    const pct = Math.min(1, Math.max(0, crop.percent));
+    const horizontal = crop.direction === "LeftToRight" || crop.direction === "RightToLeft";
+    const srcLen = horizontal ? tw : th;
+    const empty = Math.round(srcLen * (1 - pct));
+    const visible = srcLen - empty;
+    if (visible <= 0) {
+        return;
+    }
+    const emptyAtStart = crop.direction === "LeftToRight" || crop.direction === "TopToBottom";
+    const srcStart = emptyAtStart ? empty : 0;
+    const dstLen = horizontal ? w : h;
+    const dstStart = Math.round((srcStart / srcLen) * dstLen);
+    const dstVisible = Math.round((visible / srcLen) * dstLen);
+    if (horizontal) {
+        api.glue_render_copy_ex(texture, 1, srcStart, 0, visible, th, x + dstStart, y, dstVisible, h, 0, 0, 0, flip);
+    } else {
+        api.glue_render_copy_ex(texture, 1, 0, srcStart, tw, visible, x, y + dstStart, w, dstVisible, 0, 0, 0, flip);
+    }
 }
 
 export function clearUiImageTextureCache(api: JulGameSdlApi): void {

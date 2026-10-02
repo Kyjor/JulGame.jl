@@ -196,8 +196,8 @@ async function loadAndMergeScene(sceneFileName: string): Promise<void> {
     rt.sceneJsonUrl = sceneJsonUrl;
 
     initializeAllScripts(scene.entities as Entity[]);
-    reloadEntitySounds(scene);
-    playSceneMusic(scene);
+    reloadEntitySounds(scene, true);
+    playSceneMusic(scene, true);
     playSoundsOnStart(scene);
     applyLogicalSize(rt.api, rt.canvasWidth, rt.canvasHeight, scene);
 }

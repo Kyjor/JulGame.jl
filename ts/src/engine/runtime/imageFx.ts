@@ -2,6 +2,7 @@
  * Web ImageFX — clock-hand radial wipe for health hearts (ImageFX.jl gfx_clock_hand_sweep).
  * Mutates a private SDL texture per sprite; shared TEXTURE_CACHE path stays untouched.
  */
+import { servedAssetRel } from "./memfsImage";
 
 type SpriteLike = {
     imagePath?: string;
@@ -24,7 +25,7 @@ function assetUrl(imagePath: string): string | null {
         (globalThis as { JulGame?: { memfsAssetBaseUrl?: string } }).JulGame?.memfsAssetBaseUrl ?? "",
     ).replace(/\/$/, "");
     if (!base || !imagePath) return null;
-    return new URL(`assets/images/${imagePath}`, `${base}/`).href;
+    return new URL(`assets/images/${servedAssetRel(imagePath)}`, `${base}/`).href;
 }
 
 function ensureOriginalImage(imagePath: string): HTMLImageElement | null {
@@ -170,9 +171,20 @@ export function gfx_clock_hand_sweep(
     sprite.__clockSweepPercent = pct;
 }
 
+/** ImageFX.jl `gfx_filter_health_bar` for UIImages — cropped at draw time instead of re-baking pixels. */
+export function gfx_filter_health_bar(
+    element: { fillCrop?: { percent: number; direction: string } | null } | null | undefined,
+    percentage: number,
+    direction = "TopToBottom",
+): void {
+    if (element == null) return;
+    element.fillCrop = { percent: clamp01(Number(percentage) || 0), direction };
+}
+
 export function installImageFx(jg: Record<string, unknown>): void {
     const fx = (jg.FX ?? {}) as Record<string, unknown>;
     fx.ImageFXModule = {
+        gfx_filter_health_bar,
         gfx_clock_hand_sweep: (
             sprite: SpriteLike,
             percentage: number,

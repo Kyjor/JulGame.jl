@@ -152,6 +152,17 @@ void glue_SDL_RenderFillRectF(float x, float y, float w, float h) {
     SDL_RenderFillRectF(renderer, &rect);
 }
 
+/* Untextured colored triangles. xy: 2 floats/vertex; rgba: 4 bytes/vertex; indices: int32. */
+EMSCRIPTEN_KEEPALIVE
+int glue_render_geometry_colored(const float *xy, const SDL_Color *rgba, int num_vertices, const int *indices, int num_indices) {
+    if (renderer == NULL || xy == NULL || rgba == NULL || num_vertices <= 0) {
+        return -1;
+    }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    return SDL_RenderGeometryRaw(renderer, NULL, xy, (int)(2 * sizeof(float)), rgba, (int)sizeof(SDL_Color),
+                                 NULL, 0, num_vertices, indices, num_indices, (int)sizeof(int));
+}
+
 EMSCRIPTEN_KEEPALIVE
 void *glue_IMG_Load(const char *path) {
     return IMG_Load(path);
@@ -234,6 +245,42 @@ int glue_surface_h(void *surface) {
         return 0;
     }
     return ((SDL_Surface *)surface)->h;
+}
+
+/* Writes w*h alpha bytes (row-major, any pixel format) into out. Returns bytes written or -1. */
+EMSCRIPTEN_KEEPALIVE
+int glue_surface_alpha(void *surface, Uint8 *out, int capacity) {
+    SDL_Surface *surf = (SDL_Surface *)surface;
+    if (surf == NULL || out == NULL) {
+        return -1;
+    }
+    int w = surf->w;
+    int h = surf->h;
+    if (w * h > capacity) {
+        return -1;
+    }
+    if (SDL_LockSurface(surf) != 0) {
+        return -1;
+    }
+    int bpp = surf->format->BytesPerPixel;
+    for (int y = 0; y < h; y++) {
+        const Uint8 *row = (const Uint8 *)surf->pixels + y * surf->pitch;
+        for (int x = 0; x < w; x++) {
+            const Uint8 *p = row + x * bpp;
+            Uint32 pixel;
+            switch (bpp) {
+                case 1: pixel = *p; break;
+                case 2: pixel = *(const Uint16 *)p; break;
+                case 3: pixel = (Uint32)p[0] | ((Uint32)p[1] << 8) | ((Uint32)p[2] << 16); break;
+                default: pixel = *(const Uint32 *)p; break;
+            }
+            Uint8 r, g, b, a;
+            SDL_GetRGBA(pixel, surf->format, &r, &g, &b, &a);
+            out[y * w + x] = a;
+        }
+    }
+    SDL_UnlockSurface(surf);
+    return w * h;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -560,6 +607,20 @@ void *glue_TTF_RenderUTF8_Blended(void *font, const char *text, int r, int g, in
     SDL_Surface *surface = TTF_RenderUTF8_Blended((TTF_Font *)font, text, color);
     if (!surface) {
         SDL_SetError("TTF_RenderUTF8_Blended: %s", TTF_GetError());
+    }
+    return surface;
+}
+
+/* wrap_length 0 breaks on newlines only (Blended draws '\n' as a missing glyph). */
+EMSCRIPTEN_KEEPALIVE
+void *glue_TTF_RenderUTF8_Blended_Wrapped(void *font, const char *text, int r, int g, int b, int a, int wrap_length) {
+    if (!ttf_open || font == NULL || text == NULL) {
+        return NULL;
+    }
+    SDL_Color color = {(Uint8)r, (Uint8)g, (Uint8)b, (Uint8)a};
+    SDL_Surface *surface = TTF_RenderUTF8_Blended_Wrapped((TTF_Font *)font, text, color, (Uint32)(wrap_length > 0 ? wrap_length : 0));
+    if (!surface) {
+        SDL_SetError("TTF_RenderUTF8_Blended_Wrapped: %s", TTF_GetError());
     }
     return surface;
 }

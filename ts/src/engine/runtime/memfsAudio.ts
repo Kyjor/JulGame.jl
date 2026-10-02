@@ -31,8 +31,12 @@ export function tryOpenGameAudio(api: AudioApi): boolean {
     return audioOpened;
 }
 
-export function reloadEntitySounds(scene: Scene): void {
+/** `skipPersistent`: persistent entities keep their loaded sounds across scene changes (as on desktop). */
+export function reloadEntitySounds(scene: Scene, skipPersistent = false): void {
     for (const entity of scene.entities) {
+        if (skipPersistent && entity.persistentBetweenScenes) {
+            continue;
+        }
         const ss = entity.soundSource as { path?: string; isMusic?: boolean } | null;
         if (!ss?.path) {
             continue;
@@ -42,8 +46,11 @@ export function reloadEntitySounds(scene: Scene): void {
 }
 
 /** Start scene music entities (DJ uses `playOnStart: false`; paths come from scene JSON). */
-export function playSceneMusic(scene: Scene): void {
+export function playSceneMusic(scene: Scene, skipPersistent = false): void {
     for (const entity of scene.entities) {
+        if (skipPersistent && entity.persistentBetweenScenes) {
+            continue;
+        }
         const ss = entity.soundSource as {
             path?: string;
             isMusic?: boolean;

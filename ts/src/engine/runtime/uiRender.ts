@@ -10,6 +10,7 @@ import type { RectangleElement } from "../../../_generated/src/engine/UI/Rectang
 import { UI_render_Rectangle } from "../../../_generated/src/engine/UI/Rectangle";
 import type { JulGameUiElement } from "../../../_generated/src/engine/UI/uiTypes";
 import { UI_align_to_anchor } from "../../../_generated/src/engine/UI/UIElement";
+import { callQueuedRender, type QueuedRender } from "./renderQueue";
 import {
     beginUiDrawProfileFrame,
     finishUiElementDraw,
@@ -59,7 +60,12 @@ export type UiDrawStats = {
     settingsMenuDrawn: number;
 };
 
-export function renderSceneUi(api: JulGameSdlApi, uiElements: unknown[]): UiDrawStats {
+/** `screenRenders` (layer-sorted) interleave by layer; UI elements draw first on ties, as in Julia. */
+export function renderSceneUi(
+    api: JulGameSdlApi,
+    uiElements: unknown[],
+    screenRenders: QueuedRender[] = [],
+): UiDrawStats {
     beginUiDrawProfileFrame();
     const stats: UiDrawStats = {
         drawn: 0,
@@ -96,7 +102,12 @@ export function renderSceneUi(api: JulGameSdlApi, uiElements: unknown[]): UiDraw
     api.glue_SDL_SetRenderDrawBlendMode_BLEND?.();
     recordUiFramePhase("blend", performance.now() - blendT0);
     const drawT0 = performance.now();
+    let nextRender = 0;
     for (const el of items) {
+        while (nextRender < screenRenders.length && screenRenders[nextRender].layer < el.layer) {
+            callQueuedRender(screenRenders[nextRender++]);
+            api.glue_SDL_SetRenderDrawBlendMode_BLEND?.();
+        }
         const elT0 = performance.now();
         timeUiDrawStep(`draw.${el.type}`, () => {
             switch (el.type) {
@@ -123,6 +134,9 @@ export function renderSceneUi(api: JulGameSdlApi, uiElements: unknown[]): UiDraw
         if (el.name.startsWith("SettingsMenu_")) {
             stats.settingsMenuDrawn++;
         }
+    }
+    while (nextRender < screenRenders.length) {
+        callQueuedRender(screenRenders[nextRender++]);
     }
     recordUiFramePhase("draw", performance.now() - drawT0);
     return stats;
@@ -207,6 +221,9 @@ export function hitTestUiInteractive(uiElements: unknown[], x: number, y: number
 }
 
 export function shouldParticipateInUiHitTest(ui: UiHoverTarget): boolean {
+    if ((ui as { ignoreInputEvents?: boolean }).ignoreInputEvents) {
+        return false;
+    }
     // Decorative labels (e.g. immediate_button text) must not steal clicks from the button below.
     if (ui.type === "TextBox" && !isUiInteractiveTarget(ui)) {
         return false;

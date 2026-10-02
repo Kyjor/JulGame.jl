@@ -20,12 +20,22 @@ function getFs(): EmFs | null {
     );
 }
 
+/**
+ * File to fetch for a requested asset. Games may set `JulGame.resolveAssetRel` (e.g. to the latest
+ * shipped version); MEMFS keeps the requested name so sprites/sounds still find it.
+ */
+export function servedAssetRel(relPath: string): string {
+    const resolve = (globalThis as { JulGame?: { resolveAssetRel?: (rel: string) => string } }).JulGame
+        ?.resolveAssetRel;
+    return resolve ? resolve(relPath) : relPath;
+}
+
 function assetFetchUrl(relPath: string): string | null {
     const base = memfsBaseUrl();
     if (!base) {
         return null;
     }
-    return new URL(`assets/images/${relPath}`, base.endsWith("/") ? base : `${base}/`).href;
+    return new URL(`assets/images/${servedAssetRel(relPath)}`, base.endsWith("/") ? base : `${base}/`).href;
 }
 
 function memfsBaseUrl(): string {

@@ -44,7 +44,19 @@ function ttfAvailable(api: JulGameSdlApi): boolean {
 }
 
 function textureCacheKey(ui: TextBoxElement): string {
-    return ui.text + "|" + ui.fontSize + "|" + ui.fontPath + "|" + ui.color.join(",");
+    return ui.text + "|" + ui.fontSize + "|" + ui.fontPath + "|" + ui.color.join(",") + "|" + (ui.maxLineWidth ?? 0);
+}
+
+/** Julia `render_blended_text`: Wrapped when a max width is set or the text has newlines. */
+function renderTextSurface(api: JulGameSdlApi, font: number, ui: TextBoxElement, text: string): number {
+    const [r, g, b, a] = ui.color;
+    const body = text.includes("\r") ? text.replace(/\r\n?/g, "\n") : text;
+    const maxLineWidth = Math.max(0, Math.trunc(ui.maxLineWidth ?? 0));
+    const wrapped = api.glue_TTF_RenderUTF8_Blended_Wrapped;
+    if (wrapped && (maxLineWidth > 0 || body.includes("\n"))) {
+        return wrapped(font, body, r, g, b, a, maxLineWidth);
+    }
+    return api.glue_TTF_RenderUTF8_Blended!(font, body, r, g, b, a);
 }
 
 export function hydrateTextBoxFromJson(json: Record<string, unknown>): TextBoxElement {
@@ -120,7 +132,7 @@ function getOrCreateTextTexture(
     }
     (ui as { __lastTexStep?: string }).__lastTexStep = "texMiss";
     const text = ui.text === "" ? " " : ui.text;
-    const surface = api.glue_TTF_RenderUTF8_Blended!(font, text, ui.color[0], ui.color[1], ui.color[2], ui.color[3]);
+    const surface = renderTextSurface(api, font, ui, text);
     if (!surface) {
         return null;
     }

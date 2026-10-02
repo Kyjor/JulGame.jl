@@ -536,6 +536,11 @@ module RectangleModule
             @error("update_effects: Renderer is NULL")
             return
         end
+        # from_surface destroys rectangle.effectTexture. If that pointer is still in
+        # the shared cache, leave it alive and detach.
+        if this.effectTexture != C_NULL && this.effectTexture in values(EFFECT_CACHE)
+            this.effectTexture = C_NULL
+        end
         @debug("update_effects: Creating RectangleTarget")
         # Create target for effects and apply
         target = EffectsModule.RectangleTarget(this)

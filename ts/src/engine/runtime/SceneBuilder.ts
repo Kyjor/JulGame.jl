@@ -10,7 +10,7 @@ import {
 import { Transform } from "../../../_generated/src/engine/Component/Transform";
 import type { Scene } from "../../../_generated/src/engine/Scene";
 import { attachDefaultCamera } from "./julGameBootstrap";
-import { flushPendingImageFetches } from "./memfsImage";
+import { flushPendingImageFetches, servedAssetRel } from "./memfsImage";
 import { invalidateTextureCachesForImagePath } from "./textureCache";
 import type { JulGameSdlApi } from "../../platform/sdl-wasm/SDLBridge";
 import { commaSeparatedAssetPath, normalizeAssetPath, resolveSpritePixelsPerUnit } from "./projectConfig";
@@ -192,7 +192,8 @@ async function fetchAssetBytes(url: string): Promise<Uint8Array> {
 }
 
 /** Opaque PNGs may be shipped as JPG after web compress; retry `.jpg` when `.png` 404s. */
-async function fetchImageAssetBytes(base: string, rel: string): Promise<Uint8Array> {
+async function fetchImageAssetBytes(base: string, requestedRel: string): Promise<Uint8Array> {
+    const rel = servedAssetRel(requestedRel);
     const url = `${base}/assets/images/${rel}`;
     try {
         return await fetchAssetBytes(url);
@@ -461,7 +462,7 @@ async function syncAssetsToMemfs(
             if (memfsPathExists(fs, memPath)) {
                 return;
             }
-            const url = new URL(`assets/sounds/${rel}`, `${base}/`).href;
+            const url = new URL(`assets/sounds/${servedAssetRel(rel)}`, `${base}/`).href;
             try {
                 const data = await fetchAssetBytes(url);
                 writeMemfsFile(fs, memPath, data);

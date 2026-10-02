@@ -48,8 +48,6 @@ module SpriteModule
         needsEffectUpdate::Bool
         useEffectTexture::Bool  # Toggle to enable/disable effect texture rendering
         interactionScale::Float64  # Scale factor for hover/click hitbox (1.0 = full size, <1.0 = smaller)
-        # Visual-only scale drawn about the sprite's rendered center; transform.scale is untouched.
-        # Must stay after the fields mirrored by Static SpriteLayout.
         renderScale::Math.Vector2f
         
         function InternalSprite(parent::JulGame.IEntity, imagePath::String, crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL, isFlipped::Bool=false, color::NTuple{4, Int} = (255,255,255,255), isCreatedInEditor::Bool=false; pixelsPerUnit::Int=0, position::Math.Vector2f = Math.Vector2f(0,0), rotation::Float64 = 0.0, layer::Int = 0, center::Math.Vector2f = Math.Vector2f(0.5,0.5), anchor::Symbol = :center, offset::Math.Vector2f = Math.Vector2f(0,0))
@@ -325,11 +323,13 @@ module SpriteModule
             scaledHeight = effectScaledHeight
         end
 
-        if has_render_scale
-            centeredX += scaledWidth * (1.0 - this.renderScale.x) / 2
-            centeredY += scaledHeight * (1.0 - this.renderScale.y) / 2
-            scaledWidth *= this.renderScale.x
-            scaledHeight *= this.renderScale.y
+        renderScaleX = this.renderScale.x
+        renderScaleY = this.renderScale.y
+        if renderScaleX != 1 || renderScaleY != 1
+            centeredX -= scaledWidth * (renderScaleX - 1) / 2
+            centeredY -= scaledHeight * (renderScaleY - 1) / 2
+            scaledWidth *= renderScaleX
+            scaledHeight *= renderScaleY
         end
     
         # Select float or integer precision
