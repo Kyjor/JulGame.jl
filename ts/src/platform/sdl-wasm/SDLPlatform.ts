@@ -82,12 +82,39 @@ export class SDLPlatform implements Platform {
             api.glue_SDL_RenderSetLogicalSize(0, 0);
         }
 
+        let unlocked = false;
+        const audioContext = (): AudioContext | undefined => {
+            const sdl2 = mod["SDL2"] as { audioContext?: AudioContext } | undefined;
+            return sdl2?.audioContext;
+        };
+        const resumeContext = (): void => {
+            // Emscripten skips its resume listeners when navigator.userActivation exists.
+            // iOS only treats touchend/click as a playback gesture, so Mix_OpenAudio from
+            // pointerdown leaves the context suspended.
+            const ctx = audioContext();
+            if (ctx?.state === "suspended") {
+                void ctx.resume();
+            }
+        };
         const unlockAudio = (): void => {
-            unlockSceneAudio(api, main.scene);
-            this.setStatus("");
+            if (!unlocked) {
+                unlocked = unlockSceneAudio(api, main.scene);
+            }
+            resumeContext();
+            if (unlocked) {
+                this.setStatus("");
+            }
+            if (audioContext()?.state === "running") {
+                window.removeEventListener("touchend", unlockAudio, true);
+                window.removeEventListener("pointerup", unlockAudio, true);
+                window.removeEventListener("click", unlockAudio, true);
+            }
         };
         this.setStatus("Click to play");
         this.canvas.addEventListener("pointerdown", () => unlockAudio(), { once: true, capture: true });
+        window.addEventListener("touchend", unlockAudio, true);
+        window.addEventListener("pointerup", unlockAudio, true);
+        window.addEventListener("click", unlockAudio, true);
 
         this.setStatus("");
         this.canvas.tabIndex = 0;
