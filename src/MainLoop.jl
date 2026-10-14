@@ -743,7 +743,6 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 							rethrow(e)
 						else
 							println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-							@error string(e)
 							Base.show_backtrace(stdout, catch_backtrace())
 						end
 					end
