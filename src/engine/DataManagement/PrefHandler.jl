@@ -17,7 +17,7 @@ module PrefHandlerModule
     """
     function get_pref_path(org::String, app::String; file_name::String="", create_dir::Bool=true)
         path = SDL2.SDL_GetPrefPath(org, app)
-        path_str = unsafe_string(path)
+        path_str = path == C_NULL ? "" : unsafe_string(path)
 
         if create_dir && !isempty(path_str)
             try
