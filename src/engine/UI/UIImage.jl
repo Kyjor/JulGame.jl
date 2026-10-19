@@ -592,4 +592,117 @@ module UIImageModule
             this.needsEffectUpdate = false
         end
     end
+
+    # --- Async effect bake ---------------------------------------------------
+    # The CPU-heavy half of update_effects (scaling + the effect pipeline) runs
+    # on a worker thread against a private copy of the surface; the renderer-bound
+    # half (texture upload) runs on the main thread in pump_effect_bakes!, called
+    # once per frame by the game loop. With a single thread the jobs run one per
+    # frame on the main thread instead. Only CPU-only effects are supported.
+    const EFFECT_BAKE_RESULTS = Channel{Tuple{Any, String, Ptr{SDL2.SDL_Surface}}}(Inf)
+    const EFFECT_BAKE_SYNC_QUEUE = Vector{Any}()
+    const EFFECT_BAKE_PENDING = Threads.Atomic{Int}(0)
+    const EFFECT_BAKE_MAX_UPLOADS_PER_FRAME = 2
+
+    effect_bake_pending() = EFFECT_BAKE_PENDING[] > 0
+
+    # Thread-safe: only touches the private `copy` surface. Takes ownership of it.
+    function compute_effect_bake_surface(copy::Ptr{SDL2.SDL_Surface}, width::Int, height::Int, effects::Vector{Any})::Ptr{SDL2.SDL_Surface}
+        base = copy
+        arr = unsafe_wrap(Array, copy, 10; own=false)
+        if width > 0 && height > 0 && (Int(arr[1].w) != width || Int(arr[1].h) != height)
+            scaled = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+            if scaled != C_NULL
+                SDL2.SDL_BlitScaled(copy, C_NULL, scaled, C_NULL)
+                SDL2.SDL_FreeSurface(copy)
+                base = scaled
+            end
+        end
+        processed = EffectRendererModule.process_effects_to_surface(base, effects, EffectsModule.SurfaceTarget(base))
+        if processed != base
+            SDL2.SDL_FreeSurface(base)
+        end
+        return processed
+    end
+
+    # Main thread: turn a baked surface into this image's effect texture. Skips
+    # stale results (path/effects changed, or a synchronous update_effects won the race).
+    function finalize_effect_bake!(this::UIImage, key::String, surface::Ptr{SDL2.SDL_Surface})
+        Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
+        try
+            if this.effectCacheKey == key && this.effectTexture == C_NULL && !haskey(EFFECT_CACHE, key) && JulGame.Renderer != C_NULL
+                if this.texture == C_NULL && this.surface != C_NULL
+                    UI.initialize(this)
+                end
+                texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+                if texture != C_NULL
+                    w = Ref{Cint}(0); h = Ref{Cint}(0)
+                    SDL2.SDL_QueryTexture(texture, Ref{UInt32}(0), Ref{Cint}(0), w, h)
+                    this.effectTexture = texture
+                    this.effectSize = Math.Vector2(w[], h[])
+                    cache_effect_texture(key, texture)
+                    this.needsEffectUpdate = false
+                end
+            end
+        finally
+            SDL2.SDL_FreeSurface(surface)
+        end
+    end
+
+    """
+    Bake this image's effect texture off the main thread. Returns false (and does nothing)
+    when there is nothing to bake; a normal `update_effects` still works as the fallback.
+    """
+    function bake_effects_async!(this::UIImage)::Bool
+        (isempty(this.effects) || this.surface == C_NULL || isempty(this.effectCacheKey)) && return false
+        (this.effectTexture != C_NULL || haskey(EFFECT_CACHE, this.effectCacheKey)) && return false
+        copy = SDL2.SDL_ConvertSurfaceFormat(this.surface, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
+        copy == C_NULL && return false
+        width, height = Int(this.size.x), Int(this.size.y)
+        effects = Any[e for e in this.effects]
+        key = this.effectCacheKey
+        Threads.atomic_add!(EFFECT_BAKE_PENDING, 1)
+        if Threads.nthreads() > 1
+            Threads.@spawn begin
+                try
+                    surface = compute_effect_bake_surface(copy, width, height, effects)
+                    if surface == C_NULL
+                        Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
+                    else
+                        put!(EFFECT_BAKE_RESULTS, (this, key, surface))
+                    end
+                catch e
+                    Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
+                    @error "UIImage effect bake failed: $e"
+                end
+            end
+        else
+            push!(EFFECT_BAKE_SYNC_QUEUE, (this, key, copy, width, height, effects))
+        end
+        return true
+    end
+
+    # Called once per frame from the game loop (main thread).
+    function pump_effect_bakes!()
+        uploads = 0
+        while uploads < EFFECT_BAKE_MAX_UPLOADS_PER_FRAME && isready(EFFECT_BAKE_RESULTS)
+            this, key, surface = take!(EFFECT_BAKE_RESULTS)
+            finalize_effect_bake!(this, key, surface)
+            uploads += 1
+        end
+        if !isempty(EFFECT_BAKE_SYNC_QUEUE)
+            this, key, copy, width, height, effects = popfirst!(EFFECT_BAKE_SYNC_QUEUE)
+            try
+                surface = compute_effect_bake_surface(copy, width, height, effects)
+                if surface == C_NULL
+                    Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
+                else
+                    finalize_effect_bake!(this, key, surface)
+                end
+            catch e
+                Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
+                @error "UIImage effect bake failed: $e"
+            end
+        end
+    end
 end

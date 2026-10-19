@@ -49,9 +49,22 @@ module SaveSystemModule
       return joinpath(store.directory, "$(slot).json.tmp")
   end
 
-  function _payload_json(payload::Dict{String, Any})
-      return JSON3.write(payload)
+  # Keys are written sorted. A Dict's iteration order depends on insertion order, so a payload that is
+  # read back and re-serialized could otherwise produce different bytes and fail its own checksum.
+  function _sorted_json(value)::String
+      if value isa AbstractDict
+          entries = [JSON3.write(string(k)) * ":" * _sorted_json(v) for (k, v) in sort!(collect(pairs(value)); by = kv -> string(first(kv)))]
+          return "{" * join(entries, ",") * "}"
+      elseif value isa AbstractVector
+          return "[" * join((_sorted_json(item) for item in value), ",") * "]"
+      end
+      return JSON3.write(value)
   end
+
+  _payload_json(payload::Dict{String, Any}) = _sorted_json(payload)
+
+  # Saves written before keys were sorted were signed over the Dict's own iteration order.
+  _payload_json_candidates(payload::Dict{String, Any}) = unique!([_payload_json(payload), JSON3.write(payload)])
 
   function _checksum(payload_json::String)
       return bytes2hex(sha256(payload_json))
@@ -122,11 +135,11 @@ module SaveSystemModule
       end
 
       payload = _extract_payload_dict(envelope)
-      payload_json = _payload_json(payload)
+      candidates = _payload_json_candidates(payload)
 
       legacy_integrity = false
       if haskey(envelope, "checksum")
-          if envelope["checksum"] != _checksum(payload_json)
+          if !any(json -> envelope["checksum"] == _checksum(json), candidates)
               # Saves written before canonical payload round-trip used a checksum
               # that no longer matches after envelope JSON serialization.
               file_version = Int(get(envelope, "version", 1))
@@ -144,7 +157,7 @@ module SaveSystemModule
           if !haskey(envelope, "hmac")
               return :tampered
           end
-          if envelope["hmac"] != _hmac(payload_json, store.secret_key)
+          if !any(json -> envelope["hmac"] == _hmac(json, store.secret_key), candidates)
               return :tampered
           end
       end

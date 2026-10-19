@@ -652,6 +652,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			if !JulGame.IS_EDITOR
 				Component.SpriteModule.pump_effect_prewarm!()
 				UI.TextBoxModule.pump_text_effect_prewarm!()
+				UI.UIImageModule.pump_effect_bakes!()
 			end
 			lastStartTime = startTime[]
 			startTime[] = SDL2.SDL_GetPerformanceCounter()
