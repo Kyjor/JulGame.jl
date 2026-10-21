@@ -139,15 +139,22 @@ module UIImageModule
         if colorRefs[1][] != this.color[1] || colorRefs[2][] != this.color[2] || colorRefs[3][] != this.color[3] || this.color[4] != alphaRef[]
             UI.set_color(this)
         end
-        srcRect = (this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL) ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
+        has_crop = !(this.crop == Math.Vector4(0, 0, 0, 0) || this.crop == C_NULL)
+        srcRect = !has_crop ? C_NULL : Ref(SDL2.SDL_Rect(this.crop.x, this.crop.y, this.crop.z, this.crop.t))
     
         # Determine render size and position based on whether effects are being used
         adjusted_position = this.position
         render_size = this.originalSize
         
         if this.useEffectTexture && !isempty(this.effects) && this.effectTexture != C_NULL
-            # When using effect texture, use the cached effectSize
-            if this.effectSize != Math.Vector2(0, 0) && this.effectSize != this.originalSize
+            if has_crop
+                if this.surface != C_NULL && this.effectSize != Math.Vector2(0, 0)
+                    surf_arr = unsafe_wrap(Array, this.surface, 10; own=false)
+                    pad_x = max(0, round(Int, (this.effectSize.x - Int(surf_arr[1].w)) / 2))
+                    pad_y = max(0, round(Int, (this.effectSize.y - Int(surf_arr[1].h)) / 2))
+                    srcRect = Ref(SDL2.SDL_Rect(this.crop.x + pad_x, this.crop.y + pad_y, this.crop.z, this.crop.t))
+                end
+            elseif this.effectSize != Math.Vector2(0, 0) && this.effectSize != this.originalSize
                 size_diff_x = (this.effectSize.x - this.originalSize.x) / 2
                 size_diff_y = (this.effectSize.y - this.originalSize.y) / 2
                 adjusted_position = Math.Vector2(this.position.x - size_diff_x, this.position.y - size_diff_y)
@@ -441,6 +448,15 @@ module UIImageModule
     end
 
     function generate_effect_cache_key(this::UIImage)::String
+        has_crop = this.crop != C_NULL && this.crop != Math.Vector4(0, 0, 0, 0)
+        if has_crop
+            content = string(
+                "crop|",
+                this.path, "|",
+                serialize_effects(this.effects)
+            )
+            return string(hash(content))
+        end
         # Cache key must be unique per instance to prevent texture sharing issues
         # When textures are shared and one instance destroys it, other instances
         # end up with invalid texture pointers
@@ -544,8 +560,9 @@ module UIImageModule
             return
         end
         
-        # Scale surface to match desired size before applying effects
-        if this.surface != C_NULL && this.size != Math.Vector2(0, 0)
+        # Scale surface to match desired size before applying effects (skip when cropping from a sheet)
+        has_crop = this.crop != C_NULL && this.crop != Math.Vector4(0, 0, 0, 0)
+        if this.surface != C_NULL && this.size != Math.Vector2(0, 0) && !has_crop
             surf_arr = unsafe_wrap(Array, this.surface, 10; own=false)
             current_w = Int(surf_arr[1].w)
             current_h = Int(surf_arr[1].h)
@@ -563,10 +580,11 @@ module UIImageModule
             end
         end
         
-        # Destroy old effect texture before creating new one
-        # (cache keys include instance ID, so this texture is exclusively ours)
+        # Destroy old effect texture before creating new one unless it is in the shared cache
         if this.effectTexture != C_NULL
-            SDL2.SDL_DestroyTexture(this.effectTexture)
+            if !(this.effectTexture in values(EFFECT_CACHE))
+                SDL2.SDL_DestroyTexture(this.effectTexture)
+            end
             this.effectTexture = C_NULL
         end
         
@@ -658,7 +676,8 @@ module UIImageModule
         (this.effectTexture != C_NULL || haskey(EFFECT_CACHE, this.effectCacheKey)) && return false
         copy = SDL2.SDL_ConvertSurfaceFormat(this.surface, SDL2.SDL_PIXELFORMAT_RGBA32, 0)
         copy == C_NULL && return false
-        width, height = Int(this.size.x), Int(this.size.y)
+        has_crop = this.crop != C_NULL && this.crop != Math.Vector4(0, 0, 0, 0)
+        width, height = has_crop ? (0, 0) : (Int(this.size.x), Int(this.size.y))
         effects = Any[e for e in this.effects]
         key = this.effectCacheKey
         Threads.atomic_add!(EFFECT_BAKE_PENDING, 1)
