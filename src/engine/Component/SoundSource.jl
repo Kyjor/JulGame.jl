@@ -221,11 +221,27 @@ module SoundSourceModule
         this.isMusic ? SDL2.Mix_VolumeMusic(Math.TypeConversions.safe_int32_convert(this.volume)) : SDL2.Mix_Volume(this.channel, Math.TypeConversions.safe_int32_convert(this.volume))
     end
 
-    function Component.play(this::InternalSoundSource, loops::Int = 0)
+    """
+    Seconds into the music that is currently playing, or -1.0 if this isn't music, isn't loaded, or the
+    format can't report a position.
+    """
+    function Component.get_music_position(this::InternalSoundSource)::Float64
+        (this.isMusic && this.sound != C_NULL) || return -1.0
+        return Float64(SDL2.Mix_GetMusicPosition(this.sound))
+    end
+
+    """
+    Play the sound. For music, `start_position` (seconds) starts playback part way through the track; it
+    falls back to playing from the start if SDL_mixer can't seek there.
+    """
+    function Component.play(this::InternalSoundSource, loops::Int = 0; start_position::Real = 0.0)
         # Convert loops to Int32
         loops = Math.TypeConversions.safe_int32_convert(loops)
         
-        @debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops)")
+        @debug("play: Playing sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), loops: $(loops), start_position: $(start_position)")
+        if this.isMusic && start_position > 0 && SDL2.Mix_FadeInMusicPos(this.sound, -1, 0, Float64(start_position)) == 0
+            return
+        end
         if JGStaticModule.LIB_AVAILABLE
             ccall(
                 (:static_play_sound, JGStaticModule.LIB_PATH),

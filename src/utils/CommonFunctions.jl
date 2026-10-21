@@ -25,6 +25,7 @@ function draw end
 function duplicate end
 function flip end
 function generate_uuid end
+function get_music_position end
 function get_position end
 function get_rotation end
 function get_scale end
