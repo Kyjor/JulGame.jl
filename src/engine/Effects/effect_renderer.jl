@@ -33,7 +33,7 @@ module EffectRendererModule
         end
     end
 
-    export apply_effects!, to_surface, from_surface, apply_effects_chain!, process_effects_to_surface
+    export apply_effects!, to_surface, from_surface, apply_effects_chain!, process_effects_to_surface, process_effects_to_surface_cached, set_disk_cache_dir!
 
     # Heuristic: determine if a surface's non-transparent pixels are nearly white
     function is_surface_nearly_white(surface::Ptr{SDL2.SDL_Surface})::Bool
@@ -956,6 +956,89 @@ module EffectRendererModule
         end
         
         return processed_surface
+    end
+
+    # --- Disk cache for baked effect surfaces ---------------------------------
+    # Baking glows/bevels is pure CPU work with deterministic output, so the result is stored on disk and
+    # reused on later launches. Keyed by the source pixels and the effect parameters. Disabled until a
+    # directory is set. Bump DISK_CACHE_VERSION (or delete the directory) after changing effect algorithms.
+    const DISK_CACHE_DIR = Ref{String}("")
+    const DISK_CACHE_VERSION = 1
+    const DISK_CACHE_MAGIC = 0x4a47_4543
+
+    function set_disk_cache_dir!(dir::AbstractString)
+        DISK_CACHE_DIR[] = String(dir)
+        isempty(dir) || mkpath(dir)
+        return nothing
+    end
+
+    function _is_rgba32(surface::Ptr{SDL2.SDL_Surface})::Bool
+        s = unsafe_load(surface)
+        return s.format != C_NULL && unsafe_load(s.format).format == UInt32(SDL2.SDL_PIXELFORMAT_RGBA32)
+    end
+
+    function _disk_cache_path(base::Ptr{SDL2.SDL_Surface}, effects::Vector{Any})::String
+        s = unsafe_load(base)
+        h = hash(string(DISK_CACHE_VERSION, "|", JulGame.SpriteModule.serialize_effects(effects)))
+        for y in 0:(Int(s.h) - 1)
+            row = unsafe_wrap(Array, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), Int(s.w) * 4; own = false)
+            h = hash(row, h)
+        end
+        return joinpath(DISK_CACHE_DIR[], string(string(h, base = 16), "_", s.w, "x", s.h, ".fxc"))
+    end
+
+    function _load_cached_surface(path::String)::Ptr{SDL2.SDL_Surface}
+        isfile(path) || return Ptr{SDL2.SDL_Surface}(C_NULL)
+        surface = Ptr{SDL2.SDL_Surface}(C_NULL)
+        try
+            open(path, "r") do io
+                read(io, UInt32) == DISK_CACHE_MAGIC || error("bad magic")
+                w = Int(read(io, Int32))
+                h = Int(read(io, Int32))
+                surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+                surface == C_NULL && error("surface alloc failed")
+                s = unsafe_load(surface)
+                for y in 0:(h - 1)
+                    unsafe_read(io, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), w * 4)
+                end
+            end
+            return surface
+        catch e
+            surface == C_NULL || SDL2.SDL_FreeSurface(surface)
+            rm(path; force = true)
+            return Ptr{SDL2.SDL_Surface}(C_NULL)
+        end
+    end
+
+    function _save_cached_surface(path::String, surface::Ptr{SDL2.SDL_Surface})
+        _is_rgba32(surface) || return
+        try
+            s = unsafe_load(surface)
+            tmp = string(path, ".", getpid(), "_", Threads.threadid(), ".tmp")
+            open(tmp, "w") do io
+                write(io, DISK_CACHE_MAGIC, Int32(s.w), Int32(s.h))
+                for y in 0:(Int(s.h) - 1)
+                    unsafe_write(io, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), Int(s.w) * 4)
+                end
+            end
+            mv(tmp, path; force = true)
+        catch e
+            @debug "Effect disk cache write failed: $e"
+        end
+    end
+
+    """
+    `process_effects_to_surface` backed by the disk cache. Only for static, CPU-only bakes (not per-string text).
+    Returns a new surface the caller owns; a hit skips the effect pipeline entirely.
+    """
+    function process_effects_to_surface_cached(base::Ptr{SDL2.SDL_Surface}, effects::Vector{Any}, target::EffectsModule.EffectTarget)::Ptr{SDL2.SDL_Surface}
+        (isempty(DISK_CACHE_DIR[]) || !_is_rgba32(base)) && return process_effects_to_surface(base, effects, target)
+        path = _disk_cache_path(base, effects)
+        cached = _load_cached_surface(path)
+        cached != C_NULL && return cached
+        processed = process_effects_to_surface(base, effects, target)
+        processed != C_NULL && processed != base && _save_cached_surface(path, processed)
+        return processed
     end
 
     # Main API function

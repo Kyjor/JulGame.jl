@@ -493,7 +493,7 @@ module SpriteModule
         # in finalize_effect_prewarm! on the main thread instead.
         key = generate_effect_cache_key(imagePath, Math.Vector2(arr[1].w, arr[1].h), effects)
         target = JG.EffectsModule.SurfaceTarget(base)
-        processed = JG.EffectRendererModule.process_effects_to_surface(base, effects, target)
+        processed = JG.EffectRendererModule.process_effects_to_surface_cached(base, effects, target)
         if processed == C_NULL || processed == base
             SDL2.SDL_FreeSurface(base)
             return nothing

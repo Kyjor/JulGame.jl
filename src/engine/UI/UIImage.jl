@@ -618,7 +618,7 @@ module UIImageModule
                 base = scaled
             end
         end
-        processed = EffectRendererModule.process_effects_to_surface(base, effects, EffectsModule.SurfaceTarget(base))
+        processed = EffectRendererModule.process_effects_to_surface_cached(base, effects, EffectsModule.SurfaceTarget(base))
         if processed != base
             SDL2.SDL_FreeSurface(base)
         end
