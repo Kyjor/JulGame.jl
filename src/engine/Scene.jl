@@ -4,10 +4,10 @@
     export Scene
     mutable struct Scene
         camera::Union{Nothing, JulGame.CameraModule.Camera}
-        colliders::Vector{Any}
-        entities::Vector{Any}
-        rigidbodies::Vector{Any}
-        uiElements::Vector{Any}
+        colliders::Vector{JulGame.ColliderModule.InternalCollider}
+        entities::Vector{JulGame.EntityModule.Entity}
+        rigidbodies::Vector{JulGame.RigidbodyModule.InternalRigidbody}
+        uiElements::Vector{JulGame.IUIElement}
         name::String
         batchedLayers::Dict{Int, Any}  # Static sprite batching: layer => BatchedLayer
 
@@ -15,10 +15,10 @@
             this = new()
 
             this.camera = nothing
-            this.colliders = []
-            this.entities = []
-            this.rigidbodies = []
-            this.uiElements = []
+            this.colliders = JulGame.ColliderModule.InternalCollider[]
+            this.entities = JulGame.EntityModule.Entity[]
+            this.rigidbodies = JulGame.RigidbodyModule.InternalRigidbody[]
+            this.uiElements = JulGame.IUIElement[]
             this.batchedLayers = Dict{Int, Any}()
 
             return this
@@ -37,7 +37,7 @@
     end
 
     function get_entity_by_name(name::String)
-        return get_entity_by_name(MAIN.scene, name)
+        return get_entity_by_name(JulGame.main_loop().scene, name)
     end
 
     function get_entities_by_name(this::Scene, name::String)
@@ -55,7 +55,7 @@
     end
 
     function get_entities_by_name(name::String)
-        return get_entities_by_name(MAIN.scene, name)
+        return get_entities_by_name(JulGame.main_loop().scene, name)
     end
 
     function get_entity_by_id(this::Scene, id::String)
@@ -70,7 +70,7 @@
     end
 
     function get_entity_by_id(id::String)
-        return get_entity_by_id(MAIN.scene, id)
+        return get_entity_by_id(JulGame.main_loop().scene, id)
     end
 
     function get_ui_element_by_name(this::Scene, name::String)
@@ -85,7 +85,7 @@
     end
 
     function get_ui_element_by_name(name::String)
-        return get_ui_element_by_name(MAIN.scene, name)
+        return get_ui_element_by_name(JulGame.main_loop().scene, name)
     end
 
     function get_ui_element_by_id(this::Scene, id::String)
@@ -100,7 +100,7 @@
     end
 
     function get_ui_element_by_id(id::String)
-        return get_ui_element_by_id(MAIN.scene, id)
+        return get_ui_element_by_id(JulGame.main_loop().scene, id)
     end
 end
 

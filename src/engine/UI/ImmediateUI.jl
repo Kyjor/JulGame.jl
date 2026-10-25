@@ -11,7 +11,12 @@ module ImmediateUIModule
     export immediate_text, immediate_button, immediate_rect, immediate_image, manage_all_immediate_components, cleanup_all_immediate_components, remove_immediate_component, set_immediate_component_lifetime
 
     # Dictionary to store active immediate UI components by their id and type
-    const IMMEDIATE_UI_CACHE = Dict{String, Any}()
+    mutable struct ImmediateEntry
+        element::JulGame.IUIElement
+        lifetime::Int
+    end
+
+    const IMMEDIATE_UI_CACHE = Dict{String, ImmediateEntry}()
     
     # Stores the last update timestamp for each component
     const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
@@ -23,7 +28,7 @@ module ImmediateUIModule
     # >= 0: Lifetime in milliseconds before an unused immediate component is removed
     const DEFAULT_LIFETIME = -1
     const INFINITE_LIFETIME = -2
-    last_timestamp = 0
+    last_timestamp::Int = 0
 
     """
     immediate_text(id::String, text::String; 
@@ -33,9 +38,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0,0), 
-        clickEvents::Vector{Function} = Function[],
-        hoverEnterEvents::Vector{Function} = Function[],
-        hoverExitEvents::Vector{Function} = Function[],
+        clickEvents = ClickCallback[],
+        hoverEnterEvents = HoverCallback[],
+        hoverExitEvents = HoverCallback[],
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255), 
@@ -56,9 +61,9 @@ module ImmediateUIModule
     - `isWorldEntity::Bool`: Whether this text should be positioned in world space
     - `layer::Int`: Rendering layer (higher values render on top)
     - `position::Math.Vector2`: Position of the text
-    - `clickEvents::Vector{Function}`: Functions to call when clicked
-    - `hoverEnterEvents::Vector{Function}`: Functions to call when hover starts
-    - `hoverExitEvents::Vector{Function}`: Functions to call when hover ends
+    - `clickEvents::Vector{ClickCallback}`: Functions to call when clicked
+    - `hoverEnterEvents::Vector{HoverCallback}`: Functions to call when hover starts
+    - `hoverExitEvents::Vector{HoverCallback}`: Functions to call when hover ends
     - `isActive::Bool`: Whether the text is active/visible
     - `persistentBetweenScenes::Bool`: Whether the text persists between scene changes
     - `color::NTuple{4, Int}`: Color of the text (r,g,b,a)
@@ -78,9 +83,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0,0), 
-        clickEvent::Union{Function, Nothing}=nothing,
-        hoverEnterEvent::Union{Function, Nothing}=nothing,
-        hoverExitEvent::Union{Function, Nothing}=nothing,
+        clickEvent=nothing,
+        hoverEnterEvent=nothing,
+        hoverExitEvent=nothing,
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255), 
@@ -101,7 +106,7 @@ module ImmediateUIModule
 
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing text component
-            textBox = IMMEDIATE_UI_CACHE[composite_id].element
+            textBox = IMMEDIATE_UI_CACHE[composite_id].element::TextBox
             
             # Only update if something has changed
             needsUpdate = false
@@ -180,21 +185,21 @@ module ImmediateUIModule
             end
             
             # Ensure the component is in the scene's uiElements
-            if !(textBox in MAIN.scene.uiElements)
-                push!(MAIN.scene.uiElements, textBox)
+            if !(textBox in JulGame.main_loop().scene.uiElements)
+                push!(JulGame.main_loop().scene.uiElements, textBox)
             end
 
             # if doesn't have click events, add click events 
             if clickEvent !== nothing
-                textBox.clickEvents = Function[]
+                textBox.clickEvents = ClickCallback[]
                 UI.add_click_event(textBox, clickEvent)
             end
             if hoverEnterEvent !== nothing
-                textBox.hoverEnterEvents = Function[]
+                textBox.hoverEnterEvents = HoverCallback[]
                 push!(textBox.hoverEnterEvents, hoverEnterEvent)
             end
             if hoverExitEvent !== nothing
-                textBox.hoverExitEvents = Function[]
+                textBox.hoverExitEvents = HoverCallback[]
                 push!(textBox.hoverExitEvents, hoverExitEvent)
             end
             
@@ -210,9 +215,9 @@ module ImmediateUIModule
                 isWorldEntity=isWorldEntity,
                 layer=layer,
                 position=position,
-                clickEvents=clickEvent !== nothing ? Function[clickEvent] : Function[],
-                hoverEnterEvents=hoverEnterEvent !== nothing ? Function[hoverEnterEvent] : Function[],
-                hoverExitEvents=hoverExitEvent !== nothing ? Function[hoverExitEvent] : Function[],
+                clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent] : ClickCallback[],
+                hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent] : HoverCallback[],
+                hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent] : HoverCallback[],
                 isActive=isActive,
                 persistentBetweenScenes=persistentBetweenScenes,
                 color=color,
@@ -223,10 +228,10 @@ module ImmediateUIModule
                 parent=parent)
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = textBox, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateEntry(textBox, lifetime)
             
             # Add to scene's uiElements
-            push!(MAIN.scene.uiElements, textBox)
+            push!(JulGame.main_loop().scene.uiElements, textBox)
 
             if textBox.anchor.current_state != :none
                 UI.align_to_anchor(textBox)
@@ -238,7 +243,7 @@ module ImmediateUIModule
 
     """
     immediate_button(id::String, text::String, fontPath::String, fontSize::Int, position::Math.Vector2,
-                     width::Int, height::Int, isCentered::Bool=true, callback::Function=() -> nothing;
+                     width::Int, height::Int, isCentered::Bool=true, callback=() -> nothing;
                      buttonUpPath::String="", buttonDownPath::String="", textOffset::Math.Vector2=Math.Vector2(0,0),
                      alpha::Int=255, layer::Int=0, lifetime::Int=DEFAULT_LIFETIME)
 
@@ -265,7 +270,7 @@ module ImmediateUIModule
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, clickEvent::Union{Function, Nothing}=nothing; 
+    function immediate_button(id::String, clickEvent=nothing; 
         text::String="", 
         name::String="Button",
         anchor::Symbol=:none,
@@ -278,8 +283,8 @@ module ImmediateUIModule
         isCentered::Bool=true, 
         buttonUpPath::String="", 
         buttonDownPath::String="", 
-        hoverEnterEvent::Union{Function, Nothing}=nothing,
-        hoverExitEvent::Union{Function, Nothing}=nothing,
+        hoverEnterEvent=nothing,
+        hoverExitEvent=nothing,
         forceClickCheck::Bool=false,
         textOffset::Math.Vector2=Math.Vector2(0,0),
         color::NTuple{4, Int}=(255, 255, 255, 255),
@@ -306,7 +311,7 @@ module ImmediateUIModule
         
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing button component
-            button = IMMEDIATE_UI_CACHE[composite_id].element
+            button = IMMEDIATE_UI_CACHE[composite_id].element::ScreenButton
             
             # Only update if something has changed
             needsReinitialize = false
@@ -401,23 +406,23 @@ module ImmediateUIModule
             
             # Update click handler
             if clickEvent !== nothing
-                button.clickEvents = Function[]
+                button.clickEvents = ClickCallback[]
                 UI.add_click_event(button, clickEvent)
             end
 
             if hoverEnterEvent !== nothing
-                button.hoverEnterEvents = Function[]
+                button.hoverEnterEvents = HoverCallback[]
                 push!(button.hoverEnterEvents, hoverEnterEvent)
             end
 
             if hoverExitEvent !== nothing
-                button.hoverExitEvents = Function[]
+                button.hoverExitEvents = HoverCallback[]
                 push!(button.hoverExitEvents, hoverExitEvent)
             end
             
             # Ensure the component is in the scene's uiElements
-            if !(button in MAIN.scene.uiElements)
-                push!(MAIN.scene.uiElements, button)
+            if !(button in JulGame.main_loop().scene.uiElements)
+                push!(JulGame.main_loop().scene.uiElements, button)
             end
             
             return button
@@ -468,10 +473,10 @@ module ImmediateUIModule
             end
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = button, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateEntry(button, lifetime)
             
             # Add to scene's uiElements
-            push!(MAIN.scene.uiElements, button)
+            push!(JulGame.main_loop().scene.uiElements, button)
 
             return button
         end
@@ -512,9 +517,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0, 0), 
-        clickEvent::Union{Function, Nothing}=nothing,
-        hoverEnterEvent::Union{Function, Nothing}=nothing,
-        hoverExitEvent::Union{Function, Nothing}=nothing,
+        clickEvent=nothing,
+        hoverEnterEvent=nothing,
+        hoverExitEvent=nothing,
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255),
@@ -552,7 +557,7 @@ module ImmediateUIModule
         IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing rect component
-            rect = IMMEDIATE_UI_CACHE[composite_id].element
+            rect = IMMEDIATE_UI_CACHE[composite_id].element::Rectangle
             
             # Only update if something has changed
             needsUpdate = false
@@ -649,21 +654,21 @@ module ImmediateUIModule
             end
 
             # Ensure the component is in the scene's uiElements
-            if !(rect in MAIN.scene.uiElements)
-                push!(MAIN.scene.uiElements, rect)
+            if !(rect in JulGame.main_loop().scene.uiElements)
+                push!(JulGame.main_loop().scene.uiElements, rect)
             end
 
            # if doesn't have click events, add click events 
             if clickEvent !== nothing
-                rect.clickEvents = Function[]
+                rect.clickEvents = ClickCallback[]
                 UI.add_click_event(rect, clickEvent)
             end
             if hoverEnterEvent !== nothing
-                rect.hoverEnterEvents = Function[]
+                rect.hoverEnterEvents = HoverCallback[]
                 push!(rect.hoverEnterEvents, hoverEnterEvent)
             end
             if hoverExitEvent !== nothing
-                rect.hoverExitEvents = Function[]
+                rect.hoverExitEvents = HoverCallback[]
                 push!(rect.hoverExitEvents, hoverExitEvent)
             end
             
@@ -685,9 +690,9 @@ module ImmediateUIModule
                 borderColor=borderColor,
                 isActive=isActive,
                 persistentBetweenScenes=persistentBetweenScenes,
-                clickEvents=clickEvent !== nothing ? Function[clickEvent] : Function[],
-                hoverEnterEvents=hoverEnterEvent !== nothing ? Function[hoverEnterEvent] : Function[],
-                hoverExitEvents=hoverExitEvent !== nothing ? Function[hoverExitEvent] : Function[],
+                clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent] : ClickCallback[],
+                hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent] : HoverCallback[],
+                hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent] : HoverCallback[],
                 parent=parent,
                 size=size,
                 forceClickCheck=forceClickCheck
@@ -697,10 +702,10 @@ module ImmediateUIModule
             rect.persistentBetweenScenes = false
             
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = rect, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateEntry(rect, lifetime)
             
             # Add to scene's uiElements
-            push!(MAIN.scene.uiElements, rect)
+            push!(JulGame.main_loop().scene.uiElements, rect)
 
             if rect.anchor.current_state != :none
                 UI.align_to_anchor(rect)
@@ -723,9 +728,9 @@ module ImmediateUIModule
                             size::Math.Vector2=Math.Vector2(0,0),
                             parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
                             rotation::Float64=0.0,
-                            clickEvents::Vector{Function}=Function[],
-                            hoverEnterEvents::Vector{Function}=Function[],
-                            hoverExitEvents::Vector{Function}=Function[],
+                            clickEvents=ClickCallback[],
+                            hoverEnterEvents=HoverCallback[],
+                            hoverExitEvents=HoverCallback[],
                             lifetime::Int=DEFAULT_LIFETIME,
                             forceClickCheck::Bool=false)
         # Generate a composite ID that includes the component type
@@ -736,7 +741,7 @@ module ImmediateUIModule
         IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
 
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
-            image = IMMEDIATE_UI_CACHE[composite_id].element
+            image = IMMEDIATE_UI_CACHE[composite_id].element::UIImage
 
             needsUpdate = false
 
@@ -821,23 +826,23 @@ module ImmediateUIModule
             end
 
             # Ensure the component is in the scene's uiElements
-            if !(image in MAIN.scene.uiElements)
-                push!(MAIN.scene.uiElements, image)
+            if !(image in JulGame.main_loop().scene.uiElements)
+                push!(JulGame.main_loop().scene.uiElements, image)
             end
 
             # Replace events if provided
             if !isempty(clickEvents)
-                image.clickEvents = Function[]
+                image.clickEvents = ClickCallback[]
                 for ev in clickEvents
                     UI.add_click_event(image, ev)
                 end
             end
             if !isempty(hoverEnterEvents)
-                image.hoverEnterEvents = Function[]
+                image.hoverEnterEvents = HoverCallback[]
                 append!(image.hoverEnterEvents, hoverEnterEvents)
             end
             if !isempty(hoverExitEvents)
-                image.hoverExitEvents = Function[]
+                image.hoverExitEvents = HoverCallback[]
                 append!(image.hoverExitEvents, hoverExitEvents)
             end
 
@@ -865,10 +870,10 @@ module ImmediateUIModule
             )
 
             # Store in cache
-            IMMEDIATE_UI_CACHE[composite_id] = (element = image, lifetime = lifetime)
+            IMMEDIATE_UI_CACHE[composite_id] = ImmediateEntry(image, lifetime)
 
             # Add to scene's uiElements
-            push!(MAIN.scene.uiElements, image)
+            push!(JulGame.main_loop().scene.uiElements, image)
 
             if image.anchor.current_state != :none
                 UI.align_to_anchor(image)
@@ -878,8 +883,8 @@ module ImmediateUIModule
         end
     end
 
-    @inline function _immediate_wants_render(el)::Bool
-        !hasproperty(el, :isActive) || getproperty(el, :isActive)
+    @inline function _immediate_wants_render(el::JulGame.IUIElement)::Bool
+        return el.isActive
     end
 
     """
@@ -954,7 +959,7 @@ module ImmediateUIModule
         sorted_ids = sort(collect(keys(component_layers)), by = id -> component_layers[id])
 
         # Second pass: render components in layer order
-        itemsToRender = []
+        itemsToRender = JulGame.IUIElement[]
         for id in sorted_ids
             component = IMMEDIATE_UI_CACHE[id].element
             push!(itemsToRender, component)
@@ -979,8 +984,8 @@ module ImmediateUIModule
             component = IMMEDIATE_UI_CACHE[id].element
             
             # Remove from scene's uiElements if present
-            if component in MAIN.scene.uiElements
-                filter!(x -> x !== component, MAIN.scene.uiElements)
+            if component in JulGame.main_loop().scene.uiElements
+                filter!(x -> x !== component, JulGame.main_loop().scene.uiElements)
             end
             
             # Clean up component resources using appropriate destroy method

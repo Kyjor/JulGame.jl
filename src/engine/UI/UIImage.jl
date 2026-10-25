@@ -9,6 +9,7 @@ module UIImageModule
     
     export UIImage
     mutable struct UIImage <: UI.UIElement
+        base::UI.UIElementInstance
         path::String
         rotation::Float64
         color::NTuple{4, Int}
@@ -36,15 +37,16 @@ module UIImageModule
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
             size::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0,
-            clickEvents::Vector{Function} = Function[],
-            hoverEnterEvents::Vector{Function} = Function[],
-            hoverExitEvents::Vector{Function} = Function[],
+            clickEvents = ClickCallback[],
+            hoverEnterEvents = HoverCallback[],
+            hoverExitEvents = HoverCallback[],
             useEffectTexture::Bool = true,
             forceClickCheck::Bool = false,
         )
             this = new()
+            setfield!(this, :base, UI.UIElementInstance())
 
             this.anchor = deepcopy(UI.anchor_types)
             this.isActive = isActive
@@ -313,7 +315,7 @@ module UIImageModule
         this.surface = C_NULL
         this.texture = C_NULL
 
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        JulGame.main_loop().scene.uiElements = filter(x -> x !== this, JulGame.main_loop().scene.uiElements)
     end
 
     function UI.set_color(this::UIImage)
@@ -367,7 +369,7 @@ module UIImageModule
         )
 
         UI.initialize(newImage)
-        push!(MAIN.scene.uiElements, newImage)
+        push!(JulGame.main_loop().scene.uiElements, newImage)
         return newImage
     end
 
@@ -375,7 +377,7 @@ module UIImageModule
         push!(this.clickEvents, event)
     end
 
-    function Base.setproperty!(this::UIImage, s::Symbol, x)
+    Base.@constprop :aggressive function Base.setproperty!(this::UIImage, s::Symbol, x)
         @debug("setting image property $(s) to: $(x)")
         try
             if hasfield(UI.UIElementInstance, s)
@@ -418,35 +420,11 @@ module UIImageModule
             end
             setfield!(this, s, x)
         catch e
-            @error "Error setting image property $(s) to: $(x)"
-            @error "Error: $e"
-            Base.show_backtrace(stderr, catch_backtrace())
+            JulGame.log_exception("Error setting image property $(s)", e)
         end
     end
     
     # Helpers to serialize effects and generate cache keys (mirrors TextBox)
-    function serialize_effects(effects::Vector{Any})::String
-        if isempty(effects)
-            return "[]"
-        end
-        parts = String[]
-        for eff in effects
-            T = typeof(eff)
-            fnames = fieldnames(T)
-            vals = String[]
-            for f in fnames
-                v = getfield(eff, f)
-                if v isa Ptr
-                    push!(vals, string(f, "=Ptr"))
-                else
-                    push!(vals, string(f, "=", v))
-                end
-            end
-            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
-        end
-        return "[" * join(parts, ";") * "]"
-    end
-
     function generate_effect_cache_key(this::UIImage)::String
         has_crop = this.crop != C_NULL && this.crop != Math.Vector4(0, 0, 0, 0)
         if has_crop
@@ -534,6 +512,8 @@ module UIImageModule
         return apply_effects!(this, style.effects)
     end
     
+    EffectsModule.image_of(target::EffectsModule.ImageTarget) = target.image::UIImage
+
     function update_effects(this::UIImage)
         if isempty(this.effects)
             return
@@ -617,8 +597,8 @@ module UIImageModule
     # half (texture upload) runs on the main thread in pump_effect_bakes!, called
     # once per frame by the game loop. With a single thread the jobs run one per
     # frame on the main thread instead. Only CPU-only effects are supported.
-    const EFFECT_BAKE_RESULTS = Channel{Tuple{Any, String, Ptr{SDL2.SDL_Surface}}}(Inf)
-    const EFFECT_BAKE_SYNC_QUEUE = Vector{Any}()
+    const EFFECT_BAKE_RESULTS = Channel{Tuple{UIImage, String, Ptr{SDL2.SDL_Surface}}}(Inf)
+    const EFFECT_BAKE_SYNC_QUEUE = Tuple{UIImage, String, Ptr{SDL2.SDL_Surface}, Int, Int, Vector{Any}}[]
     const EFFECT_BAKE_PENDING = Threads.Atomic{Int}(0)
     const EFFECT_BAKE_MAX_UPLOADS_PER_FRAME = 2
 
@@ -692,7 +672,7 @@ module UIImageModule
                     end
                 catch e
                     Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
-                    @error "UIImage effect bake failed: $e"
+                    JulGame.log_exception("UIImage effect bake failed", e)
                 end
             end
         else
@@ -720,7 +700,7 @@ module UIImageModule
                 end
             catch e
                 Threads.atomic_sub!(EFFECT_BAKE_PENDING, 1)
-                @error "UIImage effect bake failed: $e"
+                JulGame.log_exception("UIImage effect bake failed", e)
             end
         end
     end

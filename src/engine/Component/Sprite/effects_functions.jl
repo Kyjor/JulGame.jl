@@ -1,30 +1,8 @@
-function serialize_effects(effects::Vector{Any})::String
-    if isempty(effects)
-        return "[]"
-    end
-    parts = String[]
-    for eff in effects
-        T = typeof(eff)
-        fnames = fieldnames(T)
-        vals = String[]
-        for f in fnames
-            v = getfield(eff, f)
-            if v isa Ptr
-                push!(vals, string(f, "=Ptr"))
-            else
-                push!(vals, string(f, "=", v))
-            end
-        end
-        push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
-    end
-    return "[" * join(parts, ";") * "]"
-end
-
 function generate_effect_cache_key(imagePath::String, size::Math.Vector2, effects::Vector{Any})::String
     content = string(
         imagePath, "|",
         size.x, "x", size.y, "|",
-        serialize_effects(effects)
+        JG.EffectsModule.serialize_effects(effects)
     )
     return string(hash(content))
 end
@@ -100,7 +78,7 @@ function update_effects(this::InternalSprite)
                 this.effectSize = Math.Vector2(w[], h[])
                 
                 # Cache the result for other sprites with same visuals
-                SPRITE_EFFECT_CACHE[this.effectCacheKey] = (this.effectTexture, this.effectSize)
+                SPRITE_EFFECT_CACHE[this.effectCacheKey] = (Ptr{SDL2.SDL_Texture}(this.effectTexture), this.effectSize)
                 @debug "Cached sprite effect texture" path=this.imagePath key=this.effectCacheKey
             end
             this.needsEffectUpdate = false

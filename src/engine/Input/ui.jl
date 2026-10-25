@@ -1,15 +1,17 @@
 function get_element_size(element::JulGame.IEntity)
-    if element.sprite === nothing || element.sprite === C_NULL
+    sprite = element.sprite
+    if !(sprite isa JulGame.Component.SpriteModule.InternalSprite)
         return Math.Vector2(0, 0)
     end
-    baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+    lastSize = sprite.lastRenderedScreenSize
+    baseSize = lastSize === nothing ? Math.Vector2(0, 0) : lastSize
     # Apply interaction scale to shrink/grow hitbox independently of visual size
-    interactionScale = try element.sprite.interactionScale catch; 1.0 end
+    interactionScale = sprite.interactionScale
     return Math.Vector2(baseSize.x * interactionScale, baseSize.y * interactionScale)
 end
 
 function clicked_down_on_this_element(this::Input, element::Union{JulGame.IUIElement, JulGame.IEntity})
-    return element in this.elementsBeingClickedDownOn
+    return is_element_in(this.elementsBeingClickedDownOn, element)
 end
 
 function get_element_position(element::JulGame.IUIElement)
@@ -17,13 +19,16 @@ function get_element_position(element::JulGame.IUIElement)
 end
 
 function get_element_position(element::JulGame.IEntity)
-    if element.sprite === nothing || element.sprite === C_NULL
+    sprite = element.sprite
+    if !(sprite isa JulGame.Component.SpriteModule.InternalSprite)
         return Math.Vector2(0, 0)
     end
-    basePosition = element.sprite.lastRenderedScreenPosition === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenPosition
-    baseSize = element.sprite.lastRenderedScreenSize === nothing ? Math.Vector2(0, 0) : element.sprite.lastRenderedScreenSize
+    lastPosition = sprite.lastRenderedScreenPosition
+    lastSize = sprite.lastRenderedScreenSize
+    basePosition = lastPosition === nothing ? Math.Vector2(0, 0) : lastPosition
+    baseSize = lastSize === nothing ? Math.Vector2(0, 0) : lastSize
     # Center the scaled hitbox over the original sprite position
-    interactionScale = try element.sprite.interactionScale catch; 1.0 end
+    interactionScale = sprite.interactionScale
     if interactionScale < 1.0
         sizeDiff = Math.Vector2(baseSize.x * (1.0 - interactionScale), baseSize.y * (1.0 - interactionScale))
         return Math.Vector2(basePosition.x + sizeDiff.x / 2, basePosition.y + sizeDiff.y / 2)

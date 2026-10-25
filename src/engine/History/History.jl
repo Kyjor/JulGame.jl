@@ -171,7 +171,7 @@ module HistoryModule
     function apply_history_value(id::String, property::Symbol, value::Any)
         @debug "  Applying value to entity $(id).$(property) = $(value)"
         found = false
-        for entity in MAIN.scene.entities
+        for entity in JulGame.main_loop().scene.entities
             if entity.id == id
                 @debug "  Found entity $(id), setting property"
                 setfield!(entity.transform, property, value)

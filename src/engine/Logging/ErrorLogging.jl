@@ -1,11 +1,12 @@
 module ErrorLoggingModule
     using Dates
+    import ...JulGame
 
     export ErrorLogger
     mutable struct ErrorLogger
-        condition
+        condition::Condition
         errorStack::Vector{Any}
-        task 
+        task::Union{Task, Nothing}
 
         function ErrorLogger()
             this = new()
@@ -13,7 +14,7 @@ module ErrorLoggingModule
             this.errorStack = Vector{Any}[]
             this.condition = Condition()
             this.task = nothing
-            run_error_coroutine(this)
+            JulGame.unless_trimmed(run_error_coroutine, this)
         
             return this
         end
@@ -103,7 +104,7 @@ module ErrorLoggingModule
             
             println(file, "\n---\n")
         end
-        Base.show_backtrace(stdout, catch_backtrace())
+        JulGame.print_backtrace(true)
     end
 
     function format_method_error(error_msg::String)

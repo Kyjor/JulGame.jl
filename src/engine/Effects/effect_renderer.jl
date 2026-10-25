@@ -12,11 +12,9 @@ module EffectRendererModule
             # Use the stored original color
             return target.original_color
         elseif target isa EffectsModule.SpriteTarget
-            return target.sprite.color
+            return EffectsModule.sprite_of(target).color
         elseif target isa EffectsModule.RectangleTarget
-            return target.rectangle.color
-        elseif target isa EffectsModule.LineTarget
-            return target.line.color
+            return EffectsModule.rectangle_of(target).color
         elseif target isa EffectsModule.ImageTarget
             return (255, 255, 255, 255)  # Images don't have a color property
         else
@@ -129,18 +127,16 @@ module EffectRendererModule
         elseif target isa EffectsModule.TextureTarget
             return texture_to_surface(target.texture)
         elseif target isa EffectsModule.SpriteTarget
-            return target.sprite.image
+            return EffectsModule.sprite_of(target).image
         elseif target isa EffectsModule.RectangleTarget
-            return render_rectangle_to_surface(target.rectangle)
-        elseif target isa EffectsModule.LineTarget
-            return render_line_to_surface(target.line)
+            return render_rectangle_to_surface(EffectsModule.rectangle_of(target))
         elseif target isa EffectsModule.ImageTarget
             # UIImage might not have a surface, so create one from texture if needed
-            if target.image.surface != C_NULL
-                return target.image.surface
-            elseif target.image.texture != C_NULL
+            if EffectsModule.image_of(target).surface != C_NULL
+                return EffectsModule.image_of(target).surface
+            elseif EffectsModule.image_of(target).texture != C_NULL
                 # Create surface from texture for effects processing
-                return texture_to_surface(target.image.texture)
+                return texture_to_surface(EffectsModule.image_of(target).texture)
             else
                 @error("UIImage has no surface or texture for effects processing")
                 return C_NULL
@@ -164,43 +160,36 @@ module EffectRendererModule
             # Skip destroy when update_effects already detached a cached texture
             # (effectTexture == C_NULL). Destroying a shared cache entry leaves
             # a dangling texture and the sprite draws blank.
-            if target.sprite.effectTexture != C_NULL
-                SDL2.SDL_DestroyTexture(target.sprite.effectTexture)
+            if EffectsModule.sprite_of(target).effectTexture != C_NULL
+                SDL2.SDL_DestroyTexture(EffectsModule.sprite_of(target).effectTexture)
             end
-            target.sprite.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
-            if target.sprite.effectTexture != C_NULL
-                SDL2.SDL_SetTextureBlendMode(target.sprite.effectTexture, SDL2.SDL_BLENDMODE_BLEND)
+            EffectsModule.sprite_of(target).effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            if EffectsModule.sprite_of(target).effectTexture != C_NULL
+                SDL2.SDL_SetTextureBlendMode(EffectsModule.sprite_of(target).effectTexture, SDL2.SDL_BLENDMODE_BLEND)
             end
             return target
         elseif target isa EffectsModule.RectangleTarget
             # Update rectangle's effect texture
             @debug("from_surface: Creating effect texture for rectangle")
-            if target.rectangle.effectTexture != C_NULL
+            if EffectsModule.rectangle_of(target).effectTexture != C_NULL
                 @debug("from_surface: Destroying old effect texture")
-                SDL2.SDL_DestroyTexture(target.rectangle.effectTexture)
+                SDL2.SDL_DestroyTexture(EffectsModule.rectangle_of(target).effectTexture)
             end
-            target.rectangle.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
-            if target.rectangle.effectTexture == C_NULL
+            EffectsModule.rectangle_of(target).effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            if EffectsModule.rectangle_of(target).effectTexture == C_NULL
                 @error("from_surface: Failed to create texture from surface: $(unsafe_string(SDL2.SDL_GetError()))")
             else
-                SDL2.SDL_SetTextureBlendMode(target.rectangle.effectTexture, SDL2.SDL_BLENDMODE_BLEND)
+                SDL2.SDL_SetTextureBlendMode(EffectsModule.rectangle_of(target).effectTexture, SDL2.SDL_BLENDMODE_BLEND)
                 w = Ref{Cint}(0); h = Ref{Cint}(0)
-                SDL2.SDL_QueryTexture(target.rectangle.effectTexture, C_NULL, C_NULL, w, h)
+                SDL2.SDL_QueryTexture(EffectsModule.rectangle_of(target).effectTexture, C_NULL, C_NULL, w, h)
                 @debug("from_surface: Created effect texture $(w[])x$(h[]) for rectangle")
             end
-            return target
-        elseif target isa EffectsModule.LineTarget
-            # Update line's effect texture
-            if target.line.effectTexture != C_NULL
-                SDL2.SDL_DestroyTexture(target.line.effectTexture)
-            end
-            target.line.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         elseif target isa EffectsModule.ImageTarget
             # Update image's effect texture
             # Note: UIImage now manages its own texture lifecycle, so we don't destroy here
             # The old texture cleanup is handled in UIImage.update_effects()
-            target.image.effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
+            EffectsModule.image_of(target).effectTexture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, surface)
             return target
         else
             @error("Unknown target type: $(typeof(target))")
@@ -620,14 +609,14 @@ module EffectRendererModule
     
     function save_surface_debug(surface::Ptr{SDL2.SDL_Surface}, path::String)
         if surface == C_NULL
-            println("⚠️ Tried to save a null surface.")
+            JulGame.print_line("⚠️ Tried to save a null surface.")
             return
         end
     
         # Create an RWops stream for writing the BMP
         rw = SDL2.SDL_RWFromFile(path, "wb")
         if rw == C_NULL
-            println("❌ SDL_RWFromFile failed: ", unsafe_string(SDL2.SDL_GetError()))
+            JulGame.print_line("❌ SDL_RWFromFile failed: " * unsafe_string(SDL2.SDL_GetError()))
             return
         end
     
@@ -635,79 +624,13 @@ module EffectRendererModule
         result = SDL2.SDL_SaveBMP_RW(surface, rw, 1)  # 1 means "close stream after write"
     
         if result != 0
-            println("❌ SDL_SaveBMP_RW failed: ", unsafe_string(SDL2.SDL_GetError()))
+            JulGame.print_line("❌ SDL_SaveBMP_RW failed: " * unsafe_string(SDL2.SDL_GetError()))
         else
-            println("✅ Saved surface as BMP to: $path")
+            JulGame.print_line("✅ Saved surface as BMP to: $path")
         end
     end
     
     
-
-    # Render line to surface
-    function render_line_to_surface(line::Any)::Ptr{SDL2.SDL_Surface}
-        if line == nothing
-            return C_NULL
-        end
-        
-        # Calculate line bounds
-        min_x = min(line.startPoint.x, line.endPoint.x)
-        min_y = min(line.startPoint.y, line.endPoint.y)
-        max_x = max(line.startPoint.x, line.endPoint.x)
-        max_y = max(line.startPoint.y, line.endPoint.y)
-        
-        width = Int(ceil(max_x - min_x)) + line.thickness * 2
-        height = Int(ceil(max_y - min_y)) + line.thickness * 2
-        
-        # Get the renderer
-        renderer = JulGame.Renderer
-        if renderer == C_NULL
-            @error("No renderer available for line effects")
-            return C_NULL
-        end
-        
-        # Create a target texture and draw the line into it
-        target_tex = SDL2.SDL_CreateTexture(renderer, SDL2.SDL_PIXELFORMAT_RGBA32, SDL2.SDL_TEXTUREACCESS_TARGET, width, height)
-        if target_tex == C_NULL
-            @error("render_line_to_surface: Failed to create target texture")
-            return C_NULL
-        end
-        old_target = SDL2.SDL_GetRenderTarget(renderer)
-        SDL2.SDL_SetRenderTarget(renderer, target_tex)
-        SDL2.SDL_SetRenderDrawBlendMode(renderer, SDL2.SDL_BLENDMODE_BLEND)
-        SDL2.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)
-        SDL2.SDL_RenderClear(renderer)
-        
-        # Draw line
-        SDL2.SDL_SetRenderDrawColor(renderer, line.color...)
-        start_x = line.startPoint.x - min_x + line.thickness
-        start_y = line.startPoint.y - min_y + line.thickness
-        end_x = line.endPoint.x - min_x + line.thickness
-        end_y = line.endPoint.y - min_y + line.thickness
-        if line.thickness == 1
-            SDL2.SDL_RenderDrawLineF(renderer, Float32(start_x), Float32(start_y), Float32(end_x), Float32(end_y))
-        else
-            for i in 0:(line.thickness-1)
-                offset_x = cos(atan2(end_y - start_y, end_x - start_x) + π/2) * i
-                offset_y = sin(atan2(end_y - start_y, end_x - start_x) + π/2) * i
-                SDL2.SDL_RenderDrawLineF(renderer, 
-                    Float32(start_x + offset_x), Float32(start_y + offset_y), 
-                    Float32(end_x + offset_x), Float32(end_y + offset_y))
-            end
-        end
-        
-        # Read pixels back into a surface
-        surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-        if surface != C_NULL
-            arr = unsafe_wrap(Array, surface, 10; own=false)
-            SDL2.SDL_RenderFlush(renderer)
-            SDL2.SDL_RenderReadPixels(renderer, C_NULL, SDL2.SDL_PIXELFORMAT_RGBA32, arr[1].pixels, arr[1].pitch)
-        end
-        
-        # Restore and cleanup
-        SDL2.SDL_SetRenderTarget(renderer, old_target)
-        SDL2.SDL_DestroyTexture(target_tex)
-        return surface
-    end
 
     # Apply effects chain to surface
     function apply_effects_chain!(baseSurface::Ptr{SDL2.SDL_Surface}, effects::Vector{Any}, target::EffectsModule.EffectTarget)
@@ -979,7 +902,7 @@ module EffectRendererModule
 
     function _disk_cache_path(base::Ptr{SDL2.SDL_Surface}, effects::Vector{Any})::String
         s = unsafe_load(base)
-        h = hash(string(DISK_CACHE_VERSION, "|", JulGame.SpriteModule.serialize_effects(effects)))
+        h = hash(string(DISK_CACHE_VERSION, "|", serialize_effects(effects)))
         for y in 0:(Int(s.h) - 1)
             row = unsafe_wrap(Array, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), Int(s.w) * 4; own = false)
             h = hash(row, h)
@@ -990,23 +913,24 @@ module EffectRendererModule
     function _load_cached_surface(path::String)::Ptr{SDL2.SDL_Surface}
         isfile(path) || return Ptr{SDL2.SDL_Surface}(C_NULL)
         surface = Ptr{SDL2.SDL_Surface}(C_NULL)
+        io = open(path; read = true)
         try
-            open(path, "r") do io
-                read(io, UInt32) == DISK_CACHE_MAGIC || error("bad magic")
-                w = Int(read(io, Int32))
-                h = Int(read(io, Int32))
-                surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
-                surface == C_NULL && error("surface alloc failed")
-                s = unsafe_load(surface)
-                for y in 0:(h - 1)
-                    unsafe_read(io, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), w * 4)
-                end
+            read(io, UInt32) == DISK_CACHE_MAGIC || error("bad magic")
+            w = Int(read(io, Int32))
+            h = Int(read(io, Int32))
+            surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL2.SDL_PIXELFORMAT_RGBA32)
+            surface == C_NULL && error("surface alloc failed")
+            s = unsafe_load(surface)
+            for y in 0:(h - 1)
+                unsafe_read(io, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), w * 4)
             end
             return surface
         catch e
             surface == C_NULL || SDL2.SDL_FreeSurface(surface)
             rm(path; force = true)
             return Ptr{SDL2.SDL_Surface}(C_NULL)
+        finally
+            close(io)
         end
     end
 
@@ -1015,15 +939,18 @@ module EffectRendererModule
         try
             s = unsafe_load(surface)
             tmp = string(path, ".", getpid(), "_", Threads.threadid(), ".tmp")
-            open(tmp, "w") do io
+            io = open(tmp; write = true)
+            try
                 write(io, DISK_CACHE_MAGIC, Int32(s.w), Int32(s.h))
                 for y in 0:(Int(s.h) - 1)
                     unsafe_write(io, Ptr{UInt8}(s.pixels) + y * Int(s.pitch), Int(s.w) * 4)
                 end
+            finally
+                close(io)
             end
             mv(tmp, path; force = true)
         catch e
-            @debug "Effect disk cache write failed: $e"
+            @debug "Effect disk cache write failed"
         end
     end
 

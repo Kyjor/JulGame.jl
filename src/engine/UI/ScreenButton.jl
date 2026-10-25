@@ -5,24 +5,25 @@ module ScreenButtonModule
 
     export ScreenButton
     mutable struct ScreenButton <: UI.UIElement
-        currentTexture
-        buttonDownSprite
+        base::UI.UIElementInstance
+        currentTexture::Ptr{SDL2.SDL_Texture}
+        buttonDownSprite::Ptr{SDL2.SDL_Surface}
         buttonDownSpritePath::String
-        buttonDownTexture
-        buttonUpSprite
+        buttonDownTexture::Ptr{SDL2.SDL_Texture}
+        buttonUpSprite::Ptr{SDL2.SDL_Surface}
         buttonUpSpritePath::String
-        buttonUpTexture
+        buttonUpTexture::Ptr{SDL2.SDL_Texture}
         fontPath::Union{String, Ptr{Nothing}}
         fontSize::Int
         isInitialized::Bool
         text::String
         textOffset::Math.Vector2
         textSize::Math.Vector2
-        textTexture
+        textTexture::Ptr{SDL2.SDL_Texture}
         textColor::NTuple{4, Int}
-        crop
+        crop::Union{Ptr{Nothing}, Math.Vector4}
 
-        function ScreenButton(clickEvent::Union{Function, Nothing} = nothing; 
+        function ScreenButton(clickEvent = nothing; 
             id::String=JulGame.generate_uuid(), 
             name::String="Button",
             anchor::Symbol = :none,
@@ -32,8 +33,8 @@ module ScreenButtonModule
             position::Math.Vector2 = Math.Vector2(0,0), 
             buttonUpSpritePath::String="Default", 
             buttonDownSpritePath::String="Default", 
-            hoverEnterEvent::Union{Function, Nothing} = nothing,
-            hoverExitEvent::Union{Function, Nothing} = nothing,
+            hoverEnterEvent = nothing,
+            hoverExitEvent = nothing,
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
@@ -43,11 +44,12 @@ module ScreenButtonModule
             size::Math.Vector2=Math.Vector2(0,0), 
             text::String="", 
             textOffset::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0,
             crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL
         )
             this = new()
+            setfield!(this, :base, UI.UIElementInstance())
             
             this.buttonDownSpritePath = buttonDownSpritePath
             this.buttonUpSpritePath = buttonUpSpritePath
@@ -61,9 +63,9 @@ module ScreenButtonModule
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
 
-            this.clickEvents = Function[]
-            this.hoverEnterEvents = Function[]
-            this.hoverExitEvents = Function[]
+            this.clickEvents = ClickCallback[]
+            this.hoverEnterEvents = HoverCallback[]
+            this.hoverExitEvents = HoverCallback[]
             this.currentTexture = C_NULL
             this.fontSize = fontSize
             this.id = id
@@ -310,7 +312,7 @@ module ScreenButtonModule
         newButton.hoverExitEvents = this.hoverExitEvents
         
         UI.initialize(newButton)
-        push!(MAIN.scene.uiElements, newButton)
+        push!(JulGame.main_loop().scene.uiElements, newButton)
         return newButton
     end
 
@@ -360,7 +362,7 @@ module ScreenButtonModule
         this.textTexture = C_NULL
         this.currentTexture = C_NULL
 
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        JulGame.main_loop().scene.uiElements = filter(x -> x !== this, JulGame.main_loop().scene.uiElements)
     end
 
     """

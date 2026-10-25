@@ -22,7 +22,7 @@ module WindowManagerModule
         targetFrameRate::Int
         allowHighDPI::Bool
         position::Math.Vector2
-        fpsManager::Ref{SDL2.LibSDL2.FPSmanager}
+        fpsManager::Base.RefValue{SDL2.LibSDL2.FPSmanager}
         baseResolution::Math.Vector2
 
         function WindowManager()
@@ -106,7 +106,7 @@ module WindowManagerModule
     end
 
     function create_window(windowName::String, size::Math.Vector2, isFullscreen::Bool=false, isResizable::Bool=false)
-        return create_window(JulGame.MAIN.windowManager, windowName, size, isFullscreen, isResizable)
+        return create_window(JulGame.main_loop().windowManager, windowName, size, isFullscreen, isResizable)
     end
 
     """
@@ -125,7 +125,7 @@ module WindowManagerModule
     end
 
     function resize_window(width::Int, height::Int)
-        resize_window(JulGame.MAIN.windowManager, width, height)
+        resize_window(JulGame.main_loop().windowManager, width, height)
     end
 
     """
@@ -144,7 +144,7 @@ module WindowManagerModule
     end
 
     function toggle_fullscreen()
-        toggle_fullscreen(JulGame.MAIN.windowManager)
+        toggle_fullscreen(JulGame.main_loop().windowManager)
     end
 
     """
@@ -164,7 +164,7 @@ module WindowManagerModule
     end
 
     function set_fullscreen(fullscreen::Bool)
-        set_fullscreen(JulGame.MAIN.windowManager, fullscreen)
+        set_fullscreen(JulGame.main_loop().windowManager, fullscreen)
     end
 
     """
@@ -207,7 +207,7 @@ module WindowManagerModule
     end
 
     function set_borderless_fullscreen(enable::Bool)
-        set_borderless_fullscreen(JulGame.MAIN.windowManager, enable)
+        set_borderless_fullscreen(JulGame.main_loop().windowManager, enable)
     end
 
     """
@@ -226,7 +226,7 @@ module WindowManagerModule
     end
 
     function toggle_borderless()
-        toggle_borderless(JulGame.MAIN.windowManager)
+        toggle_borderless(JulGame.main_loop().windowManager)
     end
 
     """
@@ -250,7 +250,7 @@ module WindowManagerModule
     end
 
     function set_vsync(enabled::Bool)
-        set_vsync(JulGame.MAIN.windowManager, enabled)
+        set_vsync(JulGame.main_loop().windowManager, enabled)
     end
 
     """
@@ -259,7 +259,7 @@ module WindowManagerModule
     Toggles vertical synchronization on/off.
     """
     function toggle_vsync(this::WindowManager)
-        toggle_vsync(JulGame.MAIN.windowManager)
+        toggle_vsync(JulGame.main_loop().windowManager)
     end
 
     """
@@ -283,7 +283,7 @@ module WindowManagerModule
     end
 
     function set_render_scale(scaleX::Float32, scaleY::Float32)
-        set_render_scale(JulGame.MAIN.windowManager, scaleX, scaleY)
+        set_render_scale(JulGame.main_loop().windowManager, scaleX, scaleY)
     end
 
     """
@@ -306,7 +306,7 @@ module WindowManagerModule
     end
 
     function set_logical_size(width::Int32, height::Int32)
-        set_logical_size(JulGame.MAIN.windowManager, width, height)
+        set_logical_size(JulGame.main_loop().windowManager, width, height)
     end
 
     function get_logical_size(this::WindowManager)::Math.Vector2
@@ -329,7 +329,7 @@ module WindowManagerModule
     Gets the logical size of the window.
     """
     function get_logical_size()
-        get_logical_size(JulGame.MAIN.windowManager)
+        get_logical_size(JulGame.main_loop().windowManager)
     end
 
     """
@@ -365,7 +365,7 @@ module WindowManagerModule
     end
 
     function set_display_mode(width::Int32, height::Int32, refresh_rate::Int32 = 0)
-        set_display_mode(JulGame.MAIN.windowManager, width, height, refresh_rate)
+        set_display_mode(JulGame.main_loop().windowManager, width, height, refresh_rate)
     end
 
     """
@@ -389,7 +389,7 @@ module WindowManagerModule
     end
 
     function center_window()
-        center_window(JulGame.MAIN.windowManager)
+        center_window(JulGame.main_loop().windowManager)
     end
 
     """
@@ -408,7 +408,7 @@ module WindowManagerModule
     end
 
     function set_window_position(x::Int, y::Int)
-        set_window_position(JulGame.MAIN.windowManager, x, y)
+        set_window_position(JulGame.main_loop().windowManager, x, y)
     end
 
     """
@@ -427,7 +427,7 @@ module WindowManagerModule
     end
 
     function set_window_title(title::String)
-        set_window_title(JulGame.MAIN.windowManager, title)
+        set_window_title(JulGame.main_loop().windowManager, title)
     end
 
     """
@@ -446,7 +446,7 @@ module WindowManagerModule
     end
 
     function set_frame_rate(frameRate::Int)
-        set_frame_rate(JulGame.MAIN.windowManager, frameRate)
+        set_frame_rate(JulGame.main_loop().windowManager, frameRate)
     end
 
     """
@@ -475,7 +475,7 @@ module WindowManagerModule
     end
 
     function set_window_icon(iconPath::String)
-        set_window_icon(JulGame.MAIN.windowManager, iconPath)
+        set_window_icon(JulGame.main_loop().windowManager, iconPath)
     end
 
     """
@@ -499,7 +499,7 @@ module WindowManagerModule
     end
 
     function set_window_opacity()
-        set_window_opacity(JulGame.MAIN.windowManager, opacity)
+        set_window_opacity(JulGame.main_loop().windowManager, opacity)
     end
 
     """
@@ -518,7 +518,7 @@ module WindowManagerModule
     end
 
     function toggle_resizable()
-        toggle_resizable(JulGame.MAIN.windowManager)
+        toggle_resizable(JulGame.main_loop().windowManager)
     end
 
     """
@@ -537,7 +537,7 @@ module WindowManagerModule
     end
 
     function set_resizable(resizable::Bool)
-        set_resizable(JulGame.MAIN.windowManager, resizable)
+        set_resizable(JulGame.main_loop().windowManager, resizable)
     end
 
     """
@@ -558,7 +558,7 @@ module WindowManagerModule
     end
 
     function JulGame.get_window_size()
-        get_window_size(JulGame.MAIN.windowManager)
+        get_window_size(JulGame.main_loop().windowManager)
     end
 
     """
@@ -584,7 +584,7 @@ module WindowManagerModule
     end
 
     function get_display_dimensions()
-        get_display_dimensions(JulGame.MAIN.windowManager)
+        get_display_dimensions(JulGame.main_loop().windowManager)
     end
 
     """
@@ -670,7 +670,7 @@ module WindowManagerModule
     end
 
     function get_display_refresh_rate()
-        get_display_refresh_rate(JulGame.MAIN.windowManager)
+        get_display_refresh_rate(JulGame.main_loop().windowManager)
     end
 
     """
@@ -688,7 +688,7 @@ module WindowManagerModule
     end
 
     function minimize_window()
-        minimize_window(JulGame.MAIN.windowManager)
+        minimize_window(JulGame.main_loop().windowManager)
     end
 
     """
@@ -706,7 +706,7 @@ module WindowManagerModule
     end
 
     function maximize_window()
-        maximize_window(JulGame.MAIN.windowManager)
+        maximize_window(JulGame.main_loop().windowManager)
     end
 
     """
@@ -724,7 +724,7 @@ module WindowManagerModule
     end
 
     function restore_window()
-        restore_window(JulGame.MAIN.windowManager)
+        restore_window(JulGame.main_loop().windowManager)
     end
 
     """
@@ -747,8 +747,8 @@ module WindowManagerModule
             @debug "Window resized to $(width)x$(height)"
             
             # Update all TextBoxes when window is resized
-            if JulGame.MAIN !== nothing && JulGame.MAIN.scene !== nothing
-                for element in JulGame.MAIN.scene.uiElements
+            if JulGame.MAIN !== nothing && JulGame.main_loop().scene !== nothing
+                for element in JulGame.main_loop().scene.uiElements
                     if "$(typeof(element))" == "JulGame.UI.TextBoxModule.TextBox"
                         JulGame.UI.handle_window_resize(element)
                     end
@@ -788,7 +788,7 @@ module WindowManagerModule
     end
 
     function handle_window_event(event::SDL2.SDL_WindowEvent)
-        handle_window_event(JulGame.MAIN.windowManager, event)
+        handle_window_event(JulGame.main_loop().windowManager, event)
     end
 
     """
@@ -808,7 +808,7 @@ module WindowManagerModule
     end
 
     function close_window()
-        close_window(JulGame.MAIN.windowManager)
+        close_window(JulGame.main_loop().windowManager)
     end
 
     """
@@ -832,7 +832,7 @@ module WindowManagerModule
     end
 
     function set_base_resolution(width::Int, height::Int)
-        set_base_resolution(JulGame.MAIN.windowManager, width, height)
+        set_base_resolution(JulGame.main_loop().windowManager, width, height)
     end
 
     """
@@ -848,6 +848,6 @@ module WindowManagerModule
     end
 
     function get_base_resolution()::Math.Vector2
-        return get_base_resolution(JulGame.MAIN.windowManager)
+        return get_base_resolution(JulGame.main_loop().windowManager)
     end
 end 

@@ -58,5 +58,5 @@ struct _Vector4{T}
     Base.:(==)(a::_Vector4{T}, b::_Vector4{L}) where {T,L} = (a.x == b.x && a.y == b.y && a.z == b.z && a.t == b.t)
 end   
 
-Vector4 = _Vector4{Int32}
-Vector4f = _Vector4{Float64}
+const Vector4 = _Vector4{Int32}
+const Vector4f = _Vector4{Float64}

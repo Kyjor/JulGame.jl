@@ -13,33 +13,33 @@ module InputModule
         buttonsHeldDown::Vector{String}
         buttonsReleased::Vector{String}
         debug::Bool
-        defaultCursor
+        defaultCursor::Ptr{Nothing}
         didMouseEventOccur::Bool
         didMouseMotionOccur::Bool
         editorCallback::Union{Function, Nothing}
         main
-        mouseButtonsPressedDown
-        mouseButtonsHeldDown
-        mouseButtonsReleased
-        mousePosition
+        mouseButtonsPressedDown::Vector{UInt8}
+        mouseButtonsHeldDown::Vector{UInt8}
+        mouseButtonsReleased::Vector{UInt8}
+        mousePosition::Math.Vector2
         mousePositionEditorGameWindowOffset::Vector2
         mousePositionWorld::Math.Vector2f
-        joystick
+        joystick::Ptr{Nothing}
         scanCodeStrings::Vector{String}
-        scanCodes
+        scanCodes::Vector{Tuple{Int32, String}}
         quit::Bool
 
-        elementsBeingClickedDownOn
+        elementsBeingClickedDownOn::Vector{HitTestElement}
         uiHitTestBuffer::HitTestBuffer
 
         #Gamepad
-        jaxis
-        xDir
-        yDir
-        numAxes
-        numButtons
-        numHats
-        button
+        jaxis::Ptr{Nothing}
+        xDir::Int
+        yDir::Int
+        numAxes::Int
+        numButtons::Int
+        numHats::Int
+        button::Int
         prevGamepadButton::Bool
         prevXDir::Int
         prevYDir::Int
@@ -57,23 +57,23 @@ module InputModule
         function Input()
             this = new()
 
-            this.buttonsPressedDown = []
-            this.buttonsHeldDown = []
-            this.buttonsReleased = []
+            this.buttonsPressedDown = String[]
+            this.buttonsHeldDown = String[]
+            this.buttonsReleased = String[]
             this.debug = false
             this.didMouseEventOccur = false
             this.didMouseMotionOccur = false
             this.editorCallback = nothing
-            this.mouseButtonsPressedDown = []
-            this.mouseButtonsHeldDown = []
-            this.mouseButtonsReleased = []
-            this.elementsBeingClickedDownOn = []
+            this.mouseButtonsPressedDown = UInt8[]
+            this.mouseButtonsHeldDown = UInt8[]
+            this.mouseButtonsReleased = UInt8[]
+            this.elementsBeingClickedDownOn = HitTestElement[]
             this.uiHitTestBuffer = HitTestBuffer()
             this.mousePosition = Math.Vector2(0,0)
             this.mousePositionEditorGameWindowOffset = Math.Vector2(0,0)
             this.mousePositionWorld = Math.Vector2f(0,0)
             this.quit = false
-            this.scanCodes = []
+            this.scanCodes = Tuple{Int32, String}[]
             this.scanCodeStrings = String[]
             for m in instances(SDL2.SDL_Scancode)
                 codeString = "$(m)"
@@ -81,7 +81,7 @@ module InputModule
                     continue
                 end
                 # Keep scanCodes as plain numeric ids + string names (TS doesn't have a native SDL enum type).
-                push!(this.scanCodes, [Int32(m), SubString(codeString, 14, length(codeString))])
+                push!(this.scanCodes, (Int32(m), String(SubString(codeString, 14, length(codeString)))))
             end
 
             SDL2.SDL_Init(UInt64(SDL2.SDL_INIT_JOYSTICK))
@@ -143,7 +143,7 @@ module InputModule
         if evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
             @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
             @debug "mouse state: $(x[1]), $(y[1])"
-            window_focused = (JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing && JulGame.MAIN.windowManager.isWindowFocused)
+            window_focused = (JulGame.MAIN !== nothing && JulGame.main_loop().windowManager !== nothing && JulGame.main_loop().windowManager.isWindowFocused)
             @debug "window focused: $window_focused"
             if !window_focused
                 @debug "using event coordinates"
@@ -163,7 +163,7 @@ module InputModule
         if !JulGame.IS_EDITOR
             window_width = Ref{Cint}(0)
             window_height = Ref{Cint}(0)
-            SDL2.SDL_GetWindowSize(JulGame.MAIN.windowManager.window, window_width, window_height)
+            SDL2.SDL_GetWindowSize(JulGame.main_loop().windowManager.window, window_width, window_height)
             logical_size = JulGame.WindowManagerModule.get_logical_size()
             safe_window_width = max(window_width[], 1)
             safe_window_height = max(window_height[], 1)
@@ -186,7 +186,7 @@ module InputModule
                 scaled_x = 0
                 scaled_y = 0
             end
-            window_focused = (JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing && JulGame.MAIN.windowManager.isWindowFocused)
+            window_focused = (JulGame.MAIN !== nothing && JulGame.main_loop().windowManager !== nothing && JulGame.main_loop().windowManager.isWindowFocused)
             this.mousePosition = Math.Vector2(
                 clamp(floor(Int, scaled_x), 0, logical_size.x),
                 clamp(floor(Int, scaled_y), 0, logical_size.y)
@@ -197,7 +197,7 @@ module InputModule
             raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
             clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
             clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
-            camera_size = JulGame.MAIN.scene.camera.size
+            camera_size = JulGame.main_loop().scene.camera.size
             if JulGame.EditorGameViewSize.x > 0 && JulGame.EditorGameViewSize.y > 0
                 scale_x = camera_size.x / JulGame.EditorGameViewSize.x
                 scale_y = camera_size.y / JulGame.EditorGameViewSize.y
@@ -214,8 +214,24 @@ module InputModule
     # Reused hit-test buffers: rebuilding these per mouse event with
     # filter/reverse/sort/vcat was allocating several KB per event (mouse motion
     # happens every frame), creating GC pressure that shows up as frame dips.
-    const _hitTestCandidates = Any[]
-    const _inactiveCanvasChildren = Set{Any}()
+    const _hitTestCandidates = HitTestElement[]
+    const _uiCandidates = JulGame.IUIElement[]
+    const _entityCandidates = JulGame.IEntity[]
+    const _inactiveCanvasChildren = HitTestElement[]
+
+    # `===` membership: `in` would compare entities and UI elements with `==`, which cannot be resolved statically.
+    function is_element_in(elements::Vector{HitTestElement}, element::HitTestElement)::Bool
+        for candidate in elements
+            candidate === element && return true
+        end
+        return false
+    end
+
+    # Layer of the sprite that makes an entity hittable; entities without a sprite never reach the sort.
+    function _entity_layer(entity::JulGame.IEntity)::Int
+        sprite = entity.sprite
+        return sprite isa JulGame.Component.SpriteModule.InternalSprite ? sprite.layer : 0
+    end
 
     # Build the layer-descending hit-test candidate list into the reused
     # buffers, paring out elements that can never receive input (inactive,
@@ -225,39 +241,41 @@ module InputModule
     # reverse + stable-sort tie-break (later elements win within a layer).
     function _build_hit_test_candidates!()
         empty!(_inactiveCanvasChildren)
-        uiElements = MAIN.scene.uiElements
+        uiElements = JulGame.main_loop().scene.uiElements
         for ui in uiElements
-            if isa(ui, JulGame.ICanvas) && !ui.isActive
+            if ui isa JulGame.UI.CanvasModule.Canvas && !ui.isActive
                 for child in ui.children
                     push!(_inactiveCanvasChildren, child)
                 end
             end
         end
 
-        candidates = _hitTestCandidates
-        empty!(candidates)
+        empty!(_uiCandidates)
         for i in length(uiElements):-1:1
             ui = uiElements[i]
-            if ui.isActive && !(ui in _inactiveCanvasChildren)
-                push!(candidates, ui)
+            if ui.isActive && !is_element_in(_inactiveCanvasChildren, ui)
+                push!(_uiCandidates, ui)
             end
         end
-        nUI = length(candidates)
-        sort!(view(candidates, 1:nUI), by = uiElement -> uiElement.layer, rev = true)
+        sort!(_uiCandidates, by = uiElement -> uiElement.layer, rev = true)
 
-        entities = MAIN.scene.entities
+        empty!(_entityCandidates)
+        entities = JulGame.main_loop().scene.entities
         for i in length(entities):-1:1
             entity = entities[i]
             if entity.isActive && !entity.ignoreInputEvents &&
-               entity.sprite !== nothing && entity.sprite !== C_NULL &&
-               !(entity in _inactiveCanvasChildren)
-                push!(candidates, entity)
+               entity.sprite isa JulGame.Component.SpriteModule.InternalSprite &&
+               !is_element_in(_inactiveCanvasChildren, entity)
+                push!(_entityCandidates, entity)
             end
         end
-        if length(candidates) > nUI
-            sort!(view(candidates, nUI+1:length(candidates)), by = entity -> entity.sprite.layer, rev = true)
-        end
-        return candidates, nUI
+        sort!(_entityCandidates, by = _entity_layer, rev = true)
+
+        candidates = _hitTestCandidates
+        empty!(candidates)
+        append!(candidates, _uiCandidates)
+        append!(candidates, _entityCandidates)
+        return candidates, length(_uiCandidates)
     end
 
     function poll_input(this::Input)
@@ -304,12 +322,13 @@ module InputModule
             end
 
             if this.editorCallback !== nothing
-                this.editorCallback(evt)
+                JulGame.unless_trimmed(call_editor_callback, this, evt)
             end
 
             
-            _handle_dropped_files(this, evt)
-            _handle_clipboard_paste(this, evt)
+            # Both only feed the editor, so a trimmed game build leaves them out
+            JulGame.unless_trimmed(_handle_dropped_files, this, evt)
+            JulGame.unless_trimmed(_handle_clipboard_paste, this, evt)
 
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
                 this.didMouseEventOccur = true
@@ -320,9 +339,9 @@ module InputModule
                     @debug("Mouse button down at $(this.mousePosition)")
                 end
 
-                ui_hit_active = JulGame.MAIN.scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !JulGame.MAIN.isGameModeRunningInEditor)
+                ui_hit_active = JulGame.main_loop().scene.uiElements !== nothing && !(JulGame.IS_EDITOR && !JulGame.main_loop().isGameModeRunningInEditor)
                 if ui_hit_active
-                    if JulGame.MAIN.scene.camera === nothing
+                    if JulGame.main_loop().scene.camera === nothing
                         @warn ("Camera is not set in the main scene.")
                         continue
                     end
@@ -340,7 +359,7 @@ module InputModule
                         skipElement = !element.isActive
                         # Re-check here (despite build-time paring) because a click
                         # handler earlier in this loop can deactivate a canvas
-                        if !skipElement && element in _inactiveCanvasChildren
+                        if !skipElement && is_element_in(_inactiveCanvasChildren, element)
                             skipElement = true
                         end
                         if (isa(element, JulGame.IEntity) || isa(element, JulGame.IUIElement)) && element.ignoreInputEvents
@@ -355,8 +374,8 @@ module InputModule
                         elementSize = get_element_size(element)
                         push_rect!(
                             buf, element,
-                            elementPosition.x, elementPosition.y,
-                            elementPosition.x + elementSize.x, elementPosition.y + elementSize.y,
+                            Float64(elementPosition.x), Float64(elementPosition.y),
+                            Float64(elementPosition.x) + Float64(elementSize.x), Float64(elementPosition.y) + Float64(elementSize.y),
                         )
                     end
                     hit_idx = lib_available() ?
@@ -397,7 +416,7 @@ module InputModule
                         end
                     end
                     if evt.type == SDL2.SDL_MOUSEBUTTONUP
-                        this.elementsBeingClickedDownOn = []
+                        this.elementsBeingClickedDownOn = HitTestElement[]
                     end
                 end
 
@@ -541,6 +560,9 @@ module InputModule
         this.prevGamepadButton = buttonHeld
     end
 
+    # The callback is a dynamically assigned function, so a trimmed build leaves it out
+    call_editor_callback(this::Input, evt) = this.editorCallback(evt)
+
     function check_scan_code(this::Input, keyboardState, keyState, scanCodes)
         for scanCode in scanCodes
             try
@@ -561,7 +583,7 @@ module InputModule
         end
 
         # If we have access to the WindowManager through MAIN, delegate window events to it
-        if JulGame.MAIN !== nothing && JulGame.MAIN.windowManager !== nothing
+        if JulGame.MAIN !== nothing && JulGame.main_loop().windowManager !== nothing
             JulGame.WindowManagerModule.handle_window_event(event.window)
         end
     end

@@ -91,7 +91,6 @@ module SpriteModule
             if this.image == C_NULL
                 error = unsafe_string(SDL2.SDL_GetError())
                 @error(string("Couldn't open image! path: $(fullPath) SDL Error: ", error))
-                Base.show_backtrace(stdout, catch_backtrace())
                 return
             end
             surface = unsafe_wrap(Array, this.image, 10; own = false)
@@ -534,7 +533,7 @@ module SpriteModule
     function prewarm_effect_textures!(jobs::Vector)
         for (imagePath, effects) in jobs
             effects_any = Any[e for e in effects]
-            signature = string(imagePath, "|", serialize_effects(effects_any))
+            signature = string(imagePath, "|", JG.EffectsModule.serialize_effects(effects_any))
             if signature in EFFECT_PREWARM_SUBMITTED
                 continue
             end
@@ -604,7 +603,6 @@ module SpriteModule
             this.texture = get_or_create_texture(this.imagePath, this.image)
             if this.texture == C_NULL
                 @error("Failed to create texture from image.")
-                Base.show_backtrace(stdout, catch_backtrace())
                 return
             end
             Component.set_color(this)
@@ -646,7 +644,6 @@ module SpriteModule
 
         if this.texture == C_NULL
             @error("Failed to create texture from image.")
-            Base.show_backtrace(stdout, catch_backtrace())
             return
         end
 
@@ -739,7 +736,9 @@ module SpriteModule
        return false
     end
 
-    function Base.setproperty!(this::InternalSprite, s::Symbol, x)
+    JulGame.as_sprite(sprite::InternalSprite)::InternalSprite = sprite
+
+    Base.@constprop :aggressive function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")
         try
             if s == :imagePath
@@ -754,9 +753,7 @@ module SpriteModule
             
             setfield!(this, s, x)
         catch e
-            @error "Error setting sprite property $(s) to: $(x)"
-            @error "Error: $e"
-            Base.show_backtrace(stderr, catch_backtrace())
+            JulGame.log_exception("Error setting sprite property $(s)", e)
         end
     end
 end

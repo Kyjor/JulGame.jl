@@ -9,7 +9,8 @@ module EffectsModule
     export BevelEffect, BevelEffect1, BevelEmbossEffect, DropShadowEffect, OuterGlowEffect
     export InnerGlowEffect, StrokeEffect, GradientEffect
     export TextureFillEffect, RoughEdgeEffect, InvertEffect, FrayTintEffect, NibbleOverlayEffect
-    export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, LineTarget, ImageTarget
+    export SurfaceTarget, TextureTarget, SpriteTarget, RectangleTarget, ImageTarget
+    export serialize_effects
     export apply_effects!, apply_style!, create_button_style, create_panel_style, create_text_style, create_nibble_style
     export INHERIT_COLOR, BevelType, GradientStop
     export EmbossLayerStyle, BevelEmbossBlendMode, identity_emboss_lut
@@ -102,19 +103,18 @@ module EffectsModule
         end
     end
     
-    mutable struct LineTarget <: EffectTarget
-        line::Any  # Line
-        function LineTarget(line::Any)
-            new(line)
-        end
-    end
-    
     mutable struct ImageTarget <: EffectTarget
         image::Any  # UIImage
         function ImageTarget(image::Any)
             new(image)
         end
     end
+
+    # The targets hold their object untyped because the UI types are defined after this module. The module that
+    # owns each type defines the matching accessor, which returns it concretely typed.
+    sprite_of(target::SpriteTarget) = target.sprite::Component.SpriteModule.InternalSprite
+    function rectangle_of end
+    function image_of end
     
     #  effect types (extending existing text effects)
     mutable struct BevelEffect <: Effect
@@ -478,5 +478,31 @@ module EffectsModule
     
     function apply_style!(target::EffectTarget, style::EffectStyle)
         return apply_effects!(target, style.effects)
+    end
+
+    # Cache-key text of an effect: its type and field values (pointers are only tagged, never dumped).
+    # `string` of tuples and vectors needs `show`, which `juliac --trim` cannot compile, hence the explicit methods.
+    effect_value_text(value::Integer) = string(value)
+    effect_value_text(value::AbstractFloat) = string(value)
+    effect_value_text(value::Union{AbstractString, Symbol}) = String(value)
+    effect_value_text(value::Enum) = string(Int(value))
+    effect_value_text(::Ptr) = "Ptr"
+    effect_value_text(values::AbstractVector) = string("[", join(String[effect_value_text(x) for x in values], ","), "]")
+    effect_value_text(values::NTuple) = string("(", join(String[effect_value_text(x) for x in values], ","), ")")
+
+    @generated function effect_value_text(value::T) where {T}
+        parts = Expr[:(string($(string(field)), "=", effect_value_text(getfield(value, $(QuoteNode(field)))))) for field in fieldnames(T)]
+        return :(string($(string(nameof(T))), "(", join(String[$(parts...)], ","), ")"))
+    end
+
+    JulGame.dispatch(f, target::Effect, args...) = JulGame.dispatch_over_subtypes(f, Val{Effect}(), JulGame.ErasedTarget(target), args...)
+
+    function serialize_effects(effects::Vector{Any})::String
+        isempty(effects) && return "[]"
+        parts = String[]
+        for effect in effects
+            push!(parts, JulGame.dispatch(effect_value_text, effect::Effect))
+        end
+        return "[" * join(parts, ";") * "]"
     end
 end

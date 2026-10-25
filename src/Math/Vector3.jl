@@ -66,5 +66,5 @@ struct _Vector3{T}
     Base.:(==)(a::_Vector2{L}, b::_Vector3{T}) where {T,L} = (a.x == b.x && a.y == b.y && b.z == 0)
 end   
 
-Vector3 = _Vector3{Int32}
-Vector3f = _Vector3{Float64}
+const Vector3 = _Vector3{Int32}
+const Vector3f = _Vector3{Float64}

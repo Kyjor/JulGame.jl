@@ -13,7 +13,7 @@ function _static_requested()::Bool
 end
 
 # Opt-in via JULGAME_STATIC=1 or --static (off by default). Set in __init__ so precompile does not bake it in.
-LIB_AVAILABLE = false
+LIB_AVAILABLE::Bool = false
 
 # Match Libdl.jl: bare StaticCompiler ccalls use RTLD_DEFAULT, which only sees
 # libraries opened with RTLD_GLOBAL.

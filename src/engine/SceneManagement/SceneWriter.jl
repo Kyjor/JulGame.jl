@@ -148,8 +148,7 @@ module SceneWriterModule
             end
             mv(joinpath(projectPath, "scenes", "$(name)-saving"), joinpath(projectPath, "scenes", "$(sceneName)"); force=true)
         catch e
-            @error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
+            JulGame.log_exception("Error in SceneWriter.jl", e)
         end
     end
 

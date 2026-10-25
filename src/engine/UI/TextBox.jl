@@ -11,7 +11,7 @@ module TextBoxModule
     export apply_effects!
     export update_effects
     export request_effects_refresh!
-    DEFAULT_FONT = "Default"
+    DEFAULT_FONT::String = "Default"
     
     # Helper to map JulGame.SCALE_QUALITY ("0","1","2") to SDL scale mode
     function get_scale_mode_from_quality()
@@ -36,6 +36,7 @@ module TextBoxModule
         end
     end
     mutable struct TextBox <: UI.UIElement
+        base::UI.UIElementInstance
         font::Union{Ptr{SDL2.TTF_Font}, Ptr{Nothing}}
         fontPath::String
         fontSize::Int
@@ -60,9 +61,9 @@ module TextBoxModule
             isWorldEntity::Bool=false, 
             layer::Int=0,
             position::Math.Vector2 = Math.Vector2(0,0), 
-            clickEvents::Vector{Function} = Function[],
-            hoverEnterEvents::Vector{Function} = Function[],
-            hoverExitEvents::Vector{Function} = Function[],
+            clickEvents = ClickCallback[],
+            hoverEnterEvents = HoverCallback[],
+            hoverExitEvents = HoverCallback[],
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
@@ -71,10 +72,11 @@ module TextBoxModule
             maxLineWidth::Int=0, 
             wrapWords::Bool=true,
             isDynamic::Bool=false,
-            parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
         )
 
             this = new()
+            setfield!(this, :base, UI.UIElementInstance())
             
             this.isConstructed = false
             this.anchor = deepcopy(UI.anchor_types)
@@ -180,7 +182,7 @@ module TextBoxModule
             SDL2.SDL_SetRenderDrawColor(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, rgba.r[], rgba.g[], rgba.b[], rgba.a[]);
         end
 
-        camera = MAIN.scene.camera
+        camera = JulGame.main_loop().scene.camera
         
         SDL2.SDL_SetTextureScaleMode(texture_to_render, get_scale_mode_from_quality())
         # Handle world coordinates for world entities, similar to Sprite component
@@ -496,7 +498,7 @@ module TextBoxModule
     function get_true_font_size(baseFontSize::Int)::Int
         # Get current window size and base resolution
         windowSize = JulGame.get_window_size()
-        baseResolution = JulGame.MAIN.windowManager.baseResolution
+        baseResolution = JulGame.main_loop().windowManager.baseResolution
         
         # Calculate scaling factors
         scaleX = windowSize.x / baseResolution.x
@@ -517,33 +519,10 @@ module TextBoxModule
         
         free_text_resources(this)
 
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        JulGame.main_loop().scene.uiElements = filter(x -> x !== this, JulGame.main_loop().scene.uiElements)
     end
     
     # Generate a stable string for effects to use in cache keys
-    function serialize_effects(effects::Vector{Any})::String
-        if isempty(effects)
-            return "[]"
-        end
-        parts = String[]
-        for eff in effects
-            T = typeof(eff)
-            fnames = fieldnames(T)
-            vals = String[]
-            for f in fnames
-                # Avoid dumping huge pointers; just tag Ptr fields
-                v = getfield(eff, f)
-                if v isa Ptr
-                    push!(vals, string(f, "=Ptr"))
-                else
-                    push!(vals, string(f, "=", v))
-                end
-            end
-            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
-        end
-        return "[" * join(parts, ";") * "]"
-    end
-
     function generate_effect_cache_key_from_parts(
         text::AbstractString,
         color::NTuple{4, Int},
@@ -780,8 +759,7 @@ module TextBoxModule
                 SDL2.SDL_FreeSurface(baseSurface)
             end
         catch e
-            @error("Failed to apply effects", name=this.name, err=e)
-            Base.show_backtrace(stderr, catch_backtrace())
+            JulGame.log_exception("Failed to apply effects to $(this.name)", e)
             # Clean up on error
             if baseSurface != C_NULL
                 SDL2.SDL_FreeSurface(baseSurface)
@@ -802,10 +780,18 @@ module TextBoxModule
                 end
             end
         catch e
-            error(e)
-            Base.show_backtrace(stderr, catch_backtrace())
+            JulGame.log_exception("Error in TextBox", e)
         end
     end =#
+
+    function UI.on_property_set(this::TextBox, property::Symbol)
+        if property === :text || property === :isActive || property === :textColor || property === :maxLineWidth || property === :wrapWords || property === :fontSize || property === :color
+            if this.isConstructed
+                @debug("rerendering text for $(this.name) because of $(property)")
+                UI.rerender_text(this) # this line MUST stay inside the if for specific fields as we can't call this on fields that are used in this function
+            end
+        end
+    end
 
     # Add methods to set and get the maximum line width
     function set_max_line_width(this::TextBox, maxWidth::Int)
@@ -868,7 +854,7 @@ module TextBoxModule
         parent=this.parent
     )
         UI.initialize(newTextBox)
-        push!(MAIN.scene.uiElements, newTextBox)
+        push!(JulGame.main_loop().scene.uiElements, newTextBox)
         return newTextBox
     end
 

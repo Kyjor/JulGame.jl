@@ -76,7 +76,7 @@
     end
 
     function set_cursor_with_image(imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)
-        set_cursor_with_image(MAIN.input, imagePath, x, y, scale_factor)
+        set_cursor_with_image(JulGame.main_loop().input, imagePath, x, y, scale_factor)
     end
 
     function set_cursor(cursor)

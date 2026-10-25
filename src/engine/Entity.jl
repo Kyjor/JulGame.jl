@@ -11,15 +11,24 @@ module EntityModule
     using ..JulGame.TransformModule
     import ..JulGame: Component
     import ..JulGame
+    using ..JulGame: ClickCallback, HoverCallback
 
-    export Entity
+    export Entity, ScriptSpec
+
+    "A script declared in a scene file, constructed later by `SceneBuilderModule.add_scripts_to_entities`."
+    struct ScriptSpec
+        name::String
+        fields::JulGame.SceneJSON.JSONValue
+    end
+
     mutable struct Entity <: JulGame.IEntity
         id::String
         name::String
         isActive::Bool
         persistentBetweenScenes::Bool
         transform::Transform
-        scripts::Vector{Any}
+        scripts::Vector{JulGame.Script}
+        pendingScripts::Vector{ScriptSpec}
         parent::Union{Entity, Nothing}
         animator::Union{InternalAnimator, Ptr{Nothing}}
         collider::Union{InternalCollider, Ptr{Nothing}}
@@ -28,14 +37,14 @@ module EntityModule
         soundSource::Union{InternalSoundSource, Ptr{Nothing}}
         sprite::Union{InternalSprite, Ptr{Nothing}}
 
-        clickEvents::Vector{Function}
-        hoverEnterEvents::Vector{Function}
-        hoverExitEvents::Vector{Function}
+        clickEvents::Vector{ClickCallback}
+        hoverEnterEvents::Vector{HoverCallback}
+        hoverExitEvents::Vector{HoverCallback}
         isHovered::Bool
         forceClickCheck::Bool
         ignoreInputEvents::Bool
 
-        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(), scripts::Vector = []; clickEvents = Function[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
+        function Entity(name::String = "New entity", id::String = JulGame.generate_uuid(), transform::Transform = Transform(); clickEvents = ClickCallback[], forceClickCheck::Bool = false, ignoreInputEvents::Bool = false)
             this = new()
 
             this.id = id
@@ -43,12 +52,10 @@ module EntityModule
             this.animator = C_NULL
             this.collider = C_NULL
             this.isActive = true
-            this.scripts = []
+            this.scripts = JulGame.Script[]
+            this.pendingScripts = ScriptSpec[]
             this.transform = transform
             this.transform.parent = this
-            for script in scripts
-                JulGame.add_script(this, script)
-            end
             this.shape = C_NULL
             this.soundSource = C_NULL
             this.sprite = C_NULL
@@ -57,8 +64,8 @@ module EntityModule
             this.parent = nothing
             this.isHovered = false
             this.clickEvents = clickEvents
-            this.hoverEnterEvents = Function[]
-            this.hoverExitEvents = Function[]
+            this.hoverEnterEvents = HoverCallback[]
+            this.hoverExitEvents = HoverCallback[]
             this.forceClickCheck = forceClickCheck
             this.ignoreInputEvents = ignoreInputEvents
 
@@ -66,15 +73,16 @@ module EntityModule
         end
     end
 
-    function JulGame.add_script(this::Entity, script)
+    JulGame.as_entity(entity::Entity)::Entity = entity
+
+    function JulGame.add_script(this::Entity, script::JulGame.Script)
         @debug(string("Adding script of type: ", typeof(script), " to entity named " , this.name))
         push!(this.scripts, script)
         script.parent = this
         try
-            JulGame.initialize(script)
+            JulGame.dispatch(JulGame.initialize, script)
         catch e
-            @error string(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+            JulGame.log_exception("Failed to initialize script on entity $(this.name)", e)
         end
     end
 
@@ -86,30 +94,32 @@ module EntityModule
 
         for script in this.scripts
             try
-                Base.invokelatest(JulGame.update, script, deltaTime) 
+                JulGame.dispatch(JulGame.update, script, deltaTime)
             catch e
-                JulGame.ErrorLoggingModule.log_error(JulGame.MAIN.errorLogger, string(e), current_exceptions())
+                JulGame.log_exception("Script update failed", e)
             end
         end
     end
 
     function JulGame.add_animator(this::Entity, animator::Animator = Animator(Animation[Animation(Vector4[Vector4(0,0,0,0)], 60)]))
         if this.animator != C_NULL
-            println("Animator already exists on entity named ", this.name)
+            JulGame.print_line("Animator already exists on entity named " * this.name)
             return
         end
 
-        this.animator = InternalAnimator(this::Entity, animator.animations)
-        if this.sprite != C_NULL 
-            this.animator.sprite = this.sprite
+        newAnimator = InternalAnimator(this::Entity, animator.animations)
+        this.animator = newAnimator
+        sprite = this.sprite
+        if sprite isa InternalSprite
+            newAnimator.sprite = sprite
         end
 
-        return this.animator
+        return newAnimator
     end
 
     function JulGame.add_collider(this::Entity, collider::Collider = Collider(true, false, false, Vector2f(0,0), Vector2f(1,1), "Default"))
         if this.collider != C_NULL
-            println("Collider already exists on entity named ", this.name)
+            JulGame.print_line("Collider already exists on entity named " * this.name)
             return
         end
             
@@ -120,7 +130,7 @@ module EntityModule
 
     function JulGame.add_rigidbody(this::Entity, rigidbody::Rigidbody = Rigidbody(1.0, true))
         if this.rigidbody != C_NULL
-            println("Rigidbody already exists on entity named ", this.name)
+            JulGame.print_line("Rigidbody already exists on entity named " * this.name)
             return
         end
 
@@ -131,7 +141,7 @@ module EntityModule
 
     function JulGame.add_sound_source(this::Entity, soundSource::SoundSource = SoundSource(-1, false, "", false, 50))
         if this.soundSource != C_NULL
-            println("SoundSource already exists on entity named ", this.name)
+            JulGame.print_line("SoundSource already exists on entity named " * this.name)
             return
         end
 
@@ -147,22 +157,24 @@ module EntityModule
 
     function JulGame.add_sprite(this::Entity, isCreatedInEditor::Bool = false, sprite::Sprite = Sprite((255, 255, 255, 255), C_NULL, false, "", 0, Math.Vector2f(0,0), Math.Vector2f(0,0), 0, -1, Math.Vector2f(0.5,0.5), :center, false))
         if this.sprite != C_NULL
-            println("Sprite already exists on entity named ", this.name)
+            JulGame.print_line("Sprite already exists on entity named " * this.name)
             return
         end
 
-        this.sprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset)
-        if this.animator != C_NULL
-            this.animator.sprite = this.sprite
+        newSprite = InternalSprite(this::Entity, sprite.imagePath, sprite.crop, sprite.isFlipped, sprite.color, isCreatedInEditor; pixelsPerUnit=sprite.pixelsPerUnit, position=sprite.position, rotation=sprite.rotation, layer=sprite.layer, center=sprite.center, anchor=sprite.anchor, offset=sprite.offset)
+        this.sprite = newSprite
+        animator = this.animator
+        if animator isa InternalAnimator
+            animator.sprite = newSprite
         end
-        Component.initialize(this.sprite)
+        Component.initialize(newSprite)
 
-        return this.sprite
+        return newSprite
     end
 
     function JulGame.add_shape(this::Entity, shape::Shape = Shape(Math.Vector3(255,0,0), true, true, 0, Math.Vector2f(0,0), Math.Vector2f(0,0), Math.Vector2f(1,1), 255))
         if this.shape != C_NULL
-            println("Shape already exists on entity named ", this.name)
+            JulGame.print_line("Shape already exists on entity named " * this.name)
             return
         end
 
@@ -206,7 +218,7 @@ module EntityModule
             newEntity.sprite = Component.duplicate(this.sprite, newEntity)
         end
         
-        push!(JulGame.MAIN.scene.entities, newEntity)
+        push!(JulGame.main_loop().scene.entities, newEntity)
         return newEntity
     end
 

@@ -14,25 +14,30 @@ module ColliderModule
     end
 
 
-    export InternalCollider
-    mutable struct InternalCollider
-        collisionEvents::Vector{Function}
+    export InternalCollider, CollisionEvent
+    struct CollisionEvent
+        collider::JulGame.ICollider
+        direction::CollisionDirection
+    end
+
+    mutable struct InternalCollider <: JulGame.ICollider
+        collisionEvents::Vector{Callback{CollisionEvent}}
         currentCollisions::Vector{InternalCollider}
         currentRests::Vector{InternalCollider}
         enabled::Bool
         isTrigger::Bool
         isPlatformerCollider::Bool
         offset::Math.Vector2f
-        parent::Any
+        parent::JulGame.IEntity
         size::Math.Vector2f
         tag::String
         
         function InternalCollider(parent::Any, size::Math.Vector2f = Math.Vector2f(1,1), offset::Math.Vector2f = Math.Vector2f(), tag::String="Default", isTrigger::Bool=false, isPlatformerCollider::Bool = false, enabled::Bool=true)
             this = new()
 
-            this.collisionEvents = []
-            this.currentCollisions = []
-            this.currentRests = []
+            this.collisionEvents = Callback{CollisionEvent}[]
+            this.currentCollisions = InternalCollider[]
+            this.currentRests = InternalCollider[]
             this.enabled = enabled
             this.isTrigger = isTrigger
             this.isPlatformerCollider = isPlatformerCollider
@@ -42,7 +47,7 @@ module ColliderModule
             this.tag = tag
 
             if this.size.x < 0 || this.size.y < 0
-                println("Collider size cannot be negative")
+                JulGame.print_line("Collider size cannot be negative")
                 this.size = Math.Vector2f(1, 1)
             end
 
@@ -51,7 +56,7 @@ module ColliderModule
     end
 
     function Component.check_collisions(this::InternalCollider)
-        colliders = MAIN.scene.colliders
+        colliders = JulGame.main_loop().scene.colliders
         #Only check the player against other colliders
         colliderSkipCount = 0
         colliderCheckedCount = 0
@@ -70,7 +75,7 @@ module ColliderModule
             
             if this != collider
                 # check if other collider is within range of this collider, if it isn't then skip it
-                if collider.parent.transform.position.x > this.parent.transform.position.x + this.size.x || collider.parent.transform.position.x + collider.size.x < this.parent.transform.position.x && MAIN.optimizeSpriteRendering
+                if collider.parent.transform.position.x > this.parent.transform.position.x + this.size.x || collider.parent.transform.position.x + collider.size.x < this.parent.transform.position.x && JulGame.main_loop().optimizeSpriteRendering
                     colliderSkipCount += 1
                     continue
                 end
@@ -82,7 +87,7 @@ module ColliderModule
                     if collision[1] == Top::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            eventToCall(CollisionEvent(collider, collision[1]))
                         end
                         #Begin to overlap, correct position
                         if !collider.isTrigger && !this.isTrigger
@@ -92,7 +97,7 @@ module ColliderModule
                     if collision[1] == Left::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            eventToCall(CollisionEvent(collider, collision[1]))
                         end
                         
                         if !collider.isTrigger && !this.isTrigger
@@ -103,7 +108,7 @@ module ColliderModule
                     if collision[1] == Right::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            eventToCall(CollisionEvent(collider, collision[1]))
                         end
                         #Begin to overlap, correct position
                         if !collider.isTrigger && !this.isTrigger
@@ -113,7 +118,7 @@ module ColliderModule
                     if collision[1] == Bottom::CollisionDirection
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            eventToCall(CollisionEvent(collider, collision[1]))
                         end
                         #Begin to overlap, correct position
                         
@@ -127,7 +132,7 @@ module ColliderModule
                     if collision[1] == Below::ColliderLocation
                         push!(this.currentCollisions, collider)
                         for eventToCall in this.collisionEvents
-                            Base.invokelatest(eventToCall,(collider=collider, direction=collision[1]))
+                            eventToCall(CollisionEvent(collider, collision[1]))
                         end
                     end
                     if collision[3] && this.parent.rigidbody.grounded
@@ -141,6 +146,8 @@ module ColliderModule
 
         return length(this.currentCollisions) > 0
     end
+
+    JulGame.as_collider(collider::InternalCollider)::InternalCollider = collider
 
     function Component.add_collision_event(this::InternalCollider, event)
         push!(this.collisionEvents, event)
@@ -164,7 +171,7 @@ module ColliderModule
         result = Ref(SDL2.SDL_Rect(0,0,0,0))
         isIntersection = SDL2.SDL_IntersectRect(Ref(a), Ref(b), result)
 
-        camera = MAIN.scene.camera
+        camera = JulGame.main_loop().scene.camera
         camS = JulGame.pixels_per_world_unit(camera)
         cameraDiff = camera !== nothing ? 
         Math.Vector2((camera.position.x + camera.offset.x) * camS, (camera.position.y + camera.offset.y) * camS) : 

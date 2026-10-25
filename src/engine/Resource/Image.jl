@@ -40,7 +40,6 @@ module ImageModule
             if this.surface == C_NULL
                 error = unsafe_string(SDL2.SDL_GetError())
                 @error(string("Couldn't open image! path: $(path) SDL Error: ", error))
-                Base.show_backtrace(stdout, catch_backtrace())
                 return
             end
             surface = unsafe_wrap(Array, this.surface, 10; own = false)
@@ -155,9 +154,7 @@ module ImageModule
             end
             setfield!(this, s, x)
         catch e
-            @error "Error setting Image property $(s) to: $(x)"
-            @error "Error: $e"
-            Base.show_backtrace(stderr, catch_backtrace())
+            JulGame.log_exception("Error setting Image property $(s)", e)
         end
     end
 end

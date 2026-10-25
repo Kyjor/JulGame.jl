@@ -1,5 +1,4 @@
 module SceneReaderModule
-    using JSON3
     using ...AnimatorModule
     using ...AnimationModule
     using ...CameraModule
@@ -16,6 +15,17 @@ module SceneReaderModule
     using ...UI.CanvasModule
     using ...TransformModule
     using ...JulGame
+    using ...JulGame.SceneJSON
+
+    export SceneData
+    "Everything a scene file describes."
+    struct SceneData
+        entities::Vector{Entity}
+        uiElements::Vector{JulGame.IUIElement}
+        camera::Camera
+    end
+
+    const PRELOADED_SCENES = Dict{String, SceneData}()
 
     export preload_scene
     """
@@ -28,340 +38,275 @@ module SceneReaderModule
     - `filePath::String`: The path to the scene file to preload
     """
     function preload_scene(filePath::String)
-        try
-            if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
-                @debug("Scene already preloaded: $(basename(filePath))")
-                return
-            end
+        sceneName = basename(filePath)
+        haskey(PRELOADED_SCENES, sceneName) && return
 
-            scene = deserialize_scene(filePath)
-            JulGame.PRELOADED_SCENES[basename(filePath)] = (entities = scene[1], uiElements = scene[2], camera = scene[3])
-            @debug("Preloaded scene: $(basename(filePath))")
-        catch e
-            @error string(e)
-            Base.show_backtrace(stdout, catch_backtrace())
+        scene = deserialize_scene(filePath)
+        if scene !== nothing
+            PRELOADED_SCENES[sceneName] = scene
+            @debug("Preloaded scene: $sceneName")
         end
     end
 
+    # JSON helpers
+
+    json_id(value::JSONValue)::String = begin
+        id = json_get(value, "id")
+        id.kind == SceneJSON.JString ? id.string : id.kind == SceneJSON.JNumber ? string(round(Int, id.number)) : JulGame.generate_uuid()
+    end
+
+    has_content(value::JSONValue) = !isnull(value) && !isempty(value)
+
+    read_vector2(value::JSONValue, default::Vector2 = Vector2(0, 0))::Vector2 =
+        isnull(value) ? default : Vector2(json_float(value, "x", 0.0), json_float(value, "y", 0.0))
+
+    read_vector2f(value::JSONValue, default::Vector2f = Vector2f(0, 0))::Vector2f =
+        isnull(value) ? default : Vector2f(json_float(value, "x", 0.0), json_float(value, "y", 0.0))
+
+    read_vector3f(value::JSONValue, defaultZ::Float64)::Vector3f =
+        Vector3f(json_float(value, "x", 0.0), json_float(value, "y", 0.0), json_float(value, "z", defaultZ))
+
+    read_vector4(value::JSONValue)::Vector4 =
+        Vector4(json_float(value, "x", 0.0), json_float(value, "y", 0.0), json_float(value, "z", 0.0), json_float(value, "t", 0.0))
+
+    function read_color(value::JSONValue, channels::NTuple{4, String}, default::NTuple{4, Int})::NTuple{4, Int}
+        return (
+            json_int(value, channels[1], default[1]),
+            json_int(value, channels[2], default[2]),
+            json_int(value, channels[3], default[3]),
+            json_int(value, channels[4], default[4]),
+        )
+    end
+
+    const RGBA_CHANNELS = ("r", "g", "b", "a")
+    const NUMBERED_CHANNELS = ("1", "2", "3", "4")
+
+    # Scenes
+
     export deserialize_scene
-    function deserialize_scene(filePath)
+    function deserialize_scene(filePath::String)::Union{SceneData, Nothing}
         try
-            if haskey(JulGame.PRELOADED_SCENES, basename(filePath))
-                @debug "deserialize_scene: Using preloaded scene: $(basename(filePath))"
-                return JulGame.PRELOADED_SCENES[basename(filePath)]
+            sceneName = basename(filePath)
+            if haskey(PRELOADED_SCENES, sceneName)
+                @debug "deserialize_scene: Using preloaded scene: $sceneName"
+                return PRELOADED_SCENES[sceneName]
             end
 
-            json = nothing
-            if haskey(JulGame.SCENE_CACHE, basename(filePath))
-                json = JulGame.SCENE_CACHE[basename(filePath)]
+            json = JSON_NULL
+            if haskey(JulGame.SCENE_CACHE, sceneName)
+                json = JulGame.SCENE_CACHE[sceneName]
                 @debug("using cached scene")
-            else 
-                entitiesJson = read(filePath, String)
-                json = JSON3.read(entitiesJson)
+            else
+                json = parse_json(read(filePath, String))
                 @debug("using scene from scene file")
             end
 
-            entities = []
-            uiElements = []
-            res = []
-            childParentDict = Dict()
-    
-            entityIdsInCurrentScene = []
-            try
-                entityIdsInCurrentScene = [e.id for e in MAIN.scene.entities]
-            catch e
-                @error string(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
-            for entity in json.Entities
-                if entity.id in entityIdsInCurrentScene
-                    @debug "Entity with id $(entity.id) already exists in current scene"
+            entityIdsInCurrentScene = Set{String}(e.id for e in JulGame.main_loop().scene.entities)
+            entities = Entity[]
+            childParentDict = Dict{String, String}()
+
+            for entityJson in json_get(json, "Entities")
+                id = json_id(entityJson)
+                if id in entityIdsInCurrentScene
+                    @debug "Entity with id $id already exists in current scene"
                     continue
                 end
-                components = []
-    
-                for component in entity.components
-                    @debug "Deserializing component: $(component.type)"
-                    push!(components, deserialize_component(component))
-                end
-                
-                if haskey(entity, "parent") && entity.parent != ""
-                    childParentDict[string(entity.id)] = entity.parent
-                end
-                newEntity = Entity(get(entity, "name", "New entity"), string(entity.id))
-                newEntity.isActive = get(entity, "isActive", true)
-                newEntity.scripts = get(entity, "scripts", [])
-                newEntity.persistentBetweenScenes = get(entity, "persistentBetweenScenes", false)
 
-                for component in components
-                    if typeof(component) == Animator
-                        @debug "Adding animator to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            JulGame.add_animator(newEntity, component::Animator)
-                        catch e
-                            @error "Failed to add animator to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue
-                    elseif typeof(component) == Collider
-                        @debug "Adding collider to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            JulGame.add_collider(newEntity, component::Collider)
-                        catch e
-                            @error "Failed to add collider to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue
-                    elseif typeof(component) == Rigidbody
-                        @debug "Adding rigidbody to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            JulGame.add_rigidbody(newEntity, component::Rigidbody)
-                        catch e
-                            @error "Failed to add rigidbody to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue
-                    elseif typeof(component) == Shape
-                        @debug "Adding shape to entity: $(newEntity.name), path: $(component.path)"
-                        JulGame.add_shape(newEntity, component::Shape)
-                        continue
-                    elseif typeof(component) == SoundSource
-                        @debug "Adding sound source to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            JulGame.add_sound_source(newEntity, component::SoundSource)
-                        catch e
-                            @error "Failed to add sound source to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue
-                    elseif typeof(component) == Sprite
-                        @debug "Adding sprite to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            JulGame.add_sprite(newEntity, false, component::Sprite)
-                        catch e
-                            @error "Failed to add sprite to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue
-                    elseif typeof(component) == Transform 
-                        @debug "Adding transform to entity: $(newEntity.name), path: $(component.path)"
-                        try
-                            newEntity.transform = component::Transform 
-                            newEntity.transform.parent = newEntity
-                        catch e
-                            @error "Failed to add transform to entity: $(newEntity.name), path: $(component.path), error: $(e)"
-                            Base.show_backtrace(stderr, catch_backtrace())
-                        end
-                        continue 
-                    end
+                parentId = json_string(entityJson, "parent", "")
+                if parentId != ""
+                    childParentDict[id] = parentId
                 end
-                
-                push!(entities, newEntity)
+
+                entity = Entity(json_string(entityJson, "name", "New entity"), id)
+                entity.isActive = json_bool(entityJson, "isActive", true)
+                entity.persistentBetweenScenes = json_bool(entityJson, "persistentBetweenScenes", false)
+                for script in json_get(entityJson, "scripts")
+                    push!(entity.pendingScripts, ScriptSpec(json_string(script, "name", ""), json_get(script, "fields")))
+                end
+
+                for component in json_get(entityJson, "components")
+                    add_component!(entity, component)
+                end
+                push!(entities, entity)
             end
 
             for entity in entities
-                if haskey(childParentDict, string(entity.id))
-                    parentId = childParentDict[string(entity.id)]
-                    for e in entities
-                        if string(e.id) == string(parentId)
-                            entity.parent = e
-                        end
+                parentId = get(childParentDict, entity.id, "")
+                parentId == "" && continue
+                for candidate in entities
+                    if candidate.id == parentId
+                        entity.parent = candidate
                     end
                 end
             end
-            uiElements = deserialize_ui_elements(json.UIElements, entities)
-            camera = Camera(Vector2(500,500), Vector3f(),Vector2f(), C_NULL)
-            if haskey(json, "Camera")
-                camera = Camera(Vector2(json.Camera.size.x, json.Camera.size.y), Vector3f(json.Camera.position.x, json.Camera.position.y, 0.0), Vector2f(json.Camera.offset.x, json.Camera.offset.y), C_NULL)
-                camera.backgroundColor = (json.Camera.backgroundColor.r, json.Camera.backgroundColor.g, json.Camera.backgroundColor.b, json.Camera.backgroundColor.a)
-                zraw = get(json.Camera, "zoom", nothing)
-                if zraw !== nothing
-                    camera.zoom = Float64(zraw)
-                end
-            end
-             
-            push!(res, entities)
-            push!(res, uiElements)
-            push!(res, camera)
-            return res
-        catch e 
-            @error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
+
+            uiElements = deserialize_ui_elements(json_get(json, "UIElements"), entities)
+            return SceneData(entities, uiElements, deserialize_camera(json_get(json, "Camera")))
+        catch e
+            JulGame.log_exception("Failed to deserialize scene $filePath", e)
             return nothing
         end
     end
 
-    function deserialize_ui_elements(jsonUIElements, entities)
-        res = []
-        childParentDict = Dict()
-        default_Vector2 = Vector2(0,0)
+    function deserialize_camera(json::JSONValue)::Camera
+        isnull(json) && return Camera(Vector2(500, 500), Vector3f(), Vector2f(), C_NULL)
+
+        position = json_get(json, "position")
+        camera = Camera(
+            read_vector2(json_get(json, "size")),
+            Vector3f(json_float(position, "x", 0.0), json_float(position, "y", 0.0), 0.0),
+            read_vector2f(json_get(json, "offset")),
+            C_NULL,
+        )
+        camera.backgroundColor = read_color(json_get(json, "backgroundColor"), RGBA_CHANNELS, (0, 0, 0, 255))
+        camera.zoom = json_float(json, "zoom", camera.zoom)
+        return camera
+    end
+
+    # Components
+
+    """
+        add_component!(entity::Entity, component::JSONValue)
+
+    Builds the component described by `component` and attaches it to `entity`.
+    """
+    function add_component!(entity::Entity, component::JSONValue)
+        type = json_string(component, "type", "")
+        @debug "Adding $type to entity: $(entity.name)"
+        try
+            if type == "Transform"
+                entity.transform = Transform(read_vector3f(json_get(component, "position"), 0.0), read_vector3f(json_get(component, "scale"), 1.0))
+                entity.transform.parent = entity
+            elseif type == "Animator"
+                JulGame.add_animator(entity, read_animator(component))
+            elseif type == "Collider"
+                JulGame.add_collider(entity, read_collider(component))
+            elseif type == "Rigidbody"
+                JulGame.add_rigidbody(entity, Rigidbody(json_float(component, "mass", 1.0), json_bool(component, "useGravity", true)))
+            elseif type == "SoundSource"
+                JulGame.add_sound_source(entity, read_sound_source(component))
+            elseif type == "Sprite"
+                JulGame.add_sprite(entity, false, read_sprite(component))
+            elseif type == "Shape"
+                JulGame.add_shape(entity, read_shape(component))
+            end
+        catch e
+            JulGame.log_exception("Failed to add $type to entity: $(entity.name)", e)
+        end
+    end
+
+    function read_animator(component::JSONValue)::Animator
+        animations = Animation[]
+        for animation in json_get(component, "animations")
+            frames = Vector4[read_vector4(frame) for frame in json_get(animation, "frames")]
+            framePaths = String[json_string(path, "") for path in json_get(animation, "framePaths")]
+            push!(animations, Animation(frames, json_int(animation, "animatedFPS", 60), framePaths))
+        end
+        return Animator(animations)
+    end
+
+    function read_collider(component::JSONValue)::Collider
+        return Collider(
+            json_bool(component, "enabled", true),
+            json_bool(component, "isPlatformerCollider", false),
+            json_bool(component, "isTrigger", false),
+            read_vector2f(json_get(component, "offset")),
+            read_vector2f(json_get(component, "size")),
+            json_string(component, "tag", "Default"),
+        )
+    end
+
+    function read_sound_source(component::JSONValue)::SoundSource
+        return SoundSource(
+            json_int(component, "channel", -1),
+            json_bool(component, "isMusic", false),
+            json_string(component, "path", ""),
+            json_bool(component, "playOnStart", false),
+            json_int(component, "volume", -1),
+        )
+    end
+
+    function read_sprite(component::JSONValue)::Sprite
+        color = json_get(component, "color")
+        crop = json_get(component, "crop")
+        return Sprite(
+            has_content(color) ? read_color(color, ("x", "y", "z", "t"), (255, 255, 255, 255)) : (255, 255, 255, 255),
+            has_content(crop) ? read_vector4(crop) : Vector4(0, 0, 0, 0),
+            json_bool(component, "isFlipped", false),
+            json_string(component, "imagePath", ""),
+            json_int(component, "layer", 0),
+            read_vector2f(json_get(component, "offset"), Vector2f()),
+            read_vector2f(json_get(component, "position"), Vector2f()),
+            json_float(component, "rotation", 0.0),
+            json_int(component, "pixelsPerUnit", -1),
+            read_vector2f(json_get(component, "center"), Vector2f(0.5, 0.5)),
+            Symbol(json_string(component, "anchor", "center")),
+        )
+    end
+
+    function read_shape(component::JSONValue)::Shape
+        color = json_get(component, "color")
+        size = json_get(component, "size")
+        return Shape(
+            has_content(color) ? Vector3(json_float(color, "x", 0.0), json_float(color, "y", 0.0), json_float(color, "z", 0.0)) : Vector3(255, 255, 255),
+            json_bool(component, "isFilled", true),
+            json_bool(component, "isWorldEntity", true),
+            json_int(component, "layer", 0),
+            read_vector2f(json_get(component, "offset"), Vector2f()),
+            read_vector2f(json_get(component, "position"), Vector2f()),
+            has_content(size) ? read_vector2f(size) : Vector2f(1, 1),
+            json_int(component, "alpha", 255),
+        )
+    end
+
+    # UI elements
+
+    function set_parent!(uiElement, parent)
+        uiElement.parent = parent
+        return nothing
+    end
+
+    # Both are only known as `IUIElement`: dispatch on the parent first so `set_parent!` gets a concrete argument.
+    struct ParentAssigner
+        uiElement::JulGame.IUIElement
+    end
+
+    (assigner::ParentAssigner)(parent) = JulGame.dispatch(set_parent!, assigner.uiElement, parent)
+
+    @inline set_ui_parent!(uiElement::JulGame.IUIElement, parent::JulGame.IUIElement) = JulGame.dispatch(ParentAssigner(uiElement), parent)
+
+    function deserialize_ui_elements(jsonUIElements::JSONValue, entities::Vector{Entity})::Vector{JulGame.IUIElement}
+        res = JulGame.IUIElement[]
+        childParentDict = Dict{String, String}()
         for uiElement in jsonUIElements
             try
-                newUIElement = nothing
-                if haskey(uiElement, "parent") && uiElement.parent != ""
-                    childParentDict[string(uiElement.id)] = uiElement.parent
+                newUIElement = build_ui_element(uiElement, nothing, "ScreenButton")
+                parent = json_string(uiElement, "parent", "")
+                if parent != ""
+                    childParentDict[newUIElement.id] = parent
                 end
-                if uiElement.type == "Canvas"
-                    # Parse color, default to white if not present or malformed
-                    color_tuple = (255, 255, 255, 100)
-                    if haskey(uiElement, "color") && typeof(uiElement.color) <: Dict && haskey(uiElement.color, "r") && haskey(uiElement.color, "g") && haskey(uiElement.color, "b") && haskey(uiElement.color, "a")
-                         color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
-                    end
-
-                    newUIElement = Canvas(
-                        id = string(get(uiElement, "id", JulGame.generate_uuid())),
-                        name = get(uiElement, "name", "Canvas"), 
-                        anchor = Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset = Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
-                        isWorldEntity = get(uiElement, "isWorldEntity", false),
-                        layer = Int(get(uiElement, "layer", 0)),
-                        position = Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
-                        size = Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
-                        isActive = get(uiElement, "isActive", true),
-                        persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
-                        color = color_tuple,
-                        isVisible = get(uiElement, "isVisible", true),
-                        clipChildren = get(uiElement, "clipChildren", false),
-                        rotation = convert(Float64, get(uiElement, "rotation", 0.0))
-                    )
-                    
-                    # Deserialize children if they exist
-                    if haskey(uiElement, "children") && length(uiElement.children) > 0
-                        children = deserialize_canvas_children(uiElement.children, newUIElement)
-                        for child in children
-                            add_child(newUIElement, child)
-                        end
-                    end
-                elseif uiElement.type == "TextBox"
-                    # Parse color, default to white if not present or malformed
-                    color_tuple = (255, 255, 255, 255)
-                    if haskey(uiElement, "color")
-                        @debug "color of $(uiElement.name): $(uiElement.color)"
-                        color_tuple = (uiElement.color.r, uiElement.color.g, uiElement.color.b, uiElement.color.a)
-                    end
-
-                    newUIElement = TextBox(
-                        get(uiElement, "text", " ");
-                        id = string(get(uiElement, "id", JulGame.generate_uuid())),
-                        name = get(uiElement, "name", "TextBox"), 
-                        anchor = Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset = Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
-                        isWorldEntity = get(uiElement, "isWorldEntity", false),
-                        layer = Int(get(uiElement, "layer", 0)),
-                        position = Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y), 
-                        isActive = get(uiElement, "isActive", true),
-                        persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false),
-                        color = color_tuple,
-                        fontPath = get(uiElement, "fontPath", "Default"), 
-                        fontSize = Int(get(uiElement, "fontSize", 20)), # Use fontSize from JSON or default
-                        maxLineWidth = Int(get(uiElement, "maxLineWidth", 0)),
-                        wrapWords = get(uiElement, "wrapWords", true)
-                    )
-                elseif uiElement.type == "UIImage"
-                    color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
-                  
-                    newUIElement = UIImage(
-                        get(uiElement, "path", "Default");
-                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
-                        name=get(uiElement, "name", "Image"),
-                        anchor=Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
-                        layer=Int(get(uiElement, "layer", 0)),
-                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
-                        isActive=get(uiElement, "isActive", true),
-                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
-                        color=color_tuple,
-                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
-                        parent=nothing,
-                        rotation=convert(Float64, get(uiElement, "rotation", 0.0)),
-                        # clickEvents=get(uiElement, "clickEvents", Function[]),
-                        # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
-                        # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),
-                    )
-                elseif uiElement.type == "Rectangle"
-                    color = get(uiElement, "color", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    color_tuple = (get(color, "1", 255), get(color, "2", 255), get(color, "3", 255), get(color, "4", 255))
-                    borderColor = get(uiElement, "borderColor", Dict("4" => 255, "1" => 255, "2" => 255, "3" => 255))
-                    borderColor_tuple = (get(borderColor, "1", 255), get(borderColor, "2", 255), get(borderColor, "3", 255), get(borderColor, "4", 255))
-                    newUIElement = JulGame.UI.RectangleModule.Rectangle(;
-                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
-                        name=get(uiElement, "name", "Rectangle"),
-                        anchor=Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
-                        isWorldEntity=get(uiElement, "isWorldEntity", false),
-                        layer=Int(get(uiElement, "layer", 0)),
-                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
-                        isActive=get(uiElement, "isActive", true),
-                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false),
-                        color=color_tuple,
-                        fillMode=get(uiElement, "fillMode", true),
-                        borderRadius=Int(get(uiElement, "borderRadius", 0)),
-                        borderWidth=Int(get(uiElement, "borderWidth", 0)),
-                        borderColor=borderColor_tuple,
-                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
-                        parent=nothing,
-                        forceClickCheck=get(uiElement, "forceClickCheck", false),
-                        # clickEvents=get(uiElement, "clickEvents", Function[]),
-                        # hoverEnterEvents=get(uiElement, "hoverEnterEvents", Function[]),
-                        # hoverExitEvents=get(uiElement, "hoverExitEvents", Function[]),
-                    )
-                else
-                    # For text offset, check if it should be centered (if not specified or all zeros)
-                    textOffset = Vector2(uiElement.textOffset.x, uiElement.textOffset.y)
-                    if !haskey(uiElement, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
-                        # Use (-1,-1) as a special value to indicate the text should be centered
-                        textOffset = Vector2(-1, -1)
-                    end
-                    
-                    newUIElement = ScreenButton(
-                        nothing; # clickEvent - Assuming none from scene file directly
-                        id=string(get(uiElement, "id", JulGame.generate_uuid())),
-                        name=get(uiElement, "name", "Button"),
-                        anchor=Symbol(get(uiElement, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(uiElement, "anchorOffset", default_Vector2).x, get(uiElement, "anchorOffset", default_Vector2).y),
-                        isWorldEntity=get(uiElement, "isWorldEntity", false),
-                        layer=Int(get(uiElement, "layer", 0)),
-                        position=Math.Vector2(get(uiElement, "position", default_Vector2).x, get(uiElement, "position", default_Vector2).y),
-                        buttonUpSpritePath=get(uiElement, "buttonUpSpritePath", "Default"),
-                        buttonDownSpritePath=get(uiElement, "buttonDownSpritePath", "Default"),
-                        # hoverEnterEvent=nothing, # Default
-                        # hoverExitEvent=nothing, # Default
-                        isActive=get(uiElement, "isActive", true),
-                        persistentBetweenScenes=get(uiElement, "persistentBetweenScenes", false), # Keep the value from JSON if it exists
-                        #color=color_tuple,
-                        fontPath=get(uiElement, "fontPath", C_NULL),
-                        fontSize=Int(get(uiElement, "fontSize", 24)),
-                        size=Math.Vector2(get(uiElement, "size", default_Vector2).x, get(uiElement, "size", default_Vector2).y),
-                        text=get(uiElement, "text", ""),
-                        textOffset=textOffset,
-                        # parent=nothing # Default
-                    )
-                    
-                    # Make sure the button is initialized properly - Constructor likely handles this
-                end
-                newUIElement.persistentBetweenScenes = get(uiElement, "persistentBetweenScenes", false)
                 push!(res, newUIElement)
-            catch e 
-                @error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
+            catch e
+                JulGame.log_exception("Failed to deserialize UI element $(json_string(uiElement, "name", ""))", e)
             end
         end
 
         for uiElement in res
-            if haskey(childParentDict, string(uiElement.id)) && childParentDict[string(uiElement.id)] != "" && childParentDict[string(uiElement.id)] !== nothing
-                parentId, parentType = split(childParentDict[string(uiElement.id)], "::")
-                if parentType == "Entity"
-                    for e in entities
-                        if string(e.id) == string(parentId)
-                            uiElement.parent = e
-                        end
+            parentRef = get(childParentDict, uiElement.id, "")
+            parentRef == "" && continue
+            parts = split(parentRef, "::")
+            length(parts) == 2 || continue
+            parentId, parentType = parts
+            if parentType == "Entity"
+                for e in entities
+                    if e.id == parentId
+                        JulGame.dispatch(set_parent!, uiElement, e)
                     end
-                else
-                    for e in res
-                        if string(e.id) == string(parentId)
-                            uiElement.parent = e
-                        end
+                end
+            else
+                for e in res
+                    if e.id == parentId
+                        set_ui_parent!(uiElement, e)
                     end
                 end
             end
@@ -370,183 +315,136 @@ module SceneReaderModule
         return res
     end
 
-    export deserialize_component
-    function deserialize_component(component)
-        try
-            if component.type == "Transform"
-                position = Vector3f(
-                    component.position.x,
-                    component.position.y,
-                    haskey(component.position, "z") ? component.position.z : 0.0,
-                )
-                scale = Vector3f(
-                    component.scale.x,
-                    component.scale.y,
-                    haskey(component.scale, "z") ? component.scale.z : 1.0,
-                )
-                newComponent = Transform(position, scale)
-            elseif component.type == "Animator"
-                newAnimations = Animation[]
-                for animation in component.animations
-                newAnimationFrames = Vector{Vector4}()
-                for animationFrame in animation.frames
-                    push!(newAnimationFrames, Vector4(animationFrame.x, animationFrame.y, animationFrame.z, animationFrame.t))
-                    end
-                    framePaths = haskey(animation, "framePaths") ? String.(animation.framePaths) : String[]
-                    push!(newAnimations, Animation(newAnimationFrames, animation.animatedFPS, framePaths))
-                end
-                newComponent = Animator(newAnimations)
-            elseif component.type == "Collider"
-                isTrigger::Bool = !haskey(component, "isTrigger") ? false : component.isTrigger
-                enabled::Bool = !haskey(component, "enabled") ? true : component.enabled
-                isPlatformerCollider::Bool = !haskey(component, "isPlatformerCollider") ? false : component.isPlatformerCollider
-                offset::Vector2f = !haskey(component, "offset") ? Vector2f(0,0) : Vector2f(component.offset.x, component.offset.y)
-                newComponent = Collider(enabled::Bool, isPlatformerCollider, isTrigger, offset,  Vector2f(component.size.x, component.size.y), component.tag::String)
-            elseif component.type == "Rigidbody"
-                mass = !haskey(component, "mass") ? 1.0 : convert(Float64, component.mass)
-                useGravity = !haskey(component, "useGravity") ? true : component.useGravity
-                newComponent = Rigidbody(mass, useGravity)
-            elseif component.type == "SoundSource"
-                newComponent = SoundSource(component.channel, component.isMusic, component.path, get(component, "playOnStart", false), component.volume)
-            elseif component.type == "Sprite"
-                color = !haskey(component, "color") || isempty(component.color) ? (255,255,255,255) : (get(component.color, "x", 255), get(component.color, "y", 255), get(component.color, "z", 255), get(component.color, "t", 255))
-                crop = !haskey(component, "crop") || isempty(component.crop) ? Vector4(0,0,0,0) : Vector4(component.crop.x, component.crop.y, component.crop.z, component.crop.t)
-                layer = !haskey(component, "layer") ? 0 : component.layer
-                offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
-                position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
-                rotation = !haskey(component, "rotation") ? 0.0 : convert(Float64, component.rotation)
-                pixelsPerUnit = !haskey(component, "pixelsPerUnit") ? -1 : component.pixelsPerUnit
-                center = !haskey(component, "center") ? Vector2f(0.5,0.5) : Vector2f(component.center.x, component.center.y)
-                anchor = !haskey(component, "anchor") ? :center : Symbol(component.anchor)
-                newComponent = Sprite(color::NTuple{4, Int}, crop::Union{Ptr{Nothing}, Math.Vector4}, component.isFlipped::Bool, component.imagePath::String, layer::Int, offset::Vector2f, position::Vector2f, rotation::Float64, pixelsPerUnit::Int, center::Vector2f, anchor::Symbol)
-            elseif component.type == "Shape"
-                color = !haskey(component, "color") || isempty(component.color) ? Vector3(255,255,255) : Vector3(component.color.x, component.color.y, component.color.z)
-                layer = !haskey(component, "layer") ? 0 : component.layer
-                size = !haskey(component, "size") || isempty(component.size) ? Vector2f(1,1) : Vector2f(component.size.x, component.size.y)
-                isFilled = !haskey(component, "isFilled") ? true : component.isFilled
-                isWorldEntity = !haskey(component, "isWorldEntity") ? true : component.isWorldEntity
-                offset = !haskey(component, "offset") ? Vector2f() : Vector2f(component.offset.x, component.offset.y)
-                position = !haskey(component, "position") ? Vector2f() : Vector2f(component.position.x, component.position.y)
-                alpha = !haskey(component, "alpha") ? 255 : component.alpha
-                newComponent = Shape(color::Vector3, isFilled::Bool, isWorldEntity::Bool, layer::Int, offset::Vector2f, position::Vector2f, size::Vector2f, alpha::Int)
-            end
-            
-            return newComponent
-        catch e
-            @error string(e)
-			Base.show_backtrace(stdout, catch_backtrace())
-        end
-    end
-
     """
-    deserialize_canvas_children(jsonChildren, parentCanvas)
-    
-    Recursively deserializes Canvas children.
+        build_ui_element(json, parent, fallbackType)
+
+    Builds the UI element described by `json`. Elements with an unrecognized `type` become `fallbackType`.
     """
-    function deserialize_canvas_children(jsonChildren, parentCanvas)
-        children = UI.UIElement[]
-        default_Vector2 = Vector2(0,0)
-        
-        for child in jsonChildren
-            try
-                newChild = nothing
-                if child.type == "Canvas"
-                    # Parse color, default to white if not present or malformed
-                    color_tuple = (255, 255, 255, 100)
-                    if haskey(child, "color") && typeof(child.color) <: Dict && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
-                         color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
-                    end
-
-                    newChild = Canvas(
-                        id = string(get(child, "id", JulGame.generate_uuid())),
-                        name = get(child, "name", "Canvas"), 
-                        anchor = Symbol(get(child, "anchor", "none")),
-                        anchorOffset = Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
-                        isWorldEntity = get(child, "isWorldEntity", false),
-                        layer = Int(get(child, "layer", 0)),
-                        position = Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
-                        size = Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
-                        isActive = get(child, "isActive", true),
-                        persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
-                        color = color_tuple,
-                        isVisible = get(child, "isVisible", true),
-                        clipChildren = get(child, "clipChildren", false),
-                        rotation = convert(Float64, get(child, "rotation", 0.0)),
-                        parent = parentCanvas
-                    )
-                    
-                    # Recursively deserialize children if they exist
-                    if haskey(child, "children") && length(child.children) > 0
-                        grandChildren = deserialize_canvas_children(child.children, newChild)
-                        for grandChild in grandChildren
-                            add_child(newChild, grandChild)
-                        end
-                    end
-                elseif child.type == "ScreenButton"
-                    # For text offset, check if it should be centered (if not specified or all zeros)
-                    textOffset = Vector2(child.textOffset.x, child.textOffset.y)
-                    if !haskey(child, "textOffset") || (textOffset.x == 0 && textOffset.y == 0)
-                        # Use (-1,-1) as a special value to indicate the text should be centered
-                        textOffset = Vector2(-1, -1)
-                    end
-                    
-                    newChild = ScreenButton(
-                        nothing; # clickEvent - Assuming none from scene file directly
-                        id=string(get(child, "id", JulGame.generate_uuid())),
-                        name=get(child, "name", "Button"),
-                        anchor=Symbol(get(child, "anchor", "none")),
-                        anchorOffset=Math.Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
-                        isWorldEntity=get(child, "isWorldEntity", false),
-                        layer=Int(get(child, "layer", 0)),
-                        position=Math.Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y),
-                        buttonUpSpritePath=get(child, "buttonUpSpritePath", "Default"),
-                        buttonDownSpritePath=get(child, "buttonDownSpritePath", "Default"),
-                        isActive=get(child, "isActive", true),
-                        persistentBetweenScenes=get(child, "persistentBetweenScenes", false),
-                        fontPath=get(child, "fontPath", C_NULL),
-                        fontSize=Int(get(child, "fontSize", 24)),
-                        size=Math.Vector2(get(child, "size", default_Vector2).x, get(child, "size", default_Vector2).y),
-                        text=get(child, "text", ""),
-                        textOffset=textOffset,
-                        parent = parentCanvas
-                    )
-                else
-                    # TextBox
-                    # Parse color, default to white if not present or malformed
-                    color_tuple = (255, 255, 255, 255)
-                    if haskey(child, "color") && typeof(child.color) <: Dict && haskey(child.color, "r") && haskey(child.color, "g") && haskey(child.color, "b") && haskey(child.color, "a")
-                         color_tuple = (child.color.r, child.color.g, child.color.b, child.color.a)
-                    end
-
-                    newChild = TextBox(
-                        get(child, "text", " ");
-                        id = string(get(child, "id", JulGame.generate_uuid())),
-                        name = get(child, "name", "TextBox"), 
-                        anchor = Symbol(get(child, "anchor", "none")),
-                        anchorOffset = Vector2(get(child, "anchorOffset", default_Vector2).x, get(child, "anchorOffset", default_Vector2).y),
-                        isWorldEntity = get(child, "isWorldEntity", false),
-                        layer = Int(get(child, "layer", 0)),
-                        position = Vector2(get(child, "position", default_Vector2).x, get(child, "position", default_Vector2).y), 
-                        isActive = get(child, "isActive", true),
-                        persistentBetweenScenes = get(child, "persistentBetweenScenes", false),
-                        color = color_tuple,
-                        fontPath = get(child, "fontPath", "Default"), 
-                        fontSize = Int(get(child, "fontSize", 20)),
-                        maxLineWidth = Int(get(child, "maxLineWidth", 0)),
-                        wrapWords = get(child, "wrapWords", true),
-                        parent = parentCanvas
-                    )
-                end
-                
-                if newChild !== nothing
-                    push!(children, newChild)
-                end
-            catch e 
-                @error string(e)
-                Base.show_backtrace(stdout, catch_backtrace())
-            end
+    function build_ui_element(json::JSONValue, parent::Union{JulGame.IUIElement, Nothing}, fallbackType::String)::JulGame.IUIElement
+        type = json_string(json, "type", fallbackType)
+        if type != "Canvas" && type != "TextBox" && type != "UIImage" && type != "Rectangle" && type != "ScreenButton"
+            type = fallbackType
         end
-        
-        return children
+
+        id = json_id(json)
+        anchor = Symbol(json_string(json, "anchor", "none"))
+        anchorOffset = read_vector2(json_get(json, "anchorOffset"))
+        position = read_vector2(json_get(json, "position"))
+        size = read_vector2(json_get(json, "size"))
+        layer = json_int(json, "layer", 0)
+        isActive = json_bool(json, "isActive", true)
+        isWorldEntity = json_bool(json, "isWorldEntity", false)
+        persistentBetweenScenes = json_bool(json, "persistentBetweenScenes", false)
+        rotation = json_float(json, "rotation", 0.0)
+        name = json_string(json, "name", type)
+
+        newUIElement::JulGame.IUIElement = if type == "Canvas"
+            canvas = Canvas(
+                id = id,
+                name = name,
+                anchor = anchor,
+                anchorOffset = anchorOffset,
+                isWorldEntity = isWorldEntity,
+                layer = layer,
+                position = position,
+                size = size,
+                isActive = isActive,
+                persistentBetweenScenes = persistentBetweenScenes,
+                color = read_color(json_get(json, "color"), RGBA_CHANNELS, (255, 255, 255, 100)),
+                isVisible = json_bool(json, "isVisible", true),
+                clipChildren = json_bool(json, "clipChildren", false),
+                rotation = rotation,
+                parent = parent,
+            )
+            for child in json_get(json, "children")
+                add_child(canvas, build_ui_element(child, canvas, "TextBox"))
+            end
+            canvas
+        elseif type == "UIImage"
+            UIImage(
+                json_string(json, "path", "Default");
+                id = id,
+                name = name,
+                anchor = anchor,
+                anchorOffset = anchorOffset,
+                layer = layer,
+                position = position,
+                isActive = isActive,
+                persistentBetweenScenes = persistentBetweenScenes,
+                color = read_color(json_get(json, "color"), NUMBERED_CHANNELS, (255, 255, 255, 255)),
+                size = size,
+                parent = parent,
+                rotation = rotation,
+            )
+        elseif type == "Rectangle"
+            JulGame.UI.RectangleModule.Rectangle(;
+                id = id,
+                name = name,
+                anchor = anchor,
+                anchorOffset = anchorOffset,
+                isWorldEntity = isWorldEntity,
+                layer = layer,
+                position = position,
+                isActive = isActive,
+                persistentBetweenScenes = persistentBetweenScenes,
+                color = read_color(json_get(json, "color"), NUMBERED_CHANNELS, (255, 255, 255, 255)),
+                fillMode = json_bool(json, "fillMode", true),
+                borderRadius = json_int(json, "borderRadius", 0),
+                borderWidth = json_int(json, "borderWidth", 0),
+                borderColor = read_color(json_get(json, "borderColor"), NUMBERED_CHANNELS, (255, 255, 255, 255)),
+                size = size,
+                parent = parent,
+                forceClickCheck = json_bool(json, "forceClickCheck", false),
+            )
+        elseif type == "ScreenButton"
+            # A missing or all-zero text offset means the text is centered, which the button encodes as (-1, -1)
+            textOffset = read_vector2(json_get(json, "textOffset"))
+            if textOffset.x == 0 && textOffset.y == 0
+                textOffset = Vector2(-1, -1)
+            end
+            fontPath = json_get(json, "fontPath")
+            ScreenButton(
+                nothing; # clickEvent - Assuming none from scene file directly
+                id = id,
+                name = name,
+                anchor = anchor,
+                anchorOffset = anchorOffset,
+                isWorldEntity = isWorldEntity,
+                layer = layer,
+                position = position,
+                buttonUpSpritePath = json_string(json, "buttonUpSpritePath", "Default"),
+                buttonDownSpritePath = json_string(json, "buttonDownSpritePath", "Default"),
+                isActive = isActive,
+                persistentBetweenScenes = persistentBetweenScenes,
+                fontPath = fontPath.kind == SceneJSON.JString ? fontPath.string : C_NULL,
+                fontSize = json_int(json, "fontSize", 24),
+                size = size,
+                text = json_string(json, "text", ""),
+                textOffset = textOffset,
+                parent = parent,
+            )
+        else
+            TextBox(
+                json_string(json, "text", " ");
+                id = id,
+                name = name,
+                anchor = anchor,
+                anchorOffset = anchorOffset,
+                isWorldEntity = isWorldEntity,
+                layer = layer,
+                position = position,
+                isActive = isActive,
+                persistentBetweenScenes = persistentBetweenScenes,
+                color = read_color(json_get(json, "color"), RGBA_CHANNELS, (255, 255, 255, 255)),
+                fontPath = json_string(json, "fontPath", "Default"),
+                fontSize = json_int(json, "fontSize", 20),
+                maxLineWidth = json_int(json, "maxLineWidth", 0),
+                wrapWords = json_bool(json, "wrapWords", true),
+                parent = parent,
+            )
+        end
+
+        newUIElement.persistentBetweenScenes = persistentBetweenScenes
+        return newUIElement
     end
 end

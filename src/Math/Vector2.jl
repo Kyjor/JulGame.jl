@@ -49,5 +49,5 @@ struct _Vector2{T}
     Base.:(==)(a::_Vector2{T}, b::_Vector2{L}) where {T,L} = (a.x == b.x && a.y == b.y)
 end
 
-Vector2 = _Vector2{Int32}
-Vector2f = _Vector2{Float64}
+const Vector2 = _Vector2{Int32}
+const Vector2f = _Vector2{Float64}

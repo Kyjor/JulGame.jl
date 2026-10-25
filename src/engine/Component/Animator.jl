@@ -16,7 +16,7 @@
         currentAnimation::Union{Animation, Nothing}
         lastFrame::Int
         lastUpdate::UInt64
-        parent::Any
+        parent::JulGame.IEntity
         playOnce::Bool
         sprite::Union{InternalSprite, Nothing}
 

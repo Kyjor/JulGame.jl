@@ -6,7 +6,7 @@ mutable struct UIElementInstance
     name::String
 
     # positioning
-    anchor::Union{JulGame.Enum, Nothing}
+    anchor::Union{JulGame.Enum{Any}, Nothing}
     anchorOffset::Vector2
     isWorldEntity::Bool
     layer::Int
@@ -17,9 +17,9 @@ mutable struct UIElementInstance
     originalSize::Vector2
 
     # events
-    clickEvents::Vector{Function}
-    hoverEnterEvents::Vector{Function}
-    hoverExitEvents::Vector{Function}
+    clickEvents::Vector{ClickCallback}
+    hoverEnterEvents::Vector{HoverCallback}
+    hoverExitEvents::Vector{HoverCallback}
     forceClickCheck::Bool
     ignoreInputEvents::Bool
 
@@ -35,9 +35,9 @@ mutable struct UIElementInstance
     function UIElementInstance()
         this = new()
 
-        this.clickEvents = Function[]
-        this.hoverEnterEvents = Function[]
-        this.hoverExitEvents = Function[]
+        this.clickEvents = ClickCallback[]
+        this.hoverEnterEvents = HoverCallback[]
+        this.hoverExitEvents = HoverCallback[]
         this.forceClickCheck = false
         this.ignoreInputEvents = false  
         
@@ -45,78 +45,42 @@ mutable struct UIElementInstance
     end
 end
 
-relationships = Dict{JulGame.IUIElement, UIElementInstance}()
+"""Shared state of a UI element. Every concrete element embeds one as its `base` field."""
+@inline ui_instance(element::JulGame.IUIElement) = getfield(element, :base)::UIElementInstance
 
-function Base.getproperty(script::JulGame.IUIElement, property::Symbol)
-    # Check if the relationship exists
-    add_relationship_if_not_exists(script)
+"""Hook run after a property is set. Concrete elements extend it (e.g. TextBox re-renders its text)."""
+on_property_set(::JulGame.IUIElement, ::Symbol) = nothing
 
-    if hasfield(typeof(relationships[script]), property)
-        #println("getproperty from parent: $(property) ")
-        if property == :isHovered && getfield(relationships[script], :isActive) == false
+# Fields of `UIElementInstance` are forwarded to `base`; all others live on the concrete element.
+# Callers use literal property names, so the forwarding branch resolves at compile time.
+Base.@constprop :aggressive function Base.getproperty(element::JulGame.IUIElement, property::Symbol)
+    if hasfield(UIElementInstance, property)
+        inst = ui_instance(element)
+        if property === :isHovered && !getfield(inst, :isActive)
             return false
         end
-        return getfield(relationships[script], property)
+        return getfield(inst, property)
     end
-
-    #println("getproperty from child: $(property) ")
-    try
-        return getfield(script, property)
-    catch e
-        @warn "Error getting property $(property) for $(script): $(e)"
-        Base.show_backtrace(stderr, catch_backtrace())
-        return nothing
-    end
+    return getfield(element, property)
 end
 
-function Base.setproperty!(script::JulGame.IUIElement, property::Symbol, value)
-    add_relationship_if_not_exists(script)
-
-    if hasfield(typeof(relationships[script]), property) # this is the child type TextBox, Rectangle, etc
-        #println("setproperty! from parent: $(property) ")
-        if property == :isHovered
-            inst = relationships[script]
+Base.@constprop :aggressive function Base.setproperty!(element::JulGame.IUIElement, property::Symbol, value)
+    if hasfield(UIElementInstance, property)
+        inst = ui_instance(element)
+        if property === :isHovered
             prev = getfield(inst, :isHovered)
-            setfield!(inst, property, value)
+            setfield!(inst, property, convert(Bool, value))
             if prev != value
-                UI.handle_hover_event(script, value)
+                UI.handle_hover_event(element, value)
             end
         else
-            setfield!(relationships[script], property, value)
+            JulGame.set_field_converted!(inst, property, value)
         end
-    else # this is the parent type UIElement
-        #println("setproperty! from child: $(property) ")
-        setfield!(script, property, value)
+    else
+        JulGame.set_field_converted!(element, property, value)
     end
-
-
-    if contains("$(typeof(script))", "TextBox")
-        @debug "rerendering text for $(script)"
-        if property == :text || property == :isActive || property == :textColor || property == :maxLineWidth || property == :wrapWords || property == :fontSize || property == :color
-            #= if s == :text && length(x) == 0
-                setfield!(this, s, " ")# prevents segfault when text is empty
-            end =#
-            if script.isConstructed
-                @debug("rerendering text for $(script.name) because of $(property) = $(value)")
-                UI.rerender_text(script) # this line MUST stay inside the if for specific fields as we can't call this on fields that are used in this function
-            end
-        end
-    end
-end
-
-function add_relationship_if_not_exists(script::JulGame.IUIElement)
-    if !haskey(relationships, script)
-        #println("Adding relationship for $(script)")
-        relationships[script] = UIElementInstance()
-        return
-    end
-    #println("Relationship already exists for $(script)")
-end
-
-function delete_relationship(script::JulGame.IUIElement)
-    if haskey(relationships, script)
-        delete!(relationships, script)
-    end
+    on_property_set(element, property)
+    return value
 end
 
 function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
@@ -124,24 +88,27 @@ function UI.set_color(this::JulGame.IUIElement; r::Int=255, g::Int=255, b::Int=2
 end
 
 function UI.align_to_anchor(this::JulGame.IUIElement)
-    if MAIN.scene.camera === nothing
+    if JulGame.main_loop().scene.camera === nothing
         @debug "No camera found in scene"
         return
     end
 
-    size = MAIN.scene.camera.size
+    size = JulGame.main_loop().scene.camera.size
     parent_pos = Math.Vector2(0, 0)
-    if this.parent !== nothing 
-        if isa(this.parent, JulGame.IUIElement)
-            size = this.parent.size
-            parent_pos = this.parent.position
-        else 
-            if this.parent.lastRenderedScreenSize === nothing || this.parent.lastRenderedScreenPosition === nothing
+    parent = this.parent # local copy so the type checks below narrow it
+    if parent !== nothing 
+        if isa(parent, JulGame.IUIElement)
+            size = parent.size
+            parent_pos = parent.position
+        elseif isa(parent, JulGame.ISprite)
+            lastSize = parent.lastRenderedScreenSize
+            lastPosition = parent.lastRenderedScreenPosition
+            if lastSize === nothing || lastPosition === nothing
                 @debug "No last rendered screen size or position found for parent of $(this.name)"
                 return
             end
-            size = this.parent.lastRenderedScreenSize
-            parent_pos = this.parent.lastRenderedScreenPosition
+            size = lastSize
+            parent_pos = lastPosition
         end
     end
 
@@ -225,23 +192,19 @@ function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
     push!(this.hoverExitEvents, event)
 end
 
-function UI.handle_event(this::Union{JulGame.IUIElement, JulGame.IEntity}, evt, x, y)
-    isScreenButton = "$(split(string(typeof(this)), ".")[end])" == "ScreenButton"
+function UI.handle_event(@nospecialize(this::Union{JulGame.IUIElement, JulGame.IEntity}), evt, x, y)
     if evt.type == evt.type == SDL2.SDL_MOUSEBUTTONDOWN
-        if isScreenButton
+        if this isa ScreenButtonModule.ScreenButton
             this.currentTexture = this.buttonDownTexture
         end
     elseif evt.type == SDL2.SDL_MOUSEBUTTONUP
         @debug "Mouse button up at $(x), $(y)"
-        if isScreenButton
+        if this isa ScreenButtonModule.ScreenButton
             this.currentTexture = this.buttonUpTexture
         end
+        event = ClickEvent(evt, Int32(round(x)), Int32(round(y)))
         for eventToCall in this.clickEvents
-            try
-                Base.invokelatest(eventToCall,(evt = evt, x = x, y = y))
-            catch e
-                Base.invokelatest(eventToCall)
-            end
+            eventToCall(event)
         end
     elseif evt.type == SDL2.SDL_MOUSEMOTION
         if this.isHovered == false
@@ -253,12 +216,7 @@ end
 function UI.handle_hover_event(this::JulGame.IUIElement, isEntering::Bool)
     events = isEntering ? this.hoverEnterEvents : this.hoverExitEvents
     for event in events
-        try
-            Base.invokelatest(event)
-        catch e
-            @error "Error calling hover event: $(e)"
-            Base.show_backtrace(stdout, catch_backtrace())
-        end
+        event()
     end
     key = isEntering ? :hover_dispatch_enter_invocations : :hover_dispatch_exit_invocations
 end

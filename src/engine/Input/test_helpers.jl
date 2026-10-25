@@ -115,7 +115,7 @@ function simulate_mouse_click(this::Input, window::Ptr{SDL2.SDL_Window}, x::Numb
 end
 
 function simulate_mouse_click(x::Number, y::Number)
-    simulate_mouse_click(MAIN.input, MAIN.windowManager.window, x, y)
+    simulate_mouse_click(JulGame.main_loop().input, JulGame.main_loop().windowManager.window, x, y)
 end
 
 function lift_mouse_after_simulated_click(this)
@@ -151,7 +151,7 @@ function lift_mouse_after_simulated_click(this)
 end
 
 function lift_mouse_after_simulated_click()
-    lift_mouse_after_simulated_click(MAIN.input)
+    lift_mouse_after_simulated_click(JulGame.main_loop().input)
 end
 
 function simulate_key_press(this::Input, key::String)
@@ -183,5 +183,5 @@ function simulate_key_press(this::Input, key::String)
 end
 
 function simulate_key_press(key::String)
-    simulate_key_press(MAIN.input, key)
+    simulate_key_press(JulGame.main_loop().input, key)
 end

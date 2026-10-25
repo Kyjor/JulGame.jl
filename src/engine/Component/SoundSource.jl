@@ -18,12 +18,12 @@ module SoundSourceModule
         channel::Int
         isPlaying::Bool
         playOnStart::Bool
-        parent::Any
+        parent::JulGame.IEntity
         sound::Union{Ptr{Nothing}, Ptr{SDL2.LibSDL2._Mix_Music}, Ptr{SDL2.LibSDL2.Mix_Chunk}}
         volume::Int
 
         # Music
-        function InternalSoundSource(parent::Any, path::String, channel::Int = -1, volume::Int = -1, isMusic::Bool = false, playOnStart::Bool = false)
+        function InternalSoundSource(@nospecialize(parent::JulGame.IEntity), path::String, channel::Int = -1, volume::Int = -1, isMusic::Bool = false, playOnStart::Bool = false)
             this = new()
 
             SDL2.SDL_ClearError()
@@ -35,8 +35,8 @@ module SoundSourceModule
             error = unsafe_string(SDL2.SDL_GetError())
 
             if (sound == C_NULL || length(error) > 0) && length(path) > 0
-                println(fullPath)
-                println("Error loading file at $path. SDL Error: $(error)")
+                JulGame.print_line(fullPath)
+                JulGame.print_line("Error loading file at $path. SDL Error: $(error)")
                 SDL2.SDL_ClearError()
             end
             
@@ -132,7 +132,7 @@ module SoundSourceModule
         this.sound = load_sound_sdl(soundPath, isMusic)
         error = unsafe_string(SDL2.SDL_GetError())
         if length(error) > 0
-            println(string("Couldn't open sound! SDL Error: ", error))
+            JulGame.print_line(string("Couldn't open sound! SDL Error: ", error))
             SDL2.SDL_ClearError()
             this.sound = C_NULL
             return
@@ -272,7 +272,7 @@ module SoundSourceModule
         SDL2.Mix_MasterVolume(volume)
     end
 
-    function Component.duplicate(this::InternalSoundSource, parent::Any)
+    function Component.duplicate(this::InternalSoundSource, parent::JulGame.IEntity)
         @debug("duplicate: Duplicating sound from $(this.path), isMusic: $(this.isMusic), channel: $(this.channel), volume: $(this.volume), playOnStart: $(this.playOnStart)")
         newSoundSource = InternalSoundSource(parent, this.path, this.channel, this.volume, this.isMusic, this.playOnStart)
         newSoundSource.isPlaying = this.isPlaying

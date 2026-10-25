@@ -88,7 +88,7 @@ module CameraModule
         try
             setfield!(this, s, x)
         catch e
-            println(e)
+            JulGame.log_exception("Failed to set camera property", e)
         end
     end
 end

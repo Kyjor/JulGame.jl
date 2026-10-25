@@ -60,16 +60,13 @@ module EffectCacheModule
             push!(parts, UInt64(target.height))
         elseif target isa EffectsModule.SpriteTarget
             push!(parts, hash("SpriteTarget"))
-            push!(parts, hash(target.sprite.id))
+            push!(parts, hash(EffectsModule.sprite_of(target).id))
         elseif target isa EffectsModule.RectangleTarget
             push!(parts, hash("RectangleTarget"))
-            push!(parts, hash(target.rectangle.id))
-        elseif target isa EffectsModule.LineTarget
-            push!(parts, hash("LineTarget"))
-            push!(parts, hash(target.line.id))
+            push!(parts, hash(EffectsModule.rectangle_of(target).id))
         elseif target isa EffectsModule.ImageTarget
             push!(parts, hash("ImageTarget"))
-            push!(parts, hash(target.image.id))
+            push!(parts, hash(EffectsModule.image_of(target).id))
         end
         
         # Add effects hash

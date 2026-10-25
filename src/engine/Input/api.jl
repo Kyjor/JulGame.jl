@@ -7,11 +7,11 @@ function get_button_held_down(this::Input, button::String)
 end
 
 function get_button_held_down(button::String)
-    return get_button_held_down(MAIN.input, button)
+    return get_button_held_down(JulGame.main_loop().input, button)
 end
 
 function get_button_pressed(button::String)
-    return get_button_pressed(MAIN.input, button)
+    return get_button_pressed(JulGame.main_loop().input, button)
 end
 
 function get_button_pressed(this::Input, button::String)
@@ -22,7 +22,7 @@ function get_button_pressed(this::Input, button::String)
 end
 
 function get_button_released(button::String)
-    return get_button_released(MAIN.input, button)
+    return get_button_released(JulGame.main_loop().input, button)
 end
 
 function get_button_released(this::Input, button::String)
@@ -40,7 +40,7 @@ function get_mouse_button(this::Input, button::Any)
 end
 
 function get_mouse_button(button::Any)
-    return get_mouse_button(MAIN.input, button)
+    return get_mouse_button(JulGame.main_loop().input, button)
 end
 
 function get_mouse_button_pressed(this::Input, button::Any)
@@ -51,7 +51,7 @@ function get_mouse_button_pressed(this::Input, button::Any)
 end
 
 function get_mouse_button_pressed(button::Any)
-    return get_mouse_button_pressed(MAIN.input, button)
+    return get_mouse_button_pressed(JulGame.main_loop().input, button)
 end
 
 function get_mouse_button_released(this::Input, button::Any)
@@ -62,7 +62,7 @@ function get_mouse_button_released(this::Input, button::Any)
 end
 
 function get_mouse_button_released(button::Any)
-    return get_mouse_button_released(MAIN.input, button)
+    return get_mouse_button_released(JulGame.main_loop().input, button)
 end
 
 function get_mouse_position(this::Input)
@@ -70,7 +70,7 @@ function get_mouse_position(this::Input)
 end
 
 function get_mouse_position()
-    return get_mouse_position(MAIN.input)
+    return get_mouse_position(JulGame.main_loop().input)
 end
 
 function get_mouse_position_in_world_space(this::Input)
@@ -78,5 +78,5 @@ function get_mouse_position_in_world_space(this::Input)
 end
 
 function get_mouse_position_in_world_space()
-    return get_mouse_position_in_world_space(MAIN.input)
+    return get_mouse_position_in_world_space(JulGame.main_loop().input)
 end

@@ -8,6 +8,7 @@ module RectangleModule
     
     export Rectangle
     mutable struct Rectangle <: UI.UIElement
+        base::UI.UIElementInstance
         fillMode::Bool
         isActive::Bool
         isWorldEntity::Bool
@@ -29,13 +30,13 @@ module RectangleModule
             isWorldEntity::Bool=false, 
             layer::Int=0,
             position::Math.Vector2 = Math.Vector2(0,0), 
-            clickEvents::Vector{Function} = Function[],
-            hoverEnterEvents::Vector{Function} = Function[],
-            hoverExitEvents::Vector{Function} = Function[],
+            clickEvents = ClickCallback[],
+            hoverEnterEvents = HoverCallback[],
+            hoverExitEvents = HoverCallback[],
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(255, 255, 255, 255), 
-            parent::Union{UI.UIElement, Nothing, Any}=nothing,
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             fillMode::Bool=true,
             borderRadius::Int=0, 
             borderWidth::Int=0, 
@@ -44,6 +45,7 @@ module RectangleModule
             forceClickCheck::Bool=false
         )                  
             this = new()
+            setfield!(this, :base, UI.UIElementInstance())
             
             # Set fields that are part of the Rectangle struct
             this.color = color
@@ -69,22 +71,7 @@ module RectangleModule
             
             # Now set fields that are part of UIElementInstance through the relationship system
             # These need to be set after the Rectangle is constructed
-            this.anchor = JulGame.Enum{Any}(
-                :center,
-                :top,
-                :bottom,
-                :left,
-                :right,
-                :topLeft,
-                :topRight,
-                :bottomLeft,
-                :bottomRight,
-                :centerLeft,
-                :centerRight,
-                :centerTop,
-                :centerBottom,
-                :none
-            )
+            this.anchor = deepcopy(UI.anchor_types)
             this.anchor.current_state = anchor
             this.anchorOffset = anchorOffset
             this.clickEvents = clickEvents
@@ -376,7 +363,7 @@ module RectangleModule
             return
         end
         
-        camera = MAIN.scene.camera
+        camera = JulGame.main_loop().scene.camera
         
         # Calculate drawing coordinates based on world or screen position
         if this.isWorldEntity && camera !== nothing
@@ -495,7 +482,7 @@ module RectangleModule
             this.effectTexture = C_NULL
         end
         
-        MAIN.scene.uiElements = filter(x -> x !== this, MAIN.scene.uiElements)
+        JulGame.main_loop().scene.uiElements = filter(x -> x !== this, JulGame.main_loop().scene.uiElements)
     end
     
     #  effects API
@@ -516,6 +503,8 @@ module RectangleModule
         return apply_effects!(this, style.effects)
     end
     
+    EffectsModule.rectangle_of(target::EffectsModule.RectangleTarget) = target.rectangle::Rectangle
+
     function update_effects(this::Rectangle)
         @debug("update_effects: Starting for rectangle $(this.name)")
         @debug("update_effects: Rectangle state - size=$(this.size), position=$(this.position), color=$(this.color)")
@@ -571,7 +560,7 @@ module RectangleModule
         # @debug("render_rectangle_with_effects: Starting for rectangle $(this.name)")
         # @debug("render_rectangle_with_effects: effectTexture=$(this.effectTexture)")
         
-        camera = MAIN.scene.camera
+        camera = JulGame.main_loop().scene.camera
         
         # Calculate position
         if this.isWorldEntity && camera !== nothing
@@ -605,28 +594,6 @@ module RectangleModule
     end
 
     # Helpers to serialize effects and generate cache keys (mirrors UIImage)
-    function serialize_effects(effects::Vector{Any})::String
-        if isempty(effects)
-            return "[]"
-        end
-        parts = String[]
-        for eff in effects
-            T = typeof(eff)
-            fnames = fieldnames(T)
-            vals = String[]
-            for f in fnames
-                v = getfield(eff, f)
-                if v isa Ptr
-                    push!(vals, string(f, "=Ptr"))
-                else
-                    push!(vals, string(f, "=", v))
-                end
-            end
-            push!(parts, string(nameof(T), "(", join(vals, ","), ")"))
-        end
-        return "[" * join(parts, ";") * "]"
-    end
-
     function generate_effect_cache_key(this::Rectangle)::String
         # Cache key excludes position/rotation (and other transform-only changes)
         # Effects depend on size, color, border properties, and effect params

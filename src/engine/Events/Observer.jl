@@ -3,12 +3,12 @@ module ObserverModule
     
     ObserverInstance::Union{JulGame.IObserver, Nothing} = nothing
     mutable struct Observer <: JulGame.IObserver
-        observers::Vector{Function}
+        observers::Vector{ObserverCallback}
         
         function Observer()
             this = new()
             
-            this.observers = []
+            this.observers = ObserverCallback[]
             global ObserverInstance = this
             
             return this
@@ -17,11 +17,11 @@ module ObserverModule
     Observer() # Create a new Observer instance
 
     export add_observer
-    function add_observer(observer::Function)
+    function add_observer(observer)
         add_observer(ObserverInstance, observer)
     end
 
-    function add_observer(this::Observer, observer::Function)
+    function add_observer(this::Observer, observer)
         if this === nothing
             @error "ObserverInstance is nothing"
             return
@@ -30,15 +30,15 @@ module ObserverModule
     end
     
     export remove_observer
-    function remove_observer(observer::Function)
+    function remove_observer(observer)
         remove_observer(ObserverInstance, observer)
     end
-    function remove_observer(this::Observer, observer::Function)
+    function remove_observer(this::Observer, observer)
         if this === nothing
             @error "ObserverInstance is nothing"
             return
         end
-        filter!(ob -> ob != observer, this.observers)
+        filter!(ob -> ob.box.f != observer, this.observers)
     end
 
     export notify_observer
@@ -52,7 +52,7 @@ module ObserverModule
             return
         end
         for observer in this.observers
-            observer(event, data)
+            observer((event, data))
         end
     end
 end

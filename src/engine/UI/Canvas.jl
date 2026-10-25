@@ -11,6 +11,7 @@ module CanvasModule
     Provides hierarchical organization, anchoring, and collective activation/deactivation.
     """
     mutable struct Canvas <: JulGame.ICanvas
+        base::UI.UIElementInstance
         children::Vector{JulGame.IUIElement}
         clipChildren::Bool
         anchor::JulGame.Enum{Any}
@@ -24,12 +25,12 @@ module CanvasModule
         size::Math.Vector2
         color::NTuple{4, Int}
         persistentBetweenScenes::Bool
-        parent::Union{JulGame.IUIElement, Nothing, Any}
+        parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}
         rotation::Float64
         forceClickCheck::Bool
-        clickEvents::Vector{Function}
-        hoverEnterEvents::Vector{Function}
-        hoverExitEvents::Vector{Function}
+        clickEvents::Vector{ClickCallback}
+        hoverEnterEvents::Vector{HoverCallback}
+        hoverExitEvents::Vector{HoverCallback}
         isWorldEntity::Bool
         isVisible::Bool
 
@@ -41,23 +42,24 @@ module CanvasModule
             layer::Int=0,
             position::Math.Vector2=Math.Vector2(0, 0),
             size::Math.Vector2=Math.Vector2(0, 0),
-            clickEvents::Vector{Function}=Function[],
-            hoverEnterEvents::Vector{Function}=Function[],
-            hoverExitEvents::Vector{Function}=Function[],
-            clickEvent::Union{Function, Nothing}=nothing,
-            hoverEnterEvent::Union{Function, Nothing}=nothing,
-            hoverExitEvent::Union{Function, Nothing}=nothing,
+            clickEvents=ClickCallback[],
+            hoverEnterEvents=HoverCallback[],
+            hoverExitEvents=HoverCallback[],
+            clickEvent=nothing,
+            hoverEnterEvent=nothing,
+            hoverExitEvent=nothing,
             isActive::Bool=true,
             persistentBetweenScenes::Bool=false,
             color::NTuple{4, Int}=(0, 0, 0, 0),
             clipChildren::Bool=false,
-            parent::Union{JulGame.IUIElement, Nothing, Any}=nothing,
+            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
             rotation::Float64=0.0,
             forceClickCheck::Bool=false,
             isWorldEntity::Bool=false,
             isVisible::Bool=true,
         )
             this = new()
+            setfield!(this, :base, UI.UIElementInstance())
             this.children = JulGame.IUIElement[]
             this.clipChildren = clipChildren
             this.anchor = deepcopy(UI.anchor_types)

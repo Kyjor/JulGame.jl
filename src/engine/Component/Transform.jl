@@ -9,7 +9,7 @@ module TransformModule
         rotation::Math.Vector3f
         screenPosition::Math.Vector2
         screenRotation::Math.Vector2
-        parent
+        parent::Union{JulGame.IEntity, Nothing}
 
         function Transform(position::Math.Vector3f = Math.Vector3f(0.0, 0.0, 0.0), scale::Math.Vector3f = Math.Vector3f(1.0, 1.0, 1.0), rotation::Math.Vector3f = Math.Vector3f(0.0, 0.0, 0.0), parent = nothing)
             this = new()
@@ -40,14 +40,19 @@ module TransformModule
         return false
     end
 
-    function Base.setproperty!(this::Transform, property::Symbol, value::Any)
+    function notify_transform_updated(this::Transform, property::Symbol, value)
+        JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (id = this.parent.id, property = property, oldValue = getfield(this, property), newValue = value))
+    end
+
+    Base.@constprop :aggressive function Base.setproperty!(this::Transform, property::Symbol, value::Any)
         # only log if the property is already defined
         if JulGame.IS_EDITOR && !JulGame.IS_EDITOR_PLAY_MODE && isdefined(this, property) && JulGame.engine_states.current_state == :game_mode && isdefined(this, :parent) && this.parent !== nothing
             #@debug "setting transform property $(property) to: $(value)"
-            JulGame.EventsModule.ObserverModule.notify_observer(:updated_transform, (id = this.parent.id, property = property, oldValue = getfield(this, property), newValue = value))
+            # Only the editor listens, so a trimmed game build leaves the notification out
+            JulGame.unless_trimmed(notify_transform_updated, this, property, value)
         end
         # Call the default setproperty! behavior
-        invoke(setproperty!, Tuple{Any, Symbol, Any}, this, property, value)
+        JulGame.set_field_converted!(this, property, value)
     end
 
     function on_notify(event::Symbol, data::Any)

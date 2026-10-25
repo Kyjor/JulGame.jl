@@ -42,14 +42,13 @@ module MainLoopModule
 		level::JulGame.SceneManagement.SceneBuilderModule.Scene
 		optimizeSpriteRendering::Bool
 		scene::SceneModule.Scene
-		selectedEntities#::Union{Vector{Entity}, Vector{UI.UIElement}, Nothing}
+		selectedEntities::Union{Vector{Any}, Nothing}
 		shouldChangeScene::Bool
 		spriteLayers::NamedTuple{(:layers, :sorted), Tuple{Dict{Int, Vector{Any}}, Vector{Int}}}
 		testLength::Float64
 		testMode::Bool
 		windowManager::WindowManager
 		
-		knownScriptTypes::Set{DataType}
 		
 		cachedInputLayerOrder::Vector{Any}
 		# Cached input layer order (rebuilt only when layers change)
@@ -102,11 +101,12 @@ module MainLoopModule
 			this.scratchInputHiddenCanvasChildIds = Set{UInt}()
 			
 			# Initialize script tracking
-			this.knownScriptTypes = Set{DataType}()
 
 			return this
 		end
 	end
+
+	JulGame.main_loop() = (JulGame.MAIN)::MainLoop
 
 	"""
 		mark_input_layer_order_dirty!(this::MainLoop)
@@ -121,7 +121,7 @@ module MainLoopModule
 	# ============================================================================
 	# SCRIPT LIFECYCLE CALLS
 	# Wrapper functions for calling dynamically-loaded script methods.
-	# Uses Base.invokelatest to handle world age issues.
+	# Uses JulGame.dispatch, which handles world age issues (and `juliac --trim`).
 	# ============================================================================
 	
 	"""
@@ -129,16 +129,8 @@ module MainLoopModule
 	
 	Call script initialization method.
 	"""
-	@inline function call_script_initialize(this::MainLoop, script)
-		script_type = typeof(script)
-		
-		if !(script_type in this.knownScriptTypes)
-			# First time: JIT compiles the method (slow but only once)
-			@debug "First initialize call for $(script_type) - compiling..."
-			push!(this.knownScriptTypes, script_type)
-		end
-		
-		Base.invokelatest(JulGame.initialize, script)
+	@inline function call_script_initialize(this::MainLoop, script::Script)
+		JulGame.dispatch(JulGame.initialize, script)
 	end
 	
 	"""
@@ -146,17 +138,8 @@ module MainLoopModule
 	
 		Call script update method.
 	"""
-	@inline function call_script_update(this::MainLoop, script, deltaTime::Float64)
-		script_type = typeof(script)
-		
-		if !(script_type in this.knownScriptTypes)
-			# First call: register type (compilation happens here)
-			@debug "First update call for $(script_type) - compiling..."
-			push!(this.knownScriptTypes, script_type)
-		end
-		
-	
-		Base.invokelatest(JulGame.update, script, deltaTime)
+	@inline function call_script_update(this::MainLoop, script::Script, deltaTime::Float64)
+		JulGame.dispatch(JulGame.update, script, deltaTime)
 	end
 	
 	"""
@@ -164,28 +147,24 @@ module MainLoopModule
 	
 	Call script shutdown/cleanup method.
 	"""
-	@inline function call_script_shutdown(this::MainLoop, script)
-		script_type = typeof(script)
-		
-		if !(script_type in this.knownScriptTypes)
-			push!(this.knownScriptTypes, script_type)
-			@debug "First shutdown call for $(script_type) - compiling..."
-		end
-		
-		# Always use invokelatest (fast after first compilation)
-		Base.invokelatest(JulGame.on_shutdown, script)
+	@inline function call_script_shutdown(this::MainLoop, script::Script)
+		JulGame.dispatch(JulGame.on_shutdown, script)
+	end
+
+	@inline function call_ui_initialize(this::MainLoop, uiElement::JulGame.IUIElement)
+		JulGame.dispatch(JulGame.initialize, uiElement)
 	end
 
 	function prepare_window_scripts_and_start_loop(size)
 		@debug "Preparing window"
-		MAIN.windowManager.windowSize = size
+		JulGame.main_loop().windowManager.windowSize = size
 
 		@debug "Initializing scripts and components"
-		@time "scene init: total (scripts and components)" initialize_scripts_and_components()
+		@timed_step "scene init: total (scripts and components)" initialize_scripts_and_components()
 
 		if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			@debug "Starting non editor loop"
-			full_loop(MAIN)
+			full_loop(JulGame.main_loop())
 			return
 		end
 	end
@@ -193,7 +172,7 @@ module MainLoopModule
     function initialize_new_scene(this::MainLoop)
 		@debug "Initializing new scene"
 		@debug "Deserializing and building scene"
-        @timev "Deserializing and building scene: $(this.level.scene)" SceneBuilderModule.deserialize_and_build_scene(this.level)
+        @timed_step "Deserializing and building scene: $(this.level.scene)" SceneBuilderModule.deserialize_and_build_scene(this.level)
 
         initialize_scripts_and_components()
         
@@ -221,7 +200,7 @@ module MainLoopModule
                     if isFirstFrame
                         # First frame lazily bakes effect textures for visible
                         # elements and JIT-compiles the render path.
-                        @time "first frame" game_loop(this, startTime, lastPhysicsTime)
+                        @timed_step "first frame" game_loop(this, startTime, lastPhysicsTime)
                         isFirstFrame = false
                     else
                         game_loop(this, startTime, lastPhysicsTime)
@@ -233,8 +212,7 @@ module MainLoopModule
 						if this.testMode
 							rethrow(e)
 						else
-							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+							JulGame.log_exception("Error in MainLoop.jl", e)
 						end
                     end
                 end
@@ -253,8 +231,7 @@ module MainLoopModule
 							rethrow(e)
 						else
 							if typeof(e) != ErrorException
-								println("Error shutting down script: $(typeof(script))")
-								Base.show_backtrace(stdout, catch_backtrace())
+								JulGame.log_exception("Error shutting down script: $(typeof(script))", e)
 							end
 						end
                     end
@@ -311,13 +288,13 @@ module MainLoopModule
 	end
 
 	function create_new_canvas()
-		canvas = create_new_canvas(MAIN)
+		canvas = create_new_canvas(JulGame.main_loop())
 		return canvas
 	end
 
 	function initialize_scripts_and_components()
 		this::MainLoop = MAIN
-		scripts = []
+		scripts = Script[]
 		for entity in this.scene.entities
 			for script in entity.scripts
 				push!(scripts, script)
@@ -325,8 +302,8 @@ module MainLoopModule
 		end
 
 		if !this.isGameModeRunningInEditor
-			@time "scene init: uiElements ($(length(this.scene.uiElements)))" for uiElement in this.scene.uiElements
-				JulGame.initialize(uiElement)
+			@timed_step "scene init: uiElements ($(length(this.scene.uiElements)))" for uiElement in this.scene.uiElements
+				call_ui_initialize(this, uiElement)
 			end
 		end
 
@@ -336,19 +313,18 @@ module MainLoopModule
 
 			for script in scripts
 				try
-					@time "scene init: script $(typeof(script))" call_script_initialize(this, script)
+					@timed_step "scene init: script $(typeof(script))" call_script_initialize(this, script)
 				catch e
 					if this.testMode
 						rethrow(e)
 					else
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
+						JulGame.log_exception("Failed to initialize script $(typeof(script))", e)
 					end
 				end
 			end
 			build_sprite_layers()
 
-			@time "scene init: play-on-start sounds" for entity in MAIN.scene.entities
+			@timed_step "scene init: play-on-start sounds" for entity in JulGame.main_loop().scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
 				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
 					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")
@@ -357,16 +333,16 @@ module MainLoopModule
 			end 
 		end
 				
-		MAIN.scene.rigidbodies = []
-		MAIN.scene.colliders = []
-		for entity in MAIN.scene.entities
+		JulGame.main_loop().scene.rigidbodies = JulGame.RigidbodyModule.InternalRigidbody[]
+		JulGame.main_loop().scene.colliders = JulGame.ColliderModule.InternalCollider[]
+		for entity in JulGame.main_loop().scene.entities
 			@debug "adding rigidbodies to global list"
 			if entity.rigidbody != C_NULL
-				push!(MAIN.scene.rigidbodies, entity.rigidbody)
+				push!(JulGame.main_loop().scene.rigidbodies, entity.rigidbody)
 					end
 			@debug "adding colliders to global list"
 			if entity.collider != C_NULL
-				push!(MAIN.scene.colliders, entity.collider)
+				push!(JulGame.main_loop().scene.colliders, entity.collider)
 			end
 		end 
 	end
@@ -419,9 +395,7 @@ function JulGame.change_scene(sceneFileName::String)
 						rethrow(e)
 					else
 						if typeof(e) != ErrorException
-							println("Error shutting down script: $(typeof(script))")
-							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+							JulGame.log_exception("Error shutting down script: $(typeof(script))", e)
 						end
 					end
 				end
@@ -479,7 +453,7 @@ function build_sprite_layers()
 	layerDict = Dict{Int, Vector{Any}}()  # Int keys instead of String - no allocations!
 	sortedLayers = Int[]
 	
-	for entity in MAIN.scene.entities
+	for entity in JulGame.main_loop().scene.entities
 		entitySprite = entity.sprite
 		if entitySprite != C_NULL
 			layer = entitySprite.layer
@@ -517,14 +491,17 @@ Destroy the specified entity. This removes the entity's sprite from the sprite l
 # Arguments
 - `entity`: The entity to be destroyed.
 """
-function JulGame.destroy_entity(this::MainLoop, entity)
+function JulGame.destroy_entity(this::MainLoop, @nospecialize(entity::JulGame.IEntity))
 	for i = eachindex(this.scene.entities)
-		if this.scene.entities[i] == entity
+		if this.scene.entities[i] === entity
 			destroy_entity_components(this, entity)
 			deleteat!(this.scene.entities, i)
-			entity_index = findfirst(x -> x == entity, this.selectedEntities)
-			if entity_index !== nothing
-				deleteat!(this.selectedEntities, entity_index)
+			selectedEntities = this.selectedEntities
+			if selectedEntities isa Vector{Any}
+				entity_index = findfirst(x -> x === entity, selectedEntities)
+				if entity_index !== nothing
+					deleteat!(selectedEntities, entity_index)
+				end
 			end
 			mark_input_layer_order_dirty!(this)  # Cache needs rebuild
 			break
@@ -537,11 +514,11 @@ function JulGame.destroy(this::MainLoop, entity::JulGame.Entity)
 end
 
 function JulGame.destroy(entity::JulGame.Entity)
-	JulGame.destroy(MAIN, entity)
+	JulGame.destroy(JulGame.main_loop(), entity)
 end
 
-function JulGame.destroy_entity(entity)
-    JulGame.destroy_entity(MAIN, entity)
+function JulGame.destroy_entity(@nospecialize(entity::JulGame.IEntity))
+    JulGame.destroy_entity(JulGame.main_loop(), entity)
 end
 
 function JulGame.destroy_ui_element(this::MainLoop, uiElement)
@@ -555,13 +532,13 @@ function JulGame.destroy_ui_element(this::MainLoop, uiElement)
 	end
 end
 
-function destroy_entity_components(this::MainLoop, entity)
+function destroy_entity_components(this::MainLoop, @nospecialize(entity::JulGame.IEntity))
 	entitySprite = entity.sprite
 	if entitySprite != C_NULL
 		layer = entitySprite.layer
 		if haskey(this.spriteLayers.layers, layer)  # No string interpolation!
 			for j = eachindex(this.spriteLayers.layers[layer])
-				if this.spriteLayers.layers[layer][j] == entitySprite
+				if this.spriteLayers.layers[layer][j] === entitySprite
 					Component.destroy(entitySprite)
 					deleteat!(this.spriteLayers.layers[layer], j)
 					break
@@ -596,7 +573,7 @@ Create a new entity. Adds the entity to the main game's entities array and adds 
 - `entity`: The entity to create.
 
 """
-function JulGame.create_entity(entity)
+function JulGame.create_entity(@nospecialize(entity::JulGame.IEntity))
 	this::MainLoop = MAIN
 	push!(this.scene.entities, entity)
 	if entity.sprite != C_NULL
@@ -703,14 +680,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 				for rigidbody in this.scene.rigidbodies
 					try
-						Base.invokelatest(JulGame.update, rigidbody, deltaTime)
+						JulGame.update(rigidbody, deltaTime)
 					catch e
 						if this.testMode
 							rethrow(e)
 						else
-							println(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody")
-							@error string(e)
-							Base.show_backtrace(stdout, catch_backtrace())
+							JulGame.log_exception(string(rigidbody.parent.name, " with id: ", rigidbody.parent.id, " has a problem with it's rigidbody"), e)
 						end
 					end
 				end
@@ -743,18 +718,17 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						if this.testMode
 							rethrow(e)
 						else
-							println(entity.name, " with id: ", entity.id, " has a problem with it's update")
-							Base.show_backtrace(stdout, catch_backtrace())
+							JulGame.log_exception(string(entity.name, " with id: ", entity.id, " has a problem with it's update"), e)
 						end
 					end
 					entityAnimator = entity.animator
-					if entityAnimator != C_NULL
-                        Base.invokelatest(JulGame.update, entityAnimator, currentRenderTime)
+					if entityAnimator isa Component.AnimatorModule.InternalAnimator
+						JulGame.update(entityAnimator, currentRenderTime)
 					end
 				end
 			end
 
-			coroutines_to_remove = []
+			coroutines_to_remove = JulGame.CoroutineModule.Coroutine[]
 			for coroutine in JulGame.Coroutines
 				if istaskdone(coroutine.task)
 					push!(coroutines_to_remove, coroutine)
@@ -778,8 +752,13 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				render_scene_debug(this, cameraPosition, cameraSize)
 			end
 
-			uiRenderingOrder = []
-			canvases = filter(x -> isa(x, JulGame.ICanvas), this.scene.uiElements)
+			uiRenderingOrder = Tuple{Int, Union{JulGame.IUIElement, JulGame.RenderFunction}}[]
+			canvases = UI.CanvasModule.Canvas[]
+			for uiElement in this.scene.uiElements
+				if uiElement isa UI.CanvasModule.Canvas
+					push!(canvases, uiElement)
+				end
+			end
 			immediate_scene_skip = UI.ImmediateUIModule.immediate_ui_managed_scene_skip_ids()
 			for uiElement in this.scene.uiElements
 				if Base.objectid(uiElement) in immediate_scene_skip
@@ -815,25 +794,22 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 						continue
 					end
 					tgt = uiRenderingOrder[i][2]
-					if tgt isa NamedTuple
-						func = tgt.function_to_call
-						Base.invokelatest(func)
+					if tgt isa JulGame.RenderFunction
+						tgt.function_to_call()
 					else
-						JulGame.render(tgt)
+						JulGame.dispatch(JulGame.render, tgt::JulGame.IUIElement)
 					end
 				catch e
 					if this.testMode
 						rethrow(e)
 					else
 						parent_info = ""
-						if isa(uiRenderingOrder[i][2], NamedTuple) && hasfield(typeof(uiRenderingOrder[i][2]), :function_to_call)
-							parent_info = "a queued render function ($(uiRenderingOrder[i][2].function_to_call))"
+						if isa(uiRenderingOrder[i][2], JulGame.RenderFunction)
+							parent_info = "a queued render function"
 						elseif isa(uiRenderingOrder[i][2], UI.UIElement) 
 							parent_info = "a ui element of type $(typeof(uiRenderingOrder[i][2]))"
 						end
-						println(parent_info, " has a problem with it's render function")
-						@error string(e)
-						Base.show_backtrace(stdout, catch_backtrace())
+						JulGame.log_exception(string(parent_info, " has a problem with it's render function"), e)
 					end
 				end
 			end
@@ -875,7 +851,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				 end
 			end
 
-			if !istaskdone(this.errorLogger.task)
+			errorLoggerTask = this.errorLogger.task
+			if errorLoggerTask isa Task && !istaskdone(errorLoggerTask)
 				notify(this.errorLogger.condition)
 				yield()
 			end
@@ -888,8 +865,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			if this.testMode
 				rethrow(e)
 			else
-				@error string(e)
-				Base.show_backtrace(stdout, catch_backtrace())
+				JulGame.log_exception("Error in MainLoop.jl", e)
 			end
 		end
 		
@@ -902,41 +878,31 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			
 		skipcount = 0
 		rendercount = 0
-		renderOrder = []
+		renderOrder = Tuple{Int, Union{Component.SpriteModule.InternalSprite, Component.ShapeModule.InternalShape, JulGame.RenderFunction}}[]
 		for entity in this.scene.entities
-			spriteExists = entity.sprite != C_NULL && entity.sprite !== nothing
-			shapeExists = entity.shape != C_NULL && entity.shape !== nothing
-			if !entity.isActive || (!spriteExists && !shapeExists)
+			sprite = entity.sprite
+			shape = entity.shape
+			if !entity.isActive || !(sprite isa Component.SpriteModule.InternalSprite || shape isa Component.ShapeModule.InternalShape)
 				continue
 			end
 
 			position = entity.transform.position
 			size = entity.transform.scale
-			sprite = entity.sprite
-			shape = entity.shape
-
-			skipSprite = false
-			skipShape = false
-
 			# TODO: consider offset
-			if spriteExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && this.optimizeSpriteRendering 
-				skipSprite = true
-			end
+			isOutsideCamera = (position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S
 
-			# TODO: consider offset
-			if shapeExists && ((position.x + size.x) < cameraPosition.x || position.y < cameraPosition.y || position.x > cameraPosition.x + cameraSize.x/S || (position.y - size.y) > cameraPosition.y + cameraSize.y/S) && shape.isWorldEntity && this.optimizeSpriteRendering 
-				skipShape = true
+			if sprite isa Component.SpriteModule.InternalSprite
+				if isOutsideCamera && this.optimizeSpriteRendering
+					sprite.lastRenderedScreenPosition = nothing
+					sprite.lastRenderedScreenSize = nothing
+				else
+					push!(renderOrder, (sprite.layer, sprite))
+				end
 			end
-
-			if !skipSprite && spriteExists
-				push!(renderOrder, (sprite.layer, sprite))
-			end
-			if !skipShape && shapeExists
-				push!(renderOrder, (shape.layer, shape))
-			end
-			if skipSprite && spriteExists
-				sprite.lastRenderedScreenPosition = nothing
-				sprite.lastRenderedScreenSize = nothing
+			if shape isa Component.ShapeModule.InternalShape
+				if !(isOutsideCamera && shape.isWorldEntity && this.optimizeSpriteRendering)
+					push!(renderOrder, (shape.layer, shape))
+				end
 			end
 		end
 
@@ -951,30 +917,24 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		for i = eachindex(renderOrder)
 			try
 				rendercount += 1
-			if renderOrder[i][2] isa Component.SpriteModule.InternalSprite || renderOrder[i][2] isa Component.ShapeModule.InternalShape 
-				Component.draw(renderOrder[i][2], camera)
-			elseif renderOrder[i][2] isa NamedTuple
-				# get the params	
-				func = renderOrder[i][2].function_to_call
-				Base.invokelatest(func)
+			item = renderOrder[i][2]
+			if item isa JulGame.RenderFunction
+				item.function_to_call()
 			else
-				println("Unknown item type: ", typeof(renderOrder[i][2]))
+				Component.draw(item, camera)
 			end
 			catch e
 				if this.testMode
 					rethrow(e)
 				else
 					parent_info = ""
-					if isa(renderOrder[i][2], NamedTuple) && hasfield(typeof(renderOrder[i][2]), :function_to_call)
-						parent_info = "a queued render function ($(renderOrder[i][2].function_to_call))"
-					elseif hasproperty(renderOrder[i][2], :parent) && renderOrder[i][2].parent !== nothing && isa(renderOrder[i][2].parent, JulGame.EntityModule.Entity)
-						parent_info = "$(renderOrder[i][2].parent.name) with id: $(renderOrder[i][2].parent.id)"
-					else 
-						parent_info = "a component of type $(typeof(renderOrder[i][2]))"
+					failedItem = renderOrder[i][2]
+					if failedItem isa JulGame.RenderFunction
+						parent_info = "a queued render function"
+					else
+						parent_info = "$(failedItem.parent.name) with id: $(failedItem.parent.id)"
 					end
-					println(parent_info, " has a problem with rendering")
-					@error string(e)
-					Base.show_backtrace(stdout, catch_backtrace())
+					JulGame.log_exception(string(parent_info, " has a problem with rendering"), e)
 				end
 			end
 		end
@@ -1058,7 +1018,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 		SDL2.SDL_ClearError()
 		
 		# Use the WindowManager to close the window
-		if JulGame.MAIN.windowManager !== nothing
+		if JulGame.main_loop().windowManager !== nothing
 			JulGame.WindowManagerModule.close_window()
 		end
 		

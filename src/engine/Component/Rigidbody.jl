@@ -14,7 +14,7 @@
         grounded::Bool
         mass::Float64
         offset::Math.Vector2f
-        parent::Any
+        parent::JulGame.IEntity
         useGravity::Bool
         velocity::Math.Vector2f
 
@@ -97,7 +97,7 @@
             if velocity.y < 0
                 this.grounded = false
                 if this.parent.collider != C_NULL
-                    this.parent.collider.currentRests = []
+                    empty!(this.parent.collider.currentRests)
                 end
             end
         end

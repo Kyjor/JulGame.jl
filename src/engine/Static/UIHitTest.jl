@@ -2,6 +2,10 @@
 module UIHitTestModule
 
 using ..JGStaticModule
+import ..JulGame
+
+"""Anything the mouse can hit: UI elements and entities."""
+const HitTestElement = Union{JulGame.IUIElement, JulGame.IEntity}
 
 const LIB_PATH = JGStaticModule.LIB_PATH
 
@@ -49,7 +53,7 @@ mutable struct HitTestBuffer
     ys::Vector{Int32}
     rights::Vector{Int32}
     bottoms::Vector{Int32}
-    elements::Vector{Any}
+    elements::Vector{HitTestElement}
     count::Int
 
     function HitTestBuffer(capacity::Int = 64)
@@ -58,7 +62,7 @@ mutable struct HitTestBuffer
             Vector{Int32}(undef, capacity),
             Vector{Int32}(undef, capacity),
             Vector{Int32}(undef, capacity),
-            Vector{Any}(undef, capacity),
+            Vector{HitTestElement}(undef, capacity),
             0,
         )
     end
@@ -82,7 +86,7 @@ function ensure_capacity!(buf::HitTestBuffer, needed::Int)
     return buf
 end
 
-function push_rect!(buf::HitTestBuffer, element::Any, x::Real, y::Real, right::Real, bottom::Real)
+function push_rect!(buf::HitTestBuffer, @nospecialize(element::HitTestElement), x::Real, y::Real, right::Real, bottom::Real)
     buf.count += 1
     ensure_capacity!(buf, buf.count)
     buf.xs[buf.count] = Int32(round(x))
@@ -120,6 +124,7 @@ function first_hit_index_julia(buf::HitTestBuffer, mouse_x::Real, mouse_y::Real)
 end
 
 export HitTestBuffer,
+       HitTestElement,
        clear!,
        ensure_capacity!,
        push_rect!,
