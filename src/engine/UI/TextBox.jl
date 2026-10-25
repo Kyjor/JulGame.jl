@@ -528,13 +528,10 @@ module TextBoxModule
         effects::Vector{Any},
         size,
     )::String
+        # `string` with more than 10 arguments is not inferable, so it is built in two parts.
         content = string(
-            text, "|",
-            color, "|",
-            fontPath, "|",
-            fontSize, "|",
-            serialize_effects(effects), "|",
-            size,
+            string(text, "|", color, "|", fontPath, "|", fontSize, "|"),
+            string(serialize_effects(effects), "|", size),
         )
         return string(hash(content))
     end

@@ -594,14 +594,10 @@ module RectangleModule
     function generate_effect_cache_key(this::Rectangle)::String
         # Cache key excludes position/rotation (and other transform-only changes)
         # Effects depend on size, color, border properties, and effect params
+        # `string` with more than 10 arguments is not inferable, so it is built in two parts.
         content = string(
-            this.size, "|",
-            this.color, "|",
-            this.borderRadius, "|",
-            this.borderWidth, "|",
-            this.borderColor, "|",
-            this.fillMode, "|",
-            serialize_effects(this.effects)
+            string(this.size, "|", this.color, "|", this.borderRadius, "|", this.borderWidth, "|"),
+            string(this.borderColor, "|", this.fillMode, "|", serialize_effects(this.effects))
         )
         return string(hash(content))
     end
