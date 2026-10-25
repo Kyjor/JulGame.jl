@@ -51,6 +51,21 @@ end
 """Hook run after a property is set. Concrete elements extend it (e.g. TextBox re-renders its text)."""
 on_property_set(::JulGame.IUIElement, ::Symbol) = nothing
 
+"""Stores a value in a field of the concrete element. Concrete elements extend it for fields that need more than a plain store (e.g. UIImage reloads its image when `path` is set)."""
+set_element_field!(element::JulGame.IUIElement, property::Symbol, value) = JulGame.set_field_converted!(element, property, value)
+
+# The hooks above have a method per element type. For an element only known as `IUIElement`, dispatch has to go through
+# `JulGame.dispatch`, which `juliac --trim` can see through; for a concrete element a direct call is enough.
+@inline function notify_property_set(element::T, property::Symbol) where {T <: JulGame.IUIElement}
+    isconcretetype(T) && return on_property_set(element, property)
+    return JulGame.dispatch(on_property_set, element, property)
+end
+
+@inline function assign_element_field!(element::T, property::Symbol, value) where {T <: JulGame.IUIElement}
+    isconcretetype(T) && return set_element_field!(element, property, value)
+    return JulGame.dispatch(set_element_field!, element, property, value)
+end
+
 # Fields of `UIElementInstance` are forwarded to `base`; all others live on the concrete element.
 # Callers use literal property names, so the forwarding branch resolves at compile time.
 Base.@constprop :aggressive function Base.getproperty(element::JulGame.IUIElement, property::Symbol)
@@ -77,9 +92,9 @@ Base.@constprop :aggressive function Base.setproperty!(element::JulGame.IUIEleme
             JulGame.set_field_converted!(inst, property, value)
         end
     else
-        JulGame.ui_set_field!(element, property, value)
+        assign_element_field!(element, property, value)
     end
-    on_property_set(element, property)
+    notify_property_set(element, property)
     return value
 end
 

@@ -377,16 +377,10 @@ module UIImageModule
         push!(this.clickEvents, event)
     end
 
-    Base.@constprop :aggressive function Base.setproperty!(this::UIImage, s::Symbol, x)
+    # Fields of `UIElementInstance` never get here (the `IUIElement` property setter stores those on `base`).
+    function UI.set_element_field!(this::UIImage, s::Symbol, x)
         @debug("setting image property $(s) to: $(x)")
         try
-            if hasfield(UI.UIElementInstance, s)
-                #@debug "setting UIElement property $(s) to: $(x)"
-                invoke(Base.setproperty!, Tuple{UI.UIElement, Symbol, Any}, this, s, x)
-                return
-            else
-                #@debug "setting UIImage property $(s) to: $(x)"
-            end
             if s == :path
                 @debug("setting path to: $(x)")
                 xstr = String(x)
@@ -401,7 +395,7 @@ module UIImageModule
                         SDL2.SDL_DestroyTexture(et)
                         this.effectTexture = C_NULL
                     end
-                    setfield!(this, s, xstr)
+                    setfield!(this, :path, xstr)
                     UI.load_image(this, xstr)
                     # Never leave effectCacheKey as "" — update_effects would cache under "" and reuse the wrong texture on the next path change.
                     if eff_nonempty
@@ -409,7 +403,7 @@ module UIImageModule
                         this.needsEffectUpdate = true
                     end
                 elseif isdefined(this, :path) && getfield(this, :path) != xstr && isempty(strip(xstr))
-                    setfield!(this, s, xstr)
+                    setfield!(this, :path, xstr)
                     UI.load_image(this, xstr)
                     if eff_nonempty
                         this.effectCacheKey = generate_effect_cache_key(this)
@@ -418,7 +412,7 @@ module UIImageModule
                 end
                 return
             end
-            setfield!(this, s, x)
+            JulGame.set_field_converted!(this, s, x)
         catch e
             JulGame.log_exception("Error setting image property $(s)", e)
         end
