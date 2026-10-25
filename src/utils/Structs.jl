@@ -12,7 +12,7 @@ Base.convert(::Type{EditorExport{T}}, value::T) where T = EditorExport(value)
 Base.convert(::Type{EditorExport{T}}, value) where T = EditorExport(convert(T, value))
 
 # Overload `getproperty` to access `value` transparently
-function Base.getproperty(editor::EditorExport{T}, sym::Symbol) where T
+Base.@constprop :aggressive function Base.getproperty(editor::EditorExport{T}, sym::Symbol) where T
     if sym === :object
         return editor
     else
@@ -21,7 +21,7 @@ function Base.getproperty(editor::EditorExport{T}, sym::Symbol) where T
 end
 
 # Overload `setproperty!` to modify `value` transparently
-function Base.setproperty!(editor::EditorExport{T}, sym::Symbol, new_value) where T
+Base.@constprop :aggressive function Base.setproperty!(editor::EditorExport{T}, sym::Symbol, new_value) where T
     if sym === :value
         setfield!(editor, :value, new_value)  # Directly update `value`
     else
@@ -117,6 +117,8 @@ function Enum{T}(pairs...) where T
     return Enum{T}(states, first_state, states[first_state])
 end
 
+Base.deepcopy(se::Enum{T}) where T = Enum{T}(copy(se.states), se.current_state, se.current_value)
+
 # Check if a state exists
 has_state(se::Enum, state::Symbol) = haskey(se.states, state)
 
@@ -135,7 +137,7 @@ function set_value!(se::Enum{T}, state::Symbol, value::T) where T
 end
 
 # Enable dot access (states.test)
-function Base.getproperty(se::Enum{T}, key::Symbol) where T
+Base.@constprop :aggressive function Base.getproperty(se::Enum{T}, key::Symbol) where T
     key === :states && return getfield(se, :states)  # Allow direct access to states field
     key === :current_state && return getfield(se, :current_state)  # Allow direct access to current_state field
     key === :current_value && return get(se.states, se.current_state, nothing)  # Fetch value of current state
@@ -143,7 +145,7 @@ function Base.getproperty(se::Enum{T}, key::Symbol) where T
 end
 
 # Enable dot assignment (states.test = "new_value")
-function Base.setproperty!(se::Enum{T}, key::Symbol, value) where T
+Base.@constprop :aggressive function Base.setproperty!(se::Enum{T}, key::Symbol, value) where T
     if key === :states
         setfield!(se, :states, value)  # Allow modifying states dictionary
     elseif key === :current_state 

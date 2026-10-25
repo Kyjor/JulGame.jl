@@ -1,6 +1,6 @@
-using SimpleDirectMediaLayer
-const SDL2 = SimpleDirectMediaLayer
 MAIN = nothing
+"""Typed access to `MAIN` (a MainLoop once the game runs). Method defined in MainLoop.jl."""
+function main_loop end
 
 IS_WEB::Bool = false
 IS_DEBUG::Bool = false
@@ -11,23 +11,21 @@ SCALE_QUALITY::String = "2"
 # Temporary variable for recent project path selection
 TEMP_SELECTED_PATH::String = ""
     
-DELTA_TIME = 0.0
+DELTA_TIME::Float64 = 0.0
     
-SCENE_CACHE::Dict = Dict{String, Any}()
-PRELOADED_SCENES::Dict = Dict{String, Any}()
-IMAGE_CACHE::Dict = Dict{String, Any}()
-FONT_CACHE::Dict = Dict{String, Any}()
-AUDIO_CACHE::Dict = Dict{String, Any}()
+SCENE_CACHE::Dict{String, JSONValue} = Dict{String, JSONValue}()
+IMAGE_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
+FONT_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
+AUDIO_CACHE::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
     
-BUILT_IN_ASSETS::Dict = Dict{String, Any}()
+BUILT_IN_ASSETS::Dict{String, Vector{UInt8}} = Dict{String, Vector{UInt8}}()
 BUILT_IN_ASSETS["Font"] = read(joinpath(@__DIR__, "engine", "Assets", "Fonts", "FiraCode-Regular.ttf"))
     
 IS_EDITOR::Bool = false
 IS_EDITOR_PLAY_MODE::Bool = false
     
-Coroutines::Vector = []
-RENDER_FUNCTIONS::Vector = []
+RENDER_FUNCTIONS::Vector{RenderFunction} = RenderFunction[]
 
-ProjectModule = ""
-ScriptModule = Module(:Scripts)
-LoadedScripts = Set{String}()
+ProjectModule::String = ""
+ScriptModule::Module = Module(:Scripts)
+LoadedScripts::Set{String} = Set{String}()

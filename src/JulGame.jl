@@ -1,5 +1,12 @@
 module JulGame
     include("utils/CommonFunctions.jl")
+    using SimpleDirectMediaLayer
+    const SDL2 = SimpleDirectMediaLayer
+
+    include("utils/Callback.jl")
+    export Callback, ClickEvent, ClickCallback, HoverCallback, ObserverEvent, ObserverCallback, RenderFunction
+    include("utils/Json.jl")
+    using .SceneJSON: JSONValue
     include("Globals.jl")
 
     include("utils/Interfaces.jl")
@@ -9,7 +16,7 @@ module JulGame
     using .EventsModule
     export EventsModule, ObserverModule, add_observer, remove_observer, notify_observer
 
-    EditorState = Dict{String, Any}(
+    EditorState::Dict{String, Any} = Dict{String, Any}(
         "HistoryData" => Dict{String, IHistory}(),
         "HistoryStack" => [],
         "HistoryStackIndex" => 0,
@@ -19,8 +26,8 @@ module JulGame
     using .HistoryModule
     export HistoryModule, undo, redo
 
-    FrameCount = 0
-    UserGlobals = Dict{String, Any}()
+    FrameCount::Int = 0
+    UserGlobals::Dict{String, Any} = Dict{String, Any}()
 
     include("engine/Logging/Logging.jl")
     using .Logging
@@ -50,9 +57,12 @@ module JulGame
     include("Coroutine/Coroutine.jl")
     using .CoroutineModule
     export Coroutine
+    Coroutines::Vector{Coroutine} = Coroutine[]
     
     include("utils/Types.jl")
     export Script
+
+    include("utils/TrimSupport.jl")
 
     include("utils/Helpers.jl")
     export get_comma_separated_path
@@ -63,21 +73,21 @@ module JulGame
     include("utils/Constants.jl")
     export SCALE_UNITS, GRAVITY
 
-    PIXELS_PER_UNIT = 16
+    PIXELS_PER_UNIT::Int = 16
     export PIXELS_PER_UNIT
     
-    BasePath = ""
+    BasePath::String = ""
     export BasePath
     
-    Renderer = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
+    Renderer::Ptr{SDL2.LibSDL2.SDL_Renderer} = Ptr{SDL2.LibSDL2.SDL_Renderer}(C_NULL)
     export Renderer
 
-    Headless = false
+    Headless::Bool = false
     export Headless
     
     include("utils/Macros.jl")
-    using .Macros: @event, @argevent
-    export @event, @argevent
+    using .Macros: @event, @argevent, @timed_step
+    export @event, @argevent, @timed_step
 
     include("Math/Math.jl")
     using .Math: Math, Vector2f, Vector3f, Vector4f, Vector2, Vector3, Vector4, Lerp, SmoothLerp, to_vector3
@@ -90,14 +100,14 @@ module JulGame
 
     Stores the top-left screen coordinate of the editor's game view panel. Updated by `GameViewer.jl`.
     """
-    EditorGameViewPosition = Math.Vector2(0,0)
+    EditorGameViewPosition::Math.Vector2 = Math.Vector2(0,0)
 
     """
         EditorGameViewSize::Math.Vector2
 
     Stores the rendered size (potentially scaled/letterboxed) of the editor's game view panel. Updated by `GameViewer.jl`.
     """
-    EditorGameViewSize = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
+    EditorGameViewSize::Math.Vector2 = Math.Vector2(0,0) # Holds the size of the rendered game texture (could be letterboxed)
 
     include("engine/DataManagement/DataManagement.jl")
     using .DataManagement: PrefHandlerModule, SaveSystemModule

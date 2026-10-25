@@ -1,6 +1,11 @@
 abstract type Script end
 
-function Base.getproperty(script::Script, property::Symbol)
+Base.@constprop :aggressive function Base.getproperty(script::Script, property::Symbol)
+    # Every script's `parent` is the entity it is attached to; asserting that keeps `this.parent.x` inferable
+    if property === :parent
+        return getfield(script, :parent)::Union{IEntity, Ptr{Nothing}}
+    end
+
     if isa(getfield(script, property), EditorExport)
         return getfield(script, property).value
     end
@@ -8,9 +13,8 @@ function Base.getproperty(script::Script, property::Symbol)
     return getfield(script, property)
 end
 
-function Base.setproperty!(script::Script, property::Symbol, value)
-    field = findfirst(f->f==property, fieldnames(typeof(script)))
-    field_type = fieldtype(typeof(script), field)
+Base.@constprop :aggressive function Base.setproperty!(script::Script, property::Symbol, value)
+    field_type = fieldtype(typeof(script), property)
 
     if field_type <: EditorExport
         setfield!(script, property, EditorExport(value))
