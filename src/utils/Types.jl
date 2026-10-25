@@ -10,11 +10,12 @@ Base.@constprop :aggressive function script_getproperty(script::Script, property
         return getfield(script, :parent)::Union{IEntity, Ptr{Nothing}}
     end
 
-    if isa(getfield(script, property), EditorExport)
-        return getfield(script, property).value
+    value = getfield(script, property)
+    if value isa EditorExport
+        return getfield(value, :value)
     end
 
-    return getfield(script, property)
+    return value
 end
 
 Base.@constprop :aggressive function script_setproperty!(script::Script, property::Symbol, value)

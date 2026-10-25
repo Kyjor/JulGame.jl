@@ -61,7 +61,7 @@ Base.@constprop :aggressive function Base.getproperty(element::JulGame.IUIElemen
         end
         return getfield(inst, property)
     end
-    return getfield(element, property)
+    return JulGame.ui_field(element, property)
 end
 
 Base.@constprop :aggressive function Base.setproperty!(element::JulGame.IUIElement, property::Symbol, value)
@@ -77,7 +77,7 @@ Base.@constprop :aggressive function Base.setproperty!(element::JulGame.IUIEleme
             JulGame.set_field_converted!(inst, property, value)
         end
     else
-        JulGame.set_field_converted!(element, property, value)
+        JulGame.ui_set_field!(element, property, value)
     end
     on_property_set(element, property)
     return value

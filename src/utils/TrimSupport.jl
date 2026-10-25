@@ -61,6 +61,43 @@ struct ErasedTarget
     value::Any
 end
 
+# Scripts read the UI elements they look up (`get_ui_element_by_id`) as plain `IUIElement`s, which have no fields.
+# For one of those, reading or writing a field expands into a switch over the concrete element types that have it.
+# Code that knows the element type reads the field directly.
+Base.@constprop :aggressive @inline function ui_field(element::T, property::Symbol) where {T <: IUIElement}
+    isconcretetype(T) && return getfield(element, property)
+    return ui_getproperty(ErasedTarget(element), Val(property))
+end
+
+Base.@constprop :aggressive @inline function ui_set_field!(element::T, property::Symbol, value) where {T <: IUIElement}
+    isconcretetype(T) && return set_field_converted!(element, property, value)
+    return ui_setproperty!(ErasedTarget(element), Val(property), value)
+end
+
+@generated function ui_getproperty(erased::ErasedTarget, ::Val{property}) where {property}
+    field = QuoteNode(property)
+    Base.JLOptions().trim == 0 && return :(getfield(erased.value, $field))
+
+    body = :(error("no UI element has a field " * $(string(property))))
+    for subtype in reverse(concrete_subtypes(IUIElement))
+        hasfield(subtype, property) || continue
+        body = Expr(:if, :(erased.value isa $subtype), :(getfield(erased.value::$subtype, $field)), body)
+    end
+    return body
+end
+
+@generated function ui_setproperty!(erased::ErasedTarget, ::Val{property}, value) where {property}
+    field = QuoteNode(property)
+    Base.JLOptions().trim == 0 && return :(set_field_converted!(erased.value, $field, value))
+
+    body = :(error("no UI element has a field " * $(string(property))))
+    for subtype in reverse(concrete_subtypes(IUIElement))
+        hasfield(subtype, property) || continue
+        body = Expr(:if, :(erased.value isa $subtype), :(set_field_converted!(erased.value::$subtype, $field, value)), body)
+    end
+    return body
+end
+
 @generated function dispatch_over_subtypes(f::F, ::Val{T}, erased::ErasedTarget, args::Vararg{Any, N}) where {F, T, N}
     if Base.JLOptions().trim == 0
         return :(Base.invokelatest(f, erased.value, args...))
