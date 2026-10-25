@@ -2,6 +2,7 @@ module SaveSystemModule
     using JSON3
     using Dates
     using SHA
+    import ...JulGame
 
     export SaveStore, SaveStatus,
            write_save, read_save, validate_save, delete_save, list_slots
@@ -221,7 +222,9 @@ module SaveSystemModule
       mv(tmp_path, path; force = true)
   end
 
+  # JSON3 cannot be compiled by `juliac --trim`, so a trimmed build neither writes nor finds saves.
   function write_save(store::SaveStore, slot::String, payload::Dict{String, Any})::Bool
+      JulGame.is_trimmed() && return false
       try
           _rotate_backups!(store, slot)
           envelope = _build_envelope(store, payload)
@@ -234,6 +237,7 @@ module SaveSystemModule
   end
 
   function read_save(store::SaveStore, slot::String)
+      JulGame.is_trimmed() && return SaveNotFound, nothing
       main_path = _slot_path(store, slot)
       if isfile(main_path)
           status, payload, _ = _load_payload_from_file(store, main_path)
@@ -261,6 +265,7 @@ module SaveSystemModule
   end
 
   function validate_save(store::SaveStore, slot::String)::SaveStatus
+      JulGame.is_trimmed() && return SaveNotFound
       main_path = _slot_path(store, slot)
       if !isfile(main_path)
           for index in 1:store.max_backups
