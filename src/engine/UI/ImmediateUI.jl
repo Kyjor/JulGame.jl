@@ -76,6 +76,8 @@ module ImmediateUIModule
     # Returns
     The TextBox object
     """
+    # The callbacks are type parameters: an argument that is only passed on is otherwise not specialized, which leaves
+    # its closure type abstract for `juliac --trim`.
     function immediate_text(id::String, text::String = "TextBox"; 
         name::String = "TextBox", 
         anchor::Symbol = :none,
@@ -83,9 +85,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0,0), 
-        clickEvent=nothing,
-        hoverEnterEvent=nothing,
-        hoverExitEvent=nothing,
+        clickEvent::C=nothing,
+        hoverEnterEvent::HE=nothing,
+        hoverExitEvent::HX=nothing,
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255), 
@@ -95,7 +97,7 @@ module ImmediateUIModule
         wrapWords::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
-    )
+    ) where {C, HE, HX}
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -270,7 +272,7 @@ module ImmediateUIModule
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, clickEvent=nothing; 
+    function immediate_button(id::String, clickEvent::C=nothing; 
         text::String="", 
         name::String="Button",
         anchor::Symbol=:none,
@@ -283,8 +285,8 @@ module ImmediateUIModule
         isCentered::Bool=true, 
         buttonUpPath::String="", 
         buttonDownPath::String="", 
-        hoverEnterEvent=nothing,
-        hoverExitEvent=nothing,
+        hoverEnterEvent::HE=nothing,
+        hoverExitEvent::HX=nothing,
         forceClickCheck::Bool=false,
         textOffset::Math.Vector2=Math.Vector2(0,0),
         color::NTuple{4, Int}=(255, 255, 255, 255),
@@ -294,7 +296,7 @@ module ImmediateUIModule
         layer::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
-    )
+    ) where {C, HE, HX}
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -517,9 +519,9 @@ module ImmediateUIModule
         isWorldEntity::Bool=false, 
         layer::Int=0,
         position::Math.Vector2 = Math.Vector2(0, 0), 
-        clickEvent=nothing,
-        hoverEnterEvent=nothing,
-        hoverExitEvent=nothing,
+        clickEvent::C=nothing,
+        hoverEnterEvent::HE=nothing,
+        hoverExitEvent::HX=nothing,
         isActive::Bool=true,
         persistentBetweenScenes::Bool=false,
         color::NTuple{4, Int}=(255, 255, 255, 255),
@@ -531,7 +533,7 @@ module ImmediateUIModule
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
         size::Math.Vector2 = Math.Vector2(1, 1),
         forceClickCheck::Bool=false
-    )
+    ) where {C, HE, HX}
         
         # Convert colors to Int32 tuples
         color = (color[1],

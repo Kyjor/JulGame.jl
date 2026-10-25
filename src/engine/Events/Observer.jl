@@ -52,7 +52,7 @@ module ObserverModule
             return
         end
         for observer in this.observers
-            observer((event, data))
+            observer(ObserverEvent(event, data))
         end
     end
 end

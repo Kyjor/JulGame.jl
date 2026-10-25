@@ -72,8 +72,17 @@ end
 const ClickCallback = Callback{ClickEvent}
 const HoverCallback = Callback{Nothing}
 
-"""Argument handed to observer callbacks: `(event, data)`."""
-const ObserverEvent = Tuple{Symbol, Any}
+"""
+Argument handed to observer callbacks, which take `(event, data)`. A struct rather than a `(event, data)` tuple, because
+`Tuple{Symbol, Any}` is not a concrete type and `juliac --trim` cannot resolve a call on it.
+"""
+struct ObserverEvent
+    event::Symbol
+    data::Any
+end
+
+_invoke_closure(f::F, event::ObserverEvent) where {F} = applicable(f, event.event, event.data) ? f(event.event, event.data) : f()
+
 const ObserverCallback = Callback{ObserverEvent}
 
 """A render function queued for the main loop, drawn at `layer`."""
