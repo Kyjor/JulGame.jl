@@ -79,7 +79,14 @@ Base.@constprop :aggressive function Base.getproperty(element::JulGame.IUIElemen
     return JulGame.ui_field(element, property)
 end
 
-Base.@constprop :aggressive function Base.setproperty!(element::JulGame.IUIElement, property::Symbol, value)
+# The setter is too big to inline, and a call that is not inlined can only be resolved by `juliac --trim` when the element's
+# type is concrete. So `setproperty!` stays small and, for an element only known as `IUIElement`, goes through `JulGame.dispatch`.
+Base.@constprop :aggressive @inline function Base.setproperty!(element::T, property::Symbol, value) where {T <: JulGame.IUIElement}
+    isconcretetype(T) ? set_ui_property!(element, property, value) : JulGame.dispatch(set_ui_property!, element, property, value)
+    return value
+end
+
+function set_ui_property!(element::JulGame.IUIElement, property::Symbol, value)
     if hasfield(UIElementInstance, property)
         inst = ui_instance(element)
         if property === :isHovered

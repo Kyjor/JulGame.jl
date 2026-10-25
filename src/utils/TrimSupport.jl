@@ -1,4 +1,17 @@
 """
+    TRIM_BUILD::Bool
+
+Whether this is a `juliac --trim` build, set by the `trim` preference of JulGame (in the `LocalPreferences.toml` of the
+app's project). It is a preference, and not `Base.JLOptions().trim`, because the package images are precompiled by a
+process that does not trim, and whatever that process compiled (generated functions included) is reused by the
+trimming one. A preference change precompiles again, so the answer is the same everywhere.
+"""
+const TRIM_BUILD = let uuid = Base.UUID("4850f9bb-d191-4a1e-9f97-ee64062927c3")
+    Base.generating_output() && Base.record_compiletime_preference(uuid, "trim")
+    get(Base.get_preferences(uuid), "trim", false) === true
+end
+
+"""
     direct_subtypes(T::Type)
 
 Every type declared directly under `T` in any loaded module. (`InteractiveUtils.subtypes` does the same, but would
@@ -71,7 +84,7 @@ end
 
 @generated function ui_getproperty(erased::ErasedTarget, ::Val{property}) where {property}
     field = QuoteNode(property)
-    Base.JLOptions().trim == 0 && return :(getfield(erased.value, $field))
+    !TRIM_BUILD && return :(getfield(erased.value, $field))
 
     body = :(error("no UI element has a field " * $(string(property))))
     for subtype in reverse(concrete_subtypes(IUIElement))
@@ -82,7 +95,7 @@ end
 end
 
 @generated function dispatch_over_subtypes(f::F, ::Val{T}, erased::ErasedTarget, args::Vararg{Any, N}) where {F, T, N}
-    if Base.JLOptions().trim == 0
+    if !TRIM_BUILD
         return :(Base.invokelatest(f, erased.value, args...))
     end
 
@@ -101,9 +114,7 @@ end
 `true` in a `juliac --trim` build. The answer is a compile-time constant, so code after `is_trimmed() && return` is
 never compiled there. Use it to leave out what cannot be trimmed (HTTP, JSON3, ...).
 """
-@generated function is_trimmed()
-    return Base.JLOptions().trim != 0
-end
+is_trimmed() = TRIM_BUILD
 
 """
     print_line(message::String)
@@ -112,7 +123,7 @@ end
 `juliac --trim` build cannot resolve, so there it writes to `Core.stdout`.
 """
 @generated function print_line(message::String)
-    Base.JLOptions().trim == 0 && return :(println(message))
+    !TRIM_BUILD && return :(println(message))
     return :(println(Core.stdout, message))
 end
 
@@ -123,7 +134,7 @@ Log `e` as an error. Call it inside a `catch` block. Outside `juliac --trim` the
 logged; a trimmed build cannot print arbitrary exceptions, so only the message of an `ErrorException` is printed.
 """
 @generated function log_exception(context::String, e)
-    if Base.JLOptions().trim == 0
+    if !TRIM_BUILD
         return :(@error context exception = (e, catch_backtrace()))
     end
     return :(print_exception_message(context, e))
@@ -142,7 +153,7 @@ Calls `f(args...)`, except in a `juliac --trim` build, where `f` (dynamic code l
 so the compiler never has to see it.
 """
 @generated function unless_trimmed(f::F, args::Vararg{Any, N}) where {F, N}
-    Base.JLOptions().trim == 0 && return :(f(args...); return nothing)
+    !TRIM_BUILD && return :(f(args...); return nothing)
     return :(return nothing)
 end
 
@@ -153,7 +164,7 @@ Prints the backtrace of the exception being handled (`fromException`) or of the 
 Does nothing in a `juliac --trim` build, which cannot print backtraces.
 """
 @generated function print_backtrace(fromException::Bool, stream::Symbol)
-    Base.JLOptions().trim == 0 || return :(nothing)
+    !TRIM_BUILD || return :(nothing)
     return :(Base.show_backtrace(stream === :stderr ? stderr : stdout, fromException ? catch_backtrace() : stacktrace()))
 end
 
@@ -172,7 +183,7 @@ Written as a switch over the fields, so it needs no constant `property` to be in
         field = QuoteNode(fieldName)
         fieldType = fieldtype(T, fieldName)
         # Containers cannot be converted without dynamic calls, so under trim only an already matching value is stored.
-        assign = if Base.JLOptions().trim != 0 && !(value <: fieldType) && (fieldType <: AbstractArray || fieldType <: AbstractDict)
+        assign = if TRIM_BUILD && !(value <: fieldType) && (fieldType <: AbstractArray || fieldType <: AbstractDict)
             :(error("cannot assign a " * $(string(value)) * " to field " * $(string(fieldName)) * " of " * $(string(T))))
         else
             :(setfield!(object, $field, convert($fieldType, value)))

@@ -354,7 +354,7 @@ module SceneBuilderModule
     must have one, since the compiler has to see all the constructors.
     """
     @generated function construct_script(name::String)
-        if Base.JLOptions().trim == 0
+        if !JulGame.TRIM_BUILD
             return :(construct_script_dynamic(name))
         end
 
