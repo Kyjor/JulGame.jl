@@ -6,10 +6,11 @@ FieldExclusions = Dict{String, Vector{Symbol}}(
     "InternalShape" => [:parent],
     "InternalSoundSource" => [:isPlaying, :sound, :parent],
     "InternalSprite" => [:parent, :lastRenderedScreenPosition, :lastRenderedScreenSize, :size, :texture],
+    "Canvas" => [:base],
     "Rectangle" => [:effectTexture, :needsEffectUpdate, :effects, :isHovered],
     "ScreenButton" => [:isInitialized],
     "TextBox" => [:font, :isConstructed, :renderText, :textTexture, :effects],
     "Transform" => [:screenPosition, :screenRotation, :screenSize, :parent],
     "UIImage" => [:surface, :needsEffectUpdate, :effectTexture, :texture, :effects, :surface, :isHovered],
-    "UIElement" => [:isHovered, :parent, :clickEvents, :hoverEnterEvents, :hoverExitEvents],
+    "UIElement" => [:base, :isHovered, :parent, :clickEvents, :hoverEnterEvents, :hoverExitEvents],
 )
