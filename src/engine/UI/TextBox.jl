@@ -286,9 +286,6 @@ module TextBoxModule
         end
     end
 
-    function UI.add_click_event(this::TextBox, event)
-        push!(this.clickEvents, event)
-    end
 
     function load_font_sdl(fontPath::String, fontSize::Int)
         if haskey(JulGame.FONT_CACHE, get_comma_separated_path(fontPath)) || fontPath == "Default" || fontPath == ""

@@ -79,10 +79,10 @@ Base.@constprop :aggressive function Base.getproperty(element::JulGame.IUIElemen
     return JulGame.ui_field(element, property)
 end
 
-# The setter is too big to inline, and a call that is not inlined can only be resolved by `juliac --trim` when the element's
-# type is concrete. So `setproperty!` stays small and, for an element only known as `IUIElement`, goes through `JulGame.dispatch`.
-Base.@constprop :aggressive @inline function Base.setproperty!(element::T, property::Symbol, value) where {T <: JulGame.IUIElement}
-    isconcretetype(T) ? set_ui_property!(element, property, value) : JulGame.dispatch(set_ui_property!, element, property, value)
+# The setter is too big to inline, and a call that is not inlined is only resolved by `juliac --trim` when the element's type
+# is concrete. So `setproperty!` stays small and goes through `JulGame.dispatch`, which reaches the worker for each concrete type.
+Base.@constprop :aggressive @inline function Base.setproperty!(element::JulGame.IUIElement, property::Symbol, value)
+    JulGame.dispatch(set_ui_property!, element, property, value)
     return value
 end
 
@@ -206,11 +206,16 @@ function UI.align_to_anchor(this::JulGame.IUIElement)
     end
 end
 
-function UI.add_hover_enter_event(this::JulGame.IUIElement, event)
+# Inlined so that a call on an element only known as `IUIElement` is resolved by `juliac --trim`.
+@inline function UI.add_click_event(this::JulGame.IUIElement, event)
+    push!(this.clickEvents, event)
+end
+
+@inline function UI.add_hover_enter_event(this::JulGame.IUIElement, event)
     push!(this.hoverEnterEvents, event)
 end
 
-function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
+@inline function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
     push!(this.hoverExitEvents, event)
 end
 

@@ -468,9 +468,6 @@ module RectangleModule
         # Nothing needed for initialization
     end
 
-    function UI.add_click_event(this::Rectangle, event)
-        push!(this.clickEvents, event)
-    end
 
     #= function UI.add_hover_event(this::Rectangle, event)
         push!(this.hoverEvents, event)

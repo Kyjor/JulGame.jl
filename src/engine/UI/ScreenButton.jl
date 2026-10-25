@@ -343,9 +343,6 @@ module ScreenButtonModule
         return result  
     end
 
-    function UI.add_click_event(this::ScreenButton, event)
-        push!(this.clickEvents, event)
-    end
 
     function UI.destroy(this::ScreenButton)
         if this.buttonDownTexture != C_NULL

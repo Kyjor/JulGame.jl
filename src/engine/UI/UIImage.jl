@@ -373,9 +373,6 @@ module UIImageModule
         return newImage
     end
 
-    function UI.add_click_event(this::UIImage, event)
-        push!(this.clickEvents, event)
-    end
 
     # Fields of `UIElementInstance` never get here (the `IUIElement` property setter stores those on `base`).
     function UI.set_element_field!(this::UIImage, s::Symbol, x)
