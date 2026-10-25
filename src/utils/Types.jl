@@ -1,6 +1,10 @@
 abstract type Script end
 
-Base.@constprop :aggressive function Base.getproperty(script::Script, property::Symbol)
+# Behind these two functions so that a script type that overrides `getproperty` / `setproperty!` can still reach them.
+Base.@constprop :aggressive Base.getproperty(script::Script, property::Symbol) = script_getproperty(script, property)
+Base.@constprop :aggressive Base.setproperty!(script::Script, property::Symbol, value) = script_setproperty!(script, property, value)
+
+Base.@constprop :aggressive function script_getproperty(script::Script, property::Symbol)
     # Every script's `parent` is the entity it is attached to; asserting that keeps `this.parent.x` inferable
     if property === :parent
         return getfield(script, :parent)::Union{IEntity, Ptr{Nothing}}
@@ -13,7 +17,7 @@ Base.@constprop :aggressive function Base.getproperty(script::Script, property::
     return getfield(script, property)
 end
 
-Base.@constprop :aggressive function Base.setproperty!(script::Script, property::Symbol, value)
+Base.@constprop :aggressive function script_setproperty!(script::Script, property::Symbol, value)
     field_type = fieldtype(typeof(script), property)
 
     if field_type <: EditorExport
