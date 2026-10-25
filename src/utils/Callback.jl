@@ -44,7 +44,8 @@ Callback{E}(callback::Callback{E}) where {E} = callback
 Callback(f) = Callback{Nothing}(f)
 Callback(callback::Callback) = callback
 
-Base.convert(::Type{Callback{E}}, f::Function) where {E} = Callback{E}(f)
+# `F` is a type parameter so that the closure type is specialized on (a bare `Function` argument that is only passed on is not).
+Base.convert(::Type{Callback{E}}, f::F) where {E, F <: Function} = Callback{E}(f)
 Base.convert(::Type{Callback{E}}, callback::Callback{E}) where {E} = callback
 
 function (callback::Callback{Nothing})()
