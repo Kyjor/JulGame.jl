@@ -18,6 +18,12 @@ Every type declared directly under `T` in any loaded module. (`InteractiveUtils.
 make InteractiveUtils a dependency.)
 """
 function direct_subtypes(T::Type)
+    # The generated functions that call this run in the world of the code being compiled, which can be older than the
+    # types being looked for (a `precompile` statement that runs while a package loads). Always look in the newest.
+    return Base.invoke_in_world(typemax(UInt), find_direct_subtypes, T)
+end
+
+function find_direct_subtypes(T::Type)
     found = Type[]
     visited = Set{Module}()
     function visit(mod::Module)
@@ -34,7 +40,19 @@ function direct_subtypes(T::Type)
         end
     end
     foreach(visit, values(Base.loaded_modules))
+    # A package that is still loading is not in `loaded_modules`, yet its own types must be found: code that runs while
+    # it loads (`precompile` statements) compiles these switches, and an empty one would be reused afterwards.
+    visit(root_module(T))
     return found
+end
+
+"""The outermost module that holds `T`, below `Main`."""
+function root_module(T::Type)
+    mod = parentmodule(T)
+    while parentmodule(mod) !== mod && parentmodule(mod) !== Main
+        mod = parentmodule(mod)
+    end
+    return mod
 end
 
 """
