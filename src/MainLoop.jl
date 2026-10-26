@@ -724,7 +724,7 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 							if this.testMode
 								rethrow(e)
 							else
-								JulGame.log_exception(string(entity.name, " ", string(nameof(typeof(script))), " update"), e)
+								JulGame.log_exception(string(entity.name, " script update"), e)
 							end
 						end
 					end
