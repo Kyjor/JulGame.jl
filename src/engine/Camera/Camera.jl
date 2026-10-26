@@ -39,6 +39,15 @@ module CameraModule
         end
     end
 
+    Base.@constprop :aggressive @inline function Base.getproperty(camera::Union{Nothing, Camera}, property::Symbol)
+        return getfield(camera::Camera, property)
+    end
+
+    Base.@constprop :aggressive @inline function Base.setproperty!(camera::Union{Nothing, Camera}, property::Symbol, value)
+        setfield!(camera::Camera, property, value)
+        return value
+    end
+
     """Pixels per world unit for 2D rendering (SCALE_UNITS × camera zoom)."""
     @inline function pixels_per_world_unit(camera::Union{Nothing, Camera})
         camera === nothing && return JulGame.SCALE_UNITS

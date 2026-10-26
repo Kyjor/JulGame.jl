@@ -41,7 +41,7 @@
     end
 
     function get_entities_by_name(this::Scene, name::String)
-        entities = []
+        entities = JulGame.EntityModule.Entity[]
         for entity in this.entities
             if entity.name == name
                 push!(entities, entity)
