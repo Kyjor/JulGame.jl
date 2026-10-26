@@ -182,6 +182,24 @@ function print_exception_message(context::String, @nospecialize(e))
         "UndefRefError"
     elseif e isa DivideError
         "DivideError"
+    elseif e isa FieldError
+        "FieldError " * string(e.field)
+    elseif e isa UndefKeywordError
+        "UndefKeywordError " * string(e.var)
+    elseif e isa UndefVarError
+        "UndefVarError " * string(e.var)
+    elseif e isa DimensionMismatch
+        "DimensionMismatch"
+    elseif e isa OverflowError
+        "OverflowError"
+    elseif e isa DomainError
+        "DomainError"
+    elseif e isa AssertionError
+        "AssertionError"
+    elseif e isa InvalidStateException
+        "InvalidStateException"
+    elseif e isa MissingException
+        "MissingException"
     else
         "exception of unknown type"
     end

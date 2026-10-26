@@ -140,23 +140,15 @@ module InputModule
         SDL2.SDL_GetMouseState(pointer(x), pointer(y))
 
         window_focused = false
-        # Motion events carry the cursor in window coordinates. GetMouseState can stay
-        # stuck under a trimmed build, so prefer the event position when we have one.
+        # GetMouseState can stay stuck under a trimmed build, so a motion or button
+        # event's own coordinates are the cursor. A click sampled from GetMouseState
+        # lands away from the cursor and feels like a dropped input.
         if evt.type == SDL2.SDL_MOUSEMOTION
             x[1] = Int32(evt.motion.x)
             y[1] = Int32(evt.motion.y)
-        end
-        if evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
-            @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
-            @debug "mouse state: $(x[1]), $(y[1])"
-            window_focused = (JulGame.MAIN !== nothing && JulGame.main_loop().windowManager !== nothing && JulGame.main_loop().windowManager.isWindowFocused)
-            @debug "window focused: $window_focused"
-            if !window_focused
-                @debug "using event coordinates"
-                x[1] = Int32(evt.button.x)
-                y[1] = Int32(evt.button.y)
-                @debug "event coordinates: $(x[1]), $(y[1])"
-            end
+        elseif evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
+            x[1] = Int32(evt.button.x)
+            y[1] = Int32(evt.button.y)
         end
 
         this.mousePosition = Math.Vector2(x[1], y[1])

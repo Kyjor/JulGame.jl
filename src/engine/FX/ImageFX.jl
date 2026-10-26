@@ -550,15 +550,17 @@ module ImageFXModule
         original_surface = _live_surface(ORIGINAL_SPRITE_CACHE[cache_key])
         original_surface === _null_surface() && return sprite
         
-        # Access the raw pixel data from the SDL_Surface
-        surface = unsafe_wrap(Array, original_surface, 10; own = false)[1]
+        # unsafe_wrap's keyword form does not stay concrete under trim.
+        surface = unsafe_load(original_surface)
         width = surface.w
         height = surface.h
-        format = unsafe_wrap(Array, surface.format, 10; own = false)[1]
-        bpp = format.BytesPerPixel
+        format_ptr = surface.format
+        null_format = Ptr{SDL2.LibSDL2.SDL_PixelFormat}(C_NULL)
+        bpp = format_ptr === null_format ? 4 : Int(unsafe_load(format_ptr).BytesPerPixel)
+        format_code = format_ptr === null_format ? UInt32(0) : unsafe_load(format_ptr).format
         
         # Create a new surface to work with
-        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, format.format)
+        new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, format_code)
         
         new_surface = _live_surface(new_surface)
         if new_surface === _null_surface()
