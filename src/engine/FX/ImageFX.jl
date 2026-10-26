@@ -415,7 +415,7 @@ module ImageFXModule
         dest_buffer = Vector{UInt8}(undef, total_bytes)
     
         unsafe_copyto!(pointer(src_buffer), pixels_ptr, total_bytes)
-        dest_buffer .= src_buffer
+        copyto!(dest_buffer, src_buffer)
     
         if direction in ("TopToBottom", "BottomToTop")
             empty_rows = round(Int, height * (1.0 - percentage))
@@ -620,7 +620,7 @@ module ImageFXModule
         sweep_angle_rad = deg2rad(sweep_angle_deg)
         
         # Copy the buffer to destination first
-        dest_buffer .= src_buffer
+        copyto!(dest_buffer, src_buffer)
         
         # Early exit if nothing should be hidden (percentage = 1.0)
         if percentage >= 1.0 && highlight_below < 0.0
@@ -667,7 +667,7 @@ module ImageFXModule
                 outer_fill = tinting ? max(percentage, highlight_below) : percentage
                 inner_fill = tinting ? min(percentage, highlight_below) : percentage
                 if _sweep_hides(outer_fill, pixel_angle, clockwise, start_angle_norm)
-                    dest_buffer[alpha_index + 1] = 0
+                    dest_buffer[alpha_index + 1] = 0x00
                 elseif tinting && inner_fill < outer_fill && _sweep_hides(inner_fill, pixel_angle, clockwise, start_angle_norm)
                     for byte_offset in 0:(bpp-2)
                         dest_buffer[pixel_index + byte_offset + 1] = 0xFF
@@ -806,7 +806,7 @@ module ImageFXModule
         radius_threshold = max_distance * percentage
         
         # Copy the buffer to destination first
-        dest_buffer .= src_buffer
+        copyto!(dest_buffer, src_buffer)
         
         # Process each pixel
         @inbounds for y in 0:(height-1)
@@ -822,7 +822,7 @@ module ImageFXModule
                     # Set alpha channel to zero (every 4th byte in RGBA)
                     alpha_index = pixel_index + (bpp - 1)  # Last byte is alpha
                     if alpha_index < length(dest_buffer) && (alpha_index % bpp) == (bpp - 1)
-                        dest_buffer[alpha_index + 1] = 0
+                        dest_buffer[alpha_index + 1] = 0x00
                     end
                 else
                     # Optional: create a soft edge by fading transparency at the boundary

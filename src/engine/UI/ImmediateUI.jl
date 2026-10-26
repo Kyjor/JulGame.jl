@@ -19,7 +19,10 @@ module ImmediateUIModule
     const IMMEDIATE_UI_CACHE = Dict{String, ImmediateEntry}()
     
     # Stores the last update timestamp for each component
-    const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt64}()
+    const IMMEDIATE_UI_TIMESTAMPS = Dict{String, UInt32}()
+
+    # `SDL_GetTicks` is `UInt32`. Storing it in a `UInt64` calls `convert`, which trim misses.
+    _ui_ticks()::UInt32 = SDL2.SDL_GetTicks()
     const IMMEDIATE_UI_FRAME_COUNT = Dict{String, Int}()
     
     # Lifetime constants:
@@ -132,7 +135,7 @@ module ImmediateUIModule
         composite_id = "text_$(id)"
         
         # Update timestamp
-        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = _ui_ticks()
         IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
 
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
@@ -335,7 +338,7 @@ module ImmediateUIModule
         composite_id = "button_$(id)"
         
         # Update timestamp
-        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = _ui_ticks()
         IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
 
         # Center if requested
@@ -614,7 +617,7 @@ module ImmediateUIModule
         composite_id = "rect_$(id)"
         
         # Update timestamp
-        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = _ui_ticks()
         IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
             # Update existing rect component
@@ -848,7 +851,7 @@ module ImmediateUIModule
         composite_id = "image_$(id)"
         
         # Update timestamp
-        IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+        IMMEDIATE_UI_TIMESTAMPS[composite_id] = _ui_ticks()
         IMMEDIATE_UI_FRAME_COUNT[composite_id] = JulGame.FrameCount
 
         if haskey(IMMEDIATE_UI_CACHE, composite_id)
@@ -1027,7 +1030,7 @@ module ImmediateUIModule
     - `debug::Bool`: Whether to draw debug visualizations
     """
     function manage_all_immediate_components()
-        current_time = SDL2.SDL_GetTicks()
+        current_time = _ui_ticks()
         expired_ids = String[]
 
         # Sort component IDs by layer before rendering
@@ -1055,7 +1058,7 @@ module ImmediateUIModule
                 else 
                     @debug "component $(composite_id) is still active"
                 end
-            elseif component.lifetime >= 0 && (!haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || current_time - IMMEDIATE_UI_TIMESTAMPS[composite_id] > component.lifetime)
+            elseif component.lifetime >= 0 && (!haskey(IMMEDIATE_UI_TIMESTAMPS, composite_id) || Int(current_time) - Int(IMMEDIATE_UI_TIMESTAMPS[composite_id]) > component.lifetime)
                 @debug "component $(composite_id) expired from lifetime $(component.lifetime)"
                 push!(expired_ids, composite_id)
                 continue
@@ -1189,7 +1192,7 @@ module ImmediateUIModule
                 
                 # Update timestamp to start the countdown from now
                 if lifetime >= 0
-                    IMMEDIATE_UI_TIMESTAMPS[composite_id] = SDL2.SDL_GetTicks()
+                    IMMEDIATE_UI_TIMESTAMPS[composite_id] = _ui_ticks()
                 end
                 
                 return true

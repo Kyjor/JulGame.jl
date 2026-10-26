@@ -146,7 +146,13 @@ destroyed. The sprite then gets its own private texture on the next update.
 function release_sprite_texture_for_mutation!(sprite::InternalSprite)
     tex = sprite.texture
     null_tex = Ptr{SDL2.LibSDL2.SDL_Texture}(C_NULL)
-    if tex isa Ptr{SDL2.LibSDL2.SDL_Texture} && tex !== null_tex && !(tex in values(TEXTURE_CACHE))
+    cached = false
+    if tex isa Ptr{SDL2.LibSDL2.SDL_Texture}
+        for stored in values(TEXTURE_CACHE)
+            stored === tex && (cached = true)
+        end
+    end
+    if tex isa Ptr{SDL2.LibSDL2.SDL_Texture} && tex !== null_tex && !cached
         SDL2.SDL_DestroyTexture(tex)
     end
     # Both pointer types have to appear here. A bare `C_NULL` store calls convert.

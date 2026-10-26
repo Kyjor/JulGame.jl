@@ -164,7 +164,17 @@ end
 
 # Kept out of `log_exception` so that generated function stays small enough to be inlined into its callers.
 _field_error_label(e::FieldError)::String = string(e.field) * " " * String(nameof(e.type))
-_method_error_label(e::MethodError)::String = String(nameof(typeof(e.f)))
+function _method_error_label(e::MethodError)::String
+    label = String(nameof(typeof(e.f)))
+    shown = 0
+    for arg in e.args
+        shown += 1
+        shown > 4 && break
+        label *= " "
+        label *= string(typeof(arg))
+    end
+    return label
+end
 
 function print_exception_message(context::String, @nospecialize(e))
     message = if e isa ErrorException
