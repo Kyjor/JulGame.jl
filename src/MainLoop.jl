@@ -717,21 +717,21 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 				end
 
 				if !JulGame.IS_EDITOR || this.isGameModeRunningInEditor
-					try
-						for script in entity.scripts
+					for script in entity.scripts
+						try
 							call_script_update(this, script, deltaTime)
+						catch e
+							if this.testMode
+								rethrow(e)
+							else
+								JulGame.log_exception(string(entity.name, " ", string(nameof(typeof(script))), " update"), e)
+							end
 						end
-						if this.close && !this.isGameModeRunningInEditor
-							@debug "Closing game"
-							JulGame.engine_states.current_state = :quit
-							return
-						end
-					catch e
-						if this.testMode
-							rethrow(e)
-						else
-							JulGame.log_exception(string(entity.name, " with id: ", entity.id, " has a problem with it's update"), e)
-						end
+					end
+					if this.close && !this.isGameModeRunningInEditor
+						@debug "Closing game"
+						JulGame.engine_states.current_state = :quit
+						return
 					end
 					entityAnimator = entity.animator
 					if entityAnimator isa Component.AnimatorModule.InternalAnimator

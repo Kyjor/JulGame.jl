@@ -486,11 +486,42 @@ module ImageFXModule
     # Returns
     - The sprite with modified pixel data
     """
+    _null_surface() = Ptr{SDL2.LibSDL2.SDL_Surface}(C_NULL)
+    _null_texture() = Ptr{SDL2.LibSDL2.SDL_Texture}(C_NULL)
+
+    function _live_surface(surface)::Ptr{SDL2.LibSDL2.SDL_Surface}
+        surface isa Ptr{SDL2.LibSDL2.SDL_Surface} || return _null_surface()
+        return surface
+    end
+
+    function _live_texture(texture)::Ptr{SDL2.LibSDL2.SDL_Texture}
+        texture isa Ptr{SDL2.LibSDL2.SDL_Texture} || return _null_texture()
+        return texture
+    end
+
+    function _sweep_hides(fill::Float64, pixel_angle::Float64, clockwise::Bool, start_angle_norm::Float64)::Bool
+        fill >= 1.0 && return false
+        sweep = deg2rad(360.0 * (1.0 - fill))
+        if clockwise
+            end_angle = start_angle_norm + sweep
+            if end_angle <= 2π
+                return pixel_angle >= start_angle_norm && pixel_angle <= end_angle
+            end
+            return pixel_angle >= start_angle_norm || pixel_angle <= end_angle - 2π
+        end
+        end_angle = start_angle_norm - sweep
+        if end_angle >= 0
+            return pixel_angle >= end_angle && pixel_angle <= start_angle_norm
+        end
+        return pixel_angle >= end_angle + 2π || pixel_angle <= start_angle_norm
+    end
+
     function gfx_clock_hand_sweep(sprite::SpriteModule.InternalSprite, percentage::Float64; start_angle::Float64=0.0, clockwise::Bool=true, highlight_below::Float64=-1.0, bake_tint::NTuple{3, Int}=(255, 255, 255))
         percentage = clamp(percentage, 0.0, 1.0)
         highlight_below = highlight_below < 0.0 ? -1.0 : clamp(highlight_below, 0.0, 1.0)
-        
-        if sprite.image == C_NULL
+
+        image = _live_surface(sprite.image)
+        if image === _null_surface()
             @error "Cannot apply clock hand sweep: sprite has no image"
             return sprite
         end
@@ -506,8 +537,8 @@ module ImageFXModule
         # Cache the original surface if not already cached
         if !haskey(ORIGINAL_SPRITE_CACHE, cache_key)
             # Make a backup of the original surface
-            original_surface = SDL2.SDL_DuplicateSurface(sprite.image)
-            if original_surface == C_NULL
+            original_surface = _live_surface(SDL2.SDL_DuplicateSurface(image))
+            if original_surface === _null_surface()
                 @error "Failed to duplicate original surface for caching"
                 return sprite
             end
@@ -516,7 +547,8 @@ module ImageFXModule
         end
         
         # Get the original surface from cache
-        original_surface = ORIGINAL_SPRITE_CACHE[cache_key]
+        original_surface = _live_surface(ORIGINAL_SPRITE_CACHE[cache_key])
+        original_surface === _null_surface() && return sprite
         
         # Access the raw pixel data from the SDL_Surface
         surface = unsafe_wrap(Array, original_surface, 10; own = false)[1]
@@ -528,7 +560,8 @@ module ImageFXModule
         # Create a new surface to work with
         new_surface = SDL2.SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, format.format)
         
-        if new_surface == C_NULL
+        new_surface = _live_surface(new_surface)
+        if new_surface === _null_surface()
             @error "Failed to create new surface for clock hand sweep"
             return sprite
         end
@@ -578,15 +611,17 @@ module ImageFXModule
             SpriteModule.release_sprite_texture_for_mutation!(sprite)
             
             # Clean up previous image
-            if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
-                SDL2.SDL_FreeSurface(sprite.image)
+            current = _live_surface(sprite.image)
+            if current !== _null_surface() && current !== original_surface && !SpriteModule.is_shared_surface(current)
+                SDL2.SDL_FreeSurface(current)
             end
             
             # Update sprite with new surface (private; do not add to TEXTURE_CACHE)
             sprite.image = new_surface
-            sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-            if sprite.texture != C_NULL
-                SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+            tex = _live_texture(SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface))
+            sprite.texture = tex
+            if tex !== _null_texture()
+                SDL2.SDL_SetTextureBlendMode(tex, SDL2.SDL_BLENDMODE_BLEND)
             end
             
             _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = sweep_stamp
@@ -594,23 +629,6 @@ module ImageFXModule
         end
 
         start_angle_norm = start_rad < 0 ? start_rad + 2π : start_rad
-        function hides(fill::Float64, pixel_angle::Float64)::Bool
-            fill >= 1.0 && return false
-            sweep = deg2rad(360.0 * (1.0 - fill))
-            if clockwise
-                end_angle = start_angle_norm + sweep
-                if end_angle <= 2π
-                    return pixel_angle >= start_angle_norm && pixel_angle <= end_angle
-                end
-                return pixel_angle >= start_angle_norm || pixel_angle <= end_angle - 2π
-            end
-            end_angle = start_angle_norm - sweep
-            if end_angle >= 0
-                return pixel_angle >= end_angle && pixel_angle <= start_angle_norm
-            end
-            return pixel_angle >= end_angle + 2π || pixel_angle <= start_angle_norm
-        end
-        
         # Process each pixel
         @inbounds for y in 0:(height-1)
             for x in 0:(width-1)
@@ -626,9 +644,9 @@ module ImageFXModule
                 tinting = highlight_below >= 0.0
                 outer_fill = tinting ? max(percentage, highlight_below) : percentage
                 inner_fill = tinting ? min(percentage, highlight_below) : percentage
-                if hides(outer_fill, pixel_angle)
+                if _sweep_hides(outer_fill, pixel_angle, clockwise, start_angle_norm)
                     dest_buffer[alpha_index + 1] = 0
-                elseif tinting && inner_fill < outer_fill && hides(inner_fill, pixel_angle)
+                elseif tinting && inner_fill < outer_fill && _sweep_hides(inner_fill, pixel_angle, clockwise, start_angle_norm)
                     for byte_offset in 0:(bpp-2)
                         dest_buffer[pixel_index + byte_offset + 1] = 0xFF
                     end
@@ -651,15 +669,17 @@ module ImageFXModule
         SpriteModule.release_sprite_texture_for_mutation!(sprite)
         
         # Clean up previous image
-        if sprite.image != C_NULL && sprite.image != original_surface && !SpriteModule.is_shared_surface(sprite.image)
-            SDL2.SDL_FreeSurface(sprite.image)
+        current = _live_surface(sprite.image)
+        if current !== _null_surface() && current !== original_surface && !SpriteModule.is_shared_surface(current)
+            SDL2.SDL_FreeSurface(current)
         end
         
         # Update sprite with new surface (private; do not add to TEXTURE_CACHE)
         sprite.image = new_surface
-        sprite.texture = SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface)
-        if sprite.texture != C_NULL
-            SDL2.SDL_SetTextureBlendMode(sprite.texture, SDL2.SDL_BLENDMODE_BLEND)
+        tex = _live_texture(SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface))
+        sprite.texture = tex
+        if tex !== _null_texture()
+            SDL2.SDL_SetTextureBlendMode(tex, SDL2.SDL_BLENDMODE_BLEND)
         end
         
         _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] = sweep_stamp
