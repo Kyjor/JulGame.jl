@@ -499,6 +499,21 @@ module ImageFXModule
         return reinterpret(Ptr{UInt8}, unsafe_load(surface).pixels)
     end
 
+    # Joining the two pointer types here avoids `convert` into the sprite's union field, which trim misses.
+    function _slot_surface(p::Ptr{SDL2.LibSDL2.SDL_Surface})
+        if p === _null_surface()
+            return Ptr{Nothing}(C_NULL)
+        end
+        return p
+    end
+
+    function _slot_texture(p::Ptr{SDL2.LibSDL2.SDL_Texture})
+        if p === _null_texture()
+            return Ptr{Nothing}(C_NULL)
+        end
+        return p
+    end
+
     function _live_texture(texture)::Ptr{SDL2.LibSDL2.SDL_Texture}
         texture isa Ptr{SDL2.LibSDL2.SDL_Texture} || return _null_texture()
         return texture
@@ -624,9 +639,9 @@ module ImageFXModule
             end
             
             # Update sprite with new surface (private; do not add to TEXTURE_CACHE)
-            sprite.image = new_surface
+            sprite.image = _slot_surface(new_surface)
             tex = _live_texture(SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface))
-            sprite.texture = tex
+            sprite.texture = _slot_texture(tex)
             if tex !== _null_texture()
                 SDL2.SDL_SetTextureBlendMode(tex, SDL2.SDL_BLENDMODE_BLEND)
             end
@@ -682,9 +697,9 @@ module ImageFXModule
         end
         
         # Update sprite with new surface (private; do not add to TEXTURE_CACHE)
-        sprite.image = new_surface
+        sprite.image = _slot_surface(new_surface)
         tex = _live_texture(SDL2.SDL_CreateTextureFromSurface(JulGame.Renderer, new_surface))
-        sprite.texture = tex
+        sprite.texture = _slot_texture(tex)
         if tex !== _null_texture()
             SDL2.SDL_SetTextureBlendMode(tex, SDL2.SDL_BLENDMODE_BLEND)
         end
