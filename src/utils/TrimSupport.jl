@@ -98,8 +98,8 @@ end
 # For one of those, reading a field expands into a switch over the concrete element types that have it.
 # Code that knows the element type reads the field directly.
 Base.@constprop :aggressive @inline function ui_field(element::T, property::Symbol) where {T <: IUIElement}
-    isconcretetype(T) && return getfield(element, property)
-    return ui_getproperty(ErasedTarget(element), Val(property))
+    # `id` and the other shared fields live on `base`, not on the concrete element. `getproperty` forwards them.
+    return getproperty(element, property)
 end
 
 @generated function ui_getproperty(erased::ErasedTarget, ::Val{property}) where {property}
@@ -163,6 +163,8 @@ logged; a trimmed build cannot print arbitrary exceptions, so only the message o
 end
 
 # Kept out of `log_exception` so that generated function stays small enough to be inlined into its callers.
+_field_error_label(e::FieldError)::String = string(e.field) * " " * String(nameof(e.type))
+
 function print_exception_message(context::String, @nospecialize(e))
     message = if e isa ErrorException
         e.msg
@@ -183,7 +185,7 @@ function print_exception_message(context::String, @nospecialize(e))
     elseif e isa DivideError
         "DivideError"
     elseif e isa FieldError
-        "FieldError " * string(e.field)
+        "FieldError " * _field_error_label(e::FieldError)
     elseif e isa UndefKeywordError
         "UndefKeywordError " * string(e.var)
     elseif e isa UndefVarError
