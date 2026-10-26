@@ -494,6 +494,11 @@ module ImageFXModule
         return surface
     end
 
+    # `pixels` is `Ptr{Cvoid}`. `convert(Ptr{UInt8}, ...)` is a runtime miss under trim.
+    function _pixels_u8(surface::Ptr{SDL2.LibSDL2.SDL_Surface})::Ptr{UInt8}
+        return reinterpret(Ptr{UInt8}, unsafe_load(surface).pixels)
+    end
+
     function _live_texture(texture)::Ptr{SDL2.LibSDL2.SDL_Texture}
         texture isa Ptr{SDL2.LibSDL2.SDL_Texture} || return _null_texture()
         return texture
@@ -575,7 +580,7 @@ module ImageFXModule
         SDL2.SDL_LockSurface(new_surface)
         
         # Get pixel data as bytes
-        pixels_ptr = convert(Ptr{UInt8}, unsafe_load(new_surface).pixels)
+        pixels_ptr = _pixels_u8(new_surface)
         total_bytes = height * width * bpp
         
         # Create buffer arrays for processing
