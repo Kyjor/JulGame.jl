@@ -251,7 +251,7 @@ Written as a switch over the fields, so it needs no constant `property` to be in
             :(error("cannot assign a " * $(string(value)) * " to field " * $(string(fieldName)) * " of " * $(string(T))))
         elseif TRIM_BUILD
             :(if value isa $fieldType
-                setfield!(object, $field, value)
+                setfield!(object, $field, value::$fieldType)
             else
                 setfield!(object, $field, convert($fieldType, value))
             end)

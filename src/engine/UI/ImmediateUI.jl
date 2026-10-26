@@ -230,11 +230,11 @@ module ImmediateUIModule
             end
             if hoverEnterEvent !== nothing
                 textBox.hoverEnterEvents = HoverCallback[]
-                push!(textBox.hoverEnterEvents, hoverEnterEvent)
+                UI.add_hover_enter_event(textBox, hoverEnterEvent)
             end
             if hoverExitEvent !== nothing
                 textBox.hoverExitEvents = HoverCallback[]
-                push!(textBox.hoverExitEvents, hoverExitEvent)
+                UI.add_hover_exit_event(textBox, hoverExitEvent)
             end
             
             return textBox
@@ -249,9 +249,9 @@ module ImmediateUIModule
                 isWorldEntity=isWorldEntity,
                 layer=layer,
                 position=position,
-                clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent] : ClickCallback[],
-                hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent] : HoverCallback[],
-                hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent] : HoverCallback[],
+                clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent isa ClickCallback ? clickEvent : ClickCallback(clickEvent)] : ClickCallback[],
+                hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent isa HoverCallback ? hoverEnterEvent : HoverCallback(hoverEnterEvent)] : HoverCallback[],
+                hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent isa HoverCallback ? hoverExitEvent : HoverCallback(hoverExitEvent)] : HoverCallback[],
                 isActive=isActive,
                 persistentBetweenScenes=persistentBetweenScenes,
                 color=color,
@@ -450,12 +450,12 @@ module ImmediateUIModule
 
             if hoverEnterEvent !== nothing
                 button.hoverEnterEvents = HoverCallback[]
-                push!(button.hoverEnterEvents, hoverEnterEvent)
+                UI.add_hover_enter_event(button, hoverEnterEvent)
             end
 
             if hoverExitEvent !== nothing
                 button.hoverExitEvents = HoverCallback[]
-                push!(button.hoverExitEvents, hoverExitEvent)
+                UI.add_hover_exit_event(button, hoverExitEvent)
             end
             
             # Ensure the component is in the scene's uiElements
@@ -729,11 +729,11 @@ module ImmediateUIModule
             end
             if hoverEnterEvent !== nothing
                 rect.hoverEnterEvents = HoverCallback[]
-                push!(rect.hoverEnterEvents, hoverEnterEvent)
+                UI.add_hover_enter_event(rect, hoverEnterEvent)
             end
             if hoverExitEvent !== nothing
                 rect.hoverExitEvents = HoverCallback[]
-                push!(rect.hoverExitEvents, hoverExitEvent)
+                UI.add_hover_exit_event(rect, hoverExitEvent)
             end
             
             return rect
@@ -754,9 +754,9 @@ module ImmediateUIModule
                 borderColor=borderColor,
                 isActive=isActive,
                 persistentBetweenScenes=persistentBetweenScenes,
-                clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent] : ClickCallback[],
-                hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent] : HoverCallback[],
-                hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent] : HoverCallback[],
+                clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent isa ClickCallback ? clickEvent : ClickCallback(clickEvent)] : ClickCallback[],
+                hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent isa HoverCallback ? hoverEnterEvent : HoverCallback(hoverEnterEvent)] : HoverCallback[],
+                hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent isa HoverCallback ? hoverExitEvent : HoverCallback(hoverExitEvent)] : HoverCallback[],
                 size=size,
                 forceClickCheck=forceClickCheck
             )
@@ -919,7 +919,9 @@ module ImmediateUIModule
                 needsUpdate = true
             end
 
-            if image.crop != crop
+            crop_now = image.crop
+            crop_differs = !(crop isa Math.Vector4 && crop_now isa Math.Vector4 && crop_now == crop)
+            if crop_differs
                 image.crop = crop
                 needsUpdate = true
             end

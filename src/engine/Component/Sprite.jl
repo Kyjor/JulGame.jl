@@ -348,8 +348,8 @@ module SpriteModule
             Ref(SDL2.SDL_Point(Math.TypeConversions.safe_int32_convert(round(calculatedCenter.x)), Math.TypeConversions.safe_int32_convert(round(calculatedCenter.y)))) :
             Ref(SDL2.SDL_FPoint(calculatedCenter.x, calculatedCenter.y))
     
-        this.lastRenderedScreenPosition = Math.Vector2f(convert(Float64, dstRect[].x), convert(Float64, dstRect[].y))
-        this.lastRenderedScreenSize = Math.Vector2f(convert(Float64, dstRect[].w), convert(Float64, dstRect[].h))
+        this.lastRenderedScreenPosition = Math.Vector2f(Float64(dstRect[].x), Float64(dstRect[].y))
+        this.lastRenderedScreenSize = Math.Vector2f(Float64(dstRect[].w), Float64(dstRect[].h))
         # Render with appropriate precision
         renderFn = this.isFloatPrecision ? SDL2.SDL_RenderCopyExF : SDL2.SDL_RenderCopyEx
         if renderFn(JulGame.Renderer::Ptr{SDL2.SDL_Renderer}, texture_to_render, srcRect, dstRect, this.rotation, rotationCenter, this.isFlipped ? SDL2.SDL_FLIP_HORIZONTAL : SDL2.SDL_FLIP_NONE) != 0

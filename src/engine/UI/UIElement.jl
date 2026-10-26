@@ -247,16 +247,17 @@ function UI.align_to_anchor(this::JulGame.IUIElement)
 end
 
 # Inlined so that a call on an element only known as `IUIElement` is resolved by `juliac --trim`.
-@inline function UI.add_click_event(this::JulGame.IUIElement, event)
-    push!(this.clickEvents, event)
+# Build the callback directly. `push!` into `Vector{ClickCallback}` would `convert`, which trim misses.
+@inline function UI.add_click_event(this::JulGame.IUIElement, event::C) where {C}
+    push!(this.clickEvents, event isa JulGame.ClickCallback ? event : JulGame.ClickCallback(event))
 end
 
-@inline function UI.add_hover_enter_event(this::JulGame.IUIElement, event)
-    push!(this.hoverEnterEvents, event)
+@inline function UI.add_hover_enter_event(this::JulGame.IUIElement, event::C) where {C}
+    push!(this.hoverEnterEvents, event isa JulGame.HoverCallback ? event : JulGame.HoverCallback(event))
 end
 
-@inline function UI.add_hover_exit_event(this::JulGame.IUIElement, event)
-    push!(this.hoverExitEvents, event)
+@inline function UI.add_hover_exit_event(this::JulGame.IUIElement, event::C) where {C}
+    push!(this.hoverExitEvents, event isa JulGame.HoverCallback ? event : JulGame.HoverCallback(event))
 end
 
 function UI.handle_event(@nospecialize(this::Union{JulGame.IUIElement, JulGame.IEntity}), evt, x, y)
