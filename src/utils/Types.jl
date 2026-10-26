@@ -1,21 +1,16 @@
 abstract type Script end
 
 # Behind these two functions so that a script type that overrides `getproperty` / `setproperty!` can still reach them.
-# Inlined so a receiver known only as `Script` (an element of `Vector{Script}`) still resolves under `juliac --trim`:
-# a concrete script reads its field directly, and an abstract one goes through a switch over the concrete scripts.
+# Kept to a single call. Interface types (`IEnemy`, …) also define `getproperty`, so a `Script` receiver is a
+# multi-method call. That call inlines only while every method is small: the switch over concrete scripts lives in
+# `_script_getproperty` / `_script_setproperty!`, which a trimmed build does not inline back into these.
 Base.@constprop :aggressive @inline function Base.getproperty(script::Script, property::Symbol)
-    if isconcretetype(typeof(script))
-        return script_getproperty(script, property)
-    end
     return _script_getproperty(ErasedTarget(script), Val(property))
 end
 
 Base.@constprop :aggressive @inline function Base.setproperty!(script::Script, property::Symbol, value)
-    if isconcretetype(typeof(script))
-        script_setproperty!(script, property, value)
-    else
-        _script_setproperty!(ErasedTarget(script), Val(property), value)
-    end
+    # Box `value` so the outlined switch is a concrete invoke even when `value` is only known as `Script`.
+    _script_setproperty!(ErasedTarget(script), Val(property), ErasedTarget(value))
     return value
 end
 

@@ -43,6 +43,8 @@ function find_direct_subtypes(T::Type)
     # A package that is still loading is not in `loaded_modules`, yet its own types must be found: code that runs while
     # it loads (`precompile` statements) compiles these switches, and an empty one would be reused afterwards.
     visit(root_module(T))
+    # The app module (Battler) is a child of Main and is not in `loaded_modules` until it finishes loading.
+    visit(Main)
     return found
 end
 
@@ -117,13 +119,15 @@ end
         return :(Base.invokelatest(f, erased.value, args...))
     end
 
-    isconcretetype(T) && return :(f(erased.value::$T, args...))
+    isconcretetype(T) && return Expr(:block, Expr(:meta, :noinline), :(f(erased.value::$T, args...)))
 
     body = :(error("dispatch: no concrete subtype of " * $(string(T)) * " matched"))
     for subtype in reverse(concrete_subtypes(T))
         body = Expr(:if, :(erased.value isa $subtype), :(f(erased.value::$subtype, args...)), body)
     end
-    return body
+    # Outlined so the caller (often a one-line `@inline` wrapper) stays small enough to inline. The wrapper's
+    # arguments are concrete (`Val{T}`, `ErasedTarget`), so the call of this method is a resolved invoke.
+    return Expr(:block, Expr(:meta, :noinline), body)
 end
 
 """
@@ -211,8 +215,9 @@ Written as a switch over the fields, so it needs no constant `property` to be in
     return body
 end
 
-# `getproperty(::Script)` calls these when the receiver is not a concrete script. The switch is over the concrete
-# scripts that actually have the field, so the read resolves under `juliac --trim`.
+# `getproperty(::Script)` calls these. The switch is over the concrete scripts that actually have the field.
+# `:meta :noinline` keeps that switch out of `getproperty`: a trimmed build can inline `getproperty` only while it
+# stays a single call, and then invokes this method (its arguments are concrete).
 @generated function _script_getproperty(erased::ErasedTarget, ::Val{property}) where {property}
     field = QuoteNode(property)
     !TRIM_BUILD && return :(script_getproperty(erased.value, $field))
@@ -229,19 +234,26 @@ end
         end
         body = Expr(:if, :(erased.value isa $subtype), read, body)
     end
-    return body
+    return Expr(:block, Expr(:meta, :noinline), body)
 end
 
-@generated function _script_setproperty!(erased::ErasedTarget, ::Val{property}, value::V) where {property, V}
+@generated function _script_setproperty!(erased::ErasedTarget, ::Val{property}, boxed::ErasedTarget) where {property}
     field = QuoteNode(property)
-    !TRIM_BUILD && return :(script_setproperty!(erased.value, $field, value))
+    !TRIM_BUILD && return :(script_setproperty!(erased.value, $field, boxed.value))
 
     body = :(error("no script has a field " * $(string(property))))
     for subtype in reverse(concrete_subtypes(Script))
         hasfield(subtype, property) || continue
-        body = Expr(:if, :(erased.value isa $subtype),
-            :(script_setproperty!(erased.value::$subtype, $field, value)),
-            body)
+        ft = fieldtype(subtype, property)
+        # `EditorExport` and `Vector2` fields accept a value of a different type and convert it.
+        # Every other field is asserted to its declared type so `setfield!` of an abstract value
+        # (a `Script` stored into an interface field) is not inferred as a throw.
+        assign = if ft <: EditorExport || ft <: Math._Vector2
+            :(script_setproperty!(erased.value::$subtype, $field, boxed.value))
+        else
+            :(setfield!(erased.value::$subtype, $field, boxed.value::$ft))
+        end
+        body = Expr(:if, :(erased.value isa $subtype), assign, body)
     end
-    return body
+    return Expr(:block, Expr(:meta, :noinline), body)
 end
