@@ -96,8 +96,8 @@ module ImmediateUIModule
         maxLineWidth::Int=0, 
         wrapWords::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
-    ) where {C, HE, HX}
+        parent::P=nothing,
+    ) where {C, HE, HX, P}
         
         # Generate a composite ID that includes the component type
         composite_id = "text_$(id)"
@@ -295,12 +295,12 @@ module ImmediateUIModule
         rotation::Float64=0.0,
         layer::Int=0, 
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
-    ) where {C, HE, HX}
+        parent::P=nothing
+    ) where {C, HE, HX, P}
         return _immediate_button(id, clickEvent, text, name, anchor, anchorOffset, isWorldEntity, fontPath, fontSize, position, size, isCentered, buttonUpPath, buttonDownPath, hoverEnterEvent, hoverExitEvent, forceClickCheck, textOffset, color, isActive, persistentBetweenScenes, rotation, layer, lifetime, parent)
     end
 
-    function _immediate_button(id::String, clickEvent::C, text::String, name::String, anchor::Symbol, anchorOffset::Math.Vector2, isWorldEntity::Bool, fontPath::String, fontSize::Int, position::Math.Vector2, size::Math.Vector2, isCentered::Bool, buttonUpPath::String, buttonDownPath::String, hoverEnterEvent::HE, hoverExitEvent::HX, forceClickCheck::Bool, textOffset::Math.Vector2, color::NTuple{4, Int}, isActive::Bool, persistentBetweenScenes::Bool, rotation::Float64, layer::Int, lifetime::Int, parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}) where {C, HE, HX}
+    function _immediate_button(id::String, clickEvent::C, text::String, name::String, anchor::Symbol, anchorOffset::Math.Vector2, isWorldEntity::Bool, fontPath::String, fontSize::Int, position::Math.Vector2, size::Math.Vector2, isCentered::Bool, buttonUpPath::String, buttonDownPath::String, hoverEnterEvent::HE, hoverExitEvent::HX, forceClickCheck::Bool, textOffset::Math.Vector2, color::NTuple{4, Int}, isActive::Bool, persistentBetweenScenes::Bool, rotation::Float64, layer::Int, lifetime::Int, parent::P) where {C, HE, HX, P}
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -534,10 +534,10 @@ module ImmediateUIModule
         borderWidth::Int=0, 
         fillMode::Bool=true,
         lifetime::Int=DEFAULT_LIFETIME,
-        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
+        parent::P=nothing,
         size::Math.Vector2 = Math.Vector2(1, 1),
         forceClickCheck::Bool=false
-    ) where {C, HE, HX}
+    ) where {C, HE, HX, P}
         return _immediate_rect(id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvent, hoverEnterEvent, hoverExitEvent, isActive, persistentBetweenScenes, color, borderColor, borderRadius, borderWidth, fillMode, lifetime, parent, size, forceClickCheck)
     end
 
@@ -560,10 +560,10 @@ module ImmediateUIModule
         borderWidth::Int,
         fillMode::Bool,
         lifetime::Int,
-        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite},
+        parent::P,
         size::Math.Vector2,
         forceClickCheck::Bool
-    ) where {C, HE, HX}
+    ) where {C, HE, HX, P}
         
         # Convert colors to Int32 tuples
         color = (color[1],

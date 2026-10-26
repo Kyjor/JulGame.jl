@@ -530,7 +530,7 @@ module ImageFXModule
         cache_key = sprite.imagePath
         sweep_ck = (objectid(sprite), cache_key)
         sweep_stamp = (percentage, highlight_below)
-        if get(_CLOCK_SWEEP_LAST_PERCENT, sweep_ck, nothing) == sweep_stamp
+        if haskey(_CLOCK_SWEEP_LAST_PERCENT, sweep_ck) && _CLOCK_SWEEP_LAST_PERCENT[sweep_ck] == sweep_stamp
             return sprite
         end
         

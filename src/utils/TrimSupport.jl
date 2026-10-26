@@ -164,12 +164,13 @@ end
 
 # Kept out of `log_exception` so that generated function stays small enough to be inlined into its callers.
 _field_error_label(e::FieldError)::String = string(e.field) * " " * String(nameof(e.type))
+_method_error_label(e::MethodError)::String = String(nameof(typeof(e.f)))
 
 function print_exception_message(context::String, @nospecialize(e))
     message = if e isa ErrorException
         e.msg
     elseif e isa MethodError
-        "MethodError"
+        "MethodError " * _method_error_label(e::MethodError)
     elseif e isa TypeError
         "TypeError"
     elseif e isa BoundsError
