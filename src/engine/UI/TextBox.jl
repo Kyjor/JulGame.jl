@@ -53,27 +53,11 @@ module TextBoxModule
         needsEffectUpdate::Bool
         effectCacheKey::String  # Content hash for caching
 
-        function TextBox(text::String; 
-            id::String=JulGame.generate_uuid(), 
-            name::String = "TextBox", 
-            anchor::Symbol = :none,
-            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
-            isWorldEntity::Bool=false, 
-            layer::Int=0,
-            position::Math.Vector2 = Math.Vector2(0,0), 
-            clickEvents = ClickCallback[],
-            hoverEnterEvents = HoverCallback[],
-            hoverExitEvents = HoverCallback[],
-            isActive::Bool=true,
-            persistentBetweenScenes::Bool=false,
-            color::NTuple{4, Int}=(255, 255, 255, 255), 
-            fontPath::String = "FiraCode-Regular.ttf", 
-            fontSize::Int = 16, 
-            maxLineWidth::Int=0, 
-            wrapWords::Bool=true,
-            isDynamic::Bool=false,
-            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
-        )
+        function TextBox(text::String, id::String, name::String, anchor::Symbol,
+            anchorOffset::Math.Vector2, isWorldEntity::Bool, layer::Int, position::Math.Vector2,
+            clickEvents, hoverEnterEvents, hoverExitEvents, isActive::Bool, persistentBetweenScenes::Bool,
+            color::NTuple{4, Int}, fontPath::String, fontSize::Int, maxLineWidth::Int, wrapWords::Bool,
+            isDynamic::Bool, parent::P) where {P}
 
             this = new()
             setfield!(this, :base, UI.UIElementInstance())
@@ -123,6 +107,51 @@ module TextBoxModule
             this.isConstructed = true
 
             return this
+        end
+    end
+
+    # See ScreenButton: a keyword `parent` union cannot be trimmed, so the wrapper inlines to one concrete parent.
+    Base.@constprop :aggressive @inline function TextBox(text::String;
+        id::String = JulGame.generate_uuid(),
+        name::String = "TextBox",
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0, 0),
+        isWorldEntity::Bool = false,
+        layer::Int = 0,
+        position::Math.Vector2 = Math.Vector2(0, 0),
+        clickEvents = ClickCallback[],
+        hoverEnterEvents = HoverCallback[],
+        hoverExitEvents = HoverCallback[],
+        isActive::Bool = true,
+        persistentBetweenScenes::Bool = false,
+        color::NTuple{4, Int} = (255, 255, 255, 255),
+        fontPath::String = "FiraCode-Regular.ttf",
+        fontSize::Int = 16,
+        maxLineWidth::Int = 0,
+        wrapWords::Bool = true,
+        isDynamic::Bool = false,
+        parent = nothing,
+    )
+        return _text_box_parent(text, parent, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistentBetweenScenes, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic)
+    end
+
+    Base.@constprop :aggressive @inline function _text_box_parent(text, parent, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic)
+        if parent isa JulGame.Component.SpriteModule.InternalSprite
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        elseif parent isa JulGame.EntityModule.Entity
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        elseif parent isa JulGame.UI.UIImageModule.UIImage
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        elseif parent isa TextBox
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        elseif parent isa JulGame.UI.RectangleModule.Rectangle
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        elseif parent isa JulGame.UI.ScreenButtonModule.ScreenButton
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        elseif parent isa JulGame.UI.CanvasModule.Canvas
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, parent)
+        else
+            return TextBox(text, id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvents, hoverEnterEvents, hoverExitEvents, isActive, persistent, color, fontPath, fontSize, maxLineWidth, wrapWords, isDynamic, nothing)
         end
     end
 

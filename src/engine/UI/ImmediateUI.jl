@@ -717,7 +717,57 @@ module ImmediateUIModule
         end
     end
 
-    function immediate_image(id::String, path::String;
+    Base.@constprop :aggressive @inline function immediate_image(id::String, path::String;
+        name::String = "Image",
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0, 0),
+        crop = C_NULL,
+        layer::Int = 0,
+        position::Math.Vector2 = Math.Vector2(0, 0),
+        isActive::Bool = true,
+        persistentBetweenScenes::Bool = false,
+        color::NTuple{4, Int} = (255, 255, 255, 255),
+        size::Math.Vector2 = Math.Vector2(0, 0),
+        parent = nothing,
+        rotation::Float64 = 0.0,
+        clickEvents = ClickCallback[],
+        hoverEnterEvents = HoverCallback[],
+        hoverExitEvents = HoverCallback[],
+        lifetime::Int = DEFAULT_LIFETIME,
+        forceClickCheck::Bool = false,
+    )
+        return _immediate_image_parent(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistentBetweenScenes, color, size, rotation, clickEvents, hoverEnterEvents, hoverExitEvents, lifetime, forceClickCheck)
+    end
+
+    Base.@constprop :aggressive @inline function _immediate_image_parent(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        if parent isa JulGame.Component.SpriteModule.InternalSprite
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        elseif parent isa JulGame.EntityModule.Entity
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        elseif parent isa UIImage
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        elseif parent isa TextBox
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        elseif parent isa Rectangle
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        elseif parent isa ScreenButton
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        elseif parent isa Canvas
+            return _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        else
+            return _immediate_image_crop(id, path, nothing, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        end
+    end
+
+    Base.@constprop :aggressive @inline function _immediate_image_crop(id, path, parent, crop::Math.Vector4, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        return _immediate_image(id, path; name=name, anchor=anchor, anchorOffset=anchorOffset, crop=crop, layer=layer, position=position, isActive=isActive, persistentBetweenScenes=persistent, color=color, size=size, parent=parent, rotation=rotation, clickEvents=clickEvents, hoverEnterEvents=hoverEnter, hoverExitEvents=hoverExit, lifetime=lifetime, forceClickCheck=forceClick)
+    end
+
+    Base.@constprop :aggressive @inline function _immediate_image_crop(id, path, parent, crop, name, anchor, anchorOffset, layer, position, isActive, persistent, color, size, rotation, clickEvents, hoverEnter, hoverExit, lifetime, forceClick)
+        return _immediate_image(id, path; name=name, anchor=anchor, anchorOffset=anchorOffset, crop=C_NULL, layer=layer, position=position, isActive=isActive, persistentBetweenScenes=persistent, color=color, size=size, parent=parent, rotation=rotation, clickEvents=clickEvents, hoverEnterEvents=hoverEnter, hoverExitEvents=hoverExit, lifetime=lifetime, forceClickCheck=forceClick)
+    end
+
+    function _immediate_image(id::String, path::String;
                             name::String="Image",
                             anchor::Symbol=:none,
                             anchorOffset::Math.Vector2=Math.Vector2(0,0),

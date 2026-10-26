@@ -23,31 +23,12 @@ module ScreenButtonModule
         textColor::NTuple{4, Int}
         crop::Union{Ptr{Nothing}, Math.Vector4}
 
-        function ScreenButton(clickEvent = nothing; 
-            id::String=JulGame.generate_uuid(), 
-            name::String="Button",
-            anchor::Symbol = :none,
-            anchorOffset::Math.Vector2 = Math.Vector2(0,0), 
-            isWorldEntity::Bool=false, 
-            layer::Int=0,
-            position::Math.Vector2 = Math.Vector2(0,0), 
-            buttonUpSpritePath::String="Default", 
-            buttonDownSpritePath::String="Default", 
-            hoverEnterEvent = nothing,
-            hoverExitEvent = nothing,
-            isActive::Bool=true,
-            persistentBetweenScenes::Bool=false,
-            color::NTuple{4, Int}=(255, 255, 255, 255), 
-            textColor::NTuple{4, Int}=(255, 255, 255, 255),
-            fontPath::Union{String, Ptr{Nothing}} = C_NULL, 
-            fontSize::Int=24, 
-            size::Math.Vector2=Math.Vector2(0,0), 
-            text::String="", 
-            textOffset::Math.Vector2=Math.Vector2(0,0), 
-            parent::Union{JulGame.IUIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
-            rotation::Float64=0.0,
-            crop::Union{Ptr{Nothing}, Math.Vector4}=C_NULL
-        )
+        function ScreenButton(clickEvent, id::String, name::String, anchor::Symbol,
+            anchorOffset::Math.Vector2, isWorldEntity::Bool, layer::Int, position::Math.Vector2,
+            buttonUpSpritePath::String, buttonDownSpritePath::String, hoverEnterEvent, hoverExitEvent,
+            isActive::Bool, persistentBetweenScenes::Bool, color::NTuple{4, Int}, textColor::NTuple{4, Int},
+            fontPath::FP, fontSize::Int, size::Math.Vector2, text::String, textOffset::Math.Vector2,
+            parent::P, rotation::Float64, crop::CR) where {P, FP, CR}
             this = new()
             setfield!(this, :base, UI.UIElementInstance())
             
@@ -107,6 +88,79 @@ module ScreenButtonModule
 
             return this
         end
+    end
+
+    # Keyword calls cannot carry a union under `juliac --trim`. This wrapper is one call so it inlines,
+    # then each concrete parent, font path, and crop is a separate method.
+    Base.@constprop :aggressive @inline function ScreenButton(clickEvent = nothing;
+        id::String = JulGame.generate_uuid(),
+        name::String = "Button",
+        anchor::Symbol = :none,
+        anchorOffset::Math.Vector2 = Math.Vector2(0, 0),
+        isWorldEntity::Bool = false,
+        layer::Int = 0,
+        position::Math.Vector2 = Math.Vector2(0, 0),
+        buttonUpSpritePath::String = "Default",
+        buttonDownSpritePath::String = "Default",
+        hoverEnterEvent = nothing,
+        hoverExitEvent = nothing,
+        isActive::Bool = true,
+        persistentBetweenScenes::Bool = false,
+        color::NTuple{4, Int} = (255, 255, 255, 255),
+        textColor::NTuple{4, Int} = (255, 255, 255, 255),
+        fontPath = C_NULL,
+        fontSize::Int = 24,
+        size::Math.Vector2 = Math.Vector2(0, 0),
+        text::String = "",
+        textOffset::Math.Vector2 = Math.Vector2(0, 0),
+        parent = nothing,
+        rotation::Float64 = 0.0,
+        crop = C_NULL,
+    )
+        return _screen_button_parent(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, buttonUpSpritePath, buttonDownSpritePath, hoverEnterEvent, hoverExitEvent, isActive, persistentBetweenScenes, color, textColor, fontSize, size, text, textOffset, rotation)
+    end
+
+    Base.@constprop :aggressive @inline function _screen_button_parent(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        if parent isa JulGame.Component.SpriteModule.InternalSprite
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        elseif parent isa JulGame.EntityModule.Entity
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        elseif parent isa JulGame.UI.UIImageModule.UIImage
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        elseif parent isa JulGame.UI.TextBoxModule.TextBox
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        elseif parent isa JulGame.UI.RectangleModule.Rectangle
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        elseif parent isa ScreenButton
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        elseif parent isa JulGame.UI.CanvasModule.Canvas
+            return _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        else
+            return _screen_button_font(clickEvent, nothing, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        end
+    end
+
+    Base.@constprop :aggressive @inline function _screen_button_font(clickEvent, parent, fontPath::String, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        return _screen_button_crop(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+    end
+
+    Base.@constprop :aggressive @inline function _screen_button_font(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        return _screen_button_crop(clickEvent, parent, C_NULL, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+    end
+
+    # The constructor body is too large to specialize on a closure, which would widen it to `Function`.
+    # Wrap it here, while the closure type is still concrete.
+    _as_click(::Nothing) = nothing
+    _as_click(clickEvent::F) where {F} = ClickCallback(clickEvent)
+    _as_hover(::Nothing) = nothing
+    _as_hover(hoverEvent::F) where {F} = HoverCallback(hoverEvent)
+
+    Base.@constprop :aggressive @inline function _screen_button_crop(clickEvent, parent, fontPath, crop::Math.Vector4, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        return ScreenButton(_as_click(clickEvent), id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, _as_hover(hoverEnter), _as_hover(hoverExit), isActive, persistent, color, textColor, fontPath, fontSize, size, text, textOffset, parent, rotation, crop)
+    end
+
+    Base.@constprop :aggressive @inline function _screen_button_crop(clickEvent, parent, fontPath, crop, id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, hoverEnter, hoverExit, isActive, persistent, color, textColor, fontSize, size, text, textOffset, rotation)
+        return ScreenButton(_as_click(clickEvent), id, name, anchor, anchorOffset, isWorldEntity, layer, position, up, down, _as_hover(hoverEnter), _as_hover(hoverExit), isActive, persistent, color, textColor, fontPath, fontSize, size, text, textOffset, parent, rotation, C_NULL)
     end
 
     function UI.render(this::ScreenButton)
