@@ -246,8 +246,15 @@ Written as a switch over the fields, so it needs no constant `property` to be in
         field = QuoteNode(fieldName)
         fieldType = fieldtype(T, fieldName)
         # Containers cannot be converted without dynamic calls, so under trim only an already matching value is stored.
+        # A value that is already the field's type is stored with setfield!. `convert` into a union is a runtime miss under trim.
         assign = if TRIM_BUILD && !(value <: fieldType) && (fieldType <: AbstractArray || fieldType <: AbstractDict)
             :(error("cannot assign a " * $(string(value)) * " to field " * $(string(fieldName)) * " of " * $(string(T))))
+        elseif TRIM_BUILD
+            :(if value isa $fieldType
+                setfield!(object, $field, value)
+            else
+                setfield!(object, $field, convert($fieldType, value))
+            end)
         else
             :(setfield!(object, $field, convert($fieldType, value)))
         end

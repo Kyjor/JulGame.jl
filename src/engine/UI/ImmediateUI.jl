@@ -28,6 +28,35 @@ module ImmediateUIModule
     # >= 0: Lifetime in milliseconds before an unused immediate component is removed
     const DEFAULT_LIFETIME = -1
     const INFINITE_LIFETIME = -2
+
+    # `parent` is a union field. Assigning a concrete parent calls convert under trim.
+    function _as_parent_field(parent::P) where {P}
+        if parent isa Nothing
+            return parent
+        elseif parent isa JulGame.IUIElement
+            return parent
+        elseif parent isa JulGame.IEntity
+            return parent
+        elseif parent isa JulGame.ISprite
+            return parent
+        else
+            return nothing
+        end
+    end
+
+    function _parent_changed(current, parent::P) where {P}
+        if parent isa Nothing
+            return !(current isa Nothing)
+        elseif parent isa JulGame.IEntity
+            return !(current isa JulGame.IEntity) || current !== parent
+        elseif parent isa JulGame.IUIElement
+            return !(current isa JulGame.IUIElement) || current !== parent
+        elseif parent isa JulGame.ISprite
+            return !(current isa JulGame.ISprite) || current !== parent
+        else
+            return true
+        end
+    end
     last_timestamp::Int = 0
 
     """
@@ -173,8 +202,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
 
-            if textBox.parent != parent
-                textBox.parent = parent
+            if _parent_changed(textBox.parent, parent)
+                textBox.parent = _as_parent_field(parent)
                 needsUpdate = true
             end 
             
@@ -226,8 +255,8 @@ module ImmediateUIModule
                 fontPath=fontPath,
                 fontSize=fontSize,
                 maxLineWidth=maxLineWidth,
-                wrapWords=wrapWords,
-                parent=parent)
+                wrapWords=wrapWords)
+            textBox.parent = _as_parent_field(parent)
             
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = ImmediateEntry(textBox, lifetime)
@@ -374,8 +403,8 @@ module ImmediateUIModule
                 button.layer = layer
             end
 
-            if button.parent != parent
-                button.parent = parent
+            if _parent_changed(button.parent, parent)
+                button.parent = _as_parent_field(parent)
             end
 
             if button.name != name
@@ -464,9 +493,9 @@ module ImmediateUIModule
                 size=size, 
                 text=text, 
                 textOffset=textOffset, 
-                parent=parent,
                 rotation=rotation
             )
+            button.parent = _as_parent_field(parent)
             
             # Set button properties - These are now handled by the constructor or defaults
             # JulGame.UI.set_color(button; a=color[4]) # Handled by color=color
@@ -650,8 +679,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
             
-            if rect.parent != parent
-                rect.parent = parent
+            if _parent_changed(rect.parent, parent)
+                rect.parent = _as_parent_field(parent)
                 needsUpdate = true
             end
 
@@ -725,10 +754,10 @@ module ImmediateUIModule
                 clickEvents=clickEvent !== nothing ? ClickCallback[clickEvent] : ClickCallback[],
                 hoverEnterEvents=hoverEnterEvent !== nothing ? HoverCallback[hoverEnterEvent] : HoverCallback[],
                 hoverExitEvents=hoverExitEvent !== nothing ? HoverCallback[hoverExitEvent] : HoverCallback[],
-                parent=parent,
                 size=size,
                 forceClickCheck=forceClickCheck
             )
+            rect.parent = _as_parent_field(parent)
             
             rect.isActive = isActive
             rect.persistentBetweenScenes = false
@@ -877,8 +906,8 @@ module ImmediateUIModule
                 needsUpdate = true
             end
 
-            if image.parent != parent
-                image.parent = parent
+            if _parent_changed(image.parent, parent)
+                image.parent = _as_parent_field(parent)
                 needsUpdate = true
             end
 
@@ -943,13 +972,13 @@ module ImmediateUIModule
                 persistentBetweenScenes=persistentBetweenScenes,
                 color=color,
                 size=size,
-                parent=parent,
                 rotation=rotation,
                 forceClickCheck=forceClickCheck,
                 clickEvents=clickEvents,
                 hoverEnterEvents=hoverEnterEvents,
                 hoverExitEvents=hoverExitEvents
             )
+            image.parent = _as_parent_field(parent)
 
             # Store in cache
             IMMEDIATE_UI_CACHE[composite_id] = ImmediateEntry(image, lifetime)
