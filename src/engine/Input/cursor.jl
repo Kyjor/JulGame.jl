@@ -60,9 +60,10 @@
         # Create cursor from the scaled surface with adjusted hotspot
         cursor = SDL2.SDL_CreateColorCursor(scaled_surface, new_x, new_y)
 
-        if cursor != C_NULL
-            set_cursor(cursor)
-            this.defaultCursor = cursor
+        cursor_ptr = convert(Ptr{Nothing}, cursor)
+        if cursor_ptr != C_NULL
+            set_cursor(cursor_ptr)
+            this.defaultCursor = cursor_ptr
             @debug "Cursor set successfully! Scaled by $(scale_factor)x, Hotspot: ($new_x, $new_y)"
         else
             @error "Issue loading cursor: $(unsafe_string(SDL2.SDL_GetError()))"

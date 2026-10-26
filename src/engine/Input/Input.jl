@@ -140,6 +140,12 @@ module InputModule
         SDL2.SDL_GetMouseState(pointer(x), pointer(y))
 
         window_focused = false
+        # Motion events carry the cursor in window coordinates. GetMouseState can stay
+        # stuck under a trimmed build, so prefer the event position when we have one.
+        if evt.type == SDL2.SDL_MOUSEMOTION
+            x[1] = Int32(evt.motion.x)
+            y[1] = Int32(evt.motion.y)
+        end
         if evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
             @debug "Mouse down: $(evt.type == SDL2.SDL_MOUSEBUTTONDOWN)"
             @debug "mouse state: $(x[1]), $(y[1])"
@@ -286,6 +292,7 @@ module InputModule
         this.didMouseMotionOccur = false
         event_ref = Ref{SDL2.SDL_Event}()
 
+        mouse_from_event = false
         while true
             if length(this.pending_sdl_events) > 0
                 event_ref[] = popfirst!(this.pending_sdl_events)
@@ -299,6 +306,7 @@ module InputModule
             # @debug "polling input"
             # Only update mouse position for mouse-related events
             if evt.type == SDL2.SDL_MOUSEMOTION || evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
+                mouse_from_event = true
                 _refresh_logical_mouse!(this, evt)
                 if evt.type == SDL2.SDL_MOUSEMOTION
                     coalesce_ref = Ref{SDL2.SDL_Event}()
@@ -491,6 +499,17 @@ module InputModule
                 handle_key_event(this, keyboardState)
             end
 
+        end
+
+        # No mouse event this frame: sample the cursor anyway so a stuck motion
+        # queue still updates. Skip this when an event already set the position.
+        if !mouse_from_event
+            previous_mouse = this.mousePosition
+            blank_event = Ref{SDL2.SDL_Event}()
+            _refresh_logical_mouse!(this, blank_event[])
+            if this.mousePosition.x != previous_mouse.x || this.mousePosition.y != previous_mouse.y
+                this.didMouseMotionOccur = true
+            end
         end
 
         update_joystick_state!(this)

@@ -660,6 +660,8 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 			DEBUG = this.input.debug
 			cameraPosition = this.scene.camera !== nothing ? (this.scene.camera.position + this.scene.camera.offset) : Math.Vector2f(0,0)
 			cameraSize = this.scene.camera !== nothing ? this.scene.camera.size : Math.Vector2(0,0)
+			S_mouse_now = JulGame.pixels_per_world_unit(this.scene.camera)
+			this.input.mousePositionWorld = Math.Vector2f((this.input.mousePosition.x + (cameraPosition.x * S_mouse_now)) / S_mouse_now, (this.input.mousePosition.y + (cameraPosition.y * S_mouse_now)) / S_mouse_now)
 
 			x = 0
 			y = 0
