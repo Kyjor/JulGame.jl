@@ -164,7 +164,27 @@ end
 
 # Kept out of `log_exception` so that generated function stays small enough to be inlined into its callers.
 function print_exception_message(context::String, @nospecialize(e))
-    message = e isa ErrorException ? e.msg : "exception of unknown type"
+    message = if e isa ErrorException
+        e.msg
+    elseif e isa MethodError
+        "MethodError"
+    elseif e isa TypeError
+        "TypeError"
+    elseif e isa BoundsError
+        "BoundsError"
+    elseif e isa KeyError
+        "KeyError"
+    elseif e isa ArgumentError
+        "ArgumentError"
+    elseif e isa InexactError
+        "InexactError"
+    elseif e isa UndefRefError
+        "UndefRefError"
+    elseif e isa DivideError
+        "DivideError"
+    else
+        "exception of unknown type"
+    end
     print_line("Error: " * context * ": " * (message isa String ? message : "exception message of unknown type"))
 end
 

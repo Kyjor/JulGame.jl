@@ -272,7 +272,7 @@ module ImmediateUIModule
     # Returns
     The ScreenButton object
     """
-    function immediate_button(id::String, clickEvent::C=nothing; 
+    @inline function immediate_button(id::String, clickEvent::C=nothing; 
         text::String="", 
         name::String="Button",
         anchor::Symbol=:none,
@@ -297,6 +297,10 @@ module ImmediateUIModule
         lifetime::Int=DEFAULT_LIFETIME,
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing
     ) where {C, HE, HX}
+        return _immediate_button(id, clickEvent, text, name, anchor, anchorOffset, isWorldEntity, fontPath, fontSize, position, size, isCentered, buttonUpPath, buttonDownPath, hoverEnterEvent, hoverExitEvent, forceClickCheck, textOffset, color, isActive, persistentBetweenScenes, rotation, layer, lifetime, parent)
+    end
+
+    function _immediate_button(id::String, clickEvent::C, text::String, name::String, anchor::Symbol, anchorOffset::Math.Vector2, isWorldEntity::Bool, fontPath::String, fontSize::Int, position::Math.Vector2, size::Math.Vector2, isCentered::Bool, buttonUpPath::String, buttonDownPath::String, hoverEnterEvent::HE, hoverExitEvent::HX, forceClickCheck::Bool, textOffset::Math.Vector2, color::NTuple{4, Int}, isActive::Bool, persistentBetweenScenes::Bool, rotation::Float64, layer::Int, lifetime::Int, parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}) where {C, HE, HX}
         
         # Generate a composite ID that includes the component type
         composite_id = "button_$(id)"
@@ -511,7 +515,7 @@ module ImmediateUIModule
     # Returns
     The Rectangle object
     """
-    function immediate_rect(
+    @inline function immediate_rect(
         id::String;
         name::String = "Rectangle",
         anchor::Symbol = :none,
@@ -533,6 +537,32 @@ module ImmediateUIModule
         parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite}=nothing,
         size::Math.Vector2 = Math.Vector2(1, 1),
         forceClickCheck::Bool=false
+    ) where {C, HE, HX}
+        return _immediate_rect(id, name, anchor, anchorOffset, isWorldEntity, layer, position, clickEvent, hoverEnterEvent, hoverExitEvent, isActive, persistentBetweenScenes, color, borderColor, borderRadius, borderWidth, fillMode, lifetime, parent, size, forceClickCheck)
+    end
+
+    function _immediate_rect(
+        id::String,
+        name::String,
+        anchor::Symbol,
+        anchorOffset::Math.Vector2,
+        isWorldEntity::Bool,
+        layer::Int,
+        position::Math.Vector2,
+        clickEvent::C,
+        hoverEnterEvent::HE,
+        hoverExitEvent::HX,
+        isActive::Bool,
+        persistentBetweenScenes::Bool,
+        color::NTuple{4, Int},
+        borderColor::NTuple{4, Int},
+        borderRadius::Int,
+        borderWidth::Int,
+        fillMode::Bool,
+        lifetime::Int,
+        parent::Union{UI.UIElement, Nothing, JulGame.IEntity, JulGame.ISprite},
+        size::Math.Vector2,
+        forceClickCheck::Bool
     ) where {C, HE, HX}
         
         # Convert colors to Int32 tuples

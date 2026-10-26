@@ -423,7 +423,17 @@ function JulGame.change_scene(sceneFileName::String)
 			skipcount += 1
 			continue
 		end
-        JulGame.destroy(uiElement)
+		if uiElement isa UI.UIImageModule.UIImage
+			JulGame.destroy(uiElement)
+		elseif uiElement isa UI.TextBoxModule.TextBox
+			JulGame.destroy(uiElement)
+		elseif uiElement isa UI.ScreenButtonModule.ScreenButton
+			JulGame.destroy(uiElement)
+		elseif uiElement isa UI.RectangleModule.Rectangle
+			JulGame.destroy(uiElement)
+		elseif uiElement isa UI.CanvasModule.Canvas
+			JulGame.destroy(uiElement)
+		end
 	end
 	
 	#load new scene 

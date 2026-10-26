@@ -12,7 +12,7 @@
         # Example
         set_cursor_with_image(this, "cursor.png", 10, 10, 2.0)  # Scales up by 2x
     """
-    function set_cursor_with_image(this::Input, imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)
+    function set_cursor_with_image(this::Input, imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)::Ptr{Nothing}
         surface = nothing
         if haskey(JulGame.IMAGE_CACHE, get_comma_separated_path(imagePath))
             raw_data = JulGame.IMAGE_CACHE[get_comma_separated_path(imagePath)]
@@ -30,7 +30,7 @@
 
         if surface == C_NULL
             @error "Failed to load cursor image: $(unsafe_string(SDL2.SDL_GetError()))"
-            return
+            return C_NULL
         end
 
         # Get original width and height
@@ -51,7 +51,7 @@
         if scaled_surface == C_NULL
             @error "Failed to create scaled surface: $(unsafe_string(SDL2.SDL_GetError()))"
             SDL2.SDL_FreeSurface(surface)
-            return
+            return C_NULL
         end
 
         # Scale the image onto the new surface
@@ -72,15 +72,15 @@
         SDL2.SDL_FreeSurface(surface)
         SDL2.SDL_FreeSurface(scaled_surface)
 
-        return cursor
+        return convert(Ptr{Nothing}, cursor)
     end
 
-    function set_cursor_with_image(imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)
-        set_cursor_with_image(JulGame.main_loop().input, imagePath, x, y, scale_factor)
+    function set_cursor_with_image(imagePath::String, x::Int, y::Int, scale_factor::Float64=1.0)::Ptr{Nothing}
+        return set_cursor_with_image(JulGame.main_loop().input, imagePath, x, y, scale_factor)
     end
 
-    function set_cursor(cursor)
-        SDL2.SDL_SetCursor(cursor)
+    function set_cursor(cursor::Ptr{Nothing})
+        SDL2.SDL_SetCursor(convert(Ptr{SDL2.SDL_Cursor}, cursor))
     end
 
     function create_cursor_bank(this::Input)
