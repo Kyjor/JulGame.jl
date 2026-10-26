@@ -26,9 +26,13 @@ module TransformModule
         end   
     end     
 
+    # `Transform` is not inlined, so a parent known only as `IEntity` reaches it through the dispatch over the concrete types.
+    _transform_with_parent(parent, position, scale, rotation) = Transform(position, scale, rotation, parent)
+
     function Component.duplicate(this::Transform, parent::Any)
-        newTransform = Transform(this.position, this.scale, this.rotation, this.parent)
-        return newTransform
+        owner = this.parent
+        owner === nothing && return Transform(this.position, this.scale, this.rotation, nothing)
+        return JulGame.dispatch_over_subtypes(_transform_with_parent, Val{JulGame.IEntity}(), JulGame.ErasedTarget(owner), this.position, this.scale, this.rotation)
     end
 
     function Component.is_mouse_hovering(this::Transform)

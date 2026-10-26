@@ -531,7 +531,7 @@ module TextBoxModule
         # `string` with more than 10 arguments is not inferable, so it is built in two parts.
         content = string(
             string(text, "|", color, "|", fontPath, "|", fontSize, "|"),
-            string(serialize_effects(effects), "|", size),
+            string(serialize_effects(effects), "|", size.x, "x", size.y),
         )
         return string(hash(content))
     end
@@ -870,7 +870,11 @@ module TextBoxModule
     const TEXT_EFFECT_PREWARM_PENDING = Threads.Atomic{Int}(0)
 
     function _prewarm_job_signature(job::TextEffectPrewarmJob)::String
-        return string(job.text, "|", job.color, "|", job.fontPath, "|", job.fontSize, "|", serialize_effects(job.effects), "|", job.maxLineWidth, "|", job.wrapWords)
+        # Split because `string` with more than 10 arguments is not inferable.
+        return string(
+            string(job.text, "|", job.color, "|", job.fontPath, "|", job.fontSize, "|"),
+            string(serialize_effects(job.effects), "|", job.maxLineWidth, "|", job.wrapWords),
+        )
     end
 
     function _open_font_for_prewarm(fontPath::String, fontSize::Int)

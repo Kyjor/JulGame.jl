@@ -83,8 +83,8 @@ method is compiled, so the compiler can see every callee. Otherwise it uses `inv
 types and methods defined after the engine started (scripts included at runtime).
 """
 # One method per abstract type: inside a method on `target::T`, `T` is only known as `<:Script`, not as `Script`.
-dispatch(f, target::Script, args...) = dispatch_over_subtypes(f, Val{Script}(), ErasedTarget(target), args...)
-dispatch(f, target::IUIElement, args...) = dispatch_over_subtypes(f, Val{IUIElement}(), ErasedTarget(target), args...)
+@inline dispatch(f, target::Script, args...) = dispatch_over_subtypes(f, Val{Script}(), ErasedTarget(target), args...)
+@inline dispatch(f, target::IUIElement, args...) = dispatch_over_subtypes(f, Val{IUIElement}(), ErasedTarget(target), args...)
 
 # A generated function that is not inlined can only be called directly when all its argument types are concrete, and
 # `Type{T}` or an abstract `T` do not count. `Val{T}` and this wrapper (instead of the abstractly typed target) do.
@@ -207,6 +207,41 @@ Written as a switch over the fields, so it needs no constant `property` to be in
             :(setfield!(object, $field, convert($fieldType, value)))
         end
         body = Expr(:if, :(property === $field), :(return $assign), body)
+    end
+    return body
+end
+
+# `getproperty(::Script)` calls these when the receiver is not a concrete script. The switch is over the concrete
+# scripts that actually have the field, so the read resolves under `juliac --trim`.
+@generated function _script_getproperty(erased::ErasedTarget, ::Val{property}) where {property}
+    field = QuoteNode(property)
+    !TRIM_BUILD && return :(script_getproperty(erased.value, $field))
+
+    body = :(error("no script has a field " * $(string(property))))
+    for subtype in reverse(concrete_subtypes(Script))
+        hasfield(subtype, property) || continue
+        read = if property === :parent
+            :(getfield(erased.value::$subtype, :parent)::Union{IEntity, Ptr{Nothing}})
+        elseif fieldtype(subtype, property) <: EditorExport
+            :(getfield(getfield(erased.value::$subtype, $field), :value))
+        else
+            :(getfield(erased.value::$subtype, $field))
+        end
+        body = Expr(:if, :(erased.value isa $subtype), read, body)
+    end
+    return body
+end
+
+@generated function _script_setproperty!(erased::ErasedTarget, ::Val{property}, value::V) where {property, V}
+    field = QuoteNode(property)
+    !TRIM_BUILD && return :(script_setproperty!(erased.value, $field, value))
+
+    body = :(error("no script has a field " * $(string(property))))
+    for subtype in reverse(concrete_subtypes(Script))
+        hasfield(subtype, property) || continue
+        body = Expr(:if, :(erased.value isa $subtype),
+            :(script_setproperty!(erased.value::$subtype, $field, value)),
+            body)
     end
     return body
 end

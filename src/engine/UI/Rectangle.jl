@@ -596,7 +596,7 @@ module RectangleModule
         # Effects depend on size, color, border properties, and effect params
         # `string` with more than 10 arguments is not inferable, so it is built in two parts.
         content = string(
-            string(this.size, "|", this.color, "|", this.borderRadius, "|", this.borderWidth, "|"),
+            string(this.size.x, "x", this.size.y, "|", this.color, "|", this.borderRadius, "|", this.borderWidth, "|"),
             string(this.borderColor, "|", this.fillMode, "|", serialize_effects(this.effects))
         )
         return string(hash(content))

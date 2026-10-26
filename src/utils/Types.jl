@@ -1,10 +1,25 @@
 abstract type Script end
 
 # Behind these two functions so that a script type that overrides `getproperty` / `setproperty!` can still reach them.
-Base.@constprop :aggressive Base.getproperty(script::Script, property::Symbol) = script_getproperty(script, property)
-Base.@constprop :aggressive Base.setproperty!(script::Script, property::Symbol, value) = script_setproperty!(script, property, value)
+# Inlined so a receiver known only as `Script` (an element of `Vector{Script}`) still resolves under `juliac --trim`:
+# a concrete script reads its field directly, and an abstract one goes through a switch over the concrete scripts.
+Base.@constprop :aggressive @inline function Base.getproperty(script::Script, property::Symbol)
+    if isconcretetype(typeof(script))
+        return script_getproperty(script, property)
+    end
+    return _script_getproperty(ErasedTarget(script), Val(property))
+end
 
-Base.@constprop :aggressive function script_getproperty(script::Script, property::Symbol)
+Base.@constprop :aggressive @inline function Base.setproperty!(script::Script, property::Symbol, value)
+    if isconcretetype(typeof(script))
+        script_setproperty!(script, property, value)
+    else
+        _script_setproperty!(ErasedTarget(script), Val(property), value)
+    end
+    return value
+end
+
+Base.@constprop :aggressive @inline function script_getproperty(script::Script, property::Symbol)
     # Every script's `parent` is the entity it is attached to; asserting that keeps `this.parent.x` inferable
     if property === :parent
         return getfield(script, :parent)::Union{IEntity, Ptr{Nothing}}
@@ -18,7 +33,7 @@ Base.@constprop :aggressive function script_getproperty(script::Script, property
     return value
 end
 
-Base.@constprop :aggressive function script_setproperty!(script::Script, property::Symbol, value)
+Base.@constprop :aggressive @inline function script_setproperty!(script::Script, property::Symbol, value)
     field_type = fieldtype(typeof(script), property)
 
     if field_type <: EditorExport

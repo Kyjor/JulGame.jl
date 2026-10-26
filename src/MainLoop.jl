@@ -139,7 +139,7 @@ module MainLoopModule
 		Call script update method.
 	"""
 	@inline function call_script_update(this::MainLoop, script::Script, deltaTime::Float64)
-		JulGame.dispatch(JulGame.update, script, deltaTime)
+		JulGame.dispatch_over_subtypes(JulGame.update, Val{Script}(), JulGame.ErasedTarget(script), deltaTime)
 	end
 	
 	"""

@@ -67,22 +67,62 @@ end
 end
 
 # Fields of `UIElementInstance` are forwarded to `base`; all others live on the concrete element.
-# Callers use literal property names, so the forwarding branch resolves at compile time.
-Base.@constprop :aggressive function Base.getproperty(element::JulGame.IUIElement, property::Symbol)
-    if hasfield(UIElementInstance, property)
-        inst = ui_instance(element)
-        if property === :isHovered && !getfield(inst, :isActive)
-            return false
+# A concrete element reads the field directly. An element known only as `IUIElement` (or `Union{Nothing, IUIElement}`)
+# goes through a switch, which is what `juliac --trim` can resolve.
+@generated function _ui_getproperty(erased::JulGame.ErasedTarget, ::Val{property}) where {property}
+    field = QuoteNode(property)
+    body = :(error("no UI element has a field " * $(string(property))))
+    subtypes = reverse(JulGame.concrete_subtypes(JulGame.IUIElement))
+    if property === :isHovered
+        for subtype in subtypes
+            body = Expr(:if, :(erased.value isa $subtype),
+                :(let inst = getfield(erased.value::$subtype, :base)::UIElementInstance
+                    getfield(inst, :isActive) ? getfield(inst, :isHovered) : false
+                  end),
+                body)
         end
-        return getfield(inst, property)
+    elseif hasfield(UIElementInstance, property)
+        for subtype in subtypes
+            body = Expr(:if, :(erased.value isa $subtype),
+                :(getfield(getfield(erased.value::$subtype, :base)::UIElementInstance, $field)),
+                body)
+        end
+    else
+        for subtype in subtypes
+            hasfield(subtype, property) || continue
+            body = Expr(:if, :(erased.value isa $subtype), :(getfield(erased.value::$subtype, $field)), body)
+        end
     end
-    return JulGame.ui_field(element, property)
+    return body
+end
+
+Base.@constprop :aggressive @inline function Base.getproperty(element::JulGame.IUIElement, property::Symbol)
+    if isconcretetype(typeof(element))
+        if hasfield(UIElementInstance, property)
+            inst = getfield(element, :base)::UIElementInstance
+            if property === :isHovered && !getfield(inst, :isActive)
+                return false
+            end
+            return getfield(inst, property)
+        end
+        return getfield(element, property)
+    end
+    return _ui_getproperty(JulGame.ErasedTarget(element), Val(property))
+end
+
+Base.@constprop :aggressive @inline function Base.getproperty(element::Union{Nothing, JulGame.IUIElement}, property::Symbol)
+    return getproperty(element::JulGame.IUIElement, property)
+end
+
+Base.@constprop :aggressive @inline function Base.setproperty!(element::Union{Nothing, JulGame.IUIElement}, property::Symbol, value)
+    setproperty!(element::JulGame.IUIElement, property, value)
+    return value
 end
 
 # The setter is too big to inline, and a call that is not inlined is only resolved by `juliac --trim` when the element's type
 # is concrete. So `setproperty!` stays small and goes through `JulGame.dispatch`, which reaches the worker for each concrete type.
 Base.@constprop :aggressive @inline function Base.setproperty!(element::JulGame.IUIElement, property::Symbol, value)
-    JulGame.dispatch(set_ui_property!, element, property, value)
+    JulGame.dispatch_over_subtypes(set_ui_property!, Val{JulGame.IUIElement}(), JulGame.ErasedTarget(element), property, value)
     return value
 end
 

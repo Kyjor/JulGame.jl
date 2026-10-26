@@ -28,28 +28,46 @@ function as_entity end
 function as_sprite end
 function as_collider end
 
-Base.@constprop :aggressive function Base.getproperty(entity::IEntity, property::Symbol)
+# Inlined, and the nullable unions too: `entity.transform` where `entity` is `Union{Nothing, IEntity}` (or the
+# `Ptr{Nothing}` null some components use) is otherwise a call `juliac --trim` cannot resolve.
+Base.@constprop :aggressive @inline function Base.getproperty(entity::IEntity, property::Symbol)
     return getfield(as_entity(entity), property)
 end
 
-Base.@constprop :aggressive function Base.setproperty!(entity::IEntity, property::Symbol, value)
+Base.@constprop :aggressive @inline function Base.setproperty!(entity::IEntity, property::Symbol, value)
     concrete = as_entity(entity)
     return JulGame.set_field_converted!(concrete, property, value)
 end
 
-Base.@constprop :aggressive function Base.getproperty(sprite::ISprite, property::Symbol)
+Base.@constprop :aggressive @inline function Base.getproperty(entity::Union{Nothing, IEntity, Ptr{Nothing}}, property::Symbol)
+    return getproperty(entity::IEntity, property)
+end
+
+Base.@constprop :aggressive @inline function Base.setproperty!(entity::Union{Nothing, IEntity, Ptr{Nothing}}, property::Symbol, value)
+    return setproperty!(entity::IEntity, property, value)
+end
+
+Base.@constprop :aggressive @inline function Base.getproperty(sprite::ISprite, property::Symbol)
     return getfield(as_sprite(sprite), property)
 end
 
-Base.@constprop :aggressive function Base.setproperty!(sprite::ISprite, property::Symbol, value)
+Base.@constprop :aggressive @inline function Base.setproperty!(sprite::ISprite, property::Symbol, value)
     return setproperty!(as_sprite(sprite), property, value)
 end
 
-Base.@constprop :aggressive function Base.getproperty(collider::ICollider, property::Symbol)
+Base.@constprop :aggressive @inline function Base.getproperty(sprite::Union{Nothing, ISprite, Ptr{Nothing}}, property::Symbol)
+    return getproperty(sprite::ISprite, property)
+end
+
+Base.@constprop :aggressive @inline function Base.setproperty!(sprite::Union{Nothing, ISprite, Ptr{Nothing}}, property::Symbol, value)
+    return setproperty!(sprite::ISprite, property, value)
+end
+
+Base.@constprop :aggressive @inline function Base.getproperty(collider::ICollider, property::Symbol)
     return getfield(as_collider(collider), property)
 end
 
-Base.@constprop :aggressive function Base.setproperty!(collider::ICollider, property::Symbol, value)
+Base.@constprop :aggressive @inline function Base.setproperty!(collider::ICollider, property::Symbol, value)
     concrete = as_collider(collider)
     return JulGame.set_field_converted!(concrete, property, value)
 end

@@ -737,6 +737,7 @@ module SpriteModule
     end
 
     JulGame.as_sprite(sprite::InternalSprite)::InternalSprite = sprite
+    @inline JulGame.as_sprite(sprite::JulGame.ISprite)::InternalSprite = sprite::InternalSprite
 
     Base.@constprop :aggressive function Base.setproperty!(this::InternalSprite, s::Symbol, x)
         @debug("setting sprite property $(s) to: $(x)")

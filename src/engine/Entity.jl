@@ -74,6 +74,8 @@ module EntityModule
     end
 
     JulGame.as_entity(entity::Entity)::Entity = entity
+    # `IEntity` is abstract, so the typeassert has to be inlined into the caller for `juliac --trim` to see `Entity`.
+    @inline JulGame.as_entity(entity::JulGame.IEntity)::Entity = entity::Entity
 
     function JulGame.add_script(this::Entity, script::JulGame.Script)
         @debug(string("Adding script of type: ", typeof(script), " to entity named " , this.name))

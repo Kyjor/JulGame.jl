@@ -51,3 +51,11 @@ end
 
 const Vector2 = _Vector2{Int32}
 const Vector2f = _Vector2{Float64}
+
+# `Union{Nothing, Vector2}` is not a concrete receiver, so reading `.x` has to be inlined for `juliac --trim`.
+Base.@constprop :aggressive @inline function Base.getproperty(v::Union{Nothing, Vector2}, property::Symbol)
+    return getfield(v::Vector2, property)
+end
+Base.@constprop :aggressive @inline function Base.getproperty(v::Union{Nothing, Vector2f}, property::Symbol)
+    return getfield(v::Vector2f, property)
+end
