@@ -57,8 +57,6 @@ function root_module(T::Type)
     return mod
 end
 
-script_type_name(script)::String = String(nameof(typeof(script)))
-
 """
     concrete_subtypes(T::Type)
 
