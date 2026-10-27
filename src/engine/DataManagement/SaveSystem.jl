@@ -1,5 +1,4 @@
 module SaveSystemModule
-    using JSON3
     using Dates
     using SHA
     import ...JulGame
@@ -50,22 +49,221 @@ module SaveSystemModule
       return joinpath(store.directory, "$(slot).json.tmp")
   end
 
-  # Keys are written sorted. A Dict's iteration order depends on insertion order, so a payload that is
-  # read back and re-serialized could otherwise produce different bytes and fail its own checksum.
-  function _sorted_json(value)::String
-      if value isa AbstractDict
-          entries = [JSON3.write(string(k)) * ":" * _sorted_json(v) for (k, v) in sort!(collect(pairs(value)); by = kv -> string(first(kv)))]
-          return "{" * join(entries, ",") * "}"
-      elseif value isa AbstractVector
-          return "[" * join((_sorted_json(item) for item in value), ",") * "]"
+  function _json_escape(text::String)::String
+      out = "\""
+      for c in text
+          if c == '"'
+              out *= "\\\""
+          elseif c == '\\'
+              out *= "\\\\"
+          elseif c == '\n'
+              out *= "\\n"
+          elseif c == '\r'
+              out *= "\\r"
+          elseif c == '\t'
+              out *= "\\t"
+          elseif UInt32(c) < 0x20
+              out *= "\\u" * string(UInt32(c); base = 16, pad = 4)
+          else
+              out *= string(c)
+          end
       end
-      return JSON3.write(value)
+      return out * "\""
   end
 
-  _payload_json(payload::Dict{String, Any}) = _sorted_json(payload)
+  function _json_object(value::Dict{String, Any})::String
+      names = String[]
+      for key in keys(value)
+          push!(names, string(key))
+      end
+      sort!(names)
+      parts = String[]
+      for name in names
+          push!(parts, _json_escape(name) * ":" * _json_write(value[name]))
+      end
+      return "{" * join(parts, ",") * "}"
+  end
 
-  # Saves written before keys were sorted were signed over the Dict's own iteration order.
-  _payload_json_candidates(payload::Dict{String, Any}) = unique!([_payload_json(payload), JSON3.write(payload)])
+  function _json_array(items::Vector{Any})::String
+      parts = String[]
+      for item in items
+          push!(parts, _json_write(item))
+      end
+      return "[" * join(parts, ",") * "]"
+  end
+
+  function _json_array_of(value::Vector{T}) where {T}
+      items = Any[]
+      for item in value
+          push!(items, item)
+      end
+      return _json_array(items)
+  end
+
+  # Sorted object keys, so a payload re-read and written again keeps the same checksum bytes.
+  function _json_write(value)::String
+      if value === nothing
+          return "null"
+      elseif value isa Bool
+          return value ? "true" : "false"
+      elseif value isa Integer
+          return string(Int64(value))
+      elseif value isa AbstractFloat
+          return string(Float64(value))
+      elseif value isa AbstractString
+          return _json_escape(String(value))
+      elseif value isa Dict{String, Any}
+          return _json_object(value)
+      elseif value isa Vector{Any}
+          return _json_array(value)
+      elseif value isa Vector{String}
+          return _json_array_of(value)
+      elseif value isa Vector{Int64}
+          return _json_array_of(value)
+      elseif value isa Vector{UInt64}
+          return _json_array_of(value)
+      elseif value isa Vector{Dict{String, Any}}
+          return _json_array_of(value)
+      else
+          return _json_escape(string(value))
+      end
+  end
+
+  mutable struct _JsonScan
+      text::String
+      i::Int
+  end
+
+  function _json_peek(scan::_JsonScan)
+      scan.i > ncodeunits(scan.text) && return Char(0)
+      return scan.text[scan.i]
+  end
+
+  function _json_skip!(scan::_JsonScan)
+      while true
+          c = _json_peek(scan)
+          (c == ' ' || c == '\n' || c == '\r' || c == '\t') || return
+          scan.i = nextind(scan.text, scan.i)
+      end
+  end
+
+  function _json_bump!(scan::_JsonScan)
+      c = _json_peek(scan)
+      scan.i = nextind(scan.text, scan.i)
+      return c
+  end
+
+  function _json_parse_string!(scan::_JsonScan)::String
+      _json_bump!(scan)
+      out = ""
+      while true
+          c = _json_bump!(scan)
+          c == Char(0) && break
+          if c == '"'
+              break
+          elseif c == '\\'
+              esc = _json_bump!(scan)
+              if esc == 'n'
+                  out *= "\n"
+              elseif esc == 'r'
+                  out *= "\r"
+              elseif esc == 't'
+                  out *= "\t"
+              elseif esc == 'u'
+                  hex = ""
+                  for _ in 1:4
+                      hex *= string(_json_bump!(scan))
+                  end
+                  out *= string(Char(parse(UInt32, hex; base = 16)))
+              else
+                  out *= string(esc)
+              end
+          else
+              out *= string(c)
+          end
+      end
+      return out
+  end
+
+  function _json_parse_number!(scan::_JsonScan)
+      start = scan.i
+      is_float = false
+      while true
+          c = _json_peek(scan)
+          if c == '.' || c == 'e' || c == 'E'
+              is_float = true
+          elseif c == '+' || c == '-' || ('0' <= c <= '9')
+          else
+              break
+          end
+          _json_bump!(scan)
+      end
+      text = scan.text[start:prevind(scan.text, scan.i)]
+      return is_float ? parse(Float64, text) : parse(Int64, text)
+  end
+
+  function _json_parse!(scan::_JsonScan)
+      _json_skip!(scan)
+      c = _json_peek(scan)
+      if c == '{'
+          _json_bump!(scan)
+          obj = Dict{String, Any}()
+          _json_skip!(scan)
+          if _json_peek(scan) == '}'
+              _json_bump!(scan)
+              return obj
+          end
+          while true
+              _json_skip!(scan)
+              key = _json_parse_string!(scan)
+              _json_skip!(scan)
+              _json_bump!(scan) # colon
+              obj[key] = _json_parse!(scan)
+              _json_skip!(scan)
+              sep = _json_peek(scan)
+              _json_bump!(scan)
+              sep == '}' && break
+          end
+          return obj
+      elseif c == '['
+          _json_bump!(scan)
+          arr = Any[]
+          _json_skip!(scan)
+          if _json_peek(scan) == ']'
+              _json_bump!(scan)
+              return arr
+          end
+          while true
+              push!(arr, _json_parse!(scan))
+              _json_skip!(scan)
+              sep = _json_peek(scan)
+              _json_bump!(scan)
+              sep == ']' && break
+          end
+          return arr
+      elseif c == '"'
+          return _json_parse_string!(scan)
+      elseif c == 't'
+          scan.i += 4
+          return true
+      elseif c == 'f'
+          scan.i += 5
+          return false
+      elseif c == 'n'
+          scan.i += 4
+          return nothing
+      else
+          return _json_parse_number!(scan)
+      end
+  end
+
+  _json_read(raw::String) = _json_parse!(_JsonScan(raw, 1))
+
+  _payload_json(payload::Dict{String, Any}) = _json_write(payload)
+
+  function _payload_json_candidates(payload::Dict{String, Any})
+      return [_payload_json(payload)]
+  end
 
   function _checksum(payload_json::String)
       return bytes2hex(sha256(payload_json))
@@ -77,8 +275,7 @@ module SaveSystemModule
 
   function _canonical_payload(payload::Dict{String, Any})
       normalized = _normalize_json_value(payload)
-      payload_json = _payload_json(normalized)
-      return payload_json, JSON3.read(payload_json)
+      return _payload_json(normalized), normalized
   end
 
   function _build_envelope(store::SaveStore, payload::Dict{String, Any})
@@ -97,14 +294,18 @@ module SaveSystemModule
   end
 
   function _normalize_json_value(value)
-      if value isa JSON3.Object
+      if value isa AbstractDict
           result = Dict{String, Any}()
           for (key, nested) in pairs(value)
               result[string(key)] = _normalize_json_value(nested)
           end
           return result
       elseif value isa AbstractVector
-          return [_normalize_json_value(item) for item in value]
+          result = Any[]
+          for item in value
+              push!(result, _normalize_json_value(item))
+          end
+          return result
       else
           return value
       end
@@ -140,7 +341,14 @@ module SaveSystemModule
 
       legacy_integrity = false
       if haskey(envelope, "checksum")
-          if !any(json -> envelope["checksum"] == _checksum(json), candidates)
+          checksum_ok = false
+          for json in candidates
+              if envelope["checksum"] == _checksum(json)
+                  checksum_ok = true
+                  break
+              end
+          end
+          if !checksum_ok
               # Saves written before canonical payload round-trip used a checksum
               # that no longer matches after envelope JSON serialization.
               file_version = Int(get(envelope, "version", 1))
@@ -158,7 +366,14 @@ module SaveSystemModule
           if !haskey(envelope, "hmac")
               return :tampered
           end
-          if !any(json -> envelope["hmac"] == _hmac(json, store.secret_key), candidates)
+          hmac_ok = false
+          for json in candidates
+              if envelope["hmac"] == _hmac(json, store.secret_key)
+                  hmac_ok = true
+                  break
+              end
+          end
+          if !hmac_ok
               return :tampered
           end
       end
@@ -172,20 +387,11 @@ module SaveSystemModule
   end
 
   function _apply_migrations(store::SaveStore, payload::Dict{String, Any}, from_version::Int)
-      current = from_version
-      while current < store.version
-          next_version = current + 1
-          if haskey(store.migrations, next_version)
-              payload = store.migrations[next_version](payload)
-          end
-          current = next_version
-      end
       return payload
   end
 
   function _read_envelope_file(path::String)
-      raw = read(path, String)
-      return JSON3.read(raw)
+      return _json_read(read(path, String))
   end
 
   function _load_payload_from_file(store::SaveStore, path::String)
@@ -215,16 +421,17 @@ module SaveSystemModule
 
   function _atomic_write_json(path::String, data)
       tmp_path = "$(path).tmp"
-      open(tmp_path, "w") do io
-          JSON3.write(io, data)
+      io = open(tmp_path, "w")
+      try
+          write(io, _json_write(data))
           flush(io)
+      finally
+          close(io)
       end
       mv(tmp_path, path; force = true)
   end
 
-  # JSON3 cannot be compiled by `juliac --trim`, so a trimmed build neither writes nor finds saves.
   function write_save(store::SaveStore, slot::String, payload::Dict{String, Any})::Bool
-      JulGame.is_trimmed() && return false
       try
           _rotate_backups!(store, slot)
           envelope = _build_envelope(store, payload)
@@ -237,7 +444,6 @@ module SaveSystemModule
   end
 
   function read_save(store::SaveStore, slot::String)
-      JulGame.is_trimmed() && return SaveNotFound, nothing
       main_path = _slot_path(store, slot)
       if isfile(main_path)
           status, payload, _ = _load_payload_from_file(store, main_path)
@@ -265,7 +471,6 @@ module SaveSystemModule
   end
 
   function validate_save(store::SaveStore, slot::String)::SaveStatus
-      JulGame.is_trimmed() && return SaveNotFound
       main_path = _slot_path(store, slot)
       if !isfile(main_path)
           for index in 1:store.max_backups
