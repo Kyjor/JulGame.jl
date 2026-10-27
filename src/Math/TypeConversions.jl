@@ -14,16 +14,15 @@ module TypeConversions
     For Int64 values, it will clamp to Int32 bounds if necessary.
     """
     function safe_int32_convert(value::Number)
-        if value isa Int64
-            # Clamp to Int32 bounds
-            int32Max = 2147483647
-            int32Min = -2147483648
-            @debug "Clamping value: $value to Int32 bounds"
-            value = clamp(value, int32Min, int32Max)
-            @debug "Clamped value: $value"
+        # `convert(Int32, Float64)` is a runtime MethodError under trim. `Int32` of an
+        # already-clamped `Int` is a trunc.
+        rounded = round(Int, Float64(value))
+        if rounded > 2147483647
+            rounded = 2147483647
+        elseif rounded < -2147483648
+            rounded = -2147483648
         end
-
-        return convert(Int32, round(value))
+        return Int32(rounded)
     end
 
     """
