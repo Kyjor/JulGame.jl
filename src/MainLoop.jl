@@ -724,7 +724,12 @@ function game_loop(this::MainLoop, startTime::Ref{UInt64} = Ref(UInt64(0)), last
 							if this.testMode
 								rethrow(e)
 							else
-								JulGame.log_exception(string(entity.name, " script update"), e)
+								shown = entity.name
+								try
+									shown = string(entity.name, " ", JulGame.dispatch_over_subtypes(script_type_name, Val{Script}(), JulGame.ErasedTarget(script)))
+								catch
+								end
+								JulGame.log_exception(string(shown, " script update"), e)
 							end
 						end
 					end

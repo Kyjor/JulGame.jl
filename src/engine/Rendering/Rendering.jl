@@ -1,7 +1,8 @@
 module Rendering
 using ..JulGame
 
-    function queue_render_function(render_function; isWorldEntity::Bool = true, layer::Int = 0)
-        push!(JulGame.RENDER_FUNCTIONS, JulGame.RenderFunction(render_function, isWorldEntity, layer))
+    @inline function queue_render_function(render_function::F; isWorldEntity::Bool = true, layer::Int = 0) where {F}
+        callback = render_function isa JulGame.HoverCallback ? render_function : JulGame.HoverCallback(render_function)
+        push!(JulGame.RENDER_FUNCTIONS, JulGame.RenderFunction(callback, isWorldEntity, layer))
     end
 end

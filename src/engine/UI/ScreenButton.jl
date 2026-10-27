@@ -4,6 +4,8 @@ module ScreenButtonModule
     import ..UI
 
     export ScreenButton
+    # A null `C_NULL` is `Ptr{Nothing}`. These fields are `Ptr{SDL_Texture}`, and storing the other pointer calls `convert`.
+    _null_tex()::Ptr{SDL2.SDL_Texture} = Ptr{SDL2.SDL_Texture}(0)
     mutable struct ScreenButton <: UI.UIElement
         base::UI.UIElementInstance
         currentTexture::Ptr{SDL2.SDL_Texture}
@@ -47,7 +49,7 @@ module ScreenButtonModule
             this.clickEvents = ClickCallback[]
             this.hoverEnterEvents = HoverCallback[]
             this.hoverExitEvents = HoverCallback[]
-            this.currentTexture = C_NULL
+            this.currentTexture = _null_tex()
             this.fontSize = fontSize
             this.id = id
             this.size = size
@@ -56,7 +58,7 @@ module ScreenButtonModule
             this.position = position
             this.text = text
             this.textOffset = textOffset
-            this.textTexture = C_NULL
+            this.textTexture = _null_tex()
             this.textSize = Math.Vector2(0, 0)
             this.persistentBetweenScenes = persistentBetweenScenes
             this.isHovered = false
@@ -169,7 +171,7 @@ module ScreenButtonModule
         end
 
         if (
-            this.currentTexture == C_NULL || 
+            this.currentTexture === _null_tex() || 
             this.currentTexture === nothing || 
             !this.isActive
         )
@@ -203,7 +205,7 @@ module ScreenButtonModule
             SDL2.SDL_FLIP_NONE) == 0 "error rendering image: $(unsafe_string(SDL2.SDL_GetError()))"
 
         # Render the text if it exists
-        if this.textTexture != C_NULL && this.text != ""
+        if this.textTexture !== _null_tex() && this.text != ""
             center_text_on_button(this)
             # Position the text exactly in the center of the button
             text_x = this.position.x + this.textOffset.x
@@ -323,12 +325,12 @@ module ScreenButtonModule
     function UI.set_color(this::ScreenButton; r::Int=255, g::Int=255, b::Int=255, a::Int=255)
         #@debug "setting color to $(r), $(g), $(b), $(a)"
         this.color = (r%256, g%256, b%256, a%256)
-        if this.buttonDownTexture != C_NULL
+        if this.buttonDownTexture !== _null_tex()
             #@debug "setting color of button down texture to $(r), $(g), $(b), $(a)"
             SDL2.SDL_SetTextureColorMod(this.buttonDownTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
             SDL2.SDL_SetTextureAlphaMod(this.buttonDownTexture, UInt8(clamp(this.color[4], 0, 255)));
         end
-        if this.buttonUpTexture != C_NULL
+        if this.buttonUpTexture !== _null_tex()
             #@debug "setting color of button up texture to $(r), $(g), $(b), $(a)"
             SDL2.SDL_SetTextureColorMod(this.buttonUpTexture, UInt8(clamp(this.color[1], 0, 255)), UInt8(clamp(this.color[2], 0, 255)), UInt8(clamp(this.color[3], 0, 255)));
             SDL2.SDL_SetTextureAlphaMod(this.buttonUpTexture, UInt8(clamp(this.color[4], 0, 255)));
@@ -399,19 +401,19 @@ module ScreenButtonModule
 
 
     function UI.destroy(this::ScreenButton)
-        if this.buttonDownTexture != C_NULL
+        if this.buttonDownTexture !== _null_tex()
             SDL2.SDL_DestroyTexture(this.buttonDownTexture)
         end
-        if this.buttonUpTexture != C_NULL
+        if this.buttonUpTexture !== _null_tex()
             SDL2.SDL_DestroyTexture(this.buttonUpTexture)
         end
-        if this.textTexture != C_NULL
+        if this.textTexture !== _null_tex()
             SDL2.SDL_DestroyTexture(this.textTexture)
         end
-        this.buttonDownTexture = C_NULL
-        this.buttonUpTexture = C_NULL
-        this.textTexture = C_NULL
-        this.currentTexture = C_NULL
+        this.buttonDownTexture = _null_tex()
+        this.buttonUpTexture = _null_tex()
+        this.textTexture = _null_tex()
+        this.currentTexture = _null_tex()
 
         JulGame.main_loop().scene.uiElements = filter(x -> x !== this, JulGame.main_loop().scene.uiElements)
     end
@@ -438,9 +440,9 @@ module ScreenButtonModule
         this.text = new_text
         
         # Clean up previous texture if it exists
-        if this.textTexture != C_NULL
+        if this.textTexture !== _null_tex()
             SDL2.SDL_DestroyTexture(this.textTexture)
-            this.textTexture = C_NULL
+            this.textTexture = _null_tex()
         end
         
         # Skip rendering if text is empty or no font

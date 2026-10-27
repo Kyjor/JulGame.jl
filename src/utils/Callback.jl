@@ -90,4 +90,7 @@ struct RenderFunction
     function_to_call::HoverCallback
     isWorldEntity::Bool
     layer::Int
+    # The default constructor calls `convert` into `HoverCallback`. A closure is not that type, so the
+    # call misses under trim. Callers wrap the closure first and use this constructor.
+    RenderFunction(function_to_call::HoverCallback, isWorldEntity::Bool, layer::Int) = new(function_to_call, isWorldEntity, layer)
 end

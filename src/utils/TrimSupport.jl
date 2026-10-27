@@ -57,6 +57,8 @@ function root_module(T::Type)
     return mod
 end
 
+script_type_name(script)::String = String(nameof(typeof(script)))
+
 """
     concrete_subtypes(T::Type)
 
@@ -240,15 +242,44 @@ print_backtrace(fromException::Bool) = print_backtrace(fromException, :stdout)
 
 Written as a switch over the fields, so it needs no constant `property` to be inferable.
 """
+# Concrete types a union field can actually hold. A typeassert to the union itself still calls `convert` under trim.
+function _concrete_members(fieldType)::Vector{Type}
+    members = fieldType isa Union ? Base.uniontypes(fieldType) : Type[fieldType]
+    found = Type[]
+    for member in members
+        if isconcretetype(member)
+            push!(found, member)
+        else
+            append!(found, concrete_subtypes(member))
+        end
+    end
+    return found
+end
+
 @generated function set_field_converted!(object::T, property::Symbol, value) where {T}
     body = :(error("type " * $(string(T)) * " has no field " * string(property)))
     for fieldName in reverse(fieldnames(T))
         field = QuoteNode(fieldName)
         fieldType = fieldtype(T, fieldName)
         # Containers cannot be converted without dynamic calls, so under trim only an already matching value is stored.
-        # A value that is already the field's type is stored with setfield!. `convert` into a union is a runtime miss under trim.
+        # A union is stored by asserting the concrete member. Asserting the union calls `convert` and misses under trim.
         assign = if TRIM_BUILD && !(value <: fieldType) && (fieldType <: AbstractArray || fieldType <: AbstractDict)
             :(error("cannot assign a " * $(string(value)) * " to field " * $(string(fieldName)) * " of " * $(string(T))))
+        elseif TRIM_BUILD && fieldType isa Union
+            members = _concrete_members(fieldType)
+            if isempty(members)
+                :(if value isa $fieldType
+                    setfield!(object, $field, value)
+                else
+                    error("cannot store value in field " * $(string(fieldName)))
+                end)
+            else
+                inner = :(error("cannot store value in field " * $(string(fieldName))))
+                for member in reverse(members)
+                    inner = Expr(:if, :(value isa $member), :(setfield!(object, $field, value::$member)), inner)
+                end
+                inner
+            end
         elseif TRIM_BUILD
             :(if value isa $fieldType
                 setfield!(object, $field, value::$fieldType)
