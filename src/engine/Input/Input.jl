@@ -134,65 +134,78 @@ module InputModule
     include("test_helpers.jl")
     include("ui.jl")
 
-    function _refresh_logical_mouse!(this::Input, evt::SDL2.SDL_Event)
-        x = Int32[1]
-        y = Int32[1]
-        SDL2.SDL_GetMouseState(pointer(x), pointer(y))
+    function _refresh_logical_mouse!(this::Input, evt::SDL2.SDL_Event, use_event::Bool = true)
+        x_ref = Ref{Cint}(0)
+        y_ref = Ref{Cint}(0)
+        SDL2.SDL_GetMouseState(x_ref, y_ref)
+        raw_x = x_ref[]
+        raw_y = y_ref[]
 
         window_focused = false
+        event_is_logical = false
         # GetMouseState can stay stuck under a trimmed build, so a motion or button
         # event's own coordinates are the cursor. A click sampled from GetMouseState
         # lands away from the cursor and feels like a dropped input.
-        if evt.type == SDL2.SDL_MOUSEMOTION
-            x[1] = Int32(evt.motion.x)
-            y[1] = Int32(evt.motion.y)
-        elseif evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
-            x[1] = Int32(evt.button.x)
-            y[1] = Int32(evt.button.y)
+        if use_event
+            if evt.type == SDL2.SDL_MOUSEMOTION
+                raw_x = Int32(evt.motion.x)
+                raw_y = Int32(evt.motion.y)
+                event_is_logical = !JulGame.IS_EDITOR && evt.motion.windowID != 0
+            elseif evt.type == SDL2.SDL_MOUSEBUTTONDOWN || evt.type == SDL2.SDL_MOUSEBUTTONUP
+                raw_x = Int32(evt.button.x)
+                raw_y = Int32(evt.button.y)
+                event_is_logical = !JulGame.IS_EDITOR && evt.button.windowID != 0
+            end
         end
 
-        this.mousePosition = Math.Vector2(x[1], y[1])
+        this.mousePosition = Math.Vector2(raw_x, raw_y)
         @debug "new mouse pos: $(this.mousePosition)"
 
-        scale_x = 0
-        scale_y = 0
-        scaled_x = 0
-        scaled_y = 0
+        scale_x = 0.0
+        scale_y = 0.0
+        scaled_x = 0.0
+        scaled_y = 0.0
         if !JulGame.IS_EDITOR
             window_width = Ref{Cint}(0)
             window_height = Ref{Cint}(0)
             SDL2.SDL_GetWindowSize(JulGame.main_loop().windowManager.window, window_width, window_height)
             logical_size = JulGame.WindowManagerModule.get_logical_size()
-            safe_window_width = max(window_width[], 1)
-            safe_window_height = max(window_height[], 1)
-            safe_logical_width = max(logical_size.x, 1)
-            safe_logical_height = max(logical_size.y, 1)
-            scale_x = safe_window_width / safe_logical_width
-            scale_y = safe_window_height / safe_logical_height
-            scale = min(scale_x, scale_y)
-            content_width = safe_logical_width * scale
-            content_height = safe_logical_height * scale
-            bar_x = (safe_window_width - content_width) / 2
-            bar_y = (safe_window_height - content_height) / 2
-            @debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
-            @debug("window_width: $window_width[], window_height: $window_height[]")
-            @debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
-            scaled_x = (x[1] - bar_x) / scale
-            scaled_y = (y[1] - bar_y) / scale
-            if scaled_x == Inf || scaled_y == Inf
-                @error("Mouse position is infinite")
-                scaled_x = 0
-                scaled_y = 0
+            if event_is_logical && logical_size.x > 0 && logical_size.y > 0
+                # SDL_RenderSetLogicalSize already transforms real window mouse events into logical coords
+                scaled_x = Float64(raw_x)
+                scaled_y = Float64(raw_y)
+            else
+                safe_window_width = max(window_width[], 1)
+                safe_window_height = max(window_height[], 1)
+                safe_logical_width = max(logical_size.x, 1)
+                safe_logical_height = max(logical_size.y, 1)
+                scale_x = safe_window_width / safe_logical_width
+                scale_y = safe_window_height / safe_logical_height
+                scale = min(scale_x, scale_y)
+                content_width = safe_logical_width * scale
+                content_height = safe_logical_height * scale
+                bar_x = (safe_window_width - content_width) / 2
+                bar_y = (safe_window_height - content_height) / 2
+                @debug("letterbox scale: $scale, bar_x: $bar_x, bar_y: $bar_y")
+                @debug("window_width: $window_width[], window_height: $window_height[]")
+                @debug("logical_width: $(logical_size.x), logical_height: $(logical_size.y)")
+                scaled_x = (raw_x - bar_x) / scale
+                scaled_y = (raw_y - bar_y) / scale
+                if scaled_x == Inf || scaled_y == Inf
+                    @error("Mouse position is infinite")
+                    scaled_x = 0.0
+                    scaled_y = 0.0
+                end
             end
             window_focused = (JulGame.MAIN !== nothing && JulGame.main_loop().windowManager !== nothing && JulGame.main_loop().windowManager.isWindowFocused)
             this.mousePosition = Math.Vector2(
                 clamp(floor(Int, scaled_x), 0, logical_size.x),
                 clamp(floor(Int, scaled_y), 0, logical_size.y)
             )
-            @debug "Scaled mouse position: window coords ($(x[1]), $(y[1])) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused"
+            @debug "Scaled mouse position: raw coords ($(raw_x), $(raw_y)) -> logical coords ($(this.mousePosition.x), $(this.mousePosition.y)), window_focused: $window_focused"
         else
-            raw_mouse_x = x[1] - JulGame.EditorGameViewPosition.x
-            raw_mouse_y = y[1] - JulGame.EditorGameViewPosition.y
+            raw_mouse_x = raw_x - JulGame.EditorGameViewPosition.x
+            raw_mouse_y = raw_y - JulGame.EditorGameViewPosition.y
             clamped_mouse_x = clamp(raw_mouse_x, 0, JulGame.EditorGameViewSize.x)
             clamped_mouse_y = clamp(raw_mouse_y, 0, JulGame.EditorGameViewSize.y)
             camera_size = JulGame.main_loop().scene.camera.size
@@ -251,7 +264,7 @@ module InputModule
         empty!(_uiCandidates)
         for i in length(uiElements):-1:1
             ui = uiElements[i]
-            if ui.isActive && !is_element_in(_inactiveCanvasChildren, ui)
+            if ui.isActive && !ui.ignoreInputEvents && !is_element_in(_inactiveCanvasChildren, ui)
                 push!(_uiCandidates, ui)
             end
         end
@@ -384,7 +397,15 @@ module InputModule
 
                     for i in 1:buf.count
                         element = buf.elements[i]
-                        if i != hit_idx
+                        is_inside = hit_idx != -1 && (
+                            i == hit_idx || (
+                                i > hit_idx && is_mouse_inside_element_julia(
+                                    mouseX, mouseY,
+                                    buf.xs[i], buf.ys[i], buf.rights[i], buf.bottoms[i],
+                                )
+                            )
+                        )
+                        if !is_inside
                             element.isHovered = false
                             continue
                         end
@@ -405,6 +426,8 @@ module InputModule
                                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                                     push!(this.elementsBeingClickedDownOn, element)
                                 end
+                            elseif evt.type == SDL2.SDL_MOUSEMOTION
+                                element.isHovered = false
                             end
                             if element.isHovered
                                 hoveredAnElementAlready = true
@@ -498,7 +521,7 @@ module InputModule
         if !mouse_from_event
             previous_mouse = this.mousePosition
             blank_event = Ref{SDL2.SDL_Event}()
-            _refresh_logical_mouse!(this, blank_event[])
+            _refresh_logical_mouse!(this, blank_event[], false)
             if this.mousePosition.x != previous_mouse.x || this.mousePosition.y != previous_mouse.y
                 this.didMouseMotionOccur = true
             end
