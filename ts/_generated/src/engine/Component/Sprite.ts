@@ -177,8 +177,10 @@ function isSdlPtr(p: unknown): p is number {
         // Calculate position
         let position = self.parent.transform.position
     
+        // Web package ships half-res textures (WEB_TEXTURE_SCALE 0.5). Dev leaves this at 1.
+        const texScale = Number((globalThis as any).JulGame?.WEB_TEXTURE_SCALE ?? 1) || 1
         // Calculate source rectangle
-        let srcRect = (self.crop == null || (self.crop.x === 0 && self.crop.y === 0 && self.crop.z === 0 && self.crop.t === 0)) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(self.crop.x, self.crop.y, self.crop.z, self.crop.t)
+        let srcRect = (self.crop == null || (self.crop.x === 0 && self.crop.y === 0 && self.crop.z === 0 && self.crop.t === 0)) ? null : (globalThis as any).JulGameSdl.glue_SDL_Rect(Math.floor(self.crop.x * texScale), Math.floor(self.crop.y * texScale), Math.max(1, Math.floor(self.crop.z * texScale)), Math.max(1, Math.floor(self.crop.t * texScale)))
     
         // Calculate pixels per unit
         let ppu = self.pixelsPerUnit > 0 ? self.pixelsPerUnit : (globalThis as any).JulGame.PIXELS_PER_UNIT
@@ -188,8 +190,8 @@ function isSdlPtr(p: unknown): p is number {
         
         // Always use original sprite size for positioning calculations
         let crop = self.crop == null ? {x: 0, y: 0, z: 0, t: 0} : self.crop
-        let cropWidth = srcRect == null ? (self.size?.x ?? 0) : crop.z
-        let cropHeight = srcRect == null ? (self.size?.y ?? 0) : crop.t
+        let cropWidth = srcRect == null ? (self.size?.x ?? 0) / texScale : crop.z
+        let cropHeight = srcRect == null ? (self.size?.y ?? 0) / texScale : crop.t
         let scaleX = self.parent.transform.scale.x
         let scaleY = self.parent.transform.scale.y
     

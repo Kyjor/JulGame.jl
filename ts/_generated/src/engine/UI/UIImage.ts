@@ -194,8 +194,14 @@ export function UI_render_UIImage(api: JulGameSdlApi, self: UiImageElement): voi
     const flip = self.isFlipped ? 1 : 0;
     step("renderCopy", () => {
         const src = self.sourceCrop;
+        const texScale = Number((globalThis as any).JulGame?.WEB_TEXTURE_SCALE ?? 1) || 1;
         if (src != null && src.w > 0 && src.h > 0) {
-            renderCopy(texture, 1, src.x, src.y, src.w, src.h, x, y, w, h, 0, 0, 0, flip);
+            renderCopy(
+                texture, 1,
+                Math.floor(src.x * texScale), Math.floor(src.y * texScale),
+                Math.max(1, Math.floor(src.w * texScale)), Math.max(1, Math.floor(src.h * texScale)),
+                x, y, w, h, 0, 0, 0, flip,
+            );
         } else if (self.fillCrop != null) {
             renderFillCropped(api, texture, self.fillCrop, x, y, w, h, flip);
         } else {

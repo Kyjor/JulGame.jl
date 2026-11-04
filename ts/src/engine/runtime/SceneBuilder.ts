@@ -30,6 +30,31 @@ import { UI_align_to_anchor } from "../../../_generated/src/engine/UI/UIElement"
 /** Minimal valid PNG (1×1) for MEMFS when project assets are missing locally. */
 const PNG_1X1 = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), (ch) => ch.charCodeAt(0));
 
+/** Names the game asks for that reuse another sound file. Kept in the loader so the package does not store a second copy. */
+const SOUND_ALIASES: Record<string, string> = {
+    "sfx-coin-0000.wav": "sfx-touch-0000.wav",
+    "sfx-error-0000.wav": "sfx-no-0000.wav",
+    "sfx-hit-0001.wav": "sfx-hit-0000.wav",
+    "sfx-shield-0001.wav": "sfx-swing-0000.wav",
+    "sfx-heal-0001.wav": "sfx-eat1-0000.wav",
+    "sfx-burn-0001.wav": "sfx-whip-0000.wav",
+    "sfx-freeze-0001.wav": "sfx-swoosh-0000.wav",
+    "sfx-poison-0001.wav": "sfx-mystery-0000.wav",
+    "sfx-skill-0001.wav": "sfx-swoosh-0000.wav",
+    ...Object.fromEntries(
+        Array.from({ length: 24 }, (_, i) => {
+            const n = i + 2;
+            const tiers = [2, 6, 10, 14, 18, 22, 25];
+            const tier = tiers.find((t) => t >= n) ?? 25;
+            return tier === n ? null : [`sfx-combo${n}-0000.wav`, `sfx-combo${tier}-0000.wav`];
+        }).filter((pair): pair is [string, string] => pair != null),
+    ),
+};
+
+function resolveSoundRel(rel: string): string {
+    return SOUND_ALIASES[rel] ?? rel;
+}
+
 /** Inline fallback when `sceneJsonUrl` fetch fails (single sprite entity). */
 export const MINIMAL_STRIPPED_SCENE: SceneJson = {
     Entities: [
@@ -462,16 +487,17 @@ async function syncAssetsToMemfs(
             if (memfsPathExists(fs, memPath)) {
                 return;
             }
-            const url = new URL(`assets/sounds/${servedAssetRel(rel)}`, `${base}/`).href;
+            const resolved = servedAssetRel(resolveSoundRel(rel));
+            const url = new URL(`assets/sounds/${resolved}`, `${base}/`).href;
             try {
                 let data: Uint8Array;
                 try {
                     data = await fetchAssetBytes(url);
                 } catch (err) {
-                    // Web bundles ship sound effects as max-quality Vorbis under the .ogg name.
+                    // Web bundles ship sound effects as Vorbis under the .ogg name.
                     // SDL_mixer sniffs the bytes, so they are stored at the .wav path the game requests.
-                    if (!/\.wav$/i.test(rel)) throw err;
-                    const oggRel = servedAssetRel(rel).replace(/\.wav$/i, ".ogg");
+                    if (!/\.wav$/i.test(resolved)) throw err;
+                    const oggRel = resolved.replace(/\.wav$/i, ".ogg");
                     data = await fetchAssetBytes(new URL(`assets/sounds/${oggRel}`, `${base}/`).href);
                 }
                 writeMemfsFile(fs, memPath, data);
