@@ -337,13 +337,16 @@ end
             else
                 error("cannot assign " * $(string(property)))
             end)
-        else
-            members = _concrete_members(ft)
+        elseif ft isa Union
+            # Only the concrete members. Walking abstract members calls concrete_subtypes on types like Any.
+            members = Type[member for member in Base.uniontypes(ft) if isconcretetype(member)]
             inner = :(error("cannot assign " * $(string(property))))
             for member in reverse(members)
                 inner = Expr(:if, :(boxed.value isa $member), :(setfield!(erased.value::$subtype, $field, boxed.value::$member)), inner)
             end
             inner
+        else
+            :(setfield!(erased.value::$subtype, $field, boxed.value))
         end
         body = Expr(:if, :(erased.value isa $subtype), assign, body)
     end

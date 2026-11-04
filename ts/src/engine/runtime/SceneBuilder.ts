@@ -464,7 +464,16 @@ async function syncAssetsToMemfs(
             }
             const url = new URL(`assets/sounds/${servedAssetRel(rel)}`, `${base}/`).href;
             try {
-                const data = await fetchAssetBytes(url);
+                let data: Uint8Array;
+                try {
+                    data = await fetchAssetBytes(url);
+                } catch (err) {
+                    // Web bundles ship sound effects as max-quality Vorbis under the .ogg name.
+                    // SDL_mixer sniffs the bytes, so they are stored at the .wav path the game requests.
+                    if (!/\.wav$/i.test(rel)) throw err;
+                    const oggRel = servedAssetRel(rel).replace(/\.wav$/i, ".ogg");
+                    data = await fetchAssetBytes(new URL(`assets/sounds/${oggRel}`, `${base}/`).href);
+                }
                 writeMemfsFile(fs, memPath, data);
                 console.debug(`SceneBuilder: synced sound ${rel} (${data.byteLength} bytes)`);
             } catch (e) {
