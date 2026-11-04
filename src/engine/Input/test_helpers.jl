@@ -9,8 +9,8 @@
                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
-     # Convert the vector to a tuple of size 56
-    ntuple_data = Tuple(data)
+    # A vector's Tuple() is an open tuple, which cannot construct SDL_Event under trim.
+    ntuple_data = ntuple(i -> UInt8(0), 56)
 
     # Allocate memory for the SDL_Event struct itself
     ptr_event = Ptr{SDL2.SDL_Event}(Libc.malloc(sizeof(SDL2.SDL_Event)))  # Allocate memory for SDL_Event struct

@@ -322,13 +322,28 @@ end
     for subtype in reverse(concrete_subtypes(Script))
         hasfield(subtype, property) || continue
         ft = fieldtype(subtype, property)
-        # `EditorExport` and `Vector2` fields accept a value of a different type and convert it.
-        # Every other field is asserted to its declared type so `setfield!` of an abstract value
-        # (a `Script` stored into an interface field) is not inferred as a throw.
-        assign = if ft <: EditorExport || ft <: Math._Vector2
-            :(script_setproperty!(erased.value::$subtype, $field, boxed.value))
+        # Assert the stored value to a concrete type. Calling `script_setproperty!` with the boxed
+        # `Any` does not trim, including the Vector2 conversion that function used to perform.
+        assign = if ft <: EditorExport && ft isa DataType && length(ft.parameters) == 1 && isconcretetype(ft.parameters[1])
+            inner = ft.parameters[1]
+            :(if boxed.value isa $inner
+                setfield!(erased.value::$subtype, $field, EditorExport{$inner}(boxed.value::$inner))
+            else
+                error("cannot assign " * $(string(property)))
+            end)
+        elseif isconcretetype(ft)
+            :(if boxed.value isa $ft
+                setfield!(erased.value::$subtype, $field, boxed.value::$ft)
+            else
+                error("cannot assign " * $(string(property)))
+            end)
         else
-            :(setfield!(erased.value::$subtype, $field, boxed.value::$ft))
+            members = _concrete_members(ft)
+            inner = :(error("cannot assign " * $(string(property))))
+            for member in reverse(members)
+                inner = Expr(:if, :(boxed.value isa $member), :(setfield!(erased.value::$subtype, $field, boxed.value::$member)), inner)
+            end
+            inner
         end
         body = Expr(:if, :(erased.value isa $subtype), assign, body)
     end
