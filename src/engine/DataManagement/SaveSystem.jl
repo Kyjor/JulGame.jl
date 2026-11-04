@@ -225,75 +225,6 @@ module SaveSystemModule
       mv(tmp_path, path; force = true)
   end
 
-  # JSON3 cannot be compiled by `juliac --trim`, so a trimmed build neither writes nor finds saves.
-  function write_save(store::SaveStore, slot::String, payload::Dict{String, Any})::Bool
-      JulGame.is_trimmed() && return false
-      try
-          _rotate_backups!(store, slot)
-          envelope = _build_envelope(store, payload)
-          _atomic_write_json(_slot_path(store, slot), envelope)
-          return true
-      catch e
-          @warn "Failed to write save slot '$slot': $e"
-          return false
-      end
-  end
-
-  function read_save(store::SaveStore, slot::String)
-      JulGame.is_trimmed() && return SaveNotFound, nothing
-      main_path = _slot_path(store, slot)
-      if isfile(main_path)
-          status, payload, _ = _load_payload_from_file(store, main_path)
-          if status == :ok && payload !== nothing
-              return SaveOk, payload
-          end
-      else
-          return SaveNotFound, nothing
-      end
-
-      for index in 1:store.max_backups
-          backup_path = _backup_path(store, slot, index)
-          !isfile(backup_path) && continue
-          status, payload, _ = _load_payload_from_file(store, backup_path)
-          if status == :ok && payload !== nothing
-              write_save(store, slot, payload)
-              return SaveRestoredFromBackup, payload
-          end
-      end
-
-      if isfile(main_path)
-          return SaveCorrupt, nothing
-      end
-      return SaveNotFound, nothing
-  end
-
-  function validate_save(store::SaveStore, slot::String)::SaveStatus
-      JulGame.is_trimmed() && return SaveNotFound
-      main_path = _slot_path(store, slot)
-      if !isfile(main_path)
-          for index in 1:store.max_backups
-              isfile(_backup_path(store, slot, index)) && return SaveRestoredFromBackup
-          end
-          return SaveNotFound
-      end
-
-      try
-          envelope = _read_envelope_file(main_path)
-          status = _verify_envelope(store, envelope)
-          if status == :ok
-              return SaveOk
-          elseif status == :tampered
-              return SaveTampered
-          elseif status == :version_unsupported
-              return SaveVersionUnsupported
-          else
-              return SaveCorrupt
-          end
-      catch
-          return SaveError
-      end
-  end
-
   function delete_save(store::SaveStore, slot::String)::Bool
       try
           main_path = _slot_path(store, slot)
@@ -721,5 +652,18 @@ module SaveSystemModule
           return SaveCorrupt, json_null()
       end
       return SaveNotFound, json_null()
+  end
+
+  function write_save(store::SaveStore, slot::String, payload::JsonNode)::Bool
+      return write_node_save(store, slot, payload)
+  end
+
+  function read_save(store::SaveStore, slot::String)
+      return read_node_save(store, slot)
+  end
+
+  function validate_save(store::SaveStore, slot::String)::SaveStatus
+      status, _ = read_node_save(store, slot)
+      return status
   end
 end
