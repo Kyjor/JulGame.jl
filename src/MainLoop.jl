@@ -160,7 +160,7 @@ module MainLoopModule
 		JulGame.main_loop().windowManager.windowSize = size
 
 		@debug "Initializing scripts and components"
-		@timed_step "scene init: total (scripts and components)" initialize_scripts_and_components()
+		initialize_scripts_and_components()
 
 		if !JulGame.IS_EDITOR && !JulGame.IS_WEB
 			@debug "Starting non editor loop"
@@ -172,7 +172,7 @@ module MainLoopModule
     function initialize_new_scene(this::MainLoop)
 		@debug "Initializing new scene"
 		@debug "Deserializing and building scene"
-        @timed_step "Deserializing and building scene: $(this.level.scene)" SceneBuilderModule.deserialize_and_build_scene(this.level)
+        "Deserializing and building scene: $(this.level.scene)" SceneBuilderModule.deserialize_and_build_scene(this.level)
 
         initialize_scripts_and_components()
         
@@ -200,7 +200,7 @@ module MainLoopModule
                     if isFirstFrame
                         # First frame lazily bakes effect textures for visible
                         # elements and JIT-compiles the render path.
-                        @timed_step "first frame" game_loop(this, startTime, lastPhysicsTime)
+                        game_loop(this, startTime, lastPhysicsTime)
                         isFirstFrame = false
                     else
                         game_loop(this, startTime, lastPhysicsTime)
@@ -302,7 +302,7 @@ module MainLoopModule
 		end
 
 		if !this.isGameModeRunningInEditor
-			@timed_step "scene init: uiElements ($(length(this.scene.uiElements)))" for uiElement in this.scene.uiElements
+			for uiElement in this.scene.uiElements
 				call_ui_initialize(this, uiElement)
 			end
 		end
@@ -313,7 +313,7 @@ module MainLoopModule
 
 			for script in scripts
 				try
-					@timed_step "scene init: script $(typeof(script))" call_script_initialize(this, script)
+					call_script_initialize(this, script)
 				catch e
 					if this.testMode
 						rethrow(e)
@@ -324,7 +324,7 @@ module MainLoopModule
 			end
 			build_sprite_layers()
 
-			@timed_step "scene init: play-on-start sounds" for entity in JulGame.main_loop().scene.entities
+			for entity in JulGame.main_loop().scene.entities
 				@debug "Checking for a soundSource that needs to be activated"
 				if entity.soundSource != C_NULL && entity.soundSource !== nothing && entity.soundSource.playOnStart && !entity.soundSource.isPlaying
 					@debug("Playing $(entity.name)'s ($(entity.id)) sound source on start: $(entity.soundSource.path)")

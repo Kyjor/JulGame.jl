@@ -79,7 +79,7 @@ module SceneBuilderModule
         scene::Union{SceneData, Nothing} = nothing
         if !JulGame.IS_EDITOR && !JulGame.IS_WEB
             # Initialize window manager
-            @timed_step "scene load: create window" windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
+            windowCreated = JulGame.WindowManagerModule.create_window(windowName, size, isFullscreen, isResizable)
             if !windowCreated
                 @error "Failed to create window"
                 return
@@ -103,7 +103,7 @@ module SceneBuilderModule
             # "2" or "best": Currently this is the same as "linear"
 
             SDL2.SDL_SetHint(SDL2.SDL_HINT_RENDER_SCALE_QUALITY, scalingQuality)
-            @timed_step "scene load: create renderer" createdRenderer = SDL2.SDL_CreateRenderer(JulGame.main_loop().windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
+            createdRenderer = SDL2.SDL_CreateRenderer(JulGame.main_loop().windowManager.window, -1, SDL2.SDL_RENDERER_ACCELERATED)
             JulGame.Renderer::Ptr{SDL2.SDL_Renderer} = createdRenderer
             if JulGame.Renderer == C_NULL
                 @error "Failed to create renderer with window $(JulGame.main_loop().windowManager.window), $(unsafe_string(SDL2.SDL_GetError()))"
@@ -139,7 +139,7 @@ module SceneBuilderModule
             
             @debug "Deserializing scene"
             # deserialize_scene returns a preloaded scene if there is one
-            @timed_step "scene load: deserialize scene" scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
+            scene = deserialize_scene(joinpath(BasePath, "scenes", this.scene))
             if scene === nothing
                 @error "Failed to load scene $(this.scene)"
                 return
@@ -177,7 +177,7 @@ module SceneBuilderModule
         
         JulGame.main_loop().scene.rigidbodies = InternalRigidbody[]
         JulGame.main_loop().scene.colliders = InternalCollider[]
-        @timed_step "scene load: add_scripts_to_entities" add_scripts_to_entities(BasePath)
+        add_scripts_to_entities(BasePath)
 
         JulGame.engine_states.current_state = :game_mode
         JulGame.MainLoopModule.prepare_window_scripts_and_start_loop(size)
@@ -320,7 +320,7 @@ module SceneBuilderModule
             for spec in entity.pendingScripts
                 @debug String("Adding script: $(spec.name) to entity: $(entity.name)")
                 try
-                    newScript = @timed_step "script construct: $(spec.name)" build_script(spec)
+                    newScript = build_script(spec)
                     push!(entity.scripts, newScript)
                     newScript.parent = entity
                 catch e
@@ -423,7 +423,7 @@ module SceneBuilderModule
             foreach(file -> try
                 if !(file in JulGame.LoadedScripts)
                     @debug("Loading $file")
-                    @timed_step "include file $file" Base.include(JulGame.ScriptModule, file)
+                    Base.include(JulGame.ScriptModule, file)
                     @debug("Finished loading $file")
                     push!(JulGame.LoadedScripts, file)
                 end
