@@ -588,17 +588,19 @@ module SpriteModule
         if JGStaticModule.LIB_AVAILABLE
             ccall((:static_sdl_clear_error, JGStaticModule.LIB_PATH), Cvoid, ())
             this.image = get_or_load_surface(imagePath, imagePath)
-            if this.image != C_NULL
-                size_xy = Vector{Int32}(undef, 2)
-                GC.@preserve size_xy ccall(
-                    (:static_surface_size, JGStaticModule.LIB_PATH),
-                    Cvoid,
-                    (Ptr{Cvoid}, Ptr{Int32}),
-                    Ptr{Cvoid}(this.image),
-                    pointer(size_xy),
-                )
-                this.size = Math.Vector2(size_xy[1], size_xy[2])
+            if this.image == C_NULL
+                @error("Couldn't open image '$imagePath'!")
+                return
             end
+            size_xy = Vector{Int32}(undef, 2)
+            GC.@preserve size_xy ccall(
+                (:static_surface_size, JGStaticModule.LIB_PATH),
+                Cvoid,
+                (Ptr{Cvoid}, Ptr{Int32}),
+                Ptr{Cvoid}(this.image),
+                pointer(size_xy),
+            )
+            this.size = Math.Vector2(size_xy[1], size_xy[2])
             this.image = Ptr{SDL2.LibSDL2.SDL_Surface}(this.image)
             this.texture = get_or_create_texture(this.imagePath, this.image)
             if this.texture == C_NULL
@@ -634,7 +636,13 @@ module SpriteModule
         # elseif this.imagePath != imagePath
         #     this.imagePath = imagePath
         # end
-    
+
+        # A missing file leaves a null surface. Wrapping that pointer segfaults.
+        if this.image == C_NULL
+            @error("Couldn't open image '$imagePath'! SDL Error: $(error)")
+            return
+        end
+
         # Get image size
         surface = unsafe_wrap(Array, this.image, 10; own = false)
         this.size = Math.Vector2(surface[1].w, surface[1].h)

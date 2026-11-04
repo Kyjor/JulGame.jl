@@ -664,6 +664,10 @@ export async function applyStrippedSceneData(
     resolveUiElementParents(scene.uiElements, scene.entities);
     alignLoadedScreenTextBoxes(scene.uiElements);
 
+    if (sceneFileName) {
+        scene.name = sceneFileName.replace(/\.json$/i, "");
+    }
+
     if (opts.loadScripts !== false) {
         instantiateScripts(scene.entities);
         if (!opts.deferScriptInitialize) {

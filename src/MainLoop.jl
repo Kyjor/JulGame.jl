@@ -171,8 +171,8 @@ module MainLoopModule
 	
     function initialize_new_scene(this::MainLoop)
 		@debug "Initializing new scene"
-		@debug "Deserializing and building scene"
-        "Deserializing and building scene: $(this.level.scene)" SceneBuilderModule.deserialize_and_build_scene(this.level)
+		@debug "Deserializing and building scene: $(this.level.scene)"
+        SceneBuilderModule.deserialize_and_build_scene(this.level)
 
         initialize_scripts_and_components()
         

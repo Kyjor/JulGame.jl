@@ -14,6 +14,8 @@ export type UiImageElement = JulGameUiElement & {
     forceClickCheck?: boolean;
     /** Set by `gfx_filter_health_bar`: only `percent` of the image is drawn, emptied from `direction`'s end. */
     fillCrop?: { percent: number; direction: string } | null;
+    /** Source rect in texture pixels. Julia `UIImage.crop` (x, y, z=width, t=height). */
+    sourceCrop?: { x: number; y: number; w: number; h: number } | null;
 };
 
 const imageTextures = new Map<string, number>();
@@ -54,7 +56,23 @@ export function hydrateUiImageFromJson(json: Record<string, unknown>): UiImageEl
         hoverExitEvents: [],
         texture: null,
         forceClickCheck: !!json.forceClickCheck,
+        sourceCrop: sourceCropFromJson(json.crop),
     };
+}
+
+function sourceCropFromJson(raw: unknown): { x: number; y: number; w: number; h: number } | null {
+    if (raw == null || typeof raw !== "object") {
+        return null;
+    }
+    const c = raw as { x?: number; y?: number; z?: number; t?: number; w?: number; h?: number };
+    const x = c.x ?? 0;
+    const y = c.y ?? 0;
+    const w = c.w ?? c.z ?? 0;
+    const h = c.h ?? c.t ?? 0;
+    if (w <= 0 || h <= 0) {
+        return null;
+    }
+    return { x, y, w, h };
 }
 
 export function loadUiTextureFromPath(api: JulGameSdlApi, imagePath: string): number | null {
@@ -175,7 +193,10 @@ export function UI_render_UIImage(api: JulGameSdlApi, self: UiImageElement): voi
     const h = Math.round(self.size.y);
     const flip = self.isFlipped ? 1 : 0;
     step("renderCopy", () => {
-        if (self.fillCrop != null) {
+        const src = self.sourceCrop;
+        if (src != null && src.w > 0 && src.h > 0) {
+            renderCopy(texture, 1, src.x, src.y, src.w, src.h, x, y, w, h, 0, 0, 0, flip);
+        } else if (self.fillCrop != null) {
             renderFillCropped(api, texture, self.fillCrop, x, y, w, h, flip);
         } else {
             renderCopy(texture, 0, 0, 0, 0, 0, x, y, w, h, 0, 0, 0, flip);

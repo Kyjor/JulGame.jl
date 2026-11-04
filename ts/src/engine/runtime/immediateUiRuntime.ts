@@ -38,6 +38,8 @@ type ImmediateOpts = {
     borderRadius?: number;
     fillMode?: boolean;
     name?: string;
+    /** Julia `Math.Vector4` source rect: x, y, width (z), height (t). */
+    crop?: { x: number; y: number; z: number; t: number };
     /** Julia ScreenButton art — honored by `immediate_button`. */
     buttonUpPath?: string;
     buttonDownPath?: string;
@@ -181,6 +183,11 @@ function applyImageOpts(el: UiImageElement, opts: ImmediateOpts, path?: string):
     if (opts.size !== undefined) {
         el.size = { ...opts.size };
         el.originalSize = { ...opts.size };
+    }
+    if (opts.crop !== undefined) {
+        const c = opts.crop;
+        const hasCrop = !(c.x === 0 && c.y === 0 && c.z === 0 && c.t === 0);
+        el.sourceCrop = hasCrop ? { x: c.x, y: c.y, w: c.z, h: c.t } : null;
     }
     if (opts.color !== undefined) el.color = parseColor(opts.color, el.color);
     if (opts.layer !== undefined) el.layer = opts.layer;
@@ -331,6 +338,7 @@ function immediateImage(id: string, path: string, opts: ImmediateOpts = {}): UiI
         forceClickCheck: opts.forceClickCheck ?? false,
         isWorldEntity: opts.isWorldEntity ?? false,
         position: opts.position ?? { x: 0, y: 0 },
+        crop: opts.crop,
     });
     wireClick(el, opts);
     wireHover(el, opts);

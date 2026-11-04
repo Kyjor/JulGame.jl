@@ -81,4 +81,8 @@ export function clearUiElementTextureRefs(scene: Scene): void {
 export function invalidateTextureCachesForImagePath(imagePath: string, api: JulGameSdlApi): void {
     evictSpriteTextureForPath(imagePath, api);
     evictUiImageTextureForPath(api, imagePath);
+    const main = (globalThis as { MAIN?: { scene?: Scene } }).MAIN;
+    if (main?.scene) {
+        clearStaleSpriteTextureRefs(main.scene);
+    }
 }
