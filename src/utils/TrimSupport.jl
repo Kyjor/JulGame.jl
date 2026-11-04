@@ -338,13 +338,22 @@ end
                 error("cannot assign " * $(string(property)))
             end)
         elseif ft isa Union
-            # Only the concrete members. Walking abstract members calls concrete_subtypes on types like Any.
-            members = Type[member for member in Base.uniontypes(ft) if isconcretetype(member)]
-            inner = :(error("cannot assign " * $(string(property))))
-            for member in reverse(members)
-                inner = Expr(:if, :(boxed.value isa $member), :(setfield!(erased.value::$subtype, $field, boxed.value::$member)), inner)
+            # Concrete members are stored as that member. An abstract member (IUIElement, ITooltipManager)
+            # is stored as the whole union. Walking its subtypes calls concrete_subtypes and hangs the compiler.
+            members = Base.uniontypes(ft)
+            if all(isconcretetype, members)
+                inner = :(error("cannot assign " * $(string(property))))
+                for member in reverse(members)
+                    inner = Expr(:if, :(boxed.value isa $member), :(setfield!(erased.value::$subtype, $field, boxed.value::$member)), inner)
+                end
+                inner
+            else
+                :(if boxed.value isa $ft
+                    setfield!(erased.value::$subtype, $field, boxed.value::$ft)
+                else
+                    error("cannot assign " * $(string(property)))
+                end)
             end
-            inner
         else
             :(setfield!(erased.value::$subtype, $field, boxed.value))
         end
