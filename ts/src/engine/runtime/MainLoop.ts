@@ -149,7 +149,20 @@ export function runGameFrame(editorMode = false): void {
     const perfDelta = lastPerfMs === 0 ? 0 : (perfNow - lastPerfMs) / 1000;
     lastFrameMs = nowMs;
     lastPerfMs = perfNow;
-    const deltaTime = Math.max(sdlDelta, perfDelta);
+    const rawDelta = Math.max(sdlDelta, perfDelta);
+    // The settings slider lives on the data manager. Apply it once here so every
+    // timer and animation follows it. Scripts must not multiply it a second time.
+    let gameSpeed = 1;
+    try {
+        const speed = Number(
+            (jg as { UserGlobals?: { Module?: { get_data_manager?: () => { game_speed_multiplier?: number } } } })
+                .UserGlobals?.Module?.get_data_manager?.()?.game_speed_multiplier,
+        );
+        if (Number.isFinite(speed) && speed > 0) gameSpeed = speed;
+    } catch {
+        gameSpeed = 1;
+    }
+    const deltaTime = rawDelta * gameSpeed;
     jg.DELTA_TIME = deltaTime;
     jg.FrameCount = (jg.FrameCount ?? 0) + 1;
 
