@@ -369,27 +369,36 @@ module InputModule
                     buf = this.uiHitTestBuffer
                     clear!(buf)
                     for element in elementsOrderedByLayerDescending
-                        skipElement = !element.isActive
-                        # Re-check here (despite build-time paring) because a click
-                        # handler earlier in this loop can deactivate a canvas
-                        if !skipElement && is_element_in(_inactiveCanvasChildren, element)
-                            skipElement = true
-                        end
-                        if (isa(element, JulGame.IEntity) || isa(element, JulGame.IUIElement)) && element.ignoreInputEvents
-                            skipElement = true
+                        skipElement = true
+                        try
+                            skipElement = !(isdefined(element, :isActive) && element.isActive)
+                            # Re-check here (despite build-time paring) because a click
+                            # handler earlier in this loop can deactivate a canvas
+                            if !skipElement && is_element_in(_inactiveCanvasChildren, element)
+                                skipElement = true
+                            end
+                            if (isa(element, JulGame.IEntity) || isa(element, JulGame.IUIElement)) && isdefined(element, :ignoreInputEvents) && element.ignoreInputEvents
+                                skipElement = true
+                            end
+                        catch e
+                            JulGame.log_exception("ui hit test", e)
+                            continue
                         end
                         if skipElement
-                            @debug "Skipping element $(element.name) - isActive: $(element.isActive)"
                             continue
                         end
 
-                        elementPosition = get_element_position(element)
-                        elementSize = get_element_size(element)
-                        push_rect!(
-                            buf, element,
-                            Float64(elementPosition.x), Float64(elementPosition.y),
-                            Float64(elementPosition.x) + Float64(elementSize.x), Float64(elementPosition.y) + Float64(elementSize.y),
-                        )
+                        try
+                            elementPosition = get_element_position(element)
+                            elementSize = get_element_size(element)
+                            push_rect!(
+                                buf, element,
+                                Float64(elementPosition.x), Float64(elementPosition.y),
+                                Float64(elementPosition.x) + Float64(elementSize.x), Float64(elementPosition.y) + Float64(elementSize.y),
+                            )
+                        catch e
+                            JulGame.log_exception("ui hit test", e)
+                        end
                     end
                     hit_idx = lib_available() ?
                         run_static_hit_test_batch!(buf, mouseX, mouseY) :
@@ -422,7 +431,11 @@ module InputModule
                                 (canClickOnThisElement && evt.type == SDL2.SDL_MOUSEBUTTONUP)
 
                             if shouldHandleEvent
-                                JulGame.UI.handle_event(element, evt, mouseX, mouseY)
+                                try
+                                    JulGame.UI.handle_event(element, evt, mouseX, mouseY)
+                                catch e
+                                    JulGame.log_exception("ui handle_event", e)
+                                end
                                 if evt.type == SDL2.SDL_MOUSEBUTTONDOWN
                                     push!(this.elementsBeingClickedDownOn, element)
                                 end

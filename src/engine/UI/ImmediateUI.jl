@@ -1000,6 +1000,7 @@ module ImmediateUIModule
     end
 
     @inline function _immediate_wants_render(el::JulGame.IUIElement)::Bool
+        isdefined(el, :isActive) || return false
         return el.isActive
     end
 
