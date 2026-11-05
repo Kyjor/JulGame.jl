@@ -369,15 +369,15 @@ module InputModule
                     buf = this.uiHitTestBuffer
                     clear!(buf)
                     for element in elementsOrderedByLayerDescending
-                        skipElement = true
+                        skipElement = false
                         try
-                            skipElement = !(isdefined(element, :isActive) && element.isActive)
+                            skipElement = !element.isActive
                             # Re-check here (despite build-time paring) because a click
                             # handler earlier in this loop can deactivate a canvas
                             if !skipElement && is_element_in(_inactiveCanvasChildren, element)
                                 skipElement = true
                             end
-                            if (isa(element, JulGame.IEntity) || isa(element, JulGame.IUIElement)) && isdefined(element, :ignoreInputEvents) && element.ignoreInputEvents
+                            if (isa(element, JulGame.IEntity) || isa(element, JulGame.IUIElement)) && element.ignoreInputEvents
                                 skipElement = true
                             end
                         catch e
